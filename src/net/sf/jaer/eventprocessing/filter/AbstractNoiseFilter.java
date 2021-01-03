@@ -48,9 +48,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     private ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
     protected EngineeringFormat eng = new EngineeringFormat();
-    
-    /** Used by some filters that implement this option*/
-    protected boolean filterHotPixels=getBoolean("filterHotPixels", true);
+
+    /**
+     * Used by some filters that implement this option
+     */
+    protected boolean filterHotPixels = getBoolean("filterHotPixels", true);
     protected boolean recordFilteredOutEvents = false;
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
@@ -67,9 +69,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         String filt = "Filtering control";
         String ann = "Filtering Annotation";
 
-        setPropertyTooltip(ann,"showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
-        setPropertyTooltip(filt,"correlationTimeS", "Correlation time for noise filters that use this parameter");
-        setPropertyTooltip(filt,"filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
+        setPropertyTooltip(ann, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+        setPropertyTooltip(filt, "correlationTimeS", "Correlation time for noise filters that use this parameter");
+        setPropertyTooltip(filt, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
     }
 
     /**
@@ -195,7 +197,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         return filteredOutEvents;
     }
 
-
     /**
      * NoiseTesterFilter sets this boolean true to record filtered out events to
      * the filteredOutEvents ArrayList. Set false by default to save time and
@@ -205,6 +206,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public void setRecordFilteredOutEvents(boolean recordFilteredOutEvents) {
         this.recordFilteredOutEvents = recordFilteredOutEvents;
+        getFilteredOutEvents().clear(); // make sure to clear the list
     }
 
     /**
@@ -219,18 +221,20 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public void setFilterHotPixels(boolean filterHotPixels) {
         this.filterHotPixels = filterHotPixels;
-        putBoolean("filterHotPixels",filterHotPixels);
+        putBoolean("filterHotPixels", filterHotPixels);
     }
-    
-    /** Returns short info string with key control parameters and short name. Subclasses should override.
-     * @return  the info string
+
+    /**
+     * Returns short info string with key control parameters and short name.
+     * Subclasses should override.
+     *
+     * @return the info string
      */
-    public String infoString(){
-        String s=getClass().getSimpleName();
-        s=s.replaceAll("[a-z]", "");
-        s=s+": dT="+eng.format(getCorrelationTimeS())+"s";
+    public String infoString() {
+        String s = getClass().getSimpleName();
+        s = s.replaceAll("[a-z]", "");
+        s = s + ": dT=" + eng.format(getCorrelationTimeS()) + "s";
         return s;
     }
-    
 
 }

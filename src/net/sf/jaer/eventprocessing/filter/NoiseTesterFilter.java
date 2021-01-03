@@ -553,8 +553,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
 
             // filter the augmented packet
+            // make sure to record events, turned off by default for normal use
             for (EventFilter2D f : getEnclosedFilterChain()) {
-                ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true); // make sure to record events, turned off by default for normal use
+                ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true); 
             }
             EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
@@ -963,7 +964,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt); //To change body of generated methods, choose Tools | Templates.
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            log.info(String.format("got rewound event %s, setting reset on next packet flat", evt));
+//            log.info(String.format("got rewound event %s, setting reset on next packet", evt));
             resetCalled = true;
         } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
             if (prerecordedNoise != null) {
