@@ -530,7 +530,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (AbstractNoiseFilter f : noiseFilters) {
                 int[][] map = f.getLastTimesMap();
                 if (map != null) {
-                    initializeLastTimesMapForNoiseRate(map, shotNoiseRateHz + leakNoiseRateHz, ts);
+                    initializeLastTimesMapForNoiseRate(map, shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
                 }
             }
 
