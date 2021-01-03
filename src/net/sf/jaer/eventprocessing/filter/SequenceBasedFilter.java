@@ -421,8 +421,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
 
     @Override
     public String infoString() {
-        String s=getClass().getSimpleName();
-        s=s.replaceAll("[a-z]", "");
+        String s=getUseDoubleMode()==0?"FWF":"DFWF";
         s=s+": L="+wlen+" sigma="+eng.format(disThr);
         return s;
     }
