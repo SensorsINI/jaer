@@ -142,6 +142,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private Float lastTau = null;
         private final double LOG10_CHANGE_TO_ADD_LABEL = .2;
         GLUT glut = new GLUT();
+        private int counter=0;
+        private final int SAMPLE_INTERVAL_NO_CHANGE=10;
 
         class ROCSample {
 
@@ -163,11 +165,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         void add(float x, float y, float tau) {
             boolean labelIt = lastTau == null
-                    || Math.abs(Math.log10(tau / lastTau)) > .1;
+                    || Math.abs(Math.log10(tau / lastTau)) > .1
+                    || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
             rocHistoryList.add(new ROCSample(x, y, tau, labelIt));
             if (labelIt) {
                 lastTau = tau;
             }
+            if(counter>SAMPLE_INTERVAL_NO_CHANGE) counter=0;
         }
 
         void draw(GL2 gl) {
@@ -995,7 +999,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 n.setFilterEnabled(false);
             }
         }
-        resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter
+        resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
+        rocHistory.reset();
     }
 
     private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: setNoiseFilterParameters <csvFilename> xx <shotNoiseRateHz> xx <leakNoiseRateHz> xx and specific to the filter\n";
