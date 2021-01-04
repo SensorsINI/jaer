@@ -6,7 +6,9 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.Desktop;
 import java.beans.PropertyChangeEvent;
+import java.io.File;
 import java.util.Arrays;
 import java.util.Observable;
 
@@ -17,6 +19,7 @@ import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -194,6 +197,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public void doToggleOffLogControl() {
         if (tobiLogger != null) {
             tobiLogger.setEnabled(false);
+            tobiLogger.showFolderInDesktop();
         }
     }
 
