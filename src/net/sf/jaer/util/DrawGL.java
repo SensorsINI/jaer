@@ -14,7 +14,7 @@ import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 
 /**
- * Static utility methods for drawing stuff.
+ * Static utility methods for drawing stuff. Surround these calls with pushMatrix/popMatrix.
  *
  * @author Bjoern, Tobi Delbruck
  */
