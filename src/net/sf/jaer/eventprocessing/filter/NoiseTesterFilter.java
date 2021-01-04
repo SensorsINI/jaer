@@ -214,7 +214,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 int NLEG = 8;
                 legendROCs = new ROCSample[NLEG];
                 for (int i = 0; i < NLEG; i++) {
-                    ROCSample r = createAbsolutePosition(sx + 5, i * 15+20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
+                    ROCSample r = createAbsolutePosition(sx + 5, i * 15 + 20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
                     legendROCs[i] = r;
                 }
                 legendDisplayListId = gl.glGenLists(1);
@@ -244,7 +244,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             float y = TPR * sy;
             DrawGL.drawCross(gl, x, y, L, 0);
             gl.glPopMatrix();
-            drawLegend(gl);
+            if (rocHistoryLength > 1) {
+                drawLegend(gl);
+            }
         }
     }
 
@@ -258,9 +260,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         Integer signalMostRecentTs;
         private ArrayList<BasicEvent> returnedEvents = new ArrayList();
         int noiseEventCounter = 0;
+        File file;
 
         private PrerecordedNoise(File chosenPrerecordedNoiseFilePath) throws IOException {
-            AEFileInputStream recordedNoiseAeFileInputStream = new AEFileInputStream(chosenPrerecordedNoiseFilePath, getChip());
+            file = chosenPrerecordedNoiseFilePath;
+            AEFileInputStream recordedNoiseAeFileInputStream = new AEFileInputStream(file, getChip());
             AEPacketRaw rawPacket = recordedNoiseAeFileInputStream.readPacketByNumber(MAX_NUM_RECORDED_EVENTS);
             recordedNoiseAeFileInputStream.close();
 
@@ -362,7 +366,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
-        int L;
+        String s = null;
         float x, y;
         if (!showFilteringStatistics) {
             return;
@@ -373,12 +377,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         rocHistory.draw(gl);
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
+        gl.glRasterPos3f(0, sy * .9f, 0);
+        if (prerecordedNoise != null) {
+            s = String.format("NTF: Precorded noise from %s", prerecordedNoise.file.getName());
+        } else {
+            s = String.format("NTF: Synthetic noise: Leak %sHz, Shot %sHz", eng.format(leakNoiseRateHz), eng.format(shotNoiseRateHz));
+        }
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
-        String s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, poissonDtUs);
+        s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, statisticsDrawingPosition + 10, 0);
-        String s2 = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s2);
+        s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
     }
 
@@ -544,7 +555,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int FN = 0; // filter take real events as noise events
 
         if (in == null || in.isEmpty()) {
-            log.warning("empty packet, cannot inject noise");
+//            log.warning("empty packet, cannot inject noise");
             return in;
         }
 
