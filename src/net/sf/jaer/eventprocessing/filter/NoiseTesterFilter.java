@@ -21,6 +21,7 @@ package net.sf.jaer.eventprocessing.filter;
 import java.util.SplittableRandom;
 
 import com.google.common.collect.EvictingQueue;
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
@@ -142,19 +143,50 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private Float lastTau = null;
         private final double LOG10_CHANGE_TO_ADD_LABEL = .2;
         GLUT glut = new GLUT();
-        private int counter=0;
-        private final int SAMPLE_INTERVAL_NO_CHANGE=10;
+        private int counter = 0;
+        private final int SAMPLE_INTERVAL_NO_CHANGE = 30;
+        private int legendDisplayListId = 0;
+        private ROCSample[] legendROCs = null;
+
+        ROCSample createAbsolutePosition(float x, float y, float tau, boolean labeled) {
+            return new ROCSample(x, y, tau, labeled);
+        }
+
+        ROCSample createTprFpr(float tpr, float fpr, float tau, boolean labeled) {
+            return new ROCSample(fpr * sx, tpr * sy, tau, labeled);
+        }
 
         class ROCSample {
 
             float x, y, tau;
             boolean labeled = false;
+            final int SIZE = 5; // chip pixels
 
-            public ROCSample(float x, float y, float tau, boolean labeled) {
+            private ROCSample(float x, float y, float tau, boolean labeled) {
                 this.x = x;
                 this.y = y;
                 this.tau = tau;
                 this.labeled = labeled;
+            }
+
+            private void draw(GL2 gl) {
+                gl.glLineWidth(2);
+                float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
+                Color c = Color.getHSBColor(hue, 1f, hue);
+                float[] rgb = c.getRGBComponents(null);
+                gl.glColor3fv(rgb, 0);
+                gl.glLineWidth(2);
+                gl.glPushMatrix();
+                DrawGL.drawBox(gl, x, y, SIZE, SIZE, 0);
+                gl.glPopMatrix();
+                if (labeled) {
+//                    gl.glTranslatef(5 * L, - 3 * L, 0);
+                    gl.glRasterPos3f(x + SIZE, y, 0);
+//                    gl.glRotatef(-45, 0, 0, 1); // can't rotate bitmaps, must use stroke and glScalef
+                    String s = String.format("%ss", eng.format(tau));
+                    glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+//                    glut.glutStrokeString(GLUT.STROKE_ROMAN, s);
+                }
             }
         }
 
@@ -163,50 +195,56 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             lastTau = null;
         }
 
-        void add(float x, float y, float tau) {
+        void addSample(float fpr, float tpr, float tau) {
             boolean labelIt = lastTau == null
                     || Math.abs(Math.log10(tau / lastTau)) > .1
                     || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
-            rocHistoryList.add(new ROCSample(x, y, tau, labelIt));
+            rocHistoryList.add(rocHistory.createTprFpr(tpr, fpr, tau, labelIt));
+
             if (labelIt) {
                 lastTau = tau;
             }
-            if(counter>SAMPLE_INTERVAL_NO_CHANGE) counter=0;
+            if (counter > SAMPLE_INTERVAL_NO_CHANGE) {
+                counter = 0;
+            }
+        }
+
+        private void drawLegend(GL2 gl) {
+            if (legendDisplayListId == 0) {
+                int NLEG = 8;
+                legendROCs = new ROCSample[NLEG];
+                for (int i = 0; i < NLEG; i++) {
+                    ROCSample r = createAbsolutePosition(sx + 5, i * 15+20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
+                    legendROCs[i] = r;
+                }
+                legendDisplayListId = gl.glGenLists(1);
+                gl.glNewList(legendDisplayListId, GL2.GL_COMPILE);
+                { // TODO make a real list
+                }
+                gl.glEndList();
+            }
+            gl.glPushMatrix();
+//            gl.glCallList(legendDisplayListId);
+            for (ROCSample r : legendROCs) {
+                r.draw(gl);
+            }
+            gl.glPopMatrix();
         }
 
         void draw(GL2 gl) {
-            int L = 5;
-            float x, y;
-            gl.glLineWidth(2);
             for (ROCSample rocSample : rocHistoryList) {
-                float hue = (float) (Math.log10(rocSample.tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
-                Color c = Color.getHSBColor(hue, 1f, hue);
-                float[] rgb = c.getRGBComponents(null);
-                gl.glColor3fv(rgb, 0);
-                gl.glLineWidth(2);
-                x = (1 - rocSample.y) * sx;
-                y = rocSample.x * sy;
-                final float l = L; // 10ms tau will produce box of dimension L
-                gl.glPushMatrix();
-                DrawGL.drawBox(gl, x, y, l, l, 0);
-                gl.glPopMatrix();
-                if (rocSample.labeled) {
-                    gl.glPushMatrix();
-                    gl.glRasterPos3f(x + 5 * L, y - 3 * L, 0);
-                    String s = String.format("%ss", eng.format(rocSample.tau));
-                    glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-                    gl.glPopMatrix();
-                }
+                rocSample.draw((gl));
             }
             // draw X at TPR / TNR point
             gl.glPushMatrix();
             gl.glColor3f(.8f, .8f, .2f); // must set color before raster position (raster position is like glVertex)
-            L = 12;
+            int L = 12;
             gl.glLineWidth(4);
-            x = (1 - TNR) * sx;
-            y = TPR * sy;
+            float x = (1 - TNR) * sx;
+            float y = TPR * sy;
             DrawGL.drawCross(gl, x, y, L, 0);
             gl.glPopMatrix();
+            drawLegend(gl);
         }
     }
 
@@ -559,7 +597,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // filter the augmented packet
             // make sure to record events, turned off by default for normal use
             for (EventFilter2D f : getEnclosedFilterChain()) {
-                ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true); 
+                ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
             EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
@@ -654,7 +692,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
-            rocHistory.add(TPR, TNR, getCorrelationTimeS());
+            rocHistory.addSample(1 - TNR, TPR, getCorrelationTimeS());
 
             lastTimestampPreviousPacket = in.getLastTimestamp();
             return passedSignalAndNoisePacket;
