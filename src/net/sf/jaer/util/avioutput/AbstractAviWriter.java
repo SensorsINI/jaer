@@ -368,7 +368,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             log.info("Opened AVI output file " + f.toString() + " with format " + format);
             setFramesWritten(0);
             getSupport().firePropertyChange("framesWritten", null, framesWritten);
-            setWriteEnabled(true);
+            if(!isWriteOnlyWhenMousePressed()) 
+                setWriteEnabled(true);
             return aviOutputStream;
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
@@ -677,6 +678,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     @Override
     public void mouseReleased(MouseEvent e) {
         if (writeOnlyWhenMousePressed) {
+            log.info("mouse pressed, disabling writing");
             setWriteEnabled(false);
         }
     }
@@ -684,6 +686,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     @Override
     public void mousePressed(MouseEvent e) {
         if (writeOnlyWhenMousePressed) {
+            log.info("mouse pressed, enabling writing");
             setWriteEnabled(true);
         }
     }
