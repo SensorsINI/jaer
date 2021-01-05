@@ -112,19 +112,11 @@ public class ChipCanvas implements GLEventListener, Observer {
     private Chip2D chip;
     protected final int colorScale = 255;
     protected GLCanvas drawable;
-    /**
-     * fr is the rendered event data that we draw. X is the first dimenion, Y is
-     * the second dimension, RGB 3 vector is the last dimension
-     */
-    protected float[][][] fr; // this is legacy data that we render here to the screen
-    protected RenderingFrame frameData; // this is new form of pixel data to render
     protected GLU glu; // instance this if we need glu calls on context
     protected GLUT glut = null;
     protected Logger log = Logger.getLogger("Graphics");
     private float origin3dx;
     private float origin3dy;
-    protected int pheight;
-    protected int[] pixels;
     /**
      * defines the minimum canvas size in pixels; used when chip size has not
      * been set to non zero value
@@ -185,7 +177,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         angley = prefs.getFloat("ChipCanvas.angley", 10);
         origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
-        pheight = prefs.getInt("ChipCanvas.pheight", 512);
         prefs.getInt("borderSpacePixels", 20);
 
         // GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
@@ -1001,6 +992,12 @@ public class ChipCanvas implements GLEventListener, Observer {
             bottom = b;
             top = t;
         }
+
+        @Override
+        public String toString() {
+            return "ClipArea{" + "left=" + left + ", right=" + right + ", bottom=" + bottom + ", top=" + top + '}';
+        }
+
     }
 
     /**
@@ -1309,15 +1306,12 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public class Zoom {
 
-        final float zoomStepRatio = 1.3f;
+        final double zoomStepRatio = Math.pow(2, 1. / 8);
         private Point startPoint = new Point();
         private Point endPoint = new Point();
-        private Point centerPoint = new Point();
-        float zoomFactor = 1;
+        private Point centerPoint = new Point();  // where in chip pixels the zoom is centered.
+        float zoomFactor = 1; // >1 for zoom in, magnified
         private boolean zoomEnabled = false;
-        Point tmpPoint = new Point();
-        double projectionLeft, projectionRight, projectionBottom, projectionTop; // projection rect points, computed on
-        // zoom
 
         private void setProjection(final GL2 gl) {
             // define a new projection matrix so that the clipping volume is centered on the centerPoint
@@ -1325,35 +1319,77 @@ public class ChipCanvas implements GLEventListener, Observer {
             // scaleChipPixels2ScreenPixels
             gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
             gl.glLoadIdentity();
-            final int w = drawable.getWidth(), h = drawable.getHeight(); // w,h of screen
+//            final int w = drawable.getWidth(), h = drawable.getHeight(); // w,h of screen
+//            final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
+//            if (isFillsHorizontally()) { // tall
+//                final float wx2 = sx / zoomFactor / 2;
+//                clipArea.left = centerPoint.x - wx2;
+//                clipArea.right = centerPoint.x + wx2;
+//                final float wy2 = (wx2 * h) / w;
+//                clipArea.bottom = centerPoint.y - wy2;
+//                clipArea.top = centerPoint.y + wy2;
+//                borders.leftRight = 0;
+//                borders.bottomTop = 0;
+//            } else { // fills vertically, there is room on edges of screen around chip
+//                final float wy2 = sy / zoomFactor / 2; // half displayed chip height in pixels
+//                clipArea.bottom = centerPoint.y - wy2;  // centered on this pixel y
+//                clipArea.top = centerPoint.y + wy2;
+//                final float wx2 = (wy2 * w) / h;  // the clip area width in chip pixels is set by the screen aspect ratio too
+//                clipArea.left = centerPoint.x - wx2;
+//                clipArea.right = centerPoint.x + wx2;
+//                borders.leftRight = 0;
+//                borders.bottomTop = 0;
+//            }
+            gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area
+        }
+
+        /** zoom in out by the zoomratiochange depending on sign, +1 for in/magnify 
+         * 
+         * @param inout + for in - for out
+         */
+        private void zoomby(int inout) {
+            // we want to zoom up around the mouse point but not center on the
+            // mouse point; if we do this the mouse which is still off in the corner
+            // is not in the right place.
+            // we want to zoom around the mouse but leave it in the same place on the screen. 
+            // i.e. after the zoom, the pixel we zoomed on is still at the same screen mouse position.
+            // center point in chip pixels should be the pixel position at 
+            // center of screen
+
+            final Point mpix = getMousePixel();
+            // find the relative fraction of clip area that the 
+            // mouse position is in chip pixels and zoom clip area aournd that point
+            final double zfac = inout*(zoomStepRatio - 1); // inout+ gives like 0.051 
+            double cw = (clipArea.right - clipArea.left), ch = (clipArea.top - clipArea.bottom);
+            double fx = (mpix.x - clipArea.left) / cw, fy = (mpix.y - clipArea.bottom) / ch;
+            clipArea.left += fx * cw * zfac;  // move left more positive to zoom in
+            clipArea.right -= (1 - fx) * cw * zfac;
+            clipArea.bottom += fy * ch * zfac;
+            clipArea.top -= (1 - fy) * ch * zfac;
+            
+            // only bookkeeping, not used for zoom
+            zoomFactor*=inout>0? zoomStepRatio:1/zoomStepRatio; 
+            centerPoint.setLocation((clipArea.right - clipArea.left) / 2, (clipArea.top - clipArea.bottom) / 2);
+            setZoomEnabled(true);
+//            System.out.printf("zoom change = %f clipArea = %s\n",zfac,clipArea);;
+        }
+
+        private void zoomin() {
+            zoomby(+1);
+        }
+
+        private void zoomout() {
+            zoomby(-1);
+        }
+
+        private void unzoom() {
+            setZoomEnabled(false);
+            zoomFactor = 1;
+            getZoom().setStartPoint(new Point(0, 0));
             final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
-            if (isFillsHorizontally()) { // tall
-                final float wx2 = sx / zoomFactor / 2;
-                clipArea.left = centerPoint.x - wx2;
-                clipArea.right = centerPoint.x + wx2;
-                final float wy2 = (wx2 * h) / w;
-                clipArea.bottom = centerPoint.y - wy2;
-                clipArea.top = centerPoint.y + wy2;
-                borders.leftRight = 0;
-                borders.bottomTop = 0;
-                gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area
-                // has same
-                // ar as
-                // screen!
-            } else {
-                final float wy2 = sy / zoomFactor / 2;
-                clipArea.bottom = centerPoint.y - wy2;
-                clipArea.top = centerPoint.y + wy2;
-                final float wx2 = (wy2 * w) / h;
-                clipArea.left = centerPoint.x - wx2;
-                clipArea.right = centerPoint.x + wx2;
-                borders.leftRight = 0;
-                borders.bottomTop = 0;
-                gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area
-                // has same
-                // ar as
-                // screen!
-            }
+            centerPoint.setLocation(sx / 2, sy / 2);
+            set3dOrigin(0, 0);
+            System.out.printf("UNZOOM clipArea = " + clipArea + "\n");;
         }
 
         public Point getStartPoint() {
@@ -1372,38 +1408,8 @@ public class ChipCanvas implements GLEventListener, Observer {
             this.endPoint = endPoint;
         }
 
-        private void unzoom() {
-            setZoomEnabled(false);
-            zoomFactor = 1;
-            getZoom().setStartPoint(new Point(0, 0));
-            final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
-            centerPoint.setLocation(sx / 2, sy / 2);
-            set3dOrigin(0, 0);
-            // getZoom().setEndPoint(new Point(getChip().getSizeX(), getChip().getSizeY()));
-            // if (!System.getProperty("os.name").contains("Mac")) {//crashes on mac os x 10.5
-            // GL g = drawable.getGL();
-            // g.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
-            // g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
-            // g.glOrtho(-getBorderSpacePixels(), drawable.getWidth() + getBorderSpacePixels(), -getBorderSpacePixels(),
-            // drawable.getHeight() + getBorderSpacePixels(), ZCLIP, -ZCLIP);
-            // g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-            // }
-        }
-
         private void zoomcenter() {
             centerPoint = getMousePixel();
-            setZoomEnabled(true);
-        }
-
-        private void zoomin() {
-            centerPoint = getMousePixel();
-            zoomFactor *= zoomStepRatio;
-            setZoomEnabled(true);
-        }
-
-        private void zoomout() {
-            centerPoint = getMousePixel();
-            zoomFactor /= zoomStepRatio;
             setZoomEnabled(true);
         }
 
