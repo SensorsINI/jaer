@@ -3920,6 +3920,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chipCanvas.zoomIn(); //wheel up
                 }
                 interruptViewloop();
+            } else if (shift && !(control || alt)) { // shift mouse scrolls through recording
+                if (getAePlayer() != null) {
+                    AbstractAEPlayer p = getAePlayer();
+                    int n = (int) Math.abs(rotation);
+                    int oldstep = p.getJogPacketCount();
+                    p.setJogPacketCount(1);
+                    try {
+                        for (int i = 0; i < n; i++) {
+                            if (rotation < 0) {
+                                p.jogForwards();
+                            } else {
+                                p.jogBackwards();
+                            }
+                        }
+                    } finally {
+                        p.setJogPacketCount(oldstep);
+                    }
+                }
+                interruptViewloop();
             }
 	}//GEN-LAST:event_imagePanelMouseWheelMoved
 
