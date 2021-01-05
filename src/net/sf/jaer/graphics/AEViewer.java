@@ -88,6 +88,8 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -620,10 +622,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.info("closing multicastOutput " + aeMulticastOutput);
             aeMulticastOutput.close();
         }
-        if(chip!=null){
+        if (chip != null) {
             chip.cleanup();
         }
-        
+
     }
 
     private boolean isWindows() {
@@ -3298,9 +3300,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(clearMarksMI);
         viewMenu.add(jSeparator10);
 
-        zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_UP, 0));
+        zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.CTRL_MASK));
         zoomInMenuItem.setText("Zoom in");
-        zoomInMenuItem.setToolTipText("Zooms in around mouse point");
+        zoomInMenuItem.setToolTipText("Zooms in around mouse point. Also Ctl+mouse wheel");
         zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomInMenuItemActionPerformed(evt);
@@ -3308,9 +3310,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(zoomInMenuItem);
 
-        zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_DOWN, 0));
+        zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_MINUS, java.awt.event.InputEvent.CTRL_MASK));
         zoomOutMenuItem.setText("Zoom out");
-        zoomOutMenuItem.setToolTipText("Zooms out around mouse point");
+        zoomOutMenuItem.setToolTipText("Zooms out around mouse point. Also Ctl+mouse wheel");
         zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomOutMenuItemActionPerformed(evt);
@@ -3328,7 +3330,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(zoomCenterMenuItem);
 
-        unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_HOME, 0));
+        unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, java.awt.event.InputEvent.CTRL_MASK));
         unzoomMenuItem.setText("Unzoom");
         unzoomMenuItem.setToolTipText("Goes to default display zooming");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3903,10 +3905,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_biasesToggleButtonActionPerformed
 
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
+            boolean control=((evt.getModifiers() & InputEvent.CTRL_MASK) == InputEvent.CTRL_MASK) ;
+            boolean alt=((evt.getModifiers() & InputEvent.ALT_MASK) == InputEvent.ALT_MASK);;
+            boolean shift=((evt.getModifiers() & InputEvent.SHIFT_MASK) == InputEvent.SHIFT_MASK);;
             int rotation = evt.getWheelRotation();
-            getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
-            showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
-            interruptViewloop();
+            if (!(control||alt||shift)) {
+                getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
+                showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
+                interruptViewloop();
+            } else if (control && !(shift||alt)) {
+                if (rotation > 0) {
+                    chipCanvas.zoomOut(); // wheel down
+                } else if (rotation < 0) {
+                    chipCanvas.zoomIn(); //wheel up
+                }
+                interruptViewloop();
+            }
 	}//GEN-LAST:event_imagePanelMouseWheelMoved
 
 	private void togglePlaybackDirectionMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_togglePlaybackDirectionMenuItemActionPerformed
@@ -5391,8 +5405,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 Period p = formatter.parsePeriod(ans);
 
                 loggingTimeLimit = p.toStandardDuration().getMillis();
-                String s=formatter.print(p);
-                JOptionPane.showMessageDialog(this, String.format("Time limit set to %s (%d ms)",s,loggingTimeLimit));
+                String s = formatter.print(p);
+                JOptionPane.showMessageDialog(this, String.format("Time limit set to %s (%d ms)", s, loggingTimeLimit));
             } catch (IllegalArgumentException e) {
                 JOptionPane.showMessageDialog(this, String.format("Bad format? Caught %s", e.toString()), "Error with duration", JOptionPane.ERROR_MESSAGE);
             }
@@ -5588,6 +5602,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void viewStepBackwardsMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewStepBackwardsMIActionPerformed
         getAePlayer().stepBackwardAction.actionPerformed(evt);
     }//GEN-LAST:event_viewStepBackwardsMIActionPerformed
+
+    private KeyEvent lastKeyEvent = null;
 
     /**
      * Returns desired frame rate of FrameRater
