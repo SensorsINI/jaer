@@ -26,8 +26,8 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.TobiLogger;
 
 /**
- * An filter derived from BackgroundActivityFilter that only passes events that
- * are supported by at least some fraction of neighbors in the past
+ * A BA noise filter derived from BackgroundActivityFilter that only passes
+ * events that are supported by at least some fraction of neighbors in the past
  * {@link #setDt dt} in the immediate spatial neighborhood, defined by a
  * subsampling bit shift.
  *
@@ -122,8 +122,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             totalEventCount++;
             int ts = e.timestamp;
             lastTimestamp = ts;
-            final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy);
-            if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) {
+            final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
+            if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                 filterOut(e);
                 continue;
             }
@@ -145,6 +145,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     continue;
                 }
             }
+
+            // finally the real denoising starts here
             int ncorrelated = 0;
             final int x0 = x < 1 ? 0 : x - 1, y0 = y < 1 ? 0 : y - 1;
             final int x1 = x >= ssx - 1 ? ssx - 1 : x + 1, y1 = y >= ssy - 1 ? ssy - 1 : y + 1;
@@ -181,24 +183,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             adaptFiltering();
         }
         return in;
-    }
-
-    public void doToggleOnLogControl() {
-        if (tobiLogger != null) {
-            tobiLogger.setEnabled(false);
-            tobiLogger.setEnabled(true);
-        } else {
-            tobiLogger = new TobiLogger("SpatioTemporalCorrelationFilter-log.csv", "# SpatioTemporalCorrelationFilter control logging");
-            tobiLogger.setHeaderLine("lastTimestamp,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput,entropyFiltered,entropyReduction,olddt,newdt");
-            tobiLogger.setEnabled(true);
-        }
-    }
-
-    public void doToggleOffLogControl() {
-        if (tobiLogger != null) {
-            tobiLogger.setEnabled(false);
-            tobiLogger.showFolderInDesktop();
-        }
     }
 
     @Override
@@ -432,8 +416,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             setDt(newdt); // decrease dt to force more correlation
 
         }
-        if (tobiLogger != null && tobiLogger.isEnabled()) {
-            String s = String.format("%d,%f,%f,%f,%f,%f,%d,%d", lastTimestamp, entropyReductionLowLimit, entropyReductionHighLimit, entropyInput, entropyFiltered, entropyReduction, olddt, getDt());
+        if (tobiLogger != null && tobiLogger.isEnabled()) { // record control action for paper experiments
+            float syntheticNoiseRateHzPerPixel=Float.NaN;
+            if(getEnclosingFilter()!=null && getEnclosingFilter() instanceof NoiseTesterFilter){
+                NoiseTesterFilter ntf=(NoiseTesterFilter)getEnclosingFilter();
+                syntheticNoiseRateHzPerPixel=ntf.getLeakNoiseRateHz()+ntf.getShotNoiseRateHz();
+            }
+            String s = String.format("%d,%f,%f,%f,%f,%f,%f,%d,%d", lastTimestamp, syntheticNoiseRateHzPerPixel, entropyReductionLowLimit, entropyReductionHighLimit, entropyInput, entropyFiltered, entropyReduction, olddt, getDt());
             tobiLogger.log(s);
         }
     }
@@ -545,6 +534,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     private String USAGE = "SpatioTemporalFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx numMustBeCorrelated xx\n";
 
+    // remote control for experiments e.g. with python / UDP remote control 
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s");
@@ -585,8 +575,27 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public String infoString() {
-        String s=super.infoString()+" k="+numMustBeCorrelated;
+        String s = super.infoString() + " k=" + numMustBeCorrelated;
         return s;
+    }
+
+    // to record control actions for adaptive dT
+    public void doToggleOnLogControl() {
+        if (tobiLogger != null) {
+            tobiLogger.setEnabled(false);
+            tobiLogger.setEnabled(true);
+        } else {
+            tobiLogger = new TobiLogger("SpatioTemporalCorrelationFilter-log.csv", "# SpatioTemporalCorrelationFilter control logging");
+            tobiLogger.setHeaderLine("timeMs,lastTimestamp,syntheticNoiseRateHzPerPixel,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput,entropyFiltered,entropyReduction,olddt,newdt");
+            tobiLogger.setEnabled(true);
+        }
+    }
+
+    public void doToggleOffLogControl() {
+        if (tobiLogger != null) {
+            tobiLogger.setEnabled(false);
+            tobiLogger.showFolderInDesktop();
+        }
     }
 
 }
