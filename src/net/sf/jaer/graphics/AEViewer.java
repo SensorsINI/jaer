@@ -3905,15 +3905,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_biasesToggleButtonActionPerformed
 
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
-            boolean control=((evt.getModifiers() & InputEvent.CTRL_MASK) == InputEvent.CTRL_MASK) ;
-            boolean alt=((evt.getModifiers() & InputEvent.ALT_MASK) == InputEvent.ALT_MASK);;
-            boolean shift=((evt.getModifiers() & InputEvent.SHIFT_MASK) == InputEvent.SHIFT_MASK);;
+            boolean control = ((evt.getModifiers() & InputEvent.CTRL_MASK) == InputEvent.CTRL_MASK);
+            boolean alt = ((evt.getModifiers() & InputEvent.ALT_MASK) == InputEvent.ALT_MASK);;
+            boolean shift = ((evt.getModifiers() & InputEvent.SHIFT_MASK) == InputEvent.SHIFT_MASK);;
             int rotation = evt.getWheelRotation();
-            if (!(control||alt||shift)) {
+            if (!(control || alt || shift)) {
                 getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
                 showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
                 interruptViewloop();
-            } else if (control && !(shift||alt)) {
+            } else if (control && !(shift || alt)) {
                 if (rotation > 0) {
                     chipCanvas.zoomOut(); // wheel down
                 } else if (rotation < 0) {
@@ -5090,14 +5090,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void zoomInMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomInMenuItemActionPerformed
             chip.getCanvas().zoomIn();
+            interruptViewloop();
 	}//GEN-LAST:event_zoomInMenuItemActionPerformed
 
 	private void zoomOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomOutMenuItemActionPerformed
             chip.getCanvas().zoomOut();
+            interruptViewloop();
 	}//GEN-LAST:event_zoomOutMenuItemActionPerformed
 
 	private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomCenterMenuItemActionPerformed
             chip.getCanvas().zoomCenter();
+            interruptViewloop();
 	}//GEN-LAST:event_zoomCenterMenuItemActionPerformed
 
 	private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
