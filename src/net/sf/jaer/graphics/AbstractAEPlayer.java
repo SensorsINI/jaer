@@ -166,7 +166,7 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
-    protected int jogPacketCount = 30;
+    protected int jogPacketCount = 5;
     protected int jogPacketsLeft = 0;
     protected boolean jogOccuring = false;
 
@@ -718,7 +718,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
+            showAction(String.format("Jog forwards %d",getJogPacketCount()));
             jogForwards();
             putValue(Action.SELECTED_KEY, true);
         }
@@ -732,7 +732,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
+            showAction(String.format("Jog backwards %d",getJogPacketCount()));
             jogBackwards();
             putValue(Action.SELECTED_KEY, true);
         }
