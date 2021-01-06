@@ -175,7 +175,8 @@ public abstract class AbstractAEPlayer {
     abstract public AEPacketRaw getNextPacket(AbstractAEPlayer player);
 
     abstract public AEPacketRaw getNextPacket();
-
+    private double SPEED_UP_SLOW_DOWN_FACTOR=Math.pow(2,0.25);
+    
     /**
      * Speeds up the playback so that more time or more events are displayed per
      * slice.
@@ -183,9 +184,9 @@ public abstract class AbstractAEPlayer {
      */
     public void speedUp() {
         if (isFlexTimeEnabled()) {
-            setPacketSizeEvents(getPacketSizeEvents() * 2);
+            setPacketSizeEvents((int)Math.round(getPacketSizeEvents() * SPEED_UP_SLOW_DOWN_FACTOR));
         } else {
-            long newTimeSlice = (long) getTimesliceUs() * 2;
+            long newTimeSlice = (long) Math.round(getTimesliceUs() * SPEED_UP_SLOW_DOWN_FACTOR);
             if (newTimeSlice > (long) Integer.MAX_VALUE) {
                 newTimeSlice = Integer.MAX_VALUE; // clip to avoid negative slices sizes for slices > 2G us
             }
@@ -201,12 +202,12 @@ public abstract class AbstractAEPlayer {
      */
     public void slowDown() {
         if (isFlexTimeEnabled()) {
-            setPacketSizeEvents(getPacketSizeEvents() / 2);
+            setPacketSizeEvents((int)Math.round(getPacketSizeEvents() / SPEED_UP_SLOW_DOWN_FACTOR));
             if (getPacketSizeEvents() == 0) {
                 setPacketSizeEvents(1);
             }
         } else {
-            setTimesliceUs(getTimesliceUs() / 2);
+            setTimesliceUs((int) Math.round(getTimesliceUs() / SPEED_UP_SLOW_DOWN_FACTOR));
             if (getTimesliceUs() == 0) {
                 log.info("tried to reduce timeslice below 1us, clipped to 1us");
                 setTimesliceUs(1);
