@@ -13,6 +13,12 @@
         <Property name="text" type="java.lang.String" value="jMenuItem2"/>
       </Properties>
     </Component>
+    <Component class="javax.swing.JSeparator" name="jSeparator20">
+    </Component>
+    <Component class="javax.swing.JSeparator" name="jSeparator21">
+    </Component>
+    <Component class="javax.swing.JSeparator" name="jSeparator22">
+    </Component>
     <Menu class="javax.swing.JMenuBar" name="menuBar">
       <SubComponents>
         <Menu class="javax.swing.JMenu" name="fileMenu">
@@ -515,6 +521,8 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewStepBackwardsMIActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator24">
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="zeroTimestampsMenuItem">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
@@ -534,7 +542,7 @@
                   <KeyStroke key="F"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Increase playback speed"/>
-                <Property name="toolTipText" type="java.lang.String" value="Makes the time slice longer"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice longer&lt;p&gt;Or use SHIFT+ALT+mouse wheel up"/>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
               <Events>
@@ -547,7 +555,7 @@
                   <KeyStroke key="S"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Decrease playback speed"/>
-                <Property name="toolTipText" type="java.lang.String" value="Makes the time slice shorter"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice shorter&lt;p&gt;Or use SHIFT+ALT+mouse wheel down"/>
                 <Property name="enabled" type="boolean" value="false"/>
               </Properties>
               <Events>
@@ -591,12 +599,15 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="togglePlaybackDirectionMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator23">
+            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jogForwardMI">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
                   <KeyStroke key="Shift+Ctrl+PERIOD"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Forward N packets"/>
+                <Property name="text" type="java.lang.String" value="Jog Forward N packets"/>
+                <Property name="toolTipText" type="java.lang.String" value="Or use SHIFT+mouse wheel"/>
                 <Property name="actionCommand" type="java.lang.String" value="Jog forward N packets"/>
               </Properties>
               <Events>
@@ -609,6 +620,7 @@
                   <KeyStroke key="Shift+Ctrl+COMMA"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Jog back N packets"/>
+                <Property name="toolTipText" type="java.lang.String" value="Or use SHIFT+mouse wheel"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jogBackwardsMIActionPerformed"/>
@@ -617,6 +629,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="setJogNCount">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Set jog N..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the size of jog for keyboard jog"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setJogNCountActionPerformed"/>

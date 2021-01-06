@@ -2503,6 +2503,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         renderModeButtonGroup = new javax.swing.ButtonGroup();
         monSeqOpModeButtonGroup = new javax.swing.ButtonGroup();
         jMenuItem2 = new javax.swing.JMenuItem();
+        jSeparator20 = new javax.swing.JSeparator();
+        jSeparator21 = new javax.swing.JSeparator();
+        jSeparator22 = new javax.swing.JSeparator();
         statisticsPanel = new javax.swing.JPanel();
         imagePanel = new javax.swing.JPanel();
         bottomPanel = new javax.swing.JPanel();
@@ -2577,6 +2580,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         viewStepForwardsMI = new javax.swing.JMenuItem();
         viewStepBackwardsMI = new javax.swing.JMenuItem();
+        jSeparator24 = new javax.swing.JPopupMenu.Separator();
         zeroTimestampsMenuItem = new javax.swing.JMenuItem();
         jSeparator11 = new javax.swing.JSeparator();
         increasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
@@ -2584,6 +2588,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rewindPlaybackMenuItem = new javax.swing.JMenuItem();
         flextimePlaybackEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         togglePlaybackDirectionMenuItem = new javax.swing.JMenuItem();
+        jSeparator23 = new javax.swing.JPopupMenu.Separator();
         jogForwardMI = new javax.swing.JMenuItem();
         jogBackwardsMI = new javax.swing.JMenuItem();
         setJogNCount = new javax.swing.JMenuItem();
@@ -3177,6 +3182,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(viewStepBackwardsMI);
+        viewMenu.add(jSeparator24);
 
         zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
         zeroTimestampsMenuItem.setText("Zero timestamps");
@@ -3190,7 +3196,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         increasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, 0));
         increasePlaybackSpeedMenuItem.setText("Increase playback speed");
-        increasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice longer");
+        increasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice longer<p>Or use SHIFT+ALT+mouse wheel up");
         increasePlaybackSpeedMenuItem.setEnabled(false);
         increasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3201,7 +3207,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         decreasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, 0));
         decreasePlaybackSpeedMenuItem.setText("Decrease playback speed");
-        decreasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice shorter");
+        decreasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice shorter<p>Or use SHIFT+ALT+mouse wheel down");
         decreasePlaybackSpeedMenuItem.setEnabled(false);
         decreasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3240,9 +3246,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(togglePlaybackDirectionMenuItem);
+        viewMenu.add(jSeparator23);
 
         jogForwardMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
-        jogForwardMI.setText("Forward N packets");
+        jogForwardMI.setText("Jog Forward N packets");
+        jogForwardMI.setToolTipText("Or use SHIFT+mouse wheel");
         jogForwardMI.setActionCommand("Jog forward N packets");
         jogForwardMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3253,6 +3261,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         jogBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
         jogBackwardsMI.setText("Jog back N packets");
+        jogBackwardsMI.setToolTipText("Or use SHIFT+mouse wheel");
         jogBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jogBackwardsMIActionPerformed(evt);
@@ -3261,6 +3270,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(jogBackwardsMI);
 
         setJogNCount.setText("Set jog N...");
+        setJogNCount.setToolTipText("Sets the size of jog for keyboard jog");
         setJogNCount.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setJogNCountActionPerformed(evt);
@@ -3909,6 +3919,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             boolean alt = ((evt.getModifiers() & InputEvent.ALT_MASK) == InputEvent.ALT_MASK);;
             boolean shift = ((evt.getModifiers() & InputEvent.SHIFT_MASK) == InputEvent.SHIFT_MASK);;
             int rotation = evt.getWheelRotation();
+            ActionEvent ae = new ActionEvent(evt.getSource(), evt.getID(), evt.paramString());
+
             if (!(control || alt || shift)) {
                 getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
                 showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
@@ -3929,13 +3941,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     try {
                         for (int i = 0; i < n; i++) {
                             if (rotation < 0) {
-                                p.jogForwards();
+                                jogForwardMIActionPerformed(ae);
                             } else {
-                                p.jogBackwards();
+                                jogBackwardsMIActionPerformed(ae);
                             }
                         }
                     } finally {
                         p.setJogPacketCount(oldstep);
+                    }
+                }
+            } else if (shift && alt && !(control)) { // shift+alt mouse changes timeslice
+                if (getAePlayer() != null) {
+                    AbstractAEPlayer p = getAePlayer();
+                    int n = (int) Math.abs(rotation);
+                    int oldstep = p.getJogPacketCount();
+                    if (rotation < 0) { // mouse wheel up
+                        increasePlaybackSpeedMenuItemActionPerformed(ae);
+                    } else if (rotation > 0) {
+                        decreasePlaybackSpeedMenuItemActionPerformed(ae);
                     }
                 }
                 interruptViewloop();
@@ -6095,6 +6118,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator18;
     private javax.swing.JPopupMenu.Separator jSeparator19;
     private javax.swing.JSeparator jSeparator2;
+    private javax.swing.JSeparator jSeparator20;
+    private javax.swing.JSeparator jSeparator21;
+    private javax.swing.JSeparator jSeparator22;
+    private javax.swing.JPopupMenu.Separator jSeparator23;
+    private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
