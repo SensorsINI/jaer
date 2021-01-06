@@ -3935,26 +3935,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else if (shift && !(control || alt)) { // shift mouse scrolls through recording
                 if (getAePlayer() != null) {
                     AbstractAEPlayer p = getAePlayer();
-                    int n = (int) Math.abs(rotation);
-                    int oldstep = p.getJogPacketCount();
-                    p.setJogPacketCount(1);
-                    try {
-                        for (int i = 0; i < n; i++) {
+                    int rabs = (int) Math.abs(rotation);
+                    if (p.isPaused()) {
+                        for (int i = 0; i < rabs; i++) {
                             if (rotation < 0) {
-                                jogForwardMIActionPerformed(ae);
+                                p.stepForwardAction.actionPerformed(ae);
                             } else {
-                                jogBackwardsMIActionPerformed(ae);
+                                p.stepBackwardAction.actionPerformed(ae);
+                            }
+                            while(isSingleStep()){
+                                try{
+                                    Thread.sleep(1);
+                                }catch(InterruptedException e){
+                                    break;
+                                }
                             }
                         }
-                    } finally {
-                        p.setJogPacketCount(oldstep);
+                    } else {
+                        int oldstep = p.getJogPacketCount();
+                        p.setJogPacketCount(5);
+                        try {
+                            for (int i = 0; i < rabs; i++) {
+                                if (rotation < 0) {
+                                    jogForwardMIActionPerformed(ae);
+                                } else {
+                                    jogBackwardsMIActionPerformed(ae);
+                                }
+                            }
+                        } finally {
+                            p.setJogPacketCount(oldstep);
+                        }
                     }
                 }
             } else if (shift && alt && !(control)) { // shift+alt mouse changes timeslice
                 if (getAePlayer() != null) {
                     AbstractAEPlayer p = getAePlayer();
                     int n = (int) Math.abs(rotation);
-                    int oldstep = p.getJogPacketCount();
                     if (rotation < 0) { // mouse wheel up
                         increasePlaybackSpeedMenuItemActionPerformed(ae);
                     } else if (rotation > 0) {
