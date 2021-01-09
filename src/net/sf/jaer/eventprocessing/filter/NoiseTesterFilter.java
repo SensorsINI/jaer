@@ -25,8 +25,10 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
+import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -136,6 +138,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     private final long MAX_FILTER_PROCESSING_TIME_MS = 2000; // times out to avoid using up all heap
+    private TextRenderer textRenderer = null;
 
     private class ROCHistory {
 
@@ -232,6 +235,25 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         void draw(GL2 gl) {
+            // draw axes
+            gl.glPushMatrix();
+            gl.glColor4f(.8f, .8f, .2f, .5f); // must set color before raster position (raster position is like glVertex)
+            gl.glLineWidth(4);
+            gl.glBegin(GL.GL_LINE_STRIP);
+            gl.glVertex2f(0, sy);
+            gl.glVertex2f(0, 0);
+            gl.glVertex2f(sx, 0);
+            gl.glEnd();
+            gl.glRasterPos3f(sx / 2-30, -10, 0);
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "FPR");
+//            gl.glPushMatrix();
+//            gl.glTranslatef(sx / 2, -10, 0);
+//            gl.glScalef(.1f, .1f, 1);
+//            glut.glutStrokeString(GLUT.STROKE_ROMAN, "FPR");
+//            gl.glPopMatrix();
+            gl.glRasterPos3f(-30, sy / 2, 0);
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "TPR");
+            gl.glPopMatrix();
             for (ROCSample rocSample : rocHistoryList) {
                 rocSample.draw((gl));
             }
@@ -370,6 +392,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         float x, y;
         if (!showFilteringStatistics) {
             return;
+        }
+        if (textRenderer == null) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10));
         }
         final GLUT glut = new GLUT();
         findUnusedDawingY();
