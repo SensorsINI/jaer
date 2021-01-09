@@ -2477,7 +2477,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (adaptiveSliceDurationLogging) {
             if (adaptiveSliceDurationLogger == null) {
                 adaptiveSliceDurationLogger = new TobiLogger("PatchMatchFlow-SliceDurationControl", "slice duration or event count control logging");
-                adaptiveSliceDurationLogger.setHeaderLine("systemTimeMs\tpacketNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
+                adaptiveSliceDurationLogger.setColumnHeaderLine("systemTimeMs\tpacketNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
+                adaptiveSliceDurationLogger.setSeparator("\t");
             }
             adaptiveSliceDurationLogger.setEnabled(adaptiveSliceDuration);
         }
@@ -3137,7 +3138,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (enableImuTimesliceLogging) {
             if (imuTimesliceLogger == null) {
                 imuTimesliceLogger = new TobiLogger("imuTimeslice.txt", "IMU rate gyro deg/s and patchmatch timeslice duration in ms");
-                imuTimesliceLogger.setHeaderLine("systemtime(ms) timestamp(us) timeslice(us) rate(deg/s)");
+                imuTimesliceLogger.setColumnHeaderLine("systemtime(ms) timestamp(us) timeslice(us) rate(deg/s)");
+                imuTimesliceLogger.setSeparator(" ");
             }
         }
         imuTimesliceLogger.setEnabled(enableImuTimesliceLogging);

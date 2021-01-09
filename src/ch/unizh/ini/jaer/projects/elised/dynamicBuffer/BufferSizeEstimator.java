@@ -362,7 +362,7 @@ public class BufferSizeEstimator extends EventFilter2D{
     public void setupLogging() throws IOException {
         if(isLogBufferSize())
             bufferLogger.setEnabled(true);
-        bufferLogger.setHeaderLine("|last timestamp -- estimatedAvOccupation -- estimated size (simple) -- "
+        bufferLogger.setColumnHeaderLine("|last timestamp -- estimatedAvOccupation -- estimated size (simple) -- "
                 + "(fields found occupied in sample) -- occupied by >=2 -- occupied by >= 3 -- size of sample "
                 + "-- estimated size (probabilistic)|  maximum buffer size:"+getMaxSize()+
                 ", minimum "+ "buffer size: "+getMinSize());

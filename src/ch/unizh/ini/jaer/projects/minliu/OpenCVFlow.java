@@ -208,7 +208,8 @@ public class OpenCVFlow extends AbstractMotionFlow
             globalMotionVectorLogger = new TobiLogger(getChip().getAeViewer().getAePlayer().getAEInputStream().getFile().getName() + patchFlow.getSliceMethod() + patchFlow.getSliceDurationUs(),
                     "Global Motion vector for every generated slice");
             globalMotionVectorLogger.setNanotimeEnabled(false);
-            globalMotionVectorLogger.setHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
+            globalMotionVectorLogger.setColumnHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
+            globalMotionVectorLogger.setSeparator(" ");
             globalMotionVectorLogger.setEnabled(true);
         }
 
@@ -722,7 +723,8 @@ public class OpenCVFlow extends AbstractMotionFlow
             putString("lastFile", file.toString());
             globalMotionVectorLogger = new TobiLogger(file.getPath(), "Global Motion vector for every generated slice");
             globalMotionVectorLogger.setNanotimeEnabled(false);
-            globalMotionVectorLogger.setHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
+            globalMotionVectorLogger.setColumnHeaderLine("system_time(ms) relative_timestamp(us) sliceDeltaT(us) method globalVx(pps) globalVy(pps) globalRotation(degree/s) samples");
+            globalMotionVectorLogger.setSeparator(" ");
             globalMotionVectorLogger.setEnabled(true);
         } else {
             log.info("Cancelled logging motion vectors");

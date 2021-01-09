@@ -391,7 +391,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         if (enableImuTimesliceLogging) {
             if (actualPacketDurationLogger == null) {
                 actualPacketDurationLogger = new TobiLogger("FlexTimePlayer-ActualPacketDuration", "slice duration and event count logging");
-                actualPacketDurationLogger.setHeaderLine("systemTimeMs\tpacketNumber\tsliceDurationUs\tsliceEventCount");
+                actualPacketDurationLogger.setColumnHeaderLine("systemTimeMs\tpacketNumber\tsliceDurationUs\tsliceEventCount");
                 actualPacketDurationLogger.setSeparator("\t");
             }
         }

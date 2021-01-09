@@ -586,7 +586,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             tobiLogger.setEnabled(true);
         } else {
             tobiLogger = new TobiLogger("SpatioTemporalCorrelationFilter-log.csv", "# SpatioTemporalCorrelationFilter control logging");
-            tobiLogger.setHeaderLine("timeMs,lastTimestamp,syntheticNoiseRateHzPerPixel,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput,entropyFiltered,entropyReduction,olddt,newdt");
+            tobiLogger.setColumnHeaderLine("timeMs,lastTimestamp,syntheticNoiseRateHzPerPixel,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput,entropyFiltered,entropyReduction,olddt,newdt");
             tobiLogger.setEnabled(true);
         }
     }

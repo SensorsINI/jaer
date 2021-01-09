@@ -41,6 +41,7 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.io.File;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -103,6 +104,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private long accumulatedDVSOnEventCount = 0, accumulatedDVSOffEventCount = 0;
     private long accumulateTimeUs = 0;
     private boolean resetTimeOnNextPacket = false;
+    private String INFO_FIELDS="updateTimeMs, eventRateHz,accumulateTimeUs,accumulatedDVSOnEventCount,accumulatedDVSOffEventCount,accumulatedDVSEventCount,accumulatedAPSSampleCount,accumulatedIMUSampleCount";
+    
 
     /**
      * computes the absolute time (since 1970) or relative time (in file) given
@@ -143,37 +146,37 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (logStatistics) {
             if (!this.logStatistics) {
                 setEventRate(true);
-                String s = "# statistics from Info filter logged starting at " + new Date() + " and originating from ";
+                String s = "statistics from Info filter logged starting at " + new Date() + " and originating from ";
                 if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
                     s = s + " file " + chip.getAeViewer().getAePlayer().getAEInputStream().getFile().toString();
                 } else {
                     s = s + " input during PlayMode=" + chip.getAeViewer().getPlayMode().toString();
                 }
-                s = s + "\n# evenRateFilterTauMs=" + typedEventRateEstimator.getEventRateTauMs();
-                s = s + "\n#relativeLoggingTimeMs\tabsDataTimeSince1970Ms\teventRateHz";
+                s = s + "\neventRateFilterTauMs=" + typedEventRateEstimator.getEventRateTauMs();
 
                 if (tobiLogger == null) {
                     tobiLogger = new TobiLogger("Info", s);
-                } else {
-                    tobiLogger.setHeaderLine(s);
-                }
+                    tobiLogger.setFileCommentString(s);
+                    tobiLogger.setColumnHeaderLine(INFO_FIELDS);
+                } 
                 tobiLogger.setEnabled(true);
             }
         } else if (this.logStatistics) {
             tobiLogger.setEnabled(false);
             log.info("stopped logging Info data to " + tobiLogger);
+            tobiLogger.showFolderInDesktop();
         }
         this.logStatistics = logStatistics;
         getSupport().firePropertyChange("logStatistics", old, this.logStatistics);
     }
 
-    public void doStartLogging() {
+    public void doToggleOnLogStatistics() {
         setLogStatistics(true);
     }
-
-    public void doStopLogging() {
+    public void doToggleOffLogStatistics() {
         setLogStatistics(false);
     }
+   
 
     /**
      * @return the showAccumulatedEventCount
@@ -384,7 +387,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
         setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
-        setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the startup folder (host/java). <p>See the logging output for the file location.");
+        setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
+        setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip("toggleLogStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
         setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
         setPropertyTooltip("resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
     }
@@ -475,7 +480,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     }
                 }
                 if (logStatistics) {
-                    String s = String.format("%20d\t%20.2g", updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
+                    // see INFO_FIELDS
+                    String columnHeaders=INFO_FIELDS; // only for reference while developing
+                    String s = String.format("%d,%g,%d,%d,%d,%d,%d,%d", 
+                            updateTimeMs, typedEventRateEstimator.getFilteredEventRate(),
+                            accumulateTimeUs,
+                            accumulatedDVSOnEventCount,accumulatedDVSOffEventCount,accumulatedDVSEventCount,
+                            accumulatedAPSSampleCount,accumulatedIMUSampleCount);
                     tobiLogger.log(s);
                 }
             }

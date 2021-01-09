@@ -24,8 +24,10 @@ import net.sf.jaer.eventio.AEDataFile;
  * Eases writing log files for any purpose. To use it, construct a new instance,
  * then enable it to open the file and enable the subsequent logging calls to
  * write. Enabling logging automatically opens the file. The logging files are
- * created in the startup directory, e.g. in jAER, in the folder host/java. Each
- * log call prepends the system time automatically as the first field, followed
+ * created users home folder, i.e. System.properties.user.home. 
+ * 
+ * <p>By default, each
+ * log call prepends the system time in ms since logging started automatically as the first field, followed
  * by a separator character, by default a comma to allow easier parsing as CSV
  * file. Comment lines have the comment character # prepended to them.
  *
@@ -39,11 +41,20 @@ public class TobiLogger {
     private boolean absoluteTimeEnabled = false;
     private boolean nanotimeEnabled = false;
     private long startingTime = 0;
-    private String headerLine;
+    private String columnHeaderLine;
+    private String fileCommentString;
     private String fileNameBase;
     private String fileNameActual = null;
-    private String separator = ",";
+    /** Default field separator */
+    public static final String DEFAULT_FIELD_SEP_STRING=",";
+    private String separator = DEFAULT_FIELD_SEP_STRING;
     private File file = null;
+    /** The default comment line header */
+    public static final String DEFAULT_COMMENT="#";
+    private String commentChar="#";
+    
+    private boolean suppressShowingFolder=false;
+    private boolean suppressTimeField=false;
 
     /**
      * Creates a new instance of TobiLogger.
@@ -51,9 +62,9 @@ public class TobiLogger {
      * @param filename the filename. Date/Timestamp string us appended to the
      * filename and ".txt" is appended if it is not already the suffix, e.g.
      * "PencilBalancer-2008-10-12T10-23-58+0200.txt". The file is created in the
-     * program startup folder.
+     * users home folder.
      * @param headerLineComment a comment usually specifying the contents and
-     * data fields, a # is prepended automatically. A second header line is also
+     * data fields, a {@value #DEFAULT_COMMENT} is prepended automatically. A second header line is also
      * written automatically with the file creation date, e.g. "# created Sat
      * Oct 11 13:04:34 CEST 2008"
      */
@@ -62,7 +73,7 @@ public class TobiLogger {
             filename = filename + ".txt";
         }
         this.fileNameBase = filename;
-        this.headerLine = headerLineComment;
+        this.columnHeaderLine = headerLineComment;
     }
 
     private String getTimestampedFilename() {
@@ -93,8 +104,8 @@ public class TobiLogger {
             if (!absoluteTimeEnabled) {
                 time -= startingTime;
             }
-            String ss = String.format("%d%s%s", time, separator, s);
-            logStream.println(ss);
+            String timeString = String.format("%d%s%s", time, separator, s);
+            logStream.println(timeString);
             if (logStream.checkError()) {
                 log.warning("error logging data");
             }
@@ -114,7 +125,7 @@ public class TobiLogger {
             return;
         }
         if (logStream != null) {
-            logStream.print("# ");
+            logStream.print(getCommentChar());
             logStream.println(s);
             if (logStream.checkError()) {
                 log.warning("error adding log comment");
@@ -131,6 +142,8 @@ public class TobiLogger {
      * enabled a new log file is created with its own timetamped filename. Each
      * time logging is disabled the existing log file is closed. Reenabling
      * logging opens a new logging file.
+     * 
+     * The folder is opened unless {@link #setSuppressShowingFolder(boolean)} supresses it.
      *
      * @param logDataEnabled true to enable logging
      */
@@ -145,13 +158,25 @@ public class TobiLogger {
             logStream.flush();
             logStream.close();
             logStream = null;
+            if(!isSuppressShowingFolder()){
+                showFolderInDesktop();
+            }
         } else {
             try {
                 fileNameActual = System.getProperty("user.home")+File.separator+getTimestampedFilename();
                 this.file = new File(fileNameActual);
                 logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(getFile())));
-                logStream.println("# " + getHeaderLine());
-                logStream.println("# created " + new Date());
+                // start with generic header of toString()
+                logStream.println(getCommentChar()+toString());
+                // add creation date
+                logStream.println(getCommentChar()+"created " + new Date());
+                // add user's comment header
+                String s=getCommentChar()
+                        +getFileCommentString().replaceAll("\\R", System.lineSeparator()+getCommentChar());
+                logStream.println(s);
+                // finally the first record, column names usually
+                logStream.println(getFirstRecordLine());
+                
                 log.info("created log file name " + getFileNameActual());
                 startingTime = nanotimeEnabled ? System.nanoTime() : System.currentTimeMillis();
                 Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -204,32 +229,24 @@ public class TobiLogger {
     }
 
     /**
-     * @return the headerLine
+     * Use this method to set the header line that is written before any logging line. 
+     * It is NOT prepended by comment character so it can be used for CSV column header line.
+     * It does take into account {@link #setSuppressTimeField(boolean) }.
+     * 
+     * @return the columnHeaderLine
      */
-    public String getHeaderLine() {
-        return headerLine;
+    public String getFirstRecordLine() {
+        return (isSuppressTimeField()?"":"systemTimeMs"+getSeparator())+getColumnHeaderLine();
     }
 
-    /**
-     * Sets the contents of the first header line
-     *
-     *     *@param headerLineComment a comment usually specifying the contents and
-     * data fields, a # is prepended automatically. A second header line is also
-     * written automatically with the file creation date, e.g. "# created Sat
-     * Oct 11 13:04:34 CEST 2008"
-     */
-    public void setHeaderLine(String headerLine) {
-        this.headerLine = headerLine;
-    }
 
     @Override
     public String toString() {
-        return "TobiLogger{" + "absoluteTimeEnabled=" + absoluteTimeEnabled + ", nanotimeEnabled=" + nanotimeEnabled + ", startingTime=" + startingTime + ", headerLine=" + headerLine + ", fileNameActual=" + getFileNameActual() + '}';
+        return "TobiLogger{" + "absoluteTimeEnabled=" + absoluteTimeEnabled + ", nanotimeEnabled=" + nanotimeEnabled + ", startingTime=" + startingTime + ", headerLine=" + getColumnHeaderLine() + ", fileNameActual=" + getFileNameActual() + '}';
     }
 
     /**
-     * Returns String that separates logging time from rest of line. Default is
-     * comma ",".
+     * Returns String that separates logging time from rest of line. Default is {@value #DEFAULT_FIELD_SEP_STRING}
      *
      * @return the separator
      */
@@ -238,7 +255,7 @@ public class TobiLogger {
     }
 
     /**
-     * Sets character that separates logging time from rest of line
+     * Sets character that separates logging time from rest of line, by default {@value #DEFAULT_FIELD_SEP_STRING}.
      *
      * @param separator the separator to set
      */
@@ -285,6 +302,86 @@ public class TobiLogger {
      */
     public File getFile() {
         return file;
+    }
+
+    /**
+     * @return the commentChar
+     */
+    public String getCommentChar() {
+        return commentChar;
+    }
+
+    /**
+     * Sets the comment line character that starts each line of file header, by default {@value #DEFAULT_COMMENT}.
+     * @param commentChar the commentChar to set
+     */
+    public void setCommentChar(String commentChar) {
+        this.commentChar = commentChar;
+    }
+
+    /**
+     * @return the suppressShowingFolder
+     */
+    public boolean isSuppressShowingFolder() {
+        return suppressShowingFolder;
+    }
+
+    /**
+     * Set true to prevent opening the logging folder when logging is ended. By default folder is 
+     * shown with Desktop.showFolderInDesktop().
+     * 
+     * @param suppressShowingFolder the suppressShowingFolder to set
+     */
+    public void setSuppressShowingFolder(boolean suppressShowingFolder) {
+        this.suppressShowingFolder = suppressShowingFolder;
+    }
+
+    /**
+     * @return the suppressTimeField
+     */
+    public boolean isSuppressTimeField() {
+        return suppressTimeField;
+    }
+
+    /**By default the first field of the log file is the time in ms (either absolute since 1970 or since start of recording, see {@link #setAbsoluteTimeEnabled(boolean)}. This method allows suppressing the field.
+     * @param suppressTimeField the suppressTimeField to set
+     */
+    public void setSuppressTimeField(boolean suppressTimeField) {
+        this.suppressTimeField = suppressTimeField;
+    }
+
+    /**
+     * @return the columnHeaderLine
+     */
+    public String getColumnHeaderLine() {
+        return columnHeaderLine;
+    }
+
+    /**
+     * Sets the contents of the first header line.
+     * The first line written after the file header, which usually in CSV files has the column names, separated by commas
+     *
+     * @param headerLineComment a line usually specifying the field names of the columns that follow
+     */
+    public void setColumnHeaderLine(String columnHeaderLine) {
+        this.columnHeaderLine = columnHeaderLine;
+    }
+
+    /**
+     * @return the fileCommentString
+     */
+    public String getFileCommentString() {
+        return fileCommentString;
+    }
+
+    /**
+     * A comment section written at the start of the file. Each line is automatically prepended by the comment char.
+     * It includes other information automatically written with the file creation date, e.g. "# created Sat
+     * Oct 11 13:04:34 CEST 2008"
+     * @param fileCommentString the fileCommentString to set
+     */
+    public void setFileCommentString(String fileCommentString) {
+        this.fileCommentString = fileCommentString;
     }
 
 }
