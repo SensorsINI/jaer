@@ -5739,11 +5739,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)) {
                         draggedFile = f;
                     } else {
+                        log.warning(String.format("Cannot handle this file extension for file '%s'",f.getAbsoluteFile()));
                         draggedFile = null;
                     }
-
                 }
-                //                System.out.println("AEViewer.dragEnter(): draqged file="+draggedFile);
             }
         } catch (UnsupportedFlavorException e) {
             e.printStackTrace();
@@ -5789,6 +5788,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } catch (InterruptedException ex) {
                 log.warning("opening dropped file " + draggedFile + " interrupted");
             }
+        }else{
+//            log.warning("null dragged file in DropTargetDropEvent="+dtde);
         }
     }
 
