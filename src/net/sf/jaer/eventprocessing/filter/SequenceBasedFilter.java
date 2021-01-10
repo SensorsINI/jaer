@@ -37,7 +37,6 @@ import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
-//import java.util.stream;
 import java.util.stream.IntStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -121,11 +120,9 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
 
     public SequenceBasedFilter(AEChip chip) {
         super(chip);
-        initFilter();
-        setPropertyTooltip("wlen", "window length");
-        setPropertyTooltip("letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
-        setPropertyTooltip("useDoubleMode", "use two separate windows for storing real and noise events");
-        setPropertyTooltip("disThr", "threshold for distance comparison, if too noise, make this smaller, if too little events, make this larger");
+        setPropertyTooltip(TT_FILT_CONTROL,"wlen", "window length");
+        setPropertyTooltip(TT_FILT_CONTROL,"useDoubleMode", "use two separate windows for storing real and noise events");
+        setPropertyTooltip(TT_FILT_CONTROL,"disThr", "threshold for distance comparison, if too noise, make this smaller, if too little events, make this larger");
     }
 
     /**
@@ -239,6 +236,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
                 lastREvents[wlen - 1][1] = e.y;
             }
         }
+        getNoiseFilterControl().performControl(in);
 
         return in;
     }
@@ -365,11 +363,11 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
     synchronized public void setDisThr(int disThr) {
 
         int setValue = disThr;
-        if (disThr < getMinDt()) {
-            setValue = getMinDt();
+        if (disThr < getMinDisThr()) {
+            setValue = getMinDisThr();
         }
-        if (disThr > getMaxDt()) {
-            setValue = getMaxDt();
+        if (disThr > getMaxDisThr()) {
+            setValue = getMaxDisThr();
         }
 
         putDouble("disThr", setValue);
@@ -377,11 +375,11 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
         this.disThr = setValue;
     }
 
-    public int getMinDt() {
+    public int getMinDisThr() {
         return MIN_DT;
     }
 
-    public int getMaxDt() {
+    public int getMaxDisThr() {
         MAX_DT = sx + sy;
         return MAX_DT;
     }
@@ -426,6 +424,10 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
         return s;
     }
 
-   
-
+    /** Overridden to set L according to recent activity to some correlation time */
+    @Override
+    public void setCorrelationTimeS(float dtS) {
+        log.warning("Setting correlation time currently has no effect");
+    }
+    
 }

@@ -42,27 +42,27 @@ import net.sf.jaer.util.RemoteControlCommand;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
-    private int dtUs = getInt("dtUs", 10000);
     int[] lastRowTs, lastColTs; // these arrays hold last timestamp of event in each row/column. A value of 0 means no event since reset.
     int[] lastXByRow, lastYByCol;  // these arrays hold the x address for each y (row) event and y address for each x (col) event.
     int sx = 0, sy = 0;
 
     public OrderNBackgroundActivityFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("dtUs", "correlation time in us");
-        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
     @Override
     public EventPacket<?> filterPacket(EventPacket<?> in) {
         super.filterPacket(in);
+        int dtUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
+
         for (BasicEvent e : in) {
-            checkAndFilterEvent(e);
+            checkAndFilterEvent(e, dtUs);
             totalEventCount++;
             if (e.isFilteredOut()) {
                 filterOut(e);
             }
         }
+        getNoiseFilterControl().performControl(in);
         return in;
     }
 
@@ -93,7 +93,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         resetFilter();
     }
 
-    private void checkAndFilterEvent(BasicEvent e) {
+    private void checkAndFilterEvent(BasicEvent e, int dtUs) {
 
         // check all neighbors to see if there was event around us suffiently recently
         e.setFilteredOut(true); // by default filter out
@@ -101,7 +101,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
             // assume all edge events are noise and filter OUT 
             // since we cannot fully check their correlation TODO check is this best possible?
 //            saveEvent(e); 
-            return; 
+            return;
         }
         // first check rows around us, if any adjancent row has event then filter in
         for (int y = -1; y <= 1; y++) {
@@ -135,41 +135,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         lastRowTs[e.y] = e.timestamp;
     }
 
-    /**
-     * @return the dtUs
-     */
-    public int getDtUs() {
-        return dtUs;
-    }
-
-    /**
-     * @param dtUs the dtUs to set
-     */
-    public void setDtUs(int dtUs) {
-        if (dtUs > MAX_DT) {
-            dtUs = MAX_DT;
-        } else if (dtUs < MIN_DT) {
-            dtUs = MIN_DT;
-        }
-        int old = this.dtUs;
-
-        putInt("dtUs", dtUs);
-        getSupport().firePropertyChange("dtUs", old, dtUs);
-        getSupport().firePropertyChange("correlationTimeS", 1e-6f*old, 1e-6f*dtUs);
-        this.dtUs = dtUs;
-    }
-
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt); //To change body of generated methods, choose Tools | Templates.
-        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            resetFilter();
-        } else if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
-            resetFilter();
-        }
-
-    }
-
+  
     private String USAGE = "OrderNFilter needs at least 1 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx\n";
 
     @Override
@@ -183,10 +149,10 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
             if ((tok.length - 1) % 2 == 0) {
                 for (int i = 1; i <= tok.length; i++) {
                     if (tok[i].equals("dt")) {
-                        setDtUs(Integer.parseInt(tok[i + 1]));
+                        setCorrelationTimeS(1e-6f * Integer.parseInt(tok[i + 1]));
                     }
                 }
-                String out = "successfully set OrderNFilter parameters dt " + String.valueOf(dtUs);
+                String out = "successfully set OrderNFilter parameters dtS " + String.valueOf(getCorrelationTimeS());
                 return out;
             } else {
                 return USAGE;
@@ -203,18 +169,8 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
     }
 
     @Override
-    public float getCorrelationTimeS() {
-        return this.dtUs * 1e-6f;
-    }
-
-    @Override
-    public void setCorrelationTimeS(float dtS) {
-        setDtUs((int) (dtS * 1e6));
-    }
-
-    @Override
     public String infoString() {
-        return super.infoString(); 
+        return super.infoString();
     }
 
 }

@@ -39,33 +39,8 @@ import net.sf.jaer.util.TobiLogger;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
-    /**
-     * the time in timestamp ticks (1us at present) that a spike needs to be
-     * supported by a prior event in the neighborhood by to pass through
-     */
-    protected int dt = getInt("dt", 30000);
-    private boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
     private int numMustBeCorrelated = getInt("numMustBeCorrelated", 5);
 
-    private int activityBinDimBits = getInt("activityBinDimBits", 4);
-    private int[][] activityHistInput, activityHistFiltered;
-    private int binDim, nBinsX, nBinsY, nBinsTotal;
-    private float entropyInput = 0, entropyFiltered = 0;
-    private float entropyReduction;
-    private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
-    private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", 1f);
-    private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .5f);
-    private float dtChangeFraction = getFloat("dtChangeFraction", 0.01f);
-    private TobiLogger tobiLogger = null;
-    static final float LOG2_FACTOR = (float) (1 / Math.log(2));
-
-    /**
-     * the amount to subsample x and y event location by in bit shifts when
-     * writing to past event times map. This effectively increases the range of
-     * support. E.g. setting subSamplingShift to 1 quadruples range because both
-     * x and y are shifted right by one bit
-     */
-    private int subsampleBy = getInt("subsampleBy", 0);
     private int sx; // size of chip minus 1
     private int sy;
     private int ssx; // size of subsampled timestamp map
@@ -76,18 +51,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
-        String filt = "1. basic params", adap = "2. AdaptiveFiltering", disp = "Display";
-        setPropertyTooltip(filt, "dt", "Events with less than this delta time in us to neighbors pass through");
-        setPropertyTooltip(filt, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-        setPropertyTooltip(filt, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
-        setPropertyTooltip(filt, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
-        setPropertyTooltip(adap, "activityBinDimBits", "2^this is the size of rectangular blocks that histogram event activity for measuring entropy (structure) to evaluate effectiveness of filtering");
-        setPropertyTooltip(adap, "adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropyReduction between two limits");
-        setPropertyTooltip(adap, "entropyReductionLowLimit", "if entropy reduction from filtering is below this limit, decrease dt");
-        setPropertyTooltip(adap, "entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
-        setPropertyTooltip(adap, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
-        setPropertyTooltip(disp, "showFilteringStatistics", "annotate display with statistics");
-        setPropertyTooltip(disp, "LogControl", "write CSV with control data");
+        setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
@@ -105,10 +69,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         if (lastTimesMap == null) {
             allocateMaps(chip);
         }
-        if (adaptiveFilteringEnabled) {
-            resetActivityHistograms();
-        }
-
+        int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
+        ssx = sx >> subsampleBy;
+        ssy = ssy >> subsampleBy;
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
@@ -127,18 +90,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 filterOut(e);
                 continue;
             }
-            int ax = 0, ay = 0; // must initialize, compute later
-            if (adaptiveFilteringEnabled) {
-                ax = x >> activityBinDimBits;
-                ay = y >> activityBinDimBits;
-                activityHistInput[ax][ay]++;
-            }
             if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
                 lastTimesMap[x][y] = ts;
                 if (letFirstEventThrough) {
-                    if (adaptiveFilteringEnabled) {
-                        activityHistFiltered[ax][ay]++;
-                    }
                     continue;
                 } else {
                     filterOut(e);
@@ -173,15 +127,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             if (ncorrelated < numMustBeCorrelated) {
                 filterOut(e);
             } else {
-                if (adaptiveFilteringEnabled) {
-                    activityHistFiltered[ax][ay]++;
-                }
             }
             lastTimesMap[x][y] = ts;
         }
-        if (adaptiveFilteringEnabled && totalEventCount > 0) { // don't adjust if there were no DVS events (i.e. only APS turned on)
-            adaptFiltering();
-        }
+        getNoiseFilterControl().performControl(in);
         return in;
     }
 
@@ -198,14 +147,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         String s = null;
-        if (adaptiveFilteringEnabled) {
-            s = String.format("%s: dt=%.1fms filOut=%%%.1f entropy bef/aft/reduc=%.1f/%.1f/%.1f",
-                    infoString(), dt * 1e-3f, filteredOutPercent, entropyInput, entropyFiltered, entropyReduction);
-        } else {
-            s = String.format("%s: filtered out %%%6.1f",
-                    infoString(),
-                    filteredOutPercent);
-        }
+        s = String.format("%s: filtered out %%%6.1f",
+                infoString(),
+                filteredOutPercent);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
     }
@@ -232,12 +176,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
             lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
         }
-        binDim = 1 << activityBinDimBits;
-        nBinsX = chip.getSizeX() / binDim;
-        nBinsY = chip.getSizeY() / binDim;
-        nBinsTotal = nBinsX * nBinsY;
-        activityHistInput = new int[nBinsX + 1][nBinsY + 1];
-        activityHistFiltered = new int[nBinsX + 1][nBinsY + 1];
         lastTimestamp = DEFAULT_TIMESTAMP;
     }
 
@@ -246,81 +184,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         return lastTimesMap;
     }
 
-    public Object getFilterState() {
-        return lastTimesMap;
-    }
-
-    // <editor-fold defaultstate="collapsed" desc="getter-setter / Min-Max for --Dt--">
-    /**
-     * gets the background allowed delay in us
-     *
-     * @return delay allowed for spike since last in neighborhood to pass (us)
-     */
-    public int getDt() {
-        return this.dt;
-    }
-
-    /**
-     * sets the background delay in us. If param is larger then getMaxDt() or
-     * smaller getMinDt() the boundary value are used instead of param.
-     * <p>
-     * Fires a PropertyChangeEvent "dt"
-     *
-     * @see #getDt
-     * @param dt delay in us
-     */
-    public void setDt(final int dt) {
-        int setValue = dt;
-        if (dt < getMinDt()) {
-            setValue = getMinDt();
-        }
-        if (dt > getMaxDt()) {
-            setValue = getMaxDt();
-        }
-
-        putInt("dt", setValue);
-        getSupport().firePropertyChange("dt", this.dt, setValue);
-        getSupport().firePropertyChange("correlationTimeS", 1e-6f * this.dt, 1e-6f * setValue);
-        this.dt = setValue;
-    }
-
-    public int getMinDt() {
-        return MIN_DT;
-    }
-
-    public int getMaxDt() {
-        return MAX_DT;
-    }
     // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
-    public int getSubsampleBy() {
-        return subsampleBy;
-    }
-
-    /**
-     * Sets the number of bits to subsample by when storing events into the map
-     * of past events. Increasing this value will increase the number of events
-     * that pass through and will also allow passing events from small sources
-     * that do not stimulate every pixel.
-     *
-     * @param subsampleBy the number of bits, 0 means no subsampling, 1 means
-     * cut event time map resolution by a factor of two in x and in y
-     */
-    synchronized public void setSubsampleBy(int subsampleBy) {
-        if (subsampleBy < 0) {
-            subsampleBy = 0;
-        } else if (subsampleBy > 4) {
-            subsampleBy = 4;
-        }
-        this.subsampleBy = subsampleBy;
-        putInt("subsampleBy", subsampleBy);
-        ssx = sx >> subsampleBy;
-        ssy = ssy >> subsampleBy;
-        initFilter();
-    }
-    // </editor-fold>
-
     /**
      * @return the letFirstEventThrough
      */
@@ -358,178 +222,12 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         this.numMustBeCorrelated = numMustBeCorrelated;
     }
 
-    private void adaptFiltering() {
-        if (!adaptiveFilteringEnabled) {
-            return;
-        }
-        // compute entropies of activities in input and filtered activity histograms
-        int sumInput = 0;
-        for (int[] i : activityHistInput) {
-            for (int ii : i) {
-                sumInput += ii;
-            }
-        }
-        int sumFiltered = 0;
-        for (int[] i : activityHistFiltered) {
-            for (int ii : i) {
-                sumFiltered += ii;
-            }
-        }
-        entropyInput = 0;
-        if (sumInput > 0) {
-            for (int[] i : activityHistInput) {
-                for (int ii : i) {
-                    final float p = (float) ii / sumInput;
-                    if (p > 0) {
-                        entropyInput += p * (float) Math.log(p);
-                    }
-                }
-            }
-        }
-        entropyFiltered = 0;
-        if (sumFiltered > 0) {
-            for (int[] i : activityHistFiltered) {
-                for (int ii : i) {
-                    final float p = (float) ii / sumFiltered;
-                    if (p > 0) {
-                        entropyFiltered += p * (float) Math.log(p);
-                    }
-                }
-            }
-        }
-        entropyFiltered = -LOG2_FACTOR * entropyFiltered;
-        entropyInput = -LOG2_FACTOR * entropyInput;
-        entropyReduction = entropyInput - entropyFiltered;
-        int olddt = getDt();
-        if (entropyReduction > entropyReductionHighLimit) {
-            int newdt = (int) (getDt() * (1 + dtChangeFraction));
-            if (newdt == olddt) {
-                newdt++;
-            }
-            setDt(newdt); // increase dt to force less correlation
-
-        } else if (entropyReduction < entropyReductionLowLimit) {
-            int newdt = (int) (getDt() * (1 - dtChangeFraction));
-            if (newdt == olddt) {
-                newdt--;
-            }
-            setDt(newdt); // decrease dt to force more correlation
-
-        }
-        if (tobiLogger != null && tobiLogger.isEnabled()) { // record control action for paper experiments
-            float syntheticNoiseRateHzPerPixel=Float.NaN;
-            if(getEnclosingFilter()!=null && getEnclosingFilter() instanceof NoiseTesterFilter){
-                NoiseTesterFilter ntf=(NoiseTesterFilter)getEnclosingFilter();
-                syntheticNoiseRateHzPerPixel=ntf.getLeakNoiseRateHz()+ntf.getShotNoiseRateHz();
-            }
-            String s = String.format("%d,%f,%f,%f,%f,%f,%f,%d,%d", lastTimestamp, syntheticNoiseRateHzPerPixel, entropyReductionLowLimit, entropyReductionHighLimit, entropyInput, entropyFiltered, entropyReduction, olddt, getDt());
-            tobiLogger.log(s);
-        }
-    }
-
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt);
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             resetFilter();
         }
-    }
-
-    private void resetActivityHistograms() {
-        if (!adaptiveFilteringEnabled) {
-            return;
-        }
-        for (int[] i : activityHistInput) {
-            Arrays.fill(i, 0);
-        }
-        for (int[] i : activityHistFiltered) {
-            Arrays.fill(i, 0);
-        }
-    }
-
-    /**
-     * @return the activityBinDimBits
-     */
-    public int getActivityBinDimBits() {
-        return activityBinDimBits;
-    }
-
-    /**
-     * @param activityBinDimBits the activityBinDimBits to set
-     */
-    synchronized public void setActivityBinDimBits(int activityBinDimBits) {
-        int old = this.activityBinDimBits;
-        this.activityBinDimBits = activityBinDimBits;
-        if (old != activityBinDimBits) {
-            allocateMaps(chip);
-        }
-        putInt("activityBinDimBits", activityBinDimBits);
-    }
-
-    /**
-     * @return the adaptiveFilteringEnabled
-     */
-    public boolean isAdaptiveFilteringEnabled() {
-        return adaptiveFilteringEnabled;
-    }
-
-    /**
-     * @param adaptiveFilteringEnabled the adaptiveFilteringEnabled to set
-     */
-    public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
-        this.adaptiveFilteringEnabled = adaptiveFilteringEnabled;
-        putBoolean("adaptiveFilteringEnabled", adaptiveFilteringEnabled);
-    }
-
-    /**
-     * @return the entropyReductionHighLimit
-     */
-    public float getEntropyReductionHighLimit() {
-        return entropyReductionHighLimit;
-    }
-
-    /**
-     * @param entropyReductionHighLimit the entropyReductionHighLimit to set
-     */
-    public void setEntropyReductionHighLimit(float entropyReductionHighLimit) {
-        if (entropyReductionHighLimit < entropyReductionLowLimit) {
-            entropyReductionHighLimit = entropyReductionLowLimit;
-        }
-        this.entropyReductionHighLimit = entropyReductionHighLimit;
-        putFloat("entropyReductionHighLimit", entropyReductionHighLimit);
-    }
-
-    /**
-     * @return the entropyReductionLowLimit
-     */
-    public float getEntropyReductionLowLimit() {
-        return entropyReductionLowLimit;
-    }
-
-    /**
-     * @param entropyReductionLowLimit the entropyReductionLowLimit to set
-     */
-    public void setEntropyReductionLowLimit(float entropyReductionLowLimit) {
-        if (entropyReductionLowLimit > entropyReductionHighLimit) {
-            entropyReductionLowLimit = entropyReductionHighLimit;
-        }
-        this.entropyReductionLowLimit = entropyReductionLowLimit;
-        putFloat("entropyReductionLowLimit", entropyReductionLowLimit);
-    }
-
-    /**
-     * @return the dtChangeFraction
-     */
-    public float getDtChangeFraction() {
-        return dtChangeFraction;
-    }
-
-    /**
-     * @param dtChangeFraction the dtChangeFraction to set
-     */
-    public void setDtChangeFraction(float dtChangeFraction) {
-        this.dtChangeFraction = dtChangeFraction;
-        putFloat("dtChangeFraction", dtChangeFraction);
     }
 
     private String USAGE = "SpatioTemporalFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx numMustBeCorrelated xx\n";
@@ -547,12 +245,12 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             if ((tok.length - 1) % 2 == 0) {
                 for (int i = 1; i < tok.length; i++) {
                     if (tok[i].equals("dt")) {
-                        setDt(Integer.parseInt(tok[i + 1]));
+                        setCorrelationTimeS(1e-6f * Integer.parseInt(tok[i + 1]));
                     } else if (tok[i].equals("numMustBeCorrelated")) {
                         setNumMustBeCorrelated(Integer.parseInt(tok[i + 1]));
                     }
                 }
-                String out = "successfully set SpatioTemporalFilter parameters dt " + String.valueOf(dt) + " and numMustBeCorrelated " + String.valueOf(numMustBeCorrelated);
+                String out = "successfully set SpatioTemporalFilter parameters dt " + String.valueOf(getCorrelationTimeS()) + " and numMustBeCorrelated " + String.valueOf(numMustBeCorrelated);
                 return out;
             } else {
                 return USAGE;
@@ -564,38 +262,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     }
 
     @Override
-    public float getCorrelationTimeS() {
-        return this.dt * 1e-6f;
-    }
-
-    @Override
-    public void setCorrelationTimeS(float dtS) {
-        setDt((int) (dtS * 1e6));
-    }
-
-    @Override
     public String infoString() {
         String s = super.infoString() + " k=" + numMustBeCorrelated;
         return s;
-    }
-
-    // to record control actions for adaptive dT
-    public void doToggleOnLogControl() {
-        if (tobiLogger != null) {
-            tobiLogger.setEnabled(false);
-            tobiLogger.setEnabled(true);
-        } else {
-            tobiLogger = new TobiLogger("SpatioTemporalCorrelationFilter-log.csv", "# SpatioTemporalCorrelationFilter control logging");
-            tobiLogger.setColumnHeaderLine("timeMs,lastTimestamp,syntheticNoiseRateHzPerPixel,entropyReductionLowLimit,entropyReductionHighLimit,entropyInput,entropyFiltered,entropyReduction,olddt,newdt");
-            tobiLogger.setEnabled(true);
-        }
-    }
-
-    public void doToggleOffLogControl() {
-        if (tobiLogger != null) {
-            tobiLogger.setEnabled(false);
-            tobiLogger.showFolderInDesktop();
-        }
     }
 
 }

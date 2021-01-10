@@ -116,7 +116,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private AbstractNoiseFilter selectedFilter = null;
     protected boolean resetCalled = true; // flag to reset on next event
 
-    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
+//    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     private DavisRenderer renderer = null;
     private boolean overlayClassifications = getBoolean("overlayClassifications", false);
     private boolean overlayInput = getBoolean("overlayInput", false);
@@ -424,7 +424,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         renderer.clearAnnotationMap();
         final int offset = 1;
-        final float a = getAnnotateAlpha();
+//        final float a = getAnnotateAlpha();
         final float[] noiseColor = {1f, 0, 0, 1}, sigColor = {0, 1f, 0, 1};
         for (BasicEvent e : outSig) {
             renderer.setAnnotateColorRGBA(e.x + 2 >= sx ? e.x : e.x + offset, e.y - 2 < 0 ? e.y : e.y - offset, sigColor);
@@ -927,7 +927,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (chip.getRenderer() instanceof DavisRenderer) {
             renderer = (DavisRenderer) chip.getRenderer();
         }
-        setAnnotateAlpha(annotateAlpha);
+//        setAnnotateAlpha(annotateAlpha);
         setOverlayClassifications(overlayClassifications); // make sure renderer is properly set up.
         setOverlayInput(overlayInput);
     }
@@ -1133,10 +1133,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void setCorrelationTimeS(float dtS) {
-        if (dtS > 1e-6f * MAX_DT) {
-            dtS = 1e-6f * MAX_DT;
-        } else if (dtS < 1e-6f * MIN_DT) {
-            dtS = 1e-6f * MIN_DT;
+        if (dtS > 1e-6f * MAX_DT_US) {
+            dtS = 1e-6f * MAX_DT_US;
+        } else if (dtS < 1e-6f * MIN_DT_US) {
+            dtS = 1e-6f * MIN_DT_US;
         }
 
         this.correlationTimeS = dtS;
@@ -1146,28 +1146,28 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putFloat("correlationTimeS", this.correlationTimeS);
     }
 
-    /**
-     * @return the annotateAlpha
-     */
-    public float getAnnotateAlpha() {
-        return annotateAlpha;
-    }
-
-    /**
-     * @param annotateAlpha the annotateAlpha to set
-     */
-    public void setAnnotateAlpha(float annotateAlpha) {
-        if (annotateAlpha > 1.0) {
-            annotateAlpha = 1.0f;
-        }
-        if (annotateAlpha < 0.0) {
-            annotateAlpha = 0.0f;
-        }
-        this.annotateAlpha = annotateAlpha;
-        if (renderer != null) {
-            renderer.setAnnotateAlpha(annotateAlpha);
-        }
-    }
+//    /**
+//     * @return the annotateAlpha
+//     */
+//    public float getAnnotateAlpha() {
+//        return annotateAlpha;
+//    }
+//
+//    /**
+//     * @param annotateAlpha the annotateAlpha to set
+//     */
+//    public void setAnnotateAlpha(float annotateAlpha) {
+//        if (annotateAlpha > 1.0) {
+//            annotateAlpha = 1.0f;
+//        }
+//        if (annotateAlpha < 0.0) {
+//            annotateAlpha = 0.0f;
+//        }
+//        this.annotateAlpha = annotateAlpha;
+//        if (renderer != null) {
+//            renderer.setAnnotateAlpha(annotateAlpha);
+//        }
+//    }
 
     /**
      * @return the overlayClassifications
