@@ -338,7 +338,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
+        boolean old=noiseFilterControl.isAdaptiveFilteringEnabled();
         noiseFilterControl.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
+        getSupport().firePropertyChange("adaptiveFilteringEnabled", old, adaptiveFilteringEnabled);
     }
 
     @Override

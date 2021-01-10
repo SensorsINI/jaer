@@ -244,7 +244,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glVertex2f(0, 0);
             gl.glVertex2f(sx, 0);
             gl.glEnd();
-            gl.glRasterPos3f(sx / 2-30, -10, 0);
+            gl.glRasterPos3f(sx / 2 - 30, -10, 0);
             glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "FPR");
 //            gl.glPushMatrix();
 //            gl.glTranslatef(sx / 2, -10, 0);
@@ -340,23 +340,20 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
-        String ann = "Filtering Annotation";
-        String roc = "ROC display";
-        String out = "Output";
-        String noise = "Noise";
-        String filt = "Filtering control";
+        String out = "5. Output";
+        String noise = "4. Noise";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
-        setPropertyTooltip(noise, "closeCsvFile", "Closes the output spreadsheet data file.");
+        setPropertyTooltip(out, "closeCsvFile", "Closes the output spreadsheet data file.");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
-        setPropertyTooltip(filt, "selectedNoiseFilterEnum", "Choose a noise filter to test");
-        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
-        setPropertyTooltip(ann, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
-        setPropertyTooltip(ann, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
-        setPropertyTooltip(roc, "rocHistoryLength", "Number of samples of ROC point to show.");
-        setPropertyTooltip(roc, "clearROCHistory", "Clears samples from display.");
+        setPropertyTooltip(TT_FILT_CONTROL, "selectedNoiseFilterEnum", "Choose a noise filter to test");
+//        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
+        setPropertyTooltip(TT_DISP, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
+        setPropertyTooltip(TT_DISP, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
+        setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
+        setPropertyTooltip(TT_DISP, "clearROCHistory", "Clears samples from display.");
     }
 
     @Override
@@ -375,6 +372,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (EventFilter2D f : chain) {
                 f.setFilterEnabled(false);
             }
+            if (renderer != null) {
+                renderer.clearAnnotationMap();
+            }
+
         }
         if (!isEnclosed()) {
             String key = prefsEnabledKey();
@@ -1146,6 +1147,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putFloat("correlationTimeS", this.correlationTimeS);
     }
 
+    @Override
+    public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
+        super.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
+        for (AbstractNoiseFilter f : noiseFilters) {
+            f.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
+        }
+
+    }
+
 //    /**
 //     * @return the annotateAlpha
 //     */
@@ -1168,7 +1178,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //            renderer.setAnnotateAlpha(annotateAlpha);
 //        }
 //    }
-
     /**
      * @return the overlayClassifications
      */
