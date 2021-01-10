@@ -5738,6 +5738,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)) {
                         draggedFile = f;
+                        log.info("User dragged file "+draggedFile);
                     } else {
                         log.warning(String.format("Cannot handle this file extension for file '%s'",f.getAbsoluteFile()));
                         draggedFile = null;
