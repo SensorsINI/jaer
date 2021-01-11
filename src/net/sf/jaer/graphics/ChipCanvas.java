@@ -173,7 +173,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     private final ClipArea clipArea = new ClipArea();
     private ClipArea clipAreaDragStart = new ClipArea();
 
-    private Point mouseDragScreenStartPoint = new Point(0, 0), mouseDragChipPixelStartPoint = new Point(0, 0), mouseDragChipPixelDragPoint=new Point(0,0);
+    private Point mouseDragScreenStartPoint = new Point(0, 0), mouseDragScreenCurrentPoint = new Point(0, 0),
+            mouseDragChipPixelStartPoint = new Point(0, 0), mouseDragChipPixelCurrentPoint = new Point(0, 0);
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
 
     /**
@@ -821,7 +822,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                         origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / drawable.getWidth());
                         origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / drawable.getHeight());
                     } else {
-                        mouseDragChipPixelDragPoint=getPixelFromMouseEvent(e);
+                        mouseDragScreenCurrentPoint = e.getPoint();
+                        mouseDragChipPixelCurrentPoint = getPixelFromMouseEvent(e);
                         zoom.panto(); // pans clip area based on one set by mousePressed()
                     }
                 }
@@ -1118,6 +1120,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         setScale(glScale);
         g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        log.info("set defaultprojection with clipArea=" + clipArea);
     }
 
     /**
@@ -1307,6 +1310,8 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
             gl.glLoadIdentity();
             gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area
+            setScale(drawable.getWidth() / (clipArea.right - clipArea.left));
+            log.info("set zoom projection with clipArea=" + clipArea);
         }
 
         /**
@@ -1342,11 +1347,12 @@ public class ChipCanvas implements GLEventListener, Observer {
                 zoomFactor *= inout == 0 ? 1 : (inout > 0 ? zoomStepRatio : 1 / zoomStepRatio);
             } else { // inout==0, just pan to mouse
                 // compute dx,dy for mouse since start, set clip area relative to starting clip area
-                float dx = mouseDragChipPixelDragPoint.x - mouseDragChipPixelStartPoint.x, dy = mouseDragChipPixelDragPoint.y - mouseDragChipPixelStartPoint.y;
-                clipArea.left = clipAreaDragStart.left - dx;
-                clipArea.right = clipAreaDragStart.right - dx;
-                clipArea.bottom = clipAreaDragStart.bottom - dy;
-                clipArea.top = clipAreaDragStart.top - dy;
+                float dx = mouseDragScreenCurrentPoint.x - mouseDragScreenStartPoint.x,
+                        dy = mouseDragScreenCurrentPoint.y - mouseDragScreenStartPoint.y;
+                clipArea.left = clipAreaDragStart.left - dx / getScale();
+                clipArea.right = clipAreaDragStart.right - dx / getScale();
+                clipArea.bottom = clipAreaDragStart.bottom + dy / getScale(); // use + here because screen starts 0,0 at UL and chip uses 0,0 at LL
+                clipArea.top = clipAreaDragStart.top + dy / getScale();
 //                System.out.printf("dx=%f dy=%f\n",dx,dy);
             }
             // only bookkeeping, not used for zoom
@@ -1369,7 +1375,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
             centerPoint.setLocation(sx / 2, sy / 2);
             set3dOrigin(0, 0);
-            System.out.printf("UNZOOM clipArea = " + clipArea + "\n");;
+//            System.out.printf("UNZOOM clipArea = " + clipArea + "\n");;
         }
 
         public Point getStartPoint() {
