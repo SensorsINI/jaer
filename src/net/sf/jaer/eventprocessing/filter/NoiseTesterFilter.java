@@ -903,32 +903,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void initFilter() {
-        chain = new FilterChain(chip);
+        if (chain == null) {
+            chain = new FilterChain(chip);
 
-        noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip))};
-        for (AbstractNoiseFilter n : noiseFilters) {
-            n.initFilter();
-            chain.add(n);
+            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip))};
+            for (AbstractNoiseFilter n : noiseFilters) {
+                n.initFilter();
+                chain.add(n);
+            }
+            setEnclosedFilterChain(chain);
+            if (getChip().getAeViewer() != null) {
+                getChip().getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+                getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
+                getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
+            }
+            if (chip.getRemoteControl() != null) {
+                log.info("adding RemoteControlCommand listener to AEChip\n");
+                chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
+            }
+            if (chip.getRenderer() instanceof DavisRenderer) {
+                renderer = (DavisRenderer) chip.getRenderer();
+            }
         }
-        setEnclosedFilterChain(chain);
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
         signalAndNoisePacket = new EventPacket<>(ApsDvsEvent.class);
-        if (getChip().getAeViewer() != null) {
-            getChip().getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-            getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
-            getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
-        }
-        if (chip.getRemoteControl() != null) {
-            log.info("adding RemoteControlCommand listener to AEChip\n");
-            chip.getRemoteControl().addCommandListener(this, "setNoiseFilterParameters", "set correlation time or distance.");
-        }
         setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
-        if (chip.getRenderer() instanceof DavisRenderer) {
-            renderer = (DavisRenderer) chip.getRenderer();
-        }
-//        setAnnotateAlpha(annotateAlpha);
+        //        setAnnotateAlpha(annotateAlpha);
         fixRendererAnnotationLayerShowing(); // make sure renderer is properly set up.
     }
 
@@ -1068,6 +1070,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (n.getClass().getSimpleName().equals(selectedNoiseFilter.toString())) {
                 n.initFilter();
                 n.setFilterEnabled(true);
+                log.info("setting " + n.getClass().getSimpleName() + " enabled");
                 selectedFilter = n;
             } else {
                 n.setFilterEnabled(false);
@@ -1127,23 +1130,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Override
-    public float getCorrelationTimeS() {
-        return this.correlationTimeS;
-    }
-
-    @Override
     public void setCorrelationTimeS(float dtS) {
-        if (dtS > 1e-6f * MAX_DT_US) {
-            dtS = 1e-6f * MAX_DT_US;
-        } else if (dtS < 1e-6f * MIN_DT_US) {
-            dtS = 1e-6f * MIN_DT_US;
-        }
-
-        this.correlationTimeS = dtS;
+        super.setCorrelationTimeS(dtS);
         for (AbstractNoiseFilter f : noiseFilters) {
             f.setCorrelationTimeS(dtS);
         }
-        putFloat("correlationTimeS", this.correlationTimeS);
     }
 
     @Override
@@ -1152,7 +1143,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         for (AbstractNoiseFilter f : noiseFilters) {
             f.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
         }
+    }
 
+    @Override
+    public synchronized void setSubsampleBy(int subsampleBy) {
+        super.setSubsampleBy(subsampleBy);
+        for (AbstractNoiseFilter f : noiseFilters) {
+            f.setSubsampleBy(subsampleBy);
+        }
     }
 
 //    /**
@@ -1177,7 +1175,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //            renderer.setAnnotateAlpha(annotateAlpha);
 //        }
 //    }
-
     /**
      * Sets renderer to show annotation layer
      */

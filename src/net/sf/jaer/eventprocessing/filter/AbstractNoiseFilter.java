@@ -229,6 +229,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public void setCorrelationTimeS(float dtS) {
         float old = this.correlationTimeS;
+        if (dtS > 1e-6f * MAX_DT_US) {
+            dtS = 1e-6f * MAX_DT_US;
+        } else if (dtS < 1e-6f * MIN_DT_US) {
+            dtS = 1e-6f * MIN_DT_US;
+        }
         this.correlationTimeS = dtS;
         putFloat("correlationTimeS", correlationTimeS);
         getSupport().firePropertyChange("correlationTimeS", old, this.correlationTimeS);
@@ -261,6 +266,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * cut event time map resolution by a factor of two in x and in y
      */
     synchronized public void setSubsampleBy(int subsampleBy) {
+        int old = this.getSubsampleBy();
         if (subsampleBy < 0) {
             subsampleBy = 0;
         } else if (subsampleBy > 4) {
@@ -268,7 +274,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         }
         this.subsampleBy = subsampleBy;
         putInt("subsampleBy", subsampleBy);
-        initFilter();
+        resetFilter();
+        getSupport().firePropertyChange("subsampleBy", old, this.subsampleBy);
     }
 
     /**
@@ -329,7 +336,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     public String infoString() {
         String s = getClass().getSimpleName();
         s = s.replaceAll("[a-z]", "");
-        s = s + ": dT=" + eng.format(getCorrelationTimeS()) + "s";
+        s = s + String.format(": dT=%ss, subSamp=%d", eng.format(getCorrelationTimeS()),getSubsampleBy());
         return s;
     }
 
@@ -338,7 +345,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
-        boolean old=noiseFilterControl.isAdaptiveFilteringEnabled();
+        boolean old = noiseFilterControl.isAdaptiveFilteringEnabled();
         noiseFilterControl.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
         getSupport().firePropertyChange("adaptiveFilteringEnabled", old, adaptiveFilteringEnabled);
     }
