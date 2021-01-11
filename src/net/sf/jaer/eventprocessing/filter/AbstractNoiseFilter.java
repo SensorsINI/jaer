@@ -64,7 +64,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * Map from noise filters to drawing positions of noise filtering statistics
      * annotations
      */
-    static protected HashMap<AbstractNoiseFilter, Integer> noiseStatDrawingMap = new HashMap<AbstractNoiseFilter, Integer>();
+    static protected HashMap<String, Integer> noiseStatDrawingMap = new HashMap();
     protected int statisticsDrawingPosition = -10; // y coordinate we write ourselves to, start with -10 so we end up at 0 for first one (hack)
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
     protected int MAX_DT_US = 200000;
@@ -184,14 +184,14 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     protected void findUnusedDawingY() {
         // find a y posiiton not used yet for us
-        if (noiseStatDrawingMap.get(this) == null) {
+        if (noiseStatDrawingMap.get(this.getClass().getSimpleName()) == null) {
             for (int y : noiseStatDrawingMap.values()) {
                 if (y > statisticsDrawingPosition) {
                     statisticsDrawingPosition = y;
                 }
             }
             statisticsDrawingPosition = statisticsDrawingPosition + 20; // room for 2 lines per filter
-            noiseStatDrawingMap.put(this, statisticsDrawingPosition);
+            noiseStatDrawingMap.put(this.getClass().getSimpleName(), statisticsDrawingPosition);
         }
     }
 
