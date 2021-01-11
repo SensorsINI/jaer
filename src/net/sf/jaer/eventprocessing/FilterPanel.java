@@ -178,13 +178,13 @@ import net.sf.jaer.util.EngineeringFormat;
  * groups "Size" and "Timing" are defined and properties are added to each (or
  * to neither for "multiOriOutputEnabled").
  * <pre>
- final String size="Size", tim="Timing";
-
- setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
- setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this KEY_FACTOR times minDtThreshold to reduce noise");
- setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
- setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
- </pre>
+ * final String size="Size", tim="Timing";
+ *
+ * setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
+ * setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this KEY_FACTOR times minDtThreshold to reduce noise");
+ * setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
+ * setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
+ * </pre>
  *
  *
  * @author tobi
@@ -689,7 +689,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     class MyControl extends JPanel {
 
         @Override
-		public Dimension getMaximumSize() {
+        public Dimension getMaximumSize() {
             Dimension d = getPreferredSize();
             d.setSize(1000, d.getHeight());
             return d;
@@ -814,7 +814,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
         }
     }
-    private final float KEY_FACTOR = (float)Math.sqrt(2), WHEEL_FACTOR = (float)Math.pow(2, 1./16); // factors to change by with arrow and mouse wheel
+    private final float KEY_FACTOR = (float) Math.sqrt(2), WHEEL_FACTOR = (float) Math.pow(2, 1. / 16); // factors to change by with arrow and mouse wheel
 
     class BooleanControl extends MyControl implements HasSetter {
 
@@ -1531,6 +1531,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 boolean yes = (Boolean) propertyChangeEvent.getNewValue();
                 enabledCheckBox.setSelected(yes);
                 setBorderActive(yes);
+//                if (yes) {
+//                    log.info("selecting checkbox from " + propertyChangeEvent);
+//                }
             } else {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
@@ -1538,7 +1541,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                	final HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                    final HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
@@ -1662,7 +1665,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         Container c = getTopLevelAncestor();
         if (c == null) {
             return;
-        } 
+        }
 
         // TODO fix bug here with enclosed filters not showing up if they are enclosed in enclosed filter, unless they are declared as enclosed
         if (!getFilter().isEnclosed() && ((c instanceof Window))) {
