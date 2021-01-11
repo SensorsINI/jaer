@@ -30,6 +30,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeSupport;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -118,8 +119,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
 //    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     private DavisRenderer renderer = null;
-    private boolean overlayClassifications = getBoolean("overlayClassifications", false);
-    private boolean overlayInput = getBoolean("overlayInput", false);
+    private boolean overlayPositives = getBoolean("overlayPositives", false);
+    private boolean overlayNegatives = getBoolean("overlayNegatives", false);
 
     private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
@@ -350,8 +351,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip(TT_FILT_CONTROL, "selectedNoiseFilterEnum", "Choose a noise filter to test");
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
-        setPropertyTooltip(TT_DISP, "overlayClassifications", "Overlay the signal and noise classifications of events in green and red.");
-        setPropertyTooltip(TT_DISP, "overlayInput", "<html><p>If selected, overlay all input events as signal (green) and noise (red). <p>If not selected, overlay true positives as green (signal in output) and false positives as red (noise in output).");
+        setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
+        setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>TNs (red) are noise filtered out.<p>FNs (green) are signal filtered out.");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
         setPropertyTooltip(TT_DISP, "clearROCHistory", "Clears samples from display.");
     }
@@ -721,12 +722,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
-            if (overlayClassifications) {
-                if (overlayInput) {
-                    annotateNoiseFilteringEvents(signalList, noiseList);
-                } else {
-                    annotateNoiseFilteringEvents(tpList, fpList);
-                }
+            if (overlayPositives) {
+                annotateNoiseFilteringEvents(tpList, fpList);
+            }
+            if (overlayNegatives) {
+                annotateNoiseFilteringEvents(tnList, fnList);
             }
 
             rocHistory.addSample(1 - TNR, TPR, getCorrelationTimeS());
@@ -929,8 +929,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             renderer = (DavisRenderer) chip.getRenderer();
         }
 //        setAnnotateAlpha(annotateAlpha);
-        setOverlayClassifications(overlayClassifications); // make sure renderer is properly set up.
-        setOverlayInput(overlayInput);
+        fixRendererAnnotationLayerShowing(); // make sure renderer is properly set up.
     }
 
     /**
@@ -1178,37 +1177,50 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //            renderer.setAnnotateAlpha(annotateAlpha);
 //        }
 //    }
-    /**
-     * @return the overlayClassifications
-     */
-    public boolean isOverlayClassifications() {
-        return overlayClassifications;
-    }
 
     /**
-     * @param overlayClassifications the overlayClassifications to set
+     * Sets renderer to show annotation layer
      */
-    public void setOverlayClassifications(boolean overlayClassifications) {
-        this.overlayClassifications = overlayClassifications;
-        putBoolean("overlayClassifications", overlayClassifications);
+    private void fixRendererAnnotationLayerShowing() {
         if (renderer != null) {
-            renderer.setDisplayAnnotation(overlayClassifications);
+            renderer.setDisplayAnnotation(this.overlayNegatives || this.overlayPositives);
         }
     }
 
     /**
-     * @return the overlayInput
+     * @return the overlayPositives
      */
-    public boolean isOverlayInput() {
-        return overlayInput;
+    public boolean isOverlayPositives() {
+        return overlayPositives;
     }
 
     /**
-     * @param overlayInput the overlayInput to set
+     * @return the overlayNegatives
      */
-    public void setOverlayInput(boolean overlayInput) {
-        this.overlayInput = overlayInput;
-        putBoolean("overlayInput", overlayInput);
+    public boolean isOverlayNegatives() {
+        return overlayNegatives;
+    }
+
+    /**
+     * @param overlayNegatives the overlayNegatives to set
+     */
+    public void setOverlayNegatives(boolean overlayNegatives) {
+        boolean oldOverlayNegatives = this.overlayNegatives;
+        this.overlayNegatives = overlayNegatives;
+        putBoolean("overlayNegatives", overlayNegatives);
+        getSupport().firePropertyChange("overlayNegatives", oldOverlayNegatives, overlayNegatives);
+        fixRendererAnnotationLayerShowing();
+    }
+
+    /**
+     * @param overlayPositives the overlayPositives to set
+     */
+    public void setOverlayPositives(boolean overlayPositives) {
+        boolean oldOverlayPositives = this.overlayPositives;
+        this.overlayPositives = overlayPositives;
+        putBoolean("overlayPositives", overlayPositives);
+        getSupport().firePropertyChange("overlayPositives", oldOverlayPositives, overlayPositives);
+        fixRendererAnnotationLayerShowing();
     }
 
     /**
