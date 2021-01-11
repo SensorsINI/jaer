@@ -71,7 +71,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         }
         int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
         ssx = sx >> subsampleBy;
-        ssy = ssy >> subsampleBy;
+        ssy = sy >> subsampleBy;
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         for (Object eIn : in) {
@@ -108,9 +108,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             for (int xx = x0; xx <= x1; xx++) {
                 final int[] col = lastTimesMap[xx];
                 for (int yy = y0; yy <= y1; yy++) {
-//                    if ((xx < 0) || (xx > sx) || (yy < 0) || (yy > sy)) {
-//                        continue;
-//                    }
                     if (filterHotPixels && xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
