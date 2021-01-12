@@ -89,7 +89,6 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     SpikeSound spikeSound = null;
     private TextRenderer renderer = null;
     volatile boolean selecting = false;
-    volatile float binTime = Float.NaN;
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
     final private static float[] GLOBAL_HIST_COLOR = {0, 0, .8f, .5f}, INDIV_HIST_COLOR = {0, .2f, .6f, .5f}, HIST_OVERFLOW_COLOR = {
         .6f, .4f, .2f, .6f};
@@ -113,7 +112,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         Arrays.fill(currentAddress, -1);
         chip.addObserver(this);
         final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count", g = "General";
-        setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals");
+        setPropertyTooltip(h, "isiHistEnabled", "enable histogramming interspike intervals (or frequency histograms if freqHistEnbled also selected)");
         setPropertyTooltip(h, "freqHistEnabled", "isiHist also enabled, then show frequency histogram instead of ISI histogram");
         setPropertyTooltip(h, "isiMinUs", "min ISI in us");
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
@@ -149,7 +148,8 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 "int32 address of external input events; see e.g. DavisChip.EXTERNAL_INPUT_EVENT_ADDR for this address");
         setPropertyTooltip(c, "countDVSEventsBetweenExternalPinEvents", "counts events of ON and OFF polarity between rising and falling phases of stimulus based on special events from external input pin");
         setPropertyTooltip(c, "accumulateEventsOnEachPhase", "accumulates events to renderer of ON and OFF polarity between rising and falling stimulation");
-        setPropertyTooltip(g, "freezeSelection", "freezes selection, to avoid mouse clicks changing selection");
+        setPropertyTooltip(g, "freezeSelection", "freezes ROI selection, to avoid mouse clicks changing selection");
+        setPropertyTooltip(g, "clearSelection", "clears ROI selection, selecting all pixels");
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -170,10 +170,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
     }
 
-    private void clearSelection(){
-        selection=null;
+    public void doClearSelection() {
+        clearSelection();
     }
-    
+
+    private void clearSelection() {
+        selection = null;
+    }
+
     private void getSelection(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         endPoint = p;
@@ -317,7 +321,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
     public void mousePressed(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         startPoint = p;
-        selecting = true;
+        if (!freezeSelection) {
+            selecting = true;
+        }
     }
 
     @Override
@@ -514,8 +520,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
 
     private class Stats {
 
-        private int isiMinUs = getInt("isiMinUs", 0), isiMaxUs = getInt("isiMaxUs", 100000), isiNumBins = getInt("isiNumBins", 100);
-        private double logIsiMin = isiMinUs <= 0 ? 0 : Math.log(isiMinUs), logIsiMax = Math.log(isiMaxUs);
+        private int isiMinUs = getInt("isiMinUs", 10), isiMaxUs = getInt("isiMaxUs", 100000), isiNumBins = getInt("isiNumBins", 100);
+        private float freqMinHz = 1e6f / isiMaxUs, freqMaxHz = 1e6f / isiMinUs;
+        private double logIsiMin = isiMinUs <= 0 ? 0 : Math.log10(isiMinUs), logIsiMax = Math.log10(isiMaxUs);
+        private double logFreqMin = Math.log10(freqMinHz), logFreqMax = Math.log10(freqMaxHz);
         // private int[] bins = new int[isiNumBins];
         // private int lessCount = 0, moreCount = 0;
         // private int maxCount = 0;
@@ -539,9 +547,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
         boolean initialized = false;
         float instantaneousRate = 0, filteredRatePerPixel = 0;
         int count = 0; // last update event count
-        private HashMap<Integer, ISIHist> histMap = new HashMap();
-        ISIHist globalHist = new ISIHist(-1);
-        ISIHist[] averageTypeHistograms = null;
+        private HashMap<Integer, IsiOrFreqHist> histMap = new HashMap();
+        IsiOrFreqHist globalHist = new IsiOrFreqHist(-1);
+        IsiOrFreqHist[] averageTypeHistograms = null;
         private int nPixels = 0;
         private int lastExternalInputEventTimestamp = 0;
 
@@ -573,16 +581,16 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 if (inSelection(e)) {
                     stats.count++;
                     if (isiHistEnabled && individualISIsEnabled) {
-                        ISIHist h = histMap.get(e.address);
+                        IsiOrFreqHist h = histMap.get(e.address);
                         if (h == null) {
                             try {
-                                h = new ISIHist(e.address);
+                                h = new IsiOrFreqHist(e.address);
                                 histMap.put(e.address, h);
                             } catch (OutOfMemoryError ex) {
                                 log.warning(String.format("Out of heap memory, try a smaller ROI?: See https://stackoverflow.com/questions/511013/how-to-handle-outofmemoryerror-in-java (%s)", ex.toString()));
                                 histMap.clear();
                                 clearSelection();
-                                selecting=true; // to disable stats
+                                selecting = true; // to disable stats
 //                                setFilterEnabled(false);
                                 return;
                             }
@@ -604,7 +612,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             }
             if (isiHistEnabled && individualISIsEnabled) {
                 globalHist.reset();
-                for (ISIHist h : histMap.values()) {
+                for (IsiOrFreqHist h : histMap.values()) {
                     for (int i = 0; i < isiNumBins; i++) {
                         int v = globalHist.bins[i] += h.bins[i];
                         if (v > globalHist.maxCount) {
@@ -699,7 +707,10 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             putInt("externalInputEventAddress", externalInputEventAddress);
         }
 
-        private class ISIHist {
+        /**
+         * Single histogram of either ISIs or frequency of firing
+         */
+        private class IsiOrFreqHist {
 
             int[] bins = new int[isiNumBins];
             int lessCount = 0, moreCount = 0;
@@ -708,7 +719,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             boolean virgin = true;
             int address = -1;
 
-            public ISIHist(int addr) {
+            public IsiOrFreqHist(int addr) {
                 address = addr;
             }
 
@@ -897,8 +908,13 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             // draw hist
             if (isiHistEnabled || showLatencyHistogramToExternalInputEvents) {
                 renderer.begin3DRendering();
-                renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * isiMinUs)), -1, -6, 0, scale);
-                renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * isiMaxUs)), chip.getSizeX() - 8, -6, 0, scale);
+                if (!freqHistEnabled) {
+                    renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * isiMinUs)), -1, -6, 0, scale);
+                    renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * isiMaxUs)), chip.getSizeX() - 8, -6, 0, scale);
+                } else {
+                    renderer.draw3D(String.format("%sHz", engFmt.format(1e6f / isiMaxUs)), -1, -6, 0, scale);
+                    renderer.draw3D(String.format("%sHz", engFmt.format(1e6f / isiMinUs)), chip.getSizeX() - 8, -6, 0, scale);
+                }
                 renderer.draw3D(logISIEnabled ? "log" : "linear", -15, -6, 0, scale);
                 renderer.end3DRendering();
 
@@ -915,7 +931,7 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                             int k = 0;
                             gl.glLineWidth(1);
                             gl.glColor4fv(INDIV_HIST_COLOR, 0);
-                            for (ISIHist h : histMap.values()) {
+                            for (IsiOrFreqHist h : histMap.values()) {
                                 gl.glPushMatrix();
                                 gl.glScalef(1, 1f / n, 1); // if n=10 and sy=128 then scale=1/10 scale so that all n fit
                                 // in viewpoort of chip, each one is scaled to chip size y
@@ -939,18 +955,35 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 }
                 if (currentMousePoint != null) {
                     if (currentMousePoint.y <= 0) {
-
-                        if (!logISIEnabled) {
-                            binTime = (((float) currentMousePoint.x / chip.getSizeX()) * (stats.isiMaxUs - stats.isiMinUs))
-                                    + stats.isiMinUs;
+                        String s = null;
+                        float x;
+                        if (!freqHistEnabled) {
+                            if (!logISIEnabled) {
+                                x = (((float) currentMousePoint.x / chip.getSizeX()) * (stats.isiMaxUs - stats.isiMinUs))
+                                        + stats.isiMinUs;
+                            } else {
+                                x = (float) (1e-6 * Math.pow(10,
+                                        (((float) currentMousePoint.x / chip.getSizeX())
+                                        * (stats.logIsiMax - stats.logIsiMin))
+                                        + stats.logIsiMin));
+                            }
+                            s = engFmt.format(x) + "s";
                         } else {
-                            binTime = (float) Math
-                                    .exp((((float) currentMousePoint.x / chip.getSizeX()) * (stats.logIsiMax - stats.logIsiMin))
-                                            + stats.logIsiMin);
+                            if (!logISIEnabled) {
+                                x = (((float) currentMousePoint.x / chip.getSizeX())
+                                        * (stats.freqMaxHz - stats.freqMinHz))
+                                        + stats.freqMinHz;
+                            } else {
+                                x = (float) ((((float) currentMousePoint.x / chip.getSizeX())
+                                        * (stats.logFreqMax - stats.logFreqMin))
+                                        + stats.logFreqMin);
+                                x = (float) Math.pow(10, x);
+                            }
+                            s = engFmt.format(x) + "Hz";
                         }
                         renderer.begin3DRendering();
                         renderer.setColor(SELECT_COLOR[0], SELECT_COLOR[1], SELECT_COLOR[2], SELECT_COLOR[3]);
-                        renderer.draw3D(String.format("%ss", engFmt.format(1e-6f * binTime)), currentMousePoint.x, -12, 0, scale);
+                        renderer.draw3D(s, currentMousePoint.x, -12, 0, scale);
                         renderer.end3DRendering();
                         gl.glLineWidth(3);
                         gl.glColor3fv(SELECT_COLOR, 0);
@@ -1006,9 +1039,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                 return;
             }
             int old = this.isiMinUs;
+            if (isiMinUs < 1) {
+                isiMinUs = 1; // max freq is 1MHz for a pixel
+            }
             this.isiMinUs = isiMinUs;
-            logIsiMin = isiMinUs <= 0 ? 0 : Math.log(isiMinUs);
-            logIsiMax = Math.log(isiMaxUs);
+            logIsiMin = isiMinUs <= 0 ? 0 : Math.log10(isiMinUs);
+            logIsiMax = Math.log10(isiMaxUs);
+            freqMaxHz = 1e6f / isiMinUs;
+            logFreqMax = Math.log10(freqMaxHz);
             if (isiAutoScalingEnabled) {
                 getSupport().firePropertyChange("isiMinUs", old, isiMinUs);
             } else {
@@ -1033,7 +1071,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             }
             int old = this.isiMaxUs;
             this.isiMaxUs = isiMaxUs;
-            logIsiMax = Math.log(isiMaxUs);
+            logIsiMax = Math.log10(isiMaxUs);
+            freqMinHz = 1e6f / isiMaxUs;
+            logFreqMin = Math.log10(freqMinHz);
             if (isiAutoScalingEnabled) {
                 getSupport().firePropertyChange("isiMaxUs", old, isiMaxUs);
             } else {
@@ -1054,19 +1094,37 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             } else if (isi > isiMaxUs) {
                 return isiNumBins;
             } else {
-                if (!logISIEnabled) {
-                    int binSize = (isiMaxUs - isiMinUs) / isiNumBins;
-                    if (binSize <= 0) {
-                        return -1;
+                if (!freqHistEnabled) {
+                    if (!logISIEnabled) {
+                        int binSize = (isiMaxUs - isiMinUs) / isiNumBins;
+                        if (binSize <= 0) {
+                            return -1;
+                        }
+                        return (isi - isiMinUs) / binSize;
+                    } else {
+                        double logISI = isi <= 0 ? 0 : Math.log10(isi);
+                        double binSize = (logIsiMax - logIsiMin) / isiNumBins;
+                        if (binSize <= 0) {
+                            return -1;
+                        }
+                        return (int) Math.floor((logISI - logIsiMin) / binSize);
                     }
-                    return (isi - isiMinUs) / binSize;
-                } else {
-                    double logISI = isi <= 0 ? 0 : Math.log(isi);
-                    double binSize = (logIsiMax - logIsiMin) / isiNumBins;
-                    if (binSize <= 0) {
-                        return -1;
+                } else { // frequency histogram
+                    float freqHz = isi <= isiMinUs ? freqMaxHz : 1e6f / isi;
+                    if (!logISIEnabled) {
+                        float binSize = (freqMaxHz - freqMinHz) / isiNumBins;
+                        if (binSize <= 0) {
+                            return -1;
+                        }
+                        return (int) Math.floor((freqHz - freqMinHz) / binSize);
+                    } else {
+                        double logFreqHz = Math.log10(freqHz);
+                        double binSize = (logFreqMax - logFreqMin) / isiNumBins;
+                        if (binSize <= 0) {
+                            return -1;
+                        }
+                        return (int) Math.floor((logFreqHz - logFreqMin) / binSize);
                     }
-                    return (int) Math.floor((logISI - logIsiMin) / binSize);
                 }
             }
         }
@@ -1088,9 +1146,9 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
             int old = this.isiNumBins;
             if (isiNumBins < 1) {
                 isiNumBins = 1;
-            }else if(isiNumBins>1000){
+            } else if (isiNumBins > 1000) {
                 log.warning("too many bins, limit is 1000");
-                isiNumBins=1000;
+                isiNumBins = 1000;
             }
             this.isiNumBins = isiNumBins;
             reset();
@@ -1348,8 +1406,13 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
      * @param freqHistEnabled the freqHistEnabled to set
      */
     public void setFreqHistEnabled(boolean freqHistEnabled) {
+        boolean old = this.freqHistEnabled;
         this.freqHistEnabled = freqHistEnabled;
         putBoolean("freqHistEnabled", freqHistEnabled);
+        if (old != freqHistEnabled) {
+            resetFilter();
+        }
+        getSupport().firePropertyChange("freqHistEnabled", old, freqHistEnabled);
     }
 
 }
