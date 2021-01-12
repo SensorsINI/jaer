@@ -1120,7 +1120,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         setScale(glScale);
         g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-        log.info("set defaultprojection with clipArea=" + clipArea);
+//        log.info("set defaultprojection with clipArea=" + clipArea);
     }
 
     /**
@@ -1311,7 +1311,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glLoadIdentity();
             gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area
             setScale(drawable.getWidth() / (clipArea.right - clipArea.left));
-            log.info("set zoom projection with clipArea=" + clipArea);
+//            log.info("set zoom projection with clipArea=" + clipArea);
         }
 
         /**

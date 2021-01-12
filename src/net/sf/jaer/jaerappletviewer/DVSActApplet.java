@@ -424,20 +424,7 @@ public class DVSActApplet extends javax.swing.JApplet {
     private javax.swing.JPanel livePanel;
     // End of variables declaration//GEN-END:variables
 
-    /**
-     * @return the bgFilterDt
-     */
-    public int getBgFilterDt() {
-        return backgroundActivityFilter.getDt();
-    }
-
-    /**
-     * @param bgFilterDt the bgFilterDt to set
-     */
-    public void setBgFilterDt(int bgFilterDt) {
-        backgroundActivityFilter.setDt(bgFilterDt);
-    }
-
+ 
     private void updateActivityChart(EventPacket ae) {
         if (ae == null) {
             return;

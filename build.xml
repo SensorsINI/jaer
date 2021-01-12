@@ -198,7 +198,7 @@
 
     <!--    copy splash image to src tree so that it gets into main jar-->
     <target name="jaer-copySplashImage">
-        <copy file="images/SplashScreen.gif" todir="build/classes"/>
+        <copy file="images/SplashScreen.png" todir="build/classes"/>
     </target>
 
     <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen.
