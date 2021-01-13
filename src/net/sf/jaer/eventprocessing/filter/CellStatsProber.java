@@ -916,6 +916,14 @@ public class CellStatsProber extends EventFilter2D implements FrameAnnotater, Mo
                     renderer.draw3D(String.format("%sHz", engFmt.format(1e6f / isiMinUs)), chip.getSizeX() - 8, -6, 0, scale);
                 }
                 renderer.draw3D(logISIEnabled ? "log" : "linear", -15, -6, 0, scale);
+//                // ticks
+//                if(logISIEnabled){
+//                    int n=(int)Math.floor(logIsiMax-logIsiMin);
+//                    double space=(chip.getSizeX())
+//                    for(int i=0;i<n;i++){
+//                        
+//                    }
+//                }
                 renderer.end3DRendering();
 
                 {
