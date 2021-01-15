@@ -227,10 +227,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         } else if (numMustBeCorrelated > 9) {
             numMustBeCorrelated = 9;
         }
-
-        getSupport().firePropertyChange("numMustBeCorrelated", this.numMustBeCorrelated, numMustBeCorrelated);
         putInt("numMustBeCorrelated", numMustBeCorrelated);
         this.numMustBeCorrelated = numMustBeCorrelated;
+        getSupport().firePropertyChange("numMustBeCorrelated", this.numMustBeCorrelated, numMustBeCorrelated);
     }
 
     @Override
