@@ -77,6 +77,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
                 lastTimesMap[x][y] = ts;
                 if (letFirstEventThrough) {
+                    filterIn(e);
                     continue;
                 } else {
                     filterOut(e);
@@ -104,6 +105,8 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             }
             if (ncorrelated < numMustBeCorrelated) {
                 filterOut(e);
+            }else{
+                filterIn(e);
             }
             lastTimesMap[x][y] = ts;
         }

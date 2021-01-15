@@ -46,13 +46,16 @@ import net.sf.jaer.util.TobiLogger;
  */
 public abstract class AbstractNoiseFilter extends EventFilter2D implements FrameAnnotater, RemoteControlled {
 
+ 
+
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
     /**
      * list of filtered out events
      */
-    private ArrayList<BasicEvent> filteredOutEvents = new ArrayList();
+    private ArrayList<FilteredEventWithNNb> filteredOutEvents = new ArrayList(), filteredInEvents = new ArrayList();
+   
     protected EngineeringFormat eng = new EngineeringFormat();
 
     /**
@@ -114,7 +117,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     /**
-     * Use to filter out events, updates the list of such events
+     * Use to filter out events, updates the list of such events when
+     * recordFilteredOutEvents is true
      *
      * @param e
      */
@@ -122,7 +126,49 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         e.setFilteredOut(true);
         filteredOutEventCount++;
         if (recordFilteredOutEvents) {
-            getFilteredOutEvents().add(e);
+            filteredOutEvents.add(new FilteredEventWithNNb(e));
+        }
+    }
+
+    /**
+     * Use to filter in events, updates the list of such events when
+     * recordFilteredOutEvents is true
+     *
+     * @param e
+     */
+    protected void filterIn(BasicEvent e) {
+        e.setFilteredOut(false);
+        if (recordFilteredOutEvents) {
+            filteredInEvents.add(new FilteredEventWithNNb(e));
+        }
+    }
+
+    /**
+     * Use to filter out events, updates the list of such events when
+     * recordFilteredOutEvents is true
+     *
+     * @param e the event
+     * @param nnb the byte representing the occupation of nearest neighbors
+     */
+    protected void filterOutWithNNb(BasicEvent e, byte nnb) {
+        e.setFilteredOut(true);
+        filteredOutEventCount++;
+        if (recordFilteredOutEvents) {
+            filteredOutEvents.add(new FilteredEventWithNNb(e,nnb));
+        }
+    }
+
+    /**
+     * Use to filter in events, updates the list of such events when
+     * recordFilteredOutEvents is true
+     *
+     * @param e the event
+     * @param nnb the byte representing the occupation of nearest neighbors
+     */
+    protected void filterInWithNNb(BasicEvent e, byte nnb) {
+        e.setFilteredOut(false);
+        if (recordFilteredOutEvents) {
+            filteredInEvents.add(new FilteredEventWithNNb(e,nnb));
         }
     }
 
@@ -135,7 +181,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<?> in) {
-        getFilteredOutEvents().clear();
+        getNegativeEvents().clear();
         filteredOutEventCount = 0;
         totalEventCount = 0;
         in = getEnclosedFilterChain().filterPacket(in);
@@ -296,9 +342,15 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /**
      * @return the filteredOutEvents
      */
-    public ArrayList<BasicEvent> getFilteredOutEvents() {
+    public ArrayList<FilteredEventWithNNb> getNegativeEvents() {
         return filteredOutEvents;
     }
+
+    public ArrayList<FilteredEventWithNNb> getPositiveEvents() {
+        return filteredInEvents;
+    }
+    
+  
 
     /**
      * NoiseTesterFilter sets this boolean true to record filtered out events to
@@ -309,7 +361,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public void setRecordFilteredOutEvents(boolean recordFilteredOutEvents) {
         this.recordFilteredOutEvents = recordFilteredOutEvents;
-        getFilteredOutEvents().clear(); // make sure to clear the list
+        filteredOutEvents.clear(); // make sure to clear the list
+        filteredInEvents.clear(); // make sure to clear the list
     }
 
     /**
@@ -336,7 +389,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     public String infoString() {
         String s = getClass().getSimpleName();
         s = s.replaceAll("[a-z]", "");
-        s = s + String.format(": dT=%ss, subSamp=%d", eng.format(getCorrelationTimeS()),getSubsampleBy());
+        s = s + String.format(": dT=%ss, subSamp=%d", eng.format(getCorrelationTimeS()), getSubsampleBy());
         return s;
     }
 
@@ -359,6 +412,20 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
             resetFilter();
         }
 
+    }
+    
+    public class FilteredEventWithNNb{
+        BasicEvent e;
+        byte nnb;
+
+        public FilteredEventWithNNb(BasicEvent e, byte nnb) {
+            this.e = e;
+            this.nnb = nnb;
+        }
+        public FilteredEventWithNNb(BasicEvent e) {
+            this.e = e;
+            this.nnb = 0;
+        }
     }
 
     /**

@@ -36,7 +36,7 @@ Fires PropertyChangeEvent for the following
  * @author tobi
  */
 @Description("Filters out (or in) repetitious (boring) events")
-public class RepetitiousFilter extends EventFilter2D {
+public class RepetitiousFilter extends AbstractNoiseFilter {
 
     /** factor different than previous dt for this cell to pass through filter */
     private int ratioShorter = getPrefs().getInt("RepetitiousFilter.ratioShorter",2);
@@ -181,12 +181,12 @@ public class RepetitiousFilter extends EventFilter2D {
                 repetitious = thisdt < avgDt * ratioLonger && thisdt > avgDt / ratioShorter; // true if event is repetitious
             }
             if ( !passRepetitiousEvents ){
-                if ( !repetitious ){
-                    o.nextOutput().copyFrom(e);
+                if ( repetitious ){
+                    filterOut(e);
                 }
             } else{ // pass boring events
-                if ( repetitious ){
-                    o.nextOutput().copyFrom(e);
+                if ( !repetitious ){
+                    filterOut(e);
                 }
             }
             // update the map
@@ -202,7 +202,7 @@ public class RepetitiousFilter extends EventFilter2D {
                 avgDtMap[e.x][e.y][e.type] = (int)( avgDt * ( 1 - alpha ) + thisdt * ( alpha ) );
             }
         }
-        return out;
+        return in;
     }
 
     public boolean getPassRepetitiousEvents (){
@@ -226,5 +226,10 @@ public class RepetitiousFilter extends EventFilter2D {
      */
     public void setExcludeHarmonics (boolean excludeHarmonics){
         this.excludeHarmonics = excludeHarmonics;
+    }
+
+    @Override
+    public int[][] getLastTimesMap() {
+        return null; // here is 3d map, not 2d like in others
     }
 }

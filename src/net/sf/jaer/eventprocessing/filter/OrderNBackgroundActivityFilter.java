@@ -108,7 +108,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
             if (lastRowTs[e.y + y] != DEFAULT_TIMESTAMP && e.timestamp - lastRowTs[e.y + y] < dtUs
                     && Math.abs(lastXByRow[e.y + y] - e.x) <= 1) {
                 // if there was event (ts!=DEFAULT_TIMESTAMP), and the timestamp is recent enough, and the column was adjacent, then filter in
-                e.setFilteredOut(false);
+                filterIn(e);
                 saveEvent(e);
 //                selfCorrelated = y == 0;
             }
@@ -120,12 +120,13 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
 //                if (selfCorrelated && x == 0) { // if we correlated with ourselves only, then filter out and just return
 //                    e.setFilteredOut(true);
 //                }
-                e.setFilteredOut(false);
+                filterIn(e);
                 saveEvent(e);
                 return;
             }
         }
         saveEvent(e);
+        filterOut(e);
     }
 
     private void saveEvent(BasicEvent e) {

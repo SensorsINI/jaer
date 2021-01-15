@@ -45,7 +45,7 @@ import net.sf.jaer.event.BasicEvent;
  */
 @Description("Filters out rapidly firing input using depressing probabalistic synapse model")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnotater {
+public class DepressingSynapseFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
     private static Random random = new Random();
     private Neurons neurons;
@@ -77,7 +77,7 @@ public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnot
                 throw new RuntimeException("event type must be TypedEvent, got event "+e);
             }
             if (!neurons.stimulate((TypedEvent)e)) {
-                e.setFilteredOut(true);
+                filterOut(e);
             }
         }
         return in;
@@ -113,6 +113,11 @@ public class DepressingSynapseFilter extends EventFilter2D implements FrameAnnot
         if ((neurons == null) || (neurons.getNumCells() != chip.getNumCells())) {
             neurons = new Neurons(this);
         }
+    }
+
+    @Override
+    public int[][] getLastTimesMap() {
+        return null; // TODO should return object
     }
 
     static class Neurons implements Serializable {

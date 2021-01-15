@@ -30,7 +30,6 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeSupport;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -51,6 +50,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Timer;
@@ -125,11 +125,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
 
-    private ArrayList<BasicEvent> tpList = new ArrayList<BasicEvent>(LIST_LENGTH),
-            fnList = new ArrayList<BasicEvent>(LIST_LENGTH),
-            fpList = new ArrayList<BasicEvent>(LIST_LENGTH),
-            tnList = new ArrayList<BasicEvent>(LIST_LENGTH); // output of classification
+    private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
+            fnList = new ArrayList(LIST_LENGTH),
+            fpList = new ArrayList(LIST_LENGTH),
+            tnList = new ArrayList(LIST_LENGTH); // output of classification
     private ArrayList<BasicEvent> noiseList = new ArrayList<BasicEvent>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
+    private NNbHistograms nnbHistograms = new NNbHistograms(); // tracks stats of neighbors to events when they are filtered in or out
 
     public enum NoiseFilterEnum {
         BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
@@ -140,204 +141,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     private final long MAX_FILTER_PROCESSING_TIME_MS = 2000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
-
-    private class ROCHistory {
-
-        private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistoryLength);
-        private Float lastTau = null;
-        private final double LOG10_CHANGE_TO_ADD_LABEL = .2;
-        GLUT glut = new GLUT();
-        private int counter = 0;
-        private final int SAMPLE_INTERVAL_NO_CHANGE = 30;
-        private int legendDisplayListId = 0;
-        private ROCSample[] legendROCs = null;
-
-        ROCSample createAbsolutePosition(float x, float y, float tau, boolean labeled) {
-            return new ROCSample(x, y, tau, labeled);
-        }
-
-        ROCSample createTprFpr(float tpr, float fpr, float tau, boolean labeled) {
-            return new ROCSample(fpr * sx, tpr * sy, tau, labeled);
-        }
-
-        class ROCSample {
-
-            float x, y, tau;
-            boolean labeled = false;
-            final int SIZE = 5; // chip pixels
-
-            private ROCSample(float x, float y, float tau, boolean labeled) {
-                this.x = x;
-                this.y = y;
-                this.tau = tau;
-                this.labeled = labeled;
-            }
-
-            private void draw(GL2 gl) {
-                gl.glLineWidth(2);
-                float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
-                Color c = Color.getHSBColor(hue, 1f, hue);
-                float[] rgb = c.getRGBComponents(null);
-                gl.glColor3fv(rgb, 0);
-                gl.glLineWidth(2);
-                gl.glPushMatrix();
-                DrawGL.drawBox(gl, x, y, SIZE, SIZE, 0);
-                gl.glPopMatrix();
-                if (labeled) {
-//                    gl.glTranslatef(5 * L, - 3 * L, 0);
-                    gl.glRasterPos3f(x + SIZE, y, 0);
-//                    gl.glRotatef(-45, 0, 0, 1); // can't rotate bitmaps, must use stroke and glScalef
-                    String s = String.format("%ss", eng.format(tau));
-                    glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-//                    glut.glutStrokeString(GLUT.STROKE_ROMAN, s);
-                }
-            }
-        }
-
-        private void reset() {
-            rocHistoryList = EvictingQueue.create(rocHistoryLength);
-            lastTau = null;
-        }
-
-        void addSample(float fpr, float tpr, float tau) {
-            boolean labelIt = lastTau == null
-                    || Math.abs(Math.log10(tau / lastTau)) > .1
-                    || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
-            rocHistoryList.add(rocHistory.createTprFpr(tpr, fpr, tau, labelIt));
-
-            if (labelIt) {
-                lastTau = tau;
-            }
-            if (counter > SAMPLE_INTERVAL_NO_CHANGE) {
-                counter = 0;
-            }
-        }
-
-        private void drawLegend(GL2 gl) {
-            if (legendDisplayListId == 0) {
-                int NLEG = 8;
-                legendROCs = new ROCSample[NLEG];
-                for (int i = 0; i < NLEG; i++) {
-                    ROCSample r = createAbsolutePosition(sx + 5, i * 15 + 20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
-                    legendROCs[i] = r;
-                }
-                legendDisplayListId = gl.glGenLists(1);
-                gl.glNewList(legendDisplayListId, GL2.GL_COMPILE);
-                { // TODO make a real list
-                }
-                gl.glEndList();
-            }
-            gl.glPushMatrix();
-//            gl.glCallList(legendDisplayListId);
-            for (ROCSample r : legendROCs) {
-                r.draw(gl);
-            }
-            gl.glPopMatrix();
-        }
-
-        void draw(GL2 gl) {
-            // draw axes
-            gl.glPushMatrix();
-            gl.glColor4f(.8f, .8f, .2f, .5f); // must set color before raster position (raster position is like glVertex)
-            gl.glLineWidth(4);
-            gl.glBegin(GL.GL_LINE_STRIP);
-            gl.glVertex2f(0, sy);
-            gl.glVertex2f(0, 0);
-            gl.glVertex2f(sx, 0);
-            gl.glEnd();
-            gl.glRasterPos3f(sx / 2 - 30, -10, 0);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "FPR");
-//            gl.glPushMatrix();
-//            gl.glTranslatef(sx / 2, -10, 0);
-//            gl.glScalef(.1f, .1f, 1);
-//            glut.glutStrokeString(GLUT.STROKE_ROMAN, "FPR");
-//            gl.glPopMatrix();
-            gl.glRasterPos3f(-30, sy / 2, 0);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "TPR");
-            gl.glPopMatrix();
-            for (ROCSample rocSample : rocHistoryList) {
-                rocSample.draw((gl));
-            }
-            // draw X at TPR / TNR point
-            gl.glPushMatrix();
-            gl.glColor3f(.8f, .8f, .2f); // must set color before raster position (raster position is like glVertex)
-            int L = 12;
-            gl.glLineWidth(4);
-            float x = (1 - TNR) * sx;
-            float y = TPR * sy;
-            DrawGL.drawCross(gl, x, y, L, 0);
-            gl.glPopMatrix();
-            if (rocHistoryLength > 1) {
-                drawLegend(gl);
-            }
-        }
-    }
-
-    // recorded noise to be used as input
-    private class PrerecordedNoise {
-
-        EventPacket<BasicEvent> recordedNoiseFileNoisePacket = null;
-        Iterator<BasicEvent> itr = null;
-        BasicEvent noiseFirstEvent, noiseNextEvent;
-        int noiseFirstTs;
-        Integer signalMostRecentTs;
-        private ArrayList<BasicEvent> returnedEvents = new ArrayList();
-        int noiseEventCounter = 0;
-        File file;
-
-        private PrerecordedNoise(File chosenPrerecordedNoiseFilePath) throws IOException {
-            file = chosenPrerecordedNoiseFilePath;
-            AEFileInputStream recordedNoiseAeFileInputStream = new AEFileInputStream(file, getChip());
-            AEPacketRaw rawPacket = recordedNoiseAeFileInputStream.readPacketByNumber(MAX_NUM_RECORDED_EVENTS);
-            recordedNoiseAeFileInputStream.close();
-
-            EventPacket<BasicEvent> inpack = getChip().getEventExtractor().extractPacket(rawPacket);
-            EventPacket<BasicEvent> recordedNoiseFileNoisePacket = new EventPacket(PolarityEvent.class);
-            OutputEventIterator outItr = recordedNoiseFileNoisePacket.outputIterator();
-            for (BasicEvent p : inpack) {
-                outItr.nextOutput().copyFrom(p);
-            }
-            this.recordedNoiseFileNoisePacket = recordedNoiseFileNoisePacket;
-            itr = recordedNoiseFileNoisePacket.inputIterator();
-            noiseFirstEvent = recordedNoiseFileNoisePacket.getFirstEvent();
-            noiseFirstTs = recordedNoiseFileNoisePacket.getFirstTimestamp();
-
-            this.noiseNextEvent = this.noiseFirstEvent;
-            computeProbs(); // set noise sample rate via poissonDtUs
-            log.info(String.format("Loaded %s pre-recorded events with duration %ss from %s", eng.format(recordedNoiseFileNoisePacket.getSize()), eng.format(1e-6f * recordedNoiseAeFileInputStream.getDurationUs()), chosenPrerecordedNoiseFilePath));
-        }
-
-        ArrayList<BasicEvent> nextEvents(int ts) {
-            returnedEvents.clear();
-            if (signalMostRecentTs == null) {
-                signalMostRecentTs = ts;
-                return returnedEvents; // no events at first, just get the timestamap
-            }
-            if (ts < signalMostRecentTs) { // time went backwards, rewind noise events
-                rewind();
-                return nextEvents(ts);
-            }
-            while (noiseNextEvent.timestamp - noiseFirstTs < ts - signalMostRecentTs) {
-                returnedEvents.add(noiseNextEvent);
-                noiseEventCounter++;
-                if (itr.hasNext()) {
-                    noiseNextEvent = itr.next();
-                } else {
-                    rewind();
-                    return returnedEvents;
-                }
-            }
-            return returnedEvents;
-        }
-
-        private void rewind() {
-            log.info(String.format("rewinding noise events after %d events", noiseEventCounter));
-            this.itr = recordedNoiseFileNoisePacket.inputIterator();
-            noiseNextEvent = noiseFirstEvent;
-            signalMostRecentTs = null;
-            noiseEventCounter = 0;
-        }
-    }
 
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
@@ -418,9 +221,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
+
+        nnbHistograms.draw(gl);
     }
 
-    private void annotateNoiseFilteringEvents(ArrayList<BasicEvent> outSig, ArrayList<BasicEvent> outNoise) {
+    private void annotateNoiseFilteringEvents(ArrayList<FilteredEventWithNNb> outSig, ArrayList<FilteredEventWithNNb> outNoise) {
         if (renderer == null) {
             return;
         }
@@ -428,11 +233,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final int offset = 1;
 //        final float a = getAnnotateAlpha();
         final float[] noiseColor = {1f, 0, 0, 1}, sigColor = {0, 1f, 0, 1};
-        for (BasicEvent e : outSig) {
-            renderer.setAnnotateColorRGBA(e.x + 2 >= sx ? e.x : e.x + offset, e.y - 2 < 0 ? e.y : e.y - offset, sigColor);
+        for (FilteredEventWithNNb e : outSig) {
+            renderer.setAnnotateColorRGBA(e.e.x + 2 >= sx ? e.e.x : e.e.x + offset, e.e.y - 2 < 0 ? e.e.y : e.e.y - offset, sigColor);
         }
-        for (BasicEvent e : outNoise) {
-            renderer.setAnnotateColorRGBA(e.x + 2 >= sx ? e.x : e.x + offset, e.y - 2 < 0 ? e.y : e.y - offset, noiseColor);
+        for (FilteredEventWithNNb e : outNoise) {
+            renderer.setAnnotateColorRGBA(e.e.x + 2 >= sx ? e.e.x : e.e.x + offset, e.e.y - 2 < 0 ? e.e.y : e.e.y - offset, noiseColor);
 //            renderer.setAnnotateColorRGBA(e.x+2, e.y-2, noiseColor);
         }
     }
@@ -486,11 +291,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * is matched once. The matching is by event .equals() method.
      *
      * @param a ArrayList<BasicEvent> of a
-     * @param b likewise
-     * @param intersect the target list to fill with intersections
+     * @param b likewise, but is list of events with NNb bits in byte
+     * @param intersect the target list to fill with intersections, include NNb
+     * bits
      * @return count of intersections
      */
-    private int countIntersect(ArrayList<BasicEvent> a, ArrayList<BasicEvent> b, ArrayList<BasicEvent> intersect) {
+    private int countIntersect(ArrayList<BasicEvent> a, ArrayList<FilteredEventWithNNb> b, ArrayList<FilteredEventWithNNb> intersect) {
         intersect.clear();
         if (a.isEmpty() || b.isEmpty()) {
             return 0;
@@ -516,9 +322,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int i = 0, j = 0;
         final int na = a.size(), nb = b.size();
         while (i < na && j < nb) {
-            if (a.get(i).timestamp < b.get(j).timestamp) {
+            if (a.get(i).timestamp < b.get(j).e.timestamp) {
                 i++;
-            } else if (b.get(j).timestamp < a.get(i).timestamp) {
+            } else if (b.get(j).e.timestamp < a.get(i).timestamp) {
                 j++;
             } else {
                 // If timestamps equal, it mmight be identical events or maybe not
@@ -528,10 +334,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 // We do an inner double loop for exhaustive matching as long as the timestamps
                 // are identical. 
                 int i1 = i, j1 = j;
-                while (i1 < na && j1 < nb && a.get(i1).timestamp == b.get(j1).timestamp) {
+                while (i1 < na && j1 < nb && a.get(i1).timestamp == b.get(j1).e.timestamp) {
                     boolean match = false;
-                    while (j1 < nb && i1 < na && a.get(i1).timestamp == b.get(j1).timestamp) {
-                        if (a.get(i1).equals(b.get(j1))) {
+                    while (j1 < nb && i1 < na && a.get(i1).timestamp == b.get(j1).e.timestamp) {
+                        if (a.get(i1).equals(b.get(j1).e)) {
                             count++;
                             intersect.add(b.get(j1)); // TODO debug
                             // we have a match, so use up the a element
@@ -639,7 +445,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
-            ArrayList<BasicEvent> filteredOutList = selectedFilter.getFilteredOutEvents();
+            ArrayList<FilteredEventWithNNb> negativeList = selectedFilter.getNegativeEvents();
+            ArrayList<FilteredEventWithNNb> positiveList = selectedFilter.getPositiveEvents();
 
             // make a list of the output packet, which has noise filtered out by selected filter
             ArrayList<BasicEvent> passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
@@ -647,19 +454,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
 
             // now we sort out the mess
-            TP = countIntersect(signalList, passedSignalAndNoiseList, tpList);   // True positives: Signal that was correctly retained by filtering
+            TP = countIntersect(signalList, positiveList, tpList);   // True positives: Signal that was correctly retained by filtering
+            updateNnbHistograms(Classification.TP, tpList);
             if (checkStopMe("after TP")) {
                 return in;
             }
-            FN = countIntersect(signalList, filteredOutList, fnList);            // False negatives: Signal that was incorrectly removed by filter.
+
+            FN = countIntersect(signalList, negativeList, fnList);            // False negatives: Signal that was incorrectly removed by filter.
+            updateNnbHistograms(Classification.FN, fnList);
             if (checkStopMe("after FN")) {
                 return in;
             }
-            FP = countIntersect(noiseList, passedSignalAndNoiseList, fpList);    // False positives: Noise that is incorrectly passed by filter
+            FP = countIntersect(noiseList, positiveList, fpList);    // False positives: Noise that is incorrectly passed by filter
+            updateNnbHistograms(Classification.FP, fpList);
             if (checkStopMe("after FP")) {
                 return in;
             }
-            TN = countIntersect(noiseList, filteredOutList, tnList);             // True negatives: Noise that was correctly removed by filter
+            TN = countIntersect(noiseList, negativeList, tnList);             // True negatives: Noise that was correctly removed by filter
+            updateNnbHistograms(Classification.TN, tnList);
             if (checkStopMe("after TN")) {
                 return in;
             }
@@ -874,6 +686,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (prerecordedNoise != null) {
             prerecordedNoise.rewind();
         }
+        nnbHistograms.reset();
     }
 
     private void computeProbs() {
@@ -1282,4 +1095,326 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             preview.showFile(null);
         }
     }
+
+    private enum Classification {
+        None, TP, FP, TN, FN
+    }
+
+    private void updateNnbHistograms(Classification classification, ArrayList<FilteredEventWithNNb> filteredInNnb) {
+        for (FilteredEventWithNNb e : filteredInNnb) {
+            nnbHistograms.addEvent(classification, e.nnb);
+        }
+    }
+
+    /**
+     * Tracks statistics of neighbors for false and true positives and negatives
+     */
+    private class NNbHistograms {
+
+        NnbHistogram tpHist, fpHist, tnHist, fnHist;
+        NnbHistogram[] histograms;
+
+        private class NnbHistogram {
+
+            Classification classification = Classification.None;
+            int[] nnbcounts = new int[8];
+            int[] byteHist = new int[256];
+
+            public NnbHistogram(Classification classification) {
+                this.classification = classification;
+            }
+
+            void reset() {
+                Arrays.fill(nnbcounts, 0);
+                Arrays.fill(byteHist, 0);
+            }
+
+            void addEvent(byte nnb) {
+                byteHist[0xff & nnb]++; // make sure we get unsigned byte
+                if(nnb==0) return;
+                for (int i = 0; i < 8; i++) {
+                    if ((((nnb & 0xff) >> i) & 1) != 0) {
+                        nnbcounts[i]++;
+                    }
+                }
+            }
+
+            public String toString() {
+                StringBuilder sb = new StringBuilder(classification.toString() + ": [");
+                for (int i : nnbcounts) {
+                    sb.append(i + " ");
+                }
+                sb.append("]");
+                return sb.toString();
+            }
+
+            void draw(GL2 gl) {
+                int sum = 0;
+                for (int i = 0; i < nnbcounts.length; i++) {
+                    sum += nnbcounts[i];
+                }
+                if (sum == 0) {
+                    sum = 1;
+                }
+                gl.glPushMatrix();
+                for (int i = 0; i < nnbcounts.length; i++) {
+                    if(nnbcounts[i]==0) continue;
+                    int ind = i < 4 ? i : i + 1;
+                    int y = ind % 3, x = ind / 3;
+                    float b = (float) nnbcounts[i] / sum;
+                    gl.glColor3f(b, b, b);
+                    gl.glRectf(x, y, x + 1, y + 1);
+                }
+                gl.glPopMatrix();
+
+            }
+        }
+
+        public NNbHistograms() {
+            tpHist = new NnbHistogram(Classification.TP);
+            fpHist = new NnbHistogram(Classification.FP);
+            tnHist = new NnbHistogram(Classification.TN);
+            fnHist = new NnbHistogram(Classification.FN);
+
+            histograms = new NnbHistogram[]{tpHist, fpHist, tnHist, fnHist};
+        }
+
+        void reset() {
+            tpHist.reset();
+            fpHist.reset();
+            tnHist.reset();
+            fnHist.reset();
+        }
+
+        void addEvent(Classification classification, byte nnb) {
+            switch (classification) {
+                case TP:
+                    tpHist.addEvent(nnb);
+                    break;
+                case FP:
+                    fpHist.addEvent(nnb);
+                    break;
+                case TN:
+                    tnHist.addEvent(nnb);
+                    break;
+                case FN:
+                    fnHist.addEvent(nnb);
+                    break;
+            }
+        }
+
+        void draw(GL2 gl) {
+            int sc = 5;
+            int x = -20;
+            int y = 0;
+            gl.glPushMatrix();
+            gl.glTranslatef(-sc * 6, 0, 0);
+            gl.glScalef(sc, sc, 1);
+            for (int i = 0; i < histograms.length; i++) {
+                histograms[i].draw(gl);
+                gl.glTranslatef(0, 4, 0);
+            }
+            gl.glPopMatrix();
+
+        }
+    }
+
+    private class ROCHistory {
+
+        private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistoryLength);
+        private Float lastTau = null;
+        private final double LOG10_CHANGE_TO_ADD_LABEL = .2;
+        GLUT glut = new GLUT();
+        private int counter = 0;
+        private final int SAMPLE_INTERVAL_NO_CHANGE = 30;
+        private int legendDisplayListId = 0;
+        private ROCSample[] legendROCs = null;
+
+        ROCSample createAbsolutePosition(float x, float y, float tau, boolean labeled) {
+            return new ROCSample(x, y, tau, labeled);
+        }
+
+        ROCSample createTprFpr(float tpr, float fpr, float tau, boolean labeled) {
+            return new ROCSample(fpr * sx, tpr * sy, tau, labeled);
+        }
+
+        class ROCSample {
+
+            float x, y, tau;
+            boolean labeled = false;
+            final int SIZE = 5; // chip pixels
+
+            private ROCSample(float x, float y, float tau, boolean labeled) {
+                this.x = x;
+                this.y = y;
+                this.tau = tau;
+                this.labeled = labeled;
+            }
+
+            private void draw(GL2 gl) {
+                gl.glLineWidth(2);
+                float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
+                Color c = Color.getHSBColor(hue, 1f, hue);
+                float[] rgb = c.getRGBComponents(null);
+                gl.glColor3fv(rgb, 0);
+                gl.glLineWidth(2);
+                gl.glPushMatrix();
+                DrawGL.drawBox(gl, x, y, SIZE, SIZE, 0);
+                gl.glPopMatrix();
+                if (labeled) {
+//                    gl.glTranslatef(5 * L, - 3 * L, 0);
+                    gl.glRasterPos3f(x + SIZE, y, 0);
+//                    gl.glRotatef(-45, 0, 0, 1); // can't rotate bitmaps, must use stroke and glScalef
+                    String s = String.format("%ss", eng.format(tau));
+                    glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+//                    glut.glutStrokeString(GLUT.STROKE_ROMAN, s);
+                }
+            }
+        }
+
+        private void reset() {
+            rocHistoryList = EvictingQueue.create(rocHistoryLength);
+            lastTau = null;
+        }
+
+        void addSample(float fpr, float tpr, float tau) {
+            boolean labelIt = lastTau == null
+                    || Math.abs(Math.log10(tau / lastTau)) > .1
+                    || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
+            rocHistoryList.add(rocHistory.createTprFpr(tpr, fpr, tau, labelIt));
+
+            if (labelIt) {
+                lastTau = tau;
+            }
+            if (counter > SAMPLE_INTERVAL_NO_CHANGE) {
+                counter = 0;
+            }
+        }
+
+        private void drawLegend(GL2 gl) {
+            if (legendDisplayListId == 0) {
+                int NLEG = 8;
+                legendROCs = new ROCSample[NLEG];
+                for (int i = 0; i < NLEG; i++) {
+                    ROCSample r = createAbsolutePosition(sx + 5, i * 15 + 20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
+                    legendROCs[i] = r;
+                }
+                legendDisplayListId = gl.glGenLists(1);
+                gl.glNewList(legendDisplayListId, GL2.GL_COMPILE);
+                { // TODO make a real list
+                }
+                gl.glEndList();
+            }
+            gl.glPushMatrix();
+//            gl.glCallList(legendDisplayListId);
+            for (ROCSample r : legendROCs) {
+                r.draw(gl);
+            }
+            gl.glPopMatrix();
+        }
+
+        void draw(GL2 gl) {
+            // draw axes
+            gl.glPushMatrix();
+            gl.glColor4f(.8f, .8f, .2f, .5f); // must set color before raster position (raster position is like glVertex)
+            gl.glLineWidth(4);
+            gl.glBegin(GL.GL_LINE_STRIP);
+            gl.glVertex2f(0, sy);
+            gl.glVertex2f(0, 0);
+            gl.glVertex2f(sx, 0);
+            gl.glEnd();
+            gl.glRasterPos3f(sx / 2 - 30, -10, 0);
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "FPR");
+//            gl.glPushMatrix();
+//            gl.glTranslatef(sx / 2, -10, 0);
+//            gl.glScalef(.1f, .1f, 1);
+//            glut.glutStrokeString(GLUT.STROKE_ROMAN, "FPR");
+//            gl.glPopMatrix();
+            gl.glRasterPos3f(-30, sy / 2, 0);
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "TPR");
+            gl.glPopMatrix();
+            for (ROCSample rocSample : rocHistoryList) {
+                rocSample.draw((gl));
+            }
+            // draw X at TPR / TNR point
+            gl.glPushMatrix();
+            gl.glColor3f(.8f, .8f, .2f); // must set color before raster position (raster position is like glVertex)
+            int L = 12;
+            gl.glLineWidth(4);
+            float x = (1 - TNR) * sx;
+            float y = TPR * sy;
+            DrawGL.drawCross(gl, x, y, L, 0);
+            gl.glPopMatrix();
+            if (rocHistoryLength > 1) {
+                drawLegend(gl);
+            }
+        }
+    }
+
+    // recorded noise to be used as input
+    private class PrerecordedNoise {
+
+        EventPacket<BasicEvent> recordedNoiseFileNoisePacket = null;
+        Iterator<BasicEvent> itr = null;
+        BasicEvent noiseFirstEvent, noiseNextEvent;
+        int noiseFirstTs;
+        Integer signalMostRecentTs;
+        private ArrayList<BasicEvent> returnedEvents = new ArrayList();
+        int noiseEventCounter = 0;
+        File file;
+
+        private PrerecordedNoise(File chosenPrerecordedNoiseFilePath) throws IOException {
+            file = chosenPrerecordedNoiseFilePath;
+            AEFileInputStream recordedNoiseAeFileInputStream = new AEFileInputStream(file, getChip());
+            AEPacketRaw rawPacket = recordedNoiseAeFileInputStream.readPacketByNumber(MAX_NUM_RECORDED_EVENTS);
+            recordedNoiseAeFileInputStream.close();
+
+            EventPacket<BasicEvent> inpack = getChip().getEventExtractor().extractPacket(rawPacket);
+            EventPacket<BasicEvent> recordedNoiseFileNoisePacket = new EventPacket(PolarityEvent.class);
+            OutputEventIterator outItr = recordedNoiseFileNoisePacket.outputIterator();
+            for (BasicEvent p : inpack) {
+                outItr.nextOutput().copyFrom(p);
+            }
+            this.recordedNoiseFileNoisePacket = recordedNoiseFileNoisePacket;
+            itr = recordedNoiseFileNoisePacket.inputIterator();
+            noiseFirstEvent = recordedNoiseFileNoisePacket.getFirstEvent();
+            noiseFirstTs = recordedNoiseFileNoisePacket.getFirstTimestamp();
+
+            this.noiseNextEvent = this.noiseFirstEvent;
+            computeProbs(); // set noise sample rate via poissonDtUs
+            log.info(String.format("Loaded %s pre-recorded events with duration %ss from %s", eng.format(recordedNoiseFileNoisePacket.getSize()), eng.format(1e-6f * recordedNoiseAeFileInputStream.getDurationUs()), chosenPrerecordedNoiseFilePath));
+        }
+
+        ArrayList<BasicEvent> nextEvents(int ts) {
+            returnedEvents.clear();
+            if (signalMostRecentTs == null) {
+                signalMostRecentTs = ts;
+                return returnedEvents; // no events at first, just get the timestamap
+            }
+            if (ts < signalMostRecentTs) { // time went backwards, rewind noise events
+                rewind();
+                return nextEvents(ts);
+            }
+            while (noiseNextEvent.timestamp - noiseFirstTs < ts - signalMostRecentTs) {
+                returnedEvents.add(noiseNextEvent);
+                noiseEventCounter++;
+                if (itr.hasNext()) {
+                    noiseNextEvent = itr.next();
+                } else {
+                    rewind();
+                    return returnedEvents;
+                }
+            }
+            return returnedEvents;
+        }
+
+        private void rewind() {
+            log.info(String.format("rewinding noise events after %d events", noiseEventCounter));
+            this.itr = recordedNoiseFileNoisePacket.inputIterator();
+            noiseNextEvent = noiseFirstEvent;
+            signalMostRecentTs = null;
+            noiseEventCounter = 0;
+        }
+    }
+
 }

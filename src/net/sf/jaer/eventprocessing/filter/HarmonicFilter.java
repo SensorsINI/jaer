@@ -48,7 +48,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  * @author tobi
  */
 @Description("An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.")
-public class HarmonicFilter extends EventFilter2D implements FrameAnnotater {
+public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
     private boolean printStats = prefs().getBoolean("HarmonicFilter.printStats", true);
     private float threshold = getPrefs().getFloat("HarmonicFilter.threshold", 0.1f); // when value is less than this value, then we are crossing zero and don't pass events
@@ -125,6 +125,11 @@ public class HarmonicFilter extends EventFilter2D implements FrameAnnotater {
     public void setUseLocalPhases(boolean useLocalPhases) {
         this.useLocalPhases = useLocalPhases;
         prefs().putBoolean("HarmonicFilter.useLocalPhases", useLocalPhases);
+    }
+
+    @Override
+    public int[][] getLastTimesMap() {
+        return null;  // not compatible with this filter
     }
 
     public class HarmonicOscillator {
@@ -428,15 +433,15 @@ public class HarmonicFilter extends EventFilter2D implements FrameAnnotater {
                 resetFilter();
                 return in;
             }
-            if (!oscillator.isNearZeroCrossing(e)) {
-                outItr.nextOutput().copyFrom(e);
+            if (oscillator.isNearZeroCrossing(e)) {
+                filterOut(e);
             }
         }
         //        if ( printStats ){
         //            float t = 1e-6f * in.getLastTimestamp();
         //            log.info("cycle=" + ( cycle++ ) + oscillator);
         //        }
-        return out;
+        return in;
     }
 }
 //    /**

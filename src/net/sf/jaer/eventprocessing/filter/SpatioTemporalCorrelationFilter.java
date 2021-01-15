@@ -93,6 +93,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
                 lastTimesMap[x][y] = ts;
                 if (letFirstEventThrough) {
+                    filterIn(e);
                     continue;
                 } else {
                     filterOut(e);
@@ -104,6 +105,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             int ncorrelated = 0;
             final int x0 = x < 1 ? 0 : x - 1, y0 = y < 1 ? 0 : y - 1;
             final int x1 = x >= ssx - 1 ? ssx - 1 : x + 1, y1 = y >= ssy - 1 ? ssy - 1 : y + 1;
+            byte nnb = 0;
+                        int bit = 0; 
             outerloop:
             for (int xx = x0; xx <= x1; xx++) {
                 final int[] col = lastTimesMap[xx];
@@ -113,17 +116,28 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     }
                     final int lastT = col[yy];
                     final int deltaT = (ts - lastT);
+                    boolean occupied = false;
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
-                        if (ncorrelated >= numMustBeCorrelated) {
+                        occupied = true;
+                        if (ncorrelated >= numMustBeCorrelated && !recordFilteredOutEvents) {
                             break outerloop; // csn stop checking now
                         }
                     }
+                    if (recordFilteredOutEvents && occupied) {
+                        // nnb bits are like this
+                        // 0 3 5
+                        // 1 x 6
+                        // 2 4 7
+                        nnb |= (1 << bit);
+                    }
+                    bit++;
                 }
             }
             if (ncorrelated < numMustBeCorrelated) {
-                filterOut(e);
+                filterOutWithNNb(e, nnb);
             } else {
+                filterInWithNNb(e, nnb);
             }
             lastTimesMap[x][y] = ts;
         }
