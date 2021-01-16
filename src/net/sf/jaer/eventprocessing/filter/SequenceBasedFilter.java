@@ -424,10 +424,15 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
         return s;
     }
 
+    private static int printedCorrelationTimeWarning=5;
+    
     /** Overridden to set L according to recent activity to some correlation time */
     @Override
     public void setCorrelationTimeS(float dtS) {
-        log.warning("Setting correlation time currently has no effect");
+        if(printedCorrelationTimeWarning>0){
+            log.warning("Setting correlation time currently has no effect");
+            printedCorrelationTimeWarning--;
+        }
     }
     
 }

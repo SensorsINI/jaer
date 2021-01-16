@@ -47,7 +47,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private int ssy;
 
     int[][] lastTimesMap;
-    private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
+    private int ts = 0; // used to reset filter
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
@@ -84,7 +84,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             }
             totalEventCount++;
             int ts = e.timestamp;
-            lastTimestamp = ts;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
             if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                 filterOut(e);
@@ -103,10 +102,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
             // finally the real denoising starts here
             int ncorrelated = 0;
-            final int x0 = x < 1 ? 0 : x - 1, y0 = y < 1 ? 0 : y - 1;
-            final int x1 = x >= ssx - 1 ? ssx - 1 : x + 1, y1 = y >= ssy - 1 ? ssy - 1 : y + 1;
+            int sigmaDistPixels=getSigmaDistPixels();
+            final int x0 = x < sigmaDistPixels ? 0 : x - sigmaDistPixels, y0 = y < sigmaDistPixels ? 0 : y - sigmaDistPixels;
+            final int x1 = x >= ssx - sigmaDistPixels ? ssx - sigmaDistPixels : x + sigmaDistPixels, y1 = y >= ssy - sigmaDistPixels ? ssy - sigmaDistPixels : y + sigmaDistPixels;
             byte nnb = 0;
-                        int bit = 0; 
+            int bit = 0; 
             outerloop:
             for (int xx = x0; xx <= x1; xx++) {
                 final int[] col = lastTimesMap[xx];
@@ -115,9 +115,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                         continue; // like BAF, don't correlate with ourself
                     }
                     final int lastT = col[yy];
-                    final int deltaT = (ts - lastT);
+                    final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
+                  
                     boolean occupied = false;
-                    if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
+                    if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                         ncorrelated++;
                         occupied = true;
                         if (ncorrelated >= numMustBeCorrelated && !recordFilteredOutEvents) {
@@ -129,10 +130,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                         // 0 3 5
                         // 1 x 6
                         // 2 4 7
-                        nnb |= (1 << bit);
+                        nnb |= (0xff & (1 << bit));
                     }
                     bit++;
                 }
+            }
+            if(nnb==0xff){
+                log.warning("nnb is 0xff");
             }
             if (ncorrelated < numMustBeCorrelated) {
                 filterOutWithNNb(e, nnb);
@@ -187,7 +191,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
             lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
         }
-        lastTimestamp = DEFAULT_TIMESTAMP;
     }
 
     @Override
@@ -224,8 +227,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public void setNumMustBeCorrelated(int numMustBeCorrelated) {
         if (numMustBeCorrelated < 1) {
             numMustBeCorrelated = 1;
-        } else if (numMustBeCorrelated > 9) {
-            numMustBeCorrelated = 9;
+        } else if (numMustBeCorrelated > (2*getSigmaDistPixels()+1)*(2*getSigmaDistPixels()+1)) {
+            numMustBeCorrelated = (2*getSigmaDistPixels()+1)*(2*getSigmaDistPixels()+1);
         }
         putInt("numMustBeCorrelated", numMustBeCorrelated);
         this.numMustBeCorrelated = numMustBeCorrelated;

@@ -22,10 +22,10 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -46,8 +46,6 @@ import net.sf.jaer.util.TobiLogger;
  */
 public abstract class AbstractNoiseFilter extends EventFilter2D implements FrameAnnotater, RemoteControlled {
 
- 
-
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
@@ -55,7 +53,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * list of filtered out events
      */
     private ArrayList<FilteredEventWithNNb> filteredOutEvents = new ArrayList(), filteredInEvents = new ArrayList();
-   
+
     protected EngineeringFormat eng = new EngineeringFormat();
 
     /**
@@ -69,7 +67,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     static protected HashMap<String, Integer> noiseStatDrawingMap = new HashMap();
     protected int statisticsDrawingPosition = -10; // y coordinate we write ourselves to, start with -10 so we end up at 0 for first one (hack)
-    final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
+    protected final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
     protected int MAX_DT_US = 200000;
     protected int MIN_DT_US = 10;
 
@@ -77,6 +75,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * Correlation time in seconds
      */
     protected float correlationTimeS = getFloat("correlationTimeS", 25e-3f);
+
+    /**
+     * Neighborhood radius in pixels
+     */
+    protected int sigmaDistPixels = getInt("sigmaDistPixels", 1);
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -99,6 +102,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     protected final String TT_FILT_CONTROL = "1. Denoising control", TT_DISP = "2. Display", TT_ADAP = "3. Adaptive Filtering";
 
+
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
         noiseFilterControl = new NoiseFilterControl(chip);
@@ -108,12 +112,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
         setPropertyTooltip(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
         setPropertyTooltip(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
+        setPropertyTooltip(TT_FILT_CONTROL, "sigmaDistPixels", "Neighborhood radisu in pixels to consider for event support");
         setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter correlation time is automatically adapted.");
         setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
-        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-
+        getSupport().addPropertyChangeListener(this);
+//        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
     /**
@@ -154,7 +159,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         e.setFilteredOut(true);
         filteredOutEventCount++;
         if (recordFilteredOutEvents) {
-            filteredOutEvents.add(new FilteredEventWithNNb(e,nnb));
+            filteredOutEvents.add(new FilteredEventWithNNb(e, nnb));
         }
     }
 
@@ -168,7 +173,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected void filterInWithNNb(BasicEvent e, byte nnb) {
         e.setFilteredOut(false);
         if (recordFilteredOutEvents) {
-            filteredInEvents.add(new FilteredEventWithNNb(e,nnb));
+            filteredInEvents.add(new FilteredEventWithNNb(e, nnb));
         }
     }
 
@@ -273,7 +278,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      *
      * @param dtS time in seconds
      */
-    public void setCorrelationTimeS(float dtS) {
+    synchronized public void setCorrelationTimeS(float dtS) {
         float old = this.correlationTimeS;
         if (dtS > 1e-6f * MAX_DT_US) {
             dtS = 1e-6f * MAX_DT_US;
@@ -284,6 +289,32 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         putFloat("correlationTimeS", correlationTimeS);
         getSupport().firePropertyChange("correlationTimeS", old, this.correlationTimeS);
 
+    }
+
+    /**
+     * Neighborhood radius in pixels
+     *
+     * @return the sigmaDistPixels
+     */
+    public int getSigmaDistPixels() {
+        return this.sigmaDistPixels;
+    }
+
+    /**
+     * Neighborhood radius in pixels
+     *
+     * @param sigmaDistPixels the sigmaDistPixels to set
+     */
+    synchronized public void setSigmaDistPixels(int sigmaDistPixels) {
+        int old = getSigmaDistPixels();
+        if (sigmaDistPixels < 1) {
+            sigmaDistPixels = 1;
+        } else if (sigmaDistPixels > 15) {
+            sigmaDistPixels = 15;
+        }
+        this.sigmaDistPixels = sigmaDistPixels;
+        putInt("sigmaDistPixels", sigmaDistPixels);
+        getSupport().firePropertyChange("sigmaDistPixels", old, this.sigmaDistPixels);
     }
 
     public float getCorrelationTimeS() {
@@ -335,8 +366,10 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @param letFirstEventThrough the letFirstEventThrough to set
      */
     public void setLetFirstEventThrough(boolean letFirstEventThrough) {
+        boolean old = this.letFirstEventThrough;
         this.letFirstEventThrough = letFirstEventThrough;
         putBoolean("letFirstEventThrough", letFirstEventThrough);
+        getSupport().firePropertyChange("letFirstEventThrough", old, this.letFirstEventThrough);
     }
 
     /**
@@ -349,8 +382,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     public ArrayList<FilteredEventWithNNb> getPositiveEvents() {
         return filteredInEvents;
     }
-    
-  
 
     /**
      * NoiseTesterFilter sets this boolean true to record filtered out events to
@@ -376,8 +407,10 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @param filterHotPixels the filterHotPixels to set
      */
     public void setFilterHotPixels(boolean filterHotPixels) {
+        boolean old = this.filterHotPixels;
         this.filterHotPixels = filterHotPixels;
         putBoolean("filterHotPixels", filterHotPixels);
+        getSupport().firePropertyChange("filterHotPixels", old, this.filterHotPixels);
     }
 
     /**
@@ -389,7 +422,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     public String infoString() {
         String s = getClass().getSimpleName();
         s = s.replaceAll("[a-z]", "");
-        s = s + String.format(": dT=%ss, subSamp=%d", eng.format(getCorrelationTimeS()), getSubsampleBy());
+        s = s + String.format(": dT=%ss, sigma=%dpx subSamp=%d", eng.format(getCorrelationTimeS()), getSigmaDistPixels(), getSubsampleBy());
         return s;
     }
 
@@ -406,15 +439,37 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         super.propertyChange(evt); //To change body of generated methods, choose Tools | Templates.
-        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            resetFilter();
-        } else if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
-            resetFilter();
+        switch (evt.getPropertyName()) {
+            case AEInputStream.EVENT_REWOUND:
+                resetFilter();
+                break;
+            case AEViewer.EVENT_CHIP:
+                resetFilter();
+                break;
+            case "sigmaDistPixels":
+                setSigmaDistPixels((int)evt.getNewValue());
+                break;
+            case "correlationTimeS":
+                setCorrelationTimeS((float)evt.getNewValue());
+                break;
+            case "subsampleBy":
+                setSubsampleBy((int)evt.getNewValue());
+                break;
+            case "adaptiveFilteringEnabled":
+                setAdaptiveFilteringEnabled((boolean)evt.getNewValue());
+                break;
+            case "filterHotPixels":
+                setFilterHotPixels((boolean)evt.getNewValue());
+                break;
+            case "letFirstEventThrough":
+                setLetFirstEventThrough((boolean)evt.getNewValue());
+                break;
         }
-
     }
     
-    public class FilteredEventWithNNb{
+
+    public class FilteredEventWithNNb {
+
         BasicEvent e;
         byte nnb;
 
@@ -422,6 +477,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
             this.e = e;
             this.nnb = nnb;
         }
+
         public FilteredEventWithNNb(BasicEvent e) {
             this.e = e;
             this.nnb = 0;

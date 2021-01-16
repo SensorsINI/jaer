@@ -51,6 +51,8 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Timer;
@@ -133,13 +135,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private NNbHistograms nnbHistograms = new NNbHistograms(); // tracks stats of neighbors to events when they are filtered in or out
 
     public enum NoiseFilterEnum {
-        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter
+        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter, MedianDtFilter
     }
     private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
 
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
-    private final long MAX_FILTER_PROCESSING_TIME_MS = 2000; // times out to avoid using up all heap
+    private final long MAX_FILTER_PROCESSING_TIME_MS = 5000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
 
     public NoiseTesterFilter(AEChip chip) {
@@ -719,10 +721,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (chain == null) {
             chain = new FilterChain(chip);
 
-            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip))};
+//            for(NoiseFilterEnum en:NoiseFilterEnum.values()){
+//                Class cl=Class.forName(en.va);
+//                
+//            }
+            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip)), new MedianDtFilter(chip)};
             for (AbstractNoiseFilter n : noiseFilters) {
                 n.initFilter();
                 chain.add(n);
+                getSupport().addPropertyChangeListener(n);
+                n.getSupport().addPropertyChangeListener(this); // make sure we are synchronized both ways for all filter parameters
             }
             setEnclosedFilterChain(chain);
             if (getChip().getAeViewer() != null) {
@@ -966,6 +974,32 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
+    @Override
+    public void setFilterHotPixels(boolean filterHotPixels) {
+        super.setFilterHotPixels(filterHotPixels); //To change body of generated methods, choose Tools | Templates.
+          for (AbstractNoiseFilter f : noiseFilters) {
+            f.setFilterHotPixels(filterHotPixels);
+        }
+  }
+
+    @Override
+    public void setLetFirstEventThrough(boolean letFirstEventThrough) {
+        super.setLetFirstEventThrough(letFirstEventThrough); //To change body of generated methods, choose Tools | Templates.
+           for (AbstractNoiseFilter f : noiseFilters) {
+            f.setLetFirstEventThrough(letFirstEventThrough);
+        }
+ }
+
+    @Override
+    public synchronized void setSigmaDistPixels(int sigmaDistPixels) {
+        super.setSigmaDistPixels(sigmaDistPixels); //To change body of generated methods, choose Tools | Templates.
+         for (AbstractNoiseFilter f : noiseFilters) {
+            f.setSigmaDistPixels(sigmaDistPixels);
+        }
+   }
+    
+    
+
 //    /**
 //     * @return the annotateAlpha
 //     */
@@ -1055,6 +1089,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     synchronized public void doClearROCHistory() {
         rocHistory.reset();
     }
+    
+    synchronized public void doPrintNnbInfo(){
+        System.out.print(nnbHistograms.toString());
+    }
 
     synchronized public void doCloseNoiseSourceRecording() {
         if (prerecordedNoise != null) {
@@ -1131,20 +1169,29 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             void addEvent(byte nnb) {
                 byteHist[0xff & nnb]++; // make sure we get unsigned byte
-                if(nnb==0) return;
+                if (nnb == 0) {
+                    return;
+                }
                 for (int i = 0; i < 8; i++) {
                     if ((((nnb & 0xff) >> i) & 1) != 0) {
                         nnbcounts[i]++;
                     }
                 }
             }
-
+            
             public String toString() {
-                StringBuilder sb = new StringBuilder(classification.toString() + ": [");
+                StringBuilder sb = new StringBuilder(classification.toString() + " neighbors: [");
                 for (int i : nnbcounts) {
                     sb.append(i + " ");
                 }
-                sb.append("]");
+                sb.append("]\n");
+                sb.append("counts: ");
+                final int perline=32;
+                for(int i=0;i<byteHist.length;i++){
+                    if(i%perline==0) sb.append("\n");
+                    sb.append(byteHist[i]+" ");
+                }
+                sb.append("\n");
                 return sb.toString();
             }
 
@@ -1158,7 +1205,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
                 gl.glPushMatrix();
                 for (int i = 0; i < nnbcounts.length; i++) {
-                    if(nnbcounts[i]==0) continue;
+                    if (nnbcounts[i] == 0) {
+                        continue;
+                    }
                     int ind = i < 4 ? i : i + 1;
                     int y = ind % 3, x = ind / 3;
                     float b = (float) nnbcounts[i] / sum;
@@ -1217,6 +1266,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glPopMatrix();
 
         }
+
+        @Override
+        public String toString() {
+            return "NNbHistograms{" + "tpHist=" + tpHist + "\n fpHist=" + fpHist + "\n tnHist=" + tnHist + "\n fnHist=" + fnHist + '}';
+        }
+        
+        
     }
 
     private class ROCHistory {
