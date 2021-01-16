@@ -42,16 +42,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     private boolean addedPropertyChangeListener = false;
     public boolean externalRenderer = false;
 
-    /**
-     * PropertyChange events
-     */
-    public static final String EVENT_COLOR_SCALE_CHANGE = "colorScale";
-
-    /**
-     * PropertyChange events
-     */
-    public static final String EVENT_COLOR_MODE_CHANGE = "colorMode";
-
+  
     /**
      * @return the specialCount
      */
@@ -72,19 +63,24 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     public enum ColorMode {
 
-        GrayLevel("Each event causes linear change in brightness"),
+        GrayLevel("Each event causes linear change in brightness",.5f),
         //        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
-        RedGreen("ON events are green; OFF events are red"),
-        FadingActivity("Events are accumulated (without polarity) and are faded away over frames according to color scale"),
-        ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events"),
-        GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events"),
-        HotCode("Events counts are colored blue to red, blue=0, red=full scale"),
-        WhiteBackground("Events counts (unsigned) are dark on white background"), //		ComplementaryFilter("Events are reconstructed using bandpass event filter")
+        RedGreen("ON events are green; OFF events are red",0),
+        FadingActivity("Events are accumulated (without polarity) and are faded away over frames according to color scale",0),
+        ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events",0f),
+        GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events",1f),
+        HotCode("Events counts are colored blue to red, blue=0, red=full scale",0),
+        WhiteBackground("Events counts (unsigned) are dark on white background",1), //		ComplementaryFilter("Events are reconstructed using bandpass event filter")
         ;
         public String description;
+        public float backgroundGrayLevel=0;
 
         ColorMode(String description) {
             this.description = description;
+        }
+       ColorMode(String description, float backgroundGrayLevel) {
+            this.description = description;
+            this.backgroundGrayLevel=backgroundGrayLevel;
         }
 
         @Override
@@ -173,6 +169,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             timeColors[i][1] = comp[1];
             // System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
         }
+        getSupport().addPropertyChangeListener(this);
     }
 
     /**
@@ -250,7 +247,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 switch (colorMode) {
                     case GrayLevel:
                         if (!accumulateEnabled && !externalRenderer) {
-                            resetFrame(.5f); // also sets grayValue
+                            resetFrame(getGrayValue()); // also sets grayValue
                         }
                         step = 2f / (colorScale + 1);
                         // colorScale=1,2,3; step = 1, 1/2, 1/3, 1/4, ;
@@ -339,7 +336,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 //                        break;
                     case RedGreen:
                         if (!accumulateEnabled && !externalRenderer) {
-                            resetFrame(0);
+                            resetFrame(getGrayValue());
                         }
                         step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
                         for (Object obj : packet) {
@@ -360,7 +357,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                         break;
                     case ColorTime:
                         if (!accumulateEnabled && !externalRenderer) {
-                            resetFrame(0);
+                            resetFrame(getGrayValue());
                         }
                         if (numEvents == 0) {
                             return;
@@ -739,7 +736,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @param extRender
      */
     public void setExternalRenderer(boolean extRender) {
+        boolean old=this.externalRenderer;
         externalRenderer = extRender;
+        getSupport().firePropertyChange(EVENT_EXTERNAL_RENDERER, old, extRender);
     }
 
     /**
@@ -762,9 +761,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         prefs.put("ChipRenderer.colorMode", colorMode.name());
         log.info(this.getClass().getSimpleName() + ": colorMode=" + colorMode);
         getSupport().firePropertyChange(EVENT_COLOR_MODE_CHANGE, old, colorMode);
-        // if (method<0 || method >NUM_METHODS-1) throw new RuntimeException("no such rendering method "+method);
-        // this.method = method;
-        // prefs.putInt("ChipRenderer.method",method);
+        setGrayValue(this.colorMode.backgroundGrayLevel);
     }
 
     public void setStereoEnabled(boolean stereoEnabled) {
@@ -810,13 +807,26 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @see AEChipRenderer#typeColors
      */
     public void setTypeColors(Color[] typeColors) {
+        Color[] old=this.typeColors;
         this.typeColors = typeColors;
+        getSupport().firePropertyChange(EVENT_TYPE_COLORS, old, this.typeColors);
+        
     }
 
     @Override
     public void propertyChange(PropertyChangeEvent pce) {
+        log.info(pce.toString());
         if (pce.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             resetFrame(grayValue);
+        }else
+        if(pce.getPropertyName()==EVENT_COLOR_MODE_CHANGE){
+            resetFrame(getGrayValue());
+        }else
+        if(pce.getPropertyName()==EVENT_SET_GRAYLEVEL){
+            resetFrame(getGrayValue());
+        }else
+        if(pce.getPropertyName()==EVENT_SET_BACKGROUND){
+            resetFrame(getGrayValue());
         }
     }
 

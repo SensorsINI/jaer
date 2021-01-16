@@ -28,6 +28,16 @@ public class Chip2DRenderer implements Observer {
     public PropertyChangeSupport getSupport() {
         return support;
     }
+    /**
+     * PropertyChange events
+     */
+    public static final String EVENT_COLOR_SCALE_CHANGE = "colorScale",
+            EVENT_COLOR_MODE_CHANGE = "colorMode",
+            EVENT_EXTERNAL_RENDERER = "externalRenderer",
+            EVENT_TYPE_COLORS = "typeColors",
+            EVENT_SET_BACKGROUND = "setBackground",
+            EVENT_SET_GRAYLEVEL = "grayLevel";
+
     protected static final Logger log = Logger.getLogger(Chip2DRenderer.class.getSimpleName());
     private int sizeX, sizeY;
     protected Preferences prefs = Preferences.userNodeForPackage(Chip2DRenderer.class);
@@ -50,6 +60,12 @@ public class Chip2DRenderer implements Observer {
      * the number of events for full scale saturated color
      */
     protected int colorScale; // set in constructor to preference value so that eventContrast also gets set
+    
+    
+    /** Background color for chip output image RGB values
+     * 
+     */
+    protected float[] backgroundColor=new float[]{0,0,0};
 
     /**
      * value to add or subtract to pixel color for ON/OFF events, set by
@@ -242,6 +258,7 @@ public class Chip2DRenderer implements Observer {
 
     /**
      * decrease contrast
+     *
      * @return new color scale
      */
     public int decreaseContrast() {
@@ -264,6 +281,14 @@ public class Chip2DRenderer implements Observer {
             return autoScaleValue;
         }
     }
+    
+    public void setBackgroundColor(float[] rgb){
+        float[] old=this.backgroundColor;
+        this.backgroundColor=rgb;
+        getSupport().firePropertyChange(EVENT_SET_BACKGROUND, old, this.backgroundColor);
+        
+        
+    }
 
     /**
      * @return the gray level of the rendered data; used to determine whether a
@@ -274,13 +299,17 @@ public class Chip2DRenderer implements Observer {
     }
 
     synchronized public void setGrayValue(float value) {
+        float old=this.grayValue;
+        resetPixmapGrayLevel(value);
         grayValue = value;
+        getSupport().firePropertyChange(EVENT_SET_GRAYLEVEL, old, this.grayValue);
     }
 
     /**
      * A single pixel can be selected via the mouse and this returns the x pixel
      * value.
-     * @return 
+     *
+     * @return
      */
     public short getXsel() {
         return xsel;
@@ -289,7 +318,8 @@ public class Chip2DRenderer implements Observer {
     /**
      * A single pixel can be selected via the mouse and this returns the y pixel
      * value.
-     * @return 
+     *
+     * @return
      */
     public short getYsel() {
         return ysel;
@@ -297,6 +327,7 @@ public class Chip2DRenderer implements Observer {
 
     /**
      * increase image contrast
+     *
      * @return new color scale
      */
     public int increaseContrast() {
@@ -370,6 +401,7 @@ public class Chip2DRenderer implements Observer {
     /**
      * set the color scale. 1 means a single event is full scale, 2 means a
      * single event is half scale, etc. only applies to some rendering methods.
+     *
      * @param colorScale the new color scale.
      */
     public void setColorScale(int colorScale) {

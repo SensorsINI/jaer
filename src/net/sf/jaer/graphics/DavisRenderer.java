@@ -184,6 +184,16 @@ public class DavisRenderer extends AEChipRenderer {
                         grayBuffer.put(0);
                         grayBuffer.put(.5f);
                         grayBuffer.put(.5f);
+                    }else if (colorMode == ColorMode.RedGreen) {
+                        grayBuffer.put(0);
+                        grayBuffer.put(0);
+                        grayBuffer.put(0);
+                        grayBuffer.put(.5f);
+                    }else if (colorMode == ColorMode.WhiteBackground) {
+                        grayBuffer.put(1);
+                        grayBuffer.put(1);
+                        grayBuffer.put(1);
+                        grayBuffer.put(.5f);
                     } else {
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
@@ -1000,7 +1010,7 @@ public class DavisRenderer extends AEChipRenderer {
      */
     @Override
     public float getGrayValue() {
-        if (isDisplayFrames() || /*(colorMode == ColorMode.Contrast) || */ (colorMode == ColorMode.GrayLevel)) {
+        if (isDisplayFrames() || (colorMode == ColorMode.GrayLevel)) {
             grayValue = 0.5f;
         } else if (colorMode == ColorMode.GrayTime) {
             grayValue = 1.0f;
