@@ -51,7 +51,6 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -67,6 +66,7 @@ import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * Filter for testing noise filters
@@ -977,28 +977,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Override
     public void setFilterHotPixels(boolean filterHotPixels) {
         super.setFilterHotPixels(filterHotPixels); //To change body of generated methods, choose Tools | Templates.
-          for (AbstractNoiseFilter f : noiseFilters) {
+        for (AbstractNoiseFilter f : noiseFilters) {
             f.setFilterHotPixels(filterHotPixels);
         }
-  }
+    }
 
     @Override
     public void setLetFirstEventThrough(boolean letFirstEventThrough) {
         super.setLetFirstEventThrough(letFirstEventThrough); //To change body of generated methods, choose Tools | Templates.
-           for (AbstractNoiseFilter f : noiseFilters) {
+        for (AbstractNoiseFilter f : noiseFilters) {
             f.setLetFirstEventThrough(letFirstEventThrough);
         }
- }
+    }
 
     @Override
     public synchronized void setSigmaDistPixels(int sigmaDistPixels) {
         super.setSigmaDistPixels(sigmaDistPixels); //To change body of generated methods, choose Tools | Templates.
-         for (AbstractNoiseFilter f : noiseFilters) {
+        for (AbstractNoiseFilter f : noiseFilters) {
             f.setSigmaDistPixels(sigmaDistPixels);
         }
-   }
-    
-    
+    }
 
 //    /**
 //     * @return the annotateAlpha
@@ -1089,8 +1087,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     synchronized public void doClearROCHistory() {
         rocHistory.reset();
     }
-    
-    synchronized public void doPrintNnbInfo(){
+
+    synchronized public void doPrintNnbInfo() {
         System.out.print(nnbHistograms.toString());
     }
 
@@ -1155,8 +1153,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private class NnbHistogram {
 
             Classification classification = Classification.None;
-            int[] nnbcounts = new int[8];
-            int[] byteHist = new int[256];
+            final int[] nnbcounts = new int[8]; // bit frequencies around us, 8 neighbors
+            final int[] byteHist = new int[256];  // array of frequency of patterns versus the pattern index
+            int count; // total # events
+            final float[] prob = new float[256];
 
             public NnbHistogram(Classification classification) {
                 this.classification = classification;
@@ -1165,9 +1165,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             void reset() {
                 Arrays.fill(nnbcounts, 0);
                 Arrays.fill(byteHist, 0);
+                count = 0;
             }
 
             void addEvent(byte nnb) {
+                count++;
                 byteHist[0xff & nnb]++; // make sure we get unsigned byte
                 if (nnb == 0) {
                     return;
@@ -1178,21 +1180,61 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     }
                 }
             }
-            
-            public String toString() {
-                StringBuilder sb = new StringBuilder(classification.toString() + " neighbors: [");
-                for (int i : nnbcounts) {
-                    sb.append(i + " ");
+
+            String computeProbabilities() {
+                for (int i = 0; i < 256; i++) {
+                    prob[i] = (float) byteHist[i] / count;
                 }
-                sb.append("]\n");
-                sb.append("counts: ");
-                final int perline=32;
-                for(int i=0;i<byteHist.length;i++){
-                    if(i%perline==0) sb.append("\n");
-                    sb.append(byteHist[i]+" ");
+                // https://stackoverflow.com/questions/951848/java-array-sort-quick-way-to-get-a-sorted-list-of-indices-of-an-array
+                final Integer[] ids = new Integer[256];
+                for (int i = 0; i < ids.length; i++) {
+                    ids[i] = i;
                 }
-                sb.append("\n");
+                Arrays.sort(ids, new Comparator<Integer>() {
+                    @Override
+                    public int compare(final Integer o1, final Integer o2) {
+                        return -Float.compare(prob[o1], prob[o2]);
+                    }
+                });
+                StringBuilder sb = new StringBuilder(classification + " probabilities (count=" + count + ")");
+                final int perline = 4;
+                if (count > 0) {
+                    for (int i = 0; i < ids.length; i++) {
+                        if (prob[ids[i]] < 0.01f) {
+                            break;
+                        }
+                        if (i % perline == 0) {
+                            sb.append(String.format("\n%3d-%3d: ", i, i + perline - 1));
+                        }
+                        String binstring = String.format("%8s", Integer.toBinaryString(ids[i] & 0xFF)).replace(' ', '0');
+                        sb.append(String.format("%4.2f:%s, ", prob[ids[i]],binstring ));
+                    }
+                }
+                    sb.append("\n");
+//                log.info(sb.toString());
+//                float[] sortedProb = Arrays.copyOf(prob, 0);
+//                Arrays.sort(sortedProb);
+//                ArrayUtils.reverse(prob);
                 return sb.toString();
+            }
+
+            public String toString() {
+                return computeProbabilities();
+//                StringBuilder sb = new StringBuilder(classification.toString() + " neighbors: [");
+//                for (int i : nnbcounts) {
+//                    sb.append(i + " ");
+//                }
+//                sb.append("]\n");
+//                sb.append("counts: ");
+//                final int perline = 32;
+//                for (int i = 0; i < byteHist.length; i++) {
+//                    if (i % perline == 0) {
+//                        sb.append("\n");
+//                    }
+//                    sb.append(byteHist[i] + " ");
+//                }
+//                sb.append("\n");
+//                return sb.toString();
             }
 
             void draw(GL2 gl) {
@@ -1271,8 +1313,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         public String toString() {
             return "NNbHistograms{" + "tpHist=" + tpHist + "\n fpHist=" + fpHist + "\n tnHist=" + tnHist + "\n fnHist=" + fnHist + '}';
         }
-        
-        
+
     }
 
     private class ROCHistory {

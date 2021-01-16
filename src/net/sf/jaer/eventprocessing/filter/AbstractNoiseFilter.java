@@ -278,7 +278,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      *
      * @param dtS time in seconds
      */
-    synchronized public void setCorrelationTimeS(float dtS) {
+    public void setCorrelationTimeS(float dtS) {
         float old = this.correlationTimeS;
         if (dtS > 1e-6f * MAX_DT_US) {
             dtS = 1e-6f * MAX_DT_US;
@@ -305,7 +305,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      *
      * @param sigmaDistPixels the sigmaDistPixels to set
      */
-    synchronized public void setSigmaDistPixels(int sigmaDistPixels) {
+    public void setSigmaDistPixels(int sigmaDistPixels) {
         int old = getSigmaDistPixels();
         if (sigmaDistPixels < 1) {
             sigmaDistPixels = 1;
