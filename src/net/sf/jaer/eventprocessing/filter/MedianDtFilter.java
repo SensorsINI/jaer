@@ -26,12 +26,13 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.TobiLogger;
 
 /**
- * A BA noise  filter based on median time (robust to outliers) to past events in neighborhood.
- * 
+ * A BA noise filter based on median time (robust to outliers) to past events in
+ * neighborhood.
+ *
  * @author tobi delbruck jan 2020
  */
-@Description("Filters out uncorrelated noise events by criterion median delta time to nearest neighbor timstamp image ")
-@DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@Description("Filters out uncorrelated noise events by criterion sum of nearest-in-time N neighbors must less than correlation time dt ")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MedianDtFilter extends AbstractNoiseFilter {
 
     private int positionInSortedDts = getInt("positionInSortedDts", 5);
@@ -44,8 +45,8 @@ public class MedianDtFilter extends AbstractNoiseFilter {
     int[][] lastTimesMap;
     private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
 
-    private final int[] nnbDts=new int[8];
-    
+    private int[] nnbDts = null;
+
     public MedianDtFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip(TT_FILT_CONTROL, "positionInSortedDts", "Position to check in list of sorted dts to NNbs");
@@ -66,11 +67,13 @@ public class MedianDtFilter extends AbstractNoiseFilter {
         if (lastTimesMap == null) {
             allocateMaps(chip);
         }
-        int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
+        final int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
+        final int thresholdSumDt = positionInSortedDts * dt;
         ssx = sx >> subsampleBy;
         ssy = sy >> subsampleBy;
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
+        final NnbRange nnbRange = new NnbRange();
         for (Object eIn : in) {
             if (eIn == null) {
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
@@ -99,24 +102,25 @@ public class MedianDtFilter extends AbstractNoiseFilter {
             }
 
             // finally the real denoising starts here
-            int ncorrelated = 0;
-            final int x0 = x < 1 ? 0 : x - 1, y0 = y < 1 ? 0 : y - 1;
-            final int x1 = x >= ssx - 1 ? ssx - 1 : x + 1, y1 = y >= ssy - 1 ? ssy - 1 : y + 1;
-            int bit = 0; 
+            int neighborNum = 0;
             outerloop:
-            for (int xx = x0; xx <= x1; xx++) {
+            for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
                 final int[] col = lastTimesMap[xx];
-                for (int yy = y0; yy <= y1; yy++) {
+                for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
                     if (filterHotPixels && xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
                     final int lastT = col[yy];
-                    final int deltaT = col[yy]!=DEFAULT_TIMESTAMP?(ts - lastT):Integer.MAX_VALUE;
-                    nnbDts[ bit++]=deltaT;
+                    final int deltaT = col[yy] != DEFAULT_TIMESTAMP ? (ts - lastT) : Integer.MAX_VALUE;
+                    nnbDts[neighborNum++] = deltaT;
                 }
             }
             Arrays.sort(nnbDts);
-            if(nnbDts[positionInSortedDts]>dt){
+            int sumDt = 0;
+            for (int i = 0; i < positionInSortedDts; i++) {
+                sumDt += nnbDts[i];
+            }
+            if (sumDt > thresholdSumDt) {
                 filterOut(e);
             } else {
                 filterIn(e);
@@ -152,7 +156,7 @@ public class MedianDtFilter extends AbstractNoiseFilter {
         for (int[] arrayRow : lastTimesMap) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
-        Arrays.fill(nnbDts,DEFAULT_TIMESTAMP);
+        Arrays.fill(nnbDts, DEFAULT_TIMESTAMP);
     }
 
     @Override
@@ -161,6 +165,7 @@ public class MedianDtFilter extends AbstractNoiseFilter {
         sy = chip.getSizeY() - 1;
         ssx = sx >> subsampleBy;
         ssy = sy >> subsampleBy;
+        nnbDts = new int[getNumNeighbors()];
         allocateMaps(chip);
         resetFilter();
     }
@@ -177,37 +182,21 @@ public class MedianDtFilter extends AbstractNoiseFilter {
         return lastTimesMap;
     }
 
-    // </editor-fold>
-    /**
-     * @return the letFirstEventThrough
-     */
-    public boolean isLetFirstEventThrough() {
-        return letFirstEventThrough;
-    }
-
-    /**
-     * @param letFirstEventThrough the letFirstEventThrough to set
-     */
-    public void setLetFirstEventThrough(boolean letFirstEventThrough) {
-        this.letFirstEventThrough = letFirstEventThrough;
-        putBoolean("letFirstEventThrough", letFirstEventThrough);
-    }
-
     /**
      * @return the positionInSortedDts
      */
     public int getPositionInSortedDts() {
         return positionInSortedDts;
     }
-  
+
     /**
      * @param positionInSortedDts the positionInSortedDts to set
      */
     public void setPositionInSortedDts(int positionInSortedDts) {
         if (positionInSortedDts < 0) {
             positionInSortedDts = 0;
-        } else if (positionInSortedDts > 7) {
-            positionInSortedDts = 7;
+        } else if (positionInSortedDts > getNumNeighbors()) {
+            positionInSortedDts = getNumNeighbors();
         }
         putInt("positionInSortedDts", positionInSortedDts);
         this.positionInSortedDts = positionInSortedDts;
@@ -238,9 +227,9 @@ public class MedianDtFilter extends AbstractNoiseFilter {
                 for (int i = 1; i < tok.length; i++) {
                     if (tok[i].equals("dt")) {
                         setCorrelationTimeS(1e-6f * Integer.parseInt(tok[i + 1]));
-                    } 
+                    }
                 }
-                String out = "successfully set SpatioTemporalFilter parameters dt " + String.valueOf(getCorrelationTimeS()) ;
+                String out = "successfully set MedianDtFilter parameters dt " + String.valueOf(getCorrelationTimeS());
                 return out;
             } else {
                 return USAGE;
@@ -255,6 +244,12 @@ public class MedianDtFilter extends AbstractNoiseFilter {
     public String infoString() {
         String s = super.infoString();
         return s;
+    }
+
+    @Override
+    synchronized public void setSigmaDistPixels(int sigmaDistPixels) {
+        super.setSigmaDistPixels(sigmaDistPixels);
+        nnbDts = new int[getNumNeighbors()]; // must resize when neighborhood changes
     }
 
 }

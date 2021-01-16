@@ -102,7 +102,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     protected final String TT_FILT_CONTROL = "1. Denoising control", TT_DISP = "2. Display", TT_ADAP = "3. Adaptive Filtering";
 
-
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
         noiseFilterControl = new NoiseFilterControl(chip);
@@ -447,26 +446,48 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 resetFilter();
                 break;
             case "sigmaDistPixels":
-                setSigmaDistPixels((int)evt.getNewValue());
+                setSigmaDistPixels((int) evt.getNewValue());
                 break;
             case "correlationTimeS":
-                setCorrelationTimeS((float)evt.getNewValue());
+                setCorrelationTimeS((float) evt.getNewValue());
                 break;
             case "subsampleBy":
-                setSubsampleBy((int)evt.getNewValue());
+                setSubsampleBy((int) evt.getNewValue());
                 break;
             case "adaptiveFilteringEnabled":
-                setAdaptiveFilteringEnabled((boolean)evt.getNewValue());
+                setAdaptiveFilteringEnabled((boolean) evt.getNewValue());
                 break;
             case "filterHotPixels":
-                setFilterHotPixels((boolean)evt.getNewValue());
+                setFilterHotPixels((boolean) evt.getNewValue());
                 break;
             case "letFirstEventThrough":
-                setLetFirstEventThrough((boolean)evt.getNewValue());
+                setLetFirstEventThrough((boolean) evt.getNewValue());
                 break;
         }
     }
     
+    protected int getNumNeighbors(){
+        int n=2*sigmaDistPixels+1;
+        int n2=n*n-1;
+        return n2;
+    }
+
+    /** Computes iteration range for neighborhood */
+    public class NnbRange {
+
+        int x0, x1, y0, y1;
+
+        public NnbRange() {
+        }
+        
+        void compute(final int x, final int y, final int ssx, final int ssy){
+            final int d=sigmaDistPixels;
+            x0 = x < d ? 0 : x - d;
+            y0 = y < d ? 0 : y - d;
+            x1 = x >= ssx - d ? ssx - d : x + d;
+            y1 = y >= ssy - d ? ssy - d : y + d;
+        }
+    }
 
     public class FilteredEventWithNNb {
 

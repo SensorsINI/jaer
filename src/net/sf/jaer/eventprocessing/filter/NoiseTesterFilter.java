@@ -1200,14 +1200,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 final int perline = 4;
                 if (count > 0) {
                     for (int i = 0; i < ids.length; i++) {
-                        if (prob[ids[i]] < 0.01f) {
+                        if (prob[ids[i]] < 0.005f) {
                             break;
                         }
                         if (i % perline == 0) {
                             sb.append(String.format("\n%3d-%3d: ", i, i + perline - 1));
                         }
                         String binstring = String.format("%8s", Integer.toBinaryString(ids[i] & 0xFF)).replace(' ', '0');
-                        sb.append(String.format("%4.2f:%s, ", prob[ids[i]],binstring ));
+                        sb.append(String.format("%4.1f%%:%s, ", 100*prob[ids[i]],binstring ));
                     }
                 }
                     sb.append("\n");
@@ -1311,7 +1311,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         @Override
         public String toString() {
-            return "NNbHistograms{" + "tpHist=" + tpHist + "\n fpHist=" + fpHist + "\n tnHist=" + tnHist + "\n fnHist=" + fnHist + '}';
+            return "NNbHistograms{\n" + "tpHist=" + tpHist + "\n fpHist=" + fpHist + "\n tnHist=" + tnHist + "\n fnHist=" + fnHist + "}\n";
         }
 
     }

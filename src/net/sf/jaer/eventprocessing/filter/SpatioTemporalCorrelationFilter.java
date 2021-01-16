@@ -6,24 +6,17 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.awt.Desktop;
 import java.beans.PropertyChangeEvent;
-import java.io.File;
 import java.util.Arrays;
-import java.util.Observable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.RemoteControlCommand;
-import net.sf.jaer.util.TobiLogger;
 
 /**
  * A BA noise filter derived from BackgroundActivityFilter that only passes
@@ -74,6 +67,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         ssy = sy >> subsampleBy;
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
+        final boolean record = recordFilteredOutEvents; // to speed up loop, maybe
+        final boolean fhp = filterHotPixels;
+        final NnbRange nnbRange = new NnbRange();
         for (Object eIn : in) {
             if (eIn == null) {
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
@@ -83,7 +79,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 continue;
             }
             totalEventCount++;
-            int ts = e.timestamp;
+            final int ts = e.timestamp;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
             if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                 filterOut(e);
@@ -102,30 +98,28 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
             // finally the real denoising starts here
             int ncorrelated = 0;
-            int sigmaDistPixels=getSigmaDistPixels();
-            final int x0 = x < sigmaDistPixels ? 0 : x - sigmaDistPixels, y0 = y < sigmaDistPixels ? 0 : y - sigmaDistPixels;
-            final int x1 = x >= ssx - sigmaDistPixels ? ssx - sigmaDistPixels : x + sigmaDistPixels, y1 = y >= ssy - sigmaDistPixels ? ssy - sigmaDistPixels : y + sigmaDistPixels;
             byte nnb = 0;
-            int bit = 0; 
+            int bit = 0;
+            nnbRange.compute(x, y, ssx, ssy);
             outerloop:
-            for (int xx = x0; xx <= x1; xx++) {
+            for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
                 final int[] col = lastTimesMap[xx];
-                for (int yy = y0; yy <= y1; yy++) {
-                    if (filterHotPixels && xx == x && yy == y) {
+                for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
+                    if (fhp && xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
                     final int lastT = col[yy];
                     final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
-                  
+
                     boolean occupied = false;
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                         ncorrelated++;
                         occupied = true;
-                        if (ncorrelated >= numMustBeCorrelated && !recordFilteredOutEvents) {
+                        if (!record && ncorrelated >= numMustBeCorrelated) {
                             break outerloop; // csn stop checking now
                         }
                     }
-                    if (recordFilteredOutEvents && occupied) {
+                    if (record && occupied) {
                         // nnb bits are like this
                         // 0 3 5
                         // 1 x 6
@@ -135,13 +129,18 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     bit++;
                 }
             }
-            if(nnb==0xff){
-                log.warning("nnb is 0xff");
-            }
-            if (ncorrelated < numMustBeCorrelated) {
-                filterOutWithNNb(e, nnb);
+            if (record) {
+                if (ncorrelated < numMustBeCorrelated) {
+                    filterOutWithNNb(e, nnb);
+                } else {
+                    filterInWithNNb(e, nnb);
+                }
             } else {
-                filterInWithNNb(e, nnb);
+                if (ncorrelated < numMustBeCorrelated) {
+                    filterOut(e);
+                } else {
+                    filterIn(e);
+                }
             }
             lastTimesMap[x][y] = ts;
         }
@@ -227,8 +226,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public void setNumMustBeCorrelated(int numMustBeCorrelated) {
         if (numMustBeCorrelated < 1) {
             numMustBeCorrelated = 1;
-        } else if (numMustBeCorrelated > (2*getSigmaDistPixels()+1)*(2*getSigmaDistPixels()+1)) {
-            numMustBeCorrelated = (2*getSigmaDistPixels()+1)*(2*getSigmaDistPixels()+1);
+        } else if (numMustBeCorrelated > getNumNeighbors()) {
+            numMustBeCorrelated = getNumNeighbors();
         }
         putInt("numMustBeCorrelated", numMustBeCorrelated);
         this.numMustBeCorrelated = numMustBeCorrelated;
