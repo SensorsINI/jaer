@@ -269,6 +269,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     // checks for group container and adds to that if needed.
     private void myadd(MyControl comp, String propertyName, boolean inherited) {
+//        if(propertyControlMap.containsKey(propertyName)){
+//            log.warning("controls already has "+propertyControlMap.get(propertyName));
+//        }
         if (!getFilter().hasPropertyGroups()) {
             ungroupedControls.add(comp);
             controls.add(comp);
@@ -710,7 +713,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public EnumControl(final Class<? extends Enum> c, final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
             filter = f;
             write = w;
             read = r;
@@ -770,7 +773,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public StringControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
             filter = f;
             write = w;
             read = r;
@@ -825,7 +828,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public BooleanControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
             filter = f;
             write = w;
             read = r;
@@ -896,7 +899,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public IntSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
             filter = f;
             write = w;
             read = r;
@@ -984,7 +987,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public FloatSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
             filter = f;
             write = w;
             read = r;
@@ -1047,13 +1050,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
-                tf.setText(b.toString());
+                String s = NumberFormat.getIntegerInstance().format(b);
+                tf.setText(s);
             }
         }
 
         public IntControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
             filter = f;
             write = w;
             read = r;
@@ -1324,13 +1328,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public void set(Object o) {
             if (o instanceof Float) {
                 Float b = (Float) o;
-                tf.setText(b.toString());
+                tf.setText(engFmt.format(b));
             }
         }
 
         public FloatControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
             filter = f;
             write = w;
             read = r;
@@ -1541,13 +1545,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                    final HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                    final HasSetter setter = setterMap.get(getFilter().getClass().getSimpleName()+"."+propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
                             printedSetterWarning = true;
                         }
                     } else {
+//                        log.info("setting "+setter.toString()+" to "+propertyChangeEvent.getNewValue());
                         if (SwingUtilities.isEventDispatchThread()) {
                             setter.set(propertyChangeEvent.getNewValue());
                         } else {
