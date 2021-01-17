@@ -157,7 +157,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_FILT_CONTROL, "selectedNoiseFilterEnum", "Choose a noise filter to test");
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
-        setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>TNs (red) are noise filtered out.<p>FNs (green) are signal filtered out.");
+        setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>TNs (green) are noise filtered out.<p>FNs (red) are signal filtered out.");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
         setPropertyTooltip(TT_DISP, "clearROCHistory", "Clears samples from display.");
     }
@@ -210,10 +210,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, sy * .9f, 0);
+        String overlayString="Overlay ";
+        if(overlayNegatives)
+            overlayString+="negatives: FN (green), TN (red)";
+        if(overlayPositives)
+            overlayString+="positives: TP (green), FP (red)";
+        if((!overlayPositives) && (!overlayNegatives))
+            overlayString+="None";
         if (prerecordedNoise != null) {
-            s = String.format("NTF: Precorded noise from %s", prerecordedNoise.file.getName());
+            s = String.format("NTF: Precorded noise from %s. %s", prerecordedNoise.file.getName(),
+                    overlayString);
         } else {
-            s = String.format("NTF: Synthetic noise: Leak %sHz, Shot %sHz", eng.format(leakNoiseRateHz), eng.format(shotNoiseRateHz));
+            s = String.format("NTF: Synthetic noise: Leak %sHz, Shot %sHz. %s", eng.format(leakNoiseRateHz), eng.format(shotNoiseRateHz),
+                    overlayString);
         }
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
@@ -540,7 +549,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 annotateNoiseFilteringEvents(tpList, fpList);
             }
             if (overlayNegatives) {
-                annotateNoiseFilteringEvents(tnList, fnList);
+                annotateNoiseFilteringEvents(fnList, tnList);
             }
 
             rocHistory.addSample(1 - TNR, TPR, getCorrelationTimeS());
