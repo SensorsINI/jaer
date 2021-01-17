@@ -128,6 +128,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     final protected void filterOut(BasicEvent e) {
         e.setFilteredOut(true);
         filteredOutEventCount++;
+        if (recordFilteredOutEvents) {
+            filteredOutEvents.add(new FilteredEventWithNNb(e));
+        }
     }
 
     /**
@@ -138,6 +141,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     final protected void filterIn(BasicEvent e) {
         e.setFilteredOut(false);
+        if (recordFilteredOutEvents) {
+            filteredInEvents.add(new FilteredEventWithNNb(e));
+        }
     }
 
     /**
