@@ -57,7 +57,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      * in place in the in packet.
      */
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
         if (lastTimesMap == null) {
             allocateMaps(chip);
@@ -70,106 +70,135 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         final boolean record = recordFilteredOutEvents; // to speed up loop, maybe
         final boolean fhp = filterHotPixels;
         final NnbRange nnbRange = new NnbRange();
-        for (Object eIn : in) {
-            if (eIn == null) {
-                break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
-            }
-            BasicEvent e = (BasicEvent) eIn;
-            if (e.isSpecial()) {
-                continue;
-            }
-            totalEventCount++;
-            final int ts = e.timestamp;
-            final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
-            if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
-                filterOut(e);
-                continue;
-            }
-            if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
-                lastTimesMap[x][y] = ts;
-                if (letFirstEventThrough) {
-                    filterIn(e);
+
+        if (record) { // branch here to save a tiny bit if not instrumenting denoising
+            for (BasicEvent e : in) {
+                if (e == null) {
                     continue;
-                } else {
+                }
+                if (e.isSpecial()) {
+                    continue;
+                }
+                totalEventCount++;
+                final int ts = e.timestamp;
+                final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
+                if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                     filterOut(e);
                     continue;
                 }
-            }
-
-            // finally the real denoising starts here
-            int ncorrelated = 0;
-            byte nnb = 0;
-            int bit = 0;
-            nnbRange.compute(x, y, ssx, ssy);
-            outerloop:
-            for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
-                final int[] col = lastTimesMap[xx];
-                for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
-                    if (fhp && xx == x && yy == y) {
-                        continue; // like BAF, don't correlate with ourself
+                if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
+                    lastTimesMap[x][y] = ts;
+                    if (letFirstEventThrough) {
+                        filterIn(e);
+                        continue;
+                    } else {
+                        filterOut(e);
+                        continue;
                     }
-                    final int lastT = col[yy];
-                    final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
-
-                    boolean occupied = false;
-                    if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
-                        ncorrelated++;
-                        occupied = true;
-                        if (!record && ncorrelated >= numMustBeCorrelated) {
-                            break outerloop; // csn stop checking now
-                        }
-                    }
-                    if (record && occupied) {
-                        // nnb bits are like this
-                        // 0 3 5
-                        // 1 x 6
-                        // 2 4 7
-                        nnb |= (0xff & (1 << bit));
-                    }
-                    bit++;
                 }
-            }
-            if (record) {
+
+                // finally the real denoising starts here
+                int ncorrelated = 0;
+                byte nnb = 0;
+                int bit = 0;
+                nnbRange.compute(x, y, ssx, ssy);
+                outerloop:
+                for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
+                    final int[] col = lastTimesMap[xx];
+                    for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
+                        if (fhp && xx == x && yy == y) {
+                            continue; // like BAF, don't correlate with ourself
+                        }
+                        final int lastT = col[yy];
+                        final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
+
+                        boolean occupied = false;
+                        if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                            ncorrelated++;
+                            occupied = true;
+                            if (!record && ncorrelated >= numMustBeCorrelated) {
+                                break outerloop; // csn stop checking now
+                            }
+                        }
+                        if (occupied) {
+                            // nnb bits are like this
+                            // 0 3 5
+                            // 1 x 6
+                            // 2 4 7
+                            nnb |= (0xff & (1 << bit));
+                        }
+                        bit++;
+                    }
+                }
                 if (ncorrelated < numMustBeCorrelated) {
                     filterOutWithNNb(e, nnb);
                 } else {
                     filterInWithNNb(e, nnb);
                 }
-            } else {
+                lastTimesMap[x][y] = ts;
+            }
+        } else { // not keep stats
+            for (BasicEvent e : in) {
+                if (e == null) {
+                    continue;
+                }
+                if (e.isSpecial()) {
+                    continue;
+                }
+                totalEventCount++;
+                final int ts = e.timestamp;
+                final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
+                if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
+                    filterOut(e);
+                    continue;
+                }
+                if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
+                    lastTimesMap[x][y] = ts;
+                    if (letFirstEventThrough) {
+                        filterIn(e);
+                        continue;
+                    } else {
+                        filterOut(e);
+                        continue;
+                    }
+                }
+
+                // finally the real denoising starts here
+                int ncorrelated = 0;
+                nnbRange.compute(x, y, ssx, ssy);
+                outerloop:
+                for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
+                    final int[] col = lastTimesMap[xx];
+                    for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
+                        if (fhp && xx == x && yy == y) {
+                            continue; // like BAF, don't correlate with ourself
+                        }
+                        final int lastT = col[yy];
+                        final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
+
+                        if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                            ncorrelated++;
+                            if (ncorrelated >= numMustBeCorrelated) {
+                                break outerloop; // csn stop checking now
+                            }
+                        }
+                    }
+                }
                 if (ncorrelated < numMustBeCorrelated) {
                     filterOut(e);
                 } else {
                     filterIn(e);
                 }
+                lastTimesMap[x][y] = ts;
             }
-            lastTimesMap[x][y] = ts;
         }
-        getNoiseFilterControl().performControl(in);
+        getNoiseFilterControl().maybePerformControl(in);
         return in;
     }
 
     @Override
-    public void annotate(GLAutoDrawable drawable) {
-        if (!showFilteringStatistics) {
-            return;
-        }
-        findUnusedDawingY();
-        GL2 gl = drawable.getGL().getGL2();
-        gl.glPushMatrix();
-        final GLUT glut = new GLUT();
-        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
-        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
-        String s = null;
-        s = String.format("%s: filtered out %%%6.1f",
-                infoString(),
-                filteredOutPercent);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glPopMatrix();
-    }
-
-    @Override
     public synchronized final void resetFilter() {
+        super.resetFilter();
         log.info("resetting SpatioTemporalCorrelationFilter");
         for (int[] arrayRow : lastTimesMap) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);

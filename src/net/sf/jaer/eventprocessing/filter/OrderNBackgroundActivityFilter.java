@@ -56,18 +56,16 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         int dtUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
 
         for (BasicEvent e : in) {
-            checkAndFilterEvent(e, dtUs);
             totalEventCount++;
-            if (e.isFilteredOut()) {
-                filterOut(e);
-            }
+            checkAndFilterEvent(e, dtUs);
         }
-        getNoiseFilterControl().performControl(in);
+        getNoiseFilterControl().maybePerformControl(in);
         return in;
     }
 
     @Override
     public void resetFilter() {
+        super.resetFilter();
         sx = chip.getSizeX();
         sy = chip.getSizeY();
         if (lastRowTs == null) {
@@ -96,7 +94,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
     private void checkAndFilterEvent(BasicEvent e, int dtUs) {
 
         // check all neighbors to see if there was event around us suffiently recently
-        e.setFilteredOut(true); // by default filter out
+//        e.setFilteredOut(true); // by default filter out  done at end of method
         if (e.x <= 0 || e.y <= 0 || e.x >= sx - 1 || e.y >= sy - 1) {
             // assume all edge events are noise and filter OUT 
             // since we cannot fully check their correlation TODO check is this best possible?

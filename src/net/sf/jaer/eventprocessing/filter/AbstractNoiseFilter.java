@@ -65,8 +65,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * Map from noise filters to drawing positions of noise filtering statistics
      * annotations
      */
-    static protected HashMap<String, Integer> noiseStatDrawingMap = new HashMap();
-    protected int statisticsDrawingPosition = -10; // y coordinate we write ourselves to, start with -10 so we end up at 0 for first one (hack)
+    static protected HashMap<Object, Integer> noiseStatDrawingMap = new HashMap();
     protected final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
     protected int MAX_DT_US = 200000;
     protected int MIN_DT_US = 10;
@@ -126,12 +125,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      *
      * @param e
      */
-    protected void filterOut(BasicEvent e) {
+    final protected void filterOut(BasicEvent e) {
         e.setFilteredOut(true);
         filteredOutEventCount++;
-        if (recordFilteredOutEvents) {
-            filteredOutEvents.add(new FilteredEventWithNNb(e));
-        }
     }
 
     /**
@@ -140,11 +136,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      *
      * @param e
      */
-    protected void filterIn(BasicEvent e) {
+    final protected void filterIn(BasicEvent e) {
         e.setFilteredOut(false);
-        if (recordFilteredOutEvents) {
-            filteredInEvents.add(new FilteredEventWithNNb(e));
-        }
     }
 
     /**
@@ -184,7 +177,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @return
      */
     @Override
-    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         getNegativeEvents().clear();
         filteredOutEventCount = 0;
         totalEventCount = 0;
@@ -217,12 +210,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         if (!showFilteringStatistics) {
             return;
         }
-        findUnusedDawingY();
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
         final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
+        gl.glRasterPos3f(0, getAnnotationRasterYPosition(), 0);
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
         String s = null;
         s = String.format("%s: filtered out %%%6.1f",
@@ -230,19 +222,28 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 filteredOutPercent);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
+
+        noiseFilterControl.annotate(drawable);
     }
 
-    protected void findUnusedDawingY() {
+    protected int getAnnotationRasterYPosition() {
         // find a y posiiton not used yet for us
-        if (noiseStatDrawingMap.get(this.getClass().getSimpleName()) == null) {
-            for (int y : noiseStatDrawingMap.values()) {
-                if (y > statisticsDrawingPosition) {
-                    statisticsDrawingPosition = y;
-                }
-            }
-            statisticsDrawingPosition = statisticsDrawingPosition + 20; // room for 2 lines per filter
-            noiseStatDrawingMap.put(this.getClass().getSimpleName(), statisticsDrawingPosition);
+        String key = this.getClass().getSimpleName();
+        return getAnnotationRasterYPosition(key);
+    }
+
+    protected int getAnnotationRasterYPosition(Object key) {
+        // find a y posiiton not used yet for us
+        if (noiseStatDrawingMap.get(key) != null) {
+            return noiseStatDrawingMap.get(key);
         }
+
+        int statisticsDrawingPosition = 10;
+        for (int y : noiseStatDrawingMap.values()) {
+            statisticsDrawingPosition += 20;
+        }
+        noiseStatDrawingMap.put(key, statisticsDrawingPosition);
+        return statisticsDrawingPosition;
     }
 
     private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: specific to the filter\n";
@@ -465,23 +466,33 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 break;
         }
     }
-    
-    protected int getNumNeighbors(){
-        int n=2*sigmaDistPixels+1;
-        int n2=n*n-1;
+
+    protected int getNumNeighbors() {
+        int n = 2 * sigmaDistPixels + 1;
+        int n2 = n * n - 1;
         return n2;
     }
 
-    /** Computes iteration range for neighborhood */
+    /**
+     * Computes iteration range for neighborhood
+     */
     public class NnbRange {
 
         int x0, x1, y0, y1;
 
         public NnbRange() {
         }
-        
-        void compute(final int x, final int y, final int ssx, final int ssy){
-            final int d=sigmaDistPixels;
+
+        /**
+         * Computes range, fills in the fields
+         *
+         * @param x event location
+         * @param y
+         * @param ssx subsampling array size
+         * @param ssy
+         */
+        void compute(final int x, final int y, final int ssx, final int ssy) {
+            final int d = sigmaDistPixels;
             x0 = x < d ? 0 : x - d;
             y0 = y < d ? 0 : y - d;
             x1 = x >= ssx - d ? ssx - d : x + d;
@@ -521,11 +532,12 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
         private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", 1f);
         private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .5f);
-        private float dtChangeFraction = getFloat("dtChangeFraction", 0.01f);
+        private float dtChangeFraction = getFloat("dtChangeFraction", 0.05f);
         private TobiLogger tobiLogger = null;
         private final float LOG2_FACTOR = (float) (1 / Math.log(2));
         private float controlIntervalS = getFloat("controlIntervalS", 0.1f);
-        private int lastControlActionTimestamp = Integer.MIN_VALUE, nextControlActionTimestep = lastControlActionTimestamp + (int) (1e6f * controlIntervalS);
+        private int lastControlActionTimestamp = Integer.MIN_VALUE, nextControlActionTimestep = lastControlActionTimestamp + (int) (1e6f * controlIntervalS), lastInputPacketTimestamp = Integer.MIN_VALUE;
+        private boolean performControlOnNextPacket = false; // flag marked true when input packet last timestep is past the lastControlActionTimestamp
 
         public NoiseFilterControl(AEChip chip) {
             super(chip);
@@ -580,22 +592,32 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 return in;
             }
             for (BasicEvent e : in) {
-                processInputEvent(e);
+                processInputEvent(e); // fill activity histograms of before denoising
             }
+            lastInputPacketTimestamp = in.getLastTimestamp(); // save it because filtered packet might not have it
 
-            float lastTau = getCorrelationTimeS();
-            resetActivityHistograms();
+            if (lastInputPacketTimestamp > nextControlActionTimestep) {
+                performControlOnNextPacket = true;
+                nextControlActionTimestep = lastControlActionTimestamp + (int) (1e6f * controlIntervalS);
+            } else {
+                performControlOnNextPacket = false;
+            }
 
             return in;
         }
 
-        protected void performControl(EventPacket<? extends BasicEvent> in) {
+        protected void maybePerformControl(EventPacket<? extends BasicEvent> in) {
             if (!adaptiveFilteringEnabled) {
                 return;
             }
             for (BasicEvent e : in) {
-                processOutputEvent(e);
+                processOutputEvent(e); // record activity into after-denoising histgram
             }
+
+            if (!performControlOnNextPacket) {
+                return;
+            }
+
             // compute entropies of activities in input and filtered activity histograms
             int sumInput = 0;
             for (int[] i : activityHistInput) {
@@ -638,11 +660,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
             if (entropyReduction > entropyReductionHighLimit) {
                 float newdt = (olddt * (1 + dtChangeFraction));
                 setCorrelationTimeS(newdt); // increase dt to force less correlation
-
+                log.info(String.format("entropy reduced too much, increased dt from %ss to %ss", eng.format(olddt), eng.format(newdt)));
             } else if (entropyReduction < entropyReductionLowLimit) {
                 float newdt = (olddt * (1 - dtChangeFraction));
                 setCorrelationTimeS(newdt); // decrease dt to force more correlation
-
+                log.info(String.format("entropy not reduced enough, decreased dt from %ss to %ss", eng.format(olddt), eng.format(newdt)));
             }
             if (tobiLogger != null && tobiLogger.isEnabled()) { // record control action for paper experiments
                 float syntheticNoiseRateHzPerPixel = Float.NaN;
@@ -653,28 +675,25 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 String s = String.format("%d,%f,%f,%f,%f,%f,%f,%g,%g", in.getLastTimestamp(), syntheticNoiseRateHzPerPixel, entropyReductionLowLimit, entropyReductionHighLimit, entropyInput, entropyFiltered, entropyReduction, olddt, getCorrelationTimeS());
                 tobiLogger.log(s);
             }
+            lastControlActionTimestamp = lastInputPacketTimestamp;
+            nextControlActionTimestep = lastControlActionTimestamp + (int) (1e6f * controlIntervalS);
+            resetActivityHistograms();
+
         }
 
         public void annotate(GLAutoDrawable drawable) {
-            if (!showFilteringStatistics) {
+            if (!showFilteringStatistics || !adaptiveFilteringEnabled) {
                 return;
             }
-            findUnusedDawingY();
             GL2 gl = drawable.getGL().getGL2();
             gl.glPushMatrix();
             final GLUT glut = new GLUT();
             gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-            gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
+            gl.glRasterPos3f(0, getAnnotationRasterYPosition("NoiseFilterControl"), 0);
             final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
             String s = null;
-            if (adaptiveFilteringEnabled) {
-                s = String.format("%s: dt=%.1fms filOut=%%%.1f entropy bef/aft/reduc=%.1f/%.1f/%.1f",
-                        infoString(), getCorrelationTimeS() * 1e-3f, filteredOutPercent, entropyInput, entropyFiltered, entropyReduction);
-            } else {
-                s = String.format("%s: filtered out %%%6.1f",
-                        infoString(),
-                        filteredOutPercent);
-            }
+            s = String.format("%s: dt=%.1fms filOut=%%%.1f entropy bef/aft/reduc=%.1f/%.1f/%.1f",
+                    infoString(), getCorrelationTimeS() * 1e-3f, filteredOutPercent, entropyInput, entropyFiltered, entropyReduction);
             glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
             gl.glPopMatrix();
         }
@@ -779,6 +798,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         @Override
         public void resetFilter() {
             lastControlActionTimestamp = Integer.MIN_VALUE;
+            lastInputPacketTimestamp = Integer.MIN_VALUE;
             nextControlActionTimestep = lastControlActionTimestamp + (int) (1e6f * controlIntervalS);
         }
 

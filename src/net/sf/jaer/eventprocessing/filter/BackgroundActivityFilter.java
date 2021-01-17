@@ -27,8 +27,6 @@ import net.sf.jaer.util.RemoteControlCommand;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
-
- 
     private int sx;
     private int sy;
 
@@ -37,7 +35,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
     public BackgroundActivityFilter(AEChip chip) {
         super(chip);
-   }
+    }
 
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
@@ -48,20 +46,19 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
      * in place in the in packet.
      */
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
         if (lastTimesMap == null) {
             allocateMaps(chip);
         }
 
-        int dt=(int)Math.round(getCorrelationTimeS()*1e6f);
-         // for each event only keep it if it is within dt of the last time
+        int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
+        // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
-        for (Object eIn : in) {
-            if (eIn == null) {
-                break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
+        for (BasicEvent e : in) {
+            if (e == null) {
+                continue;
             }
-            BasicEvent e = (BasicEvent) eIn;
             if (e.isSpecial()) {
                 continue;
             }
@@ -105,17 +102,18 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             }
             if (ncorrelated < numMustBeCorrelated) {
                 filterOut(e);
-            }else{
+            } else {
                 filterIn(e);
             }
             lastTimesMap[x][y] = ts;
         }
-        getNoiseFilterControl().performControl(in);
+        getNoiseFilterControl().maybePerformControl(in);
         return in;
     }
 
     @Override
     public synchronized final void resetFilter() {
+        super.resetFilter();
         log.info("resetting BackgroundActivityFilter");
         for (int[] arrayRow : lastTimesMap) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
@@ -145,10 +143,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         return lastTimesMap;
     }
 
-
-    
-
-     private String USAGE = "BackgroundFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx subsample xx\n";
+    private String USAGE = "BackgroundFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx subsample xx\n";
 
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
@@ -162,7 +157,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             if ((tok.length - 1) % 2 == 0) {
                 for (int i = 1; i < tok.length; i++) {
                     if (tok[i].equals("dt")) {
-                        setCorrelationTimeS(1e-6f*Integer.parseInt(tok[i + 1]));
+                        setCorrelationTimeS(1e-6f * Integer.parseInt(tok[i + 1]));
                     }
                     if (tok[i].equals("subsample")) {
                         setSubsampleBy(Integer.parseInt(tok[i + 1]));

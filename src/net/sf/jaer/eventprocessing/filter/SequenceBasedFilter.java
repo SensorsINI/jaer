@@ -42,15 +42,6 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.RemoteControlCommand;
 
 /**
- * An filter that filters out noise according to Shasha Guo method 2020.
- *
- * @author Shssha Guo, tobi
- */
-@Description("FWF/DFWF Fixed Window and Double Fixed Window filter that Filters out uncorrelated background activity noise according to "
-        + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually 2 or 4 is enough, and requires negligible memory cost.")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-
-/**
  * WF/DFWF Fixed Window and Double Fixed Window filter that Filters out
  * uncorrelated background activity noise according to spatio-temporal
  * correlation but with a past event window. The past event window stores the
@@ -59,6 +50,9 @@ import net.sf.jaer.util.RemoteControlCommand;
  *
  * @author Shssha Guo
  */
+@Description("FWF/DFWF Fixed Window and Double Fixed Window filter that Filters out uncorrelated background activity noise according to "
+        + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually 2 or 4 is enough, and requires negligible memory cost.")
+@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class SequenceBasedFilter extends AbstractNoiseFilter  {
 
     /**
@@ -236,13 +230,14 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
                 lastREvents[wlen - 1][1] = e.y;
             }
         }
-        getNoiseFilterControl().performControl(in);
+        getNoiseFilterControl().maybePerformControl(in);
 
         return in;
     }
 
     @Override
     public synchronized final void resetFilter() {
+        super.resetFilter();
         frameid = 0;
     }
 

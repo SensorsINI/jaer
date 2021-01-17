@@ -204,7 +204,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10));
         }
         final GLUT glut = new GLUT();
-        findUnusedDawingY();
+        
         GL2 gl = drawable.getGL().getGL2();
         rocHistory.draw(gl);
         gl.glPushMatrix();
@@ -216,15 +216,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             s = String.format("NTF: Synthetic noise: Leak %sHz, Shot %sHz", eng.format(leakNoiseRateHz), eng.format(shotNoiseRateHz));
         }
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
+        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
         s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glRasterPos3f(0, statisticsDrawingPosition + 10, 0);
+        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
         s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
 
-        nnbHistograms.draw(gl);
+//        nnbHistograms.draw(gl);  shows neighbor distributions, not informative
     }
 
     private void annotateNoiseFilteringEvents(ArrayList<FilteredEventWithNNb> outSig, ArrayList<FilteredEventWithNNb> outNoise) {
@@ -1393,7 +1393,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 int NLEG = 8;
                 legendROCs = new ROCSample[NLEG];
                 for (int i = 0; i < NLEG; i++) {
-                    ROCSample r = createAbsolutePosition(sx + 5, i * 15 + 20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
+                    ROCSample r = createAbsolutePosition(sx + 5, i * 12 + 20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
                     legendROCs[i] = r;
                 }
                 legendDisplayListId = gl.glGenLists(1);

@@ -62,7 +62,7 @@ public class MedianDtFilter extends AbstractNoiseFilter {
      * in place in the in packet.
      */
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    synchronized public EventPacket filterPacket(EventPacket in)     {
         super.filterPacket(in);
         if (lastTimesMap == null) {
             allocateMaps(chip);
@@ -127,33 +127,15 @@ public class MedianDtFilter extends AbstractNoiseFilter {
             }
             lastTimesMap[x][y] = ts;
         }
-        getNoiseFilterControl().performControl(in);
+        getNoiseFilterControl().maybePerformControl(in);
         return in;
     }
 
-    @Override
-    public void annotate(GLAutoDrawable drawable) {
-        if (!showFilteringStatistics) {
-            return;
-        }
-        findUnusedDawingY();
-        GL2 gl = drawable.getGL().getGL2();
-        gl.glPushMatrix();
-        final GLUT glut = new GLUT();
-        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, statisticsDrawingPosition, 0);
-        final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
-        String s = null;
-        s = String.format("%s: filtered out %%%6.1f",
-                infoString(),
-                filteredOutPercent);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glPopMatrix();
-    }
-
+  
     @Override
     public synchronized final void resetFilter() {
-        for (int[] arrayRow : lastTimesMap) {
+       super.resetFilter();
+         for (int[] arrayRow : lastTimesMap) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
         Arrays.fill(nnbDts, DEFAULT_TIMESTAMP);
