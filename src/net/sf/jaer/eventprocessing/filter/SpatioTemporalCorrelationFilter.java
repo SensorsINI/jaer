@@ -33,6 +33,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     private int numMustBeCorrelated = getInt("numMustBeCorrelated", 5);
+    protected boolean favorLines = getBoolean("favorLines", false);
 
     private int sx; // size of chip minus 1
     private int sy;
@@ -45,6 +46,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
+        setPropertyTooltip(TT_FILT_CONTROL, "favorLines", "add condition that events in 8-NNb must lie along line crossing pixel to pass");
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
@@ -133,10 +135,17 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 if (ncorrelated < numMustBeCorrelated) {
                     filterOutWithNNb(e, nnb);
                 } else {
-                    filterInWithNNb(e, nnb);
+                    if (!favorLines) {
+                        filterInWithNNb(e, nnb);
+                    } else {
+                        // only pass events that exactly form line with current pixel, at 45 degrees on 8 NNbs
+                        if ((nnb & 0x81) == 0x81 || (nnb & 0x18) == 0x18 || (nnb & 0x24) == 0x24 || (nnb & 0x42) == 0x42) {
+                            filterInWithNNb(e, nnb);
+                        }
+                    }
                 }
                 lastTimesMap[x][y] = ts;
-            }
+            } // event packet loop
         } else { // not keep stats
             for (BasicEvent e : in) {
                 if (e == null) {
@@ -306,6 +315,21 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public String infoString() {
         String s = super.infoString() + " k=" + numMustBeCorrelated;
         return s;
+    }
+
+    /**
+     * @return the favorLines
+     */
+    public boolean isFavorLines() {
+        return favorLines;
+    }
+
+    /**
+     * @param favorLines the favorLines to set
+     */
+    public void setFavorLines(boolean favorLines) {
+        this.favorLines = favorLines;
+        putBoolean("favorLines", favorLines);
     }
 
 }
