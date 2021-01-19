@@ -67,7 +67,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     static protected HashMap<Object, Integer> noiseStatDrawingMap = new HashMap();
     protected final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
-    protected int MAX_DT_US = 200000;
+    protected int MAX_DT_US = 200000000;
     protected int MIN_DT_US = 10;
 
     /**
