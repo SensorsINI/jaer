@@ -296,7 +296,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 for (int i = 1; i < tok.length; i++) {
                     if (tok[i].equals("dt")) {
                         setCorrelationTimeS(1e-6f * Integer.parseInt(tok[i + 1]));
-                    } else if (tok[i].equals("numMustBeCorrelated")) {
+                    } else if (tok[i].equals("num")) {
                         setNumMustBeCorrelated(Integer.parseInt(tok[i + 1]));
                     }
                 }

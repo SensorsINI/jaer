@@ -930,6 +930,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 } else if (tok[i].equals("leakNoiseRateHz")) {
                     setLeakNoiseRateHz(Float.parseFloat(tok[i + 1]));
                     log.info(String.format("setLeakNoiseRateHz %f", leakNoiseRateHz));
+                } else if (tok[i].equals("closeFile")) {
+                    doCloseCsvFile();
+                    log.info(String.format("closeFile %s", csvFileName));
                 }
             }
             log.info("Received Command:" + input);
