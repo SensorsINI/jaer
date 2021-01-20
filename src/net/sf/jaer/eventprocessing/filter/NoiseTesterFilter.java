@@ -1348,7 +1348,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             float x, y, tau;
             boolean labeled = false;
-            final int SIZE = 5; // chip pixels
+            final int SIZE = 2; // chip pixels
 
             private ROCSample(float x, float y, float tau, boolean labeled) {
                 this.x = x;
@@ -1358,12 +1358,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
 
             private void draw(GL2 gl) {
-                gl.glLineWidth(2);
                 float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
                 Color c = Color.getHSBColor(hue, 1f, hue);
                 float[] rgb = c.getRGBComponents(null);
                 gl.glColor3fv(rgb, 0);
-                gl.glLineWidth(2);
+                gl.glLineWidth(1);
                 gl.glPushMatrix();
                 DrawGL.drawBox(gl, x, y, SIZE, SIZE, 0);
                 gl.glPopMatrix();
