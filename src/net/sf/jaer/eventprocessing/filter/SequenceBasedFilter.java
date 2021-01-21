@@ -53,7 +53,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 @Description("FWF/DFWF Fixed Window and Double Fixed Window filter that Filters out uncorrelated background activity noise according to "
         + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually 2 or 4 is enough, and requires negligible memory cost.")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
-public class SequenceBasedFilter extends AbstractNoiseFilter  {
+public class SequenceBasedFilter extends AbstractNoiseFilter {
 
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
@@ -114,9 +114,9 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
 
     public SequenceBasedFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltip(TT_FILT_CONTROL,"wlen", "window length");
-        setPropertyTooltip(TT_FILT_CONTROL,"useDoubleMode", "use two separate windows for storing real and noise events");
-        setPropertyTooltip(TT_FILT_CONTROL,"disThr", "threshold for distance comparison, if too noise, make this smaller, if too little events, make this larger");
+        setPropertyTooltip(TT_FILT_CONTROL, "wlen", "window length");
+        setPropertyTooltip(TT_FILT_CONTROL, "useDoubleMode", "use two separate windows for storing real and noise events");
+        setPropertyTooltip(TT_FILT_CONTROL, "disThr", "threshold for distance comparison, if too noise, make this smaller, if too little events, make this larger");
     }
 
     /**
@@ -128,17 +128,16 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
      * in place in the in packet.
      */
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    synchronized public EventPacket filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
 
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
-        for (Object eIn : in) {
-            if (eIn == null) {
+        for (BasicEvent e : in) {
+            if (e == null) {
                 frameid = 0;
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
-            BasicEvent e = (BasicEvent) eIn;
             if (e.isSpecial()) {
                 continue;
             }
@@ -166,7 +165,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
                 }
                 int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
                 int mindisvalue = disarray[minindex];
-                int noiseflag = 0;
+                boolean noiseflag = false;
 
 //                if events in real window do not support correlation, check noise window
 //                the reason to check noise window is that there might be real events 
@@ -180,16 +179,16 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
                     mindisvalue = disarray[minindex];
 
                     if (mindisvalue > disThr) {
-                        filterOut(e);
-                        noiseflag = 1;
+                        noiseflag = true;
 
                     } else {
-                        noiseflag = 0;
+                        noiseflag = false;
                     }
                 }
 
 //            update real window or noise window based on the output of filter
-                if (noiseflag == 0) {
+                if (noiseflag == false) {
+                    filterIn(e);
                     for (int i = 0; i < wlen - 1; i++) {
 
                         lastREvents[i][0] = lastREvents[i + 1][0];
@@ -198,6 +197,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
                     lastREvents[wlen - 1][0] = e.x;
                     lastREvents[wlen - 1][1] = e.y;
                 } else {
+                    filterOut(e);
                     for (int i = 0; i < wlen - 1; i++) {
 
                         lastNEvents[i][0] = lastNEvents[i + 1][0];
@@ -219,6 +219,8 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
 
                 if (mindisvalue > disThr) {
                     filterOut(e);
+                } else {
+                    filterIn(e);
                 }
 
 //                update window
@@ -414,20 +416,22 @@ public class SequenceBasedFilter extends AbstractNoiseFilter  {
 
     @Override
     public String infoString() {
-        String s=getUseDoubleMode()==0?"FWF":"DFWF";
-        s=s+": L="+wlen+" sigma="+eng.format(disThr);
+        String s = getUseDoubleMode() == 0 ? "FWF" : "DFWF";
+        s = s + ": L=" + wlen + " sigma=" + eng.format(disThr);
         return s;
     }
 
-    private static int printedCorrelationTimeWarning=5;
-    
-    /** Overridden to set L according to recent activity to some correlation time */
+    private static int printedCorrelationTimeWarning = 5;
+
+    /**
+     * Overridden to set L according to recent activity to some correlation time
+     */
     @Override
     public void setCorrelationTimeS(float dtS) {
-        if(printedCorrelationTimeWarning>0){
+        if (printedCorrelationTimeWarning > 0) {
             log.warning("Setting correlation time currently has no effect");
             printedCorrelationTimeWarning--;
         }
     }
-    
+
 }
