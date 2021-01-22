@@ -83,11 +83,12 @@ public class SequenceBasedFilter extends AbstractNoiseFilter {
     private int basicThr = 0;
 
     private int wlen = getInt("wlen", 2); // window length
+    private int wlen2 = 1;
     private short[][] lastREvents;// real window;
     private short[][] lastNEvents;// noise window;
 
     private int disThr = getInt("disThr", 10);
-    private int useDoubleMode = getInt("useDoubleMode", 0);
+    private boolean useDoubleMode = getBoolean("useDoubleMode", false);
     private int fillindex = 0;
 
     /// beamforming
@@ -156,8 +157,9 @@ public class SequenceBasedFilter extends AbstractNoiseFilter {
                 fillindex = fillindex + 1;
                 continue;
             }
+            
 
-            if (useDoubleMode == 1) {
+            if (useDoubleMode) {
 //                check real window first 
                 int[] disarray = new int[wlen];
                 for (int i = 0; i < wlen; i++) {
@@ -208,7 +210,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter {
                 }
             }
 
-            if (useDoubleMode == 0) {
+            else {
 //                only use lastREvents to store the past events
                 int[] disarray = new int[wlen];
                 for (int i = 0; i < wlen; i++) {
@@ -258,7 +260,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter {
         for (short[] arrayRow : lastREvents) {
             Arrays.fill(arrayRow, (short) -1);
         }
-        if (useDoubleMode == 1) {
+        if (useDoubleMode) {
             for (short[] arrayRow : lastNEvents) {
                 Arrays.fill(arrayRow, (short) -1);
             }
@@ -318,19 +320,25 @@ public class SequenceBasedFilter extends AbstractNoiseFilter {
      */
     synchronized public void setWLen(int wlen) {
         int setValue = wlen;
+        if (this.useDoubleMode){
+            setValue = (int) wlen/2;
+        }
         if (setValue < 1) {
             setValue = 1;
         }
+        this.wlen = setValue;
+        log.info(String.format("wlen is%d\n", this.wlen));
+        
         putInt("wlen", setValue);
         getSupport().firePropertyChange("wlen", this.wlen, setValue);
-        this.wlen = setValue;
+        
         allocateMaps();
     }
 
     /**
      * @return the useDoubleMode
      */
-    public int getUseDoubleMode() {
+    public boolean isUseDoubleMode() {
         return useDoubleMode;
     }
 
@@ -340,10 +348,13 @@ public class SequenceBasedFilter extends AbstractNoiseFilter {
      *
      * @param wlen the useDoubleMode to set
      */
-    public void setUseDoubleMode(int useDoubleMode) {
-        putInt("useDoubleMode", useDoubleMode);
+    public void setUseDoubleMode(boolean useDoubleMode) {
+        int wlenchangevalue = useDoubleMode ? this.wlen: this.wlen *2;
+        putBoolean("useDoubleMode", useDoubleMode);
         getSupport().firePropertyChange("useDoubleMode", this.useDoubleMode, useDoubleMode);
         this.useDoubleMode = useDoubleMode;
+        setWLen(wlenchangevalue);
+        
 
     }
 
@@ -416,7 +427,7 @@ public class SequenceBasedFilter extends AbstractNoiseFilter {
 
     @Override
     public String infoString() {
-        String s = getUseDoubleMode() == 0 ? "FWF" : "DFWF";
+        String s = isUseDoubleMode()? "DWF" : "FWF";
         s = s + ": L=" + wlen + " sigma=" + eng.format(disThr);
         return s;
     }
