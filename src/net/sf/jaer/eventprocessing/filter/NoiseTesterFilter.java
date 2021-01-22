@@ -204,19 +204,22 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10));
         }
         final GLUT glut = new GLUT();
-        
+
         GL2 gl = drawable.getGL().getGL2();
         rocHistory.draw(gl);
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, sy * .9f, 0);
-        String overlayString="Overlay ";
-        if(overlayNegatives)
-            overlayString+="negatives: FN (green), TN (red)";
-        if(overlayPositives)
-            overlayString+="positives: TP (green), FP (red)";
-        if((!overlayPositives) && (!overlayNegatives))
-            overlayString+="None";
+        String overlayString = "Overlay ";
+        if (overlayNegatives) {
+            overlayString += "negatives: FN (green), TN (red)";
+        }
+        if (overlayPositives) {
+            overlayString += "positives: TP (green), FP (red)";
+        }
+        if ((!overlayPositives) && (!overlayNegatives)) {
+            overlayString += "None";
+        }
         if (prerecordedNoise != null) {
             s = String.format("NTF: Precorded noise from %s. %s", prerecordedNoise.file.getName(),
                     overlayString);
@@ -1219,10 +1222,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             sb.append(String.format("\n%3d-%3d: ", i, i + perline - 1));
                         }
                         String binstring = String.format("%8s", Integer.toBinaryString(ids[i] & 0xFF)).replace(' ', '0');
-                        sb.append(String.format("%4.1f%%:%s, ", 100*prob[ids[i]],binstring ));
+                        sb.append(String.format("%4.1f%%:%s, ", 100 * prob[ids[i]], binstring));
                     }
                 }
-                    sb.append("\n");
+                sb.append("\n");
 //                log.info(sb.toString());
 //                float[] sortedProb = Arrays.copyOf(prob, 0);
 //                Arrays.sort(sortedProb);
@@ -1425,7 +1428,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // draw axes
             gl.glPushMatrix();
             gl.glColor4f(.8f, .8f, .2f, .5f); // must set color before raster position (raster position is like glVertex)
-            gl.glLineWidth(4);
+            gl.glLineWidth(2);
             gl.glBegin(GL.GL_LINE_STRIP);
             gl.glVertex2f(0, sy);
             gl.glVertex2f(0, 0);
@@ -1445,12 +1448,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 rocSample.draw((gl));
             }
             // draw X at TPR / TNR point
-            gl.glPushMatrix();
-            gl.glColor3f(.8f, .8f, .2f); // must set color before raster position (raster position is like glVertex)
             int L = 12;
-            gl.glLineWidth(4);
+            gl.glColor4f(.8f, .8f, .2f, .5f); // must set color before raster position (raster position is like glVertex)
+            gl.glLineWidth(6);
             float x = (1 - TNR) * sx;
             float y = TPR * sy;
+            gl.glPushMatrix();
             DrawGL.drawCross(gl, x, y, L, 0);
             gl.glPopMatrix();
             if (rocHistoryLength > 1) {
