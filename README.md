@@ -9,7 +9,9 @@ Java tools for Address-Event Representation (AER) neuromorphic processing.
 Real time sensory-motor processing for event-based sensors and systems**
 
 Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.uzh.ch). 
-  ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
+#### What jAER feels like to use
+
+![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
 ## Download
 
