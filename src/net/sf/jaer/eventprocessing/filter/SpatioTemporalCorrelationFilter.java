@@ -118,9 +118,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                         if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                             ncorrelated++;
                             occupied = true;
-                            if (!record && ncorrelated >= numMustBeCorrelated) {
-                                break outerloop; // csn stop checking now
-                            }
                         }
                         if (occupied) {
                             // nnb bits are like this
@@ -138,7 +135,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     if (!favorLines) {
                         filterInWithNNb(e, nnb);
                     } else {
-                        // only pass events that exactly form line with current pixel, at 45 degrees on 8 NNbs
+                        // only pass events that have bits set that form line with current pixel, at 45 degrees on 8 NNbs
                         if ((nnb & 0x81) == 0x81 || (nnb & 0x18) == 0x18 || (nnb & 0x24) == 0x24 || (nnb & 0x42) == 0x42) {
                             filterInWithNNb(e, nnb);
                         }
@@ -155,7 +152,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     continue;
                 }
                 totalEventCount++;
-                final int ts = e.timestamp;
                 final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
                 if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                     filterOut(e);
