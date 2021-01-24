@@ -737,7 +737,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                Class cl=Class.forName(en.va);
 //                
 //            }
-            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new SequenceBasedFilter(chip), new OrderNBackgroundActivityFilter((chip)), new MedianDtFilter(chip)};
+            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new DoubleWindowFilter(chip), new OrderNBackgroundActivityFilter((chip)), new MedianDtFilter(chip)};
             for (AbstractNoiseFilter n : noiseFilters) {
                 n.initFilter();
                 chain.add(n);
