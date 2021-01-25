@@ -135,7 +135,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private NNbHistograms nnbHistograms = new NNbHistograms(); // tracks stats of neighbors to events when they are filtered in or out
 
     public enum NoiseFilterEnum {
-        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, SequenceBasedFilter, OrderNBackgroundActivityFilter, MedianDtFilter
+        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter
     }
     private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
 
