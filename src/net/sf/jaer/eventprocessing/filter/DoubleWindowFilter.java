@@ -96,7 +96,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
 
     public DoubleWindowFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltip(TT_FILT_CONTROL, "wlen", "window lengt for holding previous events");
+        setPropertyTooltip(TT_FILT_CONTROL, "wlen", "total window length for holding previous events. If doubleMode selected, this window is split into signal and noise windows");
         setPropertyTooltip(TT_FILT_CONTROL, "useDoubleMode", "use two separate windows for storing real and noise events");
         setPropertyTooltip(TT_FILT_CONTROL, "disThr", "threshold for distance comparison, if too noisy, make this smaller, if too few events, make this larger");
     }
@@ -141,9 +141,10 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
             
 
             if (useDoubleMode) {
+                int dwlen=wlen>1?wlen/2:1;
 //                check real window first 
-                int[] disarray = new int[wlen];
-                for (int i = 0; i < wlen; i++) {
+                int[] disarray = new int[dwlen];
+                for (int i = 0; i < dwlen; i++) {
                     disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
                 }
                 int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
@@ -155,7 +156,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
 //                        that are caused due to objects beginning moving in a different area and 
 //                        far away from current real events
                 if (mindisvalue > disThr) {
-                    for (int i = 0; i < wlen; i++) {
+                    for (int i = 0; i < dwlen; i++) {
                         disarray[i] = (Math.abs(e.x - lastNEvents[i][0])) + (Math.abs(e.y - lastNEvents[i][1]));
                     }
                     minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
@@ -172,26 +173,24 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
 //            update real window or noise window based on the output of filter
                 if (noiseflag == false) {
                     filterIn(e);
-                    for (int i = 0; i < wlen - 1; i++) {
+                    for (int i = 0; i < dwlen - 1; i++) {
 
                         lastREvents[i][0] = lastREvents[i + 1][0];
                         lastREvents[i][1] = lastREvents[i + 1][1];
                     }
-                    lastREvents[wlen - 1][0] = e.x;
-                    lastREvents[wlen - 1][1] = e.y;
+                    lastREvents[dwlen - 1][0] = e.x;
+                    lastREvents[dwlen - 1][1] = e.y;
                 } else {
                     filterOut(e);
-                    for (int i = 0; i < wlen - 1; i++) {
+                    for (int i = 0; i < dwlen - 1; i++) {
 
                         lastNEvents[i][0] = lastNEvents[i + 1][0];
                         lastNEvents[i][1] = lastNEvents[i + 1][1];
                     }
-                    lastNEvents[wlen - 1][0] = e.x;
-                    lastNEvents[wlen - 1][1] = e.y;
+                    lastNEvents[dwlen - 1][0] = e.x;
+                    lastNEvents[dwlen - 1][1] = e.y;
                 }
-            }
-
-            else {
+            } else { // fwf, single window
 //                only use lastREvents to store the past events
                 int[] disarray = new int[wlen];
                 for (int i = 0; i < wlen; i++) {
@@ -301,9 +300,6 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
      */
     synchronized public void setWLen(int wlen) {
         int setValue = wlen;
-        if (this.useDoubleMode){
-            setValue = (int) wlen/2;
-        }
         if (setValue < 1) {
             setValue = 1;
         }
@@ -330,13 +326,9 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
      * @param wlen the useDoubleMode to set
      */
     public void setUseDoubleMode(boolean useDoubleMode) {
-        int wlenchangevalue = useDoubleMode ? this.wlen: this.wlen *2;
         putBoolean("useDoubleMode", useDoubleMode);
         getSupport().firePropertyChange("useDoubleMode", this.useDoubleMode, useDoubleMode);
         this.useDoubleMode = useDoubleMode;
-        setWLen(wlenchangevalue);
-        
-
     }
 
     /**
