@@ -81,7 +81,7 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
  *          encoded video. <br>
  *          1.0 2008-08-11 Created.
  */
-public class AVIOutputStream {
+public class AVIOutputStream implements VideoFrameWriterInterface {
 
 	/**
 	 * Underlying output stream.

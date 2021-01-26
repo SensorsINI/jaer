@@ -125,7 +125,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         super.filterPacket(in);
@@ -163,12 +163,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
                 dvsFrame.normalizeFrame();
                 maybeShowOutput(dvsFrame);
-                if (isWriteDvsFrames() && (getAviOutputStream() != null) && isWriteEnabled()) {
+                if (isWriteDvsFrames() && (getVideoOutputStream() != null) && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsFrame);
                     try {
                         writeTimecode(e.timestamp);
                         writeTargetLocation(e.timestamp, framesWritten);
-                        getAviOutputStream().writeFrame(bi);
+                        getVideoOutputStream().writeFrame(bi);
                         incrementFramecountAndMaybeCloseOutput();
                     } catch (IOException ex) {
                         doFinishRecording();
@@ -230,7 +230,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             "compressionQuality=" + compressionQuality
         };
         setAdditionalComments(s);
-        if (getAviOutputStream() != null) {
+        if (getVideoOutputStream() != null) {
             JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
             return;
         }
@@ -266,7 +266,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
         lastFile = c.getSelectedFile();
-        setAviOutputStream(openAVIOutputStream(c.getSelectedFile(), getAdditionalComments()));
+        setVideoOutputStream(openVideoOutputStream(c.getSelectedFile(), getAdditionalComments()));
         openEventsTextFile(c.getSelectedFile(), getAdditionalComments());
         openTargetLabelsFile(c.getSelectedFile(), getAdditionalComments());
         if (isRewindBeforeRecording()) {
@@ -851,7 +851,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             writer.setMaxFrames(0);
         }
 
-        writer.openAVIOutputStream(outfile, args);
+        writer.openVideoOutputStream(outfile, args);
         int lastNumFramesWritten = 0, numPrinted = 0;
 
         try {

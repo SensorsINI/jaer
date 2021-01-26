@@ -53,6 +53,8 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.avioutput.AVIOutputStream;
 import net.sf.jaer.util.avioutput.DvsSliceAviWriter;
+import net.sf.jaer.util.avioutput.VideoFrameWriterInterface;
+import org.openni.VideoFrameRef;
 
 /**
  * Incremental Roshambo learning demo
@@ -247,8 +249,8 @@ public class RoShamBoIncremental extends RoShamBoCNN {
 
     private void openSymbolFileAndStartRecording(String prefix) {
         log.info("recording samples");
-        AVIOutputStream os=aviWriter.openAVIOutputStream(lastSymbolsPath.resolve(prefix + ".avi").toFile(), new String[]{"# " + prefix});
-        aviWriter.setAviOutputStream(os);
+        VideoFrameWriterInterface os=aviWriter.openVideoOutputStream(lastSymbolsPath.resolve(prefix + ".avi").toFile(), new String[]{"# " + prefix});
+        aviWriter.setVideoOutputStream(os);
     }
 
     public void doToggleOnSampleNewClass() {

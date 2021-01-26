@@ -100,7 +100,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
             int timestamp = renderer.getTimestampFrameEnd();
             writeFrame(bufferedImage, timestamp);
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            if (!ignoreRewinwdEventFlag && closeOnRewind && getAviOutputStream() != null) {
+            if (!ignoreRewinwdEventFlag && closeOnRewind && getVideoOutputStream() != null) {
                 doFinishRecording();
                 JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
             }

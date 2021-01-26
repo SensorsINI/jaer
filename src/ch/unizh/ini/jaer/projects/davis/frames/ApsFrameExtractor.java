@@ -35,6 +35,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -173,7 +174,7 @@ public class ApsFrameExtractor extends EventFilter2D{
     }
 
     @Override
-    public EventPacket<?> filterPacket(final EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
         checkMaps();
 
         final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;

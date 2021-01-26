@@ -29,12 +29,15 @@ import java.security.AccessController;
 import java.util.Date;
 import java.util.Iterator;
 import javax.imageio.ImageIO;
+import javax.imageio.stream.FileImageOutputStream;
+import javax.imageio.stream.ImageOutputStream;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -52,9 +55,12 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
     protected final int LOG_EVERY_THIS_MANY_FRAMES = 100; // for logging concole messages
-    private AVIOutputStream aviOutputStream = null;
+
+    // writers, both express our VideoFrameWriterInterface for handling
+    private VideoFrameWriterInterface videoOutputStream = null;
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected File frameSequenceOutputFolder = null;
+
     protected static String DEFAULT_FILENAME = "jAER.avi";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
@@ -75,6 +81,12 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     private boolean writeOnlyWhenMousePressed = getBoolean("writeOnlyWhenMousePressed", false);
     protected volatile boolean writeEnabled = true;
 
+    public enum OutputContainer {
+        AVI, AnimatedGIF, ImageSequence
+    }
+
+    protected OutputContainer outputContainer = OutputContainer.valueOf(getString("outputContainer", OutputContainer.AVI.toString()));
+
     public AbstractAviWriter(AEChip chip) {
         super(chip);
         setPropertyTooltip("startRecordingAndSaveAs", "Opens the output file or folder and starts writing to it. The AVI file is in specified format with pixel values 0-255 coming from ApsFrameExtractor displayed frames, which are offset and scaled by it. See saveFramesAsIndividualImageFiles to select a folder for the frames.");
@@ -84,7 +96,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         setPropertyTooltip("rewindBeforeRecording", "rewinds file before recording");
         setPropertyTooltip("resizeWindowTo16To9Format", "resizes AEViewer window to 19:9 format");
         setPropertyTooltip("resizeWindowTo4To3Format", "resizes AEViewer window to 4:3 format");
-        setPropertyTooltip("format", "video file is writtent to this output format (note that RLE will throw exception because OpenGL frames are not 4 or 8 bit images)");
+        setPropertyTooltip("format", "<html>video file is writtent to this output format <br>(note that RLE will throw exception because OpenGL frames are not 4 or 8 bit images)<p>Use JPG for AVI if you want Adobe Premiere to be able to read the AVI.");
+        setPropertyTooltip("outputContainer", "Choose the type of output file or files in a folder");
         setPropertyTooltip("maxFrames", "file is automatically closed after this many frames have been written; set to 0 to disable");
         setPropertyTooltip("framesWritten", "READONLY, shows number of frames written");
         setPropertyTooltip("compressionQuality", "In PNG or JPG format, sets compression quality; 0 is lowest quality and 1 is highest, 0.9 is default value");
@@ -99,7 +112,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!chipPropertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
@@ -128,7 +141,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     private void resizeWindowTo(int w, int h) {
-        if (getAviOutputStream() != null) {
+        if (getVideoOutputStream() != null) {
             log.warning("resizing disabled during recording to prevent AVI corruption");
             return;
         }
@@ -251,13 +264,14 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                 return;
             }
             frameSequenceOutputFolder = selectedFile;
+            setVideoOutputStream(new ImageSequenceWriter(frameSequenceOutputFolder));
             if (rewindBeforeRecording) {
                 ignoreRewinwdEventFlag = true;
                 chip.getAeViewer().getAePlayer().rewind();
             }
         } else {
-            if (getAviOutputStream() != null) {
-                JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "AVI output stream is already opened");
+            if (getVideoOutputStream() != null) {
+                JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "video output stream is already opened");
                 return;
             }
             JFileChooser c = new JFileChooser(lastFileName);
@@ -265,12 +279,12 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
                 @Override
                 public boolean accept(File f) {
-                    return f.isDirectory() || f.getName().toLowerCase().endsWith(".avi");
+                    return f.isDirectory() || outputContainer == OutputContainer.AVI && f.getName().toLowerCase().endsWith(".avi") || outputContainer == OutputContainer.AnimatedGIF && f.getName().toLowerCase().endsWith(".gif");
                 }
 
                 @Override
                 public String getDescription() {
-                    return "AVI (Audio Video Interleave) Microsoft video file";
+                    return outputContainer.toString();
                 }
             });
             c.setSelectedFile(new File(lastFileName));
@@ -278,14 +292,27 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             if (ret != JFileChooser.APPROVE_OPTION) {
                 return;
             }
-            if (!c.getSelectedFile().getName().toLowerCase().endsWith(".avi")) {
-                String newName = c.getSelectedFile().toString() + ".avi";
-                c.setSelectedFile(new File(newName));
+            switch (outputContainer) {
+                case AVI:
+
+                    if (!c.getSelectedFile().getName().toLowerCase().endsWith(".avi")) {
+                        String newName = c.getSelectedFile().toString() + ".avi";
+                        c.setSelectedFile(new File(newName));
+                    }
+                    break;
+
+                case AnimatedGIF:
+                    if (!c.getSelectedFile().getName().toLowerCase().endsWith(".gif")) {
+                        String newName = c.getSelectedFile().toString() + ".gif";
+                        c.setSelectedFile(new File(newName));
+                    }
+                    break;
             }
             lastFileName = c.getSelectedFile().toString();
             File selectedFile = c.getSelectedFile();
 
             lastFileName = selectedFile.toString();
+            putString("lastFileName", lastFileName);
 
             if (selectedFile.exists()) {
                 int r = JOptionPane.showConfirmDialog(getChip().getAeViewer().getFilterFrame(), "File " + selectedFile.toString() + " already exists, overwrite it?");
@@ -293,7 +320,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     return;
                 }
             }
-            setAviOutputStream(openAVIOutputStream(selectedFile, additionalComments));
+            setVideoOutputStream(openVideoOutputStream(selectedFile, additionalComments));
             if (rewindBeforeRecording) {
                 ignoreRewinwdEventFlag = true;
                 chip.getAeViewer().getAePlayer().rewind();
@@ -302,10 +329,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     synchronized public void doFinishRecording() {
-        if (getAviOutputStream() != null) {
+        if (getVideoOutputStream() != null) {
             try {
-                getAviOutputStream().close();
-                setAviOutputStream(null);
+                getVideoOutputStream().close();
+                setVideoOutputStream(null);
                 if (timecodeWriter != null) {
                     timecodeWriter.close();
                     log.info("Closed timecode file " + timecodeFile.toString());
@@ -316,7 +343,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             } catch (Exception ex) {
                 log.warning(ex.toString());
                 ex.printStackTrace();
-                setAviOutputStream(null);
+                setVideoOutputStream(null);
             }
         }
         if (frameSequenceOutputFolder != null) {
@@ -327,7 +354,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     /**
-     * Opens AVI output stream and optionally the timecode file, and enable
+     * Opens AVI or AnimatedGIF output stream and optionally the timecode file, and enable
      * writing to this stream.
      *
      * @param f the file
@@ -336,15 +363,32 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * @return the stream, or null if IOException occurs
      *
      */
-    public AVIOutputStream openAVIOutputStream(File f, String[] additionalComments) {
+    public VideoFrameWriterInterface openVideoOutputStream(File f, String[] additionalComments) {
         try {
-            aviOutputStream = new AVIOutputStream(f, format);
-//            aviOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
-            aviOutputStream.setFrameRate(frameRate);
-            aviOutputStream.setVideoCompressionQuality(compressionQuality);
-//            aviOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
-            lastFile = f;
-            lastFileName = f.toString();
+            switch (outputContainer) {
+                case AVI:
+                    AVIOutputStream avi = new AVIOutputStream(f, format);
+//            videoOutputStream.setFrameRate(chip.getAeViewer().getFrameRate());
+                    avi.setFrameRate(frameRate);
+                    avi.setVideoCompressionQuality(compressionQuality);
+                    videoOutputStream = avi;
+//            videoOutputStream.setVideoDimension(chip.getSizeX(), chip.getSizeY());
+                    break;
+                case AnimatedGIF:
+                    ImageOutputStream outputStream = new FileImageOutputStream(f);
+                    GifSequenceWriter gif = new GifSequenceWriter(outputStream, BufferedImage.TYPE_INT_BGR, 1000 / getFrameRate(), true);
+                    videoOutputStream = gif;
+                    break;
+                case ImageSequence:
+                    ImageSequenceWriter frameWriter = new ImageSequenceWriter(f);
+                    videoOutputStream = frameWriter;
+                    break;
+            }
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output", JOptionPane.WARNING_MESSAGE, null);
+            return null;
+        }
+        try {
             if (writeTimecodeFile) {
                 String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TIMECODE_SUFFIX;
                 timecodeFile = new File(s);
@@ -365,16 +409,16 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                 timecodeWriter.write(String.format("# frameNumber timestamp\n"));
                 log.info("Opened timecode file " + timecodeFile.toString());
             }
-            log.info("Opened AVI output file " + f.toString() + " with format " + format);
-            setFramesWritten(0);
-            getSupport().firePropertyChange("framesWritten", null, framesWritten);
-            if(!isWriteOnlyWhenMousePressed()) 
-                setWriteEnabled(true);
-            return aviOutputStream;
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't create output file stream", JOptionPane.WARNING_MESSAGE, null);
-            return null;
+        } catch (IOException e) {
+            log.warning("Cannot open timecode file: " + e.toString());
         }
+        log.info("Opened output file " + f.toString() + " with format " + format);
+        setFramesWritten(0);
+        getSupport().firePropertyChange("framesWritten", null, framesWritten);
+        if (!isWriteOnlyWhenMousePressed()) {
+            setWriteEnabled(true);
+        }
+        return videoOutputStream;
     }
 
     /**
@@ -427,12 +471,13 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     }
 
-    /** Returns true if either AVI or frame output is active
-     * 
+    /**
+     * Returns true if either AVI or frame output is active
+     *
      * @return true if active
      */
     protected boolean isRecordingActive() {
-        return getAviOutputStream() != null || frameSequenceOutputFolder != null;
+        return getVideoOutputStream() != null || frameSequenceOutputFolder != null;
     }
 
     /**
@@ -442,21 +487,13 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * @param timecode
      */
     protected void writeFrame(BufferedImage bufferedImage, int timecode) {
-        if ((!isSaveFramesAsIndividualImageFiles() && getAviOutputStream() == null)
+        if ((!isSaveFramesAsIndividualImageFiles() && getVideoOutputStream() == null)
                 && (isSaveFramesAsIndividualImageFiles() && frameSequenceOutputFolder == null)) {
             return;
         }
         if (isWriteEnabled()) {
             try {
-                if (saveFramesAsIndividualImageFiles) {
-                    String fmt = getFormat().toString().toLowerCase();
-                    String filename = String.format("%05d.%s", framesWritten, fmt);
-                    String path = frameSequenceOutputFolder + File.separator + filename;
-                    File file = new File(path);
-                    ImageIO.write(bufferedImage, fmt, file);
-                } else {
-                    getAviOutputStream().writeFrame(bufferedImage);
-                }
+                getVideoOutputStream().writeFrame(bufferedImage);
                 if (isWriteTimecodeFile()) {
                     writeTimecode(timecode);
                 }
@@ -464,8 +501,33 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             } catch (Exception e) {
                 log.warning("While writing frame, caught exception, closing file: " + e.toString());
                 doFinishRecording();
+
             }
         }
+    }
+
+    private class ImageSequenceWriter implements VideoFrameWriterInterface {
+
+        File folder;
+
+        public ImageSequenceWriter(File folder) {
+            this.folder = folder;
+        }
+
+        @Override
+        public void close() throws IOException {
+            log.info("nothing to close for image sequence");
+        }
+
+        @Override
+        public void writeFrame(BufferedImage img) throws IOException {
+            String fmt = getFormat().toString().toLowerCase();
+            String filename = String.format("%05d.%s", framesWritten, fmt);
+            String path = frameSequenceOutputFolder + File.separator + filename;
+            File file = new File(path);
+            ImageIO.write(img, fmt, file);
+        }
+
     }
 
     /**
@@ -595,7 +657,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            if (!ignoreRewinwdEventFlag && closeOnRewind && getAviOutputStream() != null) {
+            if (!ignoreRewinwdEventFlag && closeOnRewind && getVideoOutputStream() != null) {
                 doFinishRecording();
                 JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
             }
@@ -703,17 +765,17 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     /**
-     * @return the aviOutputStream
+     * @return the videoOutputStream
      */
-    public AVIOutputStream getAviOutputStream() {
-        return aviOutputStream;
+    public VideoFrameWriterInterface getVideoOutputStream() {
+        return videoOutputStream;
     }
 
     /**
-     * @param aviOutputStream the aviOutputStream to set
+     * @param videoOutputStream the videoOutputStream to set
      */
-    public void setAviOutputStream(AVIOutputStream aviOutputStream) {
-        this.aviOutputStream = aviOutputStream;
+    public void setVideoOutputStream(VideoFrameWriterInterface videoOutputStream) {
+        this.videoOutputStream = videoOutputStream;
     }
 
     /**
@@ -730,6 +792,21 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     public void setSaveFramesAsIndividualImageFiles(boolean saveFramesAsIndividualImageFiles) {
         this.saveFramesAsIndividualImageFiles = saveFramesAsIndividualImageFiles;
         putBoolean("saveFramesAsIndividualImageFiles", saveFramesAsIndividualImageFiles);
+    }
+
+    /**
+     * @return the outputContainer
+     */
+    public OutputContainer getOutputContainer() {
+        return outputContainer;
+    }
+
+    /**
+     * @param outputContainer the outputContainer to set
+     */
+    public void setOutputContainer(OutputContainer outputContainer) {
+        this.outputContainer = outputContainer;
+        putString("outputContainer", this.outputContainer.toString());
     }
 
 }
