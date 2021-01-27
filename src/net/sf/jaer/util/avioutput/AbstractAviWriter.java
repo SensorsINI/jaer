@@ -50,7 +50,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author Tobi
  */
-@Description("Base class for EventFilters that write out AVI files from jAER")
+@Description("Base class for EventFilters that write out video (AVI, AnimatedGIF, image sequences) files from jAER")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
@@ -61,7 +61,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected File frameSequenceOutputFolder = null;
 
-    protected static String DEFAULT_FILENAME = "jAER.avi";
+    protected static String DEFAULT_FILENAME = "jAER";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
     protected int framesWritten = 0;
@@ -77,7 +77,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected float compressionQuality = getFloat("compressionQuality", 0.9f);
     private String[] additionalComments = null;
     private int frameRate = getInt("frameRate", 30);
-    private boolean saveFramesAsIndividualImageFiles = getBoolean("saveFramesAsIndividualImageFiles", false);
     private boolean writeOnlyWhenMousePressed = getBoolean("writeOnlyWhenMousePressed", false);
     protected volatile boolean writeEnabled = true;
 
@@ -106,7 +105,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         setPropertyTooltip("saveFramesAsIndividualImageFiles", "If selected, then the frames are saved as individual image files in the selected folder");
         setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the frames are are saved only when the mouse is pressed in the AEViewer window");
         setPropertyTooltip("writeEnabled", "Selects if writing frames is enabled. Use this to temporarily disable output, or in conjunction with writeOnlyWhenMousePressed");
-        setPropertyTooltip("saveFramesAsIndividualImageFiles", "Writes PNG image sequence to a selected folder rather than single AVI movie");
         chip.getSupport().addPropertyChangeListener(this);
 
     }
@@ -202,7 +200,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     synchronized public void doStartRecordingAndSaveAs() {
-        if (saveFramesAsIndividualImageFiles) {
+        if (outputContainer==OutputContainer.ImageSequence) {
             if (frameSequenceOutputFolder != null) {
                 JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "Folder " + frameSequenceOutputFolder + " is already opened for writing, close the recording first");
                 return;
@@ -487,8 +485,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * @param timecode
      */
     protected void writeFrame(BufferedImage bufferedImage, int timecode) {
-        if ((!isSaveFramesAsIndividualImageFiles() && getVideoOutputStream() == null)
-                && (isSaveFramesAsIndividualImageFiles() && frameSequenceOutputFolder == null)) {
+        if ( getVideoOutputStream() == null){
             return;
         }
         if (isWriteEnabled()) {
@@ -776,22 +773,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      */
     public void setVideoOutputStream(VideoFrameWriterInterface videoOutputStream) {
         this.videoOutputStream = videoOutputStream;
-    }
-
-    /**
-     * @return the saveFramesAsIndividualImageFiles
-     */
-    public boolean isSaveFramesAsIndividualImageFiles() {
-        return saveFramesAsIndividualImageFiles;
-    }
-
-    /**
-     * @param saveFramesAsIndividualImageFiles the
-     * saveFramesAsIndividualImageFiles to set
-     */
-    public void setSaveFramesAsIndividualImageFiles(boolean saveFramesAsIndividualImageFiles) {
-        this.saveFramesAsIndividualImageFiles = saveFramesAsIndividualImageFiles;
-        putBoolean("saveFramesAsIndividualImageFiles", saveFramesAsIndividualImageFiles);
     }
 
     /**
