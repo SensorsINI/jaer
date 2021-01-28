@@ -135,7 +135,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private NNbHistograms nnbHistograms = new NNbHistograms(); // tracks stats of neighbors to events when they are filtered in or out
 
     public enum NoiseFilterEnum {
-        BackgroundActivityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter
+        None, BackgroundActivityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter
     }
     private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
 
@@ -458,38 +458,39 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
             EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
+            if (selectedFilter != null) {
 
-            ArrayList<FilteredEventWithNNb> negativeList = selectedFilter.getNegativeEvents();
-            ArrayList<FilteredEventWithNNb> positiveList = selectedFilter.getPositiveEvents();
+                ArrayList<FilteredEventWithNNb> negativeList = selectedFilter.getNegativeEvents();
+                ArrayList<FilteredEventWithNNb> positiveList = selectedFilter.getPositiveEvents();
 
-            // make a list of the output packet, which has noise filtered out by selected filter
-            ArrayList<BasicEvent> passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
+                // make a list of the output packet, which has noise filtered out by selected filter
+                ArrayList<BasicEvent> passedSignalAndNoiseList = createEventList(passedSignalAndNoisePacket);
 
-            assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
+                assert (signalList.size() + noiseList.size() == signalAndNoiseList.size());
 
-            // now we sort out the mess
-            TP = countIntersect(signalList, positiveList, tpList);   // True positives: Signal that was correctly retained by filtering
-            updateNnbHistograms(Classification.TP, tpList);
-            if (checkStopMe("after TP")) {
-                return in;
-            }
+                // now we sort out the mess
+                TP = countIntersect(signalList, positiveList, tpList);   // True positives: Signal that was correctly retained by filtering
+                updateNnbHistograms(Classification.TP, tpList);
+                if (checkStopMe("after TP")) {
+                    return in;
+                }
 
-            FN = countIntersect(signalList, negativeList, fnList);            // False negatives: Signal that was incorrectly removed by filter.
-            updateNnbHistograms(Classification.FN, fnList);
-            if (checkStopMe("after FN")) {
-                return in;
-            }
-            FP = countIntersect(noiseList, positiveList, fpList);    // False positives: Noise that is incorrectly passed by filter
-            updateNnbHistograms(Classification.FP, fpList);
-            if (checkStopMe("after FP")) {
-                return in;
-            }
-            TN = countIntersect(noiseList, negativeList, tnList);             // True negatives: Noise that was correctly removed by filter
-            updateNnbHistograms(Classification.TN, tnList);
-            if (checkStopMe("after TN")) {
-                return in;
-            }
-            stopper.cancel();
+                FN = countIntersect(signalList, negativeList, fnList);            // False negatives: Signal that was incorrectly removed by filter.
+                updateNnbHistograms(Classification.FN, fnList);
+                if (checkStopMe("after FN")) {
+                    return in;
+                }
+                FP = countIntersect(noiseList, positiveList, fpList);    // False positives: Noise that is incorrectly passed by filter
+                updateNnbHistograms(Classification.FP, fpList);
+                if (checkStopMe("after FP")) {
+                    return in;
+                }
+                TN = countIntersect(noiseList, negativeList, tnList);             // True negatives: Noise that was correctly removed by filter
+                updateNnbHistograms(Classification.TN, tnList);
+                if (checkStopMe("after TN")) {
+                    return in;
+                }
+                stopper.cancel();
 
 //            if (TN + FP != noiseList.size()) {
 //                System.err.println(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
@@ -498,10 +499,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
 //                printarr(signalAndNoiseList, "signalAndNoiseList");
 //            }
-            assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size());
-            totalEventCount = signalAndNoiseList.size();
-            int outputEventCount = passedSignalAndNoiseList.size();
-            filteredOutEventCount = totalEventCount - outputEventCount;
+                assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size());
+                totalEventCount = signalAndNoiseList.size();
+                int outputEventCount = passedSignalAndNoiseList.size();
+                filteredOutEventCount = totalEventCount - outputEventCount;
 
 //            if (TP + FP != outputEventCount) {
 //                System.err.printf("@@@@@@@@@ TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
@@ -510,7 +511,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
 //                printarr(signalAndNoiseList, "signalAndNoiseList");
 //            }
-            assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
+                assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
 //            if (TP + TN + FP + FN != totalEventCount) {
 //                System.err.printf("***************** TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
 //                printarr(signalList, "signalList");
@@ -518,19 +519,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                printarr(signalAndNoiseList, "signalAndNoiseList");
 //                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
 //            }
-            assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
-            assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
+                assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
+                assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
 //        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
-            TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
-            TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
+                TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
+                TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
 
-            TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
-            accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
+                TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
+                accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
-            BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
+                BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 //        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
-
+            }
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
                 inSignalRateHz = (1e6f * in.getSize()) / deltaTime;
