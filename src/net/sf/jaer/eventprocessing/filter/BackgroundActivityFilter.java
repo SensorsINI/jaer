@@ -5,6 +5,7 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.util.Arrays;
 import java.util.Observable;
+import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -127,6 +128,28 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         sy = chip.getSizeY() - 1;
         resetFilter();
     }
+    
+           /**
+     * Fills lastTimesMap with waiting times drawn from Poisson process with
+     * rate noiseRateHz
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    @Override
+     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        Random random=new Random();
+        for (final int[] arrayRow : lastTimesMap) {
+            for (int i = 0; i < arrayRow.length; i++) {
+                final double p = random.nextDouble();
+                final double t = -noiseRateHz * Math.log(1 - p);
+                final int tUs = (int) (1000000 * t);
+                arrayRow[i] = lastTimestampUs - tUs;
+            }
+        }
+    }
+
 
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
