@@ -183,11 +183,11 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
     @Override
     synchronized public void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        if (yes) {
-            clearOutputPacket();
-        } else {
-            out = null; // garbage collect
-        }
+//        if (yes) {
+//            clearOutputPacket();
+//        } else {
+//            out = null; // garbage collect
+//        }
     }
 
     private int nextUpdateTimeUs = 0; // next timestamp we should update cluster list

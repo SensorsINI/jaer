@@ -4,11 +4,13 @@
 package net.sf.jaer.eventprocessing.filter;
 
 import java.beans.PropertyChangeEvent;
+import java.util.ArrayList;
 import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
@@ -36,14 +38,19 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private int sy;
     private int ssx; // size of subsampled timestamp map
     private int ssy;
-    
-    private class LastEvent{
-        boolean wasSent=false;
-        BasicEvent event=new BasicEvent(DEFAULT_TIMESTAMP);
-    }
 
+    private class LastEvent {
+
+        boolean wasSent = false;
+        BasicEvent event = new ApsDvsEvent();
+
+        public LastEvent() {
+            event.timestamp=DEFAULT_TIMESTAMP;
+        }
+    }
+    
 //    private int[][] lastTimesMap;
-    private  LastEvent[][] lastEventMap; // 2d array of most recent events at each pixel, used for correlation checking and anticausal filtering
+    private LastEvent[][] lastEventMap; // 2d array of most recent events at each pixel, used for correlation checking and anticausal filtering
     private int ts = 0; // used to reset filter
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
@@ -64,9 +71,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
-        if (lastEventMap == null) {
-            allocateMaps(chip);
-        }
+        ArrayList<LastEvent> possiblePastEventsList = new ArrayList();
+//        if (lastEventMap == null) {
+//            allocateMaps(chip);
+//        }
         int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
         ssx = sx >> subsampleBy;
         ssy = sy >> subsampleBy;
@@ -75,12 +83,12 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         final boolean record = recordFilteredOutEvents; // to speed up loop, maybe
         final boolean fhp = filterHotPixels;
         final NnbRange nnbRange = new NnbRange();
-
+        int firstTs = in.getFirstTimestamp();
         if (record) { // branch here to save a tiny bit if not instrumenting denoising
             for (BasicEvent e : in) {
-                if (e == null) {
-                    continue;
-                }
+//                if (e == null) {
+//                    continue;
+//                }
                 if (e.isSpecial()) {
                     continue;
                 }
@@ -92,7 +100,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     continue;
                 }
                 if (lastEventMap[x][y].event.timestamp == DEFAULT_TIMESTAMP) {
-                    lastEventMap[x][y].event=e;
+                    lastEventMap[x][y].event.copyFrom(e);
                     if (letFirstEventThrough) {
                         filterIn(e);
                         continue;
@@ -107,6 +115,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 byte nnb = 0;
                 int bit = 0;
                 nnbRange.compute(x, y, ssx, ssy);
+                possiblePastEventsList.clear();
                 outerloop:
                 for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
                     final LastEvent[] col = lastEventMap[xx];
@@ -118,9 +127,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                         final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
 
                         boolean occupied = false;
-                        if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                        if (lastT != DEFAULT_TIMESTAMP && deltaT < dt && deltaT >= 0) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                             ncorrelated++;
                             occupied = true;
+                            possiblePastEventsList.add(lastEventMap[xx][yy]); // save previous event if this event turns out to be filtered in
                         }
                         if (occupied) {
                             // nnb bits are like this
@@ -137,14 +147,41 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 } else {
                     if (!favorLines) {
                         filterInWithNNb(e, nnb);
+                        if (antiCasualEnabled) {
+                            for (LastEvent pe : possiblePastEventsList) {
+                                // if there was past event in tau window that was not already filtered in, filter it in
+                                // but only if it is definitely in current packet
+                                if (pe.wasSent) {
+                                    continue;
+                                }
+                                
+                                BasicEvent oe=filterIn(pe.event); // put back the previous event
+                                oe.timestamp=ts; // and give it current timstamp to make it monotonic in time
+                                pe.wasSent = true;
+                            }
+                        }
                     } else {
                         // only pass events that have bits set that form line with current pixel, at 45 degrees on 8 NNbs
                         if ((nnb & 0x81) == 0x81 || (nnb & 0x18) == 0x18 || (nnb & 0x24) == 0x24 || (nnb & 0x42) == 0x42) {
                             filterInWithNNb(e, nnb);
+                            if (antiCasualEnabled) {
+                                for (LastEvent pe : possiblePastEventsList) {
+                                    // if there was past event in tau window that was not already filtered in, filter it in
+                                    if (pe.wasSent) {
+                                        continue;
+                                    }
+                                    BasicEvent oe=filterIn(pe.event);
+                                    oe.timestamp=ts;
+                                    pe.wasSent = true;
+                                }
+                            }
                         }
                     }
                 }
-                lastEventMap[x][y].event = e;
+                lastEventMap[x][y].event.copyFrom(e);
+                // the event is no longer valid to filter in.
+                // when we filter it back in anti-causially, then we need to make sure it is within current packet
+                lastEventMap[x][y].wasSent = !e.isFilteredOut();
             } // event packet loop
         } else { // not keep stats
             for (BasicEvent e : in) {
@@ -201,17 +238,19 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             }
         }
         getNoiseFilterControl().maybePerformControl(in);
-        return in;
+        return out;
     }
 
     @Override
     public synchronized final void resetFilter() {
         super.resetFilter();
         log.info("resetting SpatioTemporalCorrelationFilter");
-        for(LastEvent[] r:lastEventMap)
-            for(int i=0;i<r.length;i++){
-                r[i]=new LastEvent();
+        for (LastEvent[] r : lastEventMap) {
+            for (LastEvent e : r) {
+                e.event.timestamp = DEFAULT_TIMESTAMP;
+                e.wasSent = true;  // make sure not to send any of old events
             }
+        }
     }
 
     @Override
@@ -227,11 +266,15 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (lastEventMap == null || lastEventMap.length != chip.getSizeX() >> subsampleBy)) {
             lastEventMap = new LastEvent[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
+            for (LastEvent[] r : lastEventMap) {
+                for (int i = 0; i < r.length; i++) {
+                    r[i] = new LastEvent();
+                }
+            }
         }
     }
-    
-    
-       /**
+
+    /**
      * Fills lastTimesMap with waiting times drawn from Poisson process with
      * rate noiseRateHz
      *
@@ -240,8 +283,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      * before this time
      */
     @Override
-     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
-        Random random=new Random();
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        Random random = new Random();
         for (final LastEvent[] arrayRow : lastEventMap) {
             for (int i = 0; i < arrayRow.length; i++) {
                 final double p = random.nextDouble();
@@ -251,7 +294,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             }
         }
     }
-
 
     // </editor-fold>
     /**
