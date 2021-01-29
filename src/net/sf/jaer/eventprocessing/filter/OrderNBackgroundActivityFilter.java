@@ -51,7 +51,7 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
         int dtUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
 
@@ -160,11 +160,6 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         } catch (Exception e) {
             return "IOExeption in remotecontrol " + e.toString() + "\n";
         }
-    }
-
-    @Override
-    public int[][] getLastTimesMap() {
-        return null;
     }
 
     @Override

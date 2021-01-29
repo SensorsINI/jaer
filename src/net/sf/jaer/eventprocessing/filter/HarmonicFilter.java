@@ -127,11 +127,6 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
         prefs().putBoolean("HarmonicFilter.useLocalPhases", useLocalPhases);
     }
 
-    @Override
-    public int[][] getLastTimesMap() {
-        return null;  // not compatible with this filter
-    }
-
     public class HarmonicOscillator {
 
         final float GEARRATIO = 20; // chop up times between spikes by tau/GEARRATIO timesteps

@@ -60,7 +60,7 @@ public class GpsTimestamps extends EventFilter2D implements FrameAnnotater, Prop
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
      if (!propChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);

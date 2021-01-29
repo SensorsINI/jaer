@@ -45,6 +45,7 @@ import java.io.InputStream;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
@@ -188,7 +189,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
     }
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         EventPacket out = super.filterPacket(in); // does all the processing to send DVS frames to CNN for processing, decisions come back via PropertyChange event to Statistics.propertyChanged
         if (apsDvsNet == null) {
             showWarningDialogInSwingThread("null CNN, load a valid CNN and re-enable filter", "No CNN loaded");

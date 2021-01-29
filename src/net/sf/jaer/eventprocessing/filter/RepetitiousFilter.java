@@ -8,14 +8,13 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package net.sf.jaer.eventprocessing.filter;
-import java.util.Observable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 /**
  * An AE filter that filters out boring repetitive events.
  *It does this by maintaining an internal map of boring cells (x,y,type). These are boring because they are repetitive. An event is
@@ -147,7 +146,7 @@ public class RepetitiousFilter extends AbstractNoiseFilter {
         allocateMap();
     }
 
-    public EventPacket<?> filterPacket (EventPacket<?> in){
+    public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
         checkOutputPacketEventType(in);
         checkMap();
         int n = in.getSize();
@@ -228,8 +227,4 @@ public class RepetitiousFilter extends AbstractNoiseFilter {
         this.excludeHarmonics = excludeHarmonics;
     }
 
-    @Override
-    public int[][] getLastTimesMap() {
-        return null; // here is 3d map, not 2d like in others
-    }
 }

@@ -8,16 +8,14 @@ package ch.unizh.ini.jaer.projects.davis.frames;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.beans.PropertyChangeEvent;
-import java.io.IOException;
 import java.nio.FloatBuffer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import eu.seebetter.ini.chips.DavisChip;
 import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.DavisRenderer;
@@ -53,7 +51,7 @@ public class DavisFrameAviWriter extends AbstractAviWriter {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in); // adds propertychangelistener for rewind event
         if (!rendererPropertyChangeListenerAdded) {
             rendererPropertyChangeListenerAdded = true;

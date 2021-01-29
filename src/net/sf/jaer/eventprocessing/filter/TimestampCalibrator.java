@@ -76,7 +76,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (in.isEmpty()
                 || (enableCalibration && !(chip.getAeViewer().getPlayMode() == PlayMode.LIVE)) // go ahead and run rest if we are just correcting timestamps
                 ) {

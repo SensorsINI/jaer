@@ -154,7 +154,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	// realTimeFilterChain to a reused EventPacket.
 	AEPacketRaw realTimeRawPacket = null; // used to hold raw events that are
 	// extracted for real time procesing
-	EventPacket<?> realTimePacket = null; // used to hold extracted real time
+	EventPacket realTimePacket = null; // used to hold extracted real time
 	// events for processing
 	/**
 	 * start of events that have been captured but not yet processed by the

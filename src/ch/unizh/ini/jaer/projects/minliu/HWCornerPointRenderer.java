@@ -115,7 +115,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         cornerEvents.clear();
         int wrongCornerNum = 0;
         int falseNegativeNum = 0;

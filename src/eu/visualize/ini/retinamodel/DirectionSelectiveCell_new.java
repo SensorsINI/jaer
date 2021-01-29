@@ -46,7 +46,7 @@ public class DirectionSelectiveCell_new{
 //-- Filter packet method ----------------------------------------------------//
 //----------------------------------------------------------------------------//
 //    @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         //checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak.
         for (Object o : in) {
             PolarityEvent e = (PolarityEvent) o;

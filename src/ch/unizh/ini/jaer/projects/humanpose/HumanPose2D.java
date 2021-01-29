@@ -175,10 +175,10 @@ public class HumanPose2D extends DavisClassifierCNNProcessor implements FrameAnn
     }
     
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
-        EventPacket<?> in1 = backgroundActivityFilter.filterPacket(in);
-        EventPacket<?> in2 = hotPixel.filterPacket(in1);
-        EventPacket<?> in3 = dvsFramer.filterPacket(in2);
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        EventPacket<? extends BasicEvent> in1 = backgroundActivityFilter.filterPacket(in);
+        EventPacket<? extends BasicEvent> in2 = hotPixel.filterPacket(in1);
+        EventPacket<? extends BasicEvent> in3 = dvsFramer.filterPacket(in2);
         
         if (!addedPropertyChangeListener) {
             if (dvsFramer == null) {

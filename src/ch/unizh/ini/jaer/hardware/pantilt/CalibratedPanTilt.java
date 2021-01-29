@@ -12,6 +12,7 @@ import java.awt.geom.Point2D;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
@@ -57,7 +58,7 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
 
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if (!isFilterEnabled()) {
 			return in;
 		}

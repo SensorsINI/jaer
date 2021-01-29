@@ -43,6 +43,7 @@ import java.awt.Font;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -163,7 +164,7 @@ public class VisualiseSteeringCNN extends DavisClassifierCNNProcessor implements
     }
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         targetLabeler.filterPacket(in);
         EventPacket out = super.filterPacket(in);
         return out;

@@ -53,7 +53,7 @@ public class EventRateEstimator extends EventFilter2D {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (in == null || in.getSize() == 0) {
             return in; // if there are no events, don't touch values since we don't have a new update time
         }
@@ -71,7 +71,7 @@ public class EventRateEstimator extends EventFilter2D {
      * @param in
      * @return true if event updated rate, false otherwise
      */
-    protected boolean addEvent(BasicEvent e, EventPacket<?> in) {
+    protected boolean addEvent(BasicEvent e, EventPacket<? extends BasicEvent> in) {
         if (e.isSpecial()) {
             return false;
         }

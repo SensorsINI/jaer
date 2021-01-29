@@ -53,7 +53,7 @@ public class AccumulateAndResetFilter extends EventFilter2D implements FrameAnno
     private int lastResetTimestampUs = 0, currentTimestamp = 0;
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         AEChipRenderer renderer = chip.getRenderer();
 
         for (Object o : in) {

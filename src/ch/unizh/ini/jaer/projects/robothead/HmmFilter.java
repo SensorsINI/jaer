@@ -75,7 +75,7 @@ public class HmmFilter extends EventFilter2D  {
     Vector<Integer> indSound;
     Vector oo;
 
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         if (!isFilterEnabled()) {
             //System.out.print("TEST 2");

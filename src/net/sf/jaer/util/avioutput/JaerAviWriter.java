@@ -12,8 +12,8 @@ import java.awt.Color;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /**
@@ -37,7 +37,7 @@ public class JaerAviWriter extends AbstractAviWriter {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
         if (in.getDurationUs() > 0) {
             timeExpansionFactor = in.getDurationUs() * 1e-6f * getFrameRate();

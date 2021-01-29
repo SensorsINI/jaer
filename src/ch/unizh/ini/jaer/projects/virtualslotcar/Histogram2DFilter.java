@@ -79,7 +79,7 @@ public class Histogram2DFilter extends EventFilter2D implements FrameAnnotater, 
 
     
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) { 
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) { 
         checkOutputPacketEventType(in);
         checkHistogram();
         int max = getHistmax();

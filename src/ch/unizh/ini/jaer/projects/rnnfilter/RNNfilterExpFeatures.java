@@ -278,7 +278,7 @@ public class RNNfilterExpFeatures extends EventFilter2D implements FrameAnnotate
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         for (BasicEvent e : in) {
             this.counter++;
             try {

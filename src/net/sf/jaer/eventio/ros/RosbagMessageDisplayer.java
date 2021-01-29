@@ -32,6 +32,7 @@ import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream.MessageWithIndex;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -63,7 +64,7 @@ abstract public class RosbagMessageDisplayer extends EventFilter2D {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!addedPropertyChangeListener) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().getAePlayer().addPropertyChangeListener(this);

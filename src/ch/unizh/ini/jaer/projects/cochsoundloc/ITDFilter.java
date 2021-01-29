@@ -44,6 +44,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Extracts interaural time difference (ITD) from a binaural cochlea input.
@@ -424,7 +425,7 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (connectToPanTiltThread) {
             CommObjForITDFilter commObjIncomming = panTilt.pollBlockingQForITDFilter();
             while (commObjIncomming != null) {

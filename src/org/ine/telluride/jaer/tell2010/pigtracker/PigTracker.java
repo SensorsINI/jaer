@@ -129,7 +129,7 @@ public class PigTracker extends EventFilter2D implements Observer, FrameAnnotate
 	}
 
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		checkOutputPacketEventType(PolarityEvent.class);
 		checkInit();
 		OutputEventIterator outItr = out.outputIterator();

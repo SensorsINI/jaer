@@ -5,6 +5,7 @@
 package ch.unizh.ini.jaer.projects.integrateandfire;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
@@ -20,7 +21,7 @@ public class GotYourDigits extends EventFilter2D {
     }
         
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> P) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> P) {
         return P;
     }
 

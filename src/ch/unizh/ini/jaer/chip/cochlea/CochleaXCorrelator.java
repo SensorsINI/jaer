@@ -30,6 +30,7 @@ import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 import net.sf.jaer.util.EngineeringFormat;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Computes cross corr between binaural cochleas
@@ -102,7 +103,7 @@ public class CochleaXCorrelator extends EventFilter2D implements FrameAnnotater 
 
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if(!isFilterEnabled()) {
 			return in;
 		}

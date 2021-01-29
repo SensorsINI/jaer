@@ -117,7 +117,7 @@ public final class PixelExhaustion extends EventFilter2D {
 
 	
 
-        synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+        synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
 		if (!isFilterEnabled())
 			return in;

@@ -94,7 +94,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         Iterator<BasicEvent> i = null, leftOverIterator = null;
         if (in instanceof ApsDvsEventPacket) {
             i = ((ApsDvsEventPacket) in).fullIterator();

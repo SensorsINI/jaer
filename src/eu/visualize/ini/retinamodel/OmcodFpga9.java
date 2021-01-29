@@ -146,7 +146,7 @@ public class OmcodFpga9 extends AbstractRetinaModelCell implements FrameAnnotate
 //-- Filter packet method ----------------------------------------------------//
 //----------------------------------------------------------------------------//
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         //if (!(in.getEventPrototype() instanceof PolarityEvent)) {
         //return
 //        EventPacket temp = (EventPacket) eventRateFilter.filterPacket(dirFilter.filterPacket(backgroundActivityFilter.filterPacket(hotPixelFilter.filterPacket(in))));

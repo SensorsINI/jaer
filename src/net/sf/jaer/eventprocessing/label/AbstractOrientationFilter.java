@@ -8,12 +8,12 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
-import java.util.Observable;
 import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.DvsOrientationEvent;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
@@ -378,7 +378,7 @@ abstract public class AbstractOrientationFilter extends EventFilter2D implements
      * @return the processed events, may be fewer in number.
      */
     @Override
-    abstract public EventPacket<?> filterPacket(EventPacket<?> in);
+    abstract public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in);
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --length--">
     public int getLength() {

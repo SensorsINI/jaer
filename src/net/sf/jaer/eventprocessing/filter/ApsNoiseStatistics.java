@@ -111,7 +111,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         frameExtractor.filterPacket(in);
         if (frameExtractor.hasNewFrame()) {
             if (resetCalled) {

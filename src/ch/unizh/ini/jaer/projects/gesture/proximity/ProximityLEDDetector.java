@@ -138,7 +138,7 @@ public class ProximityLEDDetector extends EventFilter2D implements Observer, Fra
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		switch (method) {
 			case Histogram:
 				for (BasicEvent o : in) {

@@ -116,7 +116,7 @@ public class BufferSizeEstimator extends EventFilter2D{
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         int lastSampleSize = Math.min(samplingArray.length, in.size);     //varies
         int sampleSizeNotFiltered = lastSampleSize; //needed as constant bound for the for loop
         Arrays.fill(samplingArray,0);

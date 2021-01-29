@@ -5,7 +5,6 @@
 package ch.unizh.ini.jaer.projects.labyrinth;
 
 import java.awt.geom.Point2D;
-import java.util.Observable;
 import java.util.Random;
 
 import com.jogamp.opengl.GL;
@@ -16,7 +15,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.Chip2D;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
@@ -62,7 +61,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!isFilterEnabled()) {
             return in;
         }

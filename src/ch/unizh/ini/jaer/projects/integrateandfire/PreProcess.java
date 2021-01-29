@@ -33,7 +33,7 @@ public class PreProcess extends EventFilter2D {
     }
     
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) 
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) 
     {
         if (!filterEnabled) return in;
         

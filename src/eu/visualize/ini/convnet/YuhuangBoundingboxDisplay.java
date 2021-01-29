@@ -176,7 +176,7 @@ public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnn
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         in = getEnclosedFilterChain().filterPacket(in);
         maybeAddListeners(chip);
         currentBoundingBoxes.clear(); // these are displayed, and returned to caller

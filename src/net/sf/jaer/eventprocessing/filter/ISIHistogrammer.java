@@ -83,7 +83,7 @@ public class ISIHistogrammer extends EventFilter2D implements Observer{
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+    synchronized public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
         checkBins();
 
         for ( BasicEvent e:in ){

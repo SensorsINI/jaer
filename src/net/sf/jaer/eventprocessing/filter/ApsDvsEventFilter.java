@@ -4,7 +4,6 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.Iterator;
 
 import net.sf.jaer.Description;
@@ -12,6 +11,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -54,7 +54,7 @@ public class ApsDvsEventFilter extends EventFilter2D {
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!(in instanceof ApsDvsEventPacket) || (!filterAPSEvents && !filterDVSEvents && !filterFrameTransientEvents && !filterIMUSamples)) {
             return in;
         }

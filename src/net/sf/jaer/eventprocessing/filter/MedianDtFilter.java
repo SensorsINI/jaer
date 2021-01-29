@@ -159,11 +159,6 @@ public class MedianDtFilter extends AbstractNoiseFilter {
         lastTimestamp = DEFAULT_TIMESTAMP;
     }
 
-    @Override
-    public int[][] getLastTimesMap() {
-        return lastTimesMap;
-    }
-
     /**
      * @return the positionInSortedDts
      */

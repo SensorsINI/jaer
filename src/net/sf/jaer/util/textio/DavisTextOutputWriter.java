@@ -100,7 +100,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
      * @return input packet
      */
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!chipPropertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);

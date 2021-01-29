@@ -92,7 +92,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 	}
 
 	@Override
-	public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+	public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		super.filterPacket(in);  // run cluster tracker
 		if(!in.isEmpty())
 		{

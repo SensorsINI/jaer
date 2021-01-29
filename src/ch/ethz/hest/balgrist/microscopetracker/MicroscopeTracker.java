@@ -14,6 +14,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -139,7 +140,7 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 
 	// method is called when inputs are available and processes them.
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
 		lastTime = currentTime;
 
@@ -265,7 +266,7 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 		}
 	}
 
-	private void updateTimestamps(EventPacket<?> in) {
+	private void updateTimestamps(EventPacket<? extends BasicEvent> in) {
 		int x; // horizontal coordinate, by convention starts at left of image
 		int y; // vertical coordinate, by convention starts at bottom of image
 		int t;
@@ -285,7 +286,7 @@ public class MicroscopeTracker extends EventFilter2D implements FrameAnnotater {
 		}
 	}
 
-	private void updateAndSortVelocities(EventPacket<?> in) {
+	private void updateAndSortVelocities(EventPacket<? extends BasicEvent> in) {
 		int x;
 		int y;
 		int dt;

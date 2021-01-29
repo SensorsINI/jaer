@@ -75,7 +75,7 @@ public class FrequencyDetectionCell extends EventFilter2D implements FrameAnnota
     private int lastFrequencyDetectionCellSpikeCheckTimestamp = 0;
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
             return in;
         }

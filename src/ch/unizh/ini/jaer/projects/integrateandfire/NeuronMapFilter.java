@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -40,7 +41,7 @@ public class NeuronMapFilter  extends SuperLIFFilter {
     NeuronMap NM;           // Alias of superclass field NM.  To make the compiler happy.
     
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> P)  
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> P)  
     {
         if (!filterEnabled) return P;
         

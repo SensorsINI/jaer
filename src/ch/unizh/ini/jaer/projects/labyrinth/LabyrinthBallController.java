@@ -11,8 +11,6 @@ import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.LinkedList;
-import java.util.Observable;
-import java.util.Observer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -29,6 +27,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.util.TobiLogger;
 
 /**
@@ -127,7 +126,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (isControllerEnabled()) {
             control(in, timeUs()); //in.getLastTimestamp()
         } // control is also called from callback via update from tracker

@@ -17,6 +17,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -212,7 +213,7 @@ public class PolarizationExtractor extends EventFilter2D{
     }
 
     @Override
-    public EventPacket<?> filterPacket(final EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
         checkMaps();
 
         final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;

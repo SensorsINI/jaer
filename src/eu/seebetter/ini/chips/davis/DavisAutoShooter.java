@@ -16,6 +16,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -95,7 +96,7 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    public EventPacket<?> filterPacket(final EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
         tracker.setFilterEnabled(useTracker); // have to set again because setting is set by FilterFrame or something
         checkOutputPacketEventType(in);
         getEnclosedFilterChain().filterPacket(in);

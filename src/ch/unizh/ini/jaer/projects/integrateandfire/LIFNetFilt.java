@@ -71,7 +71,7 @@ public class LIFNetFilt extends SuperLIFFilter implements FrameAnnotater {
     // Filter Methods
 
     // Deal with incoming packet
-    @Override public EventPacket<?> filterPacket( EventPacket<?> in){
+    @Override public EventPacket<? extends BasicEvent> filterPacket( EventPacket<? extends BasicEvent> in){
 
         if(!filterEnabled) {
 			return in;

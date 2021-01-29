@@ -391,7 +391,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         totalEventCount = 0; // from super, to measure filtering
         filteredOutEventCount = 0;
@@ -424,10 +424,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // initialize filters with lastTimesMap to Poisson waiting times
             log.info("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
-                int[][] map = f.getLastTimesMap();
-                if (map != null) {
-                    initializeLastTimesMapForNoiseRate(map, shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
-                }
+                   f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
             }
 
         }
@@ -775,11 +772,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         return shotNoiseRateHz;
     }
 
-    @Override
-    public int[][] getLastTimesMap() {
-        return null;
-    }
-
     /**
      * @param shotNoiseRateHz the shotNoiseRateHz to set
      */
@@ -946,26 +938,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    /**
-     * Fills lastTimesMap with waiting times drawn from Poisson process with
-     * rate noiseRateHz
-     *
-     * @param lastTimesMap map
-     * @param noiseRateHz rate in Hz
-     * @param lastTimestampUs the last timestamp; waiting times are created
-     * before this time
-     */
-    protected void initializeLastTimesMapForNoiseRate(int[][] lastTimesMap, float noiseRateHz, int lastTimestampUs) {
-        for (final int[] arrayRow : lastTimesMap) {
-            for (int i = 0; i < arrayRow.length; i++) {
-                final double p = random.nextDouble();
-                final double t = -noiseRateHz * Math.log(1 - p);
-                final int tUs = (int) (1000000 * t);
-                arrayRow[i] = lastTimestampUs - tUs;
-            }
-        }
-    }
-
+ 
     @Override
     public void setCorrelationTimeS(float dtS) {
         super.setCorrelationTimeS(dtS);

@@ -69,7 +69,7 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         checkNeuronAllocation();
         int k = 0;
         for (BasicEvent e : in) {
@@ -113,11 +113,6 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
         if ((neurons == null) || (neurons.getNumCells() != chip.getNumCells())) {
             neurons = new Neurons(this);
         }
-    }
-
-    @Override
-    public int[][] getLastTimesMap() {
-        return null; // TODO should return object
     }
 
     static class Neurons implements Serializable {

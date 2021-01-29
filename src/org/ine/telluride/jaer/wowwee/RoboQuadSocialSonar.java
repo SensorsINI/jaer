@@ -13,6 +13,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -59,7 +60,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
 	long realtimeStart=System.currentTimeMillis();
 	int nSpikes=0;
 
-	private void computeSpeechiness(EventPacket<?> in) {
+	private void computeSpeechiness(EventPacket<? extends BasicEvent> in) {
 		//        // compute real average event rate based on ISIs of spikes in packet
 		//        // the in.getEventRate does a poor approximation.
 		//        float eventRate=in.getEventRateHz();
@@ -170,7 +171,7 @@ public class RoboQuadSocialSonar extends EventFilter2D implements FrameAnnotater
 	}
 
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if(!isFilterEnabled()) {
 			return in;
 		}

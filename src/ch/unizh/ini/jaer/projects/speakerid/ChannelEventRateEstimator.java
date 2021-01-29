@@ -35,7 +35,7 @@ public class ChannelEventRateEstimator extends EventRateEstimator {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
         if(!isMeasureIndividualChannelsEnabled()) {
 			return in;

@@ -393,10 +393,6 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         }
     }
 
-    @Override
-    public int[][] getLastTimesMap() {
-        return null;
-    }
 
     @Override
     public String infoString() {

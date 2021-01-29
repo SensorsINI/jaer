@@ -9,6 +9,7 @@ import java.util.Observer;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
@@ -59,7 +60,7 @@ public class NotchFilter extends EventFilter2D implements Observer{
   }
 
     @Override
-    public EventPacket<?> filterPacket (EventPacket<?> in){
+    public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
         checkOutputPacketEventType(in);
         checkMap();
         int n = in.getSize();

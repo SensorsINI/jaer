@@ -129,7 +129,7 @@ public class ClusterSet extends RectangularClusterTracker {
 	}
 
 	@Override
-	public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+	public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if ((in.getSize() == 0) || !filterEnabled) {
 			return in; // added so that packets don't use a zero length packet to set last timestamps, etc, which can purge clusters for no reason
 		}

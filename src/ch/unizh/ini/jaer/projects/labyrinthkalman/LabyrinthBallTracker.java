@@ -72,7 +72,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
     
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         out = getEnclosedFilterChain().filterPacket(in);
 

@@ -60,7 +60,7 @@ public class RotateFilter extends EventFilter2D {
         }
     }
 
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         short tmp;
         final int sx = chip.getSizeX();
         final int sy = chip.getSizeY();

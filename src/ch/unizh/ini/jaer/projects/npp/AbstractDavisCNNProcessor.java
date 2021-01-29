@@ -428,7 +428,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
     }
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!addedPropertyChangeListener) {
             if (dvsFramer == null) {
                 throw new RuntimeException("Null dvsSubsampler; this should not occur");

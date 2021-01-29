@@ -28,6 +28,7 @@ import net.sf.jaer.stereopsis.StereoClusterTracker;
 import ch.unizh.ini.jaer.chip.stereopsis.Tmpdiff128StereoPair;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Controls a batting robot that uses two servo motors and two retinas in stereo vision to hit a ball.
@@ -79,7 +80,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     }
     
     float lastBallDistance=Float.POSITIVE_INFINITY;
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if(!isFilterEnabled()) return in;
         tracker.filterPacket(in);
         if(batSwinger==null){

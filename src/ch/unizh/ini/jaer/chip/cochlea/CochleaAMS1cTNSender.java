@@ -15,6 +15,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
+import net.sf.jaer.event.BasicEvent;
 
 public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 	private String TN_IP = getString("TN_IP", "192.168.1.1");
@@ -103,7 +104,7 @@ public class CochleaAMS1cTNSender extends EventFilter2D implements Observer {
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(final EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
 		// Check that we're getting Cochlea events.
 		if (in.getEventClass() != CochleaAMSEvent.class) {
 			return in;

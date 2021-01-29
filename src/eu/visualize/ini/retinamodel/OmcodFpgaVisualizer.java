@@ -7,6 +7,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -59,7 +60,7 @@ public class OmcodFpgaVisualizer extends AbstractRetinaModelCell implements Fram
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         EventPacket temp = in;
         checkOutputPacketEventType(in); // make sure memory is allocated to avoid leak.
         if (temp == null) {

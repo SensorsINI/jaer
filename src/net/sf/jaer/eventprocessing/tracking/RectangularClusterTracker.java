@@ -330,7 +330,7 @@ public class RectangularClusterTracker extends EventFilter2D
      * @return packet of RectangularClusterTrackerEvent.
      */
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!filterEnabled) {
             return in;
         }
@@ -832,7 +832,7 @@ public class RectangularClusterTracker extends EventFilter2D
      * @return a possibly filtered event packet passing only events contained in
      * the tracked and visible Clusters, depending on filterEventsEnabled.
      */
-    synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<?> in) {
+    synchronized protected EventPacket<? extends BasicEvent> track(EventPacket<? extends BasicEvent> in) {
         boolean updatedClusterList = false;
         checkOutputPacketEventType(RectangularClusterTrackerEvent.class);
         OutputEventIterator outItr = out.outputIterator();

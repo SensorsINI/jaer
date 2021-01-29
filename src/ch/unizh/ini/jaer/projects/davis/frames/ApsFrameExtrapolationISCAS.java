@@ -4,7 +4,6 @@
  */
 package ch.unizh.ini.jaer.projects.davis.frames;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import java.util.Arrays;
 import java.util.Iterator;
 import net.sf.jaer.Description;
@@ -12,6 +11,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -148,7 +148,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!filterEnabled || in.getClass() != ApsDvsEventPacket.class) {
             return in;
         }

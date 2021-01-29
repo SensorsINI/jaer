@@ -486,7 +486,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
         ISIHist[] averageTypeHistograms = null;
         private int nPixels = 0;
 
-        synchronized public void collectStats(EventPacket<?> in) {
+        synchronized public void collectStats(EventPacket<? extends BasicEvent> in) {
             if (selection == null) {
                 return;
             }

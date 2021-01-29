@@ -67,7 +67,7 @@ public class IFSignedNeuronArray extends EventFilter2D implements FrameAnnotater
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         checkNeuronAllocation();
         int k = 0;
         for (BasicEvent e : in) {

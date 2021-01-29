@@ -15,6 +15,7 @@ import java.util.Observer;
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.util.filter.BandpassFilter2d;
 
@@ -132,7 +133,7 @@ public class ClusterBasedOpticalFlow extends RectangularClusterTracker implement
 	}
 
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		EventPacket out = super.filterPacket(in);
 
 		lastPacketTime = in.getLastTimestamp();

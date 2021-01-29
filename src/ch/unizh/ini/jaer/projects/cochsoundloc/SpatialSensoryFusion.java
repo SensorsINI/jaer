@@ -52,7 +52,7 @@ public class SpatialSensoryFusion extends EventFilter2D implements FrameAnnotate
     public void annotate(GLAutoDrawable drawable) {
     }
 
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (in == null) {
             return null;
         }

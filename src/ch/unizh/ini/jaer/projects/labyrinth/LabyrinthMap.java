@@ -49,6 +49,7 @@ import com.kitfox.svg.Rect;
 import com.kitfox.svg.SVGDiagram;
 import com.kitfox.svg.SVGRoot;
 import com.kitfox.svg.SVGUniverse;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  *  Loads SVG file describing a board and displays it in the annotate method and provides methods for finding nearest path points
@@ -169,7 +170,7 @@ public class LabyrinthMap extends EventFilter2D implements FrameAnnotater, Obser
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         return in;
     }
 

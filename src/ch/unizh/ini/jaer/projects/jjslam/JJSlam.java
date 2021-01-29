@@ -71,7 +71,7 @@ public class JJSlam extends EventFilter2D implements FrameAnnotater{
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         tracker.filterPacket(in);
         Point2D.Float p = (Point2D.Float) tracker.getMedianPoint();
         float d = (float) Math.sqrt(p.x * p.x + p.y * p.y);

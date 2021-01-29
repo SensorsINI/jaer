@@ -41,7 +41,7 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!measureIndividualTypesEnabled) {
             super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
             return in;

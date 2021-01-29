@@ -11,6 +11,7 @@ import java.util.TimerTask;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
@@ -48,7 +49,7 @@ public class SettingsScheduler extends EventFilter2D {
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

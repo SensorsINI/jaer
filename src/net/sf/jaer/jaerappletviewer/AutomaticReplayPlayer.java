@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Monitors input events for sudden increases in activity. When this increase is detected, a recording is started to memory. When the buffer is full or live input activity stops for a sufficiently
@@ -96,7 +97,7 @@ public class AutomaticReplayPlayer extends EventFilter2D implements FrameAnnotat
 	}
 
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
 		checkBuffers();
 		checkOutputPacketEventType(in); // make sure built in out packet is allocated with same type as input

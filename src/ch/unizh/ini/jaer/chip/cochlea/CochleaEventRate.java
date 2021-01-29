@@ -22,6 +22,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Computes cross corr between binaural cochleas.
@@ -46,7 +47,7 @@ public class CochleaEventRate extends EventFilter2D implements FrameAnnotater
 	private float coch1Rate = -1;
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in)
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in)
 	{
 		numEvents = 0;
 		coch0Events = 0;

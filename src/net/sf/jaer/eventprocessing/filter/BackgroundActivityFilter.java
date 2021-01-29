@@ -134,11 +134,6 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
         }
     }
 
-    @Override
-    public int[][] getLastTimesMap() {
-        return lastTimesMap;
-    }
-
     public Object getFilterState() {
         return lastTimesMap;
     }

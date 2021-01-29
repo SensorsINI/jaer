@@ -30,7 +30,7 @@ public class LatencyTest extends EventFilter2D implements FrameAnnotater {
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket filterPacket(EventPacket in) {
 		return in;
 	}
 

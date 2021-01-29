@@ -94,6 +94,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     protected boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
 
+    protected boolean antiCasualEnabled = getBoolean("antiCasualEnabled", false);
+
     /**
      * Automatic control of filter correlation time
      */
@@ -115,6 +117,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter correlation time is automatically adapted.");
         setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+        setPropertyTooltip(TT_FILT_CONTROL, "antiCasualEnabled", "<html>Enable sending previous events that were filtered out if later event shows they were actually correlated (depends on filter if supported).<p>Note that timestamp will not be correct; event will inherit timestamp of current event to keep event stream monotonic in time.");
         getSupport().addPropertyChangeListener(this);
 //        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
@@ -197,6 +200,20 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     /**
+     * By default empty method (which logs warning if called) that initializes
+     * filter to produce proper statistics for noise filtering by filling past
+     * events history with past events according to Poisson times of noise
+     * events
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        log.warning("method should be implemented for this filter to produce correct statistics after reset");
+    }
+
+    /**
      * @return the showFilteringStatistics
      */
     public boolean isShowFilteringStatistics() {
@@ -272,11 +289,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
         return USAGE;
     }
-
-    /**
-     * Returns lastTimesMap if there is one, or null if filter does not use it
-     */
-    public abstract int[][] getLastTimesMap();
 
     /**
      * Sets the noise filter correlation time. Empty method that can be
@@ -470,6 +482,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
             case "letFirstEventThrough":
                 setLetFirstEventThrough((boolean) evt.getNewValue());
                 break;
+            case "antiCasualEnabled":
+                setAntiCasualEnabled((boolean) evt.getNewValue());
+                break;
         }
     }
 
@@ -590,7 +605,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
          * @return same packet
          */
         @Override
-        public EventPacket<?> filterPacket(EventPacket<?> in) {
+        public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
             if (in == null || in.isEmpty()) {
                 return in;
             }
@@ -865,6 +880,23 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public void setNoiseFilterControl(NoiseFilterControl noiseFilterControl) {
         this.noiseFilterControl = noiseFilterControl;
+    }
+
+    /**
+     * @return the antiCasualEnabled
+     */
+    public boolean isAntiCasualEnabled() {
+        return antiCasualEnabled;
+    }
+
+    /**
+     * @param antiCasualEnabled the antiCasualEnabled to set
+     */
+    public void setAntiCasualEnabled(boolean antiCasualEnabled) {
+        boolean old = this.antiCasualEnabled;
+        this.antiCasualEnabled = antiCasualEnabled;
+        putBoolean("antiCasualEnabled", antiCasualEnabled);
+        getSupport().firePropertyChange("antiCasualEnabled", old, this.antiCasualEnabled);
     }
 
 }

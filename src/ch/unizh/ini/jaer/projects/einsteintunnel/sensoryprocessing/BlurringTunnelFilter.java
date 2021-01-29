@@ -1240,7 +1240,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
 	 * @return the packet after filtering by the enclosed FilterChain.
 	 */
 	@Override
-	synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+	synchronized public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
 		out = in;
 
 		if ( in == null ){
@@ -1261,7 +1261,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
 	 * @param in the input packet of BasicEvent
 	 * @return the original input packet
 	 */
-	synchronized protected EventPacket<?> blurring(EventPacket<?> in) {
+	synchronized protected EventPacket<? extends BasicEvent> blurring(EventPacket<? extends BasicEvent> in) {
 		if(in == null) {
 			return in;
 		}

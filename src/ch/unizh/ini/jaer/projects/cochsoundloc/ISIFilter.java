@@ -73,7 +73,7 @@ public class ISIFilter extends EventFilter2D {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         for (BasicEvent e : in) {
             try {
                 BinauralCochleaEvent i = (BinauralCochleaEvent) e;

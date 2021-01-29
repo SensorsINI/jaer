@@ -41,7 +41,7 @@ public class EMDMotionCorrelator extends EventFilter2D {
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!isFilterEnabled()) {
             return in;
         }
