@@ -29,7 +29,6 @@ import java.util.HashMap;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -50,7 +49,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
-    protected OutputEventIterator<BasicEvent> outItr = null;  // used to write events to output
     /**
      * list of filtered out events
      */
@@ -144,14 +142,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      *
      * @param e
      */
-    final protected BasicEvent filterIn(BasicEvent e) {
+    final protected void filterIn(BasicEvent e) {
         e.setFilteredOut(false);
         if (recordFilteredOutEvents) {
             filteredInEvents.add(new FilteredEventWithNNb(e));
         }
-        BasicEvent oe = outItr.nextOutput();
-        oe.copyFrom(e);
-        return oe;
     }
 
     /**
@@ -176,20 +171,16 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @param e the event
      * @param nnb the byte representing the occupation of nearest neighbors
      */
-    protected BasicEvent filterInWithNNb(BasicEvent e, byte nnb) {
+    protected void filterInWithNNb(BasicEvent e, byte nnb) {
         e.setFilteredOut(false);
         if (recordFilteredOutEvents) {
             filteredInEvents.add(new FilteredEventWithNNb(e, nnb));
         }
-        BasicEvent oe = outItr.nextOutput();
-        oe.copyFrom(e);
-        return oe;
     }
 
     /**
      * Subclasses should call this before filtering to clear the
-     * filteredOutEventCount and filteredOutEvents and to setup the output
-     * iterator
+     * filteredOutEventCount and filteredOutEvents
      *
      * @param in
      * @return
@@ -200,11 +191,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         filteredOutEventCount = 0;
         totalEventCount = 0;
         in = getEnclosedFilterChain().filterPacket(in);
-        if(out==null || out.getEventClass()!=in.getEventClass()){
-            out=new EventPacket(in.getEventClass());
-        }
-        outItr = out.outputIterator();
-
         return in;
     }
 

@@ -301,7 +301,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     /**
      * Finds the intersection of events in a that are in b. Assumes packets are
-     * monotonic in timestamp ordering. Handles duplicates. Each duplicate
+     * non-monotonic in timestamp ordering. Handles duplicates. Each duplicate
      * is matched once. The matching is by event .equals() method.
      *
      * @param a ArrayList<BasicEvent> of a
@@ -420,12 +420,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         if (resetCalled) {
             resetCalled = false;
-            // if there was last event of previous packet, use that time to init the last events for noise generation
-            //(Since noise events will be filled in from this point),
-            // otherwise just use first event of this packet
-            int ts = lastTimestampPreviousPacket!=null? lastTimestampPreviousPacket: in.getFirstTimestamp(); // we use getFirstTimestamp since now rewind was fixed so this first event is really first event, thus the times will be initialized to be BEFORE the any events in the packet, hence deltaT>=0 
+            int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-(
             // initialize filters with lastTimesMap to Poisson waiting times
-            log.info("initializing timestamp maps with Poisson process waiting times before ts="+ts);
+            log.info("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
                    f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
             }
@@ -457,10 +454,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (EventFilter2D f : getEnclosedFilterChain()) {
                 ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
-            
-            EventPacket<BasicEvent> passedSignalAndNoisePacket = selectedFilter!=null?
-                (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket)
-                    :signalAndNoisePacket;
+            EventPacket<BasicEvent> passedSignalAndNoisePacket = (EventPacket<BasicEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
             if (selectedFilter != null) {
 
                 ArrayList<FilteredEventWithNNb> negativeList = selectedFilter.getNegativeEvents();
