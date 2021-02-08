@@ -41,7 +41,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private int ssy;
 
     int[][] lastTimesMap;
-    private int ts = 0; // used to reset filter
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
@@ -152,6 +151,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     continue;
                 }
                 totalEventCount++;
+                int ts=e.timestamp;
                 final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
                 if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                     filterOut(e);
