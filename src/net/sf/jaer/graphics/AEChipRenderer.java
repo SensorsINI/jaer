@@ -815,7 +815,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     @Override
     public void propertyChange(PropertyChangeEvent pce) {
-        log.info(pce.toString());
+//        log.info(pce.toString());
         if (pce.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             resetFrame(grayValue);
         }else
