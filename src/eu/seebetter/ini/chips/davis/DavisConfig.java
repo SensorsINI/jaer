@@ -412,10 +412,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     private int autoShotThreshold;
 
     // DVSTweasks from DVS128
-    private float bandwidth = 1;
-    private float maxFiringRate = 1;
-    private float onOffBalance = 1;
-    private float threshold = 1;
+    private float bandwidth =0;
+    private float maxFiringRate = 0;
+    private float onOffBalance = 0;
+    private float threshold = 0;
 
     /**
      *
