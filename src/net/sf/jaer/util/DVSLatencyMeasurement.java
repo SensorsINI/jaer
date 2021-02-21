@@ -348,11 +348,16 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
      * @param histMin the histMin to set
      */
     public void setHistMin(int histMin) {
+        if (histMin > histMax) {
+            histMin = histMax;
+        }
         int old = this.histMin;
         this.histMin = histMin;
         putInt("histMin", histMin);
         getSupport().firePropertyChange("histMin", old, histMin);
-        timeStats.reset();
+        if (old != this.histMin) {
+            timeStats.reset();
+        }
     }
 
     /**
@@ -366,11 +371,16 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
      * @param histMax the histMax to set
      */
     public void setHistMax(int histMax) {
+        if (histMax < histMin) {
+            histMax = histMin;
+        }
         int old = this.histMax;
         this.histMax = histMax;
         putInt("histMax", histMax);
         getSupport().firePropertyChange("histMax", old, histMax);
-        timeStats.reset();
+        if (old != this.histMax) {
+            timeStats.reset();
+        }
     }
 
     private class TimeStats {
@@ -379,7 +389,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         int lessCount = 0, moreCount = 0;
         int maxCount = 0;
         boolean virgin = true;
-        float mean = 0, var = 0, std = 0, cov = 0;
+        float mean = 0, std = 0, cov = 0;
         long sum = 0, sum2 = 0;
         int count;
 
@@ -409,8 +419,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             sum2 += sample * sample;
             if (count > 2) {
                 mean = (float) sum / count;
-                var = (float) sum2 / count - mean * mean;
-                std = (float) Math.sqrt(var);
+                std = (float) Math.sqrt(count * sum2 - sum * sum) / count;
                 cov = std / mean;
             }
 
@@ -492,8 +501,8 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             MultilineAnnotationTextRenderer.setScale(.3f);
             String meanS = fmt.format(mean * 1e-6f);
             String stdS = fmt.format(std * 1e-6);
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Timing: mean=%s+-%s s",
-                    meanS, stdS));
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Timing: mean=%s+-%s s, N=%d",
+                    meanS, stdS, count));
 
         }
 
@@ -518,23 +527,20 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             count = 0;
             sum = 0;
             sum2 = 0;
-            if (autoScaleHist) {
-                histMax = 0;
-                histMin = 100000;
-            }
         }
 
         private int getSampleBin(int sample) {
-            int bin = (int) Math.floor((histNumBins * ((float) sample - histMin)) / (histMax - histMin));
-            if (autoScaleHist && bin < 0) {
+            if (autoScaleHist && sample < histMin) {
                 setHistMin(sample);
                 reset();
                 return 0;
-            } else if (autoScaleHist && bin >= histNumBins) {
+            } else if (autoScaleHist && sample >= histMax) {
                 setHistMax(sample);
                 reset();
-                return histNumBins;
+                return histNumBins - 1;
             }
+            int bin = (int) Math.floor((histNumBins * ((float) sample - histMin)) / (histMax - histMin));
+
             return bin;
         }
     }
