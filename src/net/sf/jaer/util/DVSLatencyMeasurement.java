@@ -49,7 +49,6 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
-
     NRSerialPort serialPort = null;
     private int serialBaudRate = getInt("serialBaudRate", 115200);
     private String serialPortName = getString("serialPortName", "COM3");
@@ -72,14 +71,14 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     protected int histMin = getInt("histMin", 0);
     protected int histMax = getInt("histMax", 30000);
 
-    protected boolean pi0ngTest = false;
+    protected boolean pingTest = false;
 
     private EngineeringFormat fmt = new EngineeringFormat();
 
     private RectangularClusterTracker tracker; // adjust it to detect LED cluster from either LED
     private int lastClusterID = 0;
     private int led = 0;
-    
+
     private Long lastToggleTimeNs = null;
 
     public DVSLatencyMeasurement(AEChip chip) {
@@ -106,27 +105,31 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        getEnclosedFilterChain().filterPacket(in); // detect LED
-        LinkedList<Cluster> clusters = tracker.getVisibleClusters();
-        if (clusters.size() == 0) {
-            if (led != 1) {
-                doLed1On();
-            }
-        } else if (clusters.size() == 1) {
-            Cluster c = clusters.getFirst();
-            int id = c.getClusterNumber();
-            if (id == lastClusterID) {
-                doToggleLeds();
+        if (!pingTest) {
+            getEnclosedFilterChain().filterPacket(in); // detect LED
+            LinkedList<Cluster> clusters = tracker.getVisibleClusters();
+            if (clusters.size() == 0) {
+                if (led != 1) {
+                    doLed1On();
+                }
+            } else if (clusters.size() == 1) {
+                Cluster c = clusters.getFirst();
+                int id = c.getClusterNumber();
+                if (id == lastClusterID) {
+                    doToggleLeds();
+                    lastClusterID = id;
+                }
                 lastClusterID = id;
-            }
-            lastClusterID = id;
-        } else if (clusters.size() > 1) {
+            } else if (clusters.size() > 1) {
 //            Cluster c = clusters.getLast();
 //            int id = c.getClusterNumber();
 //            if (id == lastClusterID) {
 //                doToggleLeds();
 //                lastClusterID = id;
 //            }
+            }
+        } else {
+            doPingTest();
         }
         return in;
     }
@@ -214,6 +217,29 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         }
     }
 
+    public void doPingTest() {
+        long start = System.nanoTime();
+        sendByte('p');
+        if (serialPortInputStream != null) {
+            try {
+                while (serialPortInputStream.available() == 0
+                        && !Thread.interrupted()
+                        && System.nanoTime() - start < 100000000L);// wait for a byte
+                if(serialPortInputStream.available()==0){
+                    log.warning("timeout for ping");
+                    return;
+                }
+                int c = serialPortInputStream.read();
+                System.out.print((char) c);
+                long end = System.nanoTime();
+                timeStats.addSample((int) (end - start)/1000);
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+            }
+        }
+
+    }
+
     private void openSerial() throws IOException {
         if (serialPort != null) {
             closeSerial();
@@ -246,6 +272,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
         serialPortInputStream = new DataInputStream(serialPort.getInputStream());
         log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
+
     }
 
     private void closeSerial() {
@@ -433,6 +460,20 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         if (old != this.statsWindowLength) {
             timeStats.statsSamples = EvictingQueue.create(statsWindowLength);
         }
+    }
+
+    /**
+     * @return the pingTest
+     */
+    public boolean isPingTest() {
+        return pingTest;
+    }
+
+    /**
+     * @param pingTest the pingTest to set
+     */
+    public void setPingTest(boolean pingTest) {
+        this.pingTest = pingTest;
     }
 
     private class TimeStats {
