@@ -6,6 +6,7 @@ package net.sf.jaer.util;
 
 import ch.unizh.ini.jaer.projects.laser3d.HistogramData;
 import ch.unizh.ini.jaer.projects.npp.RoShamBoCNN;
+import com.google.common.collect.EvictingQueue;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -34,6 +35,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
+import net.sf.jaer.eventprocessing.filter.NoiseTesterFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -63,8 +65,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
     private TextRenderer renderer = null;
-    private int histNumBins = getInt("histNumBins", 100);
-    protected boolean autoScaleHist = getBoolean("autoScaleHist", true);
+    private int histNumBins = getInt("histNumBins", 300);
+    protected int statsWindowLength = getInt("statsWindowLength", 300);
+    protected boolean autoScaleHist = getBoolean("autoScaleHist", false);
+    protected boolean logLogScale = getBoolean("logLogScale", false);
     protected int histMin = getInt("histMin", 0);
     protected int histMax = getInt("histMax", 30000);
 
@@ -81,13 +85,23 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         FilterChain chain = new FilterChain(chip);
         chain.add(tracker);
         setEnclosedFilterChain(chain);
-        setPropertyTooltip("serialPortName", "Name of serial port to send robot commands to");
+        setPropertyTooltip("serialPortName", "Name of serial port to send Arduino Nano commands to");
         setPropertyTooltip("serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
+        setPropertyTooltip("autoScaleHist", "Automatically determine bounds for histogram of intervals");
+        setPropertyTooltip("histMin", "Minimum interval");
+        setPropertyTooltip("histMax", "Maximum interval");
+        setPropertyTooltip("histNumBins", "Number of histogram bins");
+        setPropertyTooltip("statsWindowLength", "Number of samples over which to compute statistics");
+        setPropertyTooltip("led1On", "Turn on LED 1");
+        setPropertyTooltip("led2On", "Turn on LED 2");
+        setPropertyTooltip("toggleLeds", "Toggle betweeen LEDs");
+        setPropertyTooltip("turnOffLeds", "Turn off both LEDs");
+        setPropertyTooltip("logLogScale", "Use log-log histogram scale");
 
     }
 
     @Override
-    public EventPacket filterPacket(EventPacket in) {
+    synchronized public EventPacket filterPacket(EventPacket in) {
         getEnclosedFilterChain().filterPacket(in); // detect LED
         LinkedList<Cluster> clusters = tracker.getVisibleClusters();
         if (clusters.size() == 0) {
@@ -338,6 +352,21 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     }
 
     /**
+     * @return the logLogScale
+     */
+    public boolean isLogLogScale() {
+        return logLogScale;
+    }
+
+    /**
+     * @param logLogScale the logLogScale to set
+     */
+    public void setLogLogScale(boolean logLogScale) {
+        this.logLogScale = logLogScale;
+        putBoolean("logLogScale", logLogScale);
+    }
+
+    /**
      * @return the histMin
      */
     public int getHistMin() {
@@ -383,15 +412,35 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         }
     }
 
+    /**
+     * @return the statsWindowLength
+     */
+    public int getStatsWindowLength() {
+        return statsWindowLength;
+    }
+
+    /**
+     * @param statsWindowLength the statsWindowLength to set
+     */
+    synchronized public void setStatsWindowLength(int statsWindowLength) {
+        int old = this.statsWindowLength;
+        this.statsWindowLength = statsWindowLength;
+        putInt("statsWindowLength", statsWindowLength);
+        if (old != this.statsWindowLength) {
+            timeStats.statsSamples=EvictingQueue.create(statsWindowLength); 
+        }
+    }
+
     private class TimeStats {
 
         int[] bins = new int[histNumBins];
         int lessCount = 0, moreCount = 0;
         int maxCount = 0;
         boolean virgin = true;
-        float mean = 0, std = 0, cov = 0;
+        float mean = 0, std = 0, cov = 0, median;
         long sum = 0, sum2 = 0;
         int count;
+        EvictingQueue<Integer> statsSamples = EvictingQueue.create(getStatsWindowLength());
 
         public TimeStats() {
         }
@@ -422,7 +471,14 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 std = (float) Math.sqrt(count * sum2 - sum * sum) / count;
                 cov = std / mean;
             }
-
+            statsSamples.add(sample);
+        }
+        
+        void computeStats(){
+            if(statsSamples.isEmpty()) return;
+            Integer[] samples=(Integer[]) statsSamples.toArray(new Integer[0]);
+            Arrays.sort(samples);
+            median=samples[samples.length/2];
         }
 
         /**
@@ -430,8 +486,9 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
          *
          */
         void draw(GL2 gl) {
+            computeStats();
             float dx = (float) (chip.getSizeX() - 2) / (histNumBins + 2);
-            float sy = (float) (chip.getSizeY() - 2) / maxCount;
+            float sy = (float) (chip.getSizeY() - 2) / (logLogScale==false?maxCount:(float)Math.log10(maxCount));
 
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(1, 1);
@@ -471,7 +528,8 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 gl.glColor4fv(SPATIAL_HIST_COLOR, 0);
                 gl.glBegin(GL.GL_LINE_STRIP);
                 for (int i = 0; i < bins.length; i++) {
-                    float y = 1 + (sy * bins[i]);
+                    if(logLogScale && bins[i]==0) continue;
+                    float y = 1 + (sy * (!logLogScale?bins[i]:(float)Math.log10(bins[i])));
                     float x1 = 1 + (dx * i), x2 = x1 + dx;
                     gl.glVertex2f(x1, 1);
                     gl.glVertex2f(x1, y);
@@ -501,8 +559,9 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             MultilineAnnotationTextRenderer.setScale(.3f);
             String meanS = fmt.format(mean * 1e-6f);
             String stdS = fmt.format(std * 1e-6);
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Timing: mean=%s+-%s s, N=%d",
-                    meanS, stdS, count));
+            String medianS = fmt.format(median * 1e-6);
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Timing: mean=%s+-%s s (N=%d), median=%s s (N=%d)",
+                    meanS, stdS, count, medianS, statsWindowLength));
 
         }
 
