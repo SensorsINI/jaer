@@ -779,7 +779,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             return;
         }
         maxFiringRate = val;
-        final float MAX = 100;
+        final float MAX = 30;
         refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
         getChip().getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
     }
