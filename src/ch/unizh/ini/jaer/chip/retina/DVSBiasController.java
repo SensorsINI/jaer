@@ -43,6 +43,8 @@ import net.sf.jaer.util.TobiLogger;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
+ 
+
     public enum Goal {
         None, BoundEventRate, TargetSNR, LimitEventRate
     }
@@ -50,7 +52,8 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
     private float eventRateHighHz = getFloat("eventRateHighHz", 1e6f);
     private float eventRateLowHz = getFloat("rateLowKeps", 100e3f);
-    private float hysteresisFactor = getFloat("hysteresisFactor", 1.3f);
+    private float eventRateBoundsHysteresisFactor = getFloat("eventRateBoundsHysteresisFactor", 1.3f);
+    protected float snrHysteresis = getFloat("snrHysteresis", .2f);
     private int minCommandIntervalMs = getInt("minCommandIntervalMs", 300);
     protected int ignoreEventsAfterBiasChangeMs = getInt("ignoreEventsAfterBiasChangeMs", 100);
     private long lastBiasChangeTimeMs = 0; // limits use of status messages that control biases
@@ -69,7 +72,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     private float signalEventRate = Float.NaN;
     private float inputEventRate = Float.NaN;
     private float snr = Float.NaN;
-    protected float targetSNR = getFloat("targetSNR", 2);
+    protected float targetSNR = getFloat("targetSNR", 0);
 
     enum State {
 
@@ -125,8 +128,8 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(rates, "eventRateLowHz", "event rate in keps for LOW state, where event threshold or refractory period are reduced");
         setPropertyTooltip(rates, "eventRateHighHz", "event rate in keps for HIGH state, where event threshold or refractory period are increased");
         setPropertyTooltip(rates, "targetSNR", "minimum SNR to target by bandwidth control");
-        setPropertyTooltip(policy, "rateHysteresis", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
-        setPropertyTooltip(policy, "hysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
+        setPropertyTooltip(policy, "snrHysteresis", "hysteresis for SNR for bandwidth change; after state entry, state exited only when SNR changes by this much in opposite direction");
+        setPropertyTooltip(policy, "eventRateBoundsHysteresisFactor", "hysteresis for state change; after state entry, state exited only when avg rate changes by this factor from threshold");
         setPropertyTooltip(policy, "tweakStepAmount", "fraction by which to tweak bias by each step, e.g. 0.1 means tweak bias current by 10% for each step");
         setPropertyTooltip(policy, "minCommandIntervalMs", "minimum time in ms between changing biases; avoids noise from changing biases too frequently");
         setPropertyTooltip(policy, "ignoreEventsAfterBiasChangeMs", "time interval in ms to ignore events after bias change (which causes noise events)");
@@ -240,19 +243,19 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         lastEventRateState = eventRateState;
         switch (eventRateState) {
             case LOW_RATE:
-                if (r > (eventRateLowHz * hysteresisFactor)) {
+                if (r > (eventRateLowHz * eventRateBoundsHysteresisFactor)) {
                     eventRateState = State.MEDIUM_RATE;
                 }
                 break;
             case MEDIUM_RATE:
-                if (r < (eventRateLowHz / hysteresisFactor)) {
+                if (r < (eventRateLowHz / eventRateBoundsHysteresisFactor)) {
                     eventRateState = State.LOW_RATE;
-                } else if (r > (eventRateHighHz * hysteresisFactor)) {
+                } else if (r > (eventRateHighHz * eventRateBoundsHysteresisFactor)) {
                     eventRateState = State.HIGH_RATE;
                 }
                 break;
             case HIGH_RATE:
-                if (r < (eventRateHighHz / hysteresisFactor)) {
+                if (r < (eventRateHighHz / eventRateBoundsHysteresisFactor)) {
                     eventRateState = State.MEDIUM_RATE;
                 }
                 break;
@@ -320,18 +323,18 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     public void initFilter() {
     }
 
-    public float getHysteresisFactor() {
-        return hysteresisFactor;
+    public float getEventRateBoundsHysteresisFactor() {
+        return eventRateBoundsHysteresisFactor;
     }
 
-    synchronized public void setHysteresisFactor(float h) {
+    synchronized public void setEventRateBoundsHysteresisFactor(float h) {
         if (h < 1) {
             h = 1;
         } else if (h > 5) {
             h = 5;
         }
-        hysteresisFactor = h;
-        putFloat("hysteresisFactor", hysteresisFactor);
+        eventRateBoundsHysteresisFactor = h;
+        putFloat("eventRateBoundsHysteresisFactor", eventRateBoundsHysteresisFactor);
     }
 
     /**
@@ -368,7 +371,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         int ystep = 8;
         gl.glColor3f(1, 1, 1); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, ypos, 0);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("goal=%s state=%s", goal.toString(), eventRateState.toString()));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("goal=%s state=%s ", goal.toString(), eventRateState.toString()));
         gl.glPopMatrix();
 
         // draw event rate with bounds
@@ -376,14 +379,19 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         gl.glPushMatrix();
         gl.glColor3f(1, 1, 1);
         gl.glRasterPos3f(0, ypos, 0);
-        float logRate = (float) Math.log10(signalEventRate);
+        float logRate = (float) Math.log10(inputEventRate);
         float logRateLow = (float) Math.log10(eventRateLowHz);
         float logRateHigh = (float) Math.log10(eventRateHighHz);
         float logRateMin = logRateLow - 1, logRateMax = logRateHigh + 1;
         float logRangeTotal = logRateMax - logRateMin;
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%10seps", fmt.format(signalEventRate)));
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, 
+                String.format("Inp/Sig/Noise eps: %6s/%6s/%6sHz", 
+                        fmt.format(inputEventRate),
+                        fmt.format(signalEventRate),
+                        fmt.format(inputEventRate-signalEventRate)
+                ));
         gl.glLineWidth(2);
-        final int xmin = 50, xmax = chip.getSizeX(), xwid = xmax - xmin, xmid=(xmax-xmin)/2;
+        final int xmin = 120, xmax = chip.getSizeX(), xwid = xmax - xmin, xmid=xmin+xwid/2;
         float x;
         gl.glBegin(GL.GL_LINES);
         x = xmin + xwid * (logRateLow - logRateMin) / logRangeTotal;
@@ -536,10 +544,25 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
      * @param targetSNR the targetSNR to set
      */
     public void setTargetSNR(float targetSNR) {
+        if(targetSNR>1)targetSNR=1; else if(targetSNR<-1) targetSNR=-1;
         this.targetSNR = targetSNR;
         putFloat("targetSNR",targetSNR);
     }
 
+       /**
+     * @return the snrHysteresis
+     */
+    public float getSnrHysteresis() {
+        return snrHysteresis;
+    }
+
+    /**
+     * @param snrHysteresis the snrHysteresis to set
+     */
+    public void setSnrHysteresis(float snrHysteresis) {
+        this.snrHysteresis = snrHysteresis;
+        putFloat("snrHysteresis",snrHysteresis);
+    }
     // since denoising marks events filtered out, cannot just return denoised packet without touching it again
 //    /** 
 //     * @return the outputRawInput
