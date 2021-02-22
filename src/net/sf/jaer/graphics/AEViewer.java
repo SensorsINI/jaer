@@ -1816,7 +1816,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 }
             }
-            return emptyCookedPacket;
+            return inputPacket; // if we don't filter, just return the input packet to render the raw data
         }
 
         void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
