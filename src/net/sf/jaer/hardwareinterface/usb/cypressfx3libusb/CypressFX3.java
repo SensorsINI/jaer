@@ -1095,8 +1095,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 							// swap the buffer out from under us while
 							// we process these events
 							// aePacketRawPool.writeBuffer is also synchronized
-							// so we getString
-							// the same lock twice which is ok
+							// so we the same lock twice which is ok
 							final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
 							final int[] addresses = buffer.getAddresses();
 							final int[] timestamps = buffer.getTimestamps();
