@@ -49,22 +49,22 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
-    private RectangularClusterTracker tracker; // adjust it to detect LED cluster from either LED
+
     NRSerialPort serialPort = null;
     private int serialBaudRate = getInt("serialBaudRate", 115200);
     private String serialPortName = getString("serialPortName", "COM3");
     private DataOutputStream serialPortOutputStream = null;
     private DataInputStream serialPortInputStream = null;
-    public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
-    final private static float[] TEMPORAL_HIST_COLOR = {0, 0, .8f, .3f},
-            SPATIAL_HIST_COLOR = {.6f, .4f, .2f, .6f},
-            HIST_OVERFLOW_COLOR = {.8f, .3f, .2f, .6f};
+
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
 
     private Point currentMousePoint = null;
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
     private TextRenderer renderer = null;
+
+    private TimeStats timeStats;
+    public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
     private int histNumBins = getInt("histNumBins", 300);
     protected int statsWindowLength = getInt("statsWindowLength", 300);
     protected boolean autoScaleHist = getBoolean("autoScaleHist", false);
@@ -72,11 +72,14 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     protected int histMin = getInt("histMin", 0);
     protected int histMax = getInt("histMax", 30000);
 
-    private TimeStats timeStats;
+    protected boolean pi0ngTest = false;
+
     private EngineeringFormat fmt = new EngineeringFormat();
 
+    private RectangularClusterTracker tracker; // adjust it to detect LED cluster from either LED
     private int lastClusterID = 0;
     private int led = 0;
+    
     private Long lastToggleTimeNs = null;
 
     public DVSLatencyMeasurement(AEChip chip) {
@@ -97,6 +100,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("toggleLeds", "Toggle betweeen LEDs");
         setPropertyTooltip("turnOffLeds", "Turn off both LEDs");
         setPropertyTooltip("logLogScale", "Use log-log histogram scale");
+        setPropertyTooltip("pingTest", "Test only roundtrip latency to the Arduino");
 
     }
 
@@ -427,12 +431,15 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         this.statsWindowLength = statsWindowLength;
         putInt("statsWindowLength", statsWindowLength);
         if (old != this.statsWindowLength) {
-            timeStats.statsSamples=EvictingQueue.create(statsWindowLength); 
+            timeStats.statsSamples = EvictingQueue.create(statsWindowLength);
         }
     }
 
     private class TimeStats {
 
+        final private float[] TEMPORAL_HIST_COLOR = {0, 0, .8f, .3f},
+                SPATIAL_HIST_COLOR = {.6f, .4f, .2f, .6f},
+                HIST_OVERFLOW_COLOR = {.8f, .3f, .2f, .6f};
         int[] bins = new int[histNumBins];
         int lessCount = 0, moreCount = 0;
         int maxCount = 0;
@@ -473,12 +480,14 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             }
             statsSamples.add(sample);
         }
-        
-        void computeStats(){
-            if(statsSamples.isEmpty()) return;
-            Integer[] samples=(Integer[]) statsSamples.toArray(new Integer[0]);
+
+        void computeStats() {
+            if (statsSamples.isEmpty()) {
+                return;
+            }
+            Integer[] samples = (Integer[]) statsSamples.toArray(new Integer[0]);
             Arrays.sort(samples);
-            median=samples[samples.length/2];
+            median = samples[samples.length / 2];
         }
 
         /**
@@ -488,7 +497,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         void draw(GL2 gl) {
             computeStats();
             float dx = (float) (chip.getSizeX() - 2) / (histNumBins + 2);
-            float sy = (float) (chip.getSizeY() - 2) / (logLogScale==false?maxCount:(float)Math.log10(maxCount));
+            float sy = (float) (chip.getSizeY() - 2) / (logLogScale == false ? maxCount : (float) Math.log10(maxCount));
 
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(1, 1);
@@ -528,8 +537,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 gl.glColor4fv(SPATIAL_HIST_COLOR, 0);
                 gl.glBegin(GL.GL_LINE_STRIP);
                 for (int i = 0; i < bins.length; i++) {
-                    if(logLogScale && bins[i]==0) continue;
-                    float y = 1 + (sy * (!logLogScale?bins[i]:(float)Math.log10(bins[i])));
+                    if (logLogScale && bins[i] == 0) {
+                        continue;
+                    }
+                    float y = 1 + (sy * (!logLogScale ? bins[i] : (float) Math.log10(bins[i])));
                     float x1 = 1 + (dx * i), x2 = x1 + dx;
                     gl.glVertex2f(x1, 1);
                     gl.glVertex2f(x1, y);
