@@ -163,17 +163,27 @@ public class TobiLogger {
             }
         } else {
             try {
-                fileNameActual = System.getProperty("user.home")+File.separator+getTimestampedFilename();
+                if(checkFilename(getFileNameBase()))
+                {
+                    fileNameActual = getTimestampedFilename();
+                }
+                else       // if no path is specified, home folder is used by default.
+                {
+                    fileNameActual = System.getProperty("user.home")+File.separator+getTimestampedFilename();                    
+                }
                 this.file = new File(fileNameActual);
                 logStream = new PrintStream(new BufferedOutputStream(new FileOutputStream(getFile())));
                 // start with generic header of toString()
                 logStream.println(getCommentChar()+toString());
                 // add creation date
                 logStream.println(getCommentChar()+"created " + new Date());
-                // add user's comment header
-                String s=getCommentChar()
-                        +getFileCommentString().replaceAll("\\R", System.lineSeparator()+getCommentChar());
-                logStream.println(s);
+                // add user's comment header if user set it
+                if (getFileCommentString() != null)
+                {
+                    String s=getCommentChar()
+                            +getFileCommentString().replaceAll("\\R", System.lineSeparator()+getCommentChar());
+                    logStream.println(s);                    
+                }
                 // finally the first record, column names usually
                 logStream.println(getFirstRecordLine());
                 
@@ -278,6 +288,12 @@ public class TobiLogger {
         return fileNameBase;
     }
 
+    /** check the filename provided by user is path or filename*/
+    public boolean checkFilename(String filename) {
+        File tmpFile = new File(filename);
+        return tmpFile.isAbsolute();
+    }
+    
     /** Opens the last folder where logging was sent to in desktop file explorer */
     public void showFolderInDesktop() {
         if (!Desktop.isDesktopSupported()) {
