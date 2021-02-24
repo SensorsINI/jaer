@@ -39,6 +39,7 @@ import net.sf.jaer.eventprocessing.filter.NoiseTesterFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import sun.tools.java.ClassDefinition;
 
 /**
  * Tests DVS latency using Arduino DVSLatencyMeasurement.
@@ -76,14 +77,19 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     private EngineeringFormat fmt = new EngineeringFormat();
 
     private RectangularClusterTracker tracker; // adjust it to detect LED cluster from either LED
-    private int lastClusterID = 0;
+    private int lastClusterID = 0, lastTimestamp = 0;
     private int led = 0;
 
     private Long lastToggleTimeNs = null;
 
+    private TobiLogger tobiLogger;
+
     public DVSLatencyMeasurement(AEChip chip) {
         super(chip);
         tracker = new RectangularClusterTracker(chip);
+        tracker.setMaxNumClusters(2);
+        tracker.setClusterMassDecayTauUs(100);
+        tracker.setPathsEnabled(false);
         FilterChain chain = new FilterChain(chip);
         chain.add(tracker);
         setEnclosedFilterChain(chain);
@@ -100,7 +106,9 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("turnOffLeds", "Turn off both LEDs");
         setPropertyTooltip("logLogScale", "Use log-log histogram scale");
         setPropertyTooltip("pingTest", "Test only roundtrip latency to the Arduino");
-
+        setPropertyTooltip("logging", "Toggle ON/OFF logging of delta times to TobiLogger CSV file");
+        tobiLogger = new TobiLogger("DVSLatencyMeasurement", "DVSLatencyMeasurement");
+        tobiLogger.setColumnHeaderLine("lastTimestamp(us),dt(us)");
     }
 
     @Override
@@ -108,11 +116,11 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         if (!pingTest) {
             getEnclosedFilterChain().filterPacket(in); // detect LED
             LinkedList<Cluster> clusters = tracker.getVisibleClusters();
-            if (clusters.size() == 0) {
+            if (clusters.size() == 0) { // if no LED detected, start flashing LED1
                 if (led != 1) {
                     doLed1On();
                 }
-            } else if (clusters.size() == 1) {
+            } else if (clusters.size() == 1) { // if only 1 cluster, then if same as last one, swap LEDs
                 Cluster c = clusters.getFirst();
                 int id = c.getClusterNumber();
                 if (id == lastClusterID) {
@@ -120,7 +128,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                     lastClusterID = id;
                 }
                 lastClusterID = id;
-            } else if (clusters.size() > 1) {
+            } else if (clusters.size() > 1) { // both clusters still active
 //            Cluster c = clusters.getLast();
 //            int id = c.getClusterNumber();
 //            if (id == lastClusterID) {
@@ -130,6 +138,9 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             }
         } else {
             doPingTest();
+        }
+        if (in.getSize() > 0) {
+            lastTimestamp = in.getLastTimestamp();
         }
         return in;
     }
@@ -174,6 +185,15 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 log.warning("caught exception enabling serial port when filter was enabled: " + ex.toString());
             }
         }
+    }
+
+    public void doToggleOnLogging() {
+        tobiLogger.setEnabled(true);
+    }
+
+    public void doToggleOffLogging() {
+        tobiLogger.setEnabled(false);
+        tobiLogger.showFolderInDesktop();
     }
 
     public void doTurnOffLeds() {
@@ -225,14 +245,14 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 while (serialPortInputStream.available() == 0
                         && !Thread.interrupted()
                         && System.nanoTime() - start < 100000000L);// wait for a byte
-                if(serialPortInputStream.available()==0){
+                if (serialPortInputStream.available() == 0) {
                     log.warning("timeout for ping");
                     return;
                 }
                 int c = serialPortInputStream.read();
-                System.out.print((char) c);
+//                System.out.print((char) c);
                 long end = System.nanoTime();
-                timeStats.addSample((int) (end - start)/1000);
+                timeStats.addSample((int) (end - start) / 1000);
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
@@ -272,6 +292,24 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
         serialPortInputStream = new DataInputStream(serialPort.getInputStream());
         log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
+        // drain serial port chars from Arduino startup
+        try {
+            sendByte('p'); // stimulute a pong response, should result in at least a p return
+            log.info("Draining startup serial port output from Arduino:");
+            long start = System.currentTimeMillis();
+            while (!Thread.interrupted() && System.currentTimeMillis() - start < 900L) {
+                while (serialPortInputStream.available() > 0) {
+                    int c = serialPortInputStream.read();
+                    System.out.print((char) c);
+                }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                }
+            }
+        } catch (IOException ex) {
+            log.warning(ex.toString());
+        }
 
     }
 
@@ -519,14 +557,22 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 std = (float) Math.sqrt(count * sum2 - sum * sum) / count;
                 cov = std / mean;
             }
-            statsSamples.add(sample);
+            synchronized(statsSamples){
+                statsSamples.add(sample);
+            }
+            if (tobiLogger.isEnabled()) {
+                tobiLogger.log(String.format("%d,%d", lastTimestamp, sample));
+            }
         }
 
         void computeStats() {
             if (statsSamples.isEmpty()) {
                 return;
             }
-            Integer[] samples = (Integer[]) statsSamples.toArray(new Integer[0]);
+            Integer[] samples =null;
+            synchronized (statsSamples) {
+                samples = (Integer[]) statsSamples.toArray(new Integer[0]);
+            }
             Arrays.sort(samples);
             median = samples[samples.length / 2];
         }
