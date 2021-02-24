@@ -249,8 +249,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                     log.warning("timeout for ping");
                     return;
                 }
-                int c = serialPortInputStream.read();
+                while(serialPortInputStream.available()>0){
+                    int c = serialPortInputStream.read(); // drain buffer
 //                System.out.print((char) c);
+                }
                 long end = System.nanoTime();
                 timeStats.addSample((int) (end - start) / 1000);
             } catch (IOException ex) {
