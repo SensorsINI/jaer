@@ -4,7 +4,6 @@
  */
 package net.sf.jaer.util;
 
-import ch.unizh.ini.jaer.projects.laser3d.HistogramData;
 import ch.unizh.ini.jaer.projects.npp.RoShamBoCNN;
 import com.google.common.collect.EvictingQueue;
 import com.jogamp.opengl.GL;
@@ -15,9 +14,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import gnu.io.NRSerialPort;
 import java.awt.Font;
@@ -27,21 +24,18 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
-import net.sf.jaer.eventprocessing.filter.NoiseTesterFilter;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
-import sun.tools.java.ClassDefinition;
 
 /**
  * Tests DVS latency using Arduino DVSLatencyMeasurement.
@@ -124,7 +118,12 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     synchronized public EventPacket filterPacket(EventPacket<? extends BasicEvent> in) {
         getEnclosedFilterChain().filterPacket(in); // detect LED
         outer:
-        for (BasicEvent e : in) {
+        for (BasicEvent b : in) {
+            PolarityEvent e = (PolarityEvent) b;
+            if (e.polarity == PolarityEvent.Polarity.Off) {
+                continue;
+            }
+            // only count ON events from LED turning on
             if (e.x > xborder) {
                 right++;
             } else if (e.x < xborder) {
@@ -141,10 +140,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                     break outer;
                 case LED1:
                 case LED2:
-                    if(right>thresholdEventCount || left>thresholdEventCount){
+                    if (right > thresholdEventCount || left > thresholdEventCount) {
                         doToggleLeds();
-                        left=0;
-                        right=0;
+                        left = 0;
+                        right = 0;
                         break outer;
                     }
                     break;
@@ -185,10 +184,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         gl.glColor3f(1, 1, 1);
         gl.glLineWidth(2);
         gl.glBegin(GL.GL_LINES);
-        gl.glVertex2f(xborder,0);
-        gl.glVertex2f(xborder,csy);
+        gl.glVertex2f(xborder, 0);
+        gl.glVertex2f(xborder, csy);
         gl.glEnd();
-               
+
         timeStats.draw(gl);
     }
 
@@ -573,7 +572,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
      */
     public void setThresholdEventCount(int thresholdEventCount) {
         this.thresholdEventCount = thresholdEventCount;
-        putInt("thresholdEventCount",thresholdEventCount);
+        putInt("thresholdEventCount", thresholdEventCount);
     }
 
     private class TimeStats {
