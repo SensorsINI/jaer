@@ -33,9 +33,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.event.BasicEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.filter.NoiseTesterFilter;
+import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -72,26 +74,30 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     protected int histMin = getInt("histMin", 0);
     protected int histMax = getInt("histMax", 30000);
 
-    protected boolean pingTest = false;
-
     private EngineeringFormat fmt = new EngineeringFormat();
 
-    private RectangularClusterTracker tracker; // adjust it to detect LED cluster from either LED
+//    private RectangularClusterTracker tracker; // adjust it to detect LED cluster from either LED
+    private SpatioTemporalCorrelationFilter noiseFilter; // adjust it to detect LED cluster from either LED
     private int lastClusterID = 0, lastTimestamp = 0;
-    private int led = 0;
+    protected int xborder = 0; // count events on each side of border
+    protected int thresholdEventCount = getInt("thresholdEventCount", 100);
+    private int left = 0, right = 0;
 
+//    private int led = 0;
     private Long lastToggleTimeNs = null;
 
     private TobiLogger tobiLogger;
 
+    enum State {
+        Initial, LED1, LED2, PingTest, Paused, BothLedsOn
+    }
+    State state = State.Initial;
+
     public DVSLatencyMeasurement(AEChip chip) {
         super(chip);
-        tracker = new RectangularClusterTracker(chip);
-        tracker.setMaxNumClusters(2);
-        tracker.setClusterMassDecayTauUs(100);
-        tracker.setPathsEnabled(false);
+        noiseFilter = new SpatioTemporalCorrelationFilter(chip);
         FilterChain chain = new FilterChain(chip);
-        chain.add(tracker);
+        chain.add(noiseFilter);
         setEnclosedFilterChain(chain);
         setPropertyTooltip("serialPortName", "Name of serial port to send Arduino Nano commands to");
         setPropertyTooltip("serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
@@ -100,44 +106,49 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("histMax", "Maximum interval");
         setPropertyTooltip("histNumBins", "Number of histogram bins");
         setPropertyTooltip("statsWindowLength", "Number of samples over which to compute statistics");
-        setPropertyTooltip("led1On", "Turn on LED 1");
-        setPropertyTooltip("led2On", "Turn on LED 2");
+        setPropertyTooltip("led1On", "Turn on LED 1 flashing");
+        setPropertyTooltip("led2On", "Turn on LED 2 flashing");
+        setPropertyTooltip("turnOnBothLeds", "Turn on both LEDs flashing");
         setPropertyTooltip("toggleLeds", "Toggle betweeen LEDs");
         setPropertyTooltip("turnOffLeds", "Turn off both LEDs");
         setPropertyTooltip("logLogScale", "Use log-log histogram scale");
         setPropertyTooltip("pingTest", "Test only roundtrip latency to the Arduino");
         setPropertyTooltip("logging", "Toggle ON/OFF logging of delta times to TobiLogger CSV file");
+        setPropertyTooltip("xborder", "Left/Right LED X address discrimination border");
+        setPropertyTooltip("thresholdEventCount", "How many events to detect LED");
         tobiLogger = new TobiLogger("DVSLatencyMeasurement", "DVSLatencyMeasurement");
         tobiLogger.setColumnHeaderLine("lastTimestamp(us),dt(us)");
     }
 
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {
-        if (!pingTest) {
-            getEnclosedFilterChain().filterPacket(in); // detect LED
-            LinkedList<Cluster> clusters = tracker.getVisibleClusters();
-            if (clusters.size() == 0) { // if no LED detected, start flashing LED1
-                if (led != 1) {
-                    doLed1On();
-                }
-            } else if (clusters.size() == 1) { // if only 1 cluster, then if same as last one, swap LEDs
-                Cluster c = clusters.getFirst();
-                int id = c.getClusterNumber();
-                if (id == lastClusterID) {
-                    doToggleLeds();
-                    lastClusterID = id;
-                }
-                lastClusterID = id;
-            } else if (clusters.size() > 1) { // both clusters still active
-//            Cluster c = clusters.getLast();
-//            int id = c.getClusterNumber();
-//            if (id == lastClusterID) {
-//                doToggleLeds();
-//                lastClusterID = id;
-//            }
+    synchronized public EventPacket filterPacket(EventPacket<? extends BasicEvent> in) {
+        getEnclosedFilterChain().filterPacket(in); // detect LED
+        outer:
+        for (BasicEvent e : in) {
+            if (e.x > xborder) {
+                right++;
+            } else if (e.x < xborder) {
+                left++;
             }
-        } else {
-            doPingTest();
+            switch (state) {
+                case Initial:
+                    doLed1On();
+                    break;
+                case Paused:
+                    break;
+                case PingTest:
+                    doToggleOnPingTest();
+                    break outer;
+                case LED1:
+                case LED2:
+                    if(right>thresholdEventCount || left>thresholdEventCount){
+                        doToggleLeds();
+                        left=0;
+                        right=0;
+                        break outer;
+                    }
+                    break;
+            }
         }
         if (in.getSize() > 0) {
             lastTimestamp = in.getLastTimestamp();
@@ -146,9 +157,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     }
 
     @Override
-    public void resetFilter() {
-        tracker.resetFilter();
+    synchronized public void resetFilter() {
+        noiseFilter.resetFilter();
         timeStats.reset();
+        state = State.Initial;
     }
 
     @Override
@@ -159,17 +171,24 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
             renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         }
+        setXborder(getInt("xborder", chip.getSizeX() / 2));
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
-        tracker.annotate(drawable);
+        noiseFilter.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         canvas = chip.getCanvas();
         glCanvas = (GLCanvas) canvas.getCanvas();
 
         float csx = chip.getSizeX(), csy = chip.getSizeY();
         gl.glColor3f(1, 1, 1);
+        gl.glLineWidth(2);
+        gl.glBegin(GL.GL_LINES);
+        gl.glVertex2f(xborder,0);
+        gl.glVertex2f(xborder,csy);
+        gl.glEnd();
+               
         timeStats.draw(gl);
     }
 
@@ -198,26 +217,24 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
 
     public void doTurnOffLeds() {
         sendByte('0');
-        led = 0;
+        state = State.Paused;
     }
 
     public void doLed1On() {
         sendByte('1');
-        led = 1;
+        state = State.LED1;
     }
 
     public void doLed2On() {
         sendByte('2');
-        led = 2;
+        state = State.LED2;
     }
 
     public void doToggleLeds() {
-        if (led == 0) {
+        if (state == State.LED2) {
             doLed1On();
-        } else if (led == 1) {
+        } else if (state == State.LED1) {
             doLed2On();
-        } else {
-            doLed1On();
         }
         long t = System.nanoTime();
         if (lastToggleTimeNs != null) {
@@ -225,6 +242,11 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             timeStats.addSample((int) (dt / 1000));
         }
         lastToggleTimeNs = t;
+    }
+
+    public void doTurnOnBothLeds() {
+        sendByte('3');
+        state = State.BothLedsOn;
     }
 
     private void sendByte(int cmd) {
@@ -237,7 +259,8 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         }
     }
 
-    public void doPingTest() {
+    public void doToggleOnPingTest() {
+        state = state.PingTest;
         long start = System.nanoTime();
         sendByte('p');
         if (serialPortInputStream != null) {
@@ -249,7 +272,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                     log.warning("timeout for ping");
                     return;
                 }
-                while(serialPortInputStream.available()>0){
+                while (serialPortInputStream.available() > 0 && state == State.PingTest) {
                     int c = serialPortInputStream.read(); // drain buffer
 //                System.out.print((char) c);
                 }
@@ -260,6 +283,10 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             }
         }
 
+    }
+
+    public void doToggleOffPingTest() {
+        state = state.Initial;
     }
 
     private void openSerial() throws IOException {
@@ -506,14 +533,47 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
      * @return the pingTest
      */
     public boolean isPingTest() {
-        return pingTest;
+        return state == State.PingTest;
     }
 
     /**
      * @param pingTest the pingTest to set
      */
     public void setPingTest(boolean pingTest) {
-        this.pingTest = pingTest;
+        state = State.PingTest;
+    }
+
+    /**
+     * @return the xborder
+     */
+    public int getXborder() {
+        return xborder;
+    }
+
+    /**
+     * @param xborder the xborder to set
+     */
+    public void setXborder(int xborder) {
+        if (xborder > chip.getSizeX()) {
+            xborder = chip.getSizeX();
+        }
+        this.xborder = xborder;
+        putInt("xborder", xborder);
+    }
+
+    /**
+     * @return the thresholdEventCount
+     */
+    public int getThresholdEventCount() {
+        return thresholdEventCount;
+    }
+
+    /**
+     * @param thresholdEventCount the thresholdEventCount to set
+     */
+    public void setThresholdEventCount(int thresholdEventCount) {
+        this.thresholdEventCount = thresholdEventCount;
+        putInt("thresholdEventCount",thresholdEventCount);
     }
 
     private class TimeStats {
@@ -559,7 +619,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 std = (float) Math.sqrt(count * sum2 - sum * sum) / count;
                 cov = std / mean;
             }
-            synchronized(statsSamples){
+            synchronized (statsSamples) {
                 statsSamples.add(sample);
             }
             if (tobiLogger.isEnabled()) {
@@ -571,7 +631,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             if (statsSamples.isEmpty()) {
                 return;
             }
-            Integer[] samples =null;
+            Integer[] samples = null;
             synchronized (statsSamples) {
                 samples = (Integer[]) statsSamples.toArray(new Integer[0]);
             }
