@@ -164,12 +164,13 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                     // detected. Then we wait for the response which will be the us that elapsed
                     // on the board
                     sendByte('m');
-                    log.info("sent message to start flash in master mode");
+//                    log.info("sent message to start flash in master mode");
                     state = State.SlaveCountingEvents;
+                    break outer; // don't bother counting more events this packet
                 case SlaveCountingEvents:
                     if (left > thresholdEventCount || right > thresholdEventCount) {
                         sendByte('d');
-                       log.info("deteced LED, sent message to record delay and send it");
+//                       log.info("deteced LED, sent message to record delay and send it");
                         state = State.SlaveWaitingForResponse;
                     }
                     break;
@@ -178,16 +179,20 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                         if (serialPortInputStream.available() < 4) {
                             continue;
                         }
-                        log.info("recieved response of 4 byte delay");
-                        byte[] bytes = new byte[4];
+//                        log.info("recieved response of 4 byte delay");
+                        int available=serialPortInputStream.available();
+                        byte[] bytes = new byte[available];
+                        if(available>4){
+                            log.warning("sent "+available+" bytes but should be only 4");
+                        }
                         serialPortInputStream.read(bytes);
-                        ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES); // int is 4 bytes in java
+                        ByteBuffer buffer = ByteBuffer.allocate(available); // int is 4 bytes in java
                         buffer.order(ByteOrder.LITTLE_ENDIAN);
                         buffer.put(bytes);
                         buffer.flip();//need flip 
                         int delayUs = buffer.getInt();
                         timeStats.addSample((int) delayUs);
-                        log.info(String.format("got slave cycle %d us", delayUs));
+//                        log.info(String.format("got slave cycle %d us", delayUs));
                         state = State.SlaveInitial;
                     } catch (IOException ex) {
                         log.warning("IOException trying to read the latency response: " + ex.toString());
