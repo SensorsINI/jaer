@@ -36,6 +36,7 @@ import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
+import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
@@ -49,7 +50,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
     NRSerialPort serialPort = null;
-    private int serialBaudRate = getInt("serialBaudRate", 115200);
+    private int serialBaudRate = getInt("serialBaudRate", 2000000); // note firmware is programmed for max 2Mbaud
     private String serialPortName = getString("serialPortName", "COM3");
     private DataOutputStream serialPortOutputStream = null;
     private DataInputStream serialPortInputStream = null;
@@ -74,27 +75,28 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
 
 //    private RectangularClusterTracker tracker; // adjust it to detect LED cluster from either LED
     private SpatioTemporalCorrelationFilter noiseFilter; // adjust it to detect LED cluster from either LED
+    private XYTypeFilter roiFilter; // adjust it to detect LED cluster from either LED
     private int lastClusterID = 0, lastTimestamp = 0;
-    protected int xborder = 0; // count events on each side of border
     protected int thresholdEventCount = getInt("thresholdEventCount", 100);
-    private int left = 0, right = 0;
+    private int eventCount = 0;
 
-    protected boolean slaveMode = getBoolean("slaveMode", true);
-
+//    protected boolean slaveMode = getBoolean("slaveMode", false);
 //    private int led = 0;
     private Long lastToggleTimeNs = null;
 
     private TobiLogger tobiLogger;
 
     enum State {
-        Initial, LED1, LED2, PingTest, Paused, BothLedsOn, SlaveInitial, SlaveCountingEvents, SlaveWaitingForResponse
+        Initial, LedOn, Flash, PingTest, Paused, BothLedsOn, SlaveInitial, SlaveCountingEvents, SlaveWaitingForResponse
     }
     State state = State.Initial;
 
     public DVSLatencyMeasurement(AEChip chip) {
         super(chip);
+        roiFilter = new XYTypeFilter(chip);
         noiseFilter = new SpatioTemporalCorrelationFilter(chip);
         FilterChain chain = new FilterChain(chip);
+        chain.add(roiFilter);
         chain.add(noiseFilter);
         setEnclosedFilterChain(chain);
         setPropertyTooltip("serialPortName", "Name of serial port to send Arduino Nano commands to");
@@ -130,34 +132,24 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 continue;
             }
             // only count ON events from LED turning on
-            if (e.x > xborder) {
-                right++;
-            } else if (e.x < xborder) {
-                left++;
-            }
+            eventCount++;
             switch (state) {
                 case Initial:
-                    doLed1On();
-                    break;
                 case Paused:
+                case Flash:
                     break;
                 case PingTest:
                     doToggleOnPingTest();
                     break outer;
-                case LED1:
-                case LED2:
-                    if (!slaveMode) {
-                        if (right > thresholdEventCount || left > thresholdEventCount) {
-                            doToggleLeds();
-                            left = 0;
-                            right = 0;
-                            break outer;
-                        }
+                case LedOn:
+                    if (eventCount > thresholdEventCount) {
+                        doLedOn();
+                        eventCount = 0;
+                        break outer;
                     }
                     break;
                 case SlaveInitial:
-                    left = 0;
-                    right = 0;
+                    eventCount = 0;
                     // We send the command 'm' to tell board that 
                     // it is master and to flash LED. Then we collect events,
                     // and when we detect the LED from DVS events, we tell the board 'd' for 
@@ -168,24 +160,26 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                     state = State.SlaveCountingEvents;
                     break outer; // don't bother counting more events this packet
                 case SlaveCountingEvents:
-                    if (left > thresholdEventCount || right > thresholdEventCount) {
-                        sendByte('d');
+                    if (eventCount > thresholdEventCount) {
+                        sendByte('d');  // send ack that we saw the LED flash
 //                       log.info("deteced LED, sent message to record delay and send it");
                         state = State.SlaveWaitingForResponse;
                     }
                     break;
-                case SlaveWaitingForResponse: {
+                case SlaveWaitingForResponse: { // wait for latency to be sent from uC
                     try {
                         if (serialPortInputStream.available() < 4) {
                             continue;
                         }
 //                        log.info("recieved response of 4 byte delay");
-                        int available=serialPortInputStream.available();
+                        int available = serialPortInputStream.available();
                         byte[] bytes = new byte[available];
-                        if(available>4){
-                            log.warning("sent "+available+" bytes but should be only 4");
-                        }
                         serialPortInputStream.read(bytes);
+                        if (available > 4) {
+                            log.warning("sent " + available + " bytes but should be only 4., ignoring value");
+                            state = State.SlaveInitial;
+                            break;
+                        }
                         ByteBuffer buffer = ByteBuffer.allocate(available); // int is 4 bytes in java
                         buffer.order(ByteOrder.LITTLE_ENDIAN);
                         buffer.put(bytes);
@@ -222,7 +216,6 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
             renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         }
-        setXborder(getInt("xborder", chip.getSizeX() / 2));
     }
 
     @Override
@@ -236,8 +229,6 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         gl.glColor3f(1, 1, 1);
         gl.glLineWidth(2);
         gl.glBegin(GL.GL_LINES);
-        gl.glVertex2f(xborder, 0);
-        gl.glVertex2f(xborder, csy);
         gl.glEnd();
 
         timeStats.draw(gl);
@@ -266,38 +257,27 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         tobiLogger.showFolderInDesktop();
     }
 
-    public void doTurnOffLeds() {
+    public void doPause() {
         sendByte('0');
         state = State.Paused;
     }
 
-    public void doLed1On() {
+    public void doFlash() {
+        sendByte('f');
+        state = State.Flash;
+    }
+
+    public void doLedOn() {
         sendByte('1');
-        state = State.LED1;
+        state = State.LedOn;
     }
 
-    public void doLed2On() {
-        sendByte('2');
-        state = State.LED2;
+    public void doSlaveMode() {
+        state = State.SlaveInitial;
     }
 
-    public void doToggleLeds() {
-        if (state == State.LED2) {
-            doLed1On();
-        } else if (state == State.LED1) {
-            doLed2On();
-        }
-        long t = System.nanoTime();
-        if (lastToggleTimeNs != null) {
-            long dt = t - lastToggleTimeNs;
-            timeStats.addSample((int) (dt / 1000));
-        }
-        lastToggleTimeNs = t;
-    }
-
-    public void doTurnOnBothLeds() {
-        sendByte('3');
-        state = State.BothLedsOn;
+    public void doMasterMode() {
+        state = State.LedOn;
     }
 
     private void sendByte(int cmd) {
@@ -595,24 +575,6 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     }
 
     /**
-     * @return the xborder
-     */
-    public int getXborder() {
-        return xborder;
-    }
-
-    /**
-     * @param xborder the xborder to set
-     */
-    public void setXborder(int xborder) {
-        if (xborder > chip.getSizeX()) {
-            xborder = chip.getSizeX();
-        }
-        this.xborder = xborder;
-        putInt("xborder", xborder);
-    }
-
-    /**
      * @return the thresholdEventCount
      */
     public int getThresholdEventCount() {
@@ -625,26 +587,6 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     public void setThresholdEventCount(int thresholdEventCount) {
         this.thresholdEventCount = thresholdEventCount;
         putInt("thresholdEventCount", thresholdEventCount);
-    }
-
-    /**
-     * @return the slaveMode
-     */
-    public boolean isSlaveMode() {
-        return slaveMode;
-    }
-
-    /**
-     * @param slaveMode the slaveMode to set
-     */
-    public void setSlaveMode(boolean slaveMode) {
-        this.slaveMode = slaveMode;
-        putBoolean("slaveMode", slaveMode);
-        if (slaveMode) {
-            state = State.SlaveInitial;
-        } else {
-            state = State.Initial;
-        }
     }
 
     private class TimeStats {
@@ -771,6 +713,12 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 gl.glPopAttrib();
             }
 
+            // draw limits
+            renderer.begin3DRendering();
+            renderer.draw3D(String.format("%ss", fmt.format(histMin * 1e-6f)), 0, -8, 0, .3f);
+            renderer.draw3D(String.format("%ss", fmt.format(histMax * 1e-6f)), chip.getSizeX(), -8, 0, .3f);
+            renderer.end3DRendering();
+
             if (currentMousePoint != null) {
                 if (currentMousePoint.y <= 0) {
                     float sampleValue = ((float) currentMousePoint.x / chip.getSizeX()) * (1e-6f * histMax);
@@ -791,7 +739,8 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             String meanS = fmt.format(mean * 1e-6f);
             String stdS = fmt.format(std * 1e-6);
             String medianS = fmt.format(median * 1e-6);
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("Timing: mean=%s+-%s s (N=%d), median=%s s (N=%d)",
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("State: %s\nTiming: mean=%s+-%s s (N=%d), median=%s s (N=%d)",
+                    state.toString(),
                     meanS, stdS, count, medianS, statsWindowLength));
 
         }
