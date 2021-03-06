@@ -48,7 +48,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
  * @author tobi, Feb 2021
  */
 @Description("Measures DVS-computer latency using 2 LEDs controlled by Ardunino")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements FrameAnnotater {
 
     NRSerialPort serialPort = null;
