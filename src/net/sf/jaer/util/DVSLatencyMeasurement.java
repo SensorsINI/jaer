@@ -17,6 +17,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import gnu.io.NRSerialPort;
+import gnu.io.RXTXCommDriver;
 import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -83,13 +85,15 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
 //    protected boolean slaveMode = getBoolean("slaveMode", false);
 //    private int led = 0;
     private Long lastToggleTimeNs = null;
+    private long randomDelayNs = 0;
+    private Random random = new Random();
 
     private TobiLogger tobiLogger;
 
     enum State {
-        Initial, LedOn, Flash, PingTest, Paused, BothLedsOn, SlaveInitial, SlaveCountingEvents, SlaveWaitingForResponse
+        MasterRandomlyDelaying, MasterSendLedOn, MasterCountingEvents, Flash, PingTest, Idle, BothLedsOn, SlaveInitial, SlaveCountingEvents, SlaveWaitingForResponse
     }
-    State state = State.Initial;
+    State state = State.Idle;
 
     public DVSLatencyMeasurement(AEChip chip) {
         super(chip);
@@ -106,11 +110,11 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         setPropertyTooltip("histMax", "Maximum interval");
         setPropertyTooltip("histNumBins", "Number of histogram bins");
         setPropertyTooltip("statsWindowLength", "Number of samples over which to compute statistics");
-        setPropertyTooltip("led1On", "Turn on LED 1 flashing");
-        setPropertyTooltip("led2On", "Turn on LED 2 flashing");
         setPropertyTooltip("turnOnBothLeds", "Turn on both LEDs flashing");
-        setPropertyTooltip("toggleLeds", "Toggle betweeen LEDs");
-        setPropertyTooltip("turnOffLeds", "Turn off both LEDs");
+        setPropertyTooltip("flash", "Flash LED continuously");
+        setPropertyTooltip("flashOnce", "Flash LED once");
+        setPropertyTooltip("idle", "Turn off LED, go to idle mode");
+        setPropertyTooltip("masterMode", "Measure latency with PC as master");
         setPropertyTooltip("logLogScale", "Use log-log histogram scale");
         setPropertyTooltip("pingTest", "Test only roundtrip latency to the Arduino");
         setPropertyTooltip("slaveMode", "uC measures the latency");
@@ -133,68 +137,104 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             }
             // only count ON events from LED turning on
             eventCount++;
-            switch (state) {
-                case Initial:
-                case Paused:
-                case Flash:
-                    break;
-                case PingTest:
-                    doToggleOnPingTest();
-                    break outer;
-                case LedOn:
-                    if (eventCount > thresholdEventCount) {
-                        doLedOn();
-                        eventCount = 0;
-                        break outer;
-                    }
-                    break;
-                case SlaveInitial:
-                    eventCount = 0;
-                    // We send the command 'm' to tell board that 
-                    // it is master and to flash LED. Then we collect events,
-                    // and when we detect the LED from DVS events, we tell the board 'd' for 
-                    // detected. Then we wait for the response which will be the us that elapsed
-                    // on the board
-                    sendByte('m');
-//                    log.info("sent message to start flash in master mode");
-                    state = State.SlaveCountingEvents;
-                    break outer; // don't bother counting more events this packet
-                case SlaveCountingEvents:
-                    if (eventCount > thresholdEventCount) {
-                        sendByte('d');  // send ack that we saw the LED flash
-//                       log.info("deteced LED, sent message to record delay and send it");
-                        state = State.SlaveWaitingForResponse;
-                    }
-                    break;
-                case SlaveWaitingForResponse: { // wait for latency to be sent from uC
-                    try {
-                        if (serialPortInputStream.available() < 4) {
-                            continue;
-                        }
-//                        log.info("recieved response of 4 byte delay");
-                        int available = serialPortInputStream.available();
-                        byte[] bytes = new byte[available];
-                        serialPortInputStream.read(bytes);
-                        if (available > 4) {
-                            log.warning("sent " + available + " bytes but should be only 4., ignoring value");
-                            state = State.SlaveInitial;
-                            break;
-                        }
-                        ByteBuffer buffer = ByteBuffer.allocate(available); // int is 4 bytes in java
-                        buffer.order(ByteOrder.LITTLE_ENDIAN);
-                        buffer.put(bytes);
-                        buffer.flip();//need flip 
-                        int delayUs = buffer.getInt();
-                        timeStats.addSample((int) delayUs);
-//                        log.info(String.format("got slave cycle %d us", delayUs));
-                        state = State.SlaveInitial;
-                    } catch (IOException ex) {
-                        log.warning("IOException trying to read the latency response: " + ex.toString());
-                    }
-                }
+            if (eventCount > thresholdEventCount) {
                 break;
             }
+            if (state == State.SlaveWaitingForResponse) {
+                try {
+                    if (serialPortInputStream.available() < 4) {
+                        continue;
+                    }
+                    break;
+                } catch (IOException ex) {
+                    log.warning("IOException trying to read the latency response: " + ex.toString());
+                }
+            }
         }
+        switch (state) {
+            case Idle:
+            case Flash:
+                break;
+            case PingTest: {
+                doToggleOnPingTest();
+            }
+            break;
+            case MasterSendLedOn: {
+
+                lastToggleTimeNs = System.nanoTime();
+                randomDelayNs = 1000000L * (10L + random.nextInt(100));
+
+                state = state.MasterRandomlyDelaying;
+            }
+            break;
+            case MasterRandomlyDelaying: {
+                long now = System.nanoTime();
+                if (now - lastToggleTimeNs > randomDelayNs) {
+                    sendByte('1');
+                    eventCount = 0;
+                    lastToggleTimeNs = now;
+                    state = State.MasterCountingEvents;
+                }
+            }
+            break;
+            case MasterCountingEvents: {
+                if (eventCount > thresholdEventCount) {
+                    long now = System.nanoTime();
+                    int deltaTimeUs = (int) (now - lastToggleTimeNs) / 1000;
+                    timeStats.addSample(deltaTimeUs);
+                    state = state.MasterSendLedOn;
+                }
+            }
+            break;
+            case SlaveInitial: {
+                // We send the command 'm' to tell board that 
+                // it is master and to flash LED. Then we collect events,
+                // and when we detect the LED from DVS events, we tell the board 'd' for 
+                // detected. Then we wait for the response which will be the us that elapsed
+                // on the board
+                //                    log.info("sent message to start flash in master mode");
+                state = State.SlaveCountingEvents;
+                eventCount = 0;
+            }
+            break;
+            case SlaveCountingEvents: {
+                if (eventCount > thresholdEventCount) {
+                    sendByte('d');  // send ack that we saw the LED flash
+//                       log.info("deteced LED, sent message to record delay and send it");
+                    state = State.SlaveWaitingForResponse;
+                }
+            }
+            break;
+            case SlaveWaitingForResponse: {
+                try {
+                    if (serialPortInputStream.available() < 4) {
+                        break;
+                    }
+//                        log.info("recieved response of 4 byte delay");
+                    int available = serialPortInputStream.available();
+                    byte[] bytes = new byte[available];
+                    serialPortInputStream.read(bytes);
+                    if (available > 4) {
+                        log.warning("sent " + available + " bytes but should be only 4., ignoring value");
+                        state = State.SlaveInitial;
+                        break;
+                    }
+                    ByteBuffer buffer = ByteBuffer.allocate(available); // int is 4 bytes in java
+                    buffer.order(ByteOrder.LITTLE_ENDIAN);
+                    buffer.put(bytes);
+                    buffer.flip();//need flip 
+                    int delayUs = buffer.getInt();
+                    timeStats.addSample((int) delayUs);
+//                        log.info(String.format("got slave cycle %d us", delayUs));
+                    state = State.SlaveInitial;
+                    break;
+                } catch (IOException ex) {
+                    log.warning("IOException trying to read the latency response: " + ex.toString());
+                }
+            }
+            break;
+        }
+
         if (in.getSize() > 0) {
             lastTimestamp = in.getLastTimestamp();
         }
@@ -205,7 +245,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     synchronized public void resetFilter() {
         noiseFilter.resetFilter();
         timeStats.reset();
-//        state = State.Initial;
+//        state = State.Idle;
     }
 
     @Override
@@ -257,9 +297,9 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         tobiLogger.showFolderInDesktop();
     }
 
-    public void doPause() {
+    public void doIdle() {
         sendByte('0');
-        state = State.Paused;
+        state = State.Idle;
     }
 
     public void doFlash() {
@@ -267,17 +307,33 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
         state = State.Flash;
     }
 
-    public void doLedOn() {
+    public void doFlashOnce() {
         sendByte('1');
-        state = State.LedOn;
+        state = State.Flash;
+    }
+
+    public void doLedOn() {
+        sendByte('2');
+        state = State.Flash;
     }
 
     public void doSlaveMode() {
+        sendByte('m');
         state = State.SlaveInitial;
     }
 
     public void doMasterMode() {
-        state = State.LedOn;
+        state = State.MasterSendLedOn;
+    }
+
+    public void doWriteHistogramCSV() {
+        if (tobiLogger.isEnabled()) {
+            log.info("closing existing " + tobiLogger);
+            tobiLogger.setEnabled(false);
+        }
+        synchronized (timeStats) {
+            timeStats.writeHistogramCSV();
+        }
     }
 
     private void sendByte(int cmd) {
@@ -317,7 +373,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     }
 
     public void doToggleOffPingTest() {
-        state = state.Initial;
+        state = state.Idle;
     }
 
     private void openSerial() throws IOException {
@@ -376,7 +432,6 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
     private void closeSerial() {
         if (serialPortOutputStream != null) {
             try {
-                serialPortOutputStream.write((byte) '0'); // rest; turn off servos
                 serialPortOutputStream.close();
             } catch (IOException ex) {
                 Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
@@ -736,13 +791,17 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             }
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
             MultilineAnnotationTextRenderer.setScale(.3f);
+            MultilineAnnotationTextRenderer.renderMultilineString(String.format("State: %s\n%s",
+                    state.toString(),statsSummaryString()));
+
+        }
+
+        public String statsSummaryString() {
             String meanS = fmt.format(mean * 1e-6f);
             String stdS = fmt.format(std * 1e-6);
             String medianS = fmt.format(median * 1e-6);
-            MultilineAnnotationTextRenderer.renderMultilineString(String.format("State: %s\nTiming: mean=%s+-%s s (N=%d), median=%s s (N=%d)",
-                    state.toString(),
-                    meanS, stdS, count, medianS, statsWindowLength));
-
+            return String.format("Latency: mean=%s+-%ss (N=%d), median=%ss (N=%d)",
+                    meanS, stdS, count, medianS, statsSamples.size());
         }
 
         void draw(GL2 gl, float lineWidth, float[] color) {
@@ -759,6 +818,9 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             } else {
                 Arrays.fill(bins, 0);
             }
+            synchronized (statsSamples) {
+                statsSamples.clear();;
+            }
             lessCount = 0;
             moreCount = 0;
             maxCount = 0;
@@ -766,6 +828,15 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             count = 0;
             sum = 0;
             sum2 = 0;
+        }
+
+        private float getBinWidthUs() {
+            return (float) (histMax - histMin) / histNumBins;
+        }
+
+        private float getBinCenterUs(int bin) {
+            float w = getBinWidthUs();
+            return histMin + w * (bin + .5f);
         }
 
         private int getSampleBin(int sample) {
@@ -781,6 +852,29 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             int bin = (int) Math.floor((histNumBins * ((float) sample - histMin)) / (histMax - histMin));
 
             return bin;
+        }
+
+        private void writeHistogramCSV() {
+            String oldColumnHeader = tobiLogger.getColumnHeaderLine();
+            String oldFileHeader = tobiLogger.getFileCommentString();
+            tobiLogger.setColumnHeaderLine("bin,binCenter(us),count");
+            String hs = String.format("histMin=%d us,histMax=%d us,nbins=%d", histMin, histMax, histNumBins);
+            hs = hs + "\n";
+            hs += statsSummaryString();
+            tobiLogger.setFileCommentString(hs);
+            tobiLogger.setEnabled(true);
+            synchronized (this) {
+                for (int i = 0; i < bins.length; i++) {
+                    tobiLogger.log(String.format("%d,%f,%d", i,
+                            getBinCenterUs(i),
+                            bins[i]));
+                }
+
+            }
+            tobiLogger.setEnabled(false);
+            tobiLogger.showFolderInDesktop();
+            tobiLogger.setFileCommentString(oldFileHeader);
+            tobiLogger.setColumnHeaderLine(oldColumnHeader);
         }
     }
 }
