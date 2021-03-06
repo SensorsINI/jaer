@@ -224,18 +224,20 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         //        if (chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.LIVE) {
         //            return in;  // don't servo on recorded data!
         //        }
-        long dtMs = System.currentTimeMillis() - lastBiasChangeTimeMs;
-        if (dtMs < ignoreEventsAfterBiasChangeMs) {
-            return in;
-        }
 
         EventPacket out = getEnclosedFilterChain().filterPacket(in); // filters out noise
 
 //        System.out.println(String.format("in: %.1f, filtered: %.1f, noise: %.1f, snr: %.3f",
 //                1e-3f * inputEventRate, 1e-3f * eventRate, 1e-3f * noiseRate, snr));
+        inputEventRate = inputRateEstimator.getFilteredEventRate();
+        signalEventRate = denoisedRateEstimator.getFilteredEventRate();
+        noiseEventRate = inputEventRate - signalEventRate;
         setEventRateState();
         setSNRState();
-        setBiases();
+        long dtMs = System.currentTimeMillis() - lastBiasChangeTimeMs;
+        if (dtMs > ignoreEventsAfterBiasChangeMs) {
+            setBiases();
+        }
         if (writeLogEnabled) {
             DVSTweaks biasgen = (DVSTweaks) chip.getBiasgen();
             try {
@@ -266,7 +268,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
     private void setEventRateState() {
         lastEventRateState = eventRateState;
-        float r=inputEventRate;
+        float r = inputEventRate;
         switch (eventRateState) {
             case LOW_RATE:
                 if (r > (eventRateLowHz * eventRateBoundsHysteresisFactor)) {
@@ -291,13 +293,10 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     }
 
     private void setSNRState() {
-        inputEventRate = inputRateEstimator.getFilteredEventRate();
-        signalEventRate = denoisedRateEstimator.getFilteredEventRate();
-        noiseEventRate = inputEventRate - signalEventRate;
         snr = (signalEventRate - noiseEventRate) / Math.max(signalEventRate, noiseEventRate);
-        if(Float.isNaN(snr)){
-            snrState=SNRState.INITIAL;
-        }else if (snr > targetSNR) {
+        if (Float.isNaN(snr)) {
+            snrState = SNRState.INITIAL;
+        } else if (snr > targetSNR) {
             snrState = SNRState.ABOVE_TARGET;
         } else {
             snrState = SNRState.BELOW_TARGET;
