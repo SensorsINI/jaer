@@ -708,7 +708,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * Takes a MouseEvent and returns the AEChip pixel.
      *
      * @return pixel x,y location (integer point) from MouseEvent. Accounts for
-     * scaling and borders of chip display area
+     * scaling and borders of chip display area. Always returns nearest pixel.
      */
     public Point getPixelFromMouseEvent(final MouseEvent evt) {
         final Point mp = evt.getPoint();
@@ -770,8 +770,13 @@ public class ChipCanvas implements GLEventListener, Observer {
                 public void mouseClicked(MouseEvent evt) {
                     final Point p = getPixelFromMouseEvent(evt);
                     if (evt.getButton() == 3) {
-                        getRenderer().setXsel((short) p.x);
-                        getRenderer().setYsel((short) p.y);
+                        if (wasMousePixelInsideChipBounds()) {
+                            getRenderer().setXsel((short) p.x);
+                            getRenderer().setYsel((short) p.y);
+                        } else {
+                            getRenderer().setXsel((short) -1);
+                            getRenderer().setYsel((short) -1);
+                        }
                         log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
                     }
                 }
@@ -1427,7 +1432,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     private void drawAnnotationsIncludingEnclosed(final EventFilter f, final FrameAnnotater a,
             final GLAutoDrawable drawable) {
         try {
-                     a.annotate(drawable);
+            a.annotate(drawable);
         } catch (final RuntimeException e) {
             log.warning("caught " + e + " when annotating with " + a);
             e.printStackTrace();
