@@ -120,11 +120,17 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 			updateTimestampMasterStatus();
 		}
 
-		private void checkMonotonicTimestamp() {
+                /** Check if timestamp is monotonic
+                 * 
+                 * @return true if OK (monotonic) 
+                 */
+		private boolean checkMonotonicTimestamp() {
 			if (currentTimestamp <= lastTimestamp) {
 				CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp=" + lastTimestamp
 					+ ", currentTimestamp=" + currentTimestamp + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
+                                return false;
 			}
+                        return true;
 		}
 
 		private boolean ensureCapacity(final AEPacketRaw buffer, final int capacity) {
@@ -169,7 +175,9 @@ public class CochleaFX3HardwareInterface extends CypressFX3Biasgen {
 						currentTimestamp = wrapAdd + (event & 0x7FFF);
 
 						// Check monotonicity of timestamps.
-						checkMonotonicTimestamp();
+						if(!checkMonotonicTimestamp()){
+                                                    wrapAdd=0; /// reset wrap
+                                                };
 					}
 					else {
 						// Look at the code, to determine event and data
