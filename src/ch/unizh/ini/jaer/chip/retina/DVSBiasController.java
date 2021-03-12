@@ -6,6 +6,7 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
+import ch.unizh.ini.jaer.projects.npp.RoShamBoCNN;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -20,9 +21,17 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import gnu.io.NRSerialPort;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.sf.jaer.DevelopmentStatus;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.util.TobiLogger;
 
@@ -68,6 +77,14 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     private float noiseEventRate = Float.NaN;
     private float snr = Float.NaN;
     protected float targetSNR = getFloat("targetSNR", 0);
+
+    NRSerialPort serialPort = null;
+    private int serialBaudRate = getInt("serialBaudRate", 115200); // note firmware is programmed for max 2Mbaud
+    private String serialPortName = getString("serialPortName", "COM3");
+    private DataOutputStream serialPortOutputStream = null;
+    private DataInputStream serialPortInputStream = null;
+    
+    protected int motorSpeed=0;
 
     enum EventRateState {
 
@@ -169,6 +186,9 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(display, "showAnnotation", "enables showing controller state and actions on viewer");
         setPropertyTooltip(options, "writeLogEnabled", "writes a log file called DVSBiasController-xxx.txt to the startup folder (root of jaer) to allow analyzing controller dynamics");
         setPropertyTooltip(options, "correlationTimeS", "sets correlation time for noise filter");
+        setPropertyTooltip("serialPortName", "Name of serial port to send Arduino Nano commands to");
+        setPropertyTooltip("serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
+        setPropertyTooltip("motorSpeed", "Sent to serial port for controlling stimulus speed, logged to CSV file");
     }
 
     public Object getFilterState() {
@@ -243,7 +263,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             try {
 //           tobiLogger.setColumnHeaderLine("timestamp(us),eventRate(Hz),snr,lowRate(Hz),highRate(Hz),targetSNR,state,thresholdTweak,bandwidthTweak,maxFiringRateTweak");
 
-                tobiLogger.log(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f,%f,%f",
+                tobiLogger.log(String.format("%d,%f,%f,%f,%f,%f,%f,%f,%d,%d,%d,%f,%f,%f,%d",
                         in.getLastTimestamp(),
                         inputEventRate,
                         signalEventRate,
@@ -257,7 +277,8 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                         snrState.ordinal(),
                         biasgen.getThresholdTweak(),
                         biasgen.getBandwidthTweak(),
-                        biasgen.getMaxFiringRateTweak()
+                        biasgen.getMaxFiringRateTweak(),
+                        getMotorSpeed()
                 ));
             } catch (Exception e) {
                 e.printStackTrace();
@@ -532,7 +553,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                     map(SNRState::name).
                     collect(Collectors.joining(", "));
 
-            tobiLogger.setColumnHeaderLine("timestamp(us),inputEventRate(Hz),signalEventRate(Hz),noiseEventRate(Hz),snr,lowRate(Hz),highRate(Hz),targetSNR,goal,eventRateState,snrState,thresholdTweak,bandwidthTweak,maxFiringRateTweak");
+            tobiLogger.setColumnHeaderLine("timestamp(us),inputEventRate(Hz),signalEventRate(Hz),noiseEventRate(Hz),snr,lowRate(Hz),highRate(Hz),targetSNR,goal,eventRateState,snrState,thresholdTweak,bandwidthTweak,maxFiringRateTweak,motorSpeed");
             tobiLogger.setFileCommentString("Recording of DVS bias control\n"
                     + "goal: " + gs + "\n"
                     + "eventRateState: " + erss + "\n"
@@ -662,6 +683,144 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     public void setIgnoreEventsAfterBiasChangeMs(int ignoreEventsAfterBiasChangeMs) {
         this.ignoreEventsAfterBiasChangeMs = ignoreEventsAfterBiasChangeMs;
         putInt("ignoreEventsAfterBiasChangeMs", ignoreEventsAfterBiasChangeMs);
+    }
+
+    private void sendByte(int cmd) {
+        if (serialPortOutputStream != null) {
+            try {
+                serialPortOutputStream.write((byte) cmd);
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+            }
+        }
+    }
+
+    private void openSerial() throws IOException {
+        if (serialPort != null) {
+            closeSerial();
+        }
+        StringBuilder sb = new StringBuilder("List of all available serial ports: ");
+        final Set<String> availableSerialPorts = NRSerialPort.getAvailableSerialPorts();
+        if (availableSerialPorts.isEmpty()) {
+            sb.append("\nNo ports found, sorry.  If you are on linux, serial port support may suffer");
+        } else {
+            for (String s : availableSerialPorts) {
+                sb.append(s).append(" ");
+            }
+        }
+        log.info(sb.toString());
+        if (!availableSerialPorts.contains(serialPortName)) {
+            final String warningString = serialPortName + " is not in avaiable " + sb.toString();
+            log.warning(warningString);
+            showWarningDialogInSwingThread(warningString, "Serial port not available");
+            return;
+        }
+
+        serialPort = new NRSerialPort(serialPortName, serialBaudRate);
+        if (serialPort == null) {
+            final String warningString = "null serial port returned when trying to open " + serialPortName + "; available " + sb.toString();
+            log.warning(warningString);
+            showWarningDialogInSwingThread(warningString, "Serial port not available");
+            return;
+        }
+        serialPort.connect();
+        serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
+        serialPortInputStream = new DataInputStream(serialPort.getInputStream());
+        log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
+        // drain serial port chars from Arduino startup
+        try {
+            sendByte('p'); // stimulute a pong response, should result in at least a p return
+            log.info("Draining startup serial port output from Arduino:");
+            long start = System.currentTimeMillis();
+            while (!Thread.interrupted() && System.currentTimeMillis() - start < 900L) {
+                while (serialPortInputStream.available() > 0) {
+                    int c = serialPortInputStream.read();
+                    System.out.print((char) c);
+                }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                }
+            }
+        } catch (IOException ex) {
+            log.warning(ex.toString());
+        }
+
+    }
+
+    private void closeSerial() {
+        if (serialPortOutputStream != null) {
+            try {
+                serialPortOutputStream.close();
+            } catch (IOException ex) {
+                Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            serialPortOutputStream = null;
+        }
+        if ((serialPort != null) && serialPort.isConnected()) {
+            serialPort.disconnect();
+            serialPort = null;
+        }
+//        log.info("closed serial port");
+    }
+
+    /**
+     * @return the serialBaudRate
+     */
+    public int getSerialBaudRate() {
+        return serialBaudRate;
+    }
+
+    /**
+     * @param serialBaudRate the serialBaudRate to set
+     */
+    public void setSerialBaudRate(int serialBaudRate) {
+        try {
+            this.serialBaudRate = serialBaudRate;
+            putInt("serialBaudRate", serialBaudRate);
+            openSerial();
+        } catch (IOException ex) {
+            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     * @return the serialPortName
+     */
+    public String getSerialPortName() {
+        return serialPortName;
+    }
+
+    /**
+     * @param serialPortName the serialPortName to set
+     */
+    public void setSerialPortName(String serialPortName) {
+        try {
+            this.serialPortName = serialPortName;
+            putString("serialPortName", serialPortName);
+            openSerial();
+        } catch (IOException ex) {
+            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     * @return the motorSpeed
+     */
+    public int getMotorSpeed() {
+        return motorSpeed;
+    }
+
+    /**
+     * @param motorSpeed the motorSpeed to set
+     */
+    public void setMotorSpeed(int motorSpeed) {
+        if(serialPort==null){
+            log.warning("serial port not open");
+            return;
+        }
+        this.motorSpeed = motorSpeed;
+        sendByte('0'+motorSpeed);
     }
 
 }
