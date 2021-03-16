@@ -569,11 +569,16 @@ public class ChipCanvas implements GLEventListener, Observer {
 //		 should be empty according to jogl user guide.
     }
 
-    // TODO javadoc
+    /**
+     * angle in degrees around x axis of 3d display, negative when rotated upwards
+     */
     public float getAnglex() {
         return anglex;
     }
 
+    /**
+     * angle in degrees around y axis of 3d display, negative when rotated leftwards
+     */
     public float getAngley() {
         return angley;
     }
@@ -792,7 +797,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 @Override
                 public void mouseReleased(final MouseEvent e) {
                     if (is3DEnabled()) {
-                        log.info("3d rotation: angley=" + angley + " anglex=" + anglex + " 3d origin: x="
+                        log.info("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
                                 + getOrigin3dx() + " y=" + getOrigin3dy());
                     }
                 }
@@ -956,11 +961,17 @@ public class ChipCanvas implements GLEventListener, Observer {
         prefs.putInt("ChipCanvas.origin3dy", y);
     }
 
+    /**
+     * angle in degrees around x axis of 3d display
+     */
     public void setAnglex(final float anglex) {
         this.anglex = anglex;
         prefs.putFloat("ChipCanvas.anglex", anglex);
     }
 
+    /**
+     * angle in degrees around y axis of 3d display
+     */
     public void setAngley(final float angley) {
         this.angley = angley;
         prefs.putFloat("ChipCanvas.angley", angley);
