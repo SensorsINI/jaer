@@ -14,5 +14,5 @@ java \
 -classpath "$DIR/dist/jAER.jar:$DIR/jars/*:$DIR/lib/*" \
 -splash:images/SplashScreen.png \
 -Dsun.java2d.uiScale=2.0 \
--Djava.util.logging.config.file="$DIR/conf/Logging.properties" -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -D-Jsun.java2d.dpiaware=true \
+-Djogl.disable.openglcore -Djava.util.logging.config.file="$DIR/conf/Logging.properties" -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -D-Jsun.java2d.dpiaware=true \
 net.sf.jaer.JAERViewer "$@"
