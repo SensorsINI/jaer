@@ -902,6 +902,14 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         public float getOffThresholdLogE() {
             return (float) (THR_FAC * Math.log(diffOff.getCurrent() / diff.getCurrent()));
         }
+
+        private final float REFR_CAP = 32e-15f, REFR_VOLTAGE = (3.3f-1.2f); // from DVS128 paper
+
+        @Override
+        public float getRefractoryPeriodS() {
+            float iRefr = refr.getCurrent();
+            return (float) (REFR_CAP * REFR_VOLTAGE / iRefr);
+        }
     } // DVS128Biasgen
 
     @Override
