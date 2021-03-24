@@ -22,6 +22,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.DavisRenderer;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Wraps some key apsDVS sensor control in more user-friendly control panel.
@@ -37,6 +38,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     DavisConfig.VideoControl videoControl;
     DavisVideoContrastController contrastController;
     AEChipRenderer renderer = null;
+    private static EngineeringFormat engFmt=new EngineeringFormat();
 
     private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
 
@@ -95,6 +97,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         chip.getSupport().addPropertyChangeListener(this);
         chip.getBiasgen().getSupport().addPropertyChangeListener(this);
         setEstimatedThresholdValues();
+        setEstimatedRefractoryPeriod();
 
     }
 
@@ -364,13 +367,12 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         displayEventsCheckBox = new javax.swing.JCheckBox();
         dvsPixControl = new javax.swing.JPanel();
         bandwidthTweaker = new net.sf.jaer.biasgen.PotTweaker();
-        maxFiringRateTweaker = new net.sf.jaer.biasgen.PotTweaker();
         dvsRedGrRB = new javax.swing.JRadioButton();
         dvsGrayRB = new javax.swing.JRadioButton();
         dvsContLabel = new javax.swing.JLabel();
         dvsContSp = new javax.swing.JSpinner();
         captureEventsCB = new javax.swing.JCheckBox();
-        jPanel3 = new javax.swing.JPanel();
+        thrPanel = new javax.swing.JPanel();
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
         onOffBalanceTweaker = new net.sf.jaer.biasgen.PotTweaker();
         jPanel4 = new javax.swing.JPanel();
@@ -381,6 +383,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         offThrTF = new javax.swing.JTextField();
         jLabel10 = new javax.swing.JLabel();
         onMinusOffTF = new javax.swing.JTextField();
+        refrPanel = new javax.swing.JPanel();
+        maxFiringRateTweaker = new net.sf.jaer.biasgen.PotTweaker();
+        jPanel3 = new javax.swing.JPanel();
+        refrPerLabel = new javax.swing.JLabel();
+        refrPerTF = new javax.swing.JTextField();
         apsPanel = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         fdSp = new javax.swing.JSpinner();
@@ -451,19 +458,6 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
 
-        maxFiringRateTweaker.setToolTipText("<html>Adjusts the refractory period after each event by changing Refr bias.\n<p>This current sets the rate at which the reset switch voltage is recharged.\n<p>Limited to changing fine current value. For more control, adjust these currents directly.");
-        maxFiringRateTweaker.setLessDescription("Slower");
-        maxFiringRateTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
-        maxFiringRateTweaker.setMoreDescription("Faster");
-        maxFiringRateTweaker.setName("Adjusts maximum pixel firing rate (1/refactory period)"); // NOI18N
-        maxFiringRateTweaker.setPreferredSize(new java.awt.Dimension(250, 47));
-        maxFiringRateTweaker.setTweakDescription("");
-        maxFiringRateTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                maxFiringRateTweakerStateChanged(evt);
-            }
-        });
-
         dvsColorButGrp.add(dvsRedGrRB);
         dvsRedGrRB.setText("Red/Green");
         dvsRedGrRB.setToolTipText("Show DVS events rendered as green (ON) and red (OFF) 2d histogram");
@@ -500,7 +494,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
 
-        jPanel3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        thrPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         thresholdTweaker.setToolTipText("<html>Adjusts DVS event temporal contrast thresholds magnitude <br>\nby changing current ratios diffOn/diff and diffOff/diff. \n<p>Limited to only adjusting fine current value; <br>\nwhen this limit is reached, user must manually change the coarse current value.");
         thresholdTweaker.setLessDescription("Lower & More events");
@@ -563,29 +557,94 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         onMinusOffTF.setColumns(7);
         jPanel4.add(onMinusOffTF);
 
-        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
-        jPanel3.setLayout(jPanel3Layout);
-        jPanel3Layout.setHorizontalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
+        javax.swing.GroupLayout thrPanelLayout = new javax.swing.GroupLayout(thrPanel);
+        thrPanel.setLayout(thrPanelLayout);
+        thrPanelLayout.setHorizontalGroup(
+            thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(thrPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(thresholdTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, thrPanelLayout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
                         .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, 731, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
-        jPanel3Layout.setVerticalGroup(
-            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel3Layout.createSequentialGroup()
+        thrPanelLayout.setVerticalGroup(
+            thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(thrPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(thresholdTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 63, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 63, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        maxFiringRateTweaker.setToolTipText("<html>Adjusts the refractory period after each event by changing Refr bias.\n<p>This current sets the rate at which the reset switch voltage is recharged.\n<p>Limited to changing fine current value. For more control, adjust these currents directly.");
+        maxFiringRateTweaker.setLessDescription("Slower");
+        maxFiringRateTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
+        maxFiringRateTweaker.setMoreDescription("Faster");
+        maxFiringRateTweaker.setName("Adjusts maximum pixel firing rate (1/refactory period)"); // NOI18N
+        maxFiringRateTweaker.setPreferredSize(new java.awt.Dimension(250, 47));
+        maxFiringRateTweaker.setTweakDescription("");
+        maxFiringRateTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                maxFiringRateTweakerStateChanged(evt);
+            }
+        });
+
+        refrPerLabel.setText("Estimated refractory period");
+
+        refrPerTF.setEditable(false);
+        refrPerTF.setColumns(12);
+        refrPerTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
+        refrPerTF.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refrPerTFActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
+        jPanel3.setLayout(jPanel3Layout);
+        jPanel3Layout.setHorizontalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap(147, Short.MAX_VALUE)
+                .addComponent(refrPerLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(refrPerTF, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(104, 104, 104))
+        );
+        jPanel3Layout.setVerticalGroup(
+            jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(refrPerLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(refrPerTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
+        );
+
+        javax.swing.GroupLayout refrPanelLayout = new javax.swing.GroupLayout(refrPanel);
+        refrPanel.setLayout(refrPanelLayout);
+        refrPanelLayout.setHorizontalGroup(
+            refrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(refrPanelLayout.createSequentialGroup()
+                .addGroup(refrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 751, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(refrPanelLayout.createSequentialGroup()
+                        .addContainerGap()
+                        .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(12, Short.MAX_VALUE))
+        );
+        refrPanelLayout.setVerticalGroup(
+            refrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, refrPanelLayout.createSequentialGroup()
+                .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 74, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -596,8 +655,8 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, dvsPanelLayout.createSequentialGroup()
                 .addGap(10, 10, 10)
                 .addGroup(dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(bandwidthTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(thrPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(bandwidthTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(dvsPixControl, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, dvsPanelLayout.createSequentialGroup()
@@ -613,9 +672,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 .addComponent(dvsGrayRB)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(dvsRedGrRB))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, dvsPanelLayout.createSequentialGroup()
+            .addGroup(dvsPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+                .addComponent(refrPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addContainerGap())
         );
         dvsPanelLayout.setVerticalGroup(
@@ -632,13 +691,12 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(dvsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(dvsPixControl, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(dvsPanelLayout.createSequentialGroup()
-                        .addComponent(bandwidthTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(bandwidthTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(thrPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(refrPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(23, 23, 23))
         );
 
         apsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Image Sensor", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
@@ -901,30 +959,26 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-            .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(jPanel2Layout.createSequentialGroup()
-                    .addContainerGap()
-                    .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel2Layout.createSequentialGroup()
-                            .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                            .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addContainerGap(1407, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 0, Short.MAX_VALUE)
-            .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(jPanel2Layout.createSequentialGroup()
-                    .addContainerGap()
-                    .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                    .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 458, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(232, Short.MAX_VALUE))
         );
 
         jScrollPane1.setViewportView(jPanel2);
@@ -933,19 +987,21 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         this.setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane1)
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 831, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(jScrollPane1)
-                .addGap(16, 16, 16))
+            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 665, Short.MAX_VALUE)
         );
     }// </editor-fold>//GEN-END:initComponents
 
     private void offThrTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offThrTFActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_offThrTFActionPerformed
+
+    private void refrPerTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refrPerTFActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_refrPerTFActionPerformed
 
     private void glShutterCBActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_glShutterCBActionPerformed
         ((DavisBaseCamera) chip).getDavisConfig().setGlobalShutter(glShutterCB.isSelected());
@@ -983,6 +1039,12 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         offThrTF.setText(String.format("%.3f e-folds (%.1f%%)", offThresholdLogE,offPerCent));
         onMinusOffTF.setText(String.format("%.3f", onThresholdLogE+offThresholdLogE));
     }
+    
+    private void setEstimatedRefractoryPeriod() {
+        final float refrPer = apsDvsTweaks.getRefractoryPeriodS();
+        refrPerTF.setText(String.format("%ss (%sHz max firing rate)",engFmt.format(refrPer),engFmt.format(1f/refrPer)));
+    }
+
 
     private void thresholdTweakerStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_thresholdTweakerStateChanged
         getDvsTweaks().setThresholdTweak(thresholdTweaker.getValue());
@@ -992,6 +1054,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
     private void maxFiringRateTweakerStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_maxFiringRateTweakerStateChanged
         getDvsTweaks().setMaxFiringRateTweak(maxFiringRateTweaker.getValue());
+        setEstimatedRefractoryPeriod();
         setFileModified();
     }// GEN-LAST:event_maxFiringRateTweakerStateChanged
 
@@ -1132,7 +1195,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     private javax.swing.JTextField onMinusOffTF;
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
     private javax.swing.JTextField onThrTF;
+    private javax.swing.JPanel refrPanel;
+    private javax.swing.JLabel refrPerLabel;
+    private javax.swing.JTextField refrPerTF;
     private javax.swing.JButton snapshotButton;
+    private javax.swing.JPanel thrPanel;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
     // End of variables declaration//GEN-END:variables
 
