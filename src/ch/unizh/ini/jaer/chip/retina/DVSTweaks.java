@@ -80,5 +80,11 @@ public interface DVSTweaks {
      * @return OFF threshold (negative value)
      */
     public float getOffThresholdLogE();
+    
+    /** Returns estimated refractory period in s, computed from estimated capacitance and refractory current, assuming some voltage range.
+     * 
+     * @return refractory period in seconds
+     */
+    public float getRefractoryPeriodS();
 
 }
