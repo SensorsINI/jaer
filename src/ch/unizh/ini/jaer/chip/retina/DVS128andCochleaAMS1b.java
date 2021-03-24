@@ -570,5 +570,10 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
         public float getOffThresholdLogE() {
             return thresholdFromCurrents(diffOff.getCurrent(), diff.getCurrent());
         }
+
+        @Override
+        public float getRefractoryPeriodS() {
+           return 1e-6f;
+        }
     } // Tmpdiff128Biasgen
 }
