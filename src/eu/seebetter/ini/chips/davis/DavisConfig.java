@@ -779,7 +779,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             return;
         }
         maxFiringRate = val;
-        final float MAX = 8, MIN=100; // limit to approx 5 times shorter refr period than default, and 50 times longer
+        final float MAX = 8, MIN=100; // limit to approx 8 times shorter refr period than default, and 100 times longer
         refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MIN, MAX));
         getChip().getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
     }
@@ -931,6 +931,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
      * see https://ieeexplore.ieee.org/document/7962235 fig 1
      */
     protected float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 20, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+    
+    private float REFR_CAP=20e-15f, REFR_VOLTAGE=(1.8f-1f); // guesstimated
 
     @Override
     public float getOnThresholdLogE() {
@@ -941,6 +943,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     public float getOffThresholdLogE() {
         return (float) (THR_FAC * Math.log(diffOff.getCurrent() / diff.getCurrent()));
     }
+
+    @Override
+    public float getRefractoryPeriodS() {
+        float iRefr=refr.getCurrent();
+        return (float)(REFR_CAP*REFR_VOLTAGE/iRefr);
+    }
+    
+    
 
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 
