@@ -257,10 +257,10 @@
              comment="jAER runtime release ${DSTAMP}- see https://jaerproject.org">
             <zipfileset prefix="jAER-runtime"
                         dir="."
-                        excludes="blender/**,
-                         **/*.zip,
+                        excludes="**/*.zip,
                          ivy/**,
                         **/*.private, **/*.hprof, **/*.log, **/*.ncb"
+                        defaultexcludes="false"
             />
         </zip>
     </target>
