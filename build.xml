@@ -259,7 +259,7 @@
                         dir="."
                         excludes="blender/**,
                          **/*.zip,
-                         **/ivy,
+                         ivy/**,
                         **/*.private, **/*.hprof, **/*.log, **/*.ncb"
             />
         </zip>
