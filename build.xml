@@ -241,9 +241,9 @@
     <!-- builds a zip of all the javadoc -->
     <target name="jaer-archive-javadoc" depends="javadoc">
         <tstamp/>
-        <delete file="../../jaer-javadoc-*.zip" />
-        <property name="javadocZipFileName" value="../../jaer-javadoc-${DSTAMP}.zip" />
-        <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see https://sourceforge.net/p/jaer/wiki/">
+        <delete file="../jaer-javadoc-*.zip" />
+        <property name="javadocZipFileName" value="../jaer-javadoc-${DSTAMP}.zip" />
+        <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see https://jaerproject.org">
             <zipfileset prefix="jAER-javadoc" dir="${dist.javadoc.dir}" />
         </zip>
     </target>
@@ -251,65 +251,22 @@
     <!-- builds a runtime archive for end users who don't want to develop -->
     <target name="jaer-runtime-archive" depends="jar">
         <tstamp/>
-        <delete file="../../jaer-runtime-*.zip" />
-        <property name="runtimeZipFileName" value="../../jaer-runtime-${DSTAMP}.zip"/>
+        <delete file="../jaer-runtime-*.zip" />
+        <property name="runtimeZipFileName" value="../jaer-runtime-${DSTAMP}.zip"/>
         <zip destfile="${runtimeZipFileName}" level="9"
-             comment="jAER runtime release ${DSTAMP}- see hhttps://sourceforge.net/p/jaer/wiki/">
+             comment="jAER runtime release ${DSTAMP}- see https://jaerproject.org">
             <zipfileset prefix="jAER-runtime"
-                        dir="../../"
+                        dir="."
                         excludes="blender/**,
                          **/*.zip,
-                         deviceFirmwarePCBLayout/**,
-                        jSmoothExeLauncher/**,
+                         **/ivy,
                         **/*.private, **/*.hprof, **/*.log, **/*.ncb"
             />
         </zip>
     </target>
 
-    <!--depends="jaer-runtime-archive"-->
-    <target name="jaer-runtime-release-upload"   >
-        <tstamp/>
-        <ftp
-            server="upload.sourceforge.net"
-            userid="anonymous"
-            password="project-jaer"
-            remotedir="incoming"
-            verbose="true"
-            passive="true">
-            <fileset file="../../jaer-runtime-${DSTAMP}.zip"/>
-        </ftp>
-    </target>
+  
 
-    <!--
-    <target name="javadoc-ftp" depends="javadoc">
-        <ftp server="upload.sourceforge.net" remotedir="upload" binary="true" userid="anonymous" password="jaer-project">
-            <fileset dir="${dist.dir}">
-            <include name="jaer-javadoc.zip" />
-            </fileset>
-        </ftp>
-    </target>
-    -->
-
-    <!-- scp the javadoc to the project web pages at sourceforge.
-    This uses a private key file and trusts the host explicitly. The SF username is prompted for and then all javadoc is uploaded.
-    The link to the generated javadoc is http://jaer.sourceforge.net/javadoc
-    The key can be generated under linux with ssh-keygen -t dsa -Cusername@shell.sf.net
-    and then must be uploaded via SF's key managment system.
-    -->
-    <target name="jaer-javadoc-upload" depends="init">
-        <echo message="first run javadoc-archive target to build javadoc and zip archive of javadoc"/>
-        <input message="SourceForge username?" addproperty="javadoc.upload.username"/>
-        <!--        <input message="SourceForge password?" addproperty="javadoc.upload.password"/> -->
-        <scp
-            todir="${javadoc.upload.username},jaer@web.sourceforge.net:/home/groups/j/ja/jaer/htdocs/javadoc"
-            verbose="true"
-            keyfile="${basedir}/shell.sf.net.key.dsa.private"
-            passphrase=""
-            trust="true"
-        >
-            <fileset dir="${dist.dir}/javadoc" />
-        </scp>
-    </target>
 
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
     <!--TODO fix to get rev info from git-->
