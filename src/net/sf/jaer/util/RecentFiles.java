@@ -83,7 +83,7 @@ public class RecentFiles {
                 }
                 JMenuItem item=new JMenuItem(name);
                 item.setActionCommand(f.getPath());
-                item.setToolTipText(f.getPath());
+                item.setToolTipText(String.format("<html>%s<p>(Hold Shift and select to open folder)",f.getPath()));
                 item.addActionListener(listener);
                 item.setMnemonic(item.getText().charAt(0));
                 fileMenuList.add(item);
