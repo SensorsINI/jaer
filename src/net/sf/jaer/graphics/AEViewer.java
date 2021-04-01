@@ -459,13 +459,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public void actionPerformed(ActionEvent evt) {
-                File f = new File(evt.getActionCommand());
-                //                log.info("opening "+evt.getActionCommand());
-                try {
-                    openAedatInputFile(f);
-                } catch (Exception fnf) {
-                    log.log(Level.WARNING, fnf.toString(), fnf);
-                    recentFiles.removeFile(f);
+                if ((evt.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    if (Desktop.isDesktopSupported()) {
+                        log.info("opening folder for " + evt.getActionCommand());
+                        try {
+                            File f=new File(evt.getActionCommand());
+                            if(f.isFile()){
+                                f=f.getParentFile();
+                            }
+                            Desktop.getDesktop().open(f);
+                        } catch (IOException e) {
+                            log.warning("Cannot show folder: " + e.toString());
+                        }
+                    }
+                } else {
+                    File f = new File(evt.getActionCommand());
+                    //                log.info("opening "+evt.getActionCommand());
+                    try {
+                        openAedatInputFile(f);
+                    } catch (Exception fnf) {
+                        log.log(Level.WARNING, fnf.toString(), fnf);
+                        recentFiles.removeFile(f);
+                    }
                 }
             }
         });
@@ -520,7 +535,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
-        setJogNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getJogPacketCount() + ")");
+        setJogNCount.setText("Set forward/reverse jog packet count N... (currently " + getAePlayer().getJogPacketCount() + ")");
 
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
 
@@ -3798,13 +3813,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         doSingleStepEnabled = yes;
     }
 
-    synchronized public boolean isSingleStep() {
+    public boolean isSingleStep() {
         //        boolean isSingle=caviarViewer.getSyncPlayer().isSingleStep();
         //        return isSingle;
         return doSingleStepEnabled;
     }
 
-    synchronized public void singleStepDone() {
+    public void singleStepDone() {
         if (isSingleStep()) {
 //            log.info("finished single step");
             setDoSingleStepEnabled(false);
@@ -3943,17 +3958,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             } else {
                                 p.stepBackwardAction.actionPerformed(ae);
                             }
-                            while(isSingleStep()){
-                                try{
+                            while (isSingleStep()) {
+                                try {
                                     Thread.sleep(1);
-                                }catch(InterruptedException e){
+                                } catch (InterruptedException e) {
                                     break;
                                 }
                             }
                         }
                     } else {
-                        int oldstep = p.getJogPacketCount();
-                        p.setJogPacketCount(5);
                         try {
                             for (int i = 0; i < rabs; i++) {
                                 if (rotation < 0) {
@@ -3963,7 +3976,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 }
                             }
                         } finally {
-                            p.setJogPacketCount(oldstep);
                         }
                     }
                 }
@@ -5738,9 +5750,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)) {
                         draggedFile = f;
-                        log.info("User dragged file "+draggedFile);
+                        log.info("User dragged file " + draggedFile);
                     } else {
-                        log.warning(String.format("Cannot handle this file extension for file '%s'",f.getAbsoluteFile()));
+                        log.warning(String.format("Cannot handle this file extension for file '%s'", f.getAbsoluteFile()));
                         draggedFile = null;
                     }
                 }
@@ -5789,7 +5801,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } catch (InterruptedException ex) {
                 log.warning("opening dropped file " + draggedFile + " interrupted");
             }
-        }else{
+        } else {
 //            log.warning("null dragged file in DropTargetDropEvent="+dtde);
         }
     }
