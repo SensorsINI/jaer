@@ -126,7 +126,6 @@ public class ApsFrameExtractor extends EventFilter2D{
         displayColor[1] = 1.0f;
         displayColor[2] = 1.0f;
         apsDisplayLegend.color = displayColor;
-        initFilter();
 
         setPropertyTooltip("invertIntensity", "Inverts grey scale, e.g. for raw samples of signal level");
         setPropertyTooltip("preBufferFrame", "Only display and use complete frames; otherwise display APS samples as they arrive");
