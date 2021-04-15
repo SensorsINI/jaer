@@ -55,7 +55,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     public boolean spatialHistogramEnabled = getBoolean("spatialHistogramEnabled", true);
     public boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
     protected boolean resetOnBiasChange = getBoolean("resetOnBiasChange", true);
-    public int histNumBins = getInt("histNumBins", 100);
+    public int histNumBins = getInt("histNumBins", 300);
     int startx, starty, endx, endy; // mouse selection points
     private Point startPoint = null, endPoint = null, clickedPoint = null;
     protected Rectangle selectionRectangle = null;
@@ -78,6 +78,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     private int adcResolutionCounts = getInt("adcResolutionCounts", 1023);
     private boolean useZeroOriginForTemporalNoise = getBoolean("useZeroOriginForTemporalNoise", false);
     private float lastMeasuredExposureMs = Float.NaN, lastExposureDelayMs = Float.NaN;
+    protected float discardPixelsWithVarianceLargerThan = getFloat("discardPixelsWithVarianceLargerThan", Float.NaN);
+    protected boolean drawPtcLineWithMouse = false, drawingPtcLine = false;
 
     public ApsNoiseStatistics(AEChip chip) {
         super(chip);
@@ -100,6 +102,10 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         setPropertyTooltip("adcVref", "Input voltage range of ADC; on DAVIS240 the range is 1.5V with AdcLow=.21, AdcHigh=1.81");
         setPropertyTooltip("adcResolutionCounts", "Resolution of ADC in DN (digital number) counts");
         setPropertyTooltip("useZeroOriginForTemporalNoise", "Sets origin for temporal noise plot to 0,0 to help see structure more easily");
+        setPropertyTooltip("discardPixelsWithVarianceLargerThan", "For temporal noise PTC, discards pixels with variance larger than this threshold, to make PTC work more reliablly");
+        setPropertyTooltip("drawPtcLineWithMouse", "<html>If selected, "
+                + "mouse left click and drag draws the temporal noise PTC line which you can use to estimate the conversion gain"
+                + "<p>If not selected, mouse drag draws ROI box");
 
     }
 
@@ -113,13 +119,13 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         frameExtractor.filterPacket(in);
-        if (frameExtractor.hasNewFrame()) {
+        if (frameExtractor.hasNewFrameAvailable()) {
             if (resetCalled) {
 //                frameExtractor.resetFilter(); // TODO we cannot call this before getting frame, because then frame will be set to zero in the frameExtractor and we'll get zeros
                 stats.reset();
                 resetCalled = false;
             }
-            float[] frame = frameExtractor.getDisplayBuffer();
+            float[] frame = frameExtractor.getRawFrame();
             stats.updateStatistics(frame);
         }
         return in;
@@ -272,7 +278,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     public void mousePressed(MouseEvent e) {
         Point p = getMousePoint(e);
         startPoint = p;
-        selecting = true;
+        if (!drawPtcLineWithMouse) {
+            selecting = true;
+        } else {
+            drawingPtcLine = true;
+        }
     }
 
     /**
@@ -283,6 +293,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     @Override
     public void mouseMoved(MouseEvent e) {
         currentMousePoint = getMousePoint(e);
+        if (drawPtcLineWithMouse) {
+            return;
+        }
         for (int k = 0; k < chip.getNumCellTypes(); k++) {
             currentAddress[k] = chip.getEventExtractor().getAddressFromCell(currentMousePoint.x, currentMousePoint.y, k);
 //            System.out.println(currentMousePoint+" gives currentAddress["+k+"]="+currentAddress[k]);
@@ -292,6 +305,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     @Override
     public void mouseExited(MouseEvent e) {
         selecting = false;
+        drawingPtcLine = false;
     }
 
     @Override
@@ -308,10 +322,13 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         if (startPoint == null) {
             return;
         }
+
         if ((e.getModifiersEx() & MouseEvent.BUTTON1_DOWN_MASK) == MouseEvent.BUTTON1_DOWN_MASK) {
-            setSelectionRectangleFromMouseEvent(e);
-        } else if ((e.getModifiersEx() & MouseEvent.BUTTON3_DOWN_MASK) == MouseEvent.BUTTON3_DOWN_MASK) {
-            stats.temporalNoise.setTemporalNoiseLineFromMouseEvent(e);
+            if (!drawPtcLineWithMouse) {
+                setSelectionRectangleFromMouseEvent(e);
+            } else {
+                stats.temporalNoise.setTemporalNoiseLineFromMouseEvent(e);
+            }
         }
     }
 
@@ -321,7 +338,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
      * @param e
      */
     @Override
-    public void mouseClicked(MouseEvent e) {
+    public void mouseClicked(MouseEvent e
+    ) {
         Point p = getMousePoint(e);
         clickedPoint = p;
     }
@@ -333,7 +351,8 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
      * @param yes
      */
     @Override
-    public void setSelected(boolean yes) {
+    public void setSelected(boolean yes
+    ) {
         super.setSelected(yes);
         if (glCanvas == null) {
             return;
@@ -444,6 +463,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
         APSHist apsHist = new APSHist();
         TemporalNoise temporalNoise = new TemporalNoise();
+        final float PLOT_OFFSETS = .1f;
 
         public PixelStatistics() {
         }
@@ -538,10 +558,15 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 maxmean = Float.NEGATIVE_INFINITY;
                 maxvar = Float.NEGATIVE_INFINITY;
                 // computes means and variances for each pixel over all frames
+                nPixels = 0;
                 for (int i = 0; i < pixelSampleCounts.length; i++) {
                     if (pixelSampleCounts[i] < 2) {
                         continue;
                     }
+                    if (vars[i] > discardPixelsWithVarianceLargerThan) {
+                        continue;
+                    }
+                    nPixels++;
                     means[i] = sums[i] / pixelSampleCounts[i];
                     vars[i] = (sum2s[i] / pixelSampleCounts[i]) - (means[i] * means[i]);
 //                    if (vars[i] > 1000) {
@@ -550,6 +575,12 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 }
                 // compute grand averages
                 for (int i = 0; i < pixelSampleCounts.length; i++) {
+                    if (pixelSampleCounts[i] < 2) {
+                        continue;
+                    }
+                    if (vars[i] > discardPixelsWithVarianceLargerThan) {
+                        continue;
+                    }
                     sumvar += vars[i];
                     summean += means[i];
                     minmean = (float) min(means[i], minmean);
@@ -557,10 +588,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                     minvar = (float) min(vars[i], minvar);
                     maxvar = (float) max(vars[i], maxvar);
                 }
-                meanvar = sumvar / pixelSampleCounts.length;
-                meanmean = summean / pixelSampleCounts.length;
-                rmsAC = (float) Math.sqrt(sumvar / pixelSampleCounts.length);
-                nPixels = pixelSampleCounts.length;
+                meanvar = sumvar / nPixels;
+                meanmean = summean / nPixels;
+                rmsAC = (float) Math.sqrt(sumvar / nPixels);
             }
 
             synchronized void reset() {
@@ -593,8 +623,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                     return;
                 }
                 renderer.setSmoothing(true);
-                final float offset = .1f;
-                final float x0 = chip.getSizeX() * offset, y0 = chip.getSizeY() * offset, x1 = chip.getSizeX() * (1 - offset), y1 = chip.getSizeY() * (1 - offset);
+                final float x0 = chip.getSizeX() * PLOT_OFFSETS, y0 = chip.getSizeY() * PLOT_OFFSETS, x1 = chip.getSizeX() * (1 - PLOT_OFFSETS), y1 = chip.getSizeY() * (1 - PLOT_OFFSETS);
 
                 // overall statistics
                 float kdn = (float) (meanvar / meanmean);
@@ -674,11 +703,11 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
                     float dmean = dep.x - dsp.x;
                     float dvar = dep.y - dsp.y;
-                    float kdnline = dvar / dmean;
-                    float kuVperElec = 1e6f * kdnline * adcVref / adcResolutionCounts;
+                    float kdnslope = dvar / dmean;
+                    float kuVperElec = 1e6f * kdnslope * adcVref / adcResolutionCounts;
                     renderer.begin3DRendering();
                     renderer.setColor(0, .5f, .8f, 1f);
-                    renderer.draw3D(String.format("%.3f DN/e, %.1f uV/e", kdnline, kuVperElec), mep.x, mep.y, 0, textScale);
+                    renderer.draw3D(String.format("%s DN/e, %s uV/e", engFmt.format(kdnslope), engFmt.format(kuVperElec)), mep.x, mep.y, 0, textScale);
                     renderer.end3DRendering();
                 }
             }
@@ -694,10 +723,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 setTemporalNoiseLinePointsFromMousePoints(new Point2D.Float(startx, starty), new Point2D.Float(endx, endy));
             }
 
-            // sets the line from the mouse point
+            // sets the line from the mouse points
             private void setTemporalNoiseLinePointsFromMousePoints(Point2D.Float start, Point2D.Float end) {
-                final float offset = .1f;
-                final float x0 = chip.getSizeX() * offset, y0 = chip.getSizeY() * offset, x1 = chip.getSizeX() * (1 - offset), y1 = chip.getSizeY() * (1 - offset);
+                final float x0 = chip.getSizeX() * PLOT_OFFSETS, y0 = chip.getSizeY() * PLOT_OFFSETS, x1 = chip.getSizeX() * (1 - PLOT_OFFSETS), y1 = chip.getSizeY() * (1 - PLOT_OFFSETS);
                 msp = start;
                 mep = end;
                 dsp.x = (float) meanrange * (msp.x - x0) / (x1 - x0);
@@ -708,8 +736,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
             // sets the line pixel ends from the line data points
             private void setTemporalNoiseLinePointsFromDataPoints(Point2D.Float dsp, Point2D.Float dep) {
-                final float offset = .1f;
-                final float x0 = chip.getSizeX() * offset, y0 = chip.getSizeY() * offset, x1 = chip.getSizeX() * (1 - offset), y1 = chip.getSizeY() * (1 - offset);
+                final float x0 = chip.getSizeX() * PLOT_OFFSETS, y0 = chip.getSizeY() * PLOT_OFFSETS, x1 = chip.getSizeX() * (1 - PLOT_OFFSETS), y1 = chip.getSizeY() * (1 - PLOT_OFFSETS);
 
                 msp.x = x0 + (float) (x1 - x0) * (dsp.x - minmean) / (meanrange);
                 msp.y = y0 + (float) (y1 - y0) * (dsp.y - minvar) / (varrange);
@@ -953,5 +980,35 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     public void setResetOnBiasChange(boolean resetOnBiasChange) {
         this.resetOnBiasChange = resetOnBiasChange;
         putBoolean("resetOnBiasChange", resetOnBiasChange);
+    }
+
+    /**
+     * @return the discardPixelsWithVarianceLargerThan
+     */
+    public float getDiscardPixelsWithVarianceLargerThan() {
+        return discardPixelsWithVarianceLargerThan;
+    }
+
+    /**
+     * @param discardPixelsWithVarianceLargerThan the
+     * discardPixelsWithVarianceLargerThan to set
+     */
+    public void setDiscardPixelsWithVarianceLargerThan(float discardPixelsWithVarianceLargerThan) {
+        this.discardPixelsWithVarianceLargerThan = discardPixelsWithVarianceLargerThan;
+        putFloat("discardPixelsWithVarianceLargerThan", discardPixelsWithVarianceLargerThan);
+    }
+
+    /**
+     * @return the drawPtcLineWithMouse
+     */
+    public boolean isDrawPtcLineWithMouse() {
+        return drawPtcLineWithMouse;
+    }
+
+    /**
+     * @param drawPtcLineWithMouse the drawPtcLineWithMouse to set
+     */
+    public void setDrawPtcLineWithMouse(boolean drawPtcLineWithMouse) {
+        this.drawPtcLineWithMouse = drawPtcLineWithMouse;
     }
 }
