@@ -11,6 +11,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Iterator;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -66,6 +67,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     private float onThreshold = getFloat("onThreshold", 0.001f);
     private float offThreshold = getFloat("offThreshold", -0.001f);
 
+    private float[] logBaseFrame, logFinalFrame, displayed01Frame; // the log of the last APS frame and the final log CF frame
+
     protected float crossoverFrequencyHz = getFloat("crossoverFrequencyHz", 1f);
     protected float lambda = getFloat("lambda", .1f);
     protected float kappa = getFloat("lambda", 0.05f);
@@ -74,8 +77,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     private float minBaseLogFrame = Float.MAX_VALUE, maxBaseLogFrame = Float.MIN_VALUE;
 
     private boolean thresholdsFromBiases = getBoolean("thresholdsFromBiases", true);
-
-    private float[] logBaseFrame, logFinalFrame; // the log of the last APS frame and the final log CF frame
 
     private FilterChain filterChain;
     private SpatioTemporalCorrelationFilter baFilter;
@@ -94,7 +95,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         super(chip);
         String cf = "Complementary Filter";
 
-        setPropertyTooltip(cf, "onThresshold", "ON event temporal contrast threshold in log_e units");
+        setPropertyTooltip(cf, "onThreshold", "OFF event temporal contrast threshold in log_e units");
         setPropertyTooltip(cf, "offThreshold", "OFF event temporal contrast threshold in log_e units");
         setPropertyTooltip(cf, "resetThresholdsToBiasCurrentValues", "Reset ON and OFF thresholds to bias current values");
 
@@ -112,11 +113,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         filterChain = new FilterChain(chip);
         baFilter = new SpatioTemporalCorrelationFilter(chip);
         filterChain.add(baFilter);
-        setExtRender(false); // event though this method renders the events, the initial frames are not touched
+        setUseExternalRenderer(true); // we set the ImageDisplay frame contents from here, don't let super do it
         setLogCompress(false);
         setLogDecompress(false);
         setEnclosedFilterChain(filterChain);
-        getApsDisplay().removeMouseMotionListener(mouseInfo);
+        getApsDisplay().removeMouseMotionListener(super.mouseInfo);
         mouseInfo = new MouseInfo(getApsDisplay());
         getApsDisplay().addMouseMotionListener(mouseInfo);
     }
@@ -128,7 +129,9 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     @Override
     synchronized public void resetFilter() {
         filterChain.reset();
-        if(logBaseFrame==null) return;
+        if (logBaseFrame == null) {
+            return;
+        }
         System.arraycopy(logBaseFrame, 0, logFinalFrame, 0, logBaseFrame.length);
     }
 
@@ -140,6 +143,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         final int nPixels = chip.getNumPixels();
         logBaseFrame = new float[nPixels];
         logFinalFrame = new float[nPixels];
+        displayed01Frame = new float[nPixels];
         alphas = new float[nPixels];
         lastTimestamp = new int[nPixels];
         Arrays.fill(lastTimestamp, 0);
@@ -163,7 +167,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         in = super.filterPacket(in);
-        setDisplayGrayFrame(logFinalFrame);
+        updateDisplayedFrame();
         return in;
     }
 
@@ -177,32 +181,63 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         }
         int dtUs = e.timestamp - lastT;
         float dtS = 1e-6f * dtUs;
-        float dlog = e.getPolaritySignum() > 0 ? onThreshold : offThreshold;
-        float[] f = logFinalFrame;
+        int sign = e.getPolaritySignum(); // +1 for on, -1 for off
+        float dlog = sign > 0 ? onThreshold : -offThreshold;
         float a = alphas[k];
         float decay = (float) (Math.exp(-a * dtS));
-        f[k] = dlog + decay * f[k] + (1 - decay) * (rawFrame[k]);
+        logFinalFrame[k] = decay * logFinalFrame[k] + (1 - decay) * (logBaseFrame[k]); // correct the output
+        logFinalFrame[k] += dlog; // add the event
     }
 
     @Override
     protected void processNewFrame() {
-        super.processNewFrame();
+        minBaseLogFrame = Float.MAX_VALUE;
+        maxBaseLogFrame = Float.MIN_VALUE;
         // update alphas
         for (int i = 0; i < rawFrame.length; i++) {
-            float v = rawFrame[i];
+            float v = rawFrame[i];  // DN value from 0-1023
             if (v < 0) {
                 v = 0;
             }
             if (v > 0) {
-                v = (float) Math.log(v);
+                v = (float) Math.log(v); // natural log
             }
-            if (v < minBaseLogFrame) {
+            if (v < minBaseLogFrame) { // update min / max of base log frame
                 minBaseLogFrame = v;
             } else if (v > maxBaseLogFrame) {
                 maxBaseLogFrame = v;
             }
+            logBaseFrame[i] = v;
         }
         computeAlphas();
+    }
+
+    private void updateDisplayedFrame() {
+        float min = Float.MAX_VALUE, max = Float.MIN_VALUE;
+        for (int i = 0; i < logFinalFrame.length; i++) {
+            float v = logFinalFrame[i];
+
+            if (v < min) {
+                min = v;
+            } else if (v > max) {
+                max = v;
+            }
+        }
+
+        float scale = 1 / (max - min);
+
+        for (int i = 0; i < displayed01Frame.length; i++) {
+            displayed01Frame[i] = scale * (logFinalFrame[i] - min);
+        }
+
+        setDisplayGrayFrame(displayed01Frame);
+        if (showAPSFrameDisplay) {
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    getApsDisplay().repaint(30);
+                }
+            });
+        }
     }
 
     private void computeAlphas() {
@@ -210,22 +245,20 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         final float diff = maxBaseLogFrame - minBaseLogFrame;
         final float l1 = minBaseLogFrame + lambda * diff;
         final float l2 = maxBaseLogFrame - lambda * diff;
-        final float lambda1=1-lambda;
-        for(int i=0;i<n;i++){
+        final float lambda1 = 1 - lambda;
+        for (int i = 0; i < n; i++) {
             final float logBaseValue = logBaseFrame[i];
-            if(logBaseValue<l1){
-                alphas[i]=lambda*alpha0+lambda1*((logBaseValue-minBaseLogFrame)/(l1-minBaseLogFrame));
-            }else if(logBaseValue>l2){
-                alphas[i]=lambda*alpha0+lambda1*((logBaseValue-maxBaseLogFrame)/(l2-maxBaseLogFrame));
-                
-            }else{
-                alphas[i]=alpha0;
+            if (logBaseValue < l1) {
+                alphas[i] = alpha0 * (lambda + lambda1 * ((logBaseValue - minBaseLogFrame) / (l1 - minBaseLogFrame)));
+            } else if (logBaseValue > l2) {
+                alphas[i] = alpha0 * (lambda + lambda1 * ((logBaseValue - maxBaseLogFrame) / (l2 - maxBaseLogFrame)));
+
+            } else {
+                alphas[i] = alpha0;
             }
         }
     }
 
- 
-    
     synchronized private void revertLearning() {
     }
 
@@ -268,7 +301,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     synchronized public void setOnThreshold(float onThreshold) {
         float old = this.onThreshold;
         this.onThreshold = onThreshold;
-        putFloat("onThresshold", onThreshold);
+        putFloat("onThreshold", onThreshold);
         getSupport().firePropertyChange("onThreshold", old, this.onThreshold);
     }
 
@@ -374,8 +407,9 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
                 if (rawFrame == null || logFinalFrame == null || idx < 0 || idx >= rawFrame.length) {
                     return;
                 }
-                EventFilter.log.info(String.format("logBaseFrame=%s logFinalFrame=%s alpha=%s",
-                        engFmt.format(logBaseFrame[idx]), engFmt.format(logFinalFrame[idx]), engFmt.format(alphas[idx])));
+                EventFilter.log.info(String.format("logBaseFrame=%s logFinalFrame=%s f3dB(alpha/2pi)=%sHz tau=%ss",
+                        engFmt.format(logBaseFrame[idx]), engFmt.format(logFinalFrame[idx]), engFmt.format(alphas[idx] / ((float) Math.PI * 2)),
+                        engFmt.format(1 / alphas[idx])));
             }
         }
     }
