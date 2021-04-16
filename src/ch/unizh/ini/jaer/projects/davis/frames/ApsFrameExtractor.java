@@ -96,6 +96,8 @@ public class ApsFrameExtractor extends EventFilter2D {
     public static final String EVENT_NEW_FRAME = DavisRenderer.EVENT_NEW_FRAME_AVAILBLE;
     private int lastFrameTimestamp = -1;
 
+    protected int endOfFrameExposureTimestamp, startOfFrameExposureTimestamp, endOfFrameReadoutTimstamp, startOfFrameReadoutTimestamp;
+
     public static enum Extraction {
 
         ResetFrame,
@@ -107,8 +109,8 @@ public class ApsFrameExtractor extends EventFilter2D {
     private boolean preBufferFrame = getBoolean("preBufferFrame", true);
     private boolean logCompress = getBoolean("logCompress", false);
     private boolean logDecompress = getBoolean("logDecompress", false);
-    private float displayContrast = getFloat("displayContrast", 1.0f);
-    private float displayBrightness = getFloat("displayBrightness", 0.0f);
+    protected float displayContrast = getFloat("displayContrast", 1.0f);
+    protected float displayBrightness = getFloat("displayBrightness", 0.0f);
     public Extraction extractionMethod = Extraction.valueOf(getString("extractionMethod", "CDSframe"));
     /**
      * Shows pixel info
@@ -245,12 +247,15 @@ public class ApsFrameExtractor extends EventFilter2D {
         if (idx >= maxIDX) {
             return;
         }
-//        if (e.isStartOfFrame()) {
-//            if (newFrameAvailable && useExternalRenderer) {
-//                EventFilter.log.warning("new frame started even though old frame was never gotten by anyone calling getNewFrame()");
-//            }
-//        }
-        if (e.isEndOfFrame()) {
+
+        if (e.isStartOfExposure()) {
+            startOfFrameExposureTimestamp = e.timestamp;
+        } else if (e.isEndOfExposure()) {
+            endOfFrameExposureTimestamp = e.timestamp;
+        } else if (e.isStartOfFrame()) {
+            startOfFrameReadoutTimestamp = e.timestamp;
+        } else if (e.isEndOfFrame()) {
+            endOfFrameReadoutTimstamp = e.timestamp;
             if (preBufferFrame && (rawFrame != null) && !useExternalRenderer && showAPSFrameDisplay) {
                 displayPreBuffer();
             }
@@ -785,5 +790,37 @@ public class ApsFrameExtractor extends EventFilter2D {
      */
     public ImageDisplay getApsDisplay() {
         return apsDisplay;
+    }
+
+    /**
+     * @return the endOfFrameExposureTimestamp
+     */
+    public int getEndOfFrameExposureTimestamp() {
+        return endOfFrameExposureTimestamp;
+    }
+
+    /**
+     * @return the startOfFrameExposureTimestamp
+     */
+    public int getStartOfFrameExposureTimestamp() {
+        return startOfFrameExposureTimestamp;
+    }
+
+    /**
+     * @return the endOfFrameReadoutTimstamp
+     */
+    public int getEndOfFrameReadoutTimstamp() {
+        return endOfFrameReadoutTimstamp;
+    }
+
+    /**
+     * @return the startOfFrameReadoutTimestamp
+     */
+    public int getStartOfFrameReadoutTimestamp() {
+        return startOfFrameReadoutTimestamp;
+    }
+    
+    public int getAverageFrameExposureTimestamp(){
+        return (startOfFrameExposureTimestamp+endOfFrameExposureTimestamp)/2;
     }
 }
