@@ -231,7 +231,7 @@ public class OpenCVFlow extends AbstractMotionFlow
 //        while (apsItr.hasNext()) {
 //            final ApsDvsEvent e = (ApsDvsEvent) apsItr.next();
 //            if (e.isApsData()) {
-//                apsFrameExtractor.putAPSevent(e);
+//                apsFrameExtractor.processApsEvent(e);
 //            }
 //        }
         if (isShowAPSFrameDisplay()) {

@@ -1095,7 +1095,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         for (int y = 0; y < sizey; y++) {
             for (int x = 0; x < sizex; x++) {
                 final int idx = x + (sizey - y - 1) * chip.getSizeX();
-                float bufferValue = apsFrameExtractor.getDisplayBuffer()[idx];
+                float bufferValue = apsFrameExtractor.getRawFrame()[idx];
                 grayImageBuffer[x + y * chip.getSizeX()] = (byte)(int)(bufferValue * 0.5f);
             }
         }

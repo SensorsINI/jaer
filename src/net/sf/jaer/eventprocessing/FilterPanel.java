@@ -713,7 +713,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public EnumControl(final Class<? extends Enum> c, final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -773,7 +773,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public StringControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -828,7 +828,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public BooleanControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -899,7 +899,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public IntSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
             super();
-            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -987,7 +987,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public FloatSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
             super();
-            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -1057,7 +1057,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public IntControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -1329,12 +1329,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             if (o instanceof Float) {
                 Float b = (Float) o;
                 tf.setText(engFmt.format(b));
+            } else if (o instanceof Integer) {
+                int b = (Integer) o;
+                tf.setText(engFmt.format((float) b));
             }
         }
 
         public FloatControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(f.getClass().getSimpleName()+"."+name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -1545,7 +1548,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                    final HasSetter setter = setterMap.get(getFilter().getClass().getSimpleName()+"."+propertyChangeEvent.getPropertyName());
+                    final HasSetter setter = setterMap.get(getFilter().getClass().getSimpleName() + "." + propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());

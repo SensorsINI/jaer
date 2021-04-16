@@ -94,7 +94,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
         baFilter = new BackgroundActivityFilter(chip);
         filterChain.add(baFilter);
         frameExtractor = new ApsFrameExtractor(chip);
-        frameExtractor.setExtRender(false); // event though this method renders the events, the initial frames are not touched
+        frameExtractor.setUseExternalRenderer(false); // event though this method renders the events, the initial frames are not touched
         frameExtractor.setLogCompress(true);
         frameExtractor.setLogDecompress(true);
         filterChain.add(frameExtractor);
@@ -123,7 +123,7 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
         onPixTimeBins = new float[frameExtractor.getNewFrame().length][numTimeBins];
         offPixTimeBins = new float[frameExtractor.getNewFrame().length][numTimeBins];
         pixelErrors = new float[frameExtractor.getNewFrame().length];
-        displayBuffer = frameExtractor.getDisplayBuffer();
+        displayBuffer = frameExtractor.getRawFrame();
         lastDisplayBuffer = displayBuffer.clone();
         onTimeBins = new float[numTimeBins];
         offTimeBins = new float[numTimeBins];
@@ -323,13 +323,13 @@ public class ApsFrameExtrapolationISCAS extends EventFilter2D {
     }
 
     private void updateWeights() {
-        if (lastDisplayBuffer == null || lastDisplayBuffer.length != frameExtractor.getDisplayBuffer().length || lastDisplayBuffer.length != displayBuffer.length) {
+        if (lastDisplayBuffer == null || lastDisplayBuffer.length != frameExtractor.getRawFrame().length || lastDisplayBuffer.length != displayBuffer.length) {
             initMaps();
             return;
         }
 
         lastDisplayBuffer = displayBuffer.clone();
-        displayBuffer = frameExtractor.getDisplayBuffer();
+        displayBuffer = frameExtractor.getRawFrame();
         if (!freezeGains) {
             updateWeightsTIMEbin();
         }

@@ -570,14 +570,16 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * angle in degrees around x axis of 3d display, negative when rotated upwards
+     * angle in degrees around x axis of 3d display, negative when rotated
+     * upwards
      */
     public float getAnglex() {
         return anglex;
     }
 
     /**
-     * angle in degrees around y axis of 3d display, negative when rotated leftwards
+     * angle in degrees around y axis of 3d display, negative when rotated
+     * leftwards
      */
     public float getAngley() {
         return angley;
@@ -1519,6 +1521,18 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @param msg an error message to log to e.g., show the context
      */
     public void checkGLError(final GL2 g, final GLU glu, final String msg) {
+        if (g == null) {
+            log.warning("called checkGLError with null graphics");
+            return;
+        }
+        if (glu == null) {
+            log.warning("called checkGLError with null glu");
+            return;
+        }
+        if(g.getContext()==null){
+            log.warning("GL context for graphics is null, cannot check error");
+            return;
+        }
         int error = g.glGetError();
         int nerrors = 3;
         while ((error != GL.GL_NO_ERROR) && (nerrors-- != 0)) {

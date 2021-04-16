@@ -49,8 +49,8 @@ import org.apache.commons.io.FilenameUtils;
 /**
  * Extracts CIS APS frames from Syncronized Multiple DAVIS sensors. Use
  * <ul>
- * <li>hasNewFrame() to check whether a new frame is available
- * <li>getDisplayBuffer() to get a clone of the latest raw pixel values
+ * <li>hasNewFrameAvailable() to check whether a new frame is available
+ <li>getDisplayBuffer() to get a clone of the latest raw pixel values
  * <li>getNewFrame() to get the latest double buffer of displayed values
  * </ul>
  *
@@ -121,7 +121,7 @@ public class MultiCameraApsFrameExtractor extends EventFilter2D
 
             arrayOfAEvi.get(i).getChip().getFilterChain().add(frameExtractortemp);
             //arrayOfAEvi.get(1).getChip().getFilterChain().add(frameExtractortemp);
-            frameExtractortemp.setExtRender(false);
+            frameExtractortemp.setUseExternalRenderer(false);
 
             bufferedImages.add(new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB));
         }
@@ -135,7 +135,7 @@ public class MultiCameraApsFrameExtractor extends EventFilter2D
         int dT=in.getFirstTimestamp() - lastTime;
         if(saveimage==true && dT>=waitingTime*1000){
             for (int f=0;f<numOfAEviewers;f++){
-                if(fraext.get(f).hasNewFrame()){
+                if(fraext.get(f).hasNewFrameAvailable()){
                     countViewers++;
                 }  
             }
@@ -171,7 +171,7 @@ public class MultiCameraApsFrameExtractor extends EventFilter2D
         
         for (int f=0;f<numOfAEviewers;f++){
             BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB);
-            ImageDisplay singleApsDisplay = fraext.get(f).apsDisplay;
+            ImageDisplay singleApsDisplay = fraext.get(f).getApsDisplay();
             for (int y = 0; y < chip.getSizeY(); y++) {
                 for (int x = 0; x < chip.getSizeX(); x++) {
                     final int idx = singleApsDisplay.getPixMapIndex(x, chip.getSizeY() - y - 1);

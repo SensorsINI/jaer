@@ -152,7 +152,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         frameExtractor = new ApsFrameExtractor(chip);
         filterChain = new FilterChain(chip);
         filterChain.add(frameExtractor);
-        frameExtractor.setExtRender(false);
+        frameExtractor.setUseExternalRenderer(false);
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("patternWidth", "width of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
@@ -203,7 +203,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 //            }
 
             //acquire new frame
-            if (frameExtractor.hasNewFrame()) {
+            if (frameExtractor.hasNewFrameAvailable()) {
                 lastFrame = frameExtractor.getNewFrame();
 
                 //process frame
@@ -242,11 +242,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 }
 
                 if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-                    frameExtractor.setExtRender(true); // to not alternate
-                    frameExtractor.apsDisplay.setTitleLabel("lens correction enabled");
+                    frameExtractor.setUseExternalRenderer(true); // to not alternate
+                    frameExtractor.getApsDisplay().setTitleLabel("lens correction enabled");
                 } else {
-                    frameExtractor.setExtRender(false); // to not alternate
-                    frameExtractor.apsDisplay.setTitleLabel("raw input image");
+                    frameExtractor.setUseExternalRenderer(false); // to not alternate
+                    frameExtractor.getApsDisplay().setTitleLabel("raw input image");
                 }
             }
 
@@ -382,7 +382,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 //iterate image counter
                 log.info(String.format("added corner points from image %d", imageCounter));
                 imageCounter++;
-                frameExtractor.apsDisplay.setxLabel(filename);
+                frameExtractor.getApsDisplay().setxLabel(filename);
 
 //                //debug
 //                System.out.println(allImagePoints.toString());

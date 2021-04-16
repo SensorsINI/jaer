@@ -166,7 +166,7 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
-    protected int jogPacketCount = 5;
+    protected int jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 20);
     protected int jogPacketsLeft = 0;
     protected boolean jogOccuring = false;
 
@@ -222,14 +222,14 @@ public abstract class AbstractAEPlayer {
 //        log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
     }
 
-    public void jogForwards() {
+    public void jogForwards(int packets) {
         jogOccuring = true;
-        jogPacketsLeft += jogPacketCount;
+        jogPacketsLeft += packets;
     }
 
-    public void jogBackwards() {
+    public void jogBackwards(int packets) {
         jogOccuring = true;
-        jogPacketsLeft -= jogPacketCount;
+        jogPacketsLeft -= packets;
     }
 
     public void cancelJog() {
@@ -719,7 +719,7 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             showAction(String.format("Jog forwards %d",getJogPacketCount()));
-            jogForwards();
+            jogForwards(getJogPacketCount());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -733,7 +733,7 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             showAction(String.format("Jog backwards %d",getJogPacketCount()));
-            jogBackwards();
+            jogBackwards(getJogPacketCount());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -782,7 +782,7 @@ public abstract class AbstractAEPlayer {
      * @return the jogPacketCount
      */
     public int getJogPacketCount() {
-        return jogPacketCount;
+        return this.jogPacketCount;
     }
 
     /**
@@ -790,5 +790,6 @@ public abstract class AbstractAEPlayer {
      */
     public void setJogPacketCount(int jogPacketCount) {
         this.jogPacketCount = jogPacketCount;
+        viewer.prefs.putInt("AbstractAEPlayer.jogPacketCount", jogPacketCount);
     }
 }
