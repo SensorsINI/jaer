@@ -29,6 +29,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import java.nio.file.Paths;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -66,7 +67,7 @@ public class ApsFrameExtractor extends EventFilter2D {
 
     protected DavisChip apsChip = null;
     protected boolean newFrameAvailable; // boolen set true if during processing packet a new frame was completed
-    protected boolean useExtRender = false; // useExtRender means using something like OpenCV to render the
+    protected boolean useExternalRenderer = false; // useExternalRenderer means using something like OpenCV to render the
     // data. If false, the rawFrame is displayed
     private float[] resetBuffer, signalBuffer; // the two buffers that are subtracted to get the DDS frame
     /**
@@ -109,7 +110,9 @@ public class ApsFrameExtractor extends EventFilter2D {
     private float displayContrast = getFloat("displayContrast", 1.0f);
     private float displayBrightness = getFloat("displayBrightness", 0.0f);
     public Extraction extractionMethod = Extraction.valueOf(getString("extractionMethod", "CDSframe"));
-    /** Shows pixel info */
+    /**
+     * Shows pixel info
+     */
     protected MouseInfo mouseInfo = null;
 
     public ApsFrameExtractor(final AEChip chip) {
@@ -204,9 +207,6 @@ public class ApsFrameExtractor extends EventFilter2D {
             }
         }
 
-        if (showAPSFrameDisplay) {
-            getApsDisplay().repaint();
-        }
         return in;
     }
 
@@ -245,19 +245,26 @@ public class ApsFrameExtractor extends EventFilter2D {
         if (idx >= maxIDX) {
             return;
         }
-        if (e.isStartOfFrame()) {
-            if (newFrameAvailable && useExtRender) {
-                EventFilter.log.warning("new frame started even though old frame was never gotten by anyone calling getNewFrame()");
-            }
-        }
+//        if (e.isStartOfFrame()) {
+//            if (newFrameAvailable && useExternalRenderer) {
+//                EventFilter.log.warning("new frame started even though old frame was never gotten by anyone calling getNewFrame()");
+//            }
+//        }
         if (e.isEndOfFrame()) {
-            if (preBufferFrame && (rawFrame != null) && !useExtRender && showAPSFrameDisplay) {
+            if (preBufferFrame && (rawFrame != null) && !useExternalRenderer && showAPSFrameDisplay) {
                 displayPreBuffer();
             }
             newFrameAvailable = true;
             lastFrameTimestamp = e.timestamp;
             processNewFrame();
             getSupport().firePropertyChange(ApsFrameExtractor.EVENT_NEW_FRAME, null, displayFrame);
+            if (showAPSFrameDisplay) {
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        getApsDisplay().repaint(30);
+                    }
+                });
+            }
             return;
         }
         switch (type) {
@@ -297,7 +304,7 @@ public class ApsFrameExtractor extends EventFilter2D {
             grayValue = scaleGrayValue(rawFrame[idx]);
         }
         displayFrame[idx] = grayValue;
-        if (!preBufferFrame && !useExtRender && showAPSFrameDisplay) {
+        if (!preBufferFrame && !useExternalRenderer && showAPSFrameDisplay) {
             getApsDisplay().setPixmapGray(e.x, e.y, grayValue);
         } else {
             apsDisplayPixmapBuffer[3 * idx] = grayValue;
@@ -522,8 +529,8 @@ public class ApsFrameExtractor extends EventFilter2D {
      * @see #setDisplayFrameRGB(float[])
      * @see #setDisplayGrayFrame(double[])
      */
-    public void setExtRender(final boolean yes) {
-        useExtRender = yes;
+    public void setUseExternalRenderer(final boolean yes) {
+        useExternalRenderer = yes;
     }
 
     public void setLegend(final String legend) {
@@ -531,7 +538,7 @@ public class ApsFrameExtractor extends EventFilter2D {
     }
 
     /**
-     * Sets the displayed frame gray values from a double array
+     * Sets the displayed frame gray values from a float array
      *
      * @param frame array with same pixel ordering as rawFrame and displayFrame
      */
