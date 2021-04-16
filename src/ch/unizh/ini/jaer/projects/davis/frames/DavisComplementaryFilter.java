@@ -58,12 +58,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
 //    private boolean useOpenCV = getPrefs().getBoolean("ApsFrameExtrapolation.useOpenCV", false);
 //    {setPropertyTooltip("useOpenCV", "A boolean to set whether the OpenGL acceleration should be used");}
-    private boolean revertLearning = getBoolean("revertLearning", false);
-    private boolean displayError = getBoolean("displayError", false);
-    private boolean freezeGains = getBoolean("freezeGains", false);
-    private boolean clipping = getBoolean("clipping", true);
-    private boolean fixThresholdsToAverage = getBoolean("fixThresholdsToAverage", true);
-
+//    private boolean revertLearning = getBoolean("revertLearning", false);
+//    private boolean displayError = getBoolean("displayError", false);
+//    private boolean freezeGains = getBoolean("freezeGains", false);
+//    private boolean clipping = getBoolean("clipping", true);
+//    private boolean fixThresholdsToAverage = getBoolean("fixThresholdsToAverage", true);
     private float onThreshold = getFloat("onThreshold", 0.001f);
     private float offThreshold = getFloat("offThreshold", -0.001f);
 
@@ -83,7 +82,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     public int eventsSinceFrame;
 
-    private int[] lastTimestamp;
+    private int[] lastTimestamp; // the last timestamp any pixel was updated, either by event or frame
 
     private EngineeringFormat engFmt = new EngineeringFormat();
     /**
@@ -97,11 +96,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
         setPropertyTooltip(cf, "onThreshold", "OFF event temporal contrast threshold in log_e units");
         setPropertyTooltip(cf, "offThreshold", "OFF event temporal contrast threshold in log_e units");
-        setPropertyTooltip(cf, "resetThresholdsToBiasCurrentValues", "Reset ON and OFF thresholds to bias current values");
+        setPropertyTooltip(cf, "setThresholdsToBiasCurrentValues", "Reset ON and OFF thresholds to bias current values");
 
-        setPropertyTooltip(cf, "crossoverFrequencyHz", "The alpha crossover frequency in Hz, increase to update more with APS frames more");
-        setPropertyTooltip(cf, "lambda", "Factor by which to descrease crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response");
-        setPropertyTooltip(cf, "kappa", "fraction of entire Lmax-Lmin range to apply the decreased crossoverFrequencyHz");
+        setPropertyTooltip(cf, "crossoverFrequencyHz", "The alpha crossover frequency in Hz, increase to update more with APS frames");
+        setPropertyTooltip(cf, "lambda", "Factor by which to increase crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response");
+        setPropertyTooltip(cf, "kappa", "Fraction of entire Lmax-Lmin range to apply the decreased crossoverFrequencyHz");
 
 //        setPropertyTooltip("revertLearning", "Revert gains back to manual settings");
 //        setPropertyTooltip("clipping", "Clip the image to 0-1 range; use to reset reconstructed frame if it has diverged. Sometimes turning off clipping helps learn better gains, faster and more stably.");
@@ -122,10 +121,9 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         getApsDisplay().addMouseMotionListener(mouseInfo);
     }
 
-    synchronized public void doRevertLearning() {
-        revertLearning();
-    }
-
+//    synchronized public void doRevertLearning() {
+//        revertLearning();
+//    }
     @Override
     synchronized public void resetFilter() {
         filterChain.reset();
@@ -148,7 +146,9 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         lastTimestamp = new int[nPixels];
         Arrays.fill(lastTimestamp, 0);
         Arrays.fill(alphas, alpha0);
-        setThresholdsFromBiases();
+        if (!isPreferenceStored("onThreshold") || !isPreferenceStored("offThreshold")) {
+            setThresholdsFromBiases();
+        }
         resetFilter();
     }
 
@@ -160,7 +160,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         }
     }
 
-    public void doResetThresholdsToBiasCurrentValues() {
+    public void doSetThresholdsToBiasCurrentValues() {
         setThresholdsFromBiases();
     }
 
@@ -191,9 +191,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processNewFrame() {
+
+        // compute new base log frame
+        // and find its min/max
         minBaseLogFrame = Float.MAX_VALUE;
         maxBaseLogFrame = Float.MIN_VALUE;
-        // update alphas
         for (int i = 0; i < rawFrame.length; i++) {
             float v = rawFrame[i];  // DN value from 0-1023
             if (v < 0) {
@@ -209,7 +211,23 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             }
             logBaseFrame[i] = v;
         }
+        // update alphas
         computeAlphas();
+        // update model
+        int timestamp = getAverageFrameExposureTimestamp();
+        for (int k = 0; k < logBaseFrame.length; k++) {
+            int lastT = lastTimestamp[k];
+            lastTimestamp[k] = timestamp;
+            if (rawFrame == null) {
+                return; // no frame yet
+            }
+            int dtUs = timestamp - lastT;
+            float dtS = 1e-6f * dtUs;
+            float a = alphas[k];
+            float decay = (float) (Math.exp(-a * dtS));
+            logFinalFrame[k] = decay * logFinalFrame[k] + (1 - decay) * (logBaseFrame[k]); // correct the output
+        }
+
     }
 
     private void updateDisplayedFrame() {
@@ -228,6 +246,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
         for (int i = 0; i < displayed01Frame.length; i++) {
             displayed01Frame[i] = scale * (logFinalFrame[i] - min);
+            displayed01Frame[i]=(displayed01Frame[i]+displayBrightness)*displayContrast;
+            displayed01Frame[i]=clip01(displayed01Frame[i]);
         }
 
         setDisplayGrayFrame(displayed01Frame);
@@ -259,35 +279,32 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         }
     }
 
-    synchronized private void revertLearning() {
-    }
-
-    /**
-     * @return the displayError
-     */
-    public boolean isDisplayError() {
-        return displayError;
-    }
-
-    /**
-     * @param displayError the displayError to set
-     */
-    synchronized public void setDisplayError(boolean displayError) {
-        this.displayError = displayError;
-        putBoolean("displayError", displayError);
-    }
-
-    public boolean isFixThresholdsToAverage() {
-        return fixThresholdsToAverage;
-    }
-
-    /**
-     * @param fixThresholdsToAverage the fixThresholdsToAverage to set
-     */
-    synchronized public void setFixThresholdsToAverage(boolean fixThresholdsToAverage) {
-        this.fixThresholdsToAverage = fixThresholdsToAverage;
-    }
-
+//    synchronized private void revertLearning() {
+//    }
+//    /**
+//     * @return the displayError
+//     */
+//    public boolean isDisplayError() {
+//        return displayError;
+//    }
+//    /**
+//     * @param displayError the displayError to set
+//     */
+//    synchronized public void setDisplayError(boolean displayError) {
+//        this.displayError = displayError;
+//        putBoolean("displayError", displayError);
+//    }
+//
+//    public boolean isFixThresholdsToAverage() {
+//        return fixThresholdsToAverage;
+//    }
+//
+//    /**
+//     * @param fixThresholdsToAverage the fixThresholdsToAverage to set
+//     */
+//    synchronized public void setFixThresholdsToAverage(boolean fixThresholdsToAverage) {
+//        this.fixThresholdsToAverage = fixThresholdsToAverage;
+//    }
     /**
      * @return the onThreshold
      */
@@ -323,19 +340,18 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     }
 
     /**
-     * @return the freezeGains
+     * // * @return the freezeGains //
      */
-    public boolean isFreezeGains() {
-        return freezeGains;
-    }
-
-    /**
-     * @param freezeGains the freezeGains to set
-     */
-    public void setFreezeGains(boolean freezeGains) {
-        this.freezeGains = freezeGains;
-    }
-
+//    public boolean isFreezeGains() {
+//        return freezeGains;
+//    }
+//
+//    /**
+//     * @param freezeGains the freezeGains to set
+//     */
+//    public void setFreezeGains(boolean freezeGains) {
+//        this.freezeGains = freezeGains;
+//    }
     private float clip01(float val) {
         if (val > 1) {
             val = 1;
