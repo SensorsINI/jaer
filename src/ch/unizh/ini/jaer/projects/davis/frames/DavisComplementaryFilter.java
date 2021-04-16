@@ -6,6 +6,9 @@ package ch.unizh.ini.jaer.projects.davis.frames;
 
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import eu.seebetter.ini.chips.DavisChip;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Iterator;
 import net.sf.jaer.Description;
@@ -17,9 +20,11 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
+import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -47,8 +52,6 @@ import net.sf.jaer.util.EngineeringFormat;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DavisComplementaryFilter extends ApsFrameExtractor {
 
- 
-
     /**
      * A boolean to set whether the OpenGL acceleration should be used
      */
@@ -59,183 +62,170 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     private boolean freezeGains = getBoolean("freezeGains", false);
     private boolean clipping = getBoolean("clipping", true);
     private boolean fixThresholdsToAverage = getBoolean("fixThresholdsToAverage", true);
-    
-    private float onThreshold = getFloat("onThresshold", 0.001f);
+
+    private float onThreshold = getFloat("onThreshold", 0.001f);
     private float offThreshold = getFloat("offThreshold", -0.001f);
-    
-    
+
     protected float crossoverFrequencyHz = getFloat("crossoverFrequencyHz", 1f);
     protected float lambda = getFloat("lambda", .1f);
     protected float kappa = getFloat("lambda", 0.05f);
+    protected float alpha0 = 2 * (float) Math.PI * crossoverFrequencyHz;
+    protected float[] alphas = null;
+    private float minBaseLogFrame = Float.MAX_VALUE, maxBaseLogFrame = Float.MIN_VALUE;
 
     private boolean thresholdsFromBiases = getBoolean("thresholdsFromBiases", true);
 
-    private float[] logFFrame, logEFrame; // the log of the last APS frame and the final log CF frame
+    private float[] logBaseFrame, logFinalFrame; // the log of the last APS frame and the final log CF frame
 
     private FilterChain filterChain;
     private SpatioTemporalCorrelationFilter baFilter;
-    private ApsFrameExtractor frameExtractor;
-
-    private float[] lastDisplayBuffer, displayBuffer;
-
-    private ApsDvsEventPacket eoeBufferPacket;
-    private OutputEventIterator eoeIt;
-    private boolean bufferEOE = false;
 
     public int eventsSinceFrame;
 
-    private int[] lastStamp;
+    private int[] lastTimestamp;
 
     private EngineeringFormat engFmt = new EngineeringFormat();
+    /**
+     * Shows pixel info
+     */
+    protected MouseInfo mouseInfo = null;
 
     public DavisComplementaryFilter(AEChip chip) {
         super(chip);
+        String cf = "Complementary Filter";
 
-        setPropertyTooltip("onThresshold", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeGains and revertLearning button)");
-        setPropertyTooltip("offThreshold", "Gain for the rendering of the ON DVS event (if manual extrapolation method chosen by selecting freezeGains and revertLearning button)");
-        
-        setPropertyTooltip("crossoverFrequencyHz", "The alpha crossover frequency in Hz, increase to update more with APS frames more");
-        setPropertyTooltip("lambda", "Factor by which to descrease crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response");
-        setPropertyTooltip("kappa", "fraction of entire Lmax-Lmin range to apply the decreased crossoverFrequencyHz");
-        
-        
-        setPropertyTooltip("revertLearning", "Revert gains back to manual settings");
-        setPropertyTooltip("clipping", "Clip the image to 0-1 range; use to reset reconstructed frame if it has diverged. Sometimes turning off clipping helps learn better gains, faster and more stably.");
-        setPropertyTooltip("displayError", "Show the pixel errors compared to last frame TODO");
-        setPropertyTooltip("freezeGains", "Freeze the gains");
-        setPropertyTooltip("perPixelAndTimeBinErrorUpdateFactor", "Sets the rate that error affects gains of individual pixels always (independent of fixThresholdsToAverage) and per time bin since last event. Ideally 1 should correct the gains from a single frame. Range 0-1, typical value 0.4.");
-        setPropertyTooltip("globalAverageGainMixingFactor", "mixing factor for average of time bins, range 0-1, increase to speed up learning.");
-        setPropertyTooltip("revertLearning", "If set, continually reverts gains to the manual settings.");
+        setPropertyTooltip(cf, "onThresshold", "ON event temporal contrast threshold in log_e units");
+        setPropertyTooltip(cf, "offThreshold", "OFF event temporal contrast threshold in log_e units");
+        setPropertyTooltip(cf, "resetThresholdsToBiasCurrentValues", "Reset ON and OFF thresholds to bias current values");
 
+        setPropertyTooltip(cf, "crossoverFrequencyHz", "The alpha crossover frequency in Hz, increase to update more with APS frames more");
+        setPropertyTooltip(cf, "lambda", "Factor by which to descrease crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response");
+        setPropertyTooltip(cf, "kappa", "fraction of entire Lmax-Lmin range to apply the decreased crossoverFrequencyHz");
+
+//        setPropertyTooltip("revertLearning", "Revert gains back to manual settings");
+//        setPropertyTooltip("clipping", "Clip the image to 0-1 range; use to reset reconstructed frame if it has diverged. Sometimes turning off clipping helps learn better gains, faster and more stably.");
+//        setPropertyTooltip("displayError", "Show the pixel errors compared to last frame TODO");
+//        setPropertyTooltip("freezeGains", "Freeze the gains");
+//        setPropertyTooltip("perPixelAndTimeBinErrorUpdateFactor", "Sets the rate that error affects gains of individual pixels always (independent of fixThresholdsToAverage) and per time bin since last event. Ideally 1 should correct the gains from a single frame. Range 0-1, typical value 0.4.");
+//        setPropertyTooltip("globalAverageGainMixingFactor", "mixing factor for average of time bins, range 0-1, increase to speed up learning.");
+//        setPropertyTooltip("revertLearning", "If set, continually reverts gains to the manual settings.");
         filterChain = new FilterChain(chip);
         baFilter = new SpatioTemporalCorrelationFilter(chip);
         filterChain.add(baFilter);
-        frameExtractor = new ApsFrameExtractor(chip);
-        frameExtractor.setExtRender(false); // event though this method renders the events, the initial frames are not touched
-        frameExtractor.setLogCompress(true); // use frame extractot to show reconstruction, using log compression display since rendering is on DVS log scale
-        frameExtractor.setLogDecompress(true); // decompress log so that values fill full range of computer display
-        filterChain.add(frameExtractor);
+        setExtRender(false); // event though this method renders the events, the initial frames are not touched
+        setLogCompress(false);
+        setLogDecompress(false);
         setEnclosedFilterChain(filterChain);
-        filterChain.reset();
-
-        initFilter();
+        getApsDisplay().removeMouseMotionListener(mouseInfo);
+        mouseInfo = new MouseInfo(getApsDisplay());
+        getApsDisplay().addMouseMotionListener(mouseInfo);
     }
 
     synchronized public void doRevertLearning() {
         revertLearning();
     }
 
-    private void initMaps() {
-        eventsSinceFrame = 0;
-        final int nPixels = frameExtractor.getNewFrame().length;
-        displayBuffer = new float[nPixels];
-        logFFrame = new float[nPixels];
-        logEFrame = new float[nPixels];
-        lastDisplayBuffer = new float[nPixels];
-        displayBuffer = frameExtractor.getRawFrame();
-        lastDisplayBuffer = displayBuffer.clone();
-        lastStamp = new int[nPixels];
-        Arrays.fill(lastStamp, 0);
-    }
-
     @Override
     synchronized public void resetFilter() {
-        initMaps();
         filterChain.reset();
+        if(logBaseFrame==null) return;
+        System.arraycopy(logBaseFrame, 0, logFinalFrame, 0, logBaseFrame.length);
     }
 
     @Override
     public void initFilter() {
-        resetFilter();
+        super.initFilter();
+        eventsSinceFrame = 0;
+        filterChain.initFilters();
+        final int nPixels = chip.getNumPixels();
+        logBaseFrame = new float[nPixels];
+        logFinalFrame = new float[nPixels];
+        alphas = new float[nPixels];
+        lastTimestamp = new int[nPixels];
+        Arrays.fill(lastTimestamp, 0);
+        Arrays.fill(alphas, alpha0);
         setThresholdsFromBiases();
+        resetFilter();
     }
 
     public void setThresholdsFromBiases() {
         if (chip.getBiasgen() != null && chip.getBiasgen() instanceof DVSTweaks) {
             DVSTweaks tweaks = (DVSTweaks) chip.getBiasgen();
             setOnThreshold(tweaks.getOnThresholdLogE());
-            setOffThreshold(tweaks.getOffThresholdLogE());
+            setOffThreshold(-tweaks.getOffThresholdLogE()); // unsigned OFF threhsold, for mouse wheel ease
         }
+    }
+
+    public void doResetThresholdsToBiasCurrentValues() {
+        setThresholdsFromBiases();
     }
 
     @Override
-    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        if (!filterEnabled || in.getClass() != ApsDvsEventPacket.class) {
-            return in;
-        }
-        checkOutputPacketEventType(in);
-        in = getEnclosedFilterChain().filterPacket(in);
-
-        if (revertLearning) {
-            revertLearning();
-        }
-        if(frameExtractor.hasNewFrameAvailable()){
-            
-        }
-        ApsDvsEventPacket inPack = (ApsDvsEventPacket) in;
-        Iterator inIt = inPack.fullIterator();
-        while (inIt.hasNext()) {
-            ApsDvsEvent inEv = (ApsDvsEvent) inIt.next();
-            if (inEv.isEndOfExposure()) {
-                bufferEOE = true;
-                if (eoeBufferPacket == null) {
-                    eoeBufferPacket = new ApsDvsEventPacket(ApsDvsEvent.class);
-                } else {
-                    eoeBufferPacket.clear();
-                }
-                eoeIt = eoeBufferPacket.outputIterator();
-                Arrays.fill(lastStamp, inEv.timestamp);
-            } else if (inEv.isEndOfFrame()) {
-                bufferEOE = false;
-                addEOEbufferEvents();
-            }
-            if (inEv.isDVSEvent()) {
-                if (bufferEOE) {
-                    ApsDvsEvent nextBufEvt = (ApsDvsEvent) eoeIt.nextOutput();
-                    nextBufEvt.copyFrom(inEv);
-                } else {
-                    addEvent(inEv);
-                }
-            }
-        }
-        frameExtractor.setLegend("Events since last frame: " + eventsSinceFrame);
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        in = super.filterPacket(in);
+        setDisplayGrayFrame(logFinalFrame);
         return in;
     }
 
-
-    private void addEvent(ApsDvsEvent e) {
-        eventsSinceFrame++;
-        if (lastDisplayBuffer == null || lastDisplayBuffer.length != frameExtractor.getNewFrame().length || lastDisplayBuffer.length != displayBuffer.length) {
-            initMaps();
-            return;
+    @Override
+    protected void processDvsEvent(ApsDvsEvent e) {
+        int k = getIndex(e.x, e.y);
+        int lastT = lastTimestamp[k];
+        lastTimestamp[k] = e.timestamp;
+        if (rawFrame == null) {
+            return; // no frame yet
         }
-        int idx = getIndex(e.x, e.y);
-        if (idx < 0) {
-            return;
-        }
-        if (e.polarity == PolarityEvent.Polarity.On) {
-//            displayBuffer[idx] += onPixTimeBins[idx][bin];
-        } else {
-//            displayBuffer[idx] += offPixTimeBins[idx][bin];
-        }
-
-        float display = displayBuffer[idx];
-        frameExtractor.updateDisplayValue(e.x, e.y, (float) display);
+        int dtUs = e.timestamp - lastT;
+        float dtS = 1e-6f * dtUs;
+        float dlog = e.getPolaritySignum() > 0 ? onThreshold : offThreshold;
+        float[] f = logFinalFrame;
+        float a = alphas[k];
+        float decay = (float) (Math.exp(-a * dtS));
+        f[k] = dlog + decay * f[k] + (1 - decay) * (rawFrame[k]);
     }
 
-    private void addEOEbufferEvents() {
-        if (eoeBufferPacket == null) {
-            return;
+    @Override
+    protected void processNewFrame() {
+        super.processNewFrame();
+        // update alphas
+        for (int i = 0; i < rawFrame.length; i++) {
+            float v = rawFrame[i];
+            if (v < 0) {
+                v = 0;
+            }
+            if (v > 0) {
+                v = (float) Math.log(v);
+            }
+            if (v < minBaseLogFrame) {
+                minBaseLogFrame = v;
+            } else if (v > maxBaseLogFrame) {
+                maxBaseLogFrame = v;
+            }
         }
-        Iterator inIt = eoeBufferPacket.iterator();
-        while (inIt.hasNext()) {
-            ApsDvsEvent inEv = (ApsDvsEvent) inIt.next();
-            if (inEv.isDVSEvent()) {
-                addEvent(inEv);
+        computeAlphas();
+    }
+
+    private void computeAlphas() {
+        final int n = alphas.length;
+        final float diff = maxBaseLogFrame - minBaseLogFrame;
+        final float l1 = minBaseLogFrame + lambda * diff;
+        final float l2 = maxBaseLogFrame - lambda * diff;
+        final float lambda1=1-lambda;
+        for(int i=0;i<n;i++){
+            final float logBaseValue = logBaseFrame[i];
+            if(logBaseValue<l1){
+                alphas[i]=lambda*alpha0+lambda1*((logBaseValue-minBaseLogFrame)/(l1-minBaseLogFrame));
+            }else if(logBaseValue>l2){
+                alphas[i]=lambda*alpha0+lambda1*((logBaseValue-maxBaseLogFrame)/(l2-maxBaseLogFrame));
+                
+            }else{
+                alphas[i]=alpha0;
             }
         }
     }
 
+ 
+    
     synchronized private void revertLearning() {
     }
 
@@ -265,20 +255,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         this.fixThresholdsToAverage = fixThresholdsToAverage;
     }
 
-//    /**
-//     * @return the revertLearning
-//     */
-//    public boolean isRevertLearning() {
-//        return revertLearning;
-//    }
-//
-//    /**
-//     * @param revertLearning the revertLearning to set
-//     */
-//    synchronized public void setRevertLearning(boolean revertLearning) {
-//        this.revertLearning = revertLearning;
-//    }
-
     /**
      * @return the onThreshold
      */
@@ -291,10 +267,9 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     synchronized public void setOnThreshold(float onThreshold) {
         float old = this.onThreshold;
-        onThreshold = clip01(onThreshold);
         this.onThreshold = onThreshold;
         putFloat("onThresshold", onThreshold);
-        getSupport().firePropertyChange("onThresshold", old, this.onThreshold);
+        getSupport().firePropertyChange("onThreshold", old, this.onThreshold);
     }
 
     /**
@@ -309,7 +284,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     public void setOffThreshold(float offThreshold) {
         float old = this.offThreshold;
-        offThreshold = -clip01(-offThreshold);
         this.offThreshold = offThreshold;
         putFloat("offThreshold", offThreshold);
         getSupport().firePropertyChange("offThreshold", old, this.offThreshold);
@@ -350,11 +324,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     public void setCrossoverFrequencyHz(float crossoverFrequencyHz) {
         this.crossoverFrequencyHz = crossoverFrequencyHz;
-        putFloat("crossoverFrequencyHz",crossoverFrequencyHz);
+        putFloat("crossoverFrequencyHz", crossoverFrequencyHz);
+        alpha0 = 2 * (float) Math.PI * crossoverFrequencyHz;
     }
-    
-    
-       /**
+
+    /**
      * @return the lambda
      */
     public float getLambda() {
@@ -366,7 +340,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     public void setLambda(float lambda) {
         this.lambda = lambda;
-        putFloat("lambda",lambda);
+        putFloat("lambda", lambda);
     }
 
     /**
@@ -381,7 +355,29 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     public void setKappa(float kappa) {
         this.kappa = kappa;
-        putFloat("kappa",kappa);
+        putFloat("kappa", kappa);
+    }
+
+    private class MouseInfo extends MouseMotionAdapter {
+
+        ImageDisplay apsImageDisplay;
+
+        public MouseInfo(final ImageDisplay display) {
+            apsImageDisplay = display;
+        }
+
+        @Override
+        public void mouseMoved(final MouseEvent e) {
+            final Point2D.Float p = apsImageDisplay.getMouseImagePosition(e);
+            if ((p.x >= 0) && (p.x < chip.getSizeX()) && (p.y >= 0) && (p.y < chip.getSizeY())) {
+                final int idx = getIndex((int) p.x, (int) p.y);
+                if (rawFrame == null || logFinalFrame == null || idx < 0 || idx >= rawFrame.length) {
+                    return;
+                }
+                EventFilter.log.info(String.format("logBaseFrame=%s logFinalFrame=%s alpha=%s",
+                        engFmt.format(logBaseFrame[idx]), engFmt.format(logFinalFrame[idx]), engFmt.format(alphas[idx])));
+            }
+        }
     }
 
 }
