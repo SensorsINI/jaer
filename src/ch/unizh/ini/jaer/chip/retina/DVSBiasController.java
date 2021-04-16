@@ -22,6 +22,7 @@ import net.sf.jaer.util.EngineeringFormat;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 import gnu.io.NRSerialPort;
+import java.beans.PropertyChangeEvent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -33,6 +34,7 @@ import java.util.stream.Stream;
 import net.sf.jaer.DevelopmentStatus;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.TobiLogger;
 
 /**
@@ -84,6 +86,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     private String serialPortName = getString("serialPortName", "COM3");
     private DataOutputStream serialPortOutputStream = null;
     private DataInputStream serialPortInputStream = null;
+    private DVSTweaks dvsTweaks = null;
 
     protected int motorSpeed = 0;
 
@@ -164,8 +167,11 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         chain.add(noiseFilter);
         chain.add(denoisedRateEstimator);
         setEnclosedFilterChain(chain);
-        final String type = "1. Type of control", rates = "2. Control Event rates, SNR", policy = "3. Bang-bang policy", display = "4. Display", options = "5. Options";
+        final String tw = "0. Tweaks", type = "1. Type of control", rates = "2. Control Event rates, SNR", policy = "3. Bang-bang policy", display = "4. Display", options = "5. Options", expt = "6. Experiments";
 
+        setPropertyTooltip(tw, "maxFiringRateTweak", "refractory tweak");
+        setPropertyTooltip(tw, "thresholdTweak", "threshold tweak");
+        setPropertyTooltip(tw, "bandwidthTweak", "bandwidth tweak");
         setPropertyTooltip(options, "revertAllTweaks", "revert all bias tweaks to zero");
         setPropertyTooltip(options, "outputRawInput", "output un-denoised input. If unselected, output has been denoised.");
         setPropertyTooltip(rates, "eventRateLowHz", "event rate in keps for LOW state, where event threshold or refractory period are reduced");
@@ -190,9 +196,10 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip(display, "showAnnotation", "enables showing controller state and actions on viewer");
         setPropertyTooltip(options, "writeLogEnabled", "writes a log file called DVSBiasController-xxx.txt to the startup folder (root of jaer) to allow analyzing controller dynamics");
         setPropertyTooltip(options, "correlationTimeS", "sets correlation time for noise filter");
-        setPropertyTooltip("serialPortName", "Name of serial port to send Arduino Nano commands to");
-        setPropertyTooltip("serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
-        setPropertyTooltip("motorSpeed", "Sent to serial port for controlling stimulus speed, logged to CSV file");
+        setPropertyTooltip(expt, "serialPortName", "Name of serial port to send Arduino Nano commands to");
+        setPropertyTooltip(expt, "serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
+        setPropertyTooltip(expt, "motorSpeed", "Sent to serial port for controlling stimulus speed, logged to CSV file");
+        setPropertyTooltip(expt, "motorSpeed", "Sent to serial port for controlling stimulus speed, logged to CSV file");
     }
 
     public Object getFilterState() {
@@ -211,15 +218,12 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         }
         if (!(chip.getBiasgen() instanceof DVSTweaks)) {
             setFilterEnabled(false);
-            log.warning("Wrong type of biasgen object; should be DVS128.Biasgen but object is " + chip.getBiasgen() + "; disabled filter");
+            log.warning("Wrong type of biasgen object; should be DvsTweaks but is " + chip.getBiasgen() + "; disabled filter");
             return;
         }
-        DVSTweaks biasgen = (DVSTweaks) getChip().getBiasgen();
-        if (biasgen == null) {
-            //            log.warning("null biasgen, not doing anything");
+        if (dvsTweaks == null) {
             return;
         }
-//		 biasgen.loadPreferences();
         eventRateState = EventRateState.INITIAL;
         noiseEventRateState = EventRateState.INITIAL;
         snrState = SNRState.INITIAL;
@@ -266,8 +270,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         if (dtMs >= minCommandIntervalMs) {
             setBiases();
         }
-        if (writeLogEnabled) {
-            DVSTweaks biasgen = (DVSTweaks) chip.getBiasgen();
+        if (writeLogEnabled && dvsTweaks != null) {
             try {
 //           tobiLogger.setColumnHeaderLine("timestamp(us),eventRate(Hz),snr,lowRate(Hz),highRate(Hz),targetSNR,state,thresholdTweak,bandwidthTweak,maxFiringRateTweak");
 
@@ -285,9 +288,9 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                         eventRateState.ordinal(),
                         noiseEventRateState.ordinal(),
                         snrState.ordinal(),
-                        biasgen.getThresholdTweak(),
-                        biasgen.getBandwidthTweak(),
-                        biasgen.getMaxFiringRateTweak(),
+                        dvsTweaks.getThresholdTweak(),
+                        dvsTweaks.getBandwidthTweak(),
+                        dvsTweaks.getMaxFiringRateTweak(),
                         getMotorSpeed()
                 ));
             } catch (Exception e) {
@@ -371,24 +374,23 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             return; // don't saturate setup packet bandwidth and stall on blocking USB writes
         }
 
-        DVSTweaks biasgen = (DVSTweaks) getChip().getBiasgen();
-        if (biasgen == null) {
+        if (dvsTweaks == null) {
             log.warning("null biasgen, not doing anything");
             return;
         }
-        float thr = biasgen.getThresholdTweak(), refr = biasgen.getMaxFiringRateTweak(), bw = biasgen.getBandwidthTweak();
+        float thr = dvsTweaks.getThresholdTweak(), refr = dvsTweaks.getMaxFiringRateTweak(), bw = dvsTweaks.getBandwidthTweak();
         switch (goal) {
             case BoundEventRate:
                 switch (eventRateState) {
                     case LOW_RATE:
                         if (thr > -1) {
-                            biasgen.setThresholdTweak(thr - getTweakStepAmount());
+                            dvsTweaks.setThresholdTweak(thr - getTweakStepAmount());
                             lastBiasChangeTimeMs = timeNowMs;
                         }
                         break;
                     case HIGH_RATE:
                         if (thr < 1) {
-                            biasgen.setThresholdTweak(thr + getTweakStepAmount());
+                            dvsTweaks.setThresholdTweak(thr + getTweakStepAmount());
                             lastBiasChangeTimeMs = timeNowMs;
                         }
                         break;
@@ -397,24 +399,24 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                 switch (eventRateState) {
                     case HIGH_RATE:
                         if (refr > -1) {
-                            biasgen.setMaxFiringRateTweak(refr - getTweakStepAmount());
+                            dvsTweaks.setMaxFiringRateTweak(refr - getTweakStepAmount());
                             lastBiasChangeTimeMs = timeNowMs;
                         }
                         break;
                     case MEDIUM_RATE:
                     case LOW_RATE:
-                        if (biasgen.getMaxFiringRateTweak() < 0) {
-                            biasgen.setMaxFiringRateTweak(refr + getTweakStepAmount());
+                        if (dvsTweaks.getMaxFiringRateTweak() < 0) {
+                            dvsTweaks.setMaxFiringRateTweak(refr + getTweakStepAmount());
                             lastBiasChangeTimeMs = timeNowMs;
                         }
                 }
                 break;
             case TargetSNR:
                 if (snr < targetSNR) {
-                    biasgen.setBandwidthTweak(bw - getTweakStepAmount());
+                    dvsTweaks.setBandwidthTweak(bw - getTweakStepAmount());
                     lastBiasChangeTimeMs = timeNowMs;
                 } else {
-                    biasgen.setBandwidthTweak(bw + getTweakStepAmount());
+                    dvsTweaks.setBandwidthTweak(bw + getTweakStepAmount());
                     lastBiasChangeTimeMs = timeNowMs;
                 }
                 break;
@@ -422,7 +424,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                 switch (noiseEventRateState) {
                     case HIGH_RATE:
                         if (bw > -1) {
-                            biasgen.setBandwidthTweak(bw - getTweakStepAmount());
+                            dvsTweaks.setBandwidthTweak(bw - getTweakStepAmount());
                             lastBiasChangeTimeMs = timeNowMs;
                         }
                         break;
@@ -430,7 +432,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
                         break;
                     case LOW_RATE:
                         if (bw < 1) {
-                            biasgen.setBandwidthTweak(bw + getTweakStepAmount());
+                            dvsTweaks.setBandwidthTweak(bw + getTweakStepAmount());
                             lastBiasChangeTimeMs = timeNowMs;
                         }
                 }
@@ -440,7 +442,9 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     }
 
     public void doRevertAllTweaks() {
-        DVSTweaks dvsTweaks = (DVSTweaks) chip.getBiasgen();
+        if (dvsTweaks == null) {
+            return;
+        }
         dvsTweaks.setThresholdTweak(0);
         dvsTweaks.setBandwidthTweak(0);
         dvsTweaks.setMaxFiringRateTweak(0);
@@ -449,7 +453,19 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void initFilter() {
+        setDvsTweaksInstance();
         setEventRateTauMs(getEventRateTauMs()); // set both estimators
+        if (chip.getAeViewer() != null) {
+            chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
+        }
+    }
+
+    private void setDvsTweaksInstance() {
+        if (!(chip.getBiasgen() instanceof DVSTweaks)) {
+            log.warning("Biasgen is not DVSTweaks, cannot control. Disabling filter");
+            setFilterEnabled(false);
+        }
+        dvsTweaks = (DVSTweaks) chip.getBiasgen();
     }
 
     public float getEventRateBoundsHysteresisFactor() {
@@ -488,8 +504,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
         if (!showAnnotation) {
             return;
         }
-        DVSTweaks biasgen = (DVSTweaks) getChip().getBiasgen();
-        if (biasgen == null) {
+        if (dvsTweaks == null) {
             log.warning("null biasgen, not doing anything");
             return;
         }
@@ -622,11 +637,11 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
 
             // draw tweaks
             ypos += ystep;
-            drawTweak(gl, ypos, biasgen.getThresholdTweak(), "Thr");
+            drawTweak(gl, ypos, dvsTweaks.getThresholdTweak(), "Thr");
             ypos += ystep;
-            drawTweak(gl, ypos, biasgen.getBandwidthTweak(), "BW");
+            drawTweak(gl, ypos, dvsTweaks.getBandwidthTweak(), "BW");
             ypos += ystep;
-            drawTweak(gl, ypos, biasgen.getMaxFiringRateTweak(), "Refr");
+            drawTweak(gl, ypos, dvsTweaks.getMaxFiringRateTweak(), "Refr");
         }
     }
 
@@ -957,6 +972,56 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
     public void setEventRateTauMs(float eventRateTauMs) {
         inputRateEstimator.setEventRateTauMs(eventRateTauMs);
         denoisedRateEstimator.setEventRateTauMs(eventRateTauMs);
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
+        if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
+            setDvsTweaksInstance();
+        }
+    }
+
+    public void setBandwidthTweak(float val) {
+        if (dvsTweaks == null) {
+            return;
+        }
+        dvsTweaks.setBandwidthTweak(val);
+    }
+
+    public float getBandwidthTweak() {
+        if (dvsTweaks == null) {
+            return Float.NaN;
+        }
+        return dvsTweaks.getBandwidthTweak();
+    }
+
+    public void setMaxFiringRateTweak(float val) {
+        if (dvsTweaks == null) {
+            return;
+        }
+        dvsTweaks.setMaxFiringRateTweak(val);
+    }
+
+    public float getMaxFiringRateTweak() {
+        if (dvsTweaks == null) {
+            return Float.NaN;
+        }
+        return dvsTweaks.getMaxFiringRateTweak();
+    }
+
+    public void setThresholdTweak(float val) {
+        if (dvsTweaks == null) {
+            return;
+        }
+        dvsTweaks.setThresholdTweak(val);
+    }
+
+    public float getThresholdTweak() {
+        if (dvsTweaks == null) {
+            return Float.NaN;
+        }
+        return dvsTweaks.getThresholdTweak();
     }
 
 }
