@@ -49,8 +49,13 @@ import net.sf.jaer.util.EngineeringFormat;
  *
  * @author Tobi Delbruck
  */
-@Description("DAVIS reconstruction using complementary filter from Cedric's algorithm")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Description("<html>DAVIS reconstruction using complementary filter algorithm. "
+        + "<p>It combines a high-pass version of events LE(p, t) with a low-pass version of frames LF (p, t) to\n"
+        + "reconstruct an (approximate) all-pass version of L(p, t)."
+        + "<p> The crossoverFrequencyHz determines weighting. "
+        + "<p>Higher crossoverFrequencyHz increases dependence on frames."
+        + "<p>Lower crossoverFrequencyHz increases dependence on events")
+@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     /**
@@ -63,8 +68,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 //    private boolean freezeGains = getBoolean("freezeGains", false);
 //    private boolean clipping = getBoolean("clipping", true);
 //    private boolean fixThresholdsToAverage = getBoolean("fixThresholdsToAverage", true);
-    private float onThreshold = getFloat("onThreshold", 0.001f);
-    private float offThreshold = getFloat("offThreshold", -0.001f);
+    protected float onThreshold = getFloat("onThreshold", 0.001f);
+    protected float offThreshold = getFloat("offThreshold", -0.001f);
 
     private float[] logBaseFrame, logFinalFrame, displayed01Frame; // the log of the last APS frame and the final log CF frame
 
@@ -75,16 +80,20 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     protected float[] alphas = null;
     private float minBaseLogFrame = Float.MAX_VALUE, maxBaseLogFrame = Float.MIN_VALUE;
 
-    private boolean thresholdsFromBiases = getBoolean("thresholdsFromBiases", true);
+    protected boolean thresholdsFromBiases = getBoolean("thresholdsFromBiases", true);
+
+    protected boolean eventsOnlyMode = getBoolean("eventsOnlyMode", false);
+    protected boolean normalizeDisplayedFrameToMinMaxRange = getBoolean("normalizeDisplayedFrameToMinMaxRange", true);
 
     private FilterChain filterChain;
     private SpatioTemporalCorrelationFilter baFilter;
 
-    public int eventsSinceFrame;
+    protected int eventsSinceFrame;
 
     private int[] lastTimestamp; // the last timestamp any pixel was updated, either by event or frame
 
-    private EngineeringFormat engFmt = new EngineeringFormat();
+    protected EngineeringFormat engFmt = new EngineeringFormat();
+
     /**
      * Shows pixel info
      */
@@ -98,15 +107,20 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         setPropertyTooltip(cf, "offThreshold", "OFF event temporal contrast threshold in log_e units");
         setPropertyTooltip(cf, "setThresholdsToBiasCurrentValues", "Reset ON and OFF thresholds to bias current values");
 
-        setPropertyTooltip(cf, "crossoverFrequencyHz", "The alpha crossover frequency in Hz, increase to update more with APS frames");
-        setPropertyTooltip(cf, "lambda", "Factor by which to increase crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response");
-        setPropertyTooltip(cf, "kappa", "Fraction of entire Lmax-Lmin range to apply the decreased crossoverFrequencyHz");
+        setPropertyTooltip(cf, "crossoverFrequencyHz", "The alpha crossover frequency (but in Hz, not rad/s), increase to update more with APS frames, decrease to update more with events.");
+        setPropertyTooltip(cf, "lambda", "Factor by which to decrease crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response.");
+        setPropertyTooltip(cf, "kappa", "<html>Fraction of entire APS frame Lmax-Lmin range to apply the decreased crossoverFrequencyHz, i.e. to weight more with events."
+                + "<p>Note that the range is not reset on each frame, so that it reflects the entire APS output range, not the range within one frame.");
+
+        setPropertyTooltip(cf, "normalizeDisplayedFrameToMinMaxRange", "If set, then use limits to normalize output display, if unset, use maxADC limits to show output (after brightness/contrast adjustment)");
+        setPropertyTooltip(cf, "linearizeOutput", "If set, linearize output. If unset, show logFinalFrame");
+        setPropertyTooltip(cf, "eventsOnlyMode", "Use only events, no APS frames");
 
 //        setPropertyTooltip("revertLearning", "Revert gains back to manual settings");
 //        setPropertyTooltip("clipping", "Clip the image to 0-1 range; use to reset reconstructed frame if it has diverged. Sometimes turning off clipping helps learn better gains, faster and more stably.");
 //        setPropertyTooltip("displayError", "Show the pixel errors compared to last frame TODO");
 //        setPropertyTooltip("freezeGains", "Freeze the gains");
-//        setPropertyTooltip("perPixelAndTimeBinErrorUpdateFactor", "Sets the rate that error affects gains of individual pixels always (independent of fixThresholdsToAverage) and per time bin since last event. Ideally 1 should correct the gains from a single frame. Range 0-1, typical value 0.4.");
+//        setPropertyTooltip("perPixelAndTimeBinErrorUpdateFactor", "Sets the rate that error affects gains of individual pixels always (independent of fixThresholdsToAverage) and per time bin since last event. Ideally 1 should correct the gains from a single frame. FloatArrayRange 0-1, typical value 0.4.");
 //        setPropertyTooltip("globalAverageGainMixingFactor", "mixing factor for average of time bins, range 0-1, increase to speed up learning.");
 //        setPropertyTooltip("revertLearning", "If set, continually reverts gains to the manual settings.");
         filterChain = new FilterChain(chip);
@@ -114,7 +128,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         filterChain.add(baFilter);
         setUseExternalRenderer(true); // we set the ImageDisplay frame contents from here, don't let super do it
         setLogCompress(false);
-        setLogDecompress(false);
         setEnclosedFilterChain(filterChain);
         getApsDisplay().removeMouseMotionListener(super.mouseInfo);
         mouseInfo = new MouseInfo(getApsDisplay());
@@ -131,6 +144,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             return;
         }
         System.arraycopy(logBaseFrame, 0, logFinalFrame, 0, logBaseFrame.length);
+        minBaseLogFrame = Float.MAX_VALUE;
+        maxBaseLogFrame = Float.MIN_VALUE;
     }
 
     @Override
@@ -166,9 +181,10 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        in = super.filterPacket(in);
-        updateDisplayedFrame();
-        return in;
+        in = getEnclosedFilterChain().filterPacket(in);  // denoise
+        in = super.filterPacket(in); // extract frames, while do so, call our processDvsEvent and processNewFrame to update CF
+        updateDisplayedFrame(); // update the displayed output
+        return in; // should be denoised output
     }
 
     @Override
@@ -191,11 +207,12 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processNewFrame() {
-
+        if (isEventsOnlyMode()) {
+            Arrays.fill(logBaseFrame, 0);
+            return;
+        }
         // compute new base log frame
         // and find its min/max
-        minBaseLogFrame = Float.MAX_VALUE;
-        maxBaseLogFrame = Float.MIN_VALUE;
         for (int i = 0; i < rawFrame.length; i++) {
             float v = rawFrame[i];  // DN value from 0-1023
             if (v < 0) {
@@ -218,10 +235,12 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         for (int k = 0; k < logBaseFrame.length; k++) {
             int lastT = lastTimestamp[k];
             lastTimestamp[k] = timestamp;
-            if (rawFrame == null) {
-                return; // no frame yet
-            }
             int dtUs = timestamp - lastT;
+            if (dtUs < 0) {
+                dtUs = 0; // frame is before event, ignore this update TODO check should we do this, can it happen?
+                // Yse, it can easily occur, because the frame exposure occurs during event readout. The frame is only output later.
+                // We set the dt=0 in this case to avoid expoentially overweighting with a decay value>1
+            }
             float dtS = 1e-6f * dtUs;
             float a = alphas[k];
             float decay = (float) (Math.exp(-a * dtS));
@@ -231,23 +250,45 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     }
 
     private void updateDisplayedFrame() {
+        float scale, offset;
         float min = Float.MAX_VALUE, max = Float.MIN_VALUE;
-        for (int i = 0; i < logFinalFrame.length; i++) {
-            float v = logFinalFrame[i];
+        if (normalizeDisplayedFrameToMinMaxRange) {
+            // find min/max of logFinalFrame
+            for (float v : logFinalFrame) {
+                if (v < min) {
+                    min = v;
+                } else if (v > max) {
+                    max = v;
+                }
+            }
 
-            if (v < min) {
-                min = v;
-            } else if (v > max) {
-                max = v;
+            // linearize the log values, normalizing output to 0-1 range.
+            // brightness and contrast are applied before clipping, so that we can show
+            // the middle part of range even if there are outliers
+            if (isLogDecompress()) {
+                min = (float) Math.exp(min);
+                max = (float) Math.exp(max);
+            }
+        } else {
+            if (isLogDecompress()) {
+                min = 0;
+                max = getMaxADC();
+            } else {
+                min = 0;
+                max = (float) Math.log(getMaxADC());
             }
         }
-
-        float scale = 1 / (max - min);
-
+        scale = 1 / (max - min);
+        offset = min;
         for (int i = 0; i < displayed01Frame.length; i++) {
-            displayed01Frame[i] = scale * (logFinalFrame[i] - min);
-            displayed01Frame[i]=(displayed01Frame[i]+displayBrightness)*displayContrast;
-            displayed01Frame[i]=clip01(displayed01Frame[i]);
+            if (isLogDecompress()) {
+                displayed01Frame[i] = (float) Math.exp(logFinalFrame[i]);
+            } else {
+                displayed01Frame[i] = logFinalFrame[i];
+            }
+            displayed01Frame[i] = scale * (displayed01Frame[i] - offset);
+            displayed01Frame[i] = (displayed01Frame[i] + displayBrightness) * displayContrast;
+            displayed01Frame[i] = clip01(displayed01Frame[i]);
         }
 
         setDisplayGrayFrame(displayed01Frame);
@@ -405,6 +446,65 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     public void setKappa(float kappa) {
         this.kappa = kappa;
         putFloat("kappa", kappa);
+    }
+
+    /**
+     * @return the eventsOnlyMode
+     */
+    public boolean isEventsOnlyMode() {
+        return eventsOnlyMode;
+    }
+
+    /**
+     * @param eventsOnlyMode the eventsOnlyMode to set
+     */
+    public void setEventsOnlyMode(boolean eventsOnlyMode) {
+        this.eventsOnlyMode = eventsOnlyMode;
+        putBoolean("eventsOnlyMode", eventsOnlyMode);
+    }
+
+    /**
+     * @return the normalizeDisplayedFrameToMinMaxRange
+     */
+    public boolean isNormalizeDisplayedFrameToMinMaxRange() {
+        return normalizeDisplayedFrameToMinMaxRange;
+    }
+
+    /**
+     * @param normalizeDisplayedFrameToMinMaxRange the
+     * normalizeDisplayedFrameToMinMaxRange to set
+     */
+    public void setNormalizeDisplayedFrameToMinMaxRange(boolean normalizeDisplayedFrameToMinMaxRange) {
+        this.normalizeDisplayedFrameToMinMaxRange = normalizeDisplayedFrameToMinMaxRange;
+    }
+
+    public void setLinearizeOutput(boolean linearizeOutput) {
+        super.setLogDecompress(linearizeOutput);
+    }
+
+    public boolean isLinearizeOutput() {
+        return super.isLogDecompress();
+    }
+
+    protected class FloatArrayRange {
+
+        float[] f;
+        public float min = Float.MAX_VALUE, max = Float.MIN_VALUE;
+
+        public FloatArrayRange(float[] f) {
+            this.f = f;
+            compute();
+        }
+
+        private void compute() {
+            for (float v : f) {
+                if (v < min) {
+                    min = v;
+                } else if (v > max) {
+                    max = v;
+                }
+            }
+        }
     }
 
     private class MouseInfo extends MouseMotionAdapter {

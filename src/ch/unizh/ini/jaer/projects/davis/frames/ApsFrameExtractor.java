@@ -620,8 +620,10 @@ public class ApsFrameExtractor extends EventFilter2D {
      * @param logDecompress the logDecompress to set
      */
     public void setLogDecompress(final boolean logDecompress) {
+        boolean old = this.logDecompress;
         this.logDecompress = logDecompress;
         putBoolean("logDecompress", logDecompress);
+        getSupport().firePropertyChange("logDecompress", old, this.logDecompress);
     }
 
     /**
@@ -637,8 +639,10 @@ public class ApsFrameExtractor extends EventFilter2D {
      * @param logCompress the logCompress to set
      */
     public void setLogCompress(final boolean logCompress) {
+        boolean old = this.logCompress;
         this.logCompress = logCompress;
         putBoolean("logCompress", logCompress);
+        getSupport().firePropertyChange("logCompress", old, this.logCompress);
     }
 
     /**
@@ -819,8 +823,8 @@ public class ApsFrameExtractor extends EventFilter2D {
     public int getStartOfFrameReadoutTimestamp() {
         return startOfFrameReadoutTimestamp;
     }
-    
-    public int getAverageFrameExposureTimestamp(){
-        return (startOfFrameExposureTimestamp+endOfFrameExposureTimestamp)/2;
+
+    public int getAverageFrameExposureTimestamp() {
+        return (startOfFrameExposureTimestamp / 2 + endOfFrameExposureTimestamp / 2);
     }
 }
