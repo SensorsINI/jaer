@@ -127,7 +127,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         baFilter = new SpatioTemporalCorrelationFilter(chip);
         filterChain.add(baFilter);
         setUseExternalRenderer(true); // we set the ImageDisplay frame contents from here, don't let super do it
-        setLogCompress(false);
+        setLogCompress(false);  // to prevent ApsFrameExtractor from applying log to the raw ADC DN values
         setEnclosedFilterChain(filterChain);
         getApsDisplay().removeMouseMotionListener(super.mouseInfo);
         mouseInfo = new MouseInfo(getApsDisplay());
