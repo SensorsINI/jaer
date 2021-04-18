@@ -54,6 +54,10 @@ import org.apache.commons.io.FilenameUtils;
  * <li>getDisplayBuffer() to get a clone of the latest raw pixel values
  * <li>getNewFrame() to get the latest double buffer of displayed values
  * </ul>
+ * 
+ * Subclasses can use ApsFrameExtractor to process APS frames and DVS events in the order data is received.
+ * That way, the frame can be processed at the moment it finishes arrives during an event packet, and the processing
+ * can easily use the frame exposure start and end times (or their average) to correctly fuse frames and events.
  *
  * @author Christian Brändli (2015)/Tobi Delbruck (2020, updated for
  * subclassing)
@@ -222,7 +226,7 @@ public class ApsFrameExtractor extends EventFilter2D {
     }
 
     /**
-     * Subclasses can override this method to process DVS events
+     * Subclasses can override this method to process DVS events as they arrive.
      *
      * @param e
      */
@@ -231,10 +235,13 @@ public class ApsFrameExtractor extends EventFilter2D {
 
     /**
      * Process a single APS data sample or flag event (e.g. end of frame
-     * readout). Following call, newFrame could be set
+     * readout). Following call, newFrame could be set.
+     * Also extracts the frame exposure start/end and frame readout start/end times.
      *
      * @param e
      * @see #hasNewFrameAvailable()
+     * @see #processDvsEvent(net.sf.jaer.event.ApsDvsEvent) 
+     * @see #processNewFrame() 
      */
     public void processApsEvent(final ApsDvsEvent e) {
         if (!e.isApsData()) {
@@ -470,7 +477,8 @@ public class ApsFrameExtractor extends EventFilter2D {
     }
 
     /**
-     * Called when a new frame is complete and available in frameBuffer
+     * Called when a new frame is complete and available in frameBuffer.
+     * Subclasses can override to process the available frame at this point.
      */
     protected void processNewFrame() {
 
