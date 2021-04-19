@@ -19,6 +19,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.InputEventIterator;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -93,7 +94,17 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     protected int eventsSinceFrame;
 
     private int[] lastTimestamp; // the last timestamp any pixel was updated, either by event or frame
+    private EventPacket<ApsDvsEvent> eventFifo = new EventPacket(ApsDvsEvent.class);
+    private OutputEventIterator<ApsDvsEvent> eventFifoItr = null;
+    private int eoeTimestamp = 0; // most recent end of exposure of frame
+    private int soeTimestamp = 0; // most recent start of exposure of frame
+    private int eofTimestamp = 0; // end of frame readout timestamp
+    private int sofTimestamp = 0; // start of frame readout timestamp
+    private boolean savingEvents = false; // boolean flag set to store events in eventFifo
 
+    // We only process events up to SOE, since we know that no frame is being exposed. 
+    // As soon as we get SOE, we buffer events until we get EOF (end of frame readout).
+    // Then we apply all the buffered events and then the frame, using the time (SOE+EOE)/2.
     protected EngineeringFormat engFmt = new EngineeringFormat();
 
     /**
@@ -145,7 +156,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         if (logBaseFrame == null) {
             return;
         }
-        Arrays.fill(logBaseFrame,0);
+        Arrays.fill(logBaseFrame, 0);
         System.arraycopy(logBaseFrame, 0, logFinalFrame, 0, logBaseFrame.length);
         minBaseLogFrame = Float.MAX_VALUE;
         maxBaseLogFrame = Float.MIN_VALUE;
@@ -192,6 +203,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processDvsEvent(ApsDvsEvent e) {
+        if (!eventsOnlyMode && savingEvents) {
+            ApsDvsEvent oe = eventFifoItr.nextOutput();
+            oe.copyFrom(e);
+            return;
+        }
         int k = getIndex(e.x, e.y);
         int lastT = lastTimestamp[k];
         lastTimestamp[k] = e.timestamp;
@@ -203,20 +219,47 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         int sign = e.getPolaritySignum(); // +1 for on, -1 for off
         float dlog = sign > 0 ? onThreshold : -offThreshold;
         float a = alphas[k];
-        float decay = (float) (Math.exp(-a * dtS));
-        logFinalFrame[k] = decay * logFinalFrame[k] + (1 - decay) * (logBaseFrame[k]); // correct the output
+        float oldFrameWeight = (float) (Math.exp(-a * dtS));
+        if (dtUs < 0) {
+//            log.warning(String.format("nonmonotonic timestamp difference dtUs=%d with lastT=%d for event %s, results in oldFrameWeight=%s",
+//                    dtUs, lastT,
+//                    e.toString(),
+//                    engFmt.format(oldFrameWeight)));
+            oldFrameWeight=0;
+        }
+        logFinalFrame[k] = oldFrameWeight * logFinalFrame[k] + (1 - oldFrameWeight) * (logBaseFrame[k]); // correct the output
         logFinalFrame[k] += dlog; // add the event
     }
 
     @Override
-    protected void processEndOfFrameReadout(ApsDvsEvent e) {
+    protected void processStartOfExposure(ApsDvsEvent e) {
+        savingEvents = true; // now frame started exposing, so save DVS events in FIFO until we get the frame
+        eventFifoItr = eventFifo.outputIterator(); // clears eventFifo and give us the output iterator to copy incoming events to this FIFO
+    }
+
+    @Override
+    protected void processEndOfFrameReadout(ApsDvsEvent e) { // got the EOF event
         if (isEventsOnlyMode()) {
             Arrays.fill(logBaseFrame, 0);
             return;
         }
+        savingEvents = false;  // stop saving events
+        // Now we need process events up to the middle of the frame exposure, apply the frame, 
+        // and then apply the rest of the events up to now. 
+        final int frameExpAvgTimestamp = getAverageFrameExposureTimestamp();
+        Iterator<ApsDvsEvent> savedEventsItr = eventFifo.inputIterator();
+        while (savedEventsItr.hasNext()) {
+            ApsDvsEvent se = savedEventsItr.next();
+            if (se.timestamp > frameExpAvgTimestamp) {
+                break;  // we reached the middle of exposure, so break out of this processing
+            }
+            processDvsEvent(se);
+        }
+
+        // Process the frame samples
         // compute new base log frame
         // and find its min/max
-        final float[] f=getRawFrame();
+        final float[] f = rawFrame; // just get the buffer, don't clone it
         for (int i = 0; i < f.length; i++) {
             float v = f[i];  // DN value from 0-1023
             if (v < 0) {
@@ -235,21 +278,32 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         // update alphas
         computeAlphas();
         // update model
-        final int frameExpAvgTimestamp = getAverageFrameExposureTimestamp();
         for (int k = 0; k < logBaseFrame.length; k++) {
             final int lastT = lastTimestamp[k];
-            lastTimestamp[k] = frameExpAvgTimestamp;
+            lastTimestamp[k] = frameExpAvgTimestamp; // TODO could overwrite a later update by an event to an earlier frame exposure time
             int dtUs = frameExpAvgTimestamp - lastT;
-            if (dtUs < 0) {
-                dtUs = 0; // frame is before event, ignore this update TODO check should we do this, can it happen?
-                // Yse, it can easily occur, because the frame exposure occurs during event readout. The frame is only output later.
-                // We set the dt=0 in this case to avoid expoentially overweighting with a decay value>1
-                // any pixels that fired DVS events after the frame exposure time are left unmodified (decay=1)
-            }
+//            if (dtUs < 0) {
+//                dtUs = 0; // frame is before event, ignore this update TODO check should we do this, can it happen?
+//                // Yse, it can easily occur, because the frame exposure occurs during event readout. The frame is only output later.
+//                // We set the dt=0 in this case to avoid expoentially overweighting with a decay value>1
+//                // any pixels that fired DVS events after the frame exposure time are left unmodified (decay=1)
+//            }
             final float dtS = 1e-6f * dtUs;
             final float a = alphas[k];
-            final float oldOutputWeight = (float) (Math.exp(-a * dtS));
+            float oldOutputWeight = (float) (Math.exp(-a * dtS));
+            if (dtUs < 0) {
+//                log.warning(String.format("nonmonotonic timestamp difference dtUs=%d with lastT=%d for event %s, results in oldFrameWeight=%s",
+//                        dtUs, lastT,
+//                        e.toString(),
+//                        engFmt.format(oldOutputWeight)));
+                oldOutputWeight=0;
+            }
             logFinalFrame[k] = oldOutputWeight * logFinalFrame[k] + (1 - oldOutputWeight) * (logBaseFrame[k]); // correct the output
+        }
+        // Process rest of saved events after the middle of exposure
+        while (savedEventsItr.hasNext()) {
+            ApsDvsEvent se = savedEventsItr.next();
+            processDvsEvent(se);
         }
 
     }
