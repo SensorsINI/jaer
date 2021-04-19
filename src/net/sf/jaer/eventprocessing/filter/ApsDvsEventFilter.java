@@ -21,7 +21,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  *
  * @author tobi
  */
-@Description("Enables filtering out of either DVS events, APS samples, or IMU samples from ApsDvsEventPacket, and also filtering out of transient events caused by global shutter closing")
+@Description("For DAVIS cameras, filters out either DVS events, APS samples, or IMU samples from ApsDvsEventPacket, and also filtering out of transient DVS events caused by global shutter closing")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ApsDvsEventFilter extends EventFilter2D {
 
