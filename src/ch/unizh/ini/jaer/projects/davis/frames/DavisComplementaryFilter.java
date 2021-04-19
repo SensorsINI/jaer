@@ -50,11 +50,13 @@ import net.sf.jaer.util.EngineeringFormat;
  * @author Tobi Delbruck
  */
 @Description("<html>DAVIS reconstruction using complementary filter algorithm. "
-        + "<p>It combines a high-pass version of events LE(p, t) with a low-pass version of frames LF (p, t) to\n"
-        + "reconstruct an (approximate) all-pass version of L(p, t)."
-        + "<p> The crossoverFrequencyHz determines weighting. "
-        + "<p>Higher crossoverFrequencyHz increases dependence on frames."
-        + "<p>Lower crossoverFrequencyHz increases dependence on events")
+        + "<p>It combines a high-pass version of events LE(p, t) with a low-pass version of frames LF (p, t) to <br>"
+        + "reconstruct an (approximate) all-pass version of L(p, t).<br>"
+        + "<br> The crossoverFrequencyHz determines weighting. "
+        + "<ul><li>Higher crossoverFrequencyHz increases dependence on frames."
+        + "<li>Lower crossoverFrequencyHz increases dependence on events"
+        + "</ul>See <a href=\"https://cedric-scheerlinck.github.io/continuous-time-intensity-estimation\">ComplementaryFilter on github</a>"
+)
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class DavisComplementaryFilter extends ApsFrameExtractor {
 
@@ -143,6 +145,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         if (logBaseFrame == null) {
             return;
         }
+        Arrays.fill(logBaseFrame,0);
         System.arraycopy(logBaseFrame, 0, logFinalFrame, 0, logBaseFrame.length);
         minBaseLogFrame = Float.MAX_VALUE;
         maxBaseLogFrame = Float.MIN_VALUE;
@@ -182,7 +185,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         in = getEnclosedFilterChain().filterPacket(in);  // denoise
-        in = super.filterPacket(in); // extract frames, while do so, call our processDvsEvent and processNewFrame to update CF
+        in = super.filterPacket(in); // extract frames, while do so, call our processDvsEvent and processEndOfFrameReadout to update CF
         updateDisplayedFrame(); // update the displayed output
         return in; // should be denoised output
     }
@@ -206,15 +209,16 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     }
 
     @Override
-    protected void processNewFrame() {
+    protected void processEndOfFrameReadout(ApsDvsEvent e) {
         if (isEventsOnlyMode()) {
             Arrays.fill(logBaseFrame, 0);
             return;
         }
         // compute new base log frame
         // and find its min/max
-        for (int i = 0; i < rawFrame.length; i++) {
-            float v = rawFrame[i];  // DN value from 0-1023
+        final float[] f=getRawFrame();
+        for (int i = 0; i < f.length; i++) {
+            float v = f[i];  // DN value from 0-1023
             if (v < 0) {
                 v = 0;
             }
@@ -231,20 +235,21 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         // update alphas
         computeAlphas();
         // update model
-        int timestamp = getAverageFrameExposureTimestamp();
+        final int frameExpAvgTimestamp = getAverageFrameExposureTimestamp();
         for (int k = 0; k < logBaseFrame.length; k++) {
-            int lastT = lastTimestamp[k];
-            lastTimestamp[k] = timestamp;
-            int dtUs = timestamp - lastT;
+            final int lastT = lastTimestamp[k];
+            lastTimestamp[k] = frameExpAvgTimestamp;
+            int dtUs = frameExpAvgTimestamp - lastT;
             if (dtUs < 0) {
                 dtUs = 0; // frame is before event, ignore this update TODO check should we do this, can it happen?
                 // Yse, it can easily occur, because the frame exposure occurs during event readout. The frame is only output later.
                 // We set the dt=0 in this case to avoid expoentially overweighting with a decay value>1
+                // any pixels that fired DVS events after the frame exposure time are left unmodified (decay=1)
             }
-            float dtS = 1e-6f * dtUs;
-            float a = alphas[k];
-            float decay = (float) (Math.exp(-a * dtS));
-            logFinalFrame[k] = decay * logFinalFrame[k] + (1 - decay) * (logBaseFrame[k]); // correct the output
+            final float dtS = 1e-6f * dtUs;
+            final float a = alphas[k];
+            final float oldOutputWeight = (float) (Math.exp(-a * dtS));
+            logFinalFrame[k] = oldOutputWeight * logFinalFrame[k] + (1 - oldOutputWeight) * (logBaseFrame[k]); // correct the output
         }
 
     }
@@ -254,7 +259,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         float min = Float.MAX_VALUE, max = Float.MIN_VALUE;
         if (normalizeDisplayedFrameToMinMaxRange) {
             // find min/max of logFinalFrame
-            for (float v : logFinalFrame) {
+            for (final float v : logFinalFrame) {
                 if (v < min) {
                     min = v;
                 } else if (v > max) {
