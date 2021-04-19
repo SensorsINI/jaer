@@ -54,10 +54,12 @@ import org.apache.commons.io.FilenameUtils;
  * <li>getDisplayBuffer() to get a clone of the latest raw pixel values
  * <li>getNewFrame() to get the latest double buffer of displayed values
  * </ul>
- * 
- * Subclasses can use ApsFrameExtractor to process APS frames and DVS events in the order data is received.
- * That way, the frame can be processed at the moment it finishes arrives during an event packet, and the processing
- * can easily use the frame exposure start and end times (or their average) to correctly fuse frames and events.
+ *
+ * Subclasses can use ApsFrameExtractor to process APS frames and DVS events in
+ * the order data is received. That way, the frame can be processed at the
+ * moment it finishes arrives during an event packet, and the processing can
+ * easily use the frame exposure start and end times (or their average) to
+ * correctly fuse frames and events.
  *
  * @author Christian Brändli (2015)/Tobi Delbruck (2020, updated for
  * subclassing)
@@ -235,13 +237,13 @@ public class ApsFrameExtractor extends EventFilter2D {
 
     /**
      * Process a single APS data sample or flag event (e.g. end of frame
-     * readout). Following call, newFrame could be set.
-     * Also extracts the frame exposure start/end and frame readout start/end times.
+     * readout). Following call, newFrame could be set. Also extracts the frame
+     * exposure start/end and frame readout start/end times.
      *
      * @param e
      * @see #hasNewFrameAvailable()
-     * @see #processDvsEvent(net.sf.jaer.event.ApsDvsEvent) 
-     * @see #processNewFrame() 
+     * @see #processDvsEvent(net.sf.jaer.event.ApsDvsEvent)
+     * @see #processEndOfFrameReadout()
      */
     public void processApsEvent(final ApsDvsEvent e) {
         if (!e.isApsData()) {
@@ -257,10 +259,14 @@ public class ApsFrameExtractor extends EventFilter2D {
 
         if (e.isStartOfExposure()) {
             startOfFrameExposureTimestamp = e.timestamp;
+            processStartOfExposure(e);
         } else if (e.isEndOfExposure()) {
             endOfFrameExposureTimestamp = e.timestamp;
+            processEndOfExposure(e);
+
         } else if (e.isStartOfFrame()) {
             startOfFrameReadoutTimestamp = e.timestamp;
+            processStartOfFrameReadout(e);
         } else if (e.isEndOfFrame()) {
             endOfFrameReadoutTimstamp = e.timestamp;
             if (preBufferFrame && (rawFrame != null) && !useExternalRenderer && showAPSFrameDisplay) {
@@ -268,7 +274,7 @@ public class ApsFrameExtractor extends EventFilter2D {
             }
             newFrameAvailable = true;
             lastFrameTimestamp = e.timestamp;
-            processNewFrame();
+            processEndOfFrameReadout(e);
             getSupport().firePropertyChange(ApsFrameExtractor.EVENT_NEW_FRAME, null, displayFrame);
             if (showAPSFrameDisplay) {
                 SwingUtilities.invokeLater(new Runnable() {
@@ -318,7 +324,7 @@ public class ApsFrameExtractor extends EventFilter2D {
         displayFrame[idx] = grayValue;
         if (!preBufferFrame && !useExternalRenderer && showAPSFrameDisplay) {
             getApsDisplay().setPixmapGray(e.x, e.y, grayValue);
-        } else {
+        } else if (!useExternalRenderer) {
             apsDisplayPixmapBuffer[3 * idx] = grayValue;
             apsDisplayPixmapBuffer[(3 * idx) + 1] = grayValue;
             apsDisplayPixmapBuffer[(3 * idx) + 2] = grayValue;
@@ -477,11 +483,29 @@ public class ApsFrameExtractor extends EventFilter2D {
     }
 
     /**
-     * Called when a new frame is complete and available in frameBuffer.
-     * Subclasses can override to process the available frame at this point.
+     * Empty method called when a new frame is complete and available in
+     * frameBuffer. Subclasses can override to process the available frame at
+     * this point.
      */
-    protected void processNewFrame() {
+    protected void processEndOfFrameReadout(ApsDvsEvent e) {
+    }
 
+    /**
+     * Empty method called when a new frame is starts to be read out.
+     */
+    private void processStartOfFrameReadout(ApsDvsEvent e) {
+    }
+
+    /**
+     * Empty method called when a new frame exposure was completed.
+     */
+    private void processEndOfExposure(ApsDvsEvent e) {
+    }
+
+    /**
+     * Empty method called when a new frame exposure was started.
+     */
+    private void processStartOfExposure(ApsDvsEvent e) {
     }
 
     /**
@@ -666,7 +690,6 @@ public class ApsFrameExtractor extends EventFilter2D {
     public void setDisplayContrast(final float displayContrast) {
         this.displayContrast = displayContrast;
         putFloat("displayContrast", displayContrast);
-        resetFilter();
     }
 
     /**
@@ -682,7 +705,6 @@ public class ApsFrameExtractor extends EventFilter2D {
     public void setDisplayBrightness(final float displayBrightness) {
         this.displayBrightness = displayBrightness;
         putFloat("displayBrightness", displayBrightness);
-        resetFilter();
     }
 
     public Extraction getExtractionMethod() {
