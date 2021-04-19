@@ -171,7 +171,7 @@ abstract public class DvsFramer extends EventFilter2D {
      * @see #addEvent(net.sf.jaer.event.PolarityEvent)
      */
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         checkParameters();
         return in;
     }

@@ -21,6 +21,7 @@ import com.jogamp.opengl.glu.GLU;
 import javax.swing.JFrame;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -74,7 +75,7 @@ public class LowPassFilterEventGenerator extends EventFilter2D{
 	 * @return the output packet, where events have possibly been deleted from the input
 	 */
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if(!isFilterEnabled()) {
 			return in;
 		}
@@ -92,7 +93,7 @@ public class LowPassFilterEventGenerator extends EventFilter2D{
 		return out;
 	}
 
-	protected void accumulateAndFilter(EventPacket<?> ae ){
+	protected void accumulateAndFilter(EventPacket<? extends BasicEvent> ae ){
 		float step = event_strength / (colorScale + 1);
 		int tempcurrentTime = ae.getLastTimestamp() ;
 		if(tempcurrentTime!=0){

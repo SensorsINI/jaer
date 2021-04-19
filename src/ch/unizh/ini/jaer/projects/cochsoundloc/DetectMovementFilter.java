@@ -10,6 +10,7 @@ import java.util.List;
 
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
@@ -40,7 +41,7 @@ public class DetectMovementFilter extends EventFilter2D implements FrameAnnotate
         initFilter();
     }
 
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!filterEnabled) {
             return in;
         }

@@ -13,18 +13,17 @@ import java.awt.Point;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 
-import javax.swing.SwingUtilities;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
-import java.beans.PropertyChangeSupport;
 import java.util.Arrays;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -63,7 +62,7 @@ public class FaceDetectorCNN extends DavisClassifierCNNProcessor implements Prop
     }
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 //        targetLabeler.filterPacket(in);
         EventPacket out = super.filterPacket(in);
         return out;

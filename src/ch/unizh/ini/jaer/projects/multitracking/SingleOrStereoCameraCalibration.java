@@ -217,7 +217,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		frameExtractor = new ApsFrameExtractor(chip);
 		filterChain = new FilterChain(chip);
 		filterChain.add(frameExtractor);
-		frameExtractor.setExtRender(false);
+		frameExtractor.setUseExternalRenderer(false);
 		setEnclosedFilterChain(filterChain);
 		resetFilter();
 		setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
@@ -270,7 +270,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 /*			if (takeMultiFrame0==true){
 				//			System.out.println("takeMultiFrame0");
-				if(fraext.get(0).hasNewFrame()){
+				if(fraext.get(0).hasNewFrameAvailable()){
 					System.out.println("take frame from viewer0");
 					takeMultiFrame0=false;
 					multiFramefunc(fraext.get(0));
@@ -279,7 +279,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 			if (takeMultiFrame1==true){
 				//			System.out.println("takeMultiFrame0");
-				if(fraext.get(1).hasNewFrame()){
+				if(fraext.get(1).hasNewFrameAvailable()){
 					System.out.println("take frame from viewer1");
 					takeMultiFrame1=false;
 					multiFramefunc(fraext.get(1));
@@ -294,14 +294,14 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
               if (imageCounter<15){
 
-				if(fraext.get(0).hasNewFrame()){
+				if(fraext.get(0).hasNewFrameAvailable()){
 					 bool=false;
 					 //Frame0 = fraext.get(0).getNewFrame();
 					//System.out.println("take frame from viewer0");
 				    bool = multiFramefunc(fraext.get(0), false);
 				}
 					//		System.out.println("takeMultiFrame1");
-					if(fraext.get(1).hasNewFrame()){
+					if(fraext.get(1).hasNewFrameAvailable()){
 						 bool1=false;
 						//Frame1 = fraext.get(1).getNewFrame();
 						//System.out.println("take frame from viewer1");
@@ -352,7 +352,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
             	boolean isimg1=false;
             	boolean isimg2=false;
 
-            	if(fraext.get(0).hasNewFrame()){
+            	if(fraext.get(0).hasNewFrameAvailable()){
             		lastFrame1 = fraext.get(0).getNewFrame();
             		//lastFrame1 = frame;
             		FloatPointer p1 = new FloatPointer(lastFrame1);
@@ -362,7 +362,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
             		isimg1=true;
 
 					//		System.out.println("takeMultiFrame1");
-					if(fraext.get(1).hasNewFrame()){
+					if(fraext.get(1).hasNewFrameAvailable()){
 
 						lastFrame1 = fraext.get(1).getNewFrame();
 						//lastFrame1 = frame;
@@ -397,7 +397,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
             }
 
 			//acquire new frame
-			if (frameExtractor.hasNewFrame()) {
+			if (frameExtractor.hasNewFrameAvailable()) {
 				lastFrame = frameExtractor.getNewFrame();
 
 				//process frame
@@ -498,11 +498,11 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 				}
 
 				if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-					frameExtractor.setExtRender(true); // to not alternate
-					frameExtractor.apsDisplay.setTitleLabel("lens correction enabled");
+					frameExtractor.setUseExternalRenderer(true); // to not alternate
+					frameExtractor.getApsDisplay().setTitleLabel("lens correction enabled");
 				} else {
-					frameExtractor.setExtRender(false); // to not alternate
-					frameExtractor.apsDisplay.setTitleLabel("raw input image");
+					frameExtractor.setUseExternalRenderer(false); // to not alternate
+					frameExtractor.getApsDisplay().setTitleLabel("raw input image");
 				}
 			}
 
@@ -636,7 +636,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 				log.info("allobejctpoints : "+printMatD(allObjectPoints));
 				log.info(String.format("added corner points from image %d", imageCounter));
 				imageCounter++;
-				frameExtractor.apsDisplay.setxLabel(filename);
+				frameExtractor.getApsDisplay().setxLabel(filename);
 
 				//	                //debug
 				//	                System.out.println(allImagePoints.toString());
@@ -1045,7 +1045,7 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 
 			arrayOfAEvi.get(i).getChip().getFilterChain().add(frameExtractortemp);
 			//arrayOfAEvi.get(1).getChip().getFilterChain().add(frameExtractortemp);
-			frameExtractortemp.setExtRender(false);
+			frameExtractortemp.setUseExternalRenderer(false);
 
 			MatVector mv = new MatVector(100);
 			MatVector mw = new MatVector(100);
@@ -1065,8 +1065,8 @@ public class SingleOrStereoCameraCalibration extends EventFilter2D implements Fr
 		System.out.println("take multi frame");
 //		System.out.println(fraext.elementAt(0));
 //		System.out.println(fraext.elementAt(1));
-//		System.out.println(fraext.elementAt(0).hasNewFrame());
-//		System.out.println(fraext.elementAt(1).hasNewFrame());
+//		System.out.println(fraext.elementAt(0).hasNewFrameAvailable());
+//		System.out.println(fraext.elementAt(1).hasNewFrameAvailable());
 
 		    objects = new ArrayList<>(2);
 		    MatVector v = new MatVector(100);

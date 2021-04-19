@@ -53,7 +53,7 @@ public class LabyrinthDavisTrackFilter extends EventFilter2D implements FrameAnn
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!(in.getEventPrototype() instanceof ApsDvsEvent)) {
             setFilterEnabled(false);
             log.warning("LabyrinthDavisTrackFilter can only operate on ApsDvsEvent's; in.getEventPrototype()=" + in.getEventPrototype());

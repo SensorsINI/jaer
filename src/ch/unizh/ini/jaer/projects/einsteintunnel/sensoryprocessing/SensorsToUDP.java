@@ -70,7 +70,7 @@ public class SensorsToUDP extends EventFilter2D {
         }
     }
 
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         byte[] message = new byte[4+4+dsx*2];
 

@@ -14,7 +14,7 @@ import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 
 /**
- * Static utility methods for drawing stuff.
+ * Static utility methods for drawing stuff. Surround these calls with pushMatrix/popMatrix.
  *
  * @author Bjoern, Tobi Delbruck
  */
@@ -93,6 +93,16 @@ public final class DrawGL {
     private static int boxDisplayListId = 0;
     private static float boxLastW, boxLastH;
 
+   /**
+     * Draws a box using current open gl color
+     *
+     * @param gl the opengl context
+     * @param centerX the box origin location x
+     * @param centerY the box origin location x
+     * @param width The x length of box
+     * @param height the y length of box
+     * @param angle the angle relative to E
+     */
     public static void drawBox(final GL2 gl, final float centerX, final float centerY, final float width, final float height, final float angle) {
 
         gl.glTranslatef(centerX, centerY, 0);
@@ -120,6 +130,45 @@ public final class DrawGL {
         }
         gl.glCallList(boxDisplayListId);
 
+    }
+    
+    private static int crossDisplayListId = 0;
+    private static float crossLastL;
+
+    /**
+     * Draws a cross using current open gl color
+     *
+     * @param gl the opengl context
+     * @param centerX the cross origin location x
+     * @param centerY the cross origin location x
+     * @param length The x length of cross
+     * @param angle the angle relative to E
+     */
+   public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length,  final float angle) {
+
+        gl.glTranslatef(centerX, centerY, 0);
+        if (angle != 0) {
+            gl.glRotatef(angle * RAD_TO_DEG, 0, 0, 1);
+        }
+
+        if (crossDisplayListId == 0 || length != 2*crossLastL  ) {
+            if (crossDisplayListId != 0) {
+                gl.glDeleteLists(crossDisplayListId, 1);
+            }
+            crossDisplayListId = gl.glGenLists(1);
+            gl.glNewList(crossDisplayListId, GL2.GL_COMPILE);
+            crossLastL = length / 2;
+            gl.glBegin(GL.GL_LINES);
+            {
+                gl.glVertex2f(-crossLastL, -crossLastL);
+                gl.glVertex2f(+crossLastL, +crossLastL);
+                gl.glVertex2f(+crossLastL, -crossLastL);
+                gl.glVertex2f(-crossLastL, +crossLastL);
+            }
+            gl.glEnd();
+            gl.glEndList();
+        }
+        gl.glCallList(crossDisplayListId);
     }
 
     /**

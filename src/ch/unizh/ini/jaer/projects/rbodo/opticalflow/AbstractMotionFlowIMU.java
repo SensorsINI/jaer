@@ -1240,11 +1240,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             motionVectorEventLogger.setNanotimeEnabled(false);
             if(getClass().getSimpleName().equals("PatchMatchFlow"))
             {
-                motionVectorEventLogger.setHeaderLine("system_time(ms) timestamp(us) sliceStartTime(us) sliceEndTime(us) x y type vx(pps) vy(pps) speed(pps) validity");                
+                motionVectorEventLogger.setColumnHeaderLine("system_time(ms) timestamp(us) sliceStartTime(us) sliceEndTime(us) x y type vx(pps) vy(pps) speed(pps) validity");      
+                motionVectorEventLogger.setSeparator(" ");
             }
             else
             {
-                motionVectorEventLogger.setHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");                
+                motionVectorEventLogger.setColumnHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
+                motionVectorEventLogger.setSeparator(" ");
             }
             motionVectorEventLogger.setEnabled(true);
         } else {
@@ -1287,7 +1289,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             putString("lastFile", file.toString());
             motionFlowStatistics.globalMotionVectorLogger = new TobiLogger(file.getPath(), "Global flows output from normal optical flow method");
             motionFlowStatistics.globalMotionVectorLogger.setNanotimeEnabled(false);
-            motionFlowStatistics.globalMotionVectorLogger.setHeaderLine("system_time(ms) timestamp(us) meanGlobalVx(pps) meanGlobalVy(pps)");
+            motionFlowStatistics.globalMotionVectorLogger.setColumnHeaderLine("system_time(ms) timestamp(us) meanGlobalVx(pps) meanGlobalVy(pps)");
+            motionFlowStatistics.globalMotionVectorLogger.setSeparator(" ");
             motionFlowStatistics.globalMotionVectorLogger.setEnabled(true);
         } else {
             log.info("Cancelled logging global flows");

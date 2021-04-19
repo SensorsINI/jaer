@@ -199,7 +199,7 @@ public class DepressionMap extends EventFilter2D implements FrameAnnotater {
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
 		if (!isFilterEnabled()) {
 			return in;

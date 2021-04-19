@@ -40,7 +40,7 @@ public class Nodeboard_Framegrabber extends EventFilter2D {
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!isFilterEnabled()) {
             return in;
         }

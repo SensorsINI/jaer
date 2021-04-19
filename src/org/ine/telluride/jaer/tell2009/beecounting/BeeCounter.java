@@ -15,6 +15,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.event.BasicEvent;
 /**
  * Subclases RectangularClusterTracker to count objects that cross marked crossing lines.
  *
@@ -45,7 +46,7 @@ public class BeeCounter extends RectangularClusterTracker{
 	 * @return the input packet, unmodified.
 	 */
 	@Override
-	synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+	synchronized public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
 		super.filterPacket(in);
 		final float by = botLine * chip.getSizeY(),  ty = topLine * chip.getSizeY();
 		for ( Cluster c:clusters ){

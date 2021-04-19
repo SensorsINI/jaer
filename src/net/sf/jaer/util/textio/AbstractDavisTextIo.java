@@ -24,27 +24,30 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
  * Abstract class for text IO filters for DAVIS cameras.
- * 
- * The RPG DVS text file datatset looks like this. Each line has (time(float s), x, y, polarity (0=off,1=on)
+ *
+ * The RPG DVS text file datatset looks like this. Each line has (time(float s),
+ * x, y, polarity (0=off,1=on)
  * <pre>
  * 0.000000000 33 39 1
-0.000011001 158 145 1
-0.000050000 88 143 0
-0.000055000 174 154 0
-0.000080001 112 139 1
-0.000123000 136 171 0
-0.000130001 173 90 0
-0.000139001 106 140 0
-0.000148001 192 79 1
-* </pre>
-* 
+ * 0.000011001 158 145 1
+ * 0.000050000 88 143 0
+ * 0.000055000 174 154 0
+ * 0.000080001 112 139 1
+ * 0.000123000 136 171 0
+ * 0.000130001 173 90 0
+ * 0.000139001 106 140 0
+ * 0.000148001 192 79 1
+ * </pre>
+ *
  *
  * @author Tobi
  */
 public abstract class AbstractDavisTextIo extends EventFilter2D {
 
+    protected int LOG_EVERY_THIS_MANY_MS = 500;
+    protected long nextGuiUpdateTime = System.currentTimeMillis();
     protected static String DEFAULT_FILENAME = "JAEERDavisTextIO.txt";
-    protected final int LOG_EVERY_THIS_MANY_EVENTS = 10000; // for logging concole messages
+    protected final int LOG_EVERY_THIS_MANY_DVS_EVENTS = 10000; // for logging concole messages
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected File lastFile = null;
     protected int eventsProcessed = 0;
@@ -90,8 +93,10 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     public void setEventsProcessed(int eventsProcessed) {
         int old = this.eventsProcessed;
         this.eventsProcessed = eventsProcessed;
-        if (eventsProcessed % LOG_EVERY_THIS_MANY_EVENTS == 0) {
-            getSupport().firePropertyChange("eventsProcessed", old, eventsProcessed);
+        if (old != this.eventsProcessed && System.currentTimeMillis() > nextGuiUpdateTime) {
+            nextGuiUpdateTime = System.currentTimeMillis() + LOG_EVERY_THIS_MANY_MS;
+            log.info(String.format("processed %d events", eventsProcessed));
+            getSupport().firePropertyChange("eventsProcessed", null, eventsProcessed);
         }
     }
 
@@ -107,7 +112,7 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
      */
     public void setUseSignedPolarity(boolean useSignedPolarity) {
         this.useSignedPolarity = useSignedPolarity;
-        putBoolean("useSignedPolarity",useSignedPolarity);
+        putBoolean("useSignedPolarity", useSignedPolarity);
     }
 
 }

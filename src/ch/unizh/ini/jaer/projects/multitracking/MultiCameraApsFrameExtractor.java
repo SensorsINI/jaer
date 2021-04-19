@@ -19,22 +19,12 @@
 package ch.unizh.ini.jaer.projects.multitracking;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import eu.seebetter.ini.chips.DavisChip;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Vector;
@@ -42,37 +32,25 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEDataFile;
-import net.sf.jaer.eventprocessing.EventFilter;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ImageDisplay;
 import org.apache.commons.io.FilenameUtils;
-import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.opencv_core;
-import static org.bytedeco.javacpp.opencv_core.CV_8U;
-import static org.bytedeco.javacpp.opencv_core.CV_8UC3;
-import static org.bytedeco.javacpp.opencv_imgproc.CV_GRAY2RGB;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 
 /**
  * Extracts CIS APS frames from Syncronized Multiple DAVIS sensors. Use
  * <ul>
- * <li>hasNewFrame() to check whether a new frame is available
- * <li>getDisplayBuffer() to get a clone of the latest raw pixel values
+ * <li>hasNewFrameAvailable() to check whether a new frame is available
+ <li>getDisplayBuffer() to get a clone of the latest raw pixel values
  * <li>getNewFrame() to get the latest double buffer of displayed values
  * </ul>
  *
@@ -143,7 +121,7 @@ public class MultiCameraApsFrameExtractor extends EventFilter2D
 
             arrayOfAEvi.get(i).getChip().getFilterChain().add(frameExtractortemp);
             //arrayOfAEvi.get(1).getChip().getFilterChain().add(frameExtractortemp);
-            frameExtractortemp.setExtRender(false);
+            frameExtractortemp.setUseExternalRenderer(false);
 
             bufferedImages.add(new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB));
         }
@@ -153,11 +131,11 @@ public class MultiCameraApsFrameExtractor extends EventFilter2D
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         int dT=in.getFirstTimestamp() - lastTime;
         if(saveimage==true && dT>=waitingTime*1000){
             for (int f=0;f<numOfAEviewers;f++){
-                if(fraext.get(f).hasNewFrame()){
+                if(fraext.get(f).hasNewFrameAvailable()){
                     countViewers++;
                 }  
             }
@@ -193,7 +171,7 @@ public class MultiCameraApsFrameExtractor extends EventFilter2D
         
         for (int f=0;f<numOfAEviewers;f++){
             BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_INT_RGB);
-            ImageDisplay singleApsDisplay = fraext.get(f).apsDisplay;
+            ImageDisplay singleApsDisplay = fraext.get(f).getApsDisplay();
             for (int y = 0; y < chip.getSizeY(); y++) {
                 for (int x = 0; x < chip.getSizeX(); x++) {
                     final int idx = singleApsDisplay.getPixMapIndex(x, chip.getSizeY() - y - 1);

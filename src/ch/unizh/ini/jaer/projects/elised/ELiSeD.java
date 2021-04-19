@@ -293,15 +293,15 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
             logger.setEnabled(true);
             logger.setAbsoluteTimeEnabled(true);
             if (timestampIncludedInEachLog) {
-                logger.setHeaderLine(" ts + ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
+                logger.setColumnHeaderLine(" ts + ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
             } else {
-                logger.setHeaderLine(" ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
+                logger.setColumnHeaderLine(" ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
             }
         }
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!isFilterEnabled()) {
             return in;
         }
@@ -1423,7 +1423,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         TobiLogger logr = new TobiLogger("ELiSeD-Snapshot-Log", "Snapshot log of the support regions");
         logr.setEnabled(true);
         logr.setAbsoluteTimeEnabled(true);
-        logr.setHeaderLine(" ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
+        logr.setColumnHeaderLine(" ID + creation + cX + cY + mas + length + width + orientation + eX1 + eY1 + eX2 + eY2");
         writeLog(logr, latestTS);
         stopLogging(logr);
         getSupport().firePropertyChange("logCurrentLines", null, null);

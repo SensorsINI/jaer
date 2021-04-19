@@ -59,7 +59,7 @@ public class DavisWhatWhereCNNProcessor extends AbstractDavisCNNProcessor {
     }
 
 //    @Override
-//    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+//    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 //        if (!addedPropertyChangeListener) {
 //            if (dvsFramer != null) {
 //                dvsFramer.getSupport().addPropertyChangeListener(DvsFramerROIGenerator.EVENT_NEW_ROI_AVAILABLE, this);

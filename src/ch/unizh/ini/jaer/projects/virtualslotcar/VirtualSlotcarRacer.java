@@ -18,6 +18,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import net.sf.jaer.event.BasicEvent;
 /**
  * Controls virtual slot cars on designed or extracted tracks.
  *
@@ -108,7 +109,7 @@ public class VirtualSlotcarRacer extends EventFilter2D implements FrameAnnotater
 	}
 
 	@Override
-	public EventPacket<?> filterPacket (EventPacket<?> in){
+	public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
 		getEnclosedFilterChain().filterPacket(in);
 		setThrottle();
 		return in;

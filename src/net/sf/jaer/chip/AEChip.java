@@ -190,6 +190,15 @@ public class AEChip extends Chip2D {
         if (getRemoteControl() != null) {
             getRemoteControl().close();
         }
+        if(getFilterChain()!=null){
+            for(EventFilter f:getFilterChain()){
+                try{
+                    f.cleanup();
+                }catch(Exception e){
+                    log.warning(String.format("cleanup %s: caught %s",f,e.toString()));
+                }
+            }
+        }
     }
 
     /**

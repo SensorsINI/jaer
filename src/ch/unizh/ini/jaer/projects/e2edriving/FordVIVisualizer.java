@@ -40,6 +40,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -88,7 +89,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!addedPropertyChangeListener) {
             addedPropertyChangeListener = true;
             chip.getAeViewer().getSupport().addPropertyChangeListener(this);

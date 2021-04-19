@@ -125,7 +125,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 //        frameExtractor.filterPacket(in); // extracts frames with nornalization (brightness, contrast) and sends to apsNet on each frame in PropertyChangeListener
         // send DVS timeslice to convnet
         super.filterPacket(in);
@@ -153,7 +153,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 writeEvent(p);
             } catch (IOException ex) {
                 Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
-                doCloseFile();
+                doFinishRecording();
             }
             if ((writeDvsSliceImageOnApsFrame && newApsFrameAvailable && (e.timestamp >= endOfFrameTimestamp))
                     || ((!writeDvsSliceImageOnApsFrame && dvsFrame.getDvsFrame().isFilled())
@@ -163,15 +163,15 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
                 dvsFrame.normalizeFrame();
                 maybeShowOutput(dvsFrame);
-                if (isWriteDvsFrames() && (getAviOutputStream() != null) && isWriteEnabled()) {
+                if (isWriteDvsFrames() && (getVideoOutputStream() != null) && isWriteEnabled()) {
                     BufferedImage bi = toImage(dvsFrame);
                     try {
                         writeTimecode(e.timestamp);
                         writeTargetLocation(e.timestamp, framesWritten);
-                        getAviOutputStream().writeFrame(bi);
+                        getVideoOutputStream().writeFrame(bi);
                         incrementFramecountAndMaybeCloseOutput();
                     } catch (IOException ex) {
-                        doCloseFile();
+                        doFinishRecording();
                         log.warning(ex.toString());
                         ex.printStackTrace();
                         setFilterEnabled(false);
@@ -216,7 +216,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     @Override
-    public synchronized void doStartRecordingAndSaveAVIAs() {
+    public synchronized void doStartRecordingAndSaveAs() {
         String[] s = {
             "width=" + dvsFrame.getOutputImageWidth(),
             "height=" + dvsFrame.getOutputImageHeight(),
@@ -230,7 +230,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             "compressionQuality=" + compressionQuality
         };
         setAdditionalComments(s);
-        if (getAviOutputStream() != null) {
+        if (getVideoOutputStream() != null) {
             JOptionPane.showMessageDialog(null, "AVI output stream is already opened");
             return;
         }
@@ -266,7 +266,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             }
         }
         lastFile = c.getSelectedFile();
-        setAviOutputStream(openAVIOutputStream(c.getSelectedFile(), getAdditionalComments()));
+        setVideoOutputStream(openVideoOutputStream(c.getSelectedFile(), getAdditionalComments()));
         openEventsTextFile(c.getSelectedFile(), getAdditionalComments());
         openTargetLabelsFile(c.getSelectedFile(), getAdditionalComments());
         if (isRewindBeforeRecording()) {
@@ -363,7 +363,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     @Override
-    public synchronized void doCloseFile() {
+    public synchronized void doFinishRecording() {
         setWriteEnabled(false);
         if (eventsWriter != null) {
             try {
@@ -395,7 +395,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 timecodeWriter = null;
             }
         }
-        super.doCloseFile();
+        super.doFinishRecording();
     }
 
     private void checkSubsampler() {
@@ -546,14 +546,12 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if ((evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME)) {
             endOfFrameTimestamp = frameExtractor.getLastFrameTimestamp();
             newApsFrameAvailable = true;
-            if (isWriteApsFrames() && (getAviOutputStream() != null) && isWriteEnabled()
+            if (isWriteApsFrames() && isRecordingActive() 
                     && ((chip.getAeViewer() == null) || !chip.getAeViewer().isPaused())) {
-                BufferedImage bi = toImage(frameExtractor);
+                BufferedImage bufferedImage = toImage(frameExtractor);
+                writeFrame(bufferedImage, endOfFrameTimestamp);
                 try {
-                    writeTimecode(endOfFrameTimestamp);
                     writeTargetLocation(endOfFrameTimestamp, framesWritten);
-                    getAviOutputStream().writeFrame(bi);
-                    incrementFramecountAndMaybeCloseOutput();
                 } catch (IOException ex) {
                     log.warning(ex.toString());
                     ex.printStackTrace();
@@ -853,7 +851,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             writer.setMaxFrames(0);
         }
 
-        writer.openAVIOutputStream(outfile, args);
+        writer.openVideoOutputStream(outfile, args);
         int lastNumFramesWritten = 0, numPrinted = 0;
 
         try {
@@ -912,7 +910,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                         ais.close();
                     }
                     if (writer != null) {
-                        writer.doCloseFile();
+                        writer.doFinishRecording();
                     }
                     System.exit(1);
 
@@ -930,7 +928,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         writer.setShowOutput(false);
         writer.setCloseOnRewind(oldCloseOnRewind);
-        writer.doCloseFile();
+        writer.doFinishRecording();
         System.out.println(String.format("\nSettings: aechip=%s\nwidth=%d height=%d quality=%f format=%s framerate=%d grayscale=%d\n"
                 + "writeapsframes=%s writedvsframes=%s\n"
                 + "writedvssliceonapsframe=%s writetimecodefile=%s\n"

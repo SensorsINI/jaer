@@ -11,6 +11,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
@@ -169,7 +170,7 @@ public class CurvatureBasedController extends AbstractSlotCarController implemen
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		return in;
 	}
 

@@ -337,7 +337,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     /**
      * Returns after initializing the iterator over input events of type <E>.
      *
-     * @return an iterator that can iterate over the events.
+     * @return an iterator that can iterate over the events that are NOT filtered out.
      */
     public Iterator<E> inputIterator() {
         if (inputIterator == null || (inputIterator.getClass() != InItr.class)) {
@@ -487,7 +487,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * An iterator of type <E> over the input events.
+     * An iterator of type <E> over the input events. Skips events that are filteredOut.
      */
     public class InItr implements Iterator<E> {
 
@@ -860,7 +860,8 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * Initializes and returns an iterator over elements of type <E>
+     * Initializes and returns an iterator over elements of type <E>.
+     * This iterator returns only events that are not filteredOut.
      *
      * @return an Iterator.
      */

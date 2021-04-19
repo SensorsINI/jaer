@@ -269,7 +269,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 	 * @return packet of BlurringTunnelTrackerEvent.
 	 */
 	@Override
-	public EventPacket<?> filterPacket (EventPacket<?> in){
+	public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
 		if ( in == null ){
 			return null;
 		}

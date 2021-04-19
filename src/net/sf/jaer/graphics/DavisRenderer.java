@@ -184,6 +184,16 @@ public class DavisRenderer extends AEChipRenderer {
                         grayBuffer.put(0);
                         grayBuffer.put(.5f);
                         grayBuffer.put(.5f);
+                    }else if (colorMode == ColorMode.RedGreen) {
+                        grayBuffer.put(0);
+                        grayBuffer.put(0);
+                        grayBuffer.put(0);
+                        grayBuffer.put(.5f);
+                    }else if (colorMode == ColorMode.WhiteBackground) {
+                        grayBuffer.put(1);
+                        grayBuffer.put(1);
+                        grayBuffer.put(1);
+                        grayBuffer.put(.5f);
                     } else {
                         grayBuffer.put(grayValue);
                         grayBuffer.put(grayValue);
@@ -412,7 +422,7 @@ public class DavisRenderer extends AEChipRenderer {
                 resetAnnotationFrame(0.0f);
             }
         }
-         if (colorMode == ColorMode.FadingActivity) {
+        if (colorMode == ColorMode.FadingActivity) {
             checkPixmapAllocation();
             float fadeby = 1 - 1f / (colorScale + 1);
             float[] f = dvsEventsMap.array();
@@ -425,6 +435,7 @@ public class DavisRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
         setSpecialCount(0);
+ 
 
         final boolean displayEvents = isDisplayEvents();
 
@@ -633,7 +644,7 @@ public class DavisRenderer extends AEChipRenderer {
                 break;
                 case GrayLevel: /*|| colorMode == ColorMode.Contrast*/ {
                     if (map[index + 3] == 0) { // nothing there yet
-                        map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+                        map[index + 3] = 1f;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
                         map[index] = 0.5f;
                         map[index + 1] = 0.5f;
                         map[index + 2] = 0.5f; // gray level
@@ -999,7 +1010,7 @@ public class DavisRenderer extends AEChipRenderer {
      */
     @Override
     public float getGrayValue() {
-        if (isDisplayFrames() || /*(colorMode == ColorMode.Contrast) || */ (colorMode == ColorMode.GrayLevel)) {
+        if (isDisplayFrames() || (colorMode == ColorMode.GrayLevel)) {
             grayValue = 0.5f;
         } else if (colorMode == ColorMode.GrayTime) {
             grayValue = 1.0f;

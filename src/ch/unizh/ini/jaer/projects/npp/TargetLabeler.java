@@ -505,7 +505,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (chip.getAeViewer() == null || chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return in;
         }

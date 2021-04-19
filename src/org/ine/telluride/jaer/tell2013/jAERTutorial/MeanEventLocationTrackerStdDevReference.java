@@ -48,7 +48,7 @@ public class MeanEventLocationTrackerStdDevReference extends EventFilter2D imple
 	 * @return output packet
 	 */
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		for (BasicEvent o : in) { // iterate over all events in input packet
 			xmean = ((1 - mixingRate) * xmean) + (o.x * mixingRate); // update means using x and y addresses of input events
 			ymean = ((1 - mixingRate) * ymean) + (o.y * mixingRate);

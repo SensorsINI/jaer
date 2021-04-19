@@ -11,5 +11,5 @@
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.sf.jaer.JAERViewer"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="jAER_1.5"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-splash:SplashScreen.gif -Djava.library.path=jars/win64 -Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-splash:SplashScreen.png -Djava.library.path=jars/win64 -Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false"/>
 </launchConfiguration>

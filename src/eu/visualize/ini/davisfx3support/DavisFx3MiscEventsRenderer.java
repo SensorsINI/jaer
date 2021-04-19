@@ -129,7 +129,7 @@ public class DavisFx3MiscEventsRenderer extends EventFilter2D implements FrameAn
 	}
 
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		OutputEventIterator outItr = out.outputIterator();
 		for (BasicEvent o : in) {
 			BasicEvent oe = outItr.nextOutput();

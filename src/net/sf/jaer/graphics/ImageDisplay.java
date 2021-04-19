@@ -48,7 +48,7 @@ import static net.sf.jaer.graphics.ImageDisplay.log;
  *
  * You create a new ImageDisplay by using the static factory method
  * createImageDisplay, set the x,y size on it, and then you access the frame
- * pixmap directly by settings RGB or gray values at chosen x, y locations. It
+ * pixmap directly by setting float (0-1 range) RGB or gray values at chosen x, y locations. It
  * takes care of scaling, centering, etc for you. When you are ready to show the
  * frame, call display() or repaint() on the ImageDisplay.
  *
@@ -432,7 +432,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Sets a gray value for pixel x,y. Convenience wrapper around setPixmapRGB.
+     * Sets a gray value in range 0-1 for pixel x,y. Convenience wrapper around setPixmapRGB.
      *
      * @param x
      * @param y
@@ -451,7 +451,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      *
      * @param x
      * @param y
-     * @param gray the gray value, in range 0-1.
+     * @param gray the gray change value, in range 0-1.
      */
     synchronized public void changePixmapGrayValueBy(int x, int y, float grayChange) {
         setPixmapPosition(x, y);

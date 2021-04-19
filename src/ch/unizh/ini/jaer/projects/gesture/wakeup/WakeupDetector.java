@@ -56,7 +56,7 @@ public class WakeupDetector extends EventFilter2D implements FrameAnnotater{
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		for(BasicEvent e:in){
 			PolarityEvent ev = (PolarityEvent) e;
 			if(ev.polarity == PolarityEvent.Polarity.On){

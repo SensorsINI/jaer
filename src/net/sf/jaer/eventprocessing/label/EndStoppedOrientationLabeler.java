@@ -8,6 +8,7 @@ import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
 import net.sf.jaer.event.OutputEventIterator;
@@ -63,7 +64,7 @@ public class EndStoppedOrientationLabeler extends SimpleOrientationFilter {
     EventPacket esOut = new EventPacket(ApsDvsOrientationEvent.class);
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         int sss = getSubSampleShift();
 
         int sx = chip.getSizeX(), sy = chip.getSizeY(); // for bounds checking

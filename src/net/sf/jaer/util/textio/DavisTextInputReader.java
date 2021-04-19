@@ -77,7 +77,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
      * @return input packet
      */
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         out = readPacket(in);
         eventsProcessed += out.getSize();
         return out;

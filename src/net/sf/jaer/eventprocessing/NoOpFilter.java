@@ -30,7 +30,7 @@ public class NoOpFilter extends EventFilter2D {
 
     
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         OutputEventIterator outItr=null;
         if(copyInputPacket){
             checkOutputPacketEventType(in);

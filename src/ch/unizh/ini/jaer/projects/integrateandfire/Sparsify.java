@@ -26,6 +26,7 @@ import javax.swing.*;
 import java.util.Random;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -72,7 +73,7 @@ public class Sparsify extends EventFilter2D {
     // Deal with incoming packet
     @SuppressWarnings("unchecked")
 	@Override 
-    public EventPacket<?> filterPacket( EventPacket<?> P){
+    public EventPacket<? extends BasicEvent> filterPacket( EventPacket<? extends BasicEvent> P){
 		if (!filterEnabled)
 			return P;
         //out.outputIterator()

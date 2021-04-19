@@ -37,6 +37,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.FrameAnnotater;
 import ch.unizh.ini.jaer.projects.speakerid.libsvm320.*;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * This class allows for speaker identification using a SVM. The feature vectors
@@ -176,7 +177,7 @@ public class CochleaSVMTwoEars extends ISIFilterTwoEars implements FrameAnnotate
     }
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!propertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);

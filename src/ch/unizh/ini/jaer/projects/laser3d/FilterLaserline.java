@@ -151,7 +151,7 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         // set class of output packets to Polarity Events
         checkOutputPacketEventType(in);
         OutputEventIterator outItr = getOutputPacket().outputIterator();

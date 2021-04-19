@@ -172,7 +172,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
    }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(final EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
         // checkOutputPacketEventType(in);
         // OutputEventIterator outItr = getOutputPacket().outputIterator();
         for (final BasicEvent e : in) {

@@ -28,7 +28,7 @@ public class NearbyTrackEventFilter extends EventFilter2D implements PropertyCha
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (track == null) {
             return in;
         }

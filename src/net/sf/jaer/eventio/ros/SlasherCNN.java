@@ -32,6 +32,7 @@ import java.beans.PropertyChangeEvent;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 
 /**
@@ -62,7 +63,7 @@ public class SlasherCNN extends DavisClassifierCNNProcessor {
     }
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!addedPropertyChangeListener && apsDvsNet != null) {
             addedPropertyChangeListener = true;
             apsDvsNet.getSupport().addPropertyChangeListener(AbstractDavisCNN.EVENT_MADE_DECISION, this);

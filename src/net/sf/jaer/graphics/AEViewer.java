@@ -88,6 +88,8 @@ import ch.unizh.ini.jaer.chip.retina.DVS128;
 import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -457,13 +459,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public void actionPerformed(ActionEvent evt) {
-                File f = new File(evt.getActionCommand());
-                //                log.info("opening "+evt.getActionCommand());
-                try {
-                    openAedatInputFile(f);
-                } catch (Exception fnf) {
-                    log.log(Level.WARNING, fnf.toString(), fnf);
-                    recentFiles.removeFile(f);
+                if ((evt.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
+                    if (Desktop.isDesktopSupported()) {
+                        log.info("opening folder for " + evt.getActionCommand());
+                        try {
+                            File f=new File(evt.getActionCommand());
+                            if(f.isFile()){
+                                f=f.getParentFile();
+                            }
+                            Desktop.getDesktop().open(f);
+                        } catch (IOException e) {
+                            log.warning("Cannot show folder: " + e.toString());
+                        }
+                    }
+                } else {
+                    File f = new File(evt.getActionCommand());
+                    //                log.info("opening "+evt.getActionCommand());
+                    try {
+                        openAedatInputFile(f);
+                    } catch (Exception fnf) {
+                        log.log(Level.WARNING, fnf.toString(), fnf);
+                        recentFiles.removeFile(f);
+                    }
                 }
             }
         });
@@ -518,7 +535,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
         enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
-        setJogNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getJogPacketCount() + ")");
+        setJogNCount.setText("Set forward/reverse jog packet count N... (currently " + getAePlayer().getJogPacketCount() + ")");
 
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
 
@@ -620,6 +637,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.info("closing multicastOutput " + aeMulticastOutput);
             aeMulticastOutput.close();
         }
+        if (chip != null) {
+            chip.cleanup();
+        }
+
     }
 
     private boolean isWindows() {
@@ -1470,7 +1491,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     } else {
                         rawPacket = grabInput();
                         if (rawPacket == null) {
-                            log.warning("null rawPacket, should not happen");
+                            log.warning("null rawPacket, probably at OUT marker or end of file");
                             continue;
                         }
 
@@ -1810,7 +1831,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 }
             }
-            return emptyCookedPacket;
+            return inputPacket; // if we don't filter, just return the input packet to render the raw data
         }
 
         void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
@@ -2497,6 +2518,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         renderModeButtonGroup = new javax.swing.ButtonGroup();
         monSeqOpModeButtonGroup = new javax.swing.ButtonGroup();
         jMenuItem2 = new javax.swing.JMenuItem();
+        jSeparator20 = new javax.swing.JSeparator();
+        jSeparator21 = new javax.swing.JSeparator();
+        jSeparator22 = new javax.swing.JSeparator();
         statisticsPanel = new javax.swing.JPanel();
         imagePanel = new javax.swing.JPanel();
         bottomPanel = new javax.swing.JPanel();
@@ -2571,6 +2595,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         viewStepForwardsMI = new javax.swing.JMenuItem();
         viewStepBackwardsMI = new javax.swing.JMenuItem();
+        jSeparator24 = new javax.swing.JPopupMenu.Separator();
         zeroTimestampsMenuItem = new javax.swing.JMenuItem();
         jSeparator11 = new javax.swing.JSeparator();
         increasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
@@ -2578,6 +2603,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         rewindPlaybackMenuItem = new javax.swing.JMenuItem();
         flextimePlaybackEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         togglePlaybackDirectionMenuItem = new javax.swing.JMenuItem();
+        jSeparator23 = new javax.swing.JPopupMenu.Separator();
         jogForwardMI = new javax.swing.JMenuItem();
         jogBackwardsMI = new javax.swing.JMenuItem();
         setJogNCount = new javax.swing.JMenuItem();
@@ -3171,6 +3197,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(viewStepBackwardsMI);
+        viewMenu.add(jSeparator24);
 
         zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
         zeroTimestampsMenuItem.setText("Zero timestamps");
@@ -3184,7 +3211,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         increasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, 0));
         increasePlaybackSpeedMenuItem.setText("Increase playback speed");
-        increasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice longer");
+        increasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice longer<p>Or use SHIFT+ALT+mouse wheel up");
         increasePlaybackSpeedMenuItem.setEnabled(false);
         increasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3195,7 +3222,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         decreasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, 0));
         decreasePlaybackSpeedMenuItem.setText("Decrease playback speed");
-        decreasePlaybackSpeedMenuItem.setToolTipText("Makes the time slice shorter");
+        decreasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice shorter<p>Or use SHIFT+ALT+mouse wheel down");
         decreasePlaybackSpeedMenuItem.setEnabled(false);
         decreasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3234,9 +3261,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(togglePlaybackDirectionMenuItem);
+        viewMenu.add(jSeparator23);
 
         jogForwardMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
-        jogForwardMI.setText("Forward N packets");
+        jogForwardMI.setText("Jog Forward N packets");
+        jogForwardMI.setToolTipText("Or use SHIFT+mouse wheel");
         jogForwardMI.setActionCommand("Jog forward N packets");
         jogForwardMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3247,6 +3276,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         jogBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
         jogBackwardsMI.setText("Jog back N packets");
+        jogBackwardsMI.setToolTipText("Or use SHIFT+mouse wheel");
         jogBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jogBackwardsMIActionPerformed(evt);
@@ -3255,6 +3285,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(jogBackwardsMI);
 
         setJogNCount.setText("Set jog N...");
+        setJogNCount.setToolTipText("Sets the size of jog for keyboard jog");
         setJogNCount.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setJogNCountActionPerformed(evt);
@@ -3294,9 +3325,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(clearMarksMI);
         viewMenu.add(jSeparator10);
 
-        zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_UP, 0));
+        zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.CTRL_MASK));
         zoomInMenuItem.setText("Zoom in");
-        zoomInMenuItem.setToolTipText("Zooms in around mouse point");
+        zoomInMenuItem.setToolTipText("Zooms in around mouse point. Also Ctl+mouse wheel");
         zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomInMenuItemActionPerformed(evt);
@@ -3304,9 +3335,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(zoomInMenuItem);
 
-        zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PAGE_DOWN, 0));
+        zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_MINUS, java.awt.event.InputEvent.CTRL_MASK));
         zoomOutMenuItem.setText("Zoom out");
-        zoomOutMenuItem.setToolTipText("Zooms out around mouse point");
+        zoomOutMenuItem.setToolTipText("Zooms out around mouse point. Also Ctl+mouse wheel");
         zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomOutMenuItemActionPerformed(evt);
@@ -3324,7 +3355,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(zoomCenterMenuItem);
 
-        unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_HOME, 0));
+        unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, java.awt.event.InputEvent.CTRL_MASK));
         unzoomMenuItem.setText("Unzoom");
         unzoomMenuItem.setToolTipText("Goes to default display zooming");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3782,13 +3813,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         doSingleStepEnabled = yes;
     }
 
-    synchronized public boolean isSingleStep() {
+    public boolean isSingleStep() {
         //        boolean isSingle=caviarViewer.getSyncPlayer().isSingleStep();
         //        return isSingle;
         return doSingleStepEnabled;
     }
 
-    synchronized public void singleStepDone() {
+    public void singleStepDone() {
         if (isSingleStep()) {
 //            log.info("finished single step");
             setDoSingleStepEnabled(false);
@@ -3899,10 +3930,67 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_biasesToggleButtonActionPerformed
 
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
+            boolean control = ((evt.getModifiers() & InputEvent.CTRL_MASK) == InputEvent.CTRL_MASK);
+            boolean alt = ((evt.getModifiers() & InputEvent.ALT_MASK) == InputEvent.ALT_MASK);;
+            boolean shift = ((evt.getModifiers() & InputEvent.SHIFT_MASK) == InputEvent.SHIFT_MASK);;
             int rotation = evt.getWheelRotation();
-            getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
-            showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
-            interruptViewloop();
+            ActionEvent ae = new ActionEvent(evt.getSource(), evt.getID(), evt.paramString());
+
+            if (!(control || alt || shift)) {
+                getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
+                showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
+                interruptViewloop();
+            } else if (control && !(shift || alt)) {
+                if (rotation > 0) {
+                    chipCanvas.zoomOut(); // wheel down
+                } else if (rotation < 0) {
+                    chipCanvas.zoomIn(); //wheel up
+                }
+                interruptViewloop();
+            } else if (shift && !(control || alt)) { // shift mouse scrolls through recording
+                if (getAePlayer() != null) {
+                    AbstractAEPlayer p = getAePlayer();
+                    int rabs = (int) Math.abs(rotation);
+                    if (p.isPaused()) {
+                        for (int i = 0; i < rabs; i++) {
+                            if (rotation < 0) {
+                                p.stepForwardAction.actionPerformed(ae);
+                            } else {
+                                p.stepBackwardAction.actionPerformed(ae);
+                            }
+                            while (isSingleStep()) {
+                                try {
+                                    Thread.sleep(1);
+                                } catch (InterruptedException e) {
+                                    break;
+                                }
+                            }
+                        }
+                    } else {
+                        try {
+                            for (int i = 0; i < rabs; i++) {
+                                if (rotation < 0) {
+                                    jogForwardMIActionPerformed(ae);
+                                } else {
+                                    jogBackwardsMIActionPerformed(ae);
+                                }
+                            }
+                        } finally {
+                        }
+                    }
+                }
+            } else if (shift && alt && !(control)) { // shift+alt mouse changes timeslice
+                if (getAePlayer() != null) {
+                    AbstractAEPlayer p = getAePlayer();
+                    int n = (int) Math.abs(rotation);
+                    if (rotation < 0) { // mouse wheel up
+                        increasePlaybackSpeedMenuItemActionPerformed(ae);
+                    } else if (rotation > 0) {
+                        decreasePlaybackSpeedMenuItemActionPerformed(ae);
+                    }
+                }
+                interruptViewloop();
+            }
 	}//GEN-LAST:event_imagePanelMouseWheelMoved
 
 	private void togglePlaybackDirectionMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_togglePlaybackDirectionMenuItemActionPerformed
@@ -5072,14 +5160,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void zoomInMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomInMenuItemActionPerformed
             chip.getCanvas().zoomIn();
+            interruptViewloop();
 	}//GEN-LAST:event_zoomInMenuItemActionPerformed
 
 	private void zoomOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomOutMenuItemActionPerformed
             chip.getCanvas().zoomOut();
+            interruptViewloop();
 	}//GEN-LAST:event_zoomOutMenuItemActionPerformed
 
 	private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomCenterMenuItemActionPerformed
             chip.getCanvas().zoomCenter();
+            interruptViewloop();
 	}//GEN-LAST:event_zoomCenterMenuItemActionPerformed
 
 	private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
@@ -5387,8 +5478,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 Period p = formatter.parsePeriod(ans);
 
                 loggingTimeLimit = p.toStandardDuration().getMillis();
-                String s=formatter.print(p);
-                JOptionPane.showMessageDialog(this, String.format("Time limit set to %s (%d ms)",s,loggingTimeLimit));
+                String s = formatter.print(p);
+                JOptionPane.showMessageDialog(this, String.format("Time limit set to %s (%d ms)", s, loggingTimeLimit));
             } catch (IllegalArgumentException e) {
                 JOptionPane.showMessageDialog(this, String.format("Bad format? Caught %s", e.toString()), "Error with duration", JOptionPane.ERROR_MESSAGE);
             }
@@ -5585,6 +5676,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         getAePlayer().stepBackwardAction.actionPerformed(evt);
     }//GEN-LAST:event_viewStepBackwardsMIActionPerformed
 
+    private KeyEvent lastKeyEvent = null;
+
     /**
      * Returns desired frame rate of FrameRater
      *
@@ -5657,12 +5750,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)) {
                         draggedFile = f;
+                        log.info("User dragged file " + draggedFile);
                     } else {
+                        log.warning(String.format("Cannot handle this file extension for file '%s'", f.getAbsoluteFile()));
                         draggedFile = null;
                     }
-
                 }
-                //                System.out.println("AEViewer.dragEnter(): draqged file="+draggedFile);
             }
         } catch (UnsupportedFlavorException e) {
             e.printStackTrace();
@@ -5708,6 +5801,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } catch (InterruptedException ex) {
                 log.warning("opening dropped file " + draggedFile + " interrupted");
             }
+        } else {
+//            log.warning("null dragged file in DropTargetDropEvent="+dtde);
         }
     }
 
@@ -6053,6 +6148,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator18;
     private javax.swing.JPopupMenu.Separator jSeparator19;
     private javax.swing.JSeparator jSeparator2;
+    private javax.swing.JSeparator jSeparator20;
+    private javax.swing.JSeparator jSeparator21;
+    private javax.swing.JSeparator jSeparator22;
+    private javax.swing.JPopupMenu.Separator jSeparator23;
+    private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;

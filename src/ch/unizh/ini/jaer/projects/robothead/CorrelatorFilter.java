@@ -66,7 +66,7 @@ public class CorrelatorFilter extends EventFilter2D implements FrameAnnotater {
     boolean side;
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (enclosedFilter != null) {
             in = enclosedFilter.filterPacket(in);
         }

@@ -24,6 +24,7 @@ import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  *  A virtual ball that generates events and model physics of ball movement.
@@ -64,7 +65,7 @@ public class LabyrinthVirtualBall extends EventFilter2DMouseAdaptor implements O
 	}
 
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if (!isFilterEnabled()) {
 			return in;
 		}

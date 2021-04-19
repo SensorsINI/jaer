@@ -13,6 +13,7 @@ import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Top level labyrinth robot class.
@@ -50,7 +51,7 @@ public class LabyrinthGameKalman extends EventFilter2DMouseAdaptor  {
     }
      
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         out= filterChain.filterPacket(in);
  
         if(controller.isLostTracking()){

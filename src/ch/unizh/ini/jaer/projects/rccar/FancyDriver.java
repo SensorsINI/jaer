@@ -16,6 +16,7 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AESocket;
 
@@ -188,7 +189,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
         
     }
     
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         tobiLogger.log(radioSpeed + " " + radioSteer + " " + accelerometer.getAcceleration());
         if(!isFilterEnabled()) return in;
         if(!isSendControlToBlenderEnabled()) checkServo(); // don't bother with servo if in simulation
@@ -565,7 +566,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
         }
 
-        public EventPacket<?> filterPacket(EventPacket<?> in) {
+        public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
             return in;
         }
 
@@ -625,7 +626,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
             
         }
 
-        public EventPacket<?> filterPacket(EventPacket<?> in) {
+        public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
             return in;
         }
 

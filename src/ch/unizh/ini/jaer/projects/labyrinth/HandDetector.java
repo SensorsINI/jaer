@@ -16,6 +16,7 @@ import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Detects hand by setting a threshold on the average event activity. Very high activity says probably a hand is picking up the ball or putting it down.
@@ -36,8 +37,7 @@ public class HandDetector extends EventRateEstimator implements FrameAnnotater {
 	}
 
 	@Override
-	public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
-		super.filterPacket(in);
+	public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		boolean detectedNow = ((getFilteredEventRate() * 1e-3f) > handEventRateThresholdKEPS);
 		if (detectedNow) {
 			handDetected = true;

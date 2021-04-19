@@ -116,7 +116,7 @@ public class BufferSizeEstimator extends EventFilter2D{
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         int lastSampleSize = Math.min(samplingArray.length, in.size);     //varies
         int sampleSizeNotFiltered = lastSampleSize; //needed as constant bound for the for loop
         Arrays.fill(samplingArray,0);
@@ -362,7 +362,7 @@ public class BufferSizeEstimator extends EventFilter2D{
     public void setupLogging() throws IOException {
         if(isLogBufferSize())
             bufferLogger.setEnabled(true);
-        bufferLogger.setHeaderLine("|last timestamp -- estimatedAvOccupation -- estimated size (simple) -- "
+        bufferLogger.setColumnHeaderLine("|last timestamp -- estimatedAvOccupation -- estimated size (simple) -- "
                 + "(fields found occupied in sample) -- occupied by >=2 -- occupied by >= 3 -- size of sample "
                 + "-- estimated size (probabilistic)|  maximum buffer size:"+getMaxSize()+
                 ", minimum "+ "buffer size: "+getMinSize());

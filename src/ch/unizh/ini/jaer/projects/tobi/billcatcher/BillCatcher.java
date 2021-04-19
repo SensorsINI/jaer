@@ -14,7 +14,6 @@ package ch.unizh.ini.jaer.projects.tobi.billcatcher;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.DirectionSelectiveFlow;
 import java.awt.Graphics2D;
-import java.awt.geom.Point2D;
 import java.util.logging.Logger;
 
 import com.jogamp.opengl.GL2;
@@ -25,7 +24,6 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.eventprocessing.label.AbstractDirectionSelectiveFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -34,6 +32,7 @@ import net.sf.jaer.hardwareinterface.usb.ServoInterfaceFactory;
 
 import com.jogamp.opengl.util.gl2.GLUT;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Catches ppper money dropped between fingers. The game is that a person holds
@@ -106,7 +105,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
     private float translationalMotion = 0;
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!isFilterEnabled()) {
             return in;
         }
@@ -136,7 +135,7 @@ public class BillCatcher extends EventFilter2D implements FrameAnnotater {
         return in;
     }
 
-    boolean isBillFalling(EventPacket<?> in) {
+    boolean isBillFalling(EventPacket<? extends BasicEvent> in) {
         translationalMotion = (float)motionFilter.getMotionFlowStatistics().getGlobalMotion().getGlobalVy().getMean();
         boolean moving = (translationalMotion < -motionThresholdPixelsPerSec);
         float rate = in.getEventRateHz();

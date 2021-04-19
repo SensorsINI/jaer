@@ -63,7 +63,7 @@ public class ApsDvsOrientationFilter extends AbstractOrientationFilter{
      * @param in input events can be null or empty.
      * @return the processed events, may be fewer in number. */
     @Override
-    synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+    synchronized public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
         if ( enclosedFilter != null ) in = enclosedFilter.filterPacket(in);
         if ( in.getSize() == 0 ) return in;
 

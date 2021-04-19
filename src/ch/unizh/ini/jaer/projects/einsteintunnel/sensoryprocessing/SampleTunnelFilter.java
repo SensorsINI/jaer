@@ -64,7 +64,7 @@ public class SampleTunnelFilter extends EventFilter2D {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         if (!isFilterEnabled()) {
             return in;

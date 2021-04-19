@@ -4,11 +4,11 @@
  */
 package ch.unizh.ini.jaer.projects.laser3d.plothistogram;
 
-import java.util.Observable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -31,7 +31,7 @@ public class PlotEvtHistogram extends EventFilter2D {
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         checkOutputPacketEventType(in);
         for (Object e : in) {
             if (!isInitialized) {

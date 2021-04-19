@@ -40,7 +40,7 @@ public class ChannelFilter extends EventFilter2D {
     
     }
         
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if(!isFilterEnabled()){
             //System.out.print("TEST 2");
             return in;       // only use if filter enabled

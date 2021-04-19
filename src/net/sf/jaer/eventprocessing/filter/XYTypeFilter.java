@@ -84,19 +84,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     private boolean multiSelectionEnabled = prefs().getBoolean("XYTypeFilter.multiSelectionEnabled", false);
     private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
 
-    synchronized public void doEraseSelections() {
-        selectionList.clear();
-        setStartX(0);
-        setEndX(chip.getSizeX() - 1);
-        setStartY(0);
-        setEndY(chip.getSizeY() - 1);
-        setStartType(0);
-        setEndType(chip.getNumCellTypes() - 1);
-        setXEnabled(false);
-        setYEnabled(false);
-        setTypeEnabled(false);
-    }
-
     public XYTypeFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip("invertEnabled", "invert so that events inside region are blocked");
@@ -247,6 +234,12 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void initFilter() {
         doLoadMultiSelection();
         resetFilter();
+    }
+
+    @Override
+    public synchronized void cleanup() {
+        super.cleanup();
+        doSaveMultiSelection();
     }
 
     private int clip(int val, int limit) {
@@ -626,83 +619,75 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         }
     }
 
+    synchronized public void doEraseSelections() {
+        selectionList.clear();
+        setStartX(0);
+        setEndX(chip.getSizeX() - 1);
+        setStartY(0);
+        setEndY(chip.getSizeY() - 1);
+        setStartType(0);
+        setEndType(chip.getNumCellTypes() - 1);
+        setXEnabled(false);
+        setYEnabled(false);
+        setTypeEnabled(false);
+    }
+
     public final synchronized void doLoadMultiSelection() {
 
         try {
-
-            byte[] b = prefs().getByteArray("XYTypeFilter.multiSelection", null);
-            if (b == null) {
-//					log.info("no MultiSelection saved in preferences, can't load it");
+            SavedMultiSelection ss = (SavedMultiSelection) getObject("multiSelection", null);
+            if (ss == null || ss.size==0) {
                 return;
             }
-            ByteArrayInputStream bis = new ByteArrayInputStream(b);
-            ObjectInputStream ois = new ObjectInputStream(bis);
-            Object o = ois.readObject();
-            if (o == null) {
-                throw new NullPointerException("Couldn't read x values for the MuliSelection from preferences");
+            for (int i = 0; i < ss.size; i++) {
+                selectionList.add(new SelectionRectangle(ss.xValues[i], ss.yValues[i], ss.widthValues[i], ss.heightValues[i]));
             }
-            int[] xValues = (int[]) o;
-            o = ois.readObject();
-            if (o == null) {
-                throw new NullPointerException("Couldn't read y values for the MuliSelection from preferences");
-            }
-            int[] yValues = (int[]) o;
-            o = ois.readObject();
-            if (o == null) {
-                throw new NullPointerException("Couldn't read x values for the MuliSelection from preferences");
-            }
-            int[] widthValues = (int[]) o;
-            o = ois.readObject();
-            if (o == null) {
-                throw new NullPointerException("Couldn't read x values for the MuliSelection from preferences");
-            }
-            int[] heightValues = (int[]) o;
-            for (int n = 0; n < xValues.length; n++) {
-                selectionList.add(new SelectionRectangle(xValues[n], yValues[n], widthValues[n], heightValues[n]));
-            }
-            ois.close();
-            bis.close();
-            log.info("loaded selection from preferencdes");
+            log.info(String.format("loaded %d selection rectangles from preferences",ss.size));
         } catch (Exception e) {
             log.warning("couldn't load throttle profile: " + e);
         }
     }
 
     synchronized public void doSaveMultiSelection() {
-        if (selectionList == null) {
-            log.warning("no profile to save");
+        if (selectionList == null || selectionList.isEmpty()) {
+//            log.warning("no profile to save");
             return;
         }
         try {
-            int xValue[] = new int[selectionList.size()];
-            int yValue[] = new int[selectionList.size()];
-            int widthValue[] = new int[selectionList.size()];
-            int heightValue[] = new int[selectionList.size()];
-            Iterator iterator = selectionList.iterator();
-            int j = 0;
-            while (iterator.hasNext()) {
-                SelectionRectangle tmpRect = (SelectionRectangle) iterator.next();
-                xValue[j] = tmpRect.x;
-                yValue[j] = tmpRect.y;
-                widthValue[j] = tmpRect.width;
-                heightValue[j] = tmpRect.height;
-                j++;
-            }
-
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(bos);
-            oos.writeObject(xValue);
-            oos.writeObject(yValue);
-            oos.writeObject(widthValue);
-            oos.writeObject(heightValue);
-            prefs().putByteArray("XYTypeFilter.multiSelection", bos.toByteArray());
-            oos.close();
-            bos.close();
-            log.info("multi selection saveed to preferences");
+            SavedMultiSelection ss = new SavedMultiSelection(this);
+            putObject("multiSelection", ss);
+            log.info(String.format("Saved %d rectangles to preferences",ss.size));
         } catch (Exception e) {
             log.warning("couldn't save profile: " + e);
         }
 
+    }
+
+    private static class SavedMultiSelection implements Serializable {
+
+        int size, xValues[], yValues[], widthValues[], heightValues[];
+
+        public SavedMultiSelection(XYTypeFilter xyTypeFilter) {
+            if (xyTypeFilter.selectionList == null || xyTypeFilter.selectionList.isEmpty()) {
+                size=0;
+                return;
+            }
+            size=xyTypeFilter.selectionList.size();
+            xValues = new int[size];
+            yValues = new int[size];
+            widthValues = new int[size];
+            heightValues = new int[size];
+            Iterator iterator = xyTypeFilter.selectionList.iterator();
+            int j = 0;
+            while (iterator.hasNext()) {
+                SelectionRectangle tmpRect = (SelectionRectangle) iterator.next();
+                xValues[j] = tmpRect.x;
+                yValues[j] = tmpRect.y;
+                widthValues[j] = tmpRect.width;
+                heightValues[j] = tmpRect.height;
+                j++;
+            }
+        }
     }
 
 }

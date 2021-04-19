@@ -6,6 +6,7 @@ package ch.unizh.ini.jaer.projects.integrateandfire;
 
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
@@ -40,7 +41,7 @@ abstract public class SuperLIFFilter  extends EventFilter2D {
     //==========================================================================
     // Obligatory Overrides
     
-    @Override abstract public EventPacket<?> filterPacket(EventPacket<?> P);
+    @Override abstract public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> P);
         
     @Override abstract public void resetFilter();
     

@@ -44,6 +44,7 @@ import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.stereopsis.MultiCameraBiasgenHardwareInterface;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.HasPropertyTooltips;
 import net.sf.jaer.util.ParameterControlPanel;
 import net.sf.jaer.util.PropertyTooltipSupport;
@@ -411,10 +412,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     private int autoShotThreshold;
 
     // DVSTweasks from DVS128
-    private float bandwidth = 1;
-    private float maxFiringRate = 1;
-    private float onOffBalance = 1;
-    private float threshold = 1;
+    private float bandwidth =0;
+    private float maxFiringRate = 0;
+    private float onOffBalance = 0;
+    private float threshold = 0;
 
     /**
      *
@@ -778,8 +779,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             return;
         }
         maxFiringRate = val;
-        final float MAX = 100;
-        refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+        final float MAX = 8, MIN=100; // limit to approx 8 times shorter refr period than default, and 100 times longer
+        refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MIN, MAX));
         getChip().getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
     }
 
@@ -930,6 +931,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
      * see https://ieeexplore.ieee.org/document/7962235 fig 1
      */
     protected float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 20, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+    
+    private float REFR_CAP=20e-15f, REFR_VOLTAGE=(1.8f-1f); // guesstimated
 
     @Override
     public float getOnThresholdLogE() {
@@ -940,6 +943,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     public float getOffThresholdLogE() {
         return (float) (THR_FAC * Math.log(diffOff.getCurrent() / diff.getCurrent()));
     }
+
+    @Override
+    public float getRefractoryPeriodS() {
+        float iRefr=refr.getCurrent();
+        return (float)(REFR_CAP*REFR_VOLTAGE/iRefr);
+    }
+    
+    
 
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 

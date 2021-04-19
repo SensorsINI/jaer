@@ -42,34 +42,30 @@ import net.sf.jaer.util.RemoteControlCommand;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
-    private int dtUs = getInt("dtUs", 10000);
     int[] lastRowTs, lastColTs; // these arrays hold last timestamp of event in each row/column. A value of 0 means no event since reset.
-    int[] lastXByRow, lastYByCol;
+    int[] lastXByRow, lastYByCol;  // these arrays hold the x address for each y (row) event and y address for each x (col) event.
     int sx = 0, sy = 0;
 
     public OrderNBackgroundActivityFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltip("dtUs", "correlation time in us");
-        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
-        totalEventCount = 0;
-        filteredOutEventCount = 0;
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        super.filterPacket(in);
+        int dtUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
+
         for (BasicEvent e : in) {
-            checkAndFilterEvent(e);
             totalEventCount++;
-            if (e.isFilteredOut()) {
-                filteredOutEventCount++;
-            }
+            checkAndFilterEvent(e, dtUs);
         }
-//        filteredOutEventCount=in.getFilteredOutCount();
+        getNoiseFilterControl().maybePerformControl(in);
         return in;
     }
 
     @Override
     public void resetFilter() {
+        super.resetFilter();
         sx = chip.getSizeX();
         sy = chip.getSizeY();
         if (lastRowTs == null) {
@@ -78,8 +74,8 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         if (sx * sy == 0) {
             return;
         }
-        Arrays.fill(lastColTs, 0);
-        Arrays.fill(lastRowTs, 0);
+        Arrays.fill(lastColTs, DEFAULT_TIMESTAMP);
+        Arrays.fill(lastRowTs, DEFAULT_TIMESTAMP);
         Arrays.fill(lastXByRow, -1);
         Arrays.fill(lastYByCol, -1);
     }
@@ -95,38 +91,40 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         resetFilter();
     }
 
-    private void checkAndFilterEvent(BasicEvent e) {
+    private void checkAndFilterEvent(BasicEvent e, int dtUs) {
 
         // check all neighbors to see if there was event around us suffiently recently
-        e.setFilteredOut(true); // by default filter out
+//        e.setFilteredOut(true); // by default filter out  done at end of method
         if (e.x <= 0 || e.y <= 0 || e.x >= sx - 1 || e.y >= sy - 1) {
-            saveEvent(e);
-            return; // filter out all edge events since we cannot fully check correlation TDOO not really correct
+            // assume all edge events are noise and filter OUT 
+            // since we cannot fully check their correlation TODO check is this best possible?
+//            saveEvent(e); 
+            return;
         }
-        boolean selfCorrelated = false;
         // first check rows around us, if any adjancent row has event then filter in
         for (int y = -1; y <= 1; y++) {
-            if (lastRowTs[e.y + y] != 0 && e.timestamp - lastRowTs[e.y + y] < dtUs
+            if (lastRowTs[e.y + y] != DEFAULT_TIMESTAMP && e.timestamp - lastRowTs[e.y + y] < dtUs
                     && Math.abs(lastXByRow[e.y + y] - e.x) <= 1) {
-                // if there was event (ts!=0), and the timestamp is recent enough, and the column was adjacent, then filter in
-                e.setFilteredOut(false);
+                // if there was event (ts!=DEFAULT_TIMESTAMP), and the timestamp is recent enough, and the column was adjacent, then filter in
+                filterIn(e);
                 saveEvent(e);
-                selfCorrelated = y == 0;
+//                selfCorrelated = y == 0;
             }
         }
         // now do same for columns
         for (int x = -1; x <= 1; x++) {
-            if (lastColTs[e.x + x] != 0 && e.timestamp - lastColTs[e.x + x] < dtUs
+            if (lastColTs[e.x + x] != DEFAULT_TIMESTAMP && e.timestamp - lastColTs[e.x + x] < dtUs
                     && Math.abs(lastYByCol[e.x + x] - e.y) <= 1) {
-                e.setFilteredOut(false);
+//                if (selfCorrelated && x == 0) { // if we correlated with ourselves only, then filter out and just return
+//                    e.setFilteredOut(true);
+//                }
+                filterIn(e);
                 saveEvent(e);
-                if (selfCorrelated && x == 0) { // if we correlated with ourselves only, then filter out and just return
-                    e.setFilteredOut(true);
-                }
                 return;
             }
         }
         saveEvent(e);
+        filterOut(e);
     }
 
     private void saveEvent(BasicEvent e) {
@@ -136,41 +134,13 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         lastRowTs[e.y] = e.timestamp;
     }
 
-    /**
-     * @return the dtUs
-     */
-    public int getDtUs() {
-        return dtUs;
-    }
-
-    /**
-     * @param dtUs the dtUs to set
-     */
-    public void setDtUs(int dtUs) {
-        int old=this.dtUs;
-        
-        putInt("dtUs", dtUs);
-        getSupport().firePropertyChange("dtUs", old, dtUs);
-        this.dtUs = dtUs;
-    }
-
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt); //To change body of generated methods, choose Tools | Templates.
-        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            resetFilter();
-        } else if (evt.getPropertyName() == AEViewer.EVENT_CHIP) {
-            resetFilter();
-        }
-
-    }
-
+  
     private String USAGE = "OrderNFilter needs at least 1 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx\n";
 
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
         String[] tok = input.split("\\s");
-        
+
         if (tok.length < 3) {
             return USAGE;
         }
@@ -178,10 +148,10 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
             if ((tok.length - 1) % 2 == 0) {
                 for (int i = 1; i <= tok.length; i++) {
                     if (tok[i].equals("dt")) {
-                        setDtUs(Integer.parseInt(tok[i + 1]));
-                    }                    
+                        setCorrelationTimeS(1e-6f * Integer.parseInt(tok[i + 1]));
+                    }
                 }
-                String out = "successfully set OrderNFilter parameters dt " + String.valueOf(dtUs);
+                String out = "successfully set OrderNFilter parameters dtS " + String.valueOf(getCorrelationTimeS());
                 return out;
             } else {
                 return USAGE;
@@ -190,6 +160,11 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         } catch (Exception e) {
             return "IOExeption in remotecontrol " + e.toString() + "\n";
         }
+    }
+
+    @Override
+    public String infoString() {
+        return super.infoString();
     }
 
 }

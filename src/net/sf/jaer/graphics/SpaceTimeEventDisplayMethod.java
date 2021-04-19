@@ -184,20 +184,33 @@ public class SpaceTimeEventDisplayMethod extends DisplayMethod implements Displa
                 }
             }
             // draw axes labels x,y,t. See tutorial at http://jerome.jouvie.free.fr/OpenGl/Tutorials/Tutorial18.php
-            final int font = GLUT.BITMAP_HELVETICA_18;
             {
+                gl.glColor3f(0.5f, .5f, 1);
+                final int font18 = GLUT.BITMAP_HELVETICA_18;
                 gl.glPushMatrix();
                 final int FS = 1; // distance in pixels of text from endZoom of axis
                 gl.glRasterPos3f(chip.getSizeX() + FS, 0, 0);
-                glut.glutBitmapString(font, "x=" + chip.getSizeX());
+                glut.glutBitmapString(font18, "x=" + chip.getSizeX());
                 gl.glRasterPos3f(0, chip.getSizeY() + FS, 0);
-                glut.glutBitmapString(font, "y=" + chip.getSizeY());
+                glut.glutBitmapString(font18, "y=" + chip.getSizeY());
                 // label time end value
                 // gl.glRasterPos3f(0, -2 , chip.getMaxSize() + FS);
                 // glut.glutBitmapCharacter(font, '0');
                 gl.glRasterPos3f(0, 0, chip.getMaxSize() + FS);
-                glut.glutBitmapString(font, "t=" + engFmt.format(dt * AEConstants.TICK_DEFAULT_US * 1e-6f) + "s");
+                glut.glutBitmapString(font18, "t=" + engFmt.format(dt * AEConstants.TICK_DEFAULT_US * 1e-6f) + "s");
                 gl.glPopMatrix();
+
+                // display speed and direction of flow if events are lined up to overlap optimally
+                gl.glPushMatrix();
+                gl.glRasterPos3f(chip.getSizeX() / 2, chip.getSizeY() / 2, 0);
+                float dtS = dt * 1e-6f;
+                float vy = (float) (chip.getSizeY() * Math.tan(getChipCanvas().getAnglex() * Math.PI / 180) / dtS);
+                float vx = (float) (chip.getSizeX() * Math.tan(getChipCanvas().getAngley() * Math.PI / 180) / dtS);
+                float speed = (float) Math.sqrt(vx * vx + vy * vy);
+                glut.glutBitmapString(GLUT.BITMAP_TIMES_ROMAN_24, String.format("vx,vy=%s,%s (%s) pix/s",
+                        engFmt.format(vx), engFmt.format(vy), engFmt.format(speed)));
+                gl.glPopMatrix();
+
             }
 
             // log.info("done rendering");

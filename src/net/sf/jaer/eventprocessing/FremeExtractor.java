@@ -11,6 +11,7 @@ import java.awt.geom.Point2D;
 import javax.swing.JFrame;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.freme.Freme;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -46,7 +47,7 @@ public abstract class FremeExtractor extends EventFilter2D{
     @return the output packet
      */
     @Override
-    public abstract EventPacket<?> filterPacket(EventPacket<?> in);
+    public abstract EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in);
     
     /** Subclasses implement this method to reset the custom processing.
      */

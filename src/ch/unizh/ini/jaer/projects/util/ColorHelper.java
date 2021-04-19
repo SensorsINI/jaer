@@ -51,6 +51,13 @@ public class ColorHelper
         return Math.abs(ident.hashCode()) % staticColors.size(); 
     }
 
+    /** Give RGB from HSB (hue saturation value)
+     * 
+     * @param h H is given on [0->6] or -1
+     * @param s S and V are given on [0->1].
+     * @param v S and V are given on [0->1].
+     * @return RGB vector 0-1 range
+     */
     public static float[] HSVtoRGB(float h, float s, float v)
     {
         // H is given on [0->6] or -1. S and V are given on [0->1].

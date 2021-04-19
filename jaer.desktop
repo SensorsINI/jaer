@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=jAER
+Comment=jAER AEViewer launcher
+Exec=/bin/bash "/home/tobi/Dropbox/Github/SensorsINI/jaer/jAERViewer_linux.sh"
+Terminal=false
+Type=Application
+Icon=/home/tobi/Dropbox/Github/SensorsINI/jaer/jaer.ico
+

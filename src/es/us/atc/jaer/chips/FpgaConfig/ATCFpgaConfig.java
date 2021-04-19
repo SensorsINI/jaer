@@ -5,6 +5,7 @@ import java.nio.IntBuffer;
 import java.util.Iterator;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
@@ -557,7 +558,7 @@ public class ATCFpgaConfig extends EventFilter2D {
     }
 
     @Override
-    public EventPacket<?> filterPacket(final EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
         // Don't modify events and packets going through.
         return (in);
     }

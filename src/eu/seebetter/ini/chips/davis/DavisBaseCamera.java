@@ -54,6 +54,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TextRendererScale;
@@ -173,7 +174,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         davisMenu.add(new JMenuItem(new ToggleEventsAction()));
         davisMenu.add(new JMenuItem(new ToggleFrameCaptureDisplayAction()));
         davisMenu.add(new JSeparator());
-        davisMenu.add(new JMenuItem(new ToggleAutoContrast()));
         davisMenu.add(new JMenuItem(new ToggleHistogram()));
         davisMenu.add(new JSeparator());
         davisMenu.add(new JMenuItem(new ToggleGlobalRollingShutter()));
@@ -181,6 +181,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         davisMenu.add(new JMenuItem(new ToggleAutoExposure()));
         davisMenu.add(new JMenuItem(new IncreaseAPSExposure()));
         davisMenu.add(new JMenuItem(new DecreaseExposureAction()));
+        davisMenu.add(new JSeparator());
+        davisMenu.add(new JMenuItem(new ToggleAutoContrast()));
+        davisMenu.add(new JMenuItem(new IncreaseImageContrast()));
+        davisMenu.add(new JMenuItem(new DecreaseImageContrast()));
         davisMenu.add(new JSeparator());
         davisMenu.add(new JMenuItem(new IncreaseFrameRateAction()));
         davisMenu.add(new JMenuItem(new DecreaseFrameRateAction()));
@@ -1562,8 +1566,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
-
-    final public class IncreaseAPSExposure extends DavisMenuAction {
+    
+        final public class IncreaseAPSExposure extends DavisMenuAction {
 
         public IncreaseAPSExposure() {
             super("Increase APS exposure",
@@ -1589,6 +1593,62 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
+
+
+    final public class IncreaseImageContrast extends DavisMenuAction {
+
+        public IncreaseImageContrast() {
+            super("Increase Image Contrast",
+                    "<html>Increases APS image constrast",
+                    "IncreaseImageContrast");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_MASK+ java.awt.event.InputEvent.CTRL_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                getDavisConfig().setUseAutoContrast(false);
+                float constrastNow=( getDavisConfig().getContrast());
+                float contrastNew = (exposureChangeFactor*constrastNow);
+                getDavisConfig().setContrast(contrastNew);
+            } catch (IllegalArgumentException ex) {
+            }
+            EngineeringFormat engFmt=new EngineeringFormat();
+
+            final String s = "Increased constrast to " + engFmt.format(getDavisConfig().getContrast());
+            log.info(s);
+            davisDisplayMethod.showActionText(s);
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+    
+        final public class DecreaseImageContrast extends DavisMenuAction {
+
+        public DecreaseImageContrast() {
+            super("Decrease Image Contrast",
+                    "<html>Decreases APS image constrast",
+                    "DecreaseImageContrast");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_MASK+ java.awt.event.InputEvent.CTRL_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                getDavisConfig().setUseAutoContrast(false);
+                float constrastNow=( getDavisConfig().getContrast());
+                float contrastNew = (constrastNow/exposureChangeFactor);
+                getDavisConfig().setContrast(contrastNew);
+            } catch (IllegalArgumentException ex) {
+            }
+            EngineeringFormat engFmt=new EngineeringFormat();
+
+            final String s = "Decreased constrast to " + engFmt.format(getDavisConfig().getContrast());
+            log.info(s);
+            davisDisplayMethod.showActionText(s);
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
 
     /**
      * Adds event capture/display option

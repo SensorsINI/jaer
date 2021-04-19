@@ -31,6 +31,7 @@ import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Computes cross corr between binaural cochleas
@@ -72,7 +73,7 @@ public class CochleaCrossCorrelator extends EventFilter2D implements FrameAnnota
 
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if(!isFilterEnabled()) {
 			return in;
 		}

@@ -1095,7 +1095,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         for (int y = 0; y < sizey; y++) {
             for (int x = 0; x < sizex; x++) {
                 final int idx = x + (sizey - y - 1) * chip.getSizeX();
-                float bufferValue = apsFrameExtractor.getDisplayBuffer()[idx];
+                float bufferValue = apsFrameExtractor.getRawFrame()[idx];
                 grayImageBuffer[x + y * chip.getSizeX()] = (byte)(int)(bufferValue * 0.5f);
             }
         }
@@ -2477,7 +2477,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (adaptiveSliceDurationLogging) {
             if (adaptiveSliceDurationLogger == null) {
                 adaptiveSliceDurationLogger = new TobiLogger("PatchMatchFlow-SliceDurationControl", "slice duration or event count control logging");
-                adaptiveSliceDurationLogger.setHeaderLine("systemTimeMs\tpacketNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
+                adaptiveSliceDurationLogger.setColumnHeaderLine("systemTimeMs\tpacketNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
+                adaptiveSliceDurationLogger.setSeparator("\t");
             }
             adaptiveSliceDurationLogger.setEnabled(adaptiveSliceDuration);
         }
@@ -3137,7 +3138,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (enableImuTimesliceLogging) {
             if (imuTimesliceLogger == null) {
                 imuTimesliceLogger = new TobiLogger("imuTimeslice.txt", "IMU rate gyro deg/s and patchmatch timeslice duration in ms");
-                imuTimesliceLogger.setHeaderLine("systemtime(ms) timestamp(us) timeslice(us) rate(deg/s)");
+                imuTimesliceLogger.setColumnHeaderLine("systemtime(ms) timestamp(us) timeslice(us) rate(deg/s)");
+                imuTimesliceLogger.setSeparator(" ");
             }
         }
         imuTimesliceLogger.setEnabled(enableImuTimesliceLogging);

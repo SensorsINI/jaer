@@ -17,6 +17,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTilt;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * The labyrinth hardware abstraction enables controlling the labyrinth table.
@@ -83,7 +84,7 @@ public class LabyrinthHardware extends EventFilter2D implements PropertyChangeLi
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         return in; // only handles control commands, no event processing
     }

@@ -145,7 +145,7 @@ public class Oscilloscope extends EventFilter2D implements Observer, FrameAnnota
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (manualTrigger && in.getSize() > 0) {
             startRecording(in.getFirstTimestamp());
         }

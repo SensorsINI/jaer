@@ -26,7 +26,6 @@ import java.util.Random;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
@@ -43,6 +42,7 @@ import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Controls slot car adaptively according to speed of humanMask controlled car
@@ -295,7 +295,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     Winner winner = Winner.NoneSoFar;
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         setBigStatusText(state.toString(), bigStatusColor);
         if (in.getSize() > 0) {
             lastTimestamp = in.getLastTimestamp(); // for logging

@@ -73,7 +73,7 @@ public class VerticalObjectMotionCell extends EventFilter2D implements FrameAnno
     private int lastVerticalObjectMotionCellSpikeCheckTimestamp = 0;
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!(in.getEventPrototype() instanceof PolarityEvent)) {
             return in;
         }

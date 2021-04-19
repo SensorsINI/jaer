@@ -2,7 +2,6 @@
  * To change this template, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package net.sf.jaer.biasgen;
 
 /**
@@ -11,9 +10,14 @@ package net.sf.jaer.biasgen;
  * @author tobi
  */
 public class PotTweakerUtilities {
-    private PotTweakerUtilities(){}
 
-    /** Convenience method that computes ratio from slider position and tweakability.
+    private PotTweakerUtilities() {
+    }
+
+    /**
+     * Convenience method that computes ratio from slider position and
+     * tweakability.
+     *
      * @param sliderValue -1:1 float value from slider
      * @param maxRatio output ranges from 1/maxRatio to maxRatio
      *
@@ -25,7 +29,25 @@ public class PotTweakerUtilities {
         return ratio;
     }
 
-    /** Convenience method that computes absolute change from slider position and tweakability.
+    /**
+     * Convenience method that computes ratio from slider position and
+     * tweakability.
+     *
+     * @param sliderValue -1:1 float value from slider
+     * @param minRatio output ranges from 1/minRatio to maxRatio
+     * @param maxRatio output ranges from 1/minRatio to maxRatio
+     *
+     * @return ratio from 1/maxRatio to maxRatio.
+     */
+    public static float getRatioTweak(float sliderValue, float minRatio, float maxRatio) {
+        float logratio = sliderValue > 0 ? (float) Math.log(maxRatio) : (float) Math.log(minRatio);
+        float ratio = (float) Math.exp(sliderValue * logratio);
+        return ratio;
+    }
+
+    /**
+     * Convenience method that computes absolute change from slider position and
+     * tweakability.
      *
      * @return absolute change from -tweakability to tweakability.
      */

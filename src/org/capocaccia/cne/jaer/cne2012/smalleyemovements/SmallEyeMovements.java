@@ -22,6 +22,7 @@ import net.sf.jaer.eventprocessing.filter.RotateFilter;
 import net.sf.jaer.graphics.ImageDisplay;
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Moves DVS128 using pantilt and maintains continuous image based on DVS
@@ -63,7 +64,7 @@ public class SmallEyeMovements extends EventFilter2D implements Observer, Proper
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         out = filterChain.filterPacket(in);
         if (resetImageFlag) {
             display.resetFrame(grayLevel);

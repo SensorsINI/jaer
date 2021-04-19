@@ -29,7 +29,7 @@ public class JaerTutorialFilter extends EventFilter2D implements FrameAnnotater 
     
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         for(BasicEvent e:in){
             xmean=(1-mixingFactor)*xmean+mixingFactor*e.x;
             ymean=(1-mixingFactor)*ymean+mixingFactor*e.y;

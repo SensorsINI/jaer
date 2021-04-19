@@ -7,6 +7,7 @@ package ch.unizh.ini.jaer.projects.virtualslotcar;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.tracking.ClusterInterface;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -86,7 +87,7 @@ public class SimpleSpeedController extends AbstractSlotCarController implements 
 
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         return in;
     }
 

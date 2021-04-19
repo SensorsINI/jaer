@@ -18,6 +18,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import ch.unizh.ini.jaer.chip.cochlea.BinauralCochleaEvent.Ear;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMSEvent;
 import com.jogamp.opengl.GLAutoDrawable;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * This is a filter for the retina with enclosed cluster tracker. It can send the tracking information to the panTiltThread
@@ -33,7 +34,7 @@ public class MultichipAMS1bEventProducer extends EventFilter2D implements FrameA
         initFilter();
     }
 
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!filterEnabled) {
             return in;
         }

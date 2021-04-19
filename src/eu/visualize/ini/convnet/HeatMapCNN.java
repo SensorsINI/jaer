@@ -20,12 +20,12 @@ import javax.swing.SwingUtilities;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
-import ch.unizh.ini.jaer.projects.util.ColorHelper;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GLException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.DavisRenderer;
@@ -87,7 +87,7 @@ public class HeatMapCNN extends DavisClassifierCNNProcessor{
 // initialization
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         targetLabeler.filterPacket(in);
         EventPacket out = super.filterPacket(in);
         return out;

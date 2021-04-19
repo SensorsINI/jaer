@@ -259,9 +259,11 @@ public class RemoteControl /* implements RemoteControlled */{
                     return;
                 }
                 if ( !cmdMap.containsKey(cmdTok) ){
-                    String s=String.format("%s is unknown command - type %s for help\n%s",line,HELP,PROMPT);
+                    String s=String.format("%s is unknown command - send %s for help.\n"
+                            + "This RemoteControl is on port %d. You may be using the wrong UDP port. Check the console output for other ports.\n" +
+                            "%s\n",line,HELP,port,PROMPT);
                     echo(s);
-                    log.warning(line+" is unknown command - send \""+HELP+"\" for help");
+                    log.warning(s);
                     return;
                 }
                 RemoteControlled controlled = controlledMap.get(cmdTok);

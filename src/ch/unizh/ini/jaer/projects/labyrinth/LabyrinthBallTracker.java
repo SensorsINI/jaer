@@ -130,7 +130,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!addedPropertyChangeListener) {
             ((DavisRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             addedPropertyChangeListener = true;

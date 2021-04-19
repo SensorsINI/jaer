@@ -20,4 +20,6 @@ The release notes can then be edited on github web page, if you are logged in an
 
 The release name should then be jaer-1.8.1, for example.
 
-View the build results at https://travis-ci.com/github/SensorsINI/jaer
+View the build results at https://travis-ci.com/github/SensorsINI/jaer .
+To add the OAuth secret github token for building, go to https://travis-ci.com/github/SensorsINI/jaer/settings. You need to login with github OAuth.
+To make a new token, if needed, login to https://github.com/settings/tokens ,

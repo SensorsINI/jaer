@@ -134,7 +134,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
             drawDepth(depth_image_reverse);
         }
         
-        float[] aps_image = apsFrameExtractor.getDisplayBuffer();
+        float[] aps_image = apsFrameExtractor.getRawFrame();
         float aps_image_max = IEEE754rUtils.max(aps_image);
         for (int index = 0; index < aps_image.length; index++) {
             aps_image[index] = aps_image[index]/aps_image_max;

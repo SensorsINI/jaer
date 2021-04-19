@@ -1031,7 +1031,7 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		synchronized (filteringLock) {
 			// causes a reset of the output iterator.
 			out.outputIterator();
@@ -1064,8 +1064,8 @@ public class SpatioTemporalFusion extends EventFilter2D { //implements ActionLis
 //			out.setEventClass(getChip().getEventClass());//PolarityEvent.class);
 
 			maxTime = Integer.MIN_VALUE;
-			if (in instanceof ApsDvsEventPacket<?>) {
-				Iterator<?> it = ((ApsDvsEventPacket<?>)in).fullIterator();
+			if (in instanceof ApsDvsEventPacket) {
+				Iterator<?> it = ((ApsDvsEventPacket<? extends BasicEvent>)in).fullIterator();
 				while (it.hasNext()) {
 					ApsDvsEvent ade = (ApsDvsEvent)it.next();
 					processEvent(ade, checkApsDvsEvent(ade));

@@ -193,6 +193,4 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
         getSupport().firePropertyChange("passShortISIsEnabled", old, passShortISIsEnabled);
     }
 
-
-
 }

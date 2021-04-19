@@ -74,6 +74,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
     protected int maxEvents = getInt("maxEvents", 0);
     protected ArrayList<String> additionalComments = new ArrayList();
     protected volatile boolean writeEnabled = false;
+    private int lastTimestampWritten = 0; // DEBUG nonmonotonic
 
     public DavisTextOutputWriter(AEChip chip) {
         super(chip);
@@ -90,10 +91,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
         setPropertyTooltip("imuSamples", "write IMU samples as one per line with format one measurement per line: timestamp(us) ax(g) ay(g) az(g) gx(d/s) gy(d/s) gz(d/s)");
         setPropertyTooltip("apsFrames", "write APS frames with format TBD");
         additionalComments.add("jAER DAVIS/DVS camera text file output");
-
     }
-
-    private int lastTimestampWritten = 0; // DEBUG nonmonotonic
 
     /**
      * Processes packet to write output
@@ -102,7 +100,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
      * @return input packet
      */
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!chipPropertyChangeListenerAdded) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
@@ -389,14 +387,10 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                     lastTimestampWritten, be.timestamp, (be.timestamp - lastTimestampWritten)));
         }
         lastTimestampWritten = be.timestamp;
-        eventsProcessed++;
+        setEventsProcessed(getEventsProcessed()+1); // also updates gui and writes out log message
         if (maxEvents > 0 && eventsProcessed >= maxEvents && isFilesOpen()) {
             log.info("wrote maxEvents=" + maxEvents + " events; closing files");
             doCloseFiles();
-        }
-        if (isFilesOpen() && eventsProcessed % LOG_EVERY_THIS_MANY_EVENTS == 0) {
-            log.info(String.format("wrote %d events", eventsProcessed));
-            getSupport().firePropertyChange("eventsWritten", null, eventsProcessed);
         }
     }
 
@@ -449,7 +443,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
             }
             ignoreRewinwdEventFlag = false;
         } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
-            if(getChip().getAeInputStream()==null){
+            if (getChip().getAeInputStream() == null) {
                 log.warning("getChip().getAeInputStream()==null; cannot add property change listener for rewind events");
                 return;
             }

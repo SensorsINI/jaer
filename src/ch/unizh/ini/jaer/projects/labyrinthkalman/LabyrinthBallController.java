@@ -32,6 +32,7 @@ import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthBallControllerInterface;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthHardware;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthMap.PathPoint;
 import ch.unizh.ini.jaer.projects.labyrinth.LabyrinthTableTiltControllerGUI;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * This filter enables controlling the tracked labyrinth ball.
@@ -124,7 +125,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
 	}
 
 	@Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		if (controllerEnabled) {
 			control(in, in.getLastTimestamp());
 		} // control is also called from callback via update from tracker

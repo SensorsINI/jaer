@@ -1083,7 +1083,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		}
 
 		/** Updates path (historical) information for this cluster, including cluster velocityPPT. */
-		final public void updatePath(EventPacket<?> in) {
+		final public void updatePath(EventPacket<? extends BasicEvent> in) {
 			if (!pathsEnabled) {
 				return;
 			}

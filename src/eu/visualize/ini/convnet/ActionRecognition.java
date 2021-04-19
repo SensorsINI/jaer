@@ -88,7 +88,7 @@ public class ActionRecognition extends DavisClassifierCNNProcessor implements Pr
     }
 
     @Override
-    public synchronized EventPacket<?> filterPacket(EventPacket<?> in) {
+    public synchronized EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         if (!addedPropertyChangeListener) {
             ((DavisRenderer) chip.getRenderer()).getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);

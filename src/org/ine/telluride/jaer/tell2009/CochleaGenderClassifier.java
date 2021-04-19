@@ -19,6 +19,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import net.sf.jaer.event.BasicEvent;
 /**
  * Extends ISIHistogrammer to use ISI histograms for gender classification based on pre-learned histograms.
  * @author tobi, shih-chii, nima, telluride 2009
@@ -61,7 +62,7 @@ public class CochleaGenderClassifier extends ISIHistogrammer implements FrameAnn
     private volatile float genderDotProduct = 0;
 
     @Override
-    public synchronized EventPacket<?> filterPacket (EventPacket<?> in){
+    public synchronized EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
         super.filterPacket(in);
         genderDotProduct = computeDotProduct();
         if ( genderDotProduct > (getGenderThreshold / SCALE) ){

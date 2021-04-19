@@ -20,6 +20,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -57,7 +58,7 @@ public class ProbFPNCorrectionFilter extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("overlayProbabilty","overlay the transmission probability on the graphics");
     }
 
-    synchronized public EventPacket<?> filterPacket (EventPacket<?> in){
+    synchronized public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
         if ( !isFilterEnabled() ){
             return in;
         }

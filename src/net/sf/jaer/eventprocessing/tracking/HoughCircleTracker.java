@@ -568,7 +568,7 @@ public class HoughCircleTracker extends EventFilter2D implements FrameAnnotater 
 	}
 
 	@Override
-	synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+	synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 		cameraY=chip.getSizeY();
 		cameraX=chip.getSizeX();
 

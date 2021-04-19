@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.TobiLogger;
 
 /**
  * Plays DVS & DAVIS recordings (with APS frames) at either constant time per
@@ -67,6 +68,10 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     private final int SHOW_STUFF_DURATION_MS = 4000;
     private volatile TimerTask stopShowingStuffTask = null;
 
+    private boolean enablePacketDurationLogging = false;
+    private TobiLogger actualPacketDurationLogger = null;
+    private int sliceDurationPacketCount = 0;
+
     public FlexTimePlayer(AEChip chip) {
         super(chip);
         setPropertyTooltip("constantEventNumber", "Number of DVS events per packet");
@@ -89,7 +94,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         Iterator<BasicEvent> i = null, leftOverIterator = null;
         if (in instanceof ApsDvsEventPacket) {
             i = ((ApsDvsEventPacket) in).fullIterator();
@@ -156,6 +161,12 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                             resetPacket = true;
                             packetEventCount = eventCounter;
                             eventCounter = 0;
+
+                            // Store duration and event count to file if logging is enabled
+                            if (actualPacketDurationLogger != null && actualPacketDurationLogger.isEnabled()) {
+                                actualPacketDurationLogger.log(String.format("%d\t%d\t%d", sliceDurationPacketCount++, packetDurationUs, packetEventCount));
+                            }
+                            
                             OutputEventIterator<ApsDvsEvent> iLeftOver = leftOverEvents.outputIterator();
                             while (i.hasNext()) {
                                 BasicEvent eLeftOver = i.next();
@@ -365,4 +376,25 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         showAreasForAreaCountsTemporarily();
     }
 
+    /**
+     * @return the isEnablePacketDurationLogging
+     */
+    public boolean isEnablePacketDurationLogging() {
+        return enablePacketDurationLogging;
+    }
+
+    /**
+     * @param enableImuTimesliceLogging the enableImuTimesliceLogging to set
+     */
+    public void setEnablePacketDurationLogging(boolean enableImuTimesliceLogging) {
+        this.enablePacketDurationLogging = enableImuTimesliceLogging;
+        if (enableImuTimesliceLogging) {
+            if (actualPacketDurationLogger == null) {
+                actualPacketDurationLogger = new TobiLogger("FlexTimePlayer-ActualPacketDuration", "slice duration and event count logging");
+                actualPacketDurationLogger.setColumnHeaderLine("systemTimeMs\tpacketNumber\tsliceDurationUs\tsliceEventCount");
+                actualPacketDurationLogger.setSeparator("\t");
+            }
+        }
+        actualPacketDurationLogger.setEnabled(enableImuTimesliceLogging);
+    }    
 }

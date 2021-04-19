@@ -88,7 +88,7 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
 //     * @return input packet
 //     */
 //    @Override
-//    public EventPacket<?> filterPacket(EventPacket<?> in) {
+//    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 //        if (!allocateMemory()) {
 //            return in;
 //        }

@@ -166,7 +166,7 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
-    protected int jogPacketCount = 30;
+    protected int jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 20);
     protected int jogPacketsLeft = 0;
     protected boolean jogOccuring = false;
 
@@ -175,7 +175,8 @@ public abstract class AbstractAEPlayer {
     abstract public AEPacketRaw getNextPacket(AbstractAEPlayer player);
 
     abstract public AEPacketRaw getNextPacket();
-
+    private double SPEED_UP_SLOW_DOWN_FACTOR=Math.pow(2,0.25);
+    
     /**
      * Speeds up the playback so that more time or more events are displayed per
      * slice.
@@ -183,9 +184,9 @@ public abstract class AbstractAEPlayer {
      */
     public void speedUp() {
         if (isFlexTimeEnabled()) {
-            setPacketSizeEvents(getPacketSizeEvents() * 2);
+            setPacketSizeEvents((int)Math.round(getPacketSizeEvents() * SPEED_UP_SLOW_DOWN_FACTOR));
         } else {
-            long newTimeSlice = (long) getTimesliceUs() * 2;
+            long newTimeSlice = (long) Math.round(getTimesliceUs() * SPEED_UP_SLOW_DOWN_FACTOR);
             if (newTimeSlice > (long) Integer.MAX_VALUE) {
                 newTimeSlice = Integer.MAX_VALUE; // clip to avoid negative slices sizes for slices > 2G us
             }
@@ -201,12 +202,12 @@ public abstract class AbstractAEPlayer {
      */
     public void slowDown() {
         if (isFlexTimeEnabled()) {
-            setPacketSizeEvents(getPacketSizeEvents() / 2);
+            setPacketSizeEvents((int)Math.round(getPacketSizeEvents() / SPEED_UP_SLOW_DOWN_FACTOR));
             if (getPacketSizeEvents() == 0) {
                 setPacketSizeEvents(1);
             }
         } else {
-            setTimesliceUs(getTimesliceUs() / 2);
+            setTimesliceUs((int) Math.round(getTimesliceUs() / SPEED_UP_SLOW_DOWN_FACTOR));
             if (getTimesliceUs() == 0) {
                 log.info("tried to reduce timeslice below 1us, clipped to 1us");
                 setTimesliceUs(1);
@@ -221,14 +222,14 @@ public abstract class AbstractAEPlayer {
 //        log.info("new time and event slice durations are " + getTimesliceUs() + " us and " + getPacketSizeEvents() + "events");
     }
 
-    public void jogForwards() {
+    public void jogForwards(int packets) {
         jogOccuring = true;
-        jogPacketsLeft += jogPacketCount;
+        jogPacketsLeft += packets;
     }
 
-    public void jogBackwards() {
+    public void jogBackwards(int packets) {
         jogOccuring = true;
-        jogPacketsLeft -= jogPacketCount;
+        jogPacketsLeft -= packets;
     }
 
     public void cancelJog() {
@@ -717,8 +718,8 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
-            jogForwards();
+            showAction(String.format("Jog forwards %d",getJogPacketCount()));
+            jogForwards(getJogPacketCount());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -731,8 +732,8 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction();
-            jogBackwards();
+            showAction(String.format("Jog backwards %d",getJogPacketCount()));
+            jogBackwards(getJogPacketCount());
             putValue(Action.SELECTED_KEY, true);
         }
     }
@@ -781,7 +782,7 @@ public abstract class AbstractAEPlayer {
      * @return the jogPacketCount
      */
     public int getJogPacketCount() {
-        return jogPacketCount;
+        return this.jogPacketCount;
     }
 
     /**
@@ -789,5 +790,6 @@ public abstract class AbstractAEPlayer {
      */
     public void setJogPacketCount(int jogPacketCount) {
         this.jogPacketCount = jogPacketCount;
+        viewer.prefs.putInt("AbstractAEPlayer.jogPacketCount", jogPacketCount);
     }
 }

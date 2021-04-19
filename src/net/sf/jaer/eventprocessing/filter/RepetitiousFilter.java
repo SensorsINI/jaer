@@ -8,14 +8,13 @@
  * Open. You can then make changes to the template in the Source Editor.
  */
 package net.sf.jaer.eventprocessing.filter;
-import java.util.Observable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 /**
  * An AE filter that filters out boring repetitive events.
  *It does this by maintaining an internal map of boring cells (x,y,type). These are boring because they are repetitive. An event is
@@ -36,7 +35,7 @@ Fires PropertyChangeEvent for the following
  * @author tobi
  */
 @Description("Filters out (or in) repetitious (boring) events")
-public class RepetitiousFilter extends EventFilter2D {
+public class RepetitiousFilter extends AbstractNoiseFilter {
 
     /** factor different than previous dt for this cell to pass through filter */
     private int ratioShorter = getPrefs().getInt("RepetitiousFilter.ratioShorter",2);
@@ -147,7 +146,7 @@ public class RepetitiousFilter extends EventFilter2D {
         allocateMap();
     }
 
-    public EventPacket<?> filterPacket (EventPacket<?> in){
+    public EventPacket<? extends BasicEvent> filterPacket (EventPacket<? extends BasicEvent> in){
         checkOutputPacketEventType(in);
         checkMap();
         int n = in.getSize();
@@ -181,12 +180,12 @@ public class RepetitiousFilter extends EventFilter2D {
                 repetitious = thisdt < avgDt * ratioLonger && thisdt > avgDt / ratioShorter; // true if event is repetitious
             }
             if ( !passRepetitiousEvents ){
-                if ( !repetitious ){
-                    o.nextOutput().copyFrom(e);
+                if ( repetitious ){
+                    filterOut(e);
                 }
             } else{ // pass boring events
-                if ( repetitious ){
-                    o.nextOutput().copyFrom(e);
+                if ( !repetitious ){
+                    filterOut(e);
                 }
             }
             // update the map
@@ -202,7 +201,7 @@ public class RepetitiousFilter extends EventFilter2D {
                 avgDtMap[e.x][e.y][e.type] = (int)( avgDt * ( 1 - alpha ) + thisdt * ( alpha ) );
             }
         }
-        return out;
+        return in;
     }
 
     public boolean getPassRepetitiousEvents (){
@@ -227,4 +226,5 @@ public class RepetitiousFilter extends EventFilter2D {
     public void setExcludeHarmonics (boolean excludeHarmonics){
         this.excludeHarmonics = excludeHarmonics;
     }
+
 }

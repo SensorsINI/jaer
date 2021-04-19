@@ -105,7 +105,7 @@ MA 02110-1301  USA
         <!--        <dependency org="com.github.fommil.netlib" name="native_system-java" rev="1.1" />
         <dependency org="com.github.fommil.netlib" name="core" rev="1.1.2" />-->
         <dependency org="org.usb4java" name="usb4java" rev="1.2.0" />
-        <dependency org="com.google.guava" name="guava" rev="18.0" />
+        <!--<dependency org="com.google.guava" name="guava" rev="30.1-jre" />-->
         <!--libusb4java needs following to work around bug in maven that incorrectly constucts the ivy dependency - see https://github.com/sbt/sbt/issues/285 -->
         <dependency org="org.usb4java" name="libusb4java" rev="1.2.0">
             <artifact name="libusb4java" type="jar" ext="jar" m:classifier="osx-x86_64"/>
@@ -161,7 +161,11 @@ MA 02110-1301  USA
         <dependency org="org.apache.ant" name="ant-commons-net" rev="1.10.8" />
         
         <!-- used for numpy data file format npy and npz support in JVM -->
-        <dependency org="org.jetbrains.bio" name="npy" rev="0.3.3"/>      
+        <!--<dependency org="org.jetbrains.bio" name="npy" rev="0.3.3"/>-->      
+        
+        <dependency org="joda-time" name="joda-time" rev="2.10.6">
+            <artifact name="joda-time" type="jar" />
+        </dependency>
              
     </dependencies>
 </ivy-module>

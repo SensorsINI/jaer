@@ -26,6 +26,7 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AESocket;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -152,7 +153,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
         }
 
         @Override
-		public EventPacket<?> filterPacket(EventPacket<?> in) {
+		public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
             if (!isFilterEnabled()) {
                 return in;
             }
@@ -339,7 +340,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
     @return the output packet, which is the output of the enclosed filter chain.
      */
     @Override
-	public EventPacket<?> filterPacket(EventPacket<?> in) {
+	public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         // debug, for state estimation
         tobiLogger.log(radioSpeed + " " + radioSteer + " " + accelerometer.getAcceleration());
         if (!isFilterEnabled()) {

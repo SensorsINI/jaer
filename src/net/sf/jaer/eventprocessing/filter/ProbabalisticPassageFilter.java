@@ -9,6 +9,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -35,7 +36,7 @@ public class ProbabalisticPassageFilter extends EventFilter2D{
      * @return the output packet, where events have possibly been deleted from the input
      */
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if(!isFilterEnabled()) return in;
         checkOutputPacketEventType(in); // make sure the built-in output packet has same event type as input packet
         OutputEventIterator outItr=out.outputIterator(); // getString the built in iterator for output events

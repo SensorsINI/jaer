@@ -132,7 +132,7 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
      * @param in the input packet
      * @return the output packet
      */
-    public abstract EventPacket<?> filterPacket(EventPacket<?> in);
+    public abstract EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in);
 
     /**
      * Subclasses should call this super initializer

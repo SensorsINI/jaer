@@ -33,27 +33,26 @@ public class EventRateEstimator extends EventFilter2D {
      */
     public static final String EVENT_RATE_UPDATE = "EVENT_RATE_UPDATE";
 
-    protected LowpassFilter filter = new LowpassFilter();
+//    protected LowpassFilter filter = new LowpassFilter();
     private int lastComputeTimestamp = 0;
+    private boolean initialized = false;
     private float maxRate = getFloat("maxRate", 10e6f);
     private float filteredRate = 0, instantaneousRate = 0;
     private float eventRateTauMs = getFloat("eventRateTauMs", 100);
-    private int eventRateTauUs = (int) (eventRateTauMs * 1000);
     /* Event rate estimates are sent to observers this many times per tau */
     protected int UPDATE_RATE_TAU_DIVIDER = 1;
-    private boolean initialized = false;
     private int numEventsSinceLastUpdate = 0;
     private int numEventsInLastPacket = 0;
 
     public EventRateEstimator(AEChip chip) {
         super(chip);
-        filter.setTauMs(eventRateTauMs);
+//        filter.setTauMs(eventRateTauMs);
         setPropertyTooltip("eventRateTauMs", "lowpass filter time constant in ms for measuring event rate");
         setPropertyTooltip("maxRate", "maximum estimated rate, which is used for zero ISIs between packets");
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (in == null || in.getSize() == 0) {
             return in; // if there are no events, don't touch values since we don't have a new update time
         }
@@ -71,7 +70,7 @@ public class EventRateEstimator extends EventFilter2D {
      * @param in
      * @return true if event updated rate, false otherwise
      */
-    protected boolean addEvent(BasicEvent e, EventPacket<?> in) {
+    protected boolean addEvent(BasicEvent e, EventPacket<? extends BasicEvent> in) {
         if (e.isSpecial()) {
             return false;
         }
@@ -89,7 +88,7 @@ public class EventRateEstimator extends EventFilter2D {
             return false; // just ignore this event entirely
         }
         numEventsSinceLastUpdate++;
-        if (dt >= eventRateTauUs / UPDATE_RATE_TAU_DIVIDER) {
+        if (dt >= 1000*eventRateTauMs / UPDATE_RATE_TAU_DIVIDER) {
 //                System.out.println("            rate update dt="+dt/1000+" ms");
             lastComputeTimestamp = e.timestamp;
             instantaneousRate = 1e6f * (float) numEventsSinceLastUpdate / (dt * AEConstants.TICK_DEFAULT_US);
@@ -104,11 +103,15 @@ public class EventRateEstimator extends EventFilter2D {
 
     @Override
     public void resetFilter() {
-        filter.reset();
+//        filter.reset();
+        initialized=false;
+        filteredRate=Float.NaN;
+        instantaneousRate=Float.NaN;
     }
 
     @Override
     public void initFilter() {
+        resetFilter();
     }
 
     @Override
@@ -124,13 +127,13 @@ public class EventRateEstimator extends EventFilter2D {
      * Time constant of event rate lowpass filter in ms
      */
     public void setEventRateTauMs(float eventRateTauMs) {
+        float old=this.eventRateTauMs;
         if (eventRateTauMs < 0) {
             eventRateTauMs = 0;
         }
         this.eventRateTauMs = eventRateTauMs;
-        eventRateTauUs = (int) (eventRateTauMs * 1000);
-        filter.setTauMs(eventRateTauMs);
         putFloat("eventRateTauMs", eventRateTauMs);
+        getSupport().firePropertyChange("eventRateTauMs", old, this.eventRateTauMs);
     }
 
     /**

@@ -228,7 +228,7 @@ public class SpikingCNN extends EventFilter2D implements FrameAnnotater {
 
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in){
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in){
         List<Float> times = new ArrayList<>();
         List<Integer> y = new ArrayList<>();
         List<Integer> x = new ArrayList<>();

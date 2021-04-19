@@ -181,7 +181,7 @@ import net.sf.jaer.util.EngineeringFormat;
  * final String size="Size", tim="Timing";
  *
  * setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
- * setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
+ * setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this KEY_FACTOR times minDtThreshold to reduce noise");
  * setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
  * setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
  * </pre>
@@ -269,6 +269,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     // checks for group container and adds to that if needed.
     private void myadd(MyControl comp, String propertyName, boolean inherited) {
+//        if(propertyControlMap.containsKey(propertyName)){
+//            log.warning("controls already has "+propertyControlMap.get(propertyName));
+//        }
         if (!getFilter().hasPropertyGroups()) {
             ungroupedControls.add(comp);
             controls.add(comp);
@@ -689,7 +692,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     class MyControl extends JPanel {
 
         @Override
-		public Dimension getMaximumSize() {
+        public Dimension getMaximumSize() {
             Dimension d = getPreferredSize();
             d.setSize(1000, d.getHeight());
             return d;
@@ -710,7 +713,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public EnumControl(final Class<? extends Enum> c, final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -770,7 +773,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public StringControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -814,7 +817,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
         }
     }
-    final float factor = 1.51f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel
+    private final float KEY_FACTOR = (float) Math.sqrt(2), WHEEL_FACTOR = (float) Math.pow(2, 1. / 16); // factors to change by with arrow and mouse wheel
 
     class BooleanControl extends MyControl implements HasSetter {
 
@@ -825,7 +828,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public BooleanControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -896,7 +899,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public IntSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -984,7 +987,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public FloatSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -1047,13 +1050,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
-                tf.setText(b.toString());
+                String s = NumberFormat.getIntegerInstance().format(b);
+                tf.setText(s);
             }
         }
 
         public IntControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -1141,7 +1145,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (nval == 0) {
                                     nval = 1;
                                 } else {
-                                    nval = Math.round(initValue * factor);
+                                    nval = Math.round(initValue * KEY_FACTOR);
                                 }
                                 w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -1157,7 +1161,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (nval == 0) {
                                     nval = 0;
                                 } else {
-                                    nval = Math.round(initValue / factor);
+                                    nval = Math.round(initValue / KEY_FACTOR);
                                 }
                                 w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -1216,8 +1220,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             }
             );
-            tf.addMouseWheelListener(
-                    new java.awt.event.MouseWheelListener() {
+            tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
 
                 @Override
                 public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt
@@ -1239,10 +1242,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         if (code < 0) {
                             try {
                                 nval = initValue;
-                                if (Math.round(initValue * wheelFactor) == initValue) {
+                                if (Math.round(initValue * WHEEL_FACTOR) == initValue) {
                                     nval++;
                                 } else {
-                                    nval = Math.round(initValue * wheelFactor);
+                                    nval = Math.round(initValue * WHEEL_FACTOR);
                                 }
                                 w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -1255,10 +1258,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         } else if (code > 0) {
                             try {
                                 nval = initValue;
-                                if (Math.round(initValue / wheelFactor) == initValue) {
+                                if (Math.round(initValue / WHEEL_FACTOR) == initValue) {
                                     nval--;
                                 } else {
-                                    nval = Math.round(initValue / wheelFactor);
+                                    nval = Math.round(initValue / WHEEL_FACTOR);
                                 }
                                 if (nval < 0) {
                                     nval = 0;
@@ -1325,13 +1328,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public void set(Object o) {
             if (o instanceof Float) {
                 Float b = (Float) o;
-                tf.setText(b.toString());
+                tf.setText(engFmt.format(b));
+            } else if (o instanceof Integer) {
+                int b = (Integer) o;
+                tf.setText(engFmt.format((float) b));
             }
         }
 
         public FloatControl(final EventFilter f, final String name, final Method w, final Method r) {
             super();
-            setterMap.put(name, this);
+            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
             filter = f;
             write = w;
             read = r;
@@ -1400,9 +1406,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     int code = evt.getKeyCode();
                     int mod = evt.getModifiers();
                     boolean shift = evt.isShiftDown();
-                    float floatFactor = factor;
+                    float floatFactor = KEY_FACTOR;
                     if (shift) {
-                        floatFactor = 1 + ((wheelFactor - 1) / 4);
+                        floatFactor = 1 + ((WHEEL_FACTOR - 1) / 4);
                     }
                     if (code == KeyEvent.VK_UP) {
                         try {
@@ -1464,7 +1470,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (nval == 0) {
                                     nval = DEFAULT_REAL_VALUE;
                                 } else {
-                                    nval = (initValue * wheelFactor);
+                                    nval = (initValue * WHEEL_FACTOR);
                                 }
                                 w.invoke(filter, new Float(nval)); // setter the value
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
@@ -1481,9 +1487,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 if (nval == 0) {
                                     nval = DEFAULT_REAL_VALUE;
                                 } else {
-                                    nval = (initValue / wheelFactor);
+                                    nval = (initValue / WHEEL_FACTOR);
                                 }
-                                w.invoke(filter, new Float(initValue / wheelFactor));
+                                w.invoke(filter, new Float(initValue / WHEEL_FACTOR));
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
                                 tf.setText(engFmt.format(nval));
@@ -1532,6 +1538,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 boolean yes = (Boolean) propertyChangeEvent.getNewValue();
                 enabledCheckBox.setSelected(yes);
                 setBorderActive(yes);
+//                if (yes) {
+//                    log.info("selecting checkbox from " + propertyChangeEvent);
+//                }
             } else {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
@@ -1539,13 +1548,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                	final HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                    final HasSetter setter = setterMap.get(getFilter().getClass().getSimpleName() + "." + propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
                             printedSetterWarning = true;
                         }
                     } else {
+//                        log.info("setting "+setter.toString()+" to "+propertyChangeEvent.getNewValue());
                         if (SwingUtilities.isEventDispatchThread()) {
                             setter.set(propertyChangeEvent.getNewValue());
                         } else {
@@ -1663,7 +1673,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         Container c = getTopLevelAncestor();
         if (c == null) {
             return;
-        } 
+        }
 
         // TODO fix bug here with enclosed filters not showing up if they are enclosed in enclosed filter, unless they are declared as enclosed
         if (!getFilter().isEnclosed() && ((c instanceof Window))) {

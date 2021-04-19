@@ -8,14 +8,8 @@ package net.sf.jaer.eventprocessing.filter;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
-import java.util.Observable;
-import java.util.Observer;
-import java.util.TimeZone;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -45,10 +39,12 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -99,10 +95,15 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private boolean logStatistics = false;
     private TobiLogger tobiLogger = null;
     private boolean showAccumulatedEventCount = getBoolean("showAccumulatedEventCount", true);
+    private boolean measureSparsity = getBoolean("measureSparsity", false);
+    boolean[][] sparsityMap = null;
+    private float sparsity = 0;
+
     private long accumulatedDVSEventCount = 0, accumulatedAPSSampleCount = 0, accumulatedIMUSampleCount = 0;
     private long accumulatedDVSOnEventCount = 0, accumulatedDVSOffEventCount = 0;
     private long accumulateTimeUs = 0;
     private boolean resetTimeOnNextPacket = false;
+    private String INFO_FIELDS = "updateTimeMs, eventRateHz,accumulateTimeUs,accumulatedDVSOnEventCount,accumulatedDVSOffEventCount,accumulatedDVSEventCount,accumulatedAPSSampleCount,accumulatedIMUSampleCount";
 
     /**
      * computes the absolute time (since 1970) or relative time (in file) given
@@ -143,35 +144,35 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (logStatistics) {
             if (!this.logStatistics) {
                 setEventRate(true);
-                String s = "# statistics from Info filter logged starting at " + new Date() + " and originating from ";
+                String s = "statistics from Info filter logged starting at " + new Date() + " and originating from ";
                 if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
                     s = s + " file " + chip.getAeViewer().getAePlayer().getAEInputStream().getFile().toString();
                 } else {
                     s = s + " input during PlayMode=" + chip.getAeViewer().getPlayMode().toString();
                 }
-                s = s + "\n# evenRateFilterTauMs=" + typedEventRateEstimator.getEventRateTauMs();
-                s = s + "\n#relativeLoggingTimeMs\tabsDataTimeSince1970Ms\teventRateHz";
+                s = s + "\neventRateFilterTauMs=" + typedEventRateEstimator.getEventRateTauMs();
 
                 if (tobiLogger == null) {
                     tobiLogger = new TobiLogger("Info", s);
-                } else {
-                    tobiLogger.setHeaderLine(s);
+                    tobiLogger.setFileCommentString(s);
+                    tobiLogger.setColumnHeaderLine(INFO_FIELDS);
                 }
                 tobiLogger.setEnabled(true);
             }
         } else if (this.logStatistics) {
             tobiLogger.setEnabled(false);
             log.info("stopped logging Info data to " + tobiLogger);
+            tobiLogger.showFolderInDesktop();
         }
         this.logStatistics = logStatistics;
         getSupport().firePropertyChange("logStatistics", old, this.logStatistics);
     }
 
-    public void doStartLogging() {
+    public void doToggleOnLogStatistics() {
         setLogStatistics(true);
     }
 
-    public void doStopLogging() {
+    public void doToggleOffLogStatistics() {
         setLogStatistics(false);
     }
 
@@ -384,9 +385,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
         setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
-        setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the startup folder (host/java). <p>See the logging output for the file location.");
+        setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
+        setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip("toggleLogStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
         setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
         setPropertyTooltip("resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
+        setPropertyTooltip("measureSparsity", "Report fraction of pixels with no events in last packet.");
     }
     private boolean increaseWrappingCorrectionOnNextPacket = false;
 
@@ -470,12 +474,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     }
                     if (!typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
                         rateHistories.get(typedEventRateEstimator).addSample(updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
-                    }else{
+                    } else {
                         rateHistories.get(msg.source).addSample(updateTimeMs, ((EventRateEstimator) msg.source).getFilteredEventRate());
                     }
                 }
                 if (logStatistics) {
-                    String s = String.format("%20d\t%20.2g", updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
+                    // see INFO_FIELDS
+                    String columnHeaders = INFO_FIELDS; // only for reference while developing
+                    String s = String.format("%d,%g,%d,%d,%d,%d,%d,%d",
+                            updateTimeMs, typedEventRateEstimator.getFilteredEventRate(),
+                            accumulateTimeUs,
+                            accumulatedDVSOnEventCount, accumulatedDVSOffEventCount, accumulatedDVSEventCount,
+                            accumulatedAPSSampleCount, accumulatedIMUSampleCount);
                     tobiLogger.log(s);
                 }
             }
@@ -505,7 +515,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!addedViewerPropertyChangeListener) {
             if (chip.getAeViewer() != null) {
                 chip.getAeViewer().addPropertyChangeListener(this);
@@ -535,6 +545,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             //            System.out.println("In Info, because flag was set, increased wrapping correction by "+(wrappingCorrectionMs-old));
             log.info("because flag was set, increased wrapping correction by " + (wrappingCorrectionMs - old));
         }
+        if (measureSparsity) {
+            for (boolean[] b : sparsityMap) {
+                Arrays.fill(b, false);
+            }
+        }
         if (in instanceof ApsDvsEventPacket) {
             ApsDvsEventPacket apsPkt = (ApsDvsEventPacket) in;
             Iterator<ApsDvsEvent> i = apsPkt.fullIterator();
@@ -551,10 +566,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     } else if (e.getPolarity() == Polarity.Off) {
                         accumulatedDVSOffEventCount++;
                     }
+                    if (measureSparsity) {
+                        sparsityMap[e.x][e.y] = true;
+                    }
                 }
             }
         } else {
             accumulatedDVSEventCount += in.getSize();
+            if (measureSparsity) {
+                for (BasicEvent e : in) {
+                    sparsityMap[e.x][e.y] = true;
+                }
+            }
         }
         accumulateTimeUs += in.getDurationUs();
 
@@ -563,6 +586,17 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (resetTimeEnabled) {
             resetTimeEnabled = false;
             resetTimeOnNextPacket = true;
+        }
+        if (measureSparsity) {
+            int occupiedCount = 0;
+            for (boolean[] ba : sparsityMap) {
+                for (boolean b : ba) {
+                    if (b) {
+                        occupiedCount++;
+                    }
+                }
+            }
+            sparsity = (float) (chip.getNumPixels() - occupiedCount) / chip.getNumPixels();
         }
         return in;
     }
@@ -576,6 +610,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     @Override
     public void initFilter() {
+        sparsityMap = new boolean[chip.getSizeX()][chip.getSizeY()];
     }
     GLU glu = null;
     GLUquadric wheelQuad;
@@ -590,6 +625,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion());
         }
         drawRateSamples(drawable);
+        if (measureSparsity) {
+            GLUT glut = chip.getCanvas().getGlut();
+            gl.glRasterPos3f(10, (int) (chip.getSizeY() * .6f), 0);
+            String s = String.format("Sparsity: %.2f%%", sparsity * 100);
+            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+        }
+
     }
 
     private void drawClock(GL2 gl, long t) {
@@ -970,6 +1012,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setResetTimeOnRewind(boolean resetTimeOnRewind) {
         this.resetTimeOnRewind = resetTimeOnRewind;
         putBoolean("resetTimeOnRewind", resetTimeOnRewind);
+    }
+
+    /**
+     * @return the measureSparsity
+     */
+    public boolean isMeasureSparsity() {
+        return measureSparsity;
+    }
+
+    /**
+     * @param measureSparsity the measureSparsity to set
+     */
+    public void setMeasureSparsity(boolean measureSparsity) {
+        this.measureSparsity = measureSparsity;
+        putBoolean("measureSparsity", measureSparsity);
     }
 
 }

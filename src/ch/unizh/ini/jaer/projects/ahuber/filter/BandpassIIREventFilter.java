@@ -192,7 +192,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
     }
 
     @Override
-    synchronized public EventPacket<?> filterPacket(EventPacket<?> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         checkMemory();
         if (!addedViewerPropertyChangeListener) {
             if (chip.getAeViewer() != null) {

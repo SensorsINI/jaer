@@ -25,7 +25,6 @@ import java.util.Random;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
@@ -41,6 +40,7 @@ import net.sf.jaer.util.StateMachineStates;
 import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import net.sf.jaer.event.BasicEvent;
 
 /**
  * Learns the throttle at different part of the track.
@@ -187,7 +187,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
     }
 
     @Override
-    public EventPacket<?> filterPacket(EventPacket<?> in) {
+    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 
         if (in.getSize() > 0) {
             lastTimestamp = in.getLastTimestamp(); // for logging

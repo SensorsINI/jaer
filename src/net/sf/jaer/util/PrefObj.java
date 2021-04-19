@@ -5,7 +5,9 @@ package net.sf.jaer.util;
 import java.io.*;
 import java.util.prefs.*;
 
-/** Stores objects and loads them from Java Preferences. 
+/**
+ * Stores objects and loads them from Java Preferences, even if they are larger than what a Preferences value can hold individually.
+ * 
  * From https://www.ibm.com/developerworks/library/j-prefapi/index.html
  * */
 public class PrefObj
