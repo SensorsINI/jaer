@@ -4,3 +4,4 @@
 /lib
 /ivy
 /jars unused/**
+/dist/

@@ -228,6 +228,20 @@ public class ApsDvsEvent extends PolarityEvent {
 		G,
 		B
 	}
+        
+        /**
+	 * Tells for the polarization filter associated with the APS measurement:
+         * F_0: 0 degree
+         * F_45: 45 degrees
+         * F_90: 90 degrees
+         * F135: 135 degrees
+         */
+	public enum PolarizationFilter {
+		F_0,
+		F_45,
+		F_90,
+		F_135
+	}
 
 	private ColorFilter colorFilter = ColorFilter.W;
 
