@@ -484,28 +484,29 @@ public class ApsFrameExtractor extends EventFilter2D {
 
     /**
      * Empty method called when a new frame is complete and available in
-     * frameBuffer. Subclasses can override to process the available frame at
+     * rawFrame. Subclasses can override to process the available frame at
      * this point.
+     * @see #rawFrame
      */
     protected void processEndOfFrameReadout(ApsDvsEvent e) {
     }
 
     /**
-     * Empty method called when a new frame is starts to be read out.
+     * Empty method called when a new frame is started to be read out.
      */
-    private void processStartOfFrameReadout(ApsDvsEvent e) {
+    protected void processStartOfFrameReadout(ApsDvsEvent e) {
     }
 
     /**
-     * Empty method called when a new frame exposure was completed.
+     * Empty method called when a new frame exposure has completed.
      */
-    private void processEndOfExposure(ApsDvsEvent e) {
+    protected void processEndOfExposure(ApsDvsEvent e) {
     }
 
     /**
      * Empty method called when a new frame exposure was started.
      */
-    private void processStartOfExposure(ApsDvsEvent e) {
+    protected void processStartOfExposure(ApsDvsEvent e) {
     }
 
     /**
