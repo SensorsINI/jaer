@@ -5,7 +5,6 @@
 package ch.unizh.ini.jaer.projects.davis.frames;
 
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
-import eu.seebetter.ini.chips.DavisChip;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Point2D;
@@ -16,14 +15,10 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.InputEventIterator;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -61,24 +56,14 @@ import net.sf.jaer.util.EngineeringFormat;
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 public class DavisComplementaryFilter extends ApsFrameExtractor {
 
-    /**
-     * A boolean to set whether the OpenGL acceleration should be used
-     */
-//    private boolean useOpenCV = getPrefs().getBoolean("ApsFrameExtrapolation.useOpenCV", false);
-//    {setPropertyTooltip("useOpenCV", "A boolean to set whether the OpenGL acceleration should be used");}
-//    private boolean revertLearning = getBoolean("revertLearning", false);
-//    private boolean displayError = getBoolean("displayError", false);
-//    private boolean freezeGains = getBoolean("freezeGains", false);
-//    private boolean clipping = getBoolean("clipping", true);
-//    private boolean fixThresholdsToAverage = getBoolean("fixThresholdsToAverage", true);
-    protected float onThreshold = getFloat("onThreshold", 0.001f);
-    protected float offThreshold = getFloat("offThreshold", -0.001f);
-
-    private float[] logBaseFrame, logFinalFrame, displayed01Frame; // the log of the last APS frame and the final log CF frame
-
+    protected float onThreshold = getFloat("onThreshold", 0.25f);
+    protected float offThreshold = getFloat("offThreshold", -0.25f);
+    
+    private float[] logBaseFrame, displayed01Frame;
+    public float [] logFinalFrame; 
     protected float crossoverFrequencyHz = getFloat("crossoverFrequencyHz", 1f);
     protected float lambda = getFloat("lambda", .1f);
-    protected float kappa = getFloat("lambda", 0.05f);
+    protected float kappa = getFloat("kappa", 0.05f);
     protected float alpha0 = 2 * (float) Math.PI * crossoverFrequencyHz;
     protected float[] alphas = null;
     private float minBaseLogFrame = Float.MAX_VALUE, maxBaseLogFrame = Float.MIN_VALUE;
@@ -129,13 +114,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         setPropertyTooltip(cf, "linearizeOutput", "If set, linearize output. If unset, show logFinalFrame");
         setPropertyTooltip(cf, "eventsOnlyMode", "Use only events, no APS frames");
 
-//        setPropertyTooltip("revertLearning", "Revert gains back to manual settings");
-//        setPropertyTooltip("clipping", "Clip the image to 0-1 range; use to reset reconstructed frame if it has diverged. Sometimes turning off clipping helps learn better gains, faster and more stably.");
-//        setPropertyTooltip("displayError", "Show the pixel errors compared to last frame TODO");
-//        setPropertyTooltip("freezeGains", "Freeze the gains");
-//        setPropertyTooltip("perPixelAndTimeBinErrorUpdateFactor", "Sets the rate that error affects gains of individual pixels always (independent of fixThresholdsToAverage) and per time bin since last event. Ideally 1 should correct the gains from a single frame. FloatArrayRange 0-1, typical value 0.4.");
-//        setPropertyTooltip("globalAverageGainMixingFactor", "mixing factor for average of time bins, range 0-1, increase to speed up learning.");
-//        setPropertyTooltip("revertLearning", "If set, continually reverts gains to the manual settings.");
         filterChain = new FilterChain(chip);
         baFilter = new SpatioTemporalCorrelationFilter(chip);
         filterChain.add(baFilter);
@@ -147,9 +125,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         getApsDisplay().addMouseMotionListener(mouseInfo);
     }
 
-//    synchronized public void doRevertLearning() {
-//        revertLearning();
-//    }
     @Override
     synchronized public void resetFilter() {
         filterChain.reset();
@@ -221,10 +196,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         float a = alphas[k];
         float oldFrameWeight = (float) (Math.exp(-a * dtS));
         if (dtUs < 0) {
-//            log.warning(String.format("nonmonotonic timestamp difference dtUs=%d with lastT=%d for event %s, results in oldFrameWeight=%s",
-//                    dtUs, lastT,
-//                    e.toString(),
-//                    engFmt.format(oldFrameWeight)));
             oldFrameWeight=0;
         }
         logFinalFrame[k] = oldFrameWeight * logFinalFrame[k] + (1 - oldFrameWeight) * (logBaseFrame[k]); // correct the output
@@ -282,20 +253,10 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             final int lastT = lastTimestamp[k];
             lastTimestamp[k] = frameExpAvgTimestamp; // TODO could overwrite a later update by an event to an earlier frame exposure time
             int dtUs = frameExpAvgTimestamp - lastT;
-//            if (dtUs < 0) {
-//                dtUs = 0; // frame is before event, ignore this update TODO check should we do this, can it happen?
-//                // Yse, it can easily occur, because the frame exposure occurs during event readout. The frame is only output later.
-//                // We set the dt=0 in this case to avoid expoentially overweighting with a decay value>1
-//                // any pixels that fired DVS events after the frame exposure time are left unmodified (decay=1)
-//            }
             final float dtS = 1e-6f * dtUs;
             final float a = alphas[k];
             float oldOutputWeight = (float) (Math.exp(-a * dtS));
             if (dtUs < 0) {
-//                log.warning(String.format("nonmonotonic timestamp difference dtUs=%d with lastT=%d for event %s, results in oldFrameWeight=%s",
-//                        dtUs, lastT,
-//                        e.toString(),
-//                        engFmt.format(oldOutputWeight)));
                 oldOutputWeight=0;
             }
             logFinalFrame[k] = oldOutputWeight * logFinalFrame[k] + (1 - oldOutputWeight) * (logBaseFrame[k]); // correct the output
@@ -361,12 +322,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     }
 
     private void computeAlphas() {
-        final int n = alphas.length;
         final float diff = maxBaseLogFrame - minBaseLogFrame;
         final float l1 = minBaseLogFrame + lambda * diff;
         final float l2 = maxBaseLogFrame - lambda * diff;
         final float lambda1 = 1 - lambda;
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < alphas.length; i++) {
             final float logBaseValue = logBaseFrame[i];
             if (logBaseValue < l1) {
                 alphas[i] = alpha0 * (lambda + lambda1 * ((logBaseValue - minBaseLogFrame) / (l1 - minBaseLogFrame)));
@@ -379,32 +339,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         }
     }
 
-//    synchronized private void revertLearning() {
-//    }
-//    /**
-//     * @return the displayError
-//     */
-//    public boolean isDisplayError() {
-//        return displayError;
-//    }
-//    /**
-//     * @param displayError the displayError to set
-//     */
-//    synchronized public void setDisplayError(boolean displayError) {
-//        this.displayError = displayError;
-//        putBoolean("displayError", displayError);
-//    }
-//
-//    public boolean isFixThresholdsToAverage() {
-//        return fixThresholdsToAverage;
-//    }
-//
-//    /**
-//     * @param fixThresholdsToAverage the fixThresholdsToAverage to set
-//     */
-//    synchronized public void setFixThresholdsToAverage(boolean fixThresholdsToAverage) {
-//        this.fixThresholdsToAverage = fixThresholdsToAverage;
-//    }
     /**
      * @return the onThreshold
      */
@@ -439,19 +373,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         getSupport().firePropertyChange("offThreshold", old, this.offThreshold);
     }
 
-    /**
-     * // * @return the freezeGains //
-     */
-//    public boolean isFreezeGains() {
-//        return freezeGains;
-//    }
-//
-//    /**
-//     * @param freezeGains the freezeGains to set
-//     */
-//    public void setFreezeGains(boolean freezeGains) {
-//        this.freezeGains = freezeGains;
-//    }
     private float clip01(float val) {
         if (val > 1) {
             val = 1;
