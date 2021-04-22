@@ -858,4 +858,12 @@ public class ApsFrameExtractor extends EventFilter2D {
     public int getAverageFrameExposureTimestamp() {
         return (startOfFrameExposureTimestamp / 2 + endOfFrameExposureTimestamp / 2);
     }
+    
+    /** Returns exposure duration in seconds of last exposure period
+     * 
+     * @return exposure duration in seconds
+     */
+    public float getExposureDurationS(){
+        return 1e-6f*(endOfFrameExposureTimestamp-startOfFrameExposureTimestamp);
+    }
 }
