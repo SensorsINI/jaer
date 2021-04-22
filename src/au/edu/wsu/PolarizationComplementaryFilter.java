@@ -2,28 +2,15 @@ package au.edu.wsu;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.geom.Point2D;
-import java.awt.Color;
-import java.util.Arrays;
-import java.util.Iterator;
 import javax.swing.JFrame;
-import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ImageDisplay;
-import net.sf.jaer.graphics.ImageDisplay.Legend;
 import ch.unizh.ini.jaer.projects.davis.frames.DavisComplementaryFilter;
         
 /**
@@ -92,6 +79,6 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter{
         }
         PolarizationUtils.computePolarizationLog(logFinalFrame, apsDisplayPixmapBuffer, indexf0, indexf45, indexf90, indexf135, height, width);
         apsDisplayPola.setPixmapArray(apsDisplayPixmapBuffer);
-    }
+    }            
     
 }
