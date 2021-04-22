@@ -327,8 +327,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     private void computeAlphas() {
         final float diff = maxBaseLogFrame - minBaseLogFrame;
-        final float l1 = minBaseLogFrame + lambda * diff;
-        final float l2 = maxBaseLogFrame - lambda * diff;
+        final float l1 = minBaseLogFrame + getKappa() * diff;
+        final float l2 = maxBaseLogFrame - getKappa() * diff;
         final float lambda1 = 1 - lambda;
         for (int i = 0; i < alphas.length; i++) {
             final float logBaseValue = logBaseFrame[i];

@@ -27,7 +27,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter{
     private int[] indexf0, indexf45, indexf90, indexf135;
     private JFrame apsFramePola = null;
     public ImageDisplay apsDisplayPola;
-    private float[] apsDisplayPixmapBuffer;
+    private float[] apsDisplayPixmapBufferAop;
     public PolarizationComplementaryFilter(final AEChip chip) {
         super(chip);
         apsDisplayPola = ImageDisplay.createOpenGLCanvas();
@@ -72,13 +72,13 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter{
             indexf45 = new int[maxIDX];
             indexf90 = new int[maxIDX];
             indexf135 = new int[maxIDX];
-            apsDisplayPixmapBuffer = new float[3 * maxIDX / 4 * 3];
+            apsDisplayPixmapBufferAop = new float[3 * maxIDX / 4 * 3];
             apsDisplayPola.setImageSize(width/2, height/2 * 3);
             PolarizationUtils.fillIndex(indexf0, indexf45, indexf90, indexf135, height, width);
-            PolarizationUtils.drawLegend(apsDisplayPixmapBuffer, height, width);
+            PolarizationUtils.drawLegend(apsDisplayPixmapBufferAop, height, width);
         }
-        PolarizationUtils.computePolarizationLog(logFinalFrame, apsDisplayPixmapBuffer, indexf0, indexf45, indexf90, indexf135, height, width);
-        apsDisplayPola.setPixmapArray(apsDisplayPixmapBuffer);
+        PolarizationUtils.computePolarizationLog(logFinalFrame, apsDisplayPixmapBufferAop, indexf0, indexf45, indexf90, indexf135, height, width);
+        apsDisplayPola.setPixmapArray(apsDisplayPixmapBufferAop);
     }            
     
 }
