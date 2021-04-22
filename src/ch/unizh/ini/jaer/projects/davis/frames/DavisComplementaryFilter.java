@@ -255,6 +255,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             }
             processDvsEvent(se);
         }
+        
+        float exposureDuirationMs=1000*getExposureDurationS(), expHz=1/exposureDuirationMs;
 
         // Process the frame samples
         // compute new base log frame
@@ -262,6 +264,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         final float[] f = rawFrame; // just get the buffer, don't clone it
         for (int i = 0; i < f.length; i++) {
             float v = f[i];  // DN value from 0-1023
+            v=v*expHz;  // DN/ms exposure, in case there is autoexposure running
             if (v < 0) {
                 v = 0;
             }
@@ -329,12 +332,13 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
                 max = (float) Math.exp(max);
             }
         } else {
+            float maxVal=getMaxADC()/(1000*getExposureDurationS());
             if (isLogDecompress()) {
                 min = 0;
-                max = getMaxADC();
+                max = maxVal;
             } else {
                 min = 0;
-                max = (float) Math.log(getMaxADC());
+                max = (float) Math.log(maxVal);
             }
         }
         scale = 1 / (max - min);
