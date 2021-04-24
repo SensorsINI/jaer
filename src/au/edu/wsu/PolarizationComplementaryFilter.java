@@ -12,6 +12,9 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.ImageDisplay;
 import ch.unizh.ini.jaer.projects.davis.frames.DavisComplementaryFilter;
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import net.sf.jaer.util.DrawGL;
         
 /**
  * Extracts Polarization information using Cedric's complementary filter to 
@@ -80,5 +83,19 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter{
         PolarizationUtils.computePolarizationLog(logFinalFrame, apsDisplayPixmapBufferAop, indexf0, indexf45, indexf90, indexf135, height, width);
         apsDisplayPola.setPixmapArray(apsDisplayPixmapBufferAop);
     }            
+
+    @Override
+    public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable); // draws the ROI selection rectangle
+       GL2 gl = drawable.getGL().getGL2();
+       
+       // draw the polarization ellipse
+       gl.glColor3f(1,1,1);  // set the RGB color
+       gl.glLineWidth(3); // set the line width in screen pixels
+       // draw the polarization ellipse
+       DrawGL.drawEllipse(gl, (float)roiRect.getCenterX(), (float)roiRect.getCenterY(), 20, 30, 45, 32);
+    }
+    
+    
     
 }
