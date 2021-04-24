@@ -41,6 +41,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.graphics.ImageDisplay;
@@ -66,7 +67,7 @@ import org.apache.commons.io.FilenameUtils;
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class ApsFrameExtractor extends EventFilter2D {
+public class ApsFrameExtractor extends EventFilter2DMouseROI {
 
     protected JFrame apsFrame = null;
     protected ImageDisplay apsDisplay; // actually draws the display
