@@ -129,7 +129,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         gl.glPushMatrix();
         gl.glColor3fv(c, 0);
         gl.glLineWidth(3);
-        gl.glTranslatef(-.5f, -.5f, 0);
+//        gl.glTranslatef(-.5f, -.5f, 0);
         gl.glBegin(GL.GL_LINE_LOOP);
         gl.glVertex2f(roiRect.x, roiRect.y);
         gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y);
