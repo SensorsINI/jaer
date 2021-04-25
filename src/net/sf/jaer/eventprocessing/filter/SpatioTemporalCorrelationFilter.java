@@ -205,6 +205,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public synchronized final void resetFilter() {
         super.resetFilter();
         log.info("resetting SpatioTemporalCorrelationFilter");
+        if(lastTimesMap==null){
+            log.warning("tried to clear lastTimesMap but it is null");
+            return;
+        }
         for (int[] arrayRow : lastTimesMap) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
