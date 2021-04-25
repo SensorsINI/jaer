@@ -43,16 +43,24 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     protected GLUquadric quad = null;
     private boolean hasBlendChecked = false, hasBlend = false;
     protected boolean showCrossHairCursor = true;
+    
+    /** Flag that freezes ROI selection*/
     protected boolean freezeRoi = getBoolean("freezeRoi", false);
 
     // roiRect stuff
+    /** ROI start/end corner index */
     protected int roiStartx, roiStarty, roiEndx, roiEndy;
+    /** ROI start/end corners and last clicked mouse point */
     protected Point roiStartPoint = null, roiEndPoint = null, clickedPoint = null;
+    /** ROI rectangle */
     protected Rectangle roiRect = null;
-
+    
+    /** Boolean that indicates ROI is being selected currently */
     protected volatile boolean roiSelecting = false;
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
-    private Point currentMousePoint = null;
+    
+    /** The current mouse point in chip pixels, updated by mouseMoved*/
+    protected Point currentMousePoint = null;
 
     public EventFilter2DMouseROI(AEChip chip) {
         super(chip);
