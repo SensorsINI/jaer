@@ -255,14 +255,14 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     /**
      * @return the freezeSelection
      */
-    public boolean isFreezeSelection() {
+    public boolean isFreezeRoi() {
         return freezeRoi;
     }
 
     /**
      * @param freezeSelection the freezeSelection to set
      */
-    public void setFreezeSelection(boolean freezeRoi) {
+    public void setFreezeRoi(boolean freezeRoi) {
         this.freezeRoi = freezeRoi;
         putBoolean("freezeRoi", freezeRoi);
     }
