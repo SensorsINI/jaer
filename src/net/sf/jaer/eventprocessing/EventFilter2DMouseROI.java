@@ -85,7 +85,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     /**
      * Annotates the display with the current mouse position to indicate that
-     * mouse is being used. Subclasses can override this functionality.
+     * mouse is being used and shows the ROI if there is one. Subclasses can override this functionality.
      *
      * @param drawable
      */
