@@ -665,12 +665,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         // Former method using all the matrices was just too cryptic to understand
         int x = (int) ((mp.getX()/getScale())+clipArea.left);
         int y = (int) (((getCanvas().getHeight()-mp.getY())/getScale())+clipArea.bottom);
-        log.info(String.format("mouse x,y=%.1f,%.1f  scale=%.3f canvas w,h=%d,%d, clipArea %s, chip x,y=%d,%d", 
-                mp.getX(),mp.getY(), 
-                getScale(),
-                getCanvas().getWidth(),getCanvas().getHeight(),
-                clipArea.toString(),
-                x, y));
+//        
         final Point p=new Point(x,y);
             if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
             mouseWasInsideChipBounds = false;
