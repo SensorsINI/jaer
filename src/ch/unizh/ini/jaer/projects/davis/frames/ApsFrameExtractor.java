@@ -435,6 +435,11 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
         getApsDisplay().setPixmapGray(xAddr, yAddr, grayValue);
     }
 
+    /**
+     * Sets the displayed data array, a float array of 0-1 RGB values ordered according to getIndex
+     * @param pixmapArray the array
+     * @see #getIndex(int, int) 
+     */
     public void setPixmapArray(final float[] pixmapArray) {
         getApsDisplay().setPixmapArray(pixmapArray);
     }
@@ -572,6 +577,10 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
         useExternalRenderer = yes;
     }
 
+    /**
+     * Sets the displayed legend string, which can be a multiline string
+     * @param legend the string, with embedded \n newlines
+     */
     public void setLegend(final String legend) {
         apsDisplayLegend.s = legend;
     }
@@ -856,6 +865,10 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
         return startOfFrameReadoutTimestamp;
     }
 
+    /**
+     * Computes average of global shutter exposure time in us
+     * @return timestamp in us, same as for DVS events
+     */
     public int getAverageFrameExposureTimestamp() {
         return (startOfFrameExposureTimestamp / 2 + endOfFrameExposureTimestamp / 2);
     }
