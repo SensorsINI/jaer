@@ -238,7 +238,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         glu = GLU.createGLU(gl); // TODO check if this solves problem of bad GL context in file preview
         if (isSelected()) {
             Point mp = glCanvas.getMousePosition();
-            Point p = chipCanvas.getPixelFromPoint(mp);
+            Point p = chipCanvas.getChipPixelFromMousePoint(mp);
             if (p == null) {
                 return;
             }

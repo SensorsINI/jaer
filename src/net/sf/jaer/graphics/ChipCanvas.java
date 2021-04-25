@@ -621,76 +621,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     private boolean mouseWasInsideChipBounds = true;
 
     /**
-     * Finds the chip pixel from a ChipCanvas point. From
-     * <a href="http://processing.org/discourse/yabb_beta/YaBB.cgi?board=OpenGL;action=display;num=1176483247">this
-     * forum link</a>.
-     *
-     * @param mp a Point in ChipCanvas pixels.
-     * @return the AEChip pixel, clipped to the bounds of the AEChip.
-     */
-    public Point getPixelFromPoint(final Point mp) {
-        final double wcoord[] = new double[3];// wx, wy, wz;// returned xyz coords
-        // this method depends on current GL context being the one that is used for rendering.
-        // the display method should not push/pop the matrix stacks!!
-        if (mp == null) {
-            // log.warning("null Point (outside entire canvas?), returning center pixel");
-            return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
-        }
-//        synchronized (drawable.getTreeLock()) {
-        try {
-            if (hasAppleRetinaDisplay()) {
-                mp.x *= 2;
-                mp.y *= 2;
-            }
-            final int ret = drawable.getContext().makeCurrent();
-            if (ret != GLContext.CONTEXT_CURRENT) {
-                throw new GLException("couldn't make context current");
-            }
-
-            final int viewport[] = new int[4];
-            final double mvmatrix[] = new double[16];
-            final double projmatrix[] = new double[16];
-            int realy = 0;// GL y coord pos
-            // set up a floatbuffer to get the depth buffer value of the mouse position
-            final FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
-            final GL2 gl = drawable.getContext().getGL().getGL2();
-            checkGLError(gl, glu, "before getting mouse point");
-            gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
-            gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
-            gl.glGetDoublev(GLMatrixFunc.GL_PROJECTION_MATRIX, projmatrix, 0);
-            /* note viewport[3] is height of window in pixels */
-            realy = viewport[3] - (int) mp.getY() - 1;
-            // Get the depth buffer value at the mouse position. have to do height-mouseY, as GL puts 0,0 in the bottom
-            // left, not top left.
-            checkGLError(gl, glu, "after getting modelview and projection matrices in getMousePoint");
-//                gl.glReadPixels(mp.x, realy, 1, 1, GL2ES2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
-//                checkGLError(gl, glu, "after readPixels in getMousePoint");
-            final float z = 0; // fb.getString(0); // assume we want z=0 value of mouse point
-            glu.gluUnProject(mp.getX(), realy, z, mvmatrix, 0, projmatrix, 0, viewport, 0, wcoord, 0);
-            checkGLError(gl, glu, "after gluUnProject in getting mouse point");
-        } catch (final GLException e) {
-            log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
-        } finally {
-            if (drawable.getContext().isCurrent()) {
-                drawable.getContext().release();
-            }
-        }
-//        }
-        final Point p = new Point();
-        p.x = (int) Math.round(wcoord[0]);
-        p.y = (int) Math.round(wcoord[1]);
-        if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
-            mouseWasInsideChipBounds = false;
-        } else {
-            mouseWasInsideChipBounds = true;
-        }
-        clipPoint(p);
-
-//        log.info("Mouse xy=" + mp.getX() + "," + mp.getY() + "   Pixel x,y=" + p.x + "," + p.y);
-        return p;
-    }
-
-    /**
      * Finds the current AEChip pixel mouse position, or center of array if not
      * inside.
      *
@@ -698,12 +628,12 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Point getMousePixel() {
         final Point mp = getCanvas().getMousePosition();
-        return getPixelFromPoint(mp);
+        return getChipPixelFromMousePoint(mp);
     }
 
     /**
-     * Returns state of mouse from last call to getPixelFromPoint; true if mouse
-     * inside bounds of chip drawing area.
+     * Returns state of mouse from last call to getChipPixelFromMousePoint; true
+     * if mouse inside bounds of chip drawing area.
      *
      * @return true if was inside, false otherwise.
      */
@@ -719,7 +649,96 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Point getPixelFromMouseEvent(final MouseEvent evt) {
         final Point mp = evt.getPoint();
-        return getPixelFromPoint(mp);
+        return getChipPixelFromMousePoint(mp);
+    }
+
+    /**
+     * Finds the chip pixel from a ChipCanvas point. From
+     * <a href="http://processing.org/discourse/yabb_beta/YaBB.cgi?board=OpenGL;action=display;num=1176483247">this
+     * forum link</a>.
+     *
+     * @param mp a Point in ChipCanvas (i.e. screen) pixels.
+     * @return the AEChip pixel, clipped to the bounds of the AEChip.
+     */
+    public Point getChipPixelFromMousePoint(final Point mp) {
+        // May 2021, Tobi changed to use simpler clipArea object along with chip size.
+        // Former method using all the matrices was just too cryptic to understand
+        int x = (int) ((mp.getX()/getScale())+clipArea.left);
+        int y = (int) (((getCanvas().getHeight()-mp.getY())/getScale())+clipArea.bottom);
+        log.info(String.format("mouse x,y=%.1f,%.1f  scale=%.3f canvas w,h=%d,%d, clipArea %s, chip x,y=%d,%d", 
+                mp.getX(),mp.getY(), 
+                getScale(),
+                getCanvas().getWidth(),getCanvas().getHeight(),
+                clipArea.toString(),
+                x, y));
+        final Point p=new Point(x,y);
+            if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
+            mouseWasInsideChipBounds = false;
+        } else {
+            mouseWasInsideChipBounds = true;
+        }
+       clipPoint(p);
+        return p;
+//        final double wcoord[] = new double[3];// wx, wy, wz;// returned xyz coords
+//        // this method depends on current GL context being the one that is used for rendering.
+//        // the display method should not push/pop the matrix stacks!!
+//        if (mp == null) {
+//            // log.warning("null Point (outside entire canvas?), returning center pixel");
+//            return new Point(chip.getSizeX() / 2, chip.getSizeY() / 2);
+//        }
+////        synchronized (drawable.getTreeLock()) {
+//        try {
+//            if (hasAppleRetinaDisplay()) {
+//                mp.x *= 2;
+//                mp.y *= 2;
+//            }
+//            final int ret = drawable.getContext().makeCurrent();
+//            if (ret != GLContext.CONTEXT_CURRENT) {
+//                throw new GLException("couldn't make context current");
+//            }
+//
+//            final int viewport[] = new int[4];
+//            final double mvmatrix[] = new double[16];
+//            final double projmatrix[] = new double[16];
+//            int realy = 0;// GL y coord pos
+//            // set up a floatbuffer to get the depth buffer value of the mouse position
+//            final GL2 gl = drawable.getContext().getGL().getGL2();
+//            checkGLError(gl, glu, "before getting mouse point");
+//            gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
+//            gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
+//            gl.glGetDoublev(GLMatrixFunc.GL_PROJECTION_MATRIX, projmatrix, 0);
+//            /* note viewport[3] is height of window in pixels */
+//            realy = viewport[3] - (int) mp.getY() - 1;
+//            // Get the depth buffer value at the mouse position. have to do height-mouseY, as GL puts 0,0 in the bottom
+//            // left, not top left.
+//            checkGLError(gl, glu, "after getting modelview and projection matrices in getMousePoint");
+//            final FloatBuffer fb = ByteBuffer.allocateDirect(4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+//            gl.glReadPixels(mp.x, realy, 1, 1, GL2.GL_DEPTH_COMPONENT, GL.GL_FLOAT, fb);
+////                checkGLError(gl, glu, "after readPixels in getMousePoint");
+//            final float z = fb.get(0); // assume we want z=0 value of mouse point
+//            glu.gluUnProject(mp.getX(), realy, z, mvmatrix, 0, projmatrix, 0, viewport, 0, wcoord, 0);
+//            checkGLError(gl, glu, "after gluUnProject in getting mouse point");
+//            final Point p = new Point();
+//            p.x = (int) Math.round(wcoord[0]);
+//            p.y = (int) Math.round(wcoord[1]);
+//            if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
+//                mouseWasInsideChipBounds = false;
+//            } else {
+//                mouseWasInsideChipBounds = true;
+//            }
+////            log.info("Mouse xy=" + mp.getX() + "," + mp.getY() + "  realy=" + realy + "   Pixel x,y=" + p.x + "," + p.y + " mouseWasInsideChipBounds=" + mouseWasInsideChipBounds);
+//            clipPoint(p);
+//
+//            return p;
+//        } catch (final GLException e) {
+//            log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
+//        } finally {
+//            if (drawable.getContext().isCurrent()) {
+//                drawable.getContext().release();
+//            }
+//        }
+//        return null;
+////        }
     }
 
     protected final int getPixelRGB(final float red, final float green, final float blue) {
@@ -1529,7 +1548,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             log.warning("called checkGLError with null glu");
             return;
         }
-        if(g.getContext()==null){
+        if (g.getContext() == null) {
             log.warning("GL context for graphics is null, cannot check error");
             return;
         }

@@ -523,7 +523,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 	//     * @param mp a Point in ChipCanvas pixels.
 	//     * @return the AEChip pixel, clipped to the bounds of the AEChip.
 	//     */
-	//    public Point getPixelFromPoint(final Point mp) {
+	//    public Point getChipPixelFromMousePoint(final Point mp) {
 	//        final double wcoord[] = new double[3];// wx, wy, wz;// returned xyz coords
 	//        // this method depends on current GL context being the one that is used for rendering.
 	//        // the display method should not push/pop the matrix stacks!!
@@ -588,11 +588,11 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 	//     */
 	//    public Point getMousePixel() {
 	//        final Point mp = glcanvas.getMousePosition();
-	//        return getPixelFromPoint(mp);
+	//        return getChipPixelFromMousePoint(mp);
 	//    }
 	//
 	//    /**
-	//     * Returns state of mouse from last call to getPixelFromPoint; true if mouse
+	//     * Returns state of mouse from last call to getChipPixelFromMousePoint; true if mouse
 	//     * inside bounds of chip drawing area.
 	//     *
 	//     * @return true if was inside, false otherwise.
@@ -609,7 +609,7 @@ public class Triangulation3DViewer extends DisplayMethod implements GLEventListe
 	//     */
 	//    public Point getPixelFromMouseEvent(final MouseEvent evt) {
 	//        final Point mp = evt.getPoint();
-	//        return getPixelFromPoint(mp);
+	//        return getChipPixelFromMousePoint(mp);
 	//    }
 	//
 	//

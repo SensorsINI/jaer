@@ -43,30 +43,42 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     protected GLUquadric quad = null;
     private boolean hasBlendChecked = false, hasBlend = false;
     protected boolean showCrossHairCursor = true;
-    
-    /** Flag that freezes ROI selection*/
+
+    /**
+     * Flag that freezes ROI selection
+     */
     protected boolean freezeRoi = getBoolean("freezeRoi", false);
 
     // roiRect stuff
-    /** ROI start/end corner index */
+    /**
+     * ROI start/end corner index
+     */
     protected int roiStartx, roiStarty, roiEndx, roiEndy;
-    /** ROI start/end corners and last clicked mouse point */
+    /**
+     * ROI start/end corners and last clicked mouse point
+     */
     protected Point roiStartPoint = null, roiEndPoint = null, clickedPoint = null;
-    /** ROI rectangle */
+    /**
+     * ROI rectangle
+     */
     protected Rectangle roiRect = null;
-    
-    /** Boolean that indicates ROI is being selected currently */
+
+    /**
+     * Boolean that indicates ROI is being selected currently
+     */
     protected volatile boolean roiSelecting = false;
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
-    
-    /** The current mouse point in chip pixels, updated by mouseMoved*/
+
+    /**
+     * The current mouse point in chip pixels, updated by mouseMoved
+     */
     protected Point currentMousePoint = null;
 
     public EventFilter2DMouseROI(AEChip chip) {
         super(chip);
-        String roi="Region of interest";
+        String roi = "Region of interest";
         setPropertyTooltip(roi, "freezeRoi", "Freezes ROI selection");
-        setPropertyTooltip(roi,"clearSelection","Clears ROI");
+        setPropertyTooltip(roi, "clearSelection", "Clears ROI");
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
@@ -88,7 +100,8 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     /**
      * Annotates the display with the current mouse position to indicate that
-     * mouse is being used and shows the ROI if there is one. Subclasses can override this functionality.
+     * mouse is being used and shows the ROI if there is one. Subclasses can
+     * override this functionality.
      *
      * @param drawable
      */
@@ -128,71 +141,6 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     /**
-     * When this is selected in the FilterPanel GUI, the mouse listeners will be
-     * added. When this is unselected, the listeners will be removed.
-     *
-     */
-    @Override
-    public void setSelected(boolean yes) {
-        super.setSelected(yes);
-        chipCanvas = chip.getCanvas();
-        if (chipCanvas == null) {
-            log.warning("null chip canvas, can't add mouse listeners");
-            return;
-        }
-        glCanvas = (GLCanvas) chipCanvas.getCanvas();
-        if (glCanvas == null) {
-            log.warning("null chip canvas GL drawable, can't add mouse listeners");
-            return;
-        }
-        if (yes) {
-            glCanvas.removeMouseListener(this);
-            glCanvas.removeMouseMotionListener(this);
-            glCanvas.removeMouseWheelListener(this);
-            glCanvas.addMouseListener(this);
-            glCanvas.addMouseMotionListener(this);
-            glCanvas.addMouseWheelListener(this);
-
-        } else {
-            glCanvas.removeMouseListener(this);
-            glCanvas.removeMouseMotionListener(this);
-            glCanvas.removeMouseWheelListener(this);
-        }
-    }
-
-    /**
-     * Returns the chip pixel position from the MouseEvent. Note that any calls
-     * that modify the GL model matrix (or viewport, etc) will make the location
-     * meaningless. Make sure that your graphics rendering code wraps transforms
-     * inside pushMatrix and popMatrix calls.
-     *
-     * @param e the mouse event
-     * @return the pixel position in the chip object, origin 0,0 in lower left
-     * corner.
-     */
-    protected Point getMousePixel(MouseEvent e) {
-        if (chipCanvas == null) {
-            return null;
-        }
-        Point p = chipCanvas.getPixelFromMouseEvent(e);
-        if (chipCanvas.wasMousePixelInsideChipBounds()) {
-            return p;
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Handles wheel event. Empty by default
-     *
-     * @param mwe the mouse wheel roll event
-     */
-    @Override
-    public void mouseWheelMoved(MouseWheelEvent mwe) {
-
-    }
-
-    /**
      * @return the showCrossHairCursor
      */
     protected boolean isShowCrossHairCursor() {
@@ -218,8 +166,13 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         roiRect = null;
     }
 
-    private void getSelection(MouseEvent e) {
-        Point p = chip.getCanvas().getPixelFromMouseEvent(e);
+    private void finishRoiSelection(MouseEvent e) {
+        Point p = getMousePixel(e);
+        if (p == null) {
+            roiRect = null;
+            return;
+        }
+
         roiEndPoint = p;
         roiStartx = min(roiStartPoint.x, roiEndPoint.x);
         roiStarty = min(roiStartPoint.y, roiEndPoint.y);
@@ -230,26 +183,17 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         roiRect = new Rectangle(roiStartx, roiStarty, w, h);
     }
 
-    private boolean inSelection(BasicEvent e) {
+    /**
+     * Returns true if the event is inside (or on border) of ROI
+     *
+     * @param e an event
+     * @return true if on or inside ROI, false if no ROI or outside
+     */
+    protected boolean insideRoi(BasicEvent e) {
         if (roiRect == null || roiRect.isEmpty() || roiRect.contains(e.x, e.y)) {
             return true;
         }
         return false;
-    }
-
-    private void drawSelection(GL2 gl, Rectangle r, float[] c) {
-        gl.glPushMatrix();
-        gl.glColor3fv(c, 0);
-        gl.glLineWidth(3);
-        gl.glTranslatef(-.5f, -.5f, 0);
-        gl.glBegin(GL.GL_LINE_LOOP);
-        gl.glVertex2f(roiRect.x, roiRect.y);
-        gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y);
-        gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y + roiRect.height);
-        gl.glVertex2f(roiRect.x, roiRect.y + roiRect.height);
-        gl.glEnd();
-        gl.glPopMatrix();
-
     }
 
     private int min(int a, int b) {
@@ -262,16 +206,27 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mousePressed(MouseEvent e) {
-        Point p = chip.getCanvas().getPixelFromMouseEvent(e);
-        roiStartPoint = p;
+        Point p = getMousePixel(e);
         if (!freezeRoi) {
+            roiStartPoint = p;
+            log.info("ROI start point = " + p);
             roiSelecting = true;
         }
     }
 
     @Override
+    public void mouseReleased(MouseEvent e) {
+        if (freezeRoi || roiStartPoint == null) {
+            return;
+        }
+        finishRoiSelection(e);
+        roiSelecting = false;
+        log.info(String.format("ROI rect %s has %d pixels", roiRect, roiRect.height * roiRect.width));
+    }
+
+    @Override
     public void mouseMoved(MouseEvent e) {
-        currentMousePoint = chip.getCanvas().getPixelFromMouseEvent(e);
+        currentMousePoint = getMousePixel(e);
     }
 
     @Override
@@ -288,12 +243,12 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         if (freezeRoi || roiStartPoint == null) {
             return;
         }
-        getSelection(e);
+        finishRoiSelection(e);
     }
 
     @Override
     public void mouseClicked(MouseEvent e) {
-        Point p = chip.getCanvas().getPixelFromMouseEvent(e);
+        Point p = getMousePixel(e);
         clickedPoint = p;
     }
 

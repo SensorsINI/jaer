@@ -79,7 +79,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
         }
         if (isSelected() && showCrossHairCursor) {
             Point mp = glCanvas.getMousePosition();
-            Point p = chipCanvas.getPixelFromPoint(mp);
+            Point p = chipCanvas.getChipPixelFromMousePoint(mp);
             if (p == null) {
                 return;
             }
@@ -182,11 +182,11 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
      * corner.
      */
     protected Point getMousePixel(MouseEvent e) {
-        if (chipCanvas == null) {
+        if (getChip().getCanvas() == null) {
             return null;
         }
-        Point p = chipCanvas.getPixelFromMouseEvent(e);
-        if (chipCanvas.wasMousePixelInsideChipBounds()) {
+        Point p = getChip().getCanvas().getPixelFromMouseEvent(e);
+        if (getChip().getCanvas().wasMousePixelInsideChipBounds()) {
             return p;
         } else {
             return null;
@@ -199,7 +199,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        chip.getCanvas().repaint(100);
+        getChip().getCanvas().repaint(100);
     }
 
     /**
