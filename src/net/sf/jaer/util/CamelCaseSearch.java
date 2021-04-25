@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 class CamelCaseSearch {
 
@@ -34,37 +35,43 @@ class CamelCaseSearch {
      *
      * @return matched word or null if no match
      *
-     * @author https://stackoverflow.com/questions/745415/regex-to-match-from-partial-or-camel-case-string
+     * @author
+     * https://stackoverflow.com/questions/745415/regex-to-match-from-partial-or-camel-case-string
      */
     public static String matchCamelCase(String query, String str) {
         query = query.replaceAll("\\*", ".*?");
         String re = "\\b(" + query.replaceAll("([A-Z][^A-Z]*)", "$1[^A-Z]*") + ".*?)\\b";
 
 //        System.out.println(re);
-        Pattern regex = Pattern.compile(re);
+        try {
+            Pattern regex = Pattern.compile(re);
+            Matcher m = regex.matcher(str);
 
-        Matcher m = regex.matcher(str);
-
-        if (m.find()) {
+            if (m.find()) {
 //            System.out.println("found "+m.group());
-            return m.group();
-        } else {
+                return m.group();
+            } else {
+                return null;
+            }
+        } catch (PatternSyntaxException e) {
             return null;
         }
+
     }
 
-    /** Returns list of Strings in dict that match pattern that is given in CCase
-     * 
+    /**
+     * Returns list of Strings in dict that match pattern that is given in CCase
+     *
      * @param dict
      * @param pattern
      * @return the list of matching words
      */
     public static ArrayList<String> findAllWords(List<String> dict, String pattern) {
 
-        ArrayList<String> r=new ArrayList();
+        ArrayList<String> r = new ArrayList();
         for (String word : dict) {
-            String w=matchCamelCase(pattern, word);
-            if(w!=null) {
+            String w = matchCamelCase(pattern, word);
+            if (w != null) {
                 r.add(w);
             }
         }
@@ -80,14 +87,14 @@ class CamelCaseSearch {
         List<String> dict = Arrays.asList("Hi", "Hello",
                 "HelloWorld", "HiTech", "HiGeek",
                 "HiTechWorld", "HiTechCity",
-                "HiTechLabs","HiTechLabs1","HiTechLabs2","HiTechLabs");
+                "HiTechLabs", "HiTechLabs1", "HiTechLabs2", "HiTechLabs");
 
         // pattern consisting of uppercase characters only 
         String pattern = "HTeLa";
 
-        ArrayList<String> matches=findAllWords(dict, pattern);
-        System.out.println(String.format("from %s pattern found ",pattern));
-        for(String s:matches){
+        ArrayList<String> matches = findAllWords(dict, pattern);
+        System.out.println(String.format("from %s pattern found ", pattern));
+        for (String s : matches) {
             System.out.println(s);
         }
     }
