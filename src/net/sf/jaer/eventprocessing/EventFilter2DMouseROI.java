@@ -64,6 +64,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     public EventFilter2DMouseROI(AEChip chip) {
         super(chip);
+        String roi="Region of interest";
+        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI selection");
+        setPropertyTooltip(roi,"clearSelection","Clears ROI");
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
