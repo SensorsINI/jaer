@@ -38,8 +38,8 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
     public PolarizationComplementaryFilter(final AEChip chip) {
         super(chip);
         apsDisplayPola = ImageDisplay.createOpenGLCanvas();
-        apsFramePola = new JFrame("Polarization Information DoP - AOP");
-        apsFramePola.setPreferredSize(new Dimension(600, 200));
+        apsFramePola = new JFrame("Polarization Information DoP - AoP");
+        apsFramePola.setPreferredSize(new Dimension(600, 600));
         apsFramePola.getContentPane().add(apsDisplayPola, BorderLayout.CENTER);
         apsFramePola.pack();
         apsFramePola.addWindowListener(new WindowAdapter() {
@@ -48,10 +48,6 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
                 setShowAPSFrameDisplay(false);
             }
         });
-        indexf0 = new int[maxIDX];
-        indexf45 = new int[maxIDX];
-        indexf90 = new int[maxIDX];
-        indexf135 = new int[maxIDX];
         initFilter();
     }
 
@@ -60,20 +56,36 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         checkMaps();
         in = super.filterPacket(in);
         displayPreBuffer();
-        if (showAPSFrameDisplay && maxIDX > 0) {
+        if (showAPSFrameDisplay) {
             apsDisplayPola.repaint();
         }
         return in; // should be denoised output
     }
 
     private void checkMaps() {
-        //apsDisplayPola.checkPixmapAllocation();
-        if (showAPSFrameDisplay && !apsFramePola.isVisible() && maxIDX > 0) {
+        apsDisplayPola.checkPixmapAllocation();
+        if (showAPSFrameDisplay && !apsFramePola.isVisible()) {
             apsFramePola.setVisible(true);
         }
     }
 
     @Override
+    public void initFilter() {
+        super.initFilter();
+        if(maxIDX > 0){
+            indexf0 = new int[maxIDX];
+            indexf45 = new int[maxIDX];
+            indexf90 = new int[maxIDX];
+            indexf135 = new int[maxIDX];
+            apsDisplayPixmapBufferAop = new float[3 * maxIDX / 4 * 3];
+            aop = new float[maxIDX / 4];
+            dop = new float[maxIDX / 4];
+            apsDisplayPola.setImageSize(width / 2, height / 2 * 3);
+            PolarizationUtils.fillIndex(indexf0, indexf45, indexf90, indexf135, height, width);
+            PolarizationUtils.drawLegend(apsDisplayPixmapBufferAop, height, width);
+        }
+    }
+    
     public void displayPreBuffer() {
         if (maxIDX != indexf0.length && maxIDX > 0) {
             indexf0 = new int[maxIDX];
@@ -87,11 +99,14 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             PolarizationUtils.fillIndex(indexf0, indexf45, indexf90, indexf135, height, width);
             PolarizationUtils.drawLegend(apsDisplayPixmapBufferAop, height, width);
         }
-
         PolarizationUtils.computeAoPDoP(logFinalFrame, aop, dop, exp, indexf0, indexf45, indexf90, indexf135, height, width);
-        PolarizationUtils.setDisplay(apsDisplayPixmapBuffer, aop, dop, height, width);
-        if( apsDisplayPixmapBufferAop.length > 0)
-            apsDisplayPola.setPixmapArray(apsDisplayPixmapBufferAop);
+        PolarizationUtils.setDisplay(apsDisplayPixmapBufferAop, aop, dop, height, width);
+        apsDisplayPola.setPixmapArray(apsDisplayPixmapBufferAop);
+
+//        PolarizationUtils.computeAoPDoP(logFinalFrame, aop, dop, exp, indexf0, indexf45, indexf90, indexf135, height, width);
+//        PolarizationUtils.setDisplay(apsDisplayPixmapBuffer, aop, dop, height, width);
+//        if(apsDisplayPixmapBufferAop.length > 0)
+//            apsDisplayPola.setPixmapArray(apsDisplayPixmapBufferAop);
     }
     
     public float getDoP(int x, int y){
@@ -110,13 +125,25 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         if (roiRect == null) {
             return;
         }
-// draw the polarization ellipse
+        // draw the polarization ellipse
         gl.glColor3f(1, 1, 1);  // set the RGB color
         gl.glLineWidth(3); // set the line width in screen pixels
         // draw the polarization ellipse
-        float m_aop, m_dop;
-        //for(int x = roiRect.s - roiRect.width / 2;  )
-        DrawGL.drawEllipse(gl, (float) roiRect.getCenterX(), (float) roiRect.getCenterY(), 20, 30, 45, 32);
+        float m_aop = 0, m_dop = 0;
+        int nb = 0, idx;
+        for(double x = roiRect.getCenterX() - roiRect.getWidth() / 2; x < roiRect.getCenterX() + roiRect.getWidth() / 2; x +=2){
+            for (double y = roiRect.getCenterY() - roiRect.getHeight() / 2; y < roiRect.getCenterY() + roiRect.getHeight() / 2; y +=2){
+                idx = (int)(x / 2 + y / 2 * width / 2);
+                m_aop += aop[idx];
+                m_dop += dop[idx];
+                nb += 1;
+            }
+        }
+        if(nb > 0){
+            m_aop /= nb;
+            m_dop /= nb;
+        }
+        DrawGL.drawEllipse(gl, (float) roiRect.getCenterX(), (float) roiRect.getCenterY(), (float)(20 * (1 - m_dop) * Math.cos(m_aop)), (float)( 20 * (1 - m_dop) * Math.sin(m_aop)), m_aop, 32);
         
     }
 

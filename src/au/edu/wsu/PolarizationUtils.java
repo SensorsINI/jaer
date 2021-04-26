@@ -118,8 +118,6 @@ public class PolarizationUtils{
                 idx = x / 2 + y / 2 * width / 2;  
                 aop_rgb = Color.HSBtoRGB(aop[idx], 0.9f, 0.9f);
                 dop_rgb = Color.HSBtoRGB(dop[idx] * 0.5f, 0.9f, 0.9f);
-                
-                System.out.printf("%f  %f %d %d\n", aop[idx], dop[idx], dop_rgb, aop_rgb);
                 apsDisplayPixmapBuffer[3 * idx] = (float)((dop_rgb>>16)&0xFF) / 255.0f;
                 apsDisplayPixmapBuffer[(3 * idx) + 1] = (float)((dop_rgb>>8)&0xFF) / 255.0f;
                 apsDisplayPixmapBuffer[(3 * idx) + 2] = (float)((dop_rgb>>0)&0xFF) / 255.0f;
