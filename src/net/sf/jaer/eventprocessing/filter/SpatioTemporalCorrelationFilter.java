@@ -32,7 +32,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
-    private int numMustBeCorrelated = getInt("numMustBeCorrelated", 5);
+    private int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
     protected boolean favorLines = getBoolean("favorLines", false);
 
     private int sx; // size of chip minus 1
