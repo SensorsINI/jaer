@@ -73,6 +73,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         }
     }
 
+    @Override
     public void displayPreBuffer() {
         if (maxIDX != indexf0.length && maxIDX > 0) {
             indexf0 = new int[maxIDX];

@@ -129,7 +129,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         gl.glPushMatrix();
         gl.glColor3fv(c, 0);
         gl.glLineWidth(3);
-        gl.glTranslatef(-.5f, -.5f, 0);
+//        gl.glTranslatef(-.5f, -.5f, 0);
         gl.glBegin(GL.GL_LINE_LOOP);
         gl.glVertex2f(roiRect.x, roiRect.y);
         gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y);
@@ -255,14 +255,14 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     /**
      * @return the freezeSelection
      */
-    public boolean isFreezeSelection() {
+    public boolean isFreezeRoi() {
         return freezeRoi;
     }
 
     /**
      * @param freezeSelection the freezeSelection to set
      */
-    public void setFreezeSelection(boolean freezeRoi) {
+    public void setFreezeRoi(boolean freezeRoi) {
         this.freezeRoi = freezeRoi;
         putBoolean("freezeRoi", freezeRoi);
     }
