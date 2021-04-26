@@ -1,30 +1,10 @@
 package au.edu.wsu;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.geom.Point2D;
 import java.awt.Color;
-import java.util.Arrays;
-import java.util.Iterator;
-import javax.swing.JFrame;
-import eu.seebetter.ini.chips.DavisChip;
-import net.sf.jaer.Description;
-import net.sf.jaer.DevelopmentStatus;
-import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter;
-import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.DavisRenderer;
-import net.sf.jaer.graphics.ImageDisplay;
-import net.sf.jaer.graphics.ImageDisplay.Legend;
 
+interface FloatFunction {
+  Float run(Float in);
+}
 
 public class PolarizationUtils{
 
@@ -84,84 +64,68 @@ public class PolarizationUtils{
     }
     
     /**
-    * Compute polarization from the original intensity image, and display the results in a 3n * m image 
-    * where [:n, :] corresponds to the DoP, [n:2n, :] corresponds to the legends and [2n:, :] corresponds to the AoP  
+    *  Compute polarization (AoP, DoP)
+    * args: 
+    * intensity: light intensity
+    * aop, dop: buffers where the Aop/Dop will be updated (must be height x width // 4)
+    * map: function to map the intensity: if the intensity comes from a log sensor, 
+    * then this function must be the exp, otherwise it's the identity
+    * indexfX: index of the neighbour pixels of (i, j) inside his macro pixel
     */
-    public static void computePolarization(float[] intensity, float[] apsDisplayPixmapBuffer, 
+    public static void computeAoPDoP(float[] intensity, float[] aop, float[] dop, FloatFunction map,
             int[] indexf0, int[] indexf45, int[] indexf90, int[] indexf135, int height, int width){
-        double s0, s1, s2, aop, dop;
-        int aop_rgb, dop_rgb;
+        
+        int size_pola = height * width / 4;
+        int size = height * width;
         int idx;
-        int offset = (width / 2) * (height / 2) * 6;
+        float s0, s1, s2;
+        if( aop.length != size_pola || dop.length != size_pola){
+            throw new IllegalArgumentException("Aop/Dop size should be height * width / 4");
+        }
+        if( indexf0.length != size || indexf45.length != size || indexf90.length != size || indexf135.length != size){
+            throw new IllegalArgumentException("Index size should be height * width");
+        }
+        // Compute AoP and DoP
         for(int x = 0; x < width; x +=2){
             for(int y = 0; y < height; y+=2){
                 idx = getIndex(x, y, width);
-                s0 =  0.5 * (intensity[indexf0[idx]] + intensity[indexf135[idx]] + intensity[indexf90[idx]] + intensity[indexf45[idx]]);
-                s1 = intensity[indexf0[idx]] - intensity[indexf90[idx]]; 
-                s2 = intensity[indexf45[idx]] - intensity[indexf135[idx]];
-                if( s0 > 0){
-                    dop = Math.sqrt(s1*s1 + s2*s2) / s0;
-                    aop = (Math.atan2(s2, s1))/ 2.0f ;
-                }else{
-                    dop = 0;
-                    aop =0;
-                }
-
-                // Conversion HSV -> RGB
+                s0 = (map.run(intensity[indexf0[idx]]) + map.run(intensity[indexf135[idx]]) + map.run(intensity[indexf90[idx]]) + map.run(intensity[indexf45[idx]]))/2;
+                s1 = map.run(intensity[indexf0[idx]]) - map.run(intensity[indexf90[idx]]); 
+                s2 = map.run(intensity[indexf45[idx]]) - map.run(intensity[indexf135[idx]]);
                 idx = x / 2 + y / 2 * width / 2;
-                
-                aop_rgb = Color.HSBtoRGB((float)aop, 0.9f, 0.9f);
-                dop_rgb = Color.HSBtoRGB((float)dop*0.5f, 0.9f, 0.9f);
-                
-                apsDisplayPixmapBuffer[3 * idx] = (float)((dop_rgb>>16)&0xFF) / 255.0f;
-                apsDisplayPixmapBuffer[(3 * idx) + 1] = (float)((dop_rgb>>8)&0xFF) / 255.0f;
-                apsDisplayPixmapBuffer[(3 * idx) + 2] = (float)((dop_rgb>>0)&0xFF) / 255.0f;
-                apsDisplayPixmapBuffer[3 * idx + offset] = (float)((aop_rgb>>16)&0xFF) / 255.0f;
-                apsDisplayPixmapBuffer[(3 * idx) + 1 + offset] = (float)((aop_rgb>>8)&0xFF) / 255.0f;
-                apsDisplayPixmapBuffer[(3 * idx) + 2 + offset] = (float)((aop_rgb>>0)&0xFF) / 255.0f;
-                    
+                if( s0 > 0){
+                    dop[idx] = (float) Math.sqrt(s1*s1 + s2*s2) / s0;
+                    aop[idx] = (float) (Math.atan2(s2, s1)/ (2.0 * Math.PI) + 0.5);
+                }else{
+                    aop[idx] = 0;
+                    dop[idx] = 0;
+                }
             }
         }
     }
     
     
-        /**
-    * Compute polarization from the log intensity image, and display the results in a 3n * m image 
+    /**
+    * Display the polarization, and display the results in a 3n * m image 
     * where [:n, :] corresponds to the DoP, [n:2n, :] corresponds to the legends and [2n:, :] corresponds to the AoP  
     */
-    public static void computePolarizationLog(float[] intensity, float[] apsDisplayPixmapBuffer, 
-            int[] indexf0, int[] indexf45, int[] indexf90, int[] indexf135, int height, int width){
-        double s0, s1, s2, aop, dop;
+    public static void setDisplay(float[] apsDisplayPixmapBuffer, float[] aop, float[] dop, int height, int width){
         int aop_rgb, dop_rgb;
         int idx;
         int offset = (width / 2) * (height / 2) * 6;
         for(int x = 0; x < width; x +=2){
             for(int y = 0; y < height; y+=2){
-                idx = getIndex(x, y, width);
-                s0 =  0.5 * (Math.exp(intensity[indexf0[idx]]) + Math.exp(intensity[indexf135[idx]]) + Math.exp(intensity[indexf90[idx]]) + Math.exp(intensity[indexf45[idx]]));
-                s1 = Math.exp(intensity[indexf0[idx]]) - Math.exp(intensity[indexf90[idx]]); 
-                s2 = Math.exp(intensity[indexf45[idx]]) - Math.exp(intensity[indexf135[idx]]);
-                if( s0 > 0){
-                    dop = Math.sqrt(s1*s1 + s2*s2) / s0;
-                    aop = (Math.atan2(s2, s1))/ 2.0f ;
-                }else{
-                    dop = 0;
-                    aop =0;
-                }
-
-                // Conversion HSV -> RGB
-                idx = x / 2 + y / 2 * width / 2;
+                idx = x / 2 + y / 2 * width / 2;  
+                aop_rgb = Color.HSBtoRGB(aop[idx], 0.9f, 0.9f);
+                dop_rgb = Color.HSBtoRGB(dop[idx] * 0.5f, 0.9f, 0.9f);
                 
-                aop_rgb = Color.HSBtoRGB((float)aop, 0.9f, 0.9f);
-                dop_rgb = Color.HSBtoRGB((float)dop*0.5f, 0.9f, 0.9f);
-                
+                System.out.printf("%f  %f %d %d\n", aop[idx], dop[idx], dop_rgb, aop_rgb);
                 apsDisplayPixmapBuffer[3 * idx] = (float)((dop_rgb>>16)&0xFF) / 255.0f;
                 apsDisplayPixmapBuffer[(3 * idx) + 1] = (float)((dop_rgb>>8)&0xFF) / 255.0f;
                 apsDisplayPixmapBuffer[(3 * idx) + 2] = (float)((dop_rgb>>0)&0xFF) / 255.0f;
                 apsDisplayPixmapBuffer[3 * idx + offset] = (float)((aop_rgb>>16)&0xFF) / 255.0f;
                 apsDisplayPixmapBuffer[(3 * idx) + 1 + offset] = (float)((aop_rgb>>8)&0xFF) / 255.0f;
-                apsDisplayPixmapBuffer[(3 * idx) + 2 + offset] = (float)((aop_rgb>>0)&0xFF) / 255.0f;
-                    
+                apsDisplayPixmapBuffer[(3 * idx) + 2 + offset] = (float)((aop_rgb>>0)&0xFF) / 255.0f;       
             }
         }
     }

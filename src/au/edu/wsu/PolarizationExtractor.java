@@ -70,10 +70,13 @@ public class PolarizationExtractor extends EventFilter2D{
     private int lastFrameTimestamp = -1;
     
     // Diaplay variable between AoP and DoP
-    private int offset =0;
+    private int offset = 0;
     
     // offset of f0, f45, f90 and f135 acording to the index
     private int[] indexf0, indexf45, indexf90, indexf135;
+        private float[] aop;
+    private float[] dop;
+    FloatFunction lin = (s) -> (float) s;
 
     public static enum Extraction {
 
@@ -131,6 +134,8 @@ public class PolarizationExtractor extends EventFilter2D{
             signalBuffer = new float[maxIDX];
             displayFrame = new float[maxIDX];
             displayBuffer = new float[maxIDX];
+            dop = new float[maxIDX / 4];
+            aop = new float[maxIDX / 4];
             apsDisplayPixmapBuffer = new float[3 * maxIDX / 4 * 3];
             Arrays.fill(resetBuffer, 0.0f);
             Arrays.fill(signalBuffer, 0.0f);
@@ -252,7 +257,8 @@ public class PolarizationExtractor extends EventFilter2D{
     }
 
     public void displayPreBuffer() {
-        PolarizationUtils.computePolarization(displayBuffer, apsDisplayPixmapBuffer, indexf0, indexf45, indexf90, indexf135, height, width);
+        PolarizationUtils.computeAoPDoP(displayBuffer, aop, dop, lin, indexf0, indexf45, indexf90, indexf135, height, width);
+        PolarizationUtils.setDisplay(apsDisplayPixmapBuffer, aop, dop, height, width);
         apsDisplay.setPixmapArray(apsDisplayPixmapBuffer);
     }
     
