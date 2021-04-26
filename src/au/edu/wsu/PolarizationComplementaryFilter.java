@@ -143,7 +143,8 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             m_aop /= nb;
             m_dop /= nb;
         }
-        DrawGL.drawEllipse(gl, (float) roiRect.getCenterX(), (float) roiRect.getCenterY(), (float)(20 * (1 - m_dop) * Math.cos(m_aop)), (float)( 20 * (1 - m_dop) * Math.sin(m_aop)), m_aop, 32);
+        System.out.printf("Angle: %f", m_aop * 180);   
+        DrawGL.drawEllipse(gl, (float) roiRect.getCenterX(), (float) roiRect.getCenterY(), (float)(20), (float)( 20 * (1 - m_dop)), m_aop * 2.0f, 32);
         
     }
 
