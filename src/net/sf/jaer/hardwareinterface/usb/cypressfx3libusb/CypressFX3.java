@@ -557,6 +557,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			updateStringBuilder
 				.append("<p>Please update by following the Flashy documentation at <a href=\" " + JaerConstants.HELP_USER_GUIDE_URL_FLASHY+"\">"+JaerConstants.HELP_USER_GUIDE_URL_FLASHY+"</a></p>");
                         updateStringBuilder.append("<p>Clicking OK will open this URL in browser</p>");
+                        updateStringBuilder.append("<p>After installing DV, you can launch flashy from command line (in linux) or from DV GUI</p>");
 			final String updateString = updateStringBuilder.toString();
 
 			final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
@@ -576,7 +577,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			};
 			strWorker.execute();
 
-			throw new HardwareInterfaceException(updateString);
+//			throw new HardwareInterfaceException(updateString);
 		}
 	}
 
