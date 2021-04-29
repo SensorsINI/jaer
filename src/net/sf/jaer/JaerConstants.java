@@ -46,7 +46,7 @@ public class JaerConstants {
     public static final String JAER_RELEASES = "https://github.com/SensorsINI/jaer/releases";
     public static final String JAER_COMMITS = "https://github.com/SensorsINI/jaer/commits/master";
     public static final String HELP_URL_JAER_HOME = JAER_HOME;
-    public static final String HELP_USER_GUIDE_URL_FLASHY = "http://inivation.com/support/software/reflashing/";
+    public static final String HELP_USER_GUIDE_URL_FLASHY = "https://gitlab.com/inivation/inivation-docs/blob/master/Software%20user%20guides/User_guide_-_Reflashing_devices.md";
     public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
     public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://www.inivation.com/support/hardware/";
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
