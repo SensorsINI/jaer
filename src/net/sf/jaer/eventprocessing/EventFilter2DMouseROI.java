@@ -61,7 +61,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     /**
      * ROI rectangle
      */
-    protected Rectangle roiRect = null;
+    protected Rectangle roiRect = (Rectangle)getObject("roiRect", null);
 
     /**
      * Boolean that indicates ROI is being selected currently
@@ -181,6 +181,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         int w = roiEndx - roiStartx;
         int h = roiEndy - roiStarty;
         roiRect = new Rectangle(roiStartx, roiStarty, w, h);
+        putObject("roiRect", roiRect);
     }
 
     /**
