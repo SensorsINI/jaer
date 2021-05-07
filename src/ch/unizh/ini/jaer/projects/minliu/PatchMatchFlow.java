@@ -26,12 +26,11 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -41,7 +40,6 @@ import java.util.StringTokenizer;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
-import java.util.stream.IntStream;
 import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.Description;
@@ -49,9 +47,9 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.AEViewer;
@@ -108,7 +106,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private int[] sliceEndTimeUs; // holds the time interval between reference slice and this slice
     private byte[][][] currentSlice;
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0, 0); // used for consistency check
-    private int blockDimension = getInt("blockDimension", 23);
+    private int blockDimension = getInt("blockDimension", 7);    // This is the block dimension of the corase scale.
 //    private float cost = getFloat("cost", 0.001f);
     private float maxAllowedSadDistance = getFloat("maxAllowedSadDistance", .5f);
     private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
@@ -279,6 +277,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     private final ApsFrameExtractor apsFrameExtractor;
     
+    // Corner events array; only used for rendering.
+    private boolean showCorners = getBoolean("showCorners", false);
+    private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
+
     public PatchMatchFlow(AEChip chip) {
         super(chip);
 
@@ -394,6 +396,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             i = ((EventPacket) in).inputIterator();
         }
 
+        cornerEvents.clear();
         nSkipped = 0;
         nProcessed = 0;
 
@@ -471,6 +474,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     vx = result.vx;
                     vy = result.vy;
                     v = (float) Math.sqrt((vx * vx) + (vy * vy));
+                    
+                    cornerEvents.add(e);
                 }
             } 
             else
@@ -995,6 +1000,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             gl.glVertex2f(xx - sd, yy + sd);
             gl.glEnd();
         }
+        
+        if(showCorners)
+        {
+            gl.glColor4f(1f, 0, 0, 0.1f);
+            for (BasicEvent e : cornerEvents) {
+                gl.glPushMatrix();
+                DrawGL.drawBox(gl, e.x, e.y, 4, 4, 0);
+                gl.glPopMatrix();
+            }
+        }
     }
 
     @Override
@@ -1149,12 +1164,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (imuTimesliceLogger != null && imuTimesliceLogger.isEnabled()) {
             imuTimesliceLogger.log(String.format("%d %d %.3f", ts, sliceDeltaT, imuFlowEstimator.getPanRateDps()));
         }
-        
-        if(e.timestamp == 80297456)
-        {
-            saveAPSImage();                    
-            saveSliceGrayImage = true;
-        }        
+        saveSliceGrayImage = true;
+//        if(e.timestamp == 213686212)
+//        {
+//            saveAPSImage();                    
+//            saveSliceGrayImage = true;
+//        }        
         if (showSlices && !rewindFlg) {
             // TODO danger, drawing outside AWT thread
             final byte[][][][] thisSlices = slices;
@@ -1265,6 +1280,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (calcOFonCornersEnabled && !isCorner) {
             return false;
         }
+        cornerEvents.add(e);
 
         if (timeLimiter.isTimedOut()) {
             nSkipped++;
@@ -2133,8 +2149,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             s2 += d * (1 << i);
         }
         double d2 = s2 / numScales;
-        log.info(String.format("searchDistance=%d numScales=%d: avgPossibleMatchDistance=%.1f", searchDistance, numScales, avgPossibleMatchDistance));
         avgPossibleMatchDistance = (float) d2;
+        log.info(String.format("searchDistance=%d numScales=%d: avgPossibleMatchDistance=%.1f", searchDistance, numScales, avgPossibleMatchDistance));
     }
 
     @Override
@@ -3242,8 +3258,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         this.showSlicesScale = showSlicesScale;
     }
 
+    public boolean isShowCorners() {
+        return showCorners;
+    }
+
+    public void setShowCorners(boolean showCorners) {
+        this.showCorners = showCorners;
+        putBoolean("showCorners", showCorners);        
+    }
+    
     public boolean isHWABMOFEnabled() {
-        return HWABMOFEnabled;
+        return HWABMOFEnabled;        
     }
 
     public void setHWABMOFEnabled(boolean HWABMOFEnabled) {
@@ -3278,6 +3303,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         putString("cornerCircleSelection", cornerCircleSelection.toString());        
     }    
     
+    // This is the BFAST (or SFAST in paper) corner dector. EFAST refer to HWCornerPointRender
     boolean PatchFastDetectorisFeature(PolarityEvent ein) {
         boolean found_streak = false;
         boolean found_streak_inner = false, found_streak_outer = false;
