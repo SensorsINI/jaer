@@ -28,7 +28,9 @@ import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
 import com.jogamp.opengl.GLException;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,7 +43,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
+import javax.swing.JFileChooser;
 import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -155,6 +159,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     
     private float cornerThr = getFloat("cornerThr", 0.2f);
     private boolean saveSliceGrayImage = false;
+    private PrintWriter dvsWriter = null;
     
     // These variables are only used by HW_ABMOF. 
     // HW_ABMOF send slice rotation flag so we need to indicate the real rotation timestamp
@@ -167,6 +172,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         InnerCircle, OuterCircle, OR, AND
     }
     private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.OuterCircle;
+
+    protected static String DEFAULT_FILENAME = "jAER.txt";
+    protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
@@ -346,6 +354,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "defaults", "Sets reasonable defaults");
         setPropertyTooltip(patchTT, "enableImuTimesliceLogging", "Logs IMU and rate gyro");
         setPropertyTooltip(patchTT, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
+        setPropertyTooltip(patchTT, "startRecordingForEDFLOW", "Start to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
+        setPropertyTooltip(patchTT, "stopRecordingForEDFLOW", "Stop to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
 
         String patchDispTT = "0b: Block matching display";
         setPropertyTooltip(patchDispTT, "showSlices", "enables displaying the entire bitmaps slices (the current slices)");
@@ -484,10 +494,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 int[] dxInitVals = new int[numScales];
                 int[] dyInitVals = new int[numScales];
 
+                int rotateFlg = 0;
                 switch (patchCompareMethod) {
                     case SAD:
                         boolean rotated = maybeRotateSlices();
                         if (rotated) {
+                            rotateFlg = 1;
                             adaptSliceDuration();
                             setResetOFHistogramFlag();
                         }
@@ -496,19 +508,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     //                        continue;
     //                    }
 
-                        if(ein.timestamp == 151322924)
-                        {
-    //                        ein.y = (short)(ein.y + 4);
-                            int tmp = 1;
-                        }
-
                         if (!accumulateEvent(ein)) { // maybe skip events here
+                            if(dvsWriter != null)
+                            {
+                                dvsWriter.println(String.format("%d %d %d %d %d %d %d %d %d", ein.timestamp, ein.x, ein.y, ein.polarity == PolarityEvent.Polarity.Off ? 0 : 1, 0x7, 0x7, 0, rotateFlg, 0));                           
+                            }                            
                             break;
                         }
 
                         SADResult sliceResult = new SADResult();
                         minDistScale = 0;
-
+                        boolean OFRetValidFlag = true;
+                        
                         // Sorts scalesToComputeArray[] in descending order
                         Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
 
@@ -535,6 +546,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
                             if(sliceResult.sadValue >= this.maxAllowedSadDistance)
                             {
+                                OFRetValidFlag = false;
                                 break;
                             }
                             else
@@ -553,7 +565,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                             result.vx = result.dx / dt; // hack, convert to pix/second
                             result.vy = result.dy / dt; // TODO clean up, make time for each slice, since could be different when const num events
                         }
-
+                        if(dvsWriter != null)
+                        {
+                            dvsWriter.println(String.format("%d %d %d %d %d %d %d %d %d", ein.timestamp, ein.x, ein.y, ein.polarity == PolarityEvent.Polarity.Off ? 0 : 1, result.dx, result.dy, OFRetValidFlag ? 1 : 0, rotateFlg, 1));                           
+                        }
                         break;
     //                case JaccardDistance:
     //                    maybeRotateSlices();
@@ -3302,6 +3317,44 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         this.cornerCircleSelection = cornerCircleSelection;
         putString("cornerCircleSelection", cornerCircleSelection.toString());        
     }    
+    synchronized public void doStartRecordingForEDFLOW() {
+        JFileChooser c = new JFileChooser(lastFileName);
+        c.setFileFilter(new FileFilter() {
+
+            public boolean accept(File f) {
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt");
+            }
+
+            public String getDescription() {
+                return "text file";
+            }
+        });
+        c.setSelectedFile(new File(lastFileName));
+        int ret = c.showSaveDialog(null);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        String basename = c.getSelectedFile().toString();
+        if (basename.toLowerCase().endsWith(".txt")) {
+            basename = basename.substring(0, basename.length() - 4);
+        }
+        lastFileName = basename;
+        putString("lastFileName", lastFileName);
+        String fn = basename + "-OFResult.txt";
+        try {
+            dvsWriter = new PrintWriter(new File(fn));
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        dvsWriter.println("# created " + new Date().toString());
+        dvsWriter.println("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)"));
+        dvsWriter.println("# dvs-events: One event per line:  timestamp(us) x y polarity(0=off,1=on) dx dy OFRetValid rotateFlg SFAST");
+    }  
+    
+    synchronized public void doStopRecordingForEDFLOW() {
+        dvsWriter.close();
+        dvsWriter = null;
+    }  
     
     // This is the BFAST (or SFAST in paper) corner dector. EFAST refer to HWCornerPointRender
     boolean PatchFastDetectorisFeature(PolarityEvent ein) {
