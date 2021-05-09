@@ -620,7 +620,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
                     
             if (resultHistogram != null) {
-                resultHistogram[result.xidx][result.yidx]++;
+                resultHistogram[result.dx + computeMaxSearchDistance()][result.dy + computeMaxSearchDistance()]++;
                 resultHistogramCount++;
             }
 //            if (result.dx != 0 || result.dy != 0) {
@@ -694,7 +694,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
 //            int maxRadius = (int) Math.ceil(Math.sqrt(2 * searchDistance * searchDistance));
 //            int countSum = 0;
-        final int totSD = searchDistance << (numScales - 1);
+        final int totSD = computeMaxSearchDistance();
         for (int xx = -totSD; xx <= totSD; xx++) {
             for (int yy = -totSD; yy <= totSD; yy++) {
                 int count = resultHistogram[xx + totSD][yy + totSD];
@@ -858,7 +858,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (displayResultHistogram && (resultHistogram != null)) {
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
-            int rhDim = resultHistogram.length; // 2*(searchDistance<<numScales)+1
+            int rhDim = resultHistogram.length; // this.computeMaxSearchDistance();
             gl.glPushMatrix();
             final float scale = 30f / rhDim; // size same as the color wheel
             gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);  // center above color wheel
@@ -904,7 +904,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                         gl.glEnd();
                     }
                 }
-                final int tsd = searchDistance << (numScales - 1);
+                final int tsd = computeMaxSearchDistance();
                 if (avgMatchDistance > 0) {
                     gl.glPushMatrix();
                     gl.glColor4f(1f, 0, 0, .5f);
@@ -916,7 +916,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     gl.glPushMatrix();
                     gl.glColor4f(0, 1f, 0, .5f);
                     gl.glLineWidth(5f);
-                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance / 2, 16); // draw circle at target match distance
+                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance, 16); // draw circle at target match distance
                     gl.glPopMatrix();
                 }
                 // a bunch of cryptic crap to draw a string the same width as the histogram...
@@ -924,7 +924,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 gl.glPopMatrix(); // back to original chip coordinates
                 gl.glPushMatrix();
                 textRenderer.begin3DRendering();
-                String s = String.format("d=%.1f ms", 1e-3f * sliceDeltaT);
+                String s = String.format("dt=%.1f ms", 1e-3f * sliceDeltaT);
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getWidth(), .1f);
                 // determine width of string in pixels and scale accordingly
                 FontRenderContext frc = textRenderer.getFontRenderContext();
@@ -2149,6 +2149,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         getSupport().firePropertyChange("searchMethod", old, this.searchMethod);
     }
 
+    private int computeMaxSearchDistance()
+    {
+        int sumScales = 0;
+        for (int i = 0; i < numScales; i++)
+        {
+            sumScales += (1 << i);
+        }
+        return searchDistance * sumScales;
+    }
+    
     private void computeAveragePossibleMatchDistance() {
         int n = 0;
         double s = 0;
@@ -2328,7 +2338,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //        if (lastTimesMap != null) {
 //            lastTimesMap = null; // save memory
 //        }
-        int rhDim = (2 * (searchDistance << (numScales - 1))) + 1; // e.g. search distance 1, dim=3, 3x3 possibilties (including zero motion)
+        // 
+        int rhDim = 2 * computeMaxSearchDistance() + 1; // e.g. coarse to fine search strategy
         if ((resultHistogram == null) || (resultHistogram.length != rhDim)) {
             resultHistogram = new int[rhDim][rhDim];
             resultHistogramCount = 0;
