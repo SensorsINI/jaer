@@ -799,7 +799,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 if (!isDisplayGlobalMotion()) {
                     setDisplayGlobalMotion(true);
                 }
-                adaptiveSliceDurationLogger.log(String.format("%d\t%f\t%f\t%f\t%d\t%d", adaptiveSliceDurationPacketCount++, avgMatchDistance, err, motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDurationUs, sliceEventCount));
+                adaptiveSliceDurationLogger.log(String.format("%f\t%d\t%f\t%f\t%f\t%d\t%d", e.timestamp * 1e-6f , adaptiveSliceDurationPacketCount++, avgMatchDistance, err, 
+                        motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDeltaT, sliceEventCount));
             }
         }
 
@@ -2519,7 +2520,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (adaptiveSliceDurationLogging) {
             if (adaptiveSliceDurationLogger == null) {
                 adaptiveSliceDurationLogger = new TobiLogger("PatchMatchFlow-SliceDurationControl", "slice duration or event count control logging");
-                adaptiveSliceDurationLogger.setColumnHeaderLine("systemTimeMs\tpacketNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
+                adaptiveSliceDurationLogger.setColumnHeaderLine("eventTsSec\tpacketNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
                 adaptiveSliceDurationLogger.setSeparator("\t");
             }
             adaptiveSliceDurationLogger.setEnabled(adaptiveSliceDuration);
