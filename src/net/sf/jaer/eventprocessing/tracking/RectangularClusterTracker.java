@@ -443,6 +443,28 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         /**
+         * Opens the last folder where logging was sent to in desktop file
+         * explorer
+         */
+        public void showFolderInDesktop(File file) {
+            if (!Desktop.isDesktopSupported()) {
+                log.warning("Desktop operations are not supported, cannot show the folder holding " + file.toString());
+                return;
+            }
+            try {
+                if (file.exists()) {
+//                Path folder=Paths.get(fileNameActual).getParent().getFileName();
+                    File folder = file.getAbsoluteFile().getParentFile();
+                    Desktop.getDesktop().open(folder);
+                } else {
+                    log.warning(file + " does not exist to open folder to");
+                }
+            } catch (Exception e) {
+                log.warning(e.toString());
+            }
+        }
+
+        /**
          * Opens the file and prints the header to it. The file is written to
          * the startup folder.
          */
@@ -1156,7 +1178,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * is updated when cluster becomes visible.
          * <code>lastEventTimestamp</code> is the last time the cluster was
          * touched either by an event or by some other timestamped update, e.g.
-         * null null null null null null null         {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
+         * null null null null null null null null         {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
 		 * }.
          *
          * @see #isVisible()
@@ -2436,28 +2458,6 @@ public class RectangularClusterTracker extends EventFilter2D
         protected boolean isOverlappingCenterOf(Cluster c2) {
             final boolean overlapping = distanceTo(c2) < (getRadius() + c2.getRadius());
             return overlapping;
-        }
-
-        /**
-         * Opens the last folder where logging was sent to in desktop file
-         * explorer
-         */
-        public void showFolderInDesktop(File file) {
-            if (!Desktop.isDesktopSupported()) {
-                log.warning("Desktop operations are not supported, cannot show the folder holding " + file.toString());
-                return;
-            }
-            try {
-                if (file.exists()) {
-//                Path folder=Paths.get(fileNameActual).getParent().getFileName();
-                    File folder = file.getAbsoluteFile().getParentFile();
-                    Desktop.getDesktop().open(folder);
-                } else {
-                    log.warning(file + " does not exist to open folder to");
-                }
-            } catch (Exception e) {
-                log.warning(e.toString());
-            }
         }
 
         /**
