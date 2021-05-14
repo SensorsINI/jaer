@@ -678,6 +678,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
         setValidPixOccupancy(.01f); // at least this fraction of pixels from each block must both have nonzero values
         setSliceMethod(SliceMethod.AreaEventNumber);
+        setSliceDurationMaxLimitUS(100);
+        setSliceDurationMaxLimitUS(300000);
         // compute nearest power of two over block dimension
         int ss = (int) (Math.log(blockDimension - 1) / Math.log(2));
         setAreaEventNumberSubsampling(ss);
@@ -1090,7 +1092,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
                 break;
             case AreaEventNumber:
-                if (!areaCountExceeded && dt < getSliceDurationMaxLimitUS() && dt > getSliceDurationMinLimitUS()) {
+                // If dt is too small, we should rotate it later until it has enough accumulation time.
+                if (!areaCountExceeded && dt < getSliceDurationMaxLimitUS() || (dt < getSliceDurationMinLimitUS())) {
                     return false;
                 }
                 break;
