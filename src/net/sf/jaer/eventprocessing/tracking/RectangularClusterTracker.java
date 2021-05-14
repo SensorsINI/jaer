@@ -138,6 +138,7 @@ public class RectangularClusterTracker extends EventFilter2D
     protected boolean showClusterEps = getBoolean("showClusterEps", false);
     private boolean showClusterRadius = getBoolean("showClusterRadius", false);
     protected boolean showClusterVelocity = getBoolean("showClusterVelocity", false);
+    protected boolean showClusterVelocityVector = getBoolean("showClusterVelocityVector", false);
     private boolean showClusterMass = getBoolean("showClusterMass", false);
     private boolean showPaths = getBoolean("showPaths", true);
     protected float velocityVectorScaling = getFloat("velocityVectorScaling", 1);
@@ -282,12 +283,13 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
         setPropertyTooltip(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
-        setPropertyTooltip(disp, "showClusterVelocity", "annotates velocity in pixels/second");
+        setPropertyTooltip(disp, "showClusterVelocityVector", "draws velocity in using scaling velocityVectorScaling");
+        setPropertyTooltip(disp, "showClusterVelocity", "shows velocity vector as (vx,vy) in px/s");
         setPropertyTooltip(disp, "showClusterRadius", "draws cluster radius");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
         setPropertyTooltip(disp, "showClusterNumber", "shows cluster ID number");
         setPropertyTooltip(disp, "showClusterMass", "shows cluster mass; mass is decaying measure of the rate of captured events");
-        setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors");
+        setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors from pps to pixels in AEChip pixel space");
         setPropertyTooltip(update, "useOnePolarityOnlyEnabled", "use only one event polarity");
         setPropertyTooltip(update, "useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
         setPropertyTooltip(update, "growMergedSizeEnabled",
@@ -436,6 +438,29 @@ public class RectangularClusterTracker extends EventFilter2D
                 logStream.close();
                 logStream = null;
                 log.info("Closed log data file " + file.getAbsolutePath());
+                showFolderInDesktop(file);
+            }
+        }
+
+        /**
+         * Opens the last folder where logging was sent to in desktop file
+         * explorer
+         */
+        public void showFolderInDesktop(File file) {
+            if (!Desktop.isDesktopSupported()) {
+                log.warning("Desktop operations are not supported, cannot show the folder holding " + file.toString());
+                return;
+            }
+            try {
+                if (file.exists()) {
+//                Path folder=Paths.get(fileNameActual).getParent().getFileName();
+                    File folder = file.getAbsoluteFile().getParentFile();
+                    Desktop.getDesktop().open(folder);
+                } else {
+                    log.warning(file + " does not exist to open folder to");
+                }
+            } catch (Exception e) {
+                log.warning(e.toString());
             }
         }
 
@@ -753,7 +778,7 @@ public class RectangularClusterTracker extends EventFilter2D
             // logg.warning("last cluster timestamp is later than last packet timestamp");
             // }
         } // clusters
-        
+
         if (logDataEnabled && (clusterLogger != null) && (clusterLoggingMethod == ClusterLoggingMethod.LogClusters)
                 && !pruneList.isEmpty()) {
             clusterLogger.logClusterHistories(pruneList);
@@ -1153,7 +1178,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * is updated when cluster becomes visible.
          * <code>lastEventTimestamp</code> is the last time the cluster was
          * touched either by an event or by some other timestamped update, e.g.
-         * null null null null         {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
+         * null null null null null null null null         {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
 		 * }.
          *
          * @see #isVisible()
@@ -1683,14 +1708,14 @@ public class RectangularClusterTracker extends EventFilter2D
             if (isUseEllipticalClusters()) {
                 DrawGL.drawEllipse(gl, 0, 0, radiusX, radiusY, angle, 15);
             } else {
-                DrawGL.drawBox(gl, 0, 0, (int)radiusX * 2, (int)radiusY * 2, angle); // Radius*2 because we need width and height # tobi casted to int to reduce making gl draw lists in DrawBox
+                DrawGL.drawBox(gl, 0, 0, (int) radiusX * 2, (int) radiusY * 2, angle); // Radius*2 because we need width and height # tobi casted to int to reduce making gl draw lists in DrawBox
             }
             if ((angle != 0) || dynamicAngleEnabled) {
                 DrawGL.drawLine(gl, 0, 0, radiusX, 0, 1);
             }
 
             // plots a single motion vector which is the number of pixels per second times scaling
-            if (showClusterVelocity) {
+            if (showClusterVelocityVector) {
                 DrawGL.drawVector(gl, 0, 0, velocityPPS.x, velocityPPS.y, 2, velocityVectorScaling);
             }
             if (showClusterRadius) {
@@ -1710,14 +1735,16 @@ public class RectangularClusterTracker extends EventFilter2D
 
             // text annoations on clusters, setup
             final int font = GLUT.BITMAP_HELVETICA_18;
-            if (showClusterMass || showClusterEps || showClusterNumber) {
+            if (showClusterMass || showClusterEps || showClusterNumber || showClusterVelocity) {
                 gl.glColor3f(1, 1, 1);
                 gl.glRasterPos3f(location.x, location.y, 0);
             }
 
             // cGLUT.glutBitmapString(font, String.format("%.0fdeg", instantaneousAngle*180/Math.PI)); // annotate with
             // instantaneousAngle (debug)
-            // if (showClusterVelocity) cGLUT.glutBitmapString(font, String.format("v=%.0fpps ", getSpeedPPS()));
+            if (showClusterVelocity) {
+                cGLUT.glutBitmapString(font, String.format("v(vx,vy)=%.0f(%.0f,%.0f) pps", getSpeedPPS(), getVelocityPPS().x, getVelocityPPS().y));
+            }
             // if (showClusterRadius) cGLUT.glutBitmapString(font, String.format("rad=%.1f ", getRadius()));
             if (showClusterEps) {
                 cGLUT.glutBitmapString(font, String.format("eps=%.0fk ", (getAvgEventRate() / (AEConstants.TICK_DEFAULT_US)) * 1e3f)); // annotate
@@ -2824,7 +2851,7 @@ public class RectangularClusterTracker extends EventFilter2D
         if (o == this) {
             UpdateMessage msg = (UpdateMessage) arg;
             updateClusterList(msg.timestamp);
-        } 
+        }
     }
 
     @Override
@@ -3648,6 +3675,21 @@ public class RectangularClusterTracker extends EventFilter2D
     public void setShowClusterVelocity(boolean showClusterVelocity) {
         this.showClusterVelocity = showClusterVelocity;
         putBoolean("showClusterVelocity", showClusterVelocity);
+    }
+
+    /**
+     * @return the showClusterVelocity
+     */
+    public boolean isShowClusterVelocityVector() {
+        return showClusterVelocityVector;
+    }
+
+    /**
+     * @param showClusterVelocity the showClusterVelocity to set
+     */
+    public void setShowClusterVelocityVector(boolean showClusterVelocityVector) {
+        this.showClusterVelocityVector = showClusterVelocityVector;
+        putBoolean("showClusterVelocityVector", showClusterVelocityVector);
     }
     // </editor-fold>
 
