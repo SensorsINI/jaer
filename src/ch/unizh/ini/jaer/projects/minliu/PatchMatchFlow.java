@@ -135,6 +135,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     private int sliceMaxValue = getInt("sliceMaxValue", 7);
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
+    private int sliceDurationMinLimitUS = getInt("sliceDurationMinLimitUS", 100);
+    private int sliceDurationMaxLimitUS = getInt("sliceDurationMaxLimitUS", 300000);
+
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
 
     // results histogram for each packet
@@ -150,8 +153,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //    private float lastErrSign = Math.signum(1);
 //    private final String outputFilename;
     private int sliceDeltaT;    //  The time difference between two slices used for velocity caluction. For constantDuration, this one is equal to the duration. For constantEventNumber, this value will change.
-    private int MIN_SLICE_DURATION_US = 100;
-    private int MAX_SLICE_DURATION_US = 300000;
 
     private boolean enableImuTimesliceLogging = false;
     private TobiLogger imuTimesliceLogger = null;
@@ -356,7 +357,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
         setPropertyTooltip(patchTT, "startRecordingForEDFLOW", "Start to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
         setPropertyTooltip(patchTT, "stopRecordingForEDFLOW", "Stop to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
-
+        setPropertyTooltip(patchTT, "sliceDurationMinLimitUS", "The minimum value (us) of slice duration.");
+        setPropertyTooltip(patchTT, "sliceDurationMaxLimitUS", "The maximum value (us) of slice duration.");        
+        
         String patchDispTT = "0b: Block matching display";
         setPropertyTooltip(patchDispTT, "showSlices", "enables displaying the entire bitmaps slices (the current slices)");
         setPropertyTooltip(patchDispTT, "showSlicesScale", "sets which scale of the slices to display");
@@ -443,7 +446,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             // compute flow
             SADResult result = null;
             
-            if(HWABMOFEnabled)                   // Only use it when there is hardwar supported. Hardware is davis346Zynq
+            if(HWABMOFEnabled)                   // Only use it when there is hardware supported. Hardware is davis346Zynq
             {
                 SADResult sliceResult = new SADResult();
 
@@ -502,7 +505,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                             rotateFlg = 1;
                             adaptSliceDuration();
                             setResetOFHistogramFlag();
+                            resetOFHistogram();
+                            nCountPerSlicePacket = 0;      // Reset counter for next slice packet.
                         }
+                        nCountPerSlicePacket++;
     //                    if (ein.x >= subSizeX || ein.y > subSizeY) {
     //                        log.warning("event out of range");
     //                        continue;
@@ -512,7 +518,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                             if(dvsWriter != null)
                             {
                                 dvsWriter.println(String.format("%d %d %d %d %d %d %d %d %d", ein.timestamp, ein.x, ein.y, ein.polarity == PolarityEvent.Polarity.Off ? 0 : 1, 0x7, 0x7, 0, rotateFlg, 0));                           
-                            }                            
+                            }              
                             break;
                         }
 
@@ -799,7 +805,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 if (!isDisplayGlobalMotion()) {
                     setDisplayGlobalMotion(true);
                 }
-                adaptiveSliceDurationLogger.log(String.format("%f\t%d\t%f\t%f\t%f\t%d\t%d", e.timestamp * 1e-6f , adaptiveSliceDurationPacketCount++, avgMatchDistance, err, 
+                adaptiveSliceDurationLogger.log(String.format("%f\t%d\t%d\t%f\t%f\t%f\t%d\t%d", e.timestamp * 1e-6f , 
+                        adaptiveSliceDurationPacketCount++, nCountPerSlicePacket, avgMatchDistance, err, 
                         motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDeltaT, sliceEventCount));
             }
         }
@@ -970,10 +977,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                    gl.glEnd();
 //                    gl.glPopMatrix();
 //                }
-                resetOFHistogram();  // clears OF histogram if slices have been rotated
             }
-        } else {
-            resetOFHistogram();  // clears OF histogram if slices have been rotated and we are not displaying the histogram
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
             int d = 1 << areaEventNumberSubsampling;
@@ -1086,7 +1090,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
                 break;
             case AreaEventNumber:
-                if (!areaCountExceeded && dt < MAX_SLICE_DURATION_US) {
+                if (!areaCountExceeded && dt < getSliceDurationMaxLimitUS() && dt > getSliceDurationMinLimitUS()) {
                     return false;
                 }
                 break;
@@ -1236,7 +1240,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         return dt;
     }
 
-    private int nSkipped = 0, nProcessed = 0;
+    private int nSkipped = 0, nProcessed = 0, nCountPerSlicePacket = 0;
 
     /**
      * Accumulates the current event to the current slice
@@ -2208,10 +2212,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
      */
     public void setSliceDurationUs(int sliceDurationUs) {
         int old = this.sliceDurationUs;
-        if (sliceDurationUs < MIN_SLICE_DURATION_US) {
-            sliceDurationUs = MIN_SLICE_DURATION_US;
-        } else if (sliceDurationUs > MAX_SLICE_DURATION_US) {
-            sliceDurationUs = MAX_SLICE_DURATION_US; // limit it to one second
+        if (sliceDurationUs < getSliceDurationMinLimitUS()) {
+            sliceDurationUs = getSliceDurationMinLimitUS();
+        } else if (sliceDurationUs > getSliceDurationMaxLimitUS()) {
+            sliceDurationUs = getSliceDurationMaxLimitUS(); // limit it to one second
         }
         this.sliceDurationUs = sliceDurationUs;
 
@@ -2520,7 +2524,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (adaptiveSliceDurationLogging) {
             if (adaptiveSliceDurationLogger == null) {
                 adaptiveSliceDurationLogger = new TobiLogger("PatchMatchFlow-SliceDurationControl", "slice duration or event count control logging");
-                adaptiveSliceDurationLogger.setColumnHeaderLine("eventTsSec\tpacketNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
+                adaptiveSliceDurationLogger.setColumnHeaderLine("eventTsSec\tpacketNumber\tpacketEvenNumber\tavgMatchDistance\tmatchRadiusError\tglobalTranslationSpeedPPS\tsliceDurationUs\tsliceEventCount");
                 adaptiveSliceDurationLogger.setSeparator("\t");
             }
             adaptiveSliceDurationLogger.setEnabled(adaptiveSliceDuration);
@@ -3285,6 +3289,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         this.showSlicesScale = showSlicesScale;
     }
 
+    public int getSliceDurationMinLimitUS() {
+        return sliceDurationMinLimitUS;
+    }
+
+    public void setSliceDurationMinLimitUS(int sliceDurationMinLimitUS) {
+        this.sliceDurationMinLimitUS = sliceDurationMinLimitUS;
+        putInt("sliceDurationMinLimitUS", sliceDurationMinLimitUS);
+    }
+
+    public int getSliceDurationMaxLimitUS() {
+        return sliceDurationMaxLimitUS;
+    }
+
+    public void setSliceDurationMaxLimitUS(int sliceDurationMaxLimitUS) {
+        this.sliceDurationMaxLimitUS = sliceDurationMaxLimitUS;
+        putInt("sliceDurationMaxLimitUS", sliceDurationMaxLimitUS);
+    }
+
+    
     public boolean isShowCorners() {
         return showCorners;
     }
