@@ -27,6 +27,7 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.util.gl2.GLUT;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -48,7 +49,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *
  * @author tobi
  */
-@Description("Filters a region defined by x, y, and event type ranges")
+@Description("Filters a region of interest (ROI) defined by x, y, and event type ranges")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener {
 
@@ -83,6 +84,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     private int startx, starty, endx, endy;
     private boolean multiSelectionEnabled = prefs().getBoolean("XYTypeFilter.multiSelectionEnabled", false);
     private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
+    protected boolean showTypeFilteringText = getBoolean("showTypeFilteringText", true);
 
     public XYTypeFilter(AEChip chip) {
         super(chip);
@@ -102,6 +104,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         setPropertyTooltip(t, "startType", "starting cell type");
         setPropertyTooltip(t, "typeEnabled", "filter based on cell type");
         setPropertyTooltip(t, "endType", "ending cell type");
+        setPropertyTooltip(t, "showTypeFilteringText", "show what type of events are passed through (usually 0=OFF, 1=ON for DVS and DAVIS)");
         setPropertyTooltip("invertEnabled", "invert filtering to pass events outside selection");
         setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
 
@@ -402,6 +405,17 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         }
         gl.glPopMatrix();
 
+        if (showTypeFilteringText && typeEnabled) {
+            gl.glPushMatrix();
+            {
+                final GLUT glut = new GLUT();
+                gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
+                gl.glRasterPos3f(10, 2 * chip.getSizeY() / 3, 0);
+                String s = String.format("XYTypeFilter: Only passing type %d - %d", startType, endType);
+                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+            }
+            gl.glPopMatrix();
+        }
     }
 
     private void drawSelection(GL2 gl, Rectangle r, float[] c) {
@@ -636,13 +650,13 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
         try {
             SavedMultiSelection ss = (SavedMultiSelection) getObject("multiSelection", null);
-            if (ss == null || ss.size==0) {
+            if (ss == null || ss.size == 0) {
                 return;
             }
             for (int i = 0; i < ss.size; i++) {
                 selectionList.add(new SelectionRectangle(ss.xValues[i], ss.yValues[i], ss.widthValues[i], ss.heightValues[i]));
             }
-            log.info(String.format("loaded %d selection rectangles from preferences",ss.size));
+            log.info(String.format("loaded %d selection rectangles from preferences", ss.size));
         } catch (Exception e) {
             log.warning("couldn't load throttle profile: " + e);
         }
@@ -656,11 +670,25 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         try {
             SavedMultiSelection ss = new SavedMultiSelection(this);
             putObject("multiSelection", ss);
-            log.info(String.format("Saved %d rectangles to preferences",ss.size));
+            log.info(String.format("Saved %d rectangles to preferences", ss.size));
         } catch (Exception e) {
             log.warning("couldn't save profile: " + e);
         }
 
+    }
+
+    /**
+     * @return the showTypeFilteringText
+     */
+    public boolean isShowTypeFilteringText() {
+        return showTypeFilteringText;
+    }
+
+    /**
+     * @param showTypeFilteringText the showTypeFilteringText to set
+     */
+    public void setShowTypeFilteringText(boolean showTypeFilteringText) {
+        this.showTypeFilteringText = showTypeFilteringText;
     }
 
     private static class SavedMultiSelection implements Serializable {
@@ -669,10 +697,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
         public SavedMultiSelection(XYTypeFilter xyTypeFilter) {
             if (xyTypeFilter.selectionList == null || xyTypeFilter.selectionList.isEmpty()) {
-                size=0;
+                size = 0;
                 return;
             }
-            size=xyTypeFilter.selectionList.size();
+            size = xyTypeFilter.selectionList.size();
             xValues = new int[size];
             yValues = new int[size];
             widthValues = new int[size];
