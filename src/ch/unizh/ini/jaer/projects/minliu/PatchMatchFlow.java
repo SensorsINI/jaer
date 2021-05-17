@@ -110,7 +110,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private int[] sliceEndTimeUs; // holds the time interval between reference slice and this slice
     private byte[][][] currentSlice;
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0, 0); // used for consistency check
-    private int blockDimension = getInt("blockDimension", 7);    // This is the block dimension of the corase scale.
+    private int blockDimension = getInt("blockDimension", 7);    // This is the block dimension of the coarse scale.
 //    private float cost = getFloat("cost", 0.001f);
     private float maxAllowedSadDistance = getFloat("maxAllowedSadDistance", .5f);
     private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
@@ -323,7 +323,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
         setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
-        setPropertyTooltip(patchTT, "blockDimension", "linear dimenion of patches to match, in pixels");
+        setPropertyTooltip(patchTT, "blockDimension", "linear dimenion of patches to match on coarse scale, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches; SAD=sum of absolute differences, HammingDistance is same as SAD for binary bitmaps");
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
