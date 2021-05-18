@@ -345,7 +345,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         });
 
         if (chip.getRemoteControl() != null) {
-            RemoteControl control=chip.getRemoteControl();
+            RemoteControl control = chip.getRemoteControl();
             control.addCommandListener(this, CMD_BANDWIDTH_TWEAK, CMD_BANDWIDTH_TWEAK + " val - sets DVS bandwidth tweak; range -1:1 range");
             control.addCommandListener(this, CMD_MAXFIRINGRATE_TWEAK, CMD_MAXFIRINGRATE_TWEAK + " val - sets DVS max firing rate (refractory period) tweak; range -1:1 range");
             control.addCommandListener(this, CMD_ONOFFBALANCE_TWEAK, CMD_ONOFFBALANCE_TWEAK + " val - sets DVS On/Off event threshold tweak; range -1:1 range");
@@ -412,7 +412,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     private int autoShotThreshold;
 
     // DVSTweasks from DVS128
-    private float bandwidth =0;
+    private float bandwidth = 0;
     private float maxFiringRate = 0;
     private float onOffBalance = 0;
     private float threshold = 0;
@@ -779,7 +779,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             return;
         }
         maxFiringRate = val;
-        final float MAX = 8, MIN=100; // limit to approx 8 times shorter refr period than default, and 100 times longer
+        final float MAX = 8, MIN = 100; // limit to approx 8 times shorter refr period than default, and 100 times longer
         refr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MIN, MAX));
         getChip().getSupport().firePropertyChange(DVSTweaks.MAX_FIRING_RATE, old, val);
     }
@@ -813,7 +813,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
      */
     @Override
     public void setThresholdTweak(float val) {
-        log.info("setting threshold tweak to "+val);
+        log.info("setting threshold tweak to " + val);
         if (val > 1) {
             val = 1;
         } else if (val < -1) {
@@ -931,8 +931,9 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
      * see https://ieeexplore.ieee.org/document/7962235 fig 1
      */
     protected float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 20, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
-    
-    private float REFR_CAP=20e-15f, REFR_VOLTAGE=(1.8f-1f); // guesstimated
+
+    private float REFR_CAP = 20e-15f, REFR_VOLTAGE = (1.8f - 1f); // guesstimated from NMOSCAP with W/L=3u/1.8u and Tox
+    private float C1_CAP = 131.167e-15f, C2_CAP = 5.458e-15f; // guesstimated
 
     @Override
     public float getOnThresholdLogE() {
@@ -946,11 +947,19 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
     @Override
     public float getRefractoryPeriodS() {
-        float iRefr=refr.getCurrent();
-        return (float)(REFR_CAP*REFR_VOLTAGE/iRefr);
+        float iRefr = refr.getCurrent();
+        return (float) (REFR_CAP * REFR_VOLTAGE / iRefr);
     }
-    
-    
+
+    @Override
+    public float getPhotoreceptorSourceFollowerBandwidthHz() {
+        // computed based on Davis240/346 C1=132fF and estimated SF bias current
+        float iSF = sf.getCurrent();
+        // TODO note from IMU we have temperature, could account for it in thermal voltage
+        // f3dB=(1/2pi) g/C=(1/2pi) Ib/UT/C in Hz where Ib is bias current, UT is thermal voltage, and C is load capacitance, and assuming SF is biased in subthreshold.
+        float f3dBHz = (float) ((1 / (2 * Math.PI)) * (iSF / U_T_THERMAL_VOLTAGE_ROOM_TEMPERATURE) / C1_CAP);
+        return f3dBHz;
+    }
 
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 

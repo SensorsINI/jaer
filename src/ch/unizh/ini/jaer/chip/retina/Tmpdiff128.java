@@ -439,5 +439,10 @@ public class Tmpdiff128 extends AETemporalConstastRetina implements Serializable
         public float getRefractoryPeriodS() {
             return 1e-6f;
         }
+
+        @Override
+        public float getPhotoreceptorSourceFollowerBandwidthHz() {
+            return Float.NaN;
+        }
     } // Tmpdiff128Biasgen
 }

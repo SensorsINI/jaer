@@ -910,6 +910,11 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             float iRefr = refr.getCurrent();
             return (float) (REFR_CAP * REFR_VOLTAGE / iRefr);
         }
+
+        @Override
+        public float getPhotoreceptorSourceFollowerBandwidthHz() {
+            return Float.NaN; // TODO implement like in DavisConfig for Davis240/346/128
+        }
     } // DVS128Biasgen
 
     @Override

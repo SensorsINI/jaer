@@ -575,5 +575,10 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
         public float getRefractoryPeriodS() {
            return 1e-6f;
         }
+
+        @Override
+        public float getPhotoreceptorSourceFollowerBandwidthHz() {
+            return Float.NaN;
+        }
     } // Tmpdiff128Biasgen
 }

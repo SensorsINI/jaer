@@ -20,6 +20,9 @@ public interface DVSTweaks {
     
     /** Remote control command */
     public static final String CMD_BANDWIDTH_TWEAK="setBandwidthTweak", CMD_THRESHOLD_TWEAK="setThresholdTweak", CMD_ONOFFBALANCE_TWEAK="setOnOffBalanceTweak", CMD_MAXFIRINGRATE_TWEAK="setMaxFiringRateTweak", CMD_GETONTHRESHOLDLOGE="getOnThresholdLogE", CMD_GETOFFTHRSHOLDLOGE="getOffThresholdLogE";
+    
+    /** The default thermal voltage */
+    public static final float U_T_THERMAL_VOLTAGE_ROOM_TEMPERATURE=25e-3f;
 
     /**
      * Tweaks front end bandwidth, larger is higher bandwidth.
@@ -29,6 +32,17 @@ public interface DVSTweaks {
     public void setBandwidthTweak(float val);
 
     public float getBandwidthTweak();
+    
+    /** Returns the estimated DVS photoreceptor cutoff frequency (bandwidth).
+     * It is computed based on assumption that source follower limits the bandwidth, 
+     * not the photoreceptor limited by its bias or low photocurrent.
+     * By default the computation is based on BW 
+     * like f3dB=(1/2pi) g/C=(1/2pi) Ib/UT/C in Hz where Ib is bias current, 
+     * UT is thermal voltage, and C is load capacitance, and assuming SF is biased in subthreshold.
+     * 
+     * @return f3dB bandwidth in Hz
+     */
+    public float getPhotoreceptorSourceFollowerBandwidthHz();
 
     /**
      * Tweaks max firing rate (refractory period), larger is higher firing rate.

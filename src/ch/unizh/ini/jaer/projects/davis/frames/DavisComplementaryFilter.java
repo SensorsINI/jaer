@@ -58,9 +58,9 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     protected float onThreshold = getFloat("onThreshold", 0.25f);
     protected float offThreshold = getFloat("offThreshold", -0.25f);
-    
+
     private float[] logBaseFrame, displayed01Frame;
-    public float [] logFinalFrame; 
+    public float[] logFinalFrame;
     protected float crossoverFrequencyHz = getFloat("crossoverFrequencyHz", 1f);
     protected float lambda = getFloat("lambda", .1f);
     protected float kappa = getFloat("kappa", 0.05f);
@@ -70,7 +70,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     protected boolean thresholdsFromBiases = getBoolean("thresholdsFromBiases", true);
 
-    protected boolean eventsOnlyMode = getBoolean("eventsOnlyMode", false);
+    protected boolean useEvents = getBoolean("useEvents", false);
+    protected boolean useFrames = getBoolean("useFrames", false);
     protected boolean normalizeDisplayedFrameToMinMaxRange = getBoolean("normalizeDisplayedFrameToMinMaxRange", true);
 
     private FilterChain filterChain;
@@ -112,7 +113,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
         setPropertyTooltip(cf, "normalizeDisplayedFrameToMinMaxRange", "If set, then use limits to normalize output display, if unset, use maxADC limits to show output (after brightness/contrast adjustment)");
         setPropertyTooltip(cf, "linearizeOutput", "If set, linearize output. If unset, show logFinalFrame");
-        setPropertyTooltip(cf, "eventsOnlyMode", "Use only events, no APS frames");
+        setPropertyTooltip(cf, "useEvents", "Use events (see useFrames)");
+        setPropertyTooltip(cf, "useFrames", "Use frames (see useEvents)");
 
         filterChain = new FilterChain(chip);
         baFilter = new SpatioTemporalCorrelationFilter(chip);
@@ -178,10 +180,13 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processDvsEvent(ApsDvsEvent e) {
-        if (!eventsOnlyMode && savingEvents) {
+        if (useEvents && savingEvents) {
             ApsDvsEvent oe = eventFifoItr.nextOutput();
             oe.copyFrom(e);
             return;
+        }
+        if (!useEvents) {
+            return; // only updating with frames
         }
         int k = getIndex(e.x, e.y);
         int lastT = lastTimestamp[k];
@@ -196,7 +201,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         float a = alphas[k];
         float oldFrameWeight = (float) (Math.exp(-a * dtS));
         if (dtUs < 0) {
-            oldFrameWeight=0;
+            oldFrameWeight = 0;
         }
         logFinalFrame[k] = oldFrameWeight * logFinalFrame[k] + (1 - oldFrameWeight) * (logBaseFrame[k]); // correct the output
         logFinalFrame[k] += dlog; // add the event
@@ -210,11 +215,14 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processEndOfFrameReadout(ApsDvsEvent e) { // got the EOF event
-        if (isEventsOnlyMode()) {
+        if (!useEvents) {
             Arrays.fill(logBaseFrame, 0);
             return;
         }
         savingEvents = false;  // stop saving events
+        if (!useFrames) {
+            return;
+        }
         // Now we need process events up to the middle of the frame exposure, apply the frame, 
         // and then apply the rest of the events up to now. 
         final int frameExpAvgTimestamp = getAverageFrameExposureTimestamp();
@@ -226,8 +234,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             }
             processDvsEvent(se);
         }
-        
-        float exposureDuirationMs=1000*getExposureDurationS(), expHz=1/exposureDuirationMs;
+
+        float exposureDuirationMs = 1000 * getExposureDurationS(), expHz = 1 / exposureDuirationMs;
 
         // Process the frame samples
         // compute new base log frame
@@ -235,7 +243,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         final float[] f = rawFrame; // just get the buffer, don't clone it
         for (int i = 0; i < f.length; i++) {
             float v = f[i];  // DN value from 0-1023
-            v=v*expHz;  // DN/ms exposure, in case there is autoexposure running
+            v = v * expHz;  // DN/ms exposure, in case there is autoexposure running
             if (v < 0) {
                 v = 0;
             }
@@ -260,7 +268,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             final float a = alphas[k];
             float oldOutputWeight = (float) (Math.exp(-a * dtS));
             if (dtUs < 0) {
-                oldOutputWeight=0;
+                oldOutputWeight = 0;
             }
             logFinalFrame[k] = oldOutputWeight * logFinalFrame[k] + (1 - oldOutputWeight) * (logBaseFrame[k]); // correct the output
         }
@@ -293,7 +301,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
                 max = (float) Math.exp(max);
             }
         } else {
-            float maxVal=getMaxADC()/(1000*getExposureDurationS());
+            float maxVal = getMaxADC() / (1000 * getExposureDurationS());
             if (isLogDecompress()) {
                 min = 0;
                 max = maxVal;
@@ -433,18 +441,33 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     }
 
     /**
-     * @return the eventsOnlyMode
+     * @return the useEvents
      */
-    public boolean isEventsOnlyMode() {
-        return eventsOnlyMode;
+    public boolean isUseEvents() {
+        return useEvents;
     }
 
     /**
-     * @param eventsOnlyMode the eventsOnlyMode to set
+     * @param useEvents the useEvents to set
      */
-    public void setEventsOnlyMode(boolean eventsOnlyMode) {
-        this.eventsOnlyMode = eventsOnlyMode;
-        putBoolean("eventsOnlyMode", eventsOnlyMode);
+    public void setUseEvents(boolean useEvents) {
+        this.useEvents = useEvents;
+        putBoolean("useEvents", useEvents);
+    }
+
+    /**
+     * @return the useFrames
+     */
+    public boolean isUseFrames() {
+        return useFrames;
+    }
+
+    /**
+     * @param useFrames the useFrames to set
+     */
+    public void setUseFrames(boolean useFrames) {
+        this.useFrames = useFrames;
+        putBoolean("useFrames", useEvents);
     }
 
     /**
