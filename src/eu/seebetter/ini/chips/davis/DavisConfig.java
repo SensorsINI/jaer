@@ -83,6 +83,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     // subclasses for controlling aspects of camera
     protected DavisConfig.VideoControl videoControl;
     protected ImuControl imuControlGUI;
+    EngineeringFormat eng=new EngineeringFormat();
 
     public DavisConfig(final Chip chip) {
         super(chip);
@@ -954,10 +955,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     @Override
     public float getPhotoreceptorSourceFollowerBandwidthHz() {
         // computed based on Davis240/346 C1=132fF and estimated SF bias current
-        float iSF = sf.getCurrent();
+        float iSf = sf.getCurrent(), iPr = pr.getCurrent();
+        if (iSf > iPr * .5) {
+            log.info(String.format("Source follower bias current (%sA) is larger than half of Photoreceptor bias current (%sA); cannot estimate cutoff frequency from SF current alone",eng.format(iSf),eng.format(iPr)));
+            return Float.NaN;
+        }
         // TODO note from IMU we have temperature, could account for it in thermal voltage
         // f3dB=(1/2pi) g/C=(1/2pi) Ib/UT/C in Hz where Ib is bias current, UT is thermal voltage, and C is load capacitance, and assuming SF is biased in subthreshold.
-        float f3dBHz = (float) ((1 / (2 * Math.PI)) * (iSF / U_T_THERMAL_VOLTAGE_ROOM_TEMPERATURE) / C1_CAP);
+        float f3dBHz = (float) ((1 / (2 * Math.PI)) * (iSf / U_T_THERMAL_VOLTAGE_ROOM_TEMPERATURE) / C1_CAP);
         return f3dBHz;
     }
 

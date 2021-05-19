@@ -99,6 +99,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         setEstimatedThresholdValues();
         setEstimatedRefractoryPeriod();
         setEstimatedBandwidth();
+        
         // TODO add property change listener support so that if bias is changed (outside of tweaks) the computed values are updated. 
     }
 
