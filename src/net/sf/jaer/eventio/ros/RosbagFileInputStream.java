@@ -845,7 +845,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         nextMessageNumber = (int) (frac * numMessages); // must also clear partially accumulated events in collecting packet and reset the timestamp
         clearAccumulatedEvents();
         try {
-            aePacketRawBuffered.append(getNextRawPacket()); // reaching EOF here will throw EOFException
+            AEPacketRaw raw=getNextRawPacket();
+            while(raw==null){
+                log.warning(String.format("got null packet at fractional position %.2f which should have been message number %d, trying next packet",frac,nextMessageNumber));
+                raw=getNextRawPacket();
+            }
+            aePacketRawBuffered.append(raw); // reaching EOF here will throw EOFException
         } catch (EOFException ex) {
             try {
                 aePacketRawBuffered.clear();
