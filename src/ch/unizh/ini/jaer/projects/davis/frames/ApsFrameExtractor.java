@@ -103,7 +103,11 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
     public static final String EVENT_NEW_FRAME = DavisRenderer.EVENT_NEW_FRAME_AVAILBLE;
     private int lastFrameTimestamp = -1;
 
-    protected int endOfFrameExposureTimestamp, startOfFrameExposureTimestamp, endOfFrameReadoutTimstamp, startOfFrameReadoutTimestamp;
+    /** The last received frame timestamps */
+    protected int endOfFrameExposureTimestamp, startOfFrameExposureTimestamp, endOfFrameReadoutTimstamp, startOfFrameReadoutTimestamp,  lastAverageFrameExposureTimestamp;
+    
+    /** The last computed end or average frame exposure time in seconds */
+    protected float lastFrameExposureDurationS;
 
     public static enum Extraction {
 
@@ -144,7 +148,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
         displayColor[0] = 1.0f;
         displayColor[1] = 1.0f;
         displayColor[2] = 1.0f;
-        apsDisplayLegend.color = displayColor;
+        apsDisplayLegend.setColor(displayColor);
 
         setPropertyTooltip("invertIntensity", "Inverts grey scale, e.g. for raw samples of signal level");
         setPropertyTooltip("preBufferFrame", "Only display and use complete frames; otherwise display APS samples as they arrive");
@@ -263,6 +267,11 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
             processStartOfExposure(e);
         } else if (e.isEndOfExposure()) {
             endOfFrameExposureTimestamp = e.timestamp;
+            if(endOfFrameExposureTimestamp<startOfFrameExposureTimestamp){
+                log.warning(String.format("endOfFrameExposureTimestamp=%d is less than startOfFrameExposureTimestamp=%d",endOfFrameExposureTimestamp,startOfFrameExposureTimestamp));
+            }
+            lastAverageFrameExposureTimestamp=(startOfFrameExposureTimestamp / 2 + endOfFrameExposureTimestamp / 2);
+            lastFrameExposureDurationS=1e-6f*(endOfFrameExposureTimestamp-startOfFrameExposureTimestamp);
             processEndOfExposure(e);
 
         } else if (e.isStartOfFrame()) {
@@ -582,7 +591,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
      * @param legend the string, with embedded \n newlines
      */
     public void setLegend(final String legend) {
-        apsDisplayLegend.s = legend;
+        apsDisplayLegend.setLegendString(legend);
     }
 
     /**
@@ -870,7 +879,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
      * @return timestamp in us, same as for DVS events
      */
     public int getAverageFrameExposureTimestamp() {
-        return (startOfFrameExposureTimestamp / 2 + endOfFrameExposureTimestamp / 2);
+        return lastAverageFrameExposureTimestamp;
     }
     
     /** Returns exposure duration in seconds of last exposure period
@@ -878,6 +887,6 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
      * @return exposure duration in seconds
      */
     public float getExposureDurationS(){
-        return 1e-6f*(endOfFrameExposureTimestamp-startOfFrameExposureTimestamp);
+        return lastFrameExposureDurationS;
     }
 }
