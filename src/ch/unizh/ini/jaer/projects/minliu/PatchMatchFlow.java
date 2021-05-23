@@ -319,6 +319,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         } catch (IllegalArgumentException e) {
             patchCompareMethod = PatchCompareMethod.SAD;
         }
+      
+        String hwTip = "0b: Hardware EDFLOW";
+        setPropertyTooltip(hwTip, "HWABMOFEnabled", "Select to show output of hardware EDFLOW camera");
+
+        String cornerTip = "0c: Corners/Keypoints";
+        setPropertyTooltip(cornerTip, "showCorners", "Select to show corners (as red overlay)");
+        setPropertyTooltip(cornerTip, "cornerThr", "Threshold difference for SFAST detection as fraction of maximum event count value; increase for fewer corners");
 
         setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
         setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
