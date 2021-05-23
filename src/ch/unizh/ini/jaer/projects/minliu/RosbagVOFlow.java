@@ -293,8 +293,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
 
         sliceDepthmapImageDisplay.setPixmapFromGrayArray(depth);
         if (sliceDepthmapImageDisplayLegend != null) {
-            sliceDepthmapImageDisplayLegend.s
-                    = LEGEND_SLICES;
+            sliceDepthmapImageDisplayLegend.setLegendString(LEGEND_SLICES);
         }
 
         sliceDepthmapImageDisplay.repaint();
@@ -349,8 +348,7 @@ public class RosbagVOFlow extends AbstractMotionFlowIMU {
 
         sliceRectImageDisplay.setPixmapFromGrayArray(rectImg);
         if (sliceRectImageDisplayLegend != null) {
-            sliceRectImageDisplayLegend.s
-                    = RECT_LEGEND_SLICES;
+            sliceRectImageDisplayLegend.setLegendString(RECT_LEGEND_SLICES);
         }
 
         sliceRectImageDisplay.repaint();

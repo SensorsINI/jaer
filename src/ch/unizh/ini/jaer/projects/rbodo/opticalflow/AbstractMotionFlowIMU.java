@@ -804,7 +804,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             }
 
             float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
-            DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels, 1);
+            DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels/3, 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {

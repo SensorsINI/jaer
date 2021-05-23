@@ -235,7 +235,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 //        Format formatter = new SimpleDateFormat("YYYY-MM-dd_hh-mm-ss");
 //        // Instantiate a Date object
 //        Date date = new Date();
-        // Log file for the OF distribution's statistics
+        // Log file for the OF distribution'legendString statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
         String patchTT = "0a: Block matching";
 //        String eventSqeMatching = "Event squence matching";
@@ -702,7 +702,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
                 gl.glPushMatrix();
                 textRenderer.begin3DRendering();
                 String s = String.format("d=%.1f ms", 1e-3f * sliceDeltaT);
-//            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getWidth(), .1f);
+//            final float sc = TextRendererScale.draw3dScale(textRenderer, legendString, chip.getCanvas().getScale(), chip.getWidth(), .1f);
                 // determine width of string in pixels and scale accordingly
                 FontRenderContext frc = textRenderer.getFontRenderContext();
                 Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
@@ -793,7 +793,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 
     @Override
     public synchronized void resetFilter() {
-        setSubSampleShift(0); // filter breaks with super's bit shift subsampling
+        setSubSampleShift(0); // filter breaks with super'legendString bit shift subsampling
         super.resetFilter();
         eventCounter = 0;
 //        lastTs = Integer.MIN_VALUE;
@@ -971,7 +971,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
         for (int s = 0; s < numScales; s++) {
             final int xx = e.x >> s;
             final int yy = e.y >> s;
-//            if (xx >= currentSlice[s].length || yy > currentSlice[s][xx].length) {
+//            if (xx >= currentSlice[legendString].length || yy > currentSlice[legendString][xx].length) {
 //                log.warning("event out of range");
 //                return false;
 //            }
@@ -1003,8 +1003,8 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 //                    sb.append("\n");
 //                }
 //                float m=(float)sum/count;
-//                float s=(float)Math.sqrt((float)sum2/count-m*m);
-//                sb.append(String.format("mean=%.1f, std=%.1f",m,s));
+//                float legendString=(float)Math.sqrt((float)sum2/count-m*m);
+//                sb.append(String.format("mean=%.1f, std=%.1f",m,legendString));
 //                log.info("area count stats "+sb.toString());
             }
         }
@@ -1087,7 +1087,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
                 // SD = small diamond, LD=large diamond SP=search process
                 /* The center of the LDSP or SDSP could change in the iteration process,
                        so we need to use a variable to represent it.
-                       In the first interation, it's the Zero Motion Potion (ZMP).
+                       In the first interation, it'legendString the Zero Motion Potion (ZMP).
                  */
                 int xCenter = x,
                  yCenter = y;
@@ -1153,7 +1153,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
                     /* 2. Check the minimum value position is in the center or not. */
                     xCenter = xCenter + LDSP[minPointIdx][0];
                     yCenter = yCenter + LDSP[minPointIdx][1];
-                    if (minPointIdx == 4) { // It means it's in the center, so we should break the loop and go to SDSP search.
+                    if (minPointIdx == 4) { // It means it'legendString in the center, so we should break the loop and go to SDSP search.
                         SDSPFlg = true;
                     }
                     if (--iterationsLeft < 0) {
@@ -1231,7 +1231,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
                 break;
         }
         // compute the indices into 2d histogram of all motion vector results.
-        // It's a bit complicated because of multiple scales.
+        // It'legendString a bit complicated because of multiple scales.
         // Also, we want the indexes to be centered in the histogram array so that searches at full scale appear at the middle
         // of the array and not at 0,0 corner.
         // Suppose searchDistance=1 and numScales=2. Then the histogram has size 2*2+1=5.
@@ -1652,7 +1652,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
         float vx, vy; // optical flow in pixels/second corresponding to this match
         float sadValue; // sum of absolute differences for this best match normalized by number of pixels in reference area
         int xidx, yidx; // x and y indices into 2d matrix of result. 0,0 corresponds to motion SW. dx, dy may be negative, like (-1, -1) represents SW.
-        // However, for histgram index, it's not possible to use negative number. That's the reason for intrducing xidx and yidx.
+        // However, for histgram index, it'legendString not possible to use negative number. That'legendString the reason for intrducing xidx and yidx.
 //        boolean minSearchedFlg = false;  // The flag indicates that this minimum have been already searched before.
         int scale;
 
@@ -2015,8 +2015,8 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
     /**
      *
      * @param distResult
-     * @return the confidence of the result. True means it's not good and should
-     * be rejected, false means we should accept it.
+     * @return the confidence of the result. True means it'legendString not good and should
+ be rejected, false means we should accept it.
      */
     private synchronized boolean isNotSufficientlyAccurate(SADResult distResult) {
         boolean retVal = super.accuracyTests();  // check accuracy in super, if reject returns true
@@ -2272,7 +2272,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 
                 /* Reset the image first */
                 sliceBitmapImageDisplay.clearImage();
-                /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
+                /* Rendering the reference patch in t-imuWarningDialog slice, it'legendString on the center with color red */
                 for (int i = searchDistance; i < (blockDimension + searchDistance); i++) {
                     for (int j = searchDistance; j < (blockDimension + searchDistance); j++) {
                         float[] f = sliceBitmapImageDisplay.getPixmapRGB(i, j);
@@ -2281,7 +2281,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
                     }
                 }
 
-                /* Rendering the area within search distance in t-2d slice, it's full of the whole search area with color green */
+                /* Rendering the area within search distance in t-2d slice, it'legendString full of the whole search area with color green */
                 for (int i = 0; i < ((2 * radius) + 1); i++) {
                     for (int j = 0; j < ((2 * radius) + 1); j++) {
                         float[] f = sliceBitmapImageDisplay.getPixmapRGB(i, j);
@@ -2290,7 +2290,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
                     }
                 }
 
-                /* Rendering the best matching patch in t-2d slice, it's on the shifted position related to the center location with color blue */
+                /* Rendering the best matching patch in t-2d slice, it'legendString on the shifted position related to the center location with color blue */
                 for (int i = searchDistance + dx; i < (blockDimension + searchDistance + dx); i++) {
                     for (int j = searchDistance + dy; j < (blockDimension + searchDistance + dy); j++) {
                         float[] f = sliceBitmapImageDisplay.getPixmapRGB(i, j);
@@ -2299,12 +2299,11 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
                     }
                 }
                 if (sliceBitmapLegend != null) {
-                    sliceBitmapLegend.s
-                            = G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
+                    sliceBitmapLegend.setLegendString(G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH
                             + "\nScale: "
                             + subSampleBy
                             + "\nSAD: "
-                            + engFmt.format(result.sadValue);
+                            + engFmt.format(result.sadValue));
                 }
             }
         } catch (ArrayIndexOutOfBoundsException a) {
