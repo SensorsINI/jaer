@@ -54,7 +54,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             }
         });
         initFilter();
-        tobiLogger.setColumnHeaderLine("lastTimestamp(us),ROINumPixels, AoP(deg),AoPStd(deg),DoLP,DoLPStd"); // CSV columns, not including the first column which is system time in ms since epoch
+        tobiLogger.setColumnHeaderLine("lastTimestamp(s),ROINumPixels,AoP(deg),AoPStd(deg),DoLP,DoLPStd"); // CSV columns, not including the first column which is system time in ms since epoch
         setPropertyTooltip("writePolarizationCSV", "Write a CSV file with the the mean and std of polarization AoP and DoLP for the ROI");
     }
 
@@ -128,7 +128,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
 
             // log the mean values to the CSV if open, should match the header line 
             if (tobiLogger.isEnabled()) {
-                tobiLogger.log(String.format("%d,%d, %f,%f,%f,%f", in.getLastTimestamp(), nb, meanAoP, aopStats.getStandardDeviation(), meanDoP, dopStats.getStandardDeviation()));
+                tobiLogger.log(String.format("%f,%d,%f,%f,%f,%f", 1e-6f*in.getLastTimestamp(), nb, meanAoP, aopStats.getStandardDeviation(), meanDoP, dopStats.getStandardDeviation()));
             }
         }
 
