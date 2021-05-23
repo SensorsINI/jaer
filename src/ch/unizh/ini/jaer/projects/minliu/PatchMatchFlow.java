@@ -282,7 +282,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     TobiLogger sadValueLogger = new TobiLogger("sadvalues", "sadvalue,scale"); // TODO debug
     
-    private boolean calcOFonCornersEnabled = getBoolean("calcOFonCornersEnabled", false);
+    private boolean calcOFonCornersEnabled = getBoolean("calcOFonCornersEnabled", true);
 
     private final ApsFrameExtractor apsFrameExtractor;
     
@@ -680,6 +680,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setSliceMethod(SliceMethod.AreaEventNumber);
         setSliceDurationMaxLimitUS(100);
         setSliceDurationMaxLimitUS(300000);
+        setCalcOFonCornersEnabled(true);   // Enable corner detector
         // compute nearest power of two over block dimension
         int ss = (int) (Math.log(blockDimension - 1) / Math.log(2));
         setAreaEventNumberSubsampling(ss);
