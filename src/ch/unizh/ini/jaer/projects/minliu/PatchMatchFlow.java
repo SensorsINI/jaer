@@ -67,12 +67,12 @@ import net.sf.jaer.util.filter.LowpassFilter;
 import org.apache.commons.lang3.ArrayUtils;
 
 /**
- * Uses patch matching to measureTT local optical flow. <b>Not</b> gradient
+ * Uses adaptive block matching optical flow (ABMOF) to measureTT local optical flow. <b>Not</b> gradient
  * based, but rather matches local features backwards in time.
  *
  * @author Tobi and Min, Jan 2016
  */
-@Description("<html>Computes optical flow with vector direction using adaptive time slice block matching (ABMOF) as published in<br>"
+@Description("<html>EDFLOW: Computes optical flow with vector direction using SFAST keypoint/corner detection and adaptive time slice block matching (ABMOF) as published in<br>"
         + "Liu, M., and Delbruck, T. (2018). <a href=\"http://bmvc2018.org/contents/papers/0280.pdf\">Adaptive Time-Slice Block-Matching Optical Flow Algorithm for Dynamic Vision Sensors</a>.<br> in BMVC 2018 (Nescatle upon Tyne)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater {
