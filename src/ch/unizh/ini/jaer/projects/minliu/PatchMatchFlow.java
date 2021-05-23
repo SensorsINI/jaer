@@ -1258,13 +1258,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         for (int s = 0; s < numScales; s++) {
             final int xx = e.x >> s;
             final int yy = e.y >> s;
-//            if (xx >= currentSlice[s].length || yy > currentSlice[s][xx].length) {
+//            if (xx >= currentSlice[legendString].length || yy > currentSlice[legendString][xx].length) {
 //                log.warning("event out of range");
 //                return false;
 //            }
             int cv = currentSlice[s][xx][yy];
             cv += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
-//            cv = cv << (numScales - 1 - s);
+//            cv = cv << (numScales - 1 - legendString);
             if (cv > sliceMaxValue) {
                 cv = sliceMaxValue;
             } else if (cv < -sliceMaxValue) {
@@ -1291,8 +1291,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                    sb.append("\n");
 //                }
 //                float m=(float)sum/count;
-//                float s=(float)Math.sqrt((float)sum2/count-m*m);
-//                sb.append(String.format("mean=%.1f, std=%.1f",m,s));
+//                float legendString=(float)Math.sqrt((float)sum2/count-m*m);
+//                sb.append(String.format("mean=%.1f, std=%.1f",m,legendString));
 //                log.info("area count stats "+sb.toString());
             }
         }
@@ -2667,21 +2667,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     //        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
 
                     if (blockMatchingDisplayLegend[dispIdx] != null) {
-                        blockMatchingDisplayLegend[dispIdx].s
-                                = "R: ref block area"
+                        blockMatchingDisplayLegend[dispIdx].setLegendString("R: ref block area"
                                 + "\nScale: "
                                 + subSampleBy
                                 + "\nSAD: "
                                 + engFmt.format(sadVals[dispIdx])
-                                + "\nTimestamp: " + ein.timestamp;
+                                + "\nTimestamp: " + ein.timestamp);
                     }                
                     if (blockMatchingDisplayLegendTarget[dispIdx] != null) {
-                        blockMatchingDisplayLegendTarget[dispIdx].s
-                                = "G: search area"
+                        blockMatchingDisplayLegendTarget[dispIdx].setLegendString("G: search area"
                                 + "\nx: " + ein.x 
                                 + "\ny: " + ein.y
                                 + "\ndx_init: " + dxInitVals[dispIdx]
-                                + "\ndy_init: " + dyInitVals[dispIdx];
+                                + "\ndy_init: " + dyInitVals[dispIdx]);
                     } 
 
                     /* Reset the image first */
@@ -2806,8 +2804,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
         
         if (timeStampBlockImageDisplayLegend != null) {
-            timeStampBlockImageDisplayLegend.s
-                    = TIME_STAMP_BLOCK_LEGEND_SLICES;
+            timeStampBlockImageDisplayLegend.setLegendString(TIME_STAMP_BLOCK_LEGEND_SLICES);
         }
 
         timeStampBlockImageDisplay.repaint();        
@@ -2898,8 +2895,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
 
         if (sliceBitmapImageDisplayLegend != null) {
-            sliceBitmapImageDisplayLegend.s
-                    = LEGEND_SLICES;
+            sliceBitmapImageDisplayLegend.setLegendString(LEGEND_SLICES);
         }
 
         sliceBitmapImageDisplay.repaint();
