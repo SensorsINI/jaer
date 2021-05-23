@@ -106,7 +106,7 @@ public class PolarizationExtractor extends EventFilter2D{
         displayColor[0] = 1.0f;
         displayColor[1] = 1.0f;
         displayColor[2] = 1.0f;
-        apsDisplayLegend.color = displayColor;
+        apsDisplayLegend.setColor(displayColor);
         
         initFilter();
 
@@ -324,7 +324,7 @@ public class PolarizationExtractor extends EventFilter2D{
     }
 
     public void setLegend(final String legend) {
-        apsDisplayLegend.s = legend;
+        apsDisplayLegend.setLegendString(legend);
     }
 
     public void setDisplayGrayFrame(final double[] frame) {
