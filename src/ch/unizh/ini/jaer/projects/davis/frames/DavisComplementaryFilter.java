@@ -26,7 +26,7 @@ import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Demonstrates the DAVIS reconstruction using complementary filter from
- * Cedric's algorithm in
+ Cedric'legendString algorithm in
  * <p>
  * Continuous-time Intensity Estimation Using Event Cameras. Cedric Scheerlinck
  * (2018). at
@@ -70,8 +70,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     protected boolean thresholdsFromBiases = getBoolean("thresholdsFromBiases", true);
 
-    protected boolean useEvents = getBoolean("useEvents", false);
-    protected boolean useFrames = getBoolean("useFrames", false);
+    protected boolean useEvents = getBoolean("useEvents", true);
+    protected boolean useFrames = getBoolean("useFrames", true);
     protected boolean normalizeDisplayedFrameToMinMaxRange = getBoolean("normalizeDisplayedFrameToMinMaxRange", true);
 
     private FilterChain filterChain;
@@ -215,10 +215,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processEndOfFrameReadout(ApsDvsEvent e) { // got the EOF event
-        if (!useEvents) {
-            Arrays.fill(logBaseFrame, 0);
-            return;
-        }
+
         savingEvents = false;  // stop saving events
         if (!useFrames) {
             return;
@@ -322,6 +319,8 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             displayed01Frame[i] = (displayed01Frame[i] + displayBrightness) * displayContrast;
             displayed01Frame[i] = clip01(displayed01Frame[i]);
         }
+        String s = String.format("Events=%s Frames=%s", isUseEvents(), isUseFrames());
+        setLegend(s);
 
         setDisplayGrayFrame(displayed01Frame);
         if (showAPSFrameDisplay) {
@@ -453,6 +452,10 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     public void setUseEvents(boolean useEvents) {
         this.useEvents = useEvents;
         putBoolean("useEvents", useEvents);
+        if (!useEvents && logBaseFrame != null) {
+            Arrays.fill(logBaseFrame, 0);
+            return;
+        }
     }
 
     /**
@@ -467,7 +470,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     public void setUseFrames(boolean useFrames) {
         this.useFrames = useFrames;
-        putBoolean("useFrames", useEvents);
+        putBoolean("useFrames", useFrames);
+        if (!useFrames && logBaseFrame != null) {
+            Arrays.fill(logBaseFrame, 0);
+            return;
+        }
     }
 
     /**
@@ -483,6 +490,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     public void setNormalizeDisplayedFrameToMinMaxRange(boolean normalizeDisplayedFrameToMinMaxRange) {
         this.normalizeDisplayedFrameToMinMaxRange = normalizeDisplayedFrameToMinMaxRange;
+        putBoolean("normalizeDisplayedFrameToMinMaxRange", normalizeDisplayedFrameToMinMaxRange);
     }
 
     public void setLinearizeOutput(boolean linearizeOutput) {
@@ -517,6 +525,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     private class MouseInfo extends MouseMotionAdapter {
 
         ImageDisplay apsImageDisplay;
+        ImageDisplay.Legend infoLegend=null;
 
         public MouseInfo(final ImageDisplay display) {
             apsImageDisplay = display;
@@ -530,9 +539,17 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
                 if (rawFrame == null || logFinalFrame == null || idx < 0 || idx >= rawFrame.length) {
                     return;
                 }
-                EventFilter.log.info(String.format("logBaseFrame=%s logFinalFrame=%s f3dB(alpha/2pi)=%sHz tau=%ss",
+                String s = String.format("logBaseFrame=%s logFinalFrame=%s\n f3dB(alpha/2pi)=%sHz tau=%ss",
                         engFmt.format(logBaseFrame[idx]), engFmt.format(logFinalFrame[idx]), engFmt.format(alphas[idx] / ((float) Math.PI * 2)),
-                        engFmt.format(1 / alphas[idx])));
+                        engFmt.format(1 / alphas[idx]));
+                EventFilter.log.info(s);
+                if(infoLegend==null){
+                    infoLegend=apsImageDisplay.addLegend(s, p.x, p.y);
+                    infoLegend.setColor(new float[]{.2f,.2f,1});
+                }else{
+                    infoLegend.setLegendString(s);
+                    infoLegend.setPoint(p);
+                }
             }
         }
     }
