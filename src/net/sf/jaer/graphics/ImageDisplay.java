@@ -480,8 +480,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Returns an int that can be used to index to a particular pixel's RGB
-     * start location in the pixmap. The successive 3 entries are the float
+     * Returns an int that can be used to index to a particular pixel'legendString RGB
+ start location in the pixmap. The successive 3 entries are the float
      * (0-1) RGB values.
      *
      * @param x pixel x, 0 is left side.
@@ -1135,7 +1135,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         }
 
         for (Legend legend : legends) {
-            drawMultilineString(legend);
+            drawMultilineLegend(legend);
         }
         checkGLError(gl, "after text");
     }
@@ -1148,7 +1148,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         /**
          * The rendered multi-line string.
          */
-        public String s;
+        protected String legendString;
         /**
          * The location starting at 0,0 at lower left corner of image.
          */
@@ -1158,12 +1158,50 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         /**
          * The Legend font color.
          */
-        public float[] color = textColor;
+        protected float[] color = textColor;
 
         public Legend(String s, float x, float y) {
-            this.s = s;
+            this.legendString = s;
             this.x = x;
             this.y = y;
+        }
+
+        /**
+         * @return the legendString
+         */
+        public String getLegendString() {
+            return legendString;
+        }
+
+        /**
+         * @param legendString the legendString to set
+         */
+        public void setLegendString(String legendString) {
+            this.legendString = legendString;
+        }
+        
+        public void setXY(float x, float y){
+            this.x=x;
+            this.y=y;
+        }
+        
+        public void setPoint(Point2D.Float p){
+            this.x=p.x;
+            this.y=p.y;
+        }
+
+        /**
+         * @return the color
+         */
+        public float[] getColor() {
+            return color;
+        }
+
+        /**
+         * @param color the color to set
+         */
+        public void setColor(float[] color) {
+            this.color = color;
         }
     }
 
@@ -1223,17 +1261,17 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * @param x the x location in the image, 0 is the left of the image.
      * @param y the y location in the image, 0 is the bottom of the image.
      */
-    private void drawMultilineString(Legend legend) {
+    private void drawMultilineLegend(Legend legend) {
         if (textRenderer == null) {
             return;  // not visible yet, no init called
         }
         final int additionalSpace = 2;
-        String[] lines = legend.s.split("\n");
+        String[] lines = legend.getLegendString().split("\n");
         if (lines == null) {
             return;
         }
         float yshift = 0;
-        float scale = (clipArea.top - clipArea.bottom) / getHeight();  // TODO mysterious scalling of text
+        float scale = (clipArea.top - clipArea.bottom) / getHeight();  // TODO mysterious scaling of text
 
         try {
             textRenderer.beginRendering(getWidth(), getHeight());
@@ -1248,7 +1286,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 //                    line = "  " + line;
                 //                }
                 first = false;
-                textRenderer.setColor(legend.color[0], legend.color[1], legend.color[2], 1);
+                textRenderer.setColor(legend.getColor()[0], legend.getColor()[1], legend.getColor()[2], 1);
                 textRenderer.draw(line, (int) ((legend.x / scale) - (clipArea.left / scale)), Math.round(((legend.y / scale) - (clipArea.bottom / scale)) + yshift));
             }
             textRenderer.endRendering();
@@ -1296,7 +1334,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 disp2.setPreferredSize(new Dimension(s, s));
 //                JPanel p1=new JPanel(), p2=new JPanel();
 //                p1.add(disp); p2.add(disp2);
-//                Dimension d=new Dimension(s,s);
+//                Dimension d=new Dimension(legendString,legendString);
 //                p1.setPreferredSize(d);p2.setPreferredSize(d);
 
                 frame.getContentPane().add(disp); // add the GLCanvas to the center of the window
@@ -1322,7 +1360,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 // Add a 3 line legend starting at pixel x=1, y=size (near UL corner).
                 String mls = "Use mouse to position this multiline label\nUse arrow keys to resize array\nF/shift-F change font size\n'g' sets the array gray\n'n' makes a new display\nctl-W closes display, ESC/x exits";
                 Legend legend = disp.addLegend(mls, 1, sizey);  // drawa a multiline string - only do this once!  Or clear the list each time.
-                legend.color = new float[]{1, 0, 0};
+                legend.setColor(new float[]{1, 0, 0});
 
                 disp.setTextColor(new float[]{.8f, 1, 1});
                 disp2.setTextColor(new float[]{.8f, 1, 1});
