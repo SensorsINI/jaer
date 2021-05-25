@@ -35,7 +35,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
     private float[] apsDisplayPixmapBufferAop;
     private float[] aop;
     private float[] dop;
-    FloatFunction exp = (s) -> (float) Math.exp(s);
+    FloatFunction exp = (s) -> (float) Math.exp(s); // lambda function to linearize log intensity
     private TobiLogger tobiLogger = new TobiLogger("PolarizationComplementaryFilter", "PolarizationComplementaryFilter");
     private DescriptiveStatistics aopStats = new DescriptiveStatistics(), dopStats = new DescriptiveStatistics(); // mean values, computed after the ROI is processed
     private float meanAoP = Float.NaN, meanDoP = Float.NaN;
@@ -93,7 +93,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         }
     }
 
-    private void computeAndShowPolarization(EventPacket<? extends BasicEvent> in) {
+    synchronized private void computeAndShowPolarization(EventPacket<? extends BasicEvent> in) {
         if (maxIDX != indexf0.length && maxIDX > 0) {
             indexf0 = new int[maxIDX];
             indexf45 = new int[maxIDX];
@@ -107,7 +107,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             PolarizationUtils.drawLegend(apsDisplayPixmapBufferAop, height, width);
         }
 
-        // compute the AoP and DoLP in the ROI
+        // compute the AoP and DoLP in the ROI, using exp lambda function to linearize the estimated log intensity
         PolarizationUtils.computeAoPDoP(logFinalFrame, aop, dop, exp, indexf0, indexf45, indexf90, indexf135, height, width);
 
         if (roiRect != null) {
@@ -123,7 +123,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
                     nb += 1;
                 }
             }
-            meanAoP = (float) aopStats.getMean();
+            meanAoP = (float) aopStats.getMean();  // compute the means to show in ellipse
             meanDoP = (float) dopStats.getMean();
 
             // log the mean values to the CSV if open, should match the header line 
