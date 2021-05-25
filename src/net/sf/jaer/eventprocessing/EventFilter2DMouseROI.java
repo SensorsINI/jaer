@@ -77,8 +77,8 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     public EventFilter2DMouseROI(AEChip chip) {
         super(chip);
         String roi = "Region of interest";
-        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI selection");
-        setPropertyTooltip(roi, "clearSelection", "Clears ROI");
+        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI (region of interest) selection");
+        setPropertyTooltip(roi, "clearROI", "Clears ROI (region of interest)");
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
@@ -158,7 +158,11 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     // ROI roiRect stuff
-    public void doClearSelection() {
+    public void doClearROI() {
+        if(freezeRoi){
+            showWarningDialogInSwingThread("Are you sure you want to clear ROI? Uncheck freezeROI if you want to clear the ROI.", "ROI frozen");
+            return;
+        }
         clearSelection();
     }
 
@@ -241,7 +245,11 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseDragged(MouseEvent e) {
-        if (freezeRoi || roiStartPoint == null) {
+        if (roiStartPoint == null) {
+            return;
+        }
+        if (freezeRoi) {
+            log.warning("disable freezeRoi if you want to select a region of interest");
             return;
         }
         finishRoiSelection(e);
