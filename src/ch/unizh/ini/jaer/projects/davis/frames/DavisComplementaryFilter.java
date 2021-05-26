@@ -137,6 +137,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         System.arraycopy(logBaseFrame, 0, logFinalFrame, 0, logBaseFrame.length);
         minBaseLogFrame = Float.MAX_VALUE;
         maxBaseLogFrame = Float.MIN_VALUE;
+        Arrays.fill(lastTimestamp, 0);
     }
 
     @Override
@@ -150,7 +151,6 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         displayed01Frame = new float[nPixels];
         alphas = new float[nPixels];
         lastTimestamp = new int[nPixels];
-        Arrays.fill(lastTimestamp, 0);
         Arrays.fill(alphas, alpha0);
         if (!isPreferenceStored("onThreshold") || !isPreferenceStored("offThreshold")) {
             setThresholdsFromBiases();

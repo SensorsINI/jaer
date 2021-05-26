@@ -91,7 +91,15 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
      * conversion, etc.
      */
     protected float[] displayFrame; // format is 0-1 mono values
-    public int width, height, maxADC, maxIDX; // maxADC is max binary value, i.e. 10 bits =1023
+    /**
+     * Width and height of output image
+     */
+    public int width, height;
+    /**
+     * maxADC is max binary value, i.e. 10 bits =1023, maxIDX is maximum idx
+     * value to arrays
+     */
+    public int maxADC, maxIDX; // maxADC is max binary value, i.e. 10 bits =1023
     private float grayValue;
     protected boolean showAPSFrameDisplay = getBoolean("showAPSFrameDisplay", true);
     protected final Legend apsDisplayLegend;
@@ -103,10 +111,14 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
     public static final String EVENT_NEW_FRAME = DavisRenderer.EVENT_NEW_FRAME_AVAILBLE;
     private int lastFrameTimestamp = -1;
 
-    /** The last received frame timestamps */
-    protected int endOfFrameExposureTimestamp, startOfFrameExposureTimestamp, endOfFrameReadoutTimstamp, startOfFrameReadoutTimestamp,  lastAverageFrameExposureTimestamp;
-    
-    /** The last computed end or average frame exposure time in seconds */
+    /**
+     * The last received frame timestamps
+     */
+    protected int endOfFrameExposureTimestamp, startOfFrameExposureTimestamp, endOfFrameReadoutTimstamp, startOfFrameReadoutTimestamp, lastAverageFrameExposureTimestamp;
+
+    /**
+     * The last computed end or average frame exposure time in seconds
+     */
     protected float lastFrameExposureDurationS;
 
     public static enum Extraction {
@@ -159,6 +171,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
         setPropertyTooltip("extractionMethod",
                 "Method to extract a frame; CDSframe is the final result after subtracting signal from reset frame. Signal and reset frames are the raw sensor output before correlated double sampling.");
         setPropertyTooltip("showAPSFrameDisplay", "Shows the JFrame frame display if true");
+        setPropertyTooltip("saveAsPNG", "Saves current APS frame as a PNG file");
 
     }
 
@@ -267,11 +280,11 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
             processStartOfExposure(e);
         } else if (e.isEndOfExposure()) {
             endOfFrameExposureTimestamp = e.timestamp;
-            if(endOfFrameExposureTimestamp<startOfFrameExposureTimestamp){
-                log.warning(String.format("endOfFrameExposureTimestamp=%d is less than startOfFrameExposureTimestamp=%d",endOfFrameExposureTimestamp,startOfFrameExposureTimestamp));
+            if (endOfFrameExposureTimestamp < startOfFrameExposureTimestamp) {
+                log.warning(String.format("endOfFrameExposureTimestamp=%d is less than startOfFrameExposureTimestamp=%d", endOfFrameExposureTimestamp, startOfFrameExposureTimestamp));
             }
-            lastAverageFrameExposureTimestamp=(startOfFrameExposureTimestamp / 2 + endOfFrameExposureTimestamp / 2);
-            lastFrameExposureDurationS=1e-6f*(endOfFrameExposureTimestamp-startOfFrameExposureTimestamp);
+            lastAverageFrameExposureTimestamp = (startOfFrameExposureTimestamp / 2 + endOfFrameExposureTimestamp / 2);
+            lastFrameExposureDurationS = 1e-6f * (endOfFrameExposureTimestamp - startOfFrameExposureTimestamp);
             processEndOfExposure(e);
 
         } else if (e.isStartOfFrame()) {
@@ -445,9 +458,11 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
     }
 
     /**
-     * Sets the displayed data array, a float array of 0-1 RGB values ordered according to getIndex
+     * Sets the displayed data array, a float array of 0-1 RGB values ordered
+     * according to getIndex
+     *
      * @param pixmapArray the array
-     * @see #getIndex(int, int) 
+     * @see #getIndex(int, int)
      */
     public void setPixmapArray(final float[] pixmapArray) {
         getApsDisplay().setPixmapArray(pixmapArray);
@@ -499,8 +514,9 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
 
     /**
      * Empty method called when a new frame is complete and available in
-     * rawFrame. Subclasses can override to process the available frame at
-     * this point.
+     * rawFrame. Subclasses can override to process the available frame at this
+     * point.
+     *
      * @see #rawFrame
      */
     protected void processEndOfFrameReadout(ApsDvsEvent e) {
@@ -588,6 +604,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
 
     /**
      * Sets the displayed legend string, which can be a multiline string
+     *
      * @param legend the string, with embedded \n newlines
      */
     public void setLegend(final String legend) {
@@ -876,17 +893,19 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
 
     /**
      * Computes average of global shutter exposure time in us
+     *
      * @return timestamp in us, same as for DVS events
      */
     public int getAverageFrameExposureTimestamp() {
         return lastAverageFrameExposureTimestamp;
     }
-    
-    /** Returns exposure duration in seconds of last exposure period
-     * 
+
+    /**
+     * Returns exposure duration in seconds of last exposure period
+     *
      * @return exposure duration in seconds
      */
-    public float getExposureDurationS(){
+    public float getExposureDurationS() {
         return lastFrameExposureDurationS;
     }
 }

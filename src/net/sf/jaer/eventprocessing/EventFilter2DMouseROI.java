@@ -61,7 +61,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     /**
      * ROI rectangle
      */
-    protected Rectangle roiRect = (Rectangle)getObject("roiRect", null);
+    protected Rectangle roiRect = (Rectangle) getObject("roiRect", null);
 
     /**
      * Boolean that indicates ROI is being selected currently
@@ -158,8 +158,8 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     // ROI roiRect stuff
-    public void doClearROI() {
-        if(freezeRoi){
+    synchronized public void doClearROI() {
+        if (freezeRoi) {
             showWarningDialogInSwingThread("Are you sure you want to clear ROI? Uncheck freezeROI if you want to clear the ROI.", "ROI frozen");
             return;
         }
@@ -170,7 +170,18 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         roiRect = null;
     }
 
-    private void finishRoiSelection(MouseEvent e) {
+    synchronized private void startRoiSelection(MouseEvent e) {
+        Point p = getMousePixel(e);
+        if (p == null) {
+            roiRect = null;
+            return;
+        }
+        roiStartPoint = p;
+        log.info("ROI start point = " + p);
+        roiSelecting = true;
+    }
+
+    synchronized private void finishRoiSelection(MouseEvent e) {
         Point p = getMousePixel(e);
         if (p == null) {
             roiRect = null;
@@ -213,9 +224,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     public void mousePressed(MouseEvent e) {
         Point p = getMousePixel(e);
         if (!freezeRoi) {
-            roiStartPoint = p;
-            log.info("ROI start point = " + p);
-            roiSelecting = true;
+            startRoiSelection(e);
         }
     }
 
