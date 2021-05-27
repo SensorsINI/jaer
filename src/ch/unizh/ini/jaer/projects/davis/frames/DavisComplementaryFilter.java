@@ -67,6 +67,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     protected float alpha0 = 2 * (float) Math.PI * crossoverFrequencyHz;
     protected float[] alphas = null;
     private float minBaseLogFrame = Float.MAX_VALUE, maxBaseLogFrame = Float.MIN_VALUE;
+    /**
+     * Multiplier to result in actual effective threshold caused by finite
+     * bandwidth of photoreceptor front end or refractory period
+     */
+    protected float thresholdMultiplier = getFloat("thresholdMultiplier", 1);
 
     protected boolean thresholdsFromBiases = getBoolean("thresholdsFromBiases", true);
 
@@ -104,12 +109,14 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
         setPropertyTooltip(cf, "onThreshold", "OFF event temporal contrast threshold in log_e units");
         setPropertyTooltip(cf, "offThreshold", "OFF event temporal contrast threshold in log_e units");
+        setPropertyTooltip(cf, "thresholdMultiplier", "Multiplies ON and OFF thesholds to account for effective threshold caused by finite bandwidth or refractory period");
         setPropertyTooltip(cf, "setThresholdsToBiasCurrentValues", "Reset ON and OFF thresholds to bias current values");
 
         setPropertyTooltip(cf, "crossoverFrequencyHz", "The alpha crossover frequency (but in Hz, not rad/s), increase to update more with APS frames, decrease to update more with events.");
-        setPropertyTooltip(cf, "lambda", "Factor by which to decrease crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response.");
+        setPropertyTooltip(cf, "lambda", "<html>Factor by which to decrease crossoverFrequencyHz for low and high APS exposure values that are near toe or shoulder of APS response.<p>Set to 0 to not decrease, or set alpha=0.");
         setPropertyTooltip(cf, "kappa", "<html>Fraction of entire APS frame Lmax-Lmin range to apply the decreased crossoverFrequencyHz, i.e. to weight more with events."
-                + "<p>Note that the range is not reset on each frame, so that it reflects the entire APS output range, not the range within one frame.");
+                + "<p>Note that the range is not reset on each frame, so that it reflects the entire APS output range, not the range within one frame."
+                + "<p>Set kappa=0 to not adjust crossoverFrequencyHz at limits.");
 
         setPropertyTooltip(cf, "normalizeDisplayedFrameToMinMaxRange", "If set, then use limits to normalize output display, if unset, use maxADC limits to show output (after brightness/contrast adjustment)");
         setPropertyTooltip(cf, "linearizeOutput", "If set, linearize output. If unset, show logFinalFrame");
@@ -197,7 +204,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         int dtUs = e.timestamp - lastT;
         float dtS = 1e-6f * dtUs;
         int sign = e.getPolaritySignum(); // +1 for on, -1 for off
-        float dlog = sign > 0 ? onThreshold : -offThreshold;
+        float dlog = sign > 0 ? onThreshold*thresholdMultiplier : -offThreshold*thresholdMultiplier;
         float a = alphas[k];
         float oldFrameWeight = (float) (Math.exp(-a * dtS));
         if (dtUs < 0) {
@@ -382,6 +389,21 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         this.offThreshold = offThreshold;
         putFloat("offThreshold", offThreshold);
         getSupport().firePropertyChange("offThreshold", old, this.offThreshold);
+    }
+
+    /**
+     * @return the thresholdMultiplier
+     */
+    public float getThresholdMultiplier() {
+        return thresholdMultiplier;
+    }
+
+    /**
+     * @param thresholdMultiplier the thresholdMultiplier to set
+     */
+    public void setThresholdMultiplier(float thresholdMultiplier) {
+        this.thresholdMultiplier = thresholdMultiplier;
+        putFloat("thresholdMultiplier",thresholdMultiplier);
     }
 
     private float clip01(float val) {
