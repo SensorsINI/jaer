@@ -178,7 +178,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     }
 
     @Override
-    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         in = getEnclosedFilterChain().filterPacket(in);  // denoise
         in = super.filterPacket(in); // extract frames, while do so, call our processDvsEvent and processEndOfFrameReadout to update CF
         updateDisplayedFrame(); // update the displayed output
@@ -481,13 +481,10 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     /**
      * @param useEvents the useEvents to set
      */
-    public void setUseEvents(boolean useEvents) {
+    synchronized public void setUseEvents(boolean useEvents) {
         this.useEvents = useEvents;
         putBoolean("useEvents", useEvents);
-        if (!useEvents && logBaseFrame != null) {
-            Arrays.fill(logBaseFrame, 0);
-            return;
-        }
+        resetFilter();
     }
 
     /**
@@ -500,13 +497,10 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     /**
      * @param useFrames the useFrames to set
      */
-    public void setUseFrames(boolean useFrames) {
+    synchronized public void setUseFrames(boolean useFrames) {
         this.useFrames = useFrames;
         putBoolean("useFrames", useFrames);
-        if (!useFrames && logBaseFrame != null) {
-            Arrays.fill(logBaseFrame, 0);
-            return;
-        }
+        resetFilter();
     }
 
     /**
