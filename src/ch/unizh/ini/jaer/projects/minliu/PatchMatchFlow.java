@@ -172,7 +172,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
     }
-    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.OuterCircle;
+    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.AND; // Tobi changes to AND which is the condition used in paper
 
     protected static String DEFAULT_FILENAME = "jAER.txt";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
@@ -313,7 +313,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         String patchTT = "0a: Block matching";
 //        String eventSqeMatching = "Event squence matching";
 //        String preProcess = "Denoise";
-        String metricConfid = "Confidence of current metric";
+        String metricConfid = "0ab: Density checks";
         try {
             patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.SAD.toString()));
         } catch (IllegalArgumentException e) {
@@ -326,6 +326,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         String cornerTip = "0c: Corners/Keypoints";
         setPropertyTooltip(cornerTip, "showCorners", "Select to show corners (as red overlay)");
         setPropertyTooltip(cornerTip, "cornerThr", "Threshold difference for SFAST detection as fraction of maximum event count value; increase for fewer corners");
+        setPropertyTooltip(cornerTip, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
+        setPropertyTooltip(cornerTip, "cornerCircleSelection", "Determines SFAST circles used for detecting the corner/keypoint");
 
         setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
         setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
@@ -361,7 +363,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "scalesToCompute", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
         setPropertyTooltip(patchTT, "defaults", "Sets reasonable defaults");
         setPropertyTooltip(patchTT, "enableImuTimesliceLogging", "Logs IMU and rate gyro");
-        setPropertyTooltip(patchTT, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
         setPropertyTooltip(patchTT, "startRecordingForEDFLOW", "Start to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
         setPropertyTooltip(patchTT, "stopRecordingForEDFLOW", "Stop to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
         setPropertyTooltip(patchTT, "sliceDurationMinLimitUS", "The minimum value (us) of slice duration.");
