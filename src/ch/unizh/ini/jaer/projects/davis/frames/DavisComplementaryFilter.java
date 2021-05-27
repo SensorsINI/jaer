@@ -26,7 +26,7 @@ import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Demonstrates the DAVIS reconstruction using complementary filter from
- Cedric'legendString algorithm in
+ * Cedric'legendString algorithm in
  * <p>
  * Continuous-time Intensity Estimation Using Event Cameras. Cedric Scheerlinck
  * (2018). at
@@ -420,6 +420,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      * @param lambda the lambda to set
      */
     public void setLambda(float lambda) {
+        if (lambda > 1) {
+            lambda = 1;
+        } else if (lambda < 0) {
+            lambda = 0;
+        }
         this.lambda = lambda;
         putFloat("lambda", lambda);
     }
@@ -435,6 +440,11 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      * @param kappa the kappa to set
      */
     public void setKappa(float kappa) {
+        if (kappa < 0) {
+            kappa = 0;
+        } else if (kappa > 1) {
+            kappa = 1;
+        }
         this.kappa = kappa;
         putFloat("kappa", kappa);
     }
@@ -525,7 +535,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     private class MouseInfo extends MouseMotionAdapter {
 
         ImageDisplay apsImageDisplay;
-        ImageDisplay.Legend infoLegend=null;
+        ImageDisplay.Legend infoLegend = null;
 
         public MouseInfo(final ImageDisplay display) {
             apsImageDisplay = display;
@@ -543,10 +553,10 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
                         engFmt.format(logBaseFrame[idx]), engFmt.format(logFinalFrame[idx]), engFmt.format(alphas[idx] / ((float) Math.PI * 2)),
                         engFmt.format(1 / alphas[idx]));
                 EventFilter.log.info(s);
-                if(infoLegend==null){
-                    infoLegend=apsImageDisplay.addLegend(s, p.x, p.y);
-                    infoLegend.setColor(new float[]{.2f,.2f,1});
-                }else{
+                if (infoLegend == null) {
+                    infoLegend = apsImageDisplay.addLegend(s, p.x, p.y);
+                    infoLegend.setColor(new float[]{.2f, .2f, 1});
+                } else {
                     infoLegend.setLegendString(s);
                     infoLegend.setPoint(p);
                 }
