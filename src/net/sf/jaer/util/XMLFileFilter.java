@@ -25,7 +25,7 @@ public class XMLFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals("xml")){
+            if (extension.toLowerCase().equals("xml")){
                 return true;
             } else {
                 return false;
@@ -34,6 +34,11 @@ public class XMLFileFilter extends javax.swing.filechooser.FileFilter {
         return true;
     }
     
+    /** Returns filename extension in lowercase
+     * 
+     * @param f the File
+     * @return the extension, without the .
+     */
     public static String getExtension(File f) {
         String ext = null;
         String s = f.getName();
