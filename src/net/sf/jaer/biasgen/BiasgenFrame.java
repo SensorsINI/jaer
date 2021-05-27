@@ -121,16 +121,15 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         try {
             File f = new File(defaultFolder + File.separator + "biasgenSettings");
             defaultFolder = f.getPath();
-            log.info("default hardware configuration file path is "+defaultFolder);
+            log.info("default hardware configuration file path is " + defaultFolder);
         } catch (Exception e) {
         }
 
-        
         String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
         lastFile = new File(lastFilePath);
-        if(!lastFile.exists()){
-            log.info("lastFile "+lastFile+" does not exist, setting it to "+defaultFolder);
-            lastFile=new File(defaultFolder);
+        if (!lastFile.exists()) {
+            log.info("lastFile " + lastFile + " does not exist, setting it to " + defaultFolder);
+            lastFile = new File(defaultFolder);
         }
         recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
 
@@ -159,7 +158,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         //        saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
 
- 
     }
 
     /**
@@ -304,6 +302,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                     if (!lastFile.getName().endsWith(XMLFileFilter.EXTENSION)) {
                         lastFile = new File(lastFile.getCanonicalPath() + XMLFileFilter.EXTENSION);
                     }
+                    prefs.put("BiasgenFrame.lastFile", lastFile.toString()); // put to prefs immediately even if load fails, so that we go back to same folder
+                    recentFiles.addFile(lastFile);
                     if (lastFile.exists()) {
                         int retVal = JOptionPane.showConfirmDialog(this, lastFile + " already exists, overwrite it?", "Overwrite file?", JOptionPane.OK_CANCEL_OPTION);
                         if (retVal == JOptionPane.CANCEL_OPTION) {
@@ -312,12 +312,11 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                     }
                     exportPreferencesToFile(lastFile);
                     done = true;
-                    prefs.put("BiasgenFrame.lastFile", lastFile.toString());
-                    recentFiles.addFile(lastFile);
                     return true;
                 } catch (Exception fnf) {
                     setStatusMessage(fnf.getMessage());
                     log.warning(fnf.toString());
+                    JOptionPane.showMessageDialog(this, fnf.toString(), "Error loading configuration", JOptionPane.ERROR_MESSAGE);
                     java.awt.Toolkit.getDefaultToolkit().beep();
                     return false;
                 }
@@ -332,15 +331,18 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
      */
     public void importPreferencesDialog() {
         JFileChooser chooser = new JFileChooser();
-        XMLFileFilter filter = new XmlAedatFileFilter();
+        XMLFileFilter xmlOrAedatFilter = new XmlAedatFileFilter();
+        XMLFileFilter xmlFilter = new XMLFileFilter();
 
         String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
         lastFile = new File(lastFilePath);
-        if(!lastFile.exists()){
-            log.warning("last file for hardware configuration "+lastFile+" does not exist, using "+defaultFolder);
-            lastFile=new File(defaultFolder);
+        if (!lastFile.exists()) {
+            log.warning("last file for hardware configuration " + lastFile + " does not exist, using " + defaultFolder);
+            lastFile = new File(defaultFolder);
         }
-        chooser.setFileFilter(filter);
+        chooser.addChoosableFileFilter(xmlFilter);
+        chooser.addChoosableFileFilter(xmlOrAedatFilter);
+        chooser.setFileFilter(xmlFilter);
         chooser.setCurrentDirectory(lastFile);
         int retValue = chooser.showOpenDialog(this);
         if (retValue == JFileChooser.APPROVE_OPTION) {
@@ -890,5 +892,11 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
             }
             return true;
         }
+
+        @Override
+        public String getDescription() {
+            return "XML or AEDAT file";
+        }
+
     }
 }
