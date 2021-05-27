@@ -188,8 +188,8 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
     }
 
     public void doToggleOnWritePolarizationCSV() {
-        tobiLogger.setFileCommentString(String.format("useEvents=%s useFrames=%s onThresshold=%f offThreshold=%f crossoverFrequencyHz=%f kappa=%f lambda=%f",
-                useEvents, useFrames, onThreshold, offThreshold, crossoverFrequencyHz, kappa, lambda));
+        tobiLogger.setFileCommentString(String.format("useEvents=%s useFrames=%s onThresshold=%f offThreshold=%f crossoverFrequencyHz=%f kappa=%f lambda=%f thresholdMultiplier=%f",
+                useEvents, useFrames, onThreshold, offThreshold, crossoverFrequencyHz, kappa, lambda,thresholdMultiplier));
         if (stats == null) {
             stats = new Stats();
         }
