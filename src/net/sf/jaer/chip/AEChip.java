@@ -475,8 +475,7 @@ public class AEChip extends Chip2D {
     /**
      * This method writes additional header lines to a newly created
      * AEFileOutputStream that logs data from this AEChip. The default
-     * implementation writes the AEChip class name and the complete preferences
-     * subtree for this AEChip.
+     * implementation writes the AEChip class name and the particular AEChip hardware settings.
      *
      * @param os the AEFileOutputStream that is being written to
      * @see AEFileOutputStream#writeHeaderLine(java.lang.String)
