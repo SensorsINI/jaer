@@ -11,23 +11,13 @@ package net.sf.jaer.chip;
 
 import com.github.swrirobotics.bags.reader.exceptions.BagReaderException;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
 import javax.swing.ProgressMonitor;
-import javax.swing.SwingWorker;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.event.BasicEvent;
@@ -493,29 +483,42 @@ public class AEChip extends Chip2D {
      * @throws IOException
      */
     public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
-        log.info("writing preferences for " + this.toString() + " to " + os);
+        log.info("writing preferences for " + this.toString());
+        long start=System.currentTimeMillis();
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
-        ByteArrayOutputStream bos = new ByteArrayOutputStream(200000);  // bos to hold preferences XML as byte array, tobi sized prefs as 186kB of text and about 2200 lines for set of preferences at INI
-        getPrefs().exportSubtree(bos);
-        bos.flush();
         os.writeHeaderLine("Start of Preferences for this AEChip (search for \"End of Preferences\" to find end of this block)"); // write header to AE data file for prefs
-
-        // make a reader to read the prefs text line by line
-        BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bos.toByteArray())));
-        ByteArrayOutputStream bos2 = new ByteArrayOutputStream(200000); // make a byte stream to hold lines prepended by comment char
-        DataOutputStream dos = new DataOutputStream(bos2); // wrap in DOS to write comment chars and line endings
-
-        String line = null;
-        while ((line = reader.readLine()) != null) { // get a line of prefs from prefs in memory
-            dos.writeByte(AEDataFile.COMMENT_CHAR); // '#' // prepend comment
-            dos.writeBytes(line);
-            dos.writeByte(AEDataFile.EOL[0]); // '\r' 
-            dos.writeByte(AEDataFile.EOL[1]); // '\n'
+        // write only the hardware preferences for this particular device, which is mixed with all other devices in same package in Java Preferences.
+        /// therefore just filter and save the keya
+        String header=prefsHeader()+".";
+        final String[] keys=getPrefs().keys();
+        final Preferences p=getPrefs();
+        for(String k:keys){
+            if(k.startsWith(header)){
+                os.writeHeaderLine(String.format("<entry key=\"%s\" value=\"%s\"/>",k,p.get(k, null)));
+            }
         }
-        os.write(bos2.toByteArray()); // write out entire reformatted prefs header
+        // code below was extremely slow, e.g. 2.5 seconds to write the header
+//        ByteArrayOutputStream bos = new ByteArrayOutputStream(500000);  // bos to hold preferences XML as byte array, tobi sized prefs as 186kB of text and about 2200 lines for set of preferences at INI
+//        getPrefs().exportNode(bos);
+//        log.info("done exporting to byte array stream after " + (System.currentTimeMillis()-start)+ " ms");
+////        bos.flush(); // should not need to flush
+//
+//        // make a reader to read the prefs text line by line
+//        BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bos.toByteArray())));
+//        ByteArrayOutputStream bos2 = new ByteArrayOutputStream(500000); // make a byte stream to hold lines prepended by comment char
+//        DataOutputStream dos = new DataOutputStream(bos2); // wrap in DOS to write comment chars and line endings
+//
+//        String line = null;
+//        while ((line = reader.readLine()) != null) { // get a line of prefs from prefs in memory
+//            dos.writeByte(AEDataFile.COMMENT_CHAR); // '#' // prepend comment
+//            dos.writeBytes(line);
+//            dos.writeByte(AEDataFile.EOL[0]); // '\r' 
+//            dos.writeByte(AEDataFile.EOL[1]); // '\n'
+//        }
+//        os.write(bos2.toByteArray()); // write out entire reformatted prefs header
         os.writeHeaderLine("End of Preferences for this AEChip"); // write end of prefs header
-        os.flush();
-        log.info("done writing preferences to " + os + " at System.currentTimeMillis() " + System.currentTimeMillis());
+//        os.flush();  // shouldn't need to flush here
+        log.info("done writing preferences to " + os + " after " + (System.currentTimeMillis()-start)+ " ms");
 
     }
 
