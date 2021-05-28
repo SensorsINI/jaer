@@ -204,7 +204,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         int dtUs = e.timestamp - lastT;
         float dtS = 1e-6f * dtUs;
         int sign = e.getPolaritySignum(); // +1 for on, -1 for off
-        float dlog = sign > 0 ? onThreshold*thresholdMultiplier : -offThreshold*thresholdMultiplier;
+        float dlog = sign > 0 ? onThreshold * thresholdMultiplier : -offThreshold * thresholdMultiplier;
         float a = alphas[k];
         float oldFrameWeight = (float) (Math.exp(-a * dtS));
         if (dtUs < 0) {
@@ -281,6 +281,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             ApsDvsEvent se = savedEventsItr.next();
             processDvsEvent(se);
         }
+        eventFifo.clear(); // the .outputIterator() call should clear it, but make sure it is empty now
 
     }
 
@@ -403,7 +404,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
      */
     public void setThresholdMultiplier(float thresholdMultiplier) {
         this.thresholdMultiplier = thresholdMultiplier;
-        putFloat("thresholdMultiplier",thresholdMultiplier);
+        putFloat("thresholdMultiplier", thresholdMultiplier);
     }
 
     private float clip01(float val) {

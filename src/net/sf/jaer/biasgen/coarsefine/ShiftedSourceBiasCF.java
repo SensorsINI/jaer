@@ -288,7 +288,7 @@ public class ShiftedSourceBiasCF extends AddressedIPot {
      */
     @Override
     protected String prefsKey() {
-        return biasgen.getChip().getClass().getSimpleName() + ".ShiftedSourceBias." + name;
+        return chip.prefsHeader() + ".ShiftedSourceBias." + name;
     }
     static String KEY_REFVALUE = "RefValue",
             KEY_REGVALUE = "RegBitValue",

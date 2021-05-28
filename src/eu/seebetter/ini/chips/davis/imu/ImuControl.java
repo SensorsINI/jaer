@@ -169,7 +169,7 @@ public class ImuControl extends Observable implements HasPropertyTooltips, Biasg
 	}
 
 	private String getPreferencesKey() {
-		return davisChip.getClass().getSimpleName() + ".";
+		return davisChip.prefsHeader() + ".";
 	}
 
 	@Override
@@ -195,9 +195,9 @@ public class ImuControl extends Observable implements HasPropertyTooltips, Biasg
 
 	@Override
 	public void preferenceChange(final PreferenceChangeEvent e) {
-		if (e.getKey().toLowerCase().contains("imu")) {
-			davisChip.getLog().info(this + " preferenceChange(): event=" + e + " key=" + e.getKey() + " newValue=" + e.getNewValue());
-		}
+//		if (e.getKey().toLowerCase().contains("imu")) {
+//			davisChip.getLog().info(this + " preferenceChange(): event=" + e + " key=" + e.getKey() + " newValue=" + e.getNewValue());
+//		}
 		if (e.getNewValue() == null) {
 			return;
 		}

@@ -233,6 +233,14 @@ public class Chip extends Observable {
     public Preferences getPrefs() {
         return prefs;
     }
+    
+    /** Returns a string header for all preferences keys associated with this chip configuration, e.g. "Davis346B."
+     * 
+     * @return the key
+     */
+    public String prefsHeader(){
+        return this.getClass().getSimpleName();
+    }
 
     /** Sets the Preferences node for the Chip
      @param prefs the node

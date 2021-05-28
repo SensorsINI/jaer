@@ -22,7 +22,7 @@ public abstract class AbstractConfigValue extends Observable implements Preferen
 	public AbstractConfigValue(final String configName, final String toolTip, final AEChip chip) {
 		this.configName = configName;
 		this.toolTip = toolTip;
-		prefKey = chip.getClass().getSimpleName() + "." + configName;
+		prefKey = chip.prefsHeader() + "." + configName;
 		this.chip = chip;
 	}
 

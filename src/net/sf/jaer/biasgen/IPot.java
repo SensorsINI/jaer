@@ -222,7 +222,7 @@ public class IPot extends Pot implements Cloneable, Observer, RemoteControlled {
      */
     @Override
     protected String prefsKey(){
-        return biasgen.getChip().getClass().getSimpleName()+".IPot."+name;
+        return chip.prefsHeader()+".IPot."+name;
     }
     
     private byte[] bytes=null;

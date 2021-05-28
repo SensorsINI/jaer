@@ -305,7 +305,7 @@ abstract public class Pot extends Observable implements PreferenceChangeListener
     @return preferences key string
      */
     protected String prefsKey() {
-        return "Pot." + name;
+        return chip.prefsHeader()+".Pot." + name;
     }
     int suspendValue = 0;
 

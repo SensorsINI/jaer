@@ -316,7 +316,7 @@ public class ConfigurableIPotRev0 extends IPot {
      */
     @Override
     protected String prefsKey() {
-        return biasgen.getChip().getClass().getSimpleName() + ".ConfigurableIPot." + name;
+        return chip.prefsHeader() + ".ConfigurableIPot." + name;
     }
     
     static String KEY_BITVALUE="BitValue",

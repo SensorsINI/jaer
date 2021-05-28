@@ -815,7 +815,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void putObject(String key, Serializable o) {
         try {
-            PrefObj.putObject(getPrefs(), prefsKeyHeader() + key, o);
+            PrefObj.putObject(prefs, prefsKeyHeader() + key, o);
         } catch (IOException e) {
             log.warning(String.format("Could not store preference for %s; got %s", key, e));
         } catch (BackingStoreException e) {
