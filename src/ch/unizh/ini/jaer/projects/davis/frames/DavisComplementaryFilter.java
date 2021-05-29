@@ -92,6 +92,9 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     private int eofTimestamp = 0; // end of frame readout timestamp
     private int sofTimestamp = 0; // start of frame readout timestamp
     private boolean savingEvents = false; // boolean flag set to store events in eventFifo
+    private int startSavingEventsTimestamp, stopSavingEventsTimestamp;
+
+    protected boolean useStrictTimeOrdering = getBoolean("useStrictTimeOrdering", true);
 
     // We only process events up to SOE, since we know that no frame is being exposed. 
     // As soon as we get SOE, we buffer events until we get EOF (end of frame readout).
@@ -122,6 +125,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
         setPropertyTooltip(cf, "linearizeOutput", "If set, linearize output. If unset, show logFinalFrame");
         setPropertyTooltip(cf, "useEvents", "Use events (see useFrames)");
         setPropertyTooltip(cf, "useFrames", "Use frames (see useEvents)");
+        setPropertyTooltip(cf, "useStrictTimeOrdering", "<html>Select to delay update with events until we can account for frame exposure and readout times. <p>Unselect to update reconstruction with each event or frame as they arrive.");
 
         filterChain = new FilterChain(chip);
         baFilter = new SpatioTemporalCorrelationFilter(chip);
@@ -187,7 +191,7 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processDvsEvent(ApsDvsEvent e) {
-        if (useEvents && savingEvents) {
+        if (useStrictTimeOrdering && useEvents && savingEvents) { // we might not be processing these event that occur during frame exposure or readout
             ApsDvsEvent oe = eventFifoItr.nextOutput();
             oe.copyFrom(e);
             return;
@@ -216,30 +220,45 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
 
     @Override
     protected void processStartOfExposure(ApsDvsEvent e) {
-        savingEvents = true; // now frame started exposing, so save DVS events in FIFO until we get the frame
-        eventFifoItr = eventFifo.outputIterator(); // clears eventFifo and give us the output iterator to copy incoming events to this FIFO
+        if (useStrictTimeOrdering) {
+            savingEvents = true; // now frame started exposing, so save DVS events in FIFO until we get the frame
+            startSavingEventsTimestamp = e.timestamp;
+            eventFifoItr = eventFifo.outputIterator(); // clears eventFifo and give us the output iterator to copy incoming events to this FIFO
+        }
     }
 
+    /**
+     * Processes frame once we have the entire frame. Here we account for the
+     * fact that events occurred during frame exposure and after frame readout
+     * started until now.
+     */
     @Override
     protected void processEndOfFrameReadout(ApsDvsEvent e) { // got the EOF event
 
         savingEvents = false;  // stop saving events
+        stopSavingEventsTimestamp = e.timestamp;
         if (!useFrames) {
             return;
         }
-        // Now we need process events up to the middle of the frame exposure, apply the frame, 
-        // and then apply the rest of the events up to now. 
         final int frameExpAvgTimestamp = getAverageFrameExposureTimestamp();
-        Iterator<ApsDvsEvent> savedEventsItr = eventFifo.inputIterator();
-        while (savedEventsItr.hasNext()) {
-            ApsDvsEvent se = savedEventsItr.next();
-            if (se.timestamp > frameExpAvgTimestamp) {
-                break;  // we reached the middle of exposure, so break out of this processing
-            }
-            processDvsEvent(se);
-        }
-
         float exposureDuirationMs = 1000 * getExposureDurationS(), expHz = 1 / exposureDuirationMs;
+        Iterator<ApsDvsEvent> savedEventsItr = null;
+        if (useStrictTimeOrdering) {
+            log.info(String.format("processing %ss of %d events during frame exposure and readout",
+                    engFmt.format(1e-6f * (stopSavingEventsTimestamp - startSavingEventsTimestamp)),
+                    eventFifo.getSize())
+            );
+            // Now we need process events up to the middle of the frame exposure, apply the frame, 
+            // and then apply the rest of the events up to now. 
+            savedEventsItr = eventFifo.inputIterator();
+            while (savedEventsItr.hasNext()) {
+                ApsDvsEvent se = savedEventsItr.next();
+                if (se.timestamp > frameExpAvgTimestamp) {
+                    break;  // we reached the middle of exposure, so break out of this processing
+                }
+                processDvsEvent(se);
+            }
+        }
 
         // Process the frame samples
         // compute new base log frame
@@ -277,12 +296,13 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
             logFinalFrame[k] = oldOutputWeight * logFinalFrame[k] + (1 - oldOutputWeight) * (logBaseFrame[k]); // correct the output
         }
         // Process rest of saved events after the middle of exposure
-        while (savedEventsItr.hasNext()) {
-            ApsDvsEvent se = savedEventsItr.next();
-            processDvsEvent(se);
+        if (useStrictTimeOrdering) {
+            while (savedEventsItr.hasNext()) {
+                ApsDvsEvent se = savedEventsItr.next();
+                processDvsEvent(se);
+            }
+            eventFifo.clear(); // the .outputIterator() call should clear it, but make sure it is empty now
         }
-        eventFifo.clear(); // the .outputIterator() call should clear it, but make sure it is empty now
-
     }
 
     private void updateDisplayedFrame() {
@@ -579,6 +599,21 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
                 }
             }
         }
+    }
+
+    /**
+     * @return the useStrictTimeOrdering
+     */
+    public boolean isUseStrictTimeOrdering() {
+        return useStrictTimeOrdering;
+    }
+
+    /**
+     * @param useStrictTimeOrdering the useStrictTimeOrdering to set
+     */
+    public void setUseStrictTimeOrdering(boolean useStrictTimeOrdering) {
+        this.useStrictTimeOrdering = useStrictTimeOrdering;
+        putBoolean("useStrictTimeOrdering", useStrictTimeOrdering);
     }
 
 }

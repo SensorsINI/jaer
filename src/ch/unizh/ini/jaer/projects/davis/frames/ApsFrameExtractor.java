@@ -96,10 +96,11 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
      */
     public int width, height;
     /**
-     * maxADC is max binary value, i.e. 10 bits =1023, maxIDX is maximum idx
-     * value to arrays
+     * maxADC is max binary value, i.e. 10 bits =1023,
      */
-    public int maxADC, maxIDX; // maxADC is max binary value, i.e. 10 bits =1023
+    public int maxADC;
+    /** maxIDX is  maximum index value of arrays, i.e. width * height; */
+    public int maxIDX; 
     private float grayValue;
     protected boolean showAPSFrameDisplay = getBoolean("showAPSFrameDisplay", true);
     protected final Legend apsDisplayLegend;

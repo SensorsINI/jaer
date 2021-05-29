@@ -36,17 +36,28 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
 
-    // offset of f0, f45, f90 and f135 acording to the index
+    /**
+     * indexes of offset f0, f45, f90 and f135 acording to the index, i.e., each
+     * entry is an index into the full array for the subarray of f0, f45, etc
+     * pixels
+     */
     private int[] indexf0, indexf45, indexf90, indexf135;
     private JFrame apsFramePola = null;
     public ImageDisplay apsDisplayPola;
     private float[] apsDisplayPixmapBufferAop;
     // Angle of Polarization and Degree of Linear Polarization arrays. They are for macropixel 2x2 pixels. Indexing is 
+    private float[] f0, f45, f90, f135;
     private float[] aop;
     private float[] dop;
     FloatFunction exp = (s) -> (float) Math.exp(s); // lambda function to linearize log intensity
     private TobiLogger tobiLogger = new TobiLogger("PolarizationComplementaryFilter", "PolarizationComplementaryFilter");
     private DescriptiveStatistics aopStats = new DescriptiveStatistics(), dopStats = new DescriptiveStatistics(); // mean values, computed after the ROI is processed
+    private DescriptiveStatistics f0stats = new DescriptiveStatistics(), f45stats = new DescriptiveStatistics(); // mean values, computed after the ROI is processed
+    private DescriptiveStatistics f90stats = new DescriptiveStatistics(), f135stats = new DescriptiveStatistics(); // mean values, computed after the ROI is processed
+    private float meanf0 = Float.NaN;
+    private float meanf45 = Float.NaN;
+    private float meanf90 = Float.NaN;
+    private float meanf135 = Float.NaN;
     private float meanAoP = Float.NaN, meanDoP = Float.NaN;
     private Stats stats = null;
 
@@ -64,7 +75,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             }
         });
         initFilter();
-        tobiLogger.setColumnHeaderLine("lastTimestamp(s),ROINumPixels,AoP(deg),AoPStd(deg),DoLP,DoLPStd"); // CSV columns, not including the first column which is system time in ms since epoch
+        tobiLogger.setColumnHeaderLine("lastTimestamp(s),ROINumPixels,f0,f45,f90,f135,AoP(deg),AoPStd(deg),DoLP,DoLPStd"); // CSV columns, not including the first column which is system time in ms since epoch
         tobiLogger.setFileCommentString(String.format("useEvents=%s useFrames=%s onThresshold=%f offThreshold=%f crossoverFrequencyHz=%f kappa=%f lambda=%f",
                 useEvents, useFrames, onThreshold, offThreshold, crossoverFrequencyHz, kappa, lambda));
         setPropertyTooltip("writePolarizationCSV", "Write a CSV file with the the mean and std of polarization AoP and DoLP for the ROI");
@@ -98,6 +109,10 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             indexf90 = new int[maxIDX];
             indexf135 = new int[maxIDX];
             apsDisplayPixmapBufferAop = new float[3 * maxIDX / 4 * 3];
+            f0 = new float[maxIDX / 4];
+            f45 = new float[maxIDX / 4];
+            f90 = new float[maxIDX / 4];
+            f135 = new float[maxIDX / 4];
             aop = new float[maxIDX / 4];
             dop = new float[maxIDX / 4];
             apsDisplayPola.setImageSize(width / 2, height / 2 * 3);
@@ -113,6 +128,10 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             indexf90 = new int[maxIDX];
             indexf135 = new int[maxIDX];
             apsDisplayPixmapBufferAop = new float[3 * maxIDX / 4 * 3];
+            f0 = new float[maxIDX / 4];
+            f45 = new float[maxIDX / 4];
+            f90 = new float[maxIDX / 4];
+            f135 = new float[maxIDX / 4];
             aop = new float[maxIDX / 4];
             dop = new float[maxIDX / 4];
             apsDisplayPola.setImageSize(width / 2, height / 2 * 3);
@@ -121,32 +140,56 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         }
 
         // compute the AoP and DoLP in the ROI, using exp lambda function to linearize the estimated log intensity
-        PolarizationUtils.computeAoPDoP(logFinalFrame, aop, dop, exp, indexf0, indexf45, indexf90, indexf135, height, width);
+        PolarizationUtils.computeAoPDoP(logFinalFrame, f0, f45, f90, f135, aop, dop, exp, indexf0, indexf45, indexf90, indexf135, height, width);
 
         if (roiRect != null) {
             // compute mean values
             int nb = 0, idx;
+            f0stats.clear();
+            f45stats.clear();
+            f90stats.clear();
+            f135stats.clear();
             aopStats.clear();
             dopStats.clear();
             for (int x = roiRect.x; x < roiRect.x + roiRect.width; x += 2) {
                 for (int y = roiRect.y; y < roiRect.y + roiRect.height; y += 2) {
                     // compute idx into array, asssuming that AoP and DoP arrays are hold 2x2 macropixel values
                     idx = PolarizationUtils.getIndex(x / 2, y / 2, width / 2);// (int) (x / 2 + y / 2 * width / 2);
+                    f0stats.addValue(f0[idx]);
+                    f45stats.addValue(f45[idx]);
+                    f90stats.addValue(f90[idx]);
+                    f135stats.addValue(f135[idx]);
                     aopStats.addValue(aop[idx]);
                     dopStats.addValue(dop[idx]);
                     nb += 1;
                 }
             }
+            meanf0 = (float) f0stats.getMean();  // compute the means to show in ellipse
+            meanf45 = (float) f45stats.getMean();  // compute the means to show in ellipse
+            meanf90 = (float) f90stats.getMean();  // compute the means to show in ellipse
+            meanf135 = (float) f135stats.getMean();  // compute the means to show in ellipse
             meanAoP = (float) aopStats.getMean();  // compute the means to show in ellipse
             meanDoP = (float) dopStats.getMean();
+
+            float meanAoPFromAvgs = 0, meanDoPFromAvgs = 0;
+            // compute the AoP and DoLP using mean values of f0, f45 etc, maybe they are better conditioned
+            float s0 = (meanf0 + meanf135 + meanf90 + meanf45) / 2;
+            float s1 = meanf0 - meanf90;
+            float s2 = meanf45 - meanf135;
+            if (s0 > 0) {
+                meanDoPFromAvgs = (float) Math.sqrt(s1 * s1 + s2 * s2) / s0;
+                meanAoPFromAvgs = (float) (Math.atan2(s2, s1) / (2.0 * Math.PI) + 0.5);
+            }
+            meanDoP=meanDoPFromAvgs;
+            meanAoP=meanAoPFromAvgs;
 
             // log the mean values to the CSV if open, should match the header line 
             if (tobiLogger.isEnabled()) {
                 final float time = 1e-6f * in.getLastTimestamp();
                 final float aopstd = (float) aopStats.getStandardDeviation();
                 final float dopstd = (float) dopStats.getStandardDeviation();
-                tobiLogger.log(String.format("%f,%d,%f,%f,%f,%f", time, nb, meanAoP, aopstd, meanDoP, dopstd));
-                stats.add(time, meanAoP, meanDoP, aopstd, dopstd);
+                tobiLogger.log(String.format("%f,%d,%f,%f,%f,%f,%f,%f,%f,%f", time, nb, meanf0, meanf45, meanf90, meanf135, meanAoP, aopstd, meanDoP, dopstd));
+                stats.add(time, meanf0, meanf45, meanf90, meanf135, meanAoP, meanDoP, aopstd, dopstd);
             }
         }
 
@@ -189,7 +232,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
 
     public void doToggleOnWritePolarizationCSV() {
         tobiLogger.setFileCommentString(String.format("useEvents=%s useFrames=%s onThresshold=%f offThreshold=%f crossoverFrequencyHz=%f kappa=%f lambda=%f thresholdMultiplier=%f",
-                useEvents, useFrames, onThreshold, offThreshold, crossoverFrequencyHz, kappa, lambda,thresholdMultiplier));
+                useEvents, useFrames, onThreshold, offThreshold, crossoverFrequencyHz, kappa, lambda, thresholdMultiplier));
         if (stats == null) {
             stats = new Stats();
         }
@@ -224,9 +267,14 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
 
         final int n = 1000;
         ArrayList<Float> times = new ArrayList(n), aops = new ArrayList(n), dops = new ArrayList(n), aopstds = new ArrayList(n), dopstds = new ArrayList(n);
+        ArrayList<Float> f0s = new ArrayList(n), f45s = new ArrayList(n), f90s = new ArrayList(n), f135s = new ArrayList(n);
 
-        public void add(float time, float aop, float dop, float aopstd, float dopstd) {
+        public void add(float time, float f0, float f45, float f90, float f135, float aop, float dop, float aopstd, float dopstd) {
             times.add(time);
+            f0s.add(f0);
+            f45s.add(f45);
+            f90s.add(f90);
+            f135s.add(f135);
             aops.add(aop);
             dops.add(dop);
             aopstds.add(aopstd);
@@ -235,6 +283,10 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
 
         public void clear() {
             times.clear();
+            f0s.clear();
+            f45s.clear();
+            f90s.clear();
+            f135s.clear();
             aops.clear();
             dops.clear();
             aopstds.clear();
@@ -242,17 +294,43 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         }
 
         public void plot() {
-            Plot plt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
+            Plot fplt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
+            fplt.subplot(2, 2, 1);
+            fplt.title("f0");
+            fplt.xlabel("time (s)");
+            fplt.ylabel("intensity (DN)");
+            fplt.plot().add(times, f0s, "b");
+            fplt.subplot(2, 2, 2);
+            fplt.title("f45");
+            fplt.xlabel("time (s)");
+            fplt.ylabel("intensity (DN)");
+            fplt.plot().add(times, f45s, "b");
+            fplt.subplot(2, 2, 3);
+            fplt.title("f90");
+            fplt.xlabel("time (s)");
+            fplt.ylabel("intensity (DN)");
+            fplt.plot().add(times, f90s, "b");
+            fplt.subplot(2, 2, 4);
+            fplt.title("f135");
+            fplt.xlabel("time (s)");
+            fplt.ylabel("intensity (DN)");
+            fplt.plot().add(times, f135s, "b");
+            try {
+                fplt.show();
+            } catch (Exception ex) {
+                log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
+            }
 
-            // TODO add errors.  Plot is limited and cannot do anything fancy now, just basic line plots.
+            Plot plt = Plot.create();
+
             plt.plot().add(times, aops, "r").label("AoP");
             plt.plot().add(times, dops, "g").label("DoLP");
-            ArrayList[] aopErrs=errors(aops,aopstds);
-            ArrayList[] dopErrs=errors(dops,dopstds);
-            plt.plot().add(times,aopErrs[0],"r").linewidth(.4).linestyle("dotted");
-            plt.plot().add(times,aopErrs[1],"r").linewidth(.4).linestyle("dotted");
-            plt.plot().add(times,dopErrs[0],"g").linewidth(.4).linestyle("dotted");
-            plt.plot().add(times,dopErrs[1],"g").linewidth(.4).linestyle("dotted");
+            ArrayList[] aopErrs = errors(aops, aopstds);
+            ArrayList[] dopErrs = errors(dops, dopstds);
+            plt.plot().add(times, aopErrs[0], "r").linewidth(.4).linestyle("dotted");
+            plt.plot().add(times, aopErrs[1], "r").linewidth(.4).linestyle("dotted");
+            plt.plot().add(times, dopErrs[0], "g").linewidth(.4).linestyle("dotted");
+            plt.plot().add(times, dopErrs[1], "g").linewidth(.4).linestyle("dotted");
             plt.xlabel("time (s)");
             plt.ylabel("AoP and DoLP");
 //            plt.text(0.5, 0.2, "text");
@@ -264,14 +342,14 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
                 log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
             }
         }
-        
-        private ArrayList[] errors(ArrayList<Float> mean, ArrayList<Float>std){
-            ArrayList<Float> up=new ArrayList(mean.size()), down=new ArrayList(mean.size());
-            for(int i=0;i<mean.size();i++){ // so awkward...
-                up.add(mean.get(i)+std.get(i));
-                down.add(mean.get(i)-std.get(i));
+
+        private ArrayList[] errors(ArrayList<Float> mean, ArrayList<Float> std) {
+            ArrayList<Float> up = new ArrayList(mean.size()), down = new ArrayList(mean.size());
+            for (int i = 0; i < mean.size(); i++) { // so awkward...
+                up.add(mean.get(i) + std.get(i));
+                down.add(mean.get(i) - std.get(i));
             }
-            return new ArrayList[] {up,down};
+            return new ArrayList[]{up, down};
         }
     }
 

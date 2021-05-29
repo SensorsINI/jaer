@@ -38,7 +38,7 @@ import au.edu.wsu.PolarizationUtils;
  */
 @Description("Method to extract polarization information from a stream of APS sample events")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class PolarizationExtractor extends EventFilter2D{
+public class PolarizationExtractor extends EventFilter2D {
 
     private JFrame apsFrame = null;
     public ImageDisplay apsDisplay;
@@ -68,13 +68,14 @@ public class PolarizationExtractor extends EventFilter2D{
      */
     public static final String EVENT_NEW_FRAME = DavisRenderer.EVENT_NEW_FRAME_AVAILBLE;
     private int lastFrameTimestamp = -1;
-    
+
     // Diaplay variable between AoP and DoP
     private int offset = 0;
-    
+
     // offset of f0, f45, f90 and f135 acording to the index
     private int[] indexf0, indexf45, indexf90, indexf135;
-        private float[] aop;
+    private float[] f0, f45, f90, f135;
+    private float[] aop;
     private float[] dop;
     FloatFunction lin = (s) -> (float) s;
 
@@ -107,7 +108,7 @@ public class PolarizationExtractor extends EventFilter2D{
         displayColor[1] = 1.0f;
         displayColor[2] = 1.0f;
         apsDisplayLegend.setColor(displayColor);
-        
+
         initFilter();
 
         setPropertyTooltip("showPolarizationFrameDisplay", "Shows the JFrame frame display if true");
@@ -129,13 +130,17 @@ public class PolarizationExtractor extends EventFilter2D{
             // chip is still being built
             height = chip.getSizeY();
             maxIDX = width * height;
-            apsDisplay.setImageSize(width/2, height/2 * 3);
+            apsDisplay.setImageSize(width / 2, height / 2 * 3);
             resetBuffer = new float[maxIDX];
             signalBuffer = new float[maxIDX];
             displayFrame = new float[maxIDX];
             displayBuffer = new float[maxIDX];
-            dop = new float[maxIDX / 4];
+            f0 = new float[maxIDX / 4];
+            f45 = new float[maxIDX / 4];
+            f90 = new float[maxIDX / 4];
+            f135 = new float[maxIDX / 4];
             aop = new float[maxIDX / 4];
+            dop = new float[maxIDX / 4];
             apsDisplayPixmapBuffer = new float[3 * maxIDX / 4 * 3];
             Arrays.fill(resetBuffer, 0.0f);
             Arrays.fill(signalBuffer, 0.0f);
@@ -147,7 +152,7 @@ public class PolarizationExtractor extends EventFilter2D{
             indexf45 = new int[maxIDX];
             indexf90 = new int[maxIDX];
             indexf135 = new int[maxIDX];
-            if(maxIDX > 0){
+            if (maxIDX > 0) {
                 PolarizationUtils.fillIndex(indexf0, indexf45, indexf90, indexf135, height, width);
                 PolarizationUtils.drawLegend(apsDisplayPixmapBuffer, height, width);
             }
@@ -200,7 +205,7 @@ public class PolarizationExtractor extends EventFilter2D{
         final ApsDvsEvent.ReadoutType type = e.getReadoutType();
         final float val = e.getAdcSample();
         final int idx = PolarizationUtils.getIndex(e.x, e.y, width);
-        
+
         if (idx >= maxIDX) {
             return;
         }
@@ -236,15 +241,15 @@ public class PolarizationExtractor extends EventFilter2D{
                 break;
             case CDSframe:
             default:
-                if(resetBuffer[idx] > signalBuffer[idx])
+                if (resetBuffer[idx] > signalBuffer[idx]) {
                     displayBuffer[idx] = resetBuffer[idx] - signalBuffer[idx];
-                else
+                } else {
                     displayBuffer[idx] = 0;
+                }
                 break;
         }
-  
+
     }
-    
 
     /**
      * Returns timestampFrameStart of last frame, which is the
@@ -257,11 +262,10 @@ public class PolarizationExtractor extends EventFilter2D{
     }
 
     public void displayPreBuffer() {
-        PolarizationUtils.computeAoPDoP(displayBuffer, aop, dop, lin, indexf0, indexf45, indexf90, indexf135, height, width);
+        PolarizationUtils.computeAoPDoP(displayBuffer, f0, f45, f90, f135, aop, dop, lin, indexf0, indexf45, indexf90, indexf135, height, width);
         PolarizationUtils.setDisplay(apsDisplayPixmapBuffer, aop, dop, height, width);
         apsDisplay.setPixmapArray(apsDisplayPixmapBuffer);
     }
-    
 
     /**
      * Checks if new frame is available. This flag is reset by getNewFrame()
@@ -353,8 +357,6 @@ public class PolarizationExtractor extends EventFilter2D{
         }
     }
 
- 
-
     /**
      * @param displayBrightness the displayBrightness to set
      */
@@ -437,7 +439,6 @@ public class PolarizationExtractor extends EventFilter2D{
     public int getMaxIDX() {
         return maxIDX;
     }
-
 
     private class MouseInfo extends MouseMotionAdapter {
 
