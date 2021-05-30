@@ -59,10 +59,38 @@ public class DavisComplementaryFilter extends ApsFrameExtractor {
     protected float onThreshold = getFloat("onThreshold", 0.25f);
     protected float offThreshold = getFloat("offThreshold", -0.25f);
 
-    private float[] logBaseFrame, displayed01Frame;
-    public float[] logFinalFrame;
+    /**
+     * The base log frame (from APS)
+     */
+    protected float[] logBaseFrame;
+    /**
+     * The displayed 0-1 range frame that is shown in ImageDisplay
+     */
+    protected float[] displayed01Frame;
+    /**
+     * The final output log intensity frame
+     */
+    protected float[] logFinalFrame;
+    /**
+     * The CF crossover frequency. Below this frequency the APS frames are
+     * weighted more, above it the DVS events are weighted more
+     */
     protected float crossoverFrequencyHz = getFloat("crossoverFrequencyHz", 1f);
+    /**
+     * Factor by which to decrease crossoverFrequencyHz for low and high APS
+     * exposure values that are near toe or shoulder of APS response.<p>
+     * Set to 0 to not decrease, or set alpha=0.
+     */
     protected float lambda = getFloat("lambda", .1f);
+    /**
+     * Fraction of entire APS frame Lmax-Lmin range to apply the decreased
+     * crossoverFrequencyHz, i.e. to weight more with events.
+     *
+     * Note that the range is not reset on each frame, so that it reflects the
+     * entire APS output range, not the range within one frame.
+     *
+     * Set kappa=0 to not adjust crossoverFrequencyHz at limits.
+     */
     protected float kappa = getFloat("kappa", 0.05f);
     protected float alpha0 = 2 * (float) Math.PI * crossoverFrequencyHz;
     protected float[] alphas = null;
