@@ -180,8 +180,8 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
                 meanDoPFromAvgs = (float) Math.sqrt(s1 * s1 + s2 * s2) / s0;
                 meanAoPFromAvgs = (float) (Math.atan2(s2, s1) / (2.0 * Math.PI) + 0.5);
             }
-            meanDoP=meanDoPFromAvgs;
-            meanAoP=meanAoPFromAvgs;
+            meanDoP = meanDoPFromAvgs;
+            meanAoP = meanAoPFromAvgs;
 
             // log the mean values to the CSV if open, should match the header line 
             if (tobiLogger.isEnabled()) {
@@ -294,35 +294,18 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         }
 
         public void plot() {
-            Plot fplt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
-            fplt.subplot(2, 2, 1);
-            fplt.title("f0");
-            fplt.xlabel("time (s)");
-            fplt.ylabel("intensity (DN)");
-            fplt.plot().add(times, f0s, "b");
-            fplt.subplot(2, 2, 2);
-            fplt.title("f45");
-            fplt.xlabel("time (s)");
-            fplt.ylabel("intensity (DN)");
-            fplt.plot().add(times, f45s, "b");
-            fplt.subplot(2, 2, 3);
-            fplt.title("f90");
-            fplt.xlabel("time (s)");
-            fplt.ylabel("intensity (DN)");
-            fplt.plot().add(times, f90s, "b");
-            fplt.subplot(2, 2, 4);
-            fplt.title("f135");
-            fplt.xlabel("time (s)");
-            fplt.ylabel("intensity (DN)");
-            fplt.plot().add(times, f135s, "b");
-            try {
-                fplt.show();
-            } catch (Exception ex) {
-                log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
-            }
+            Plot plt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
+            plt.subplot(2, 1, 1);
+            plt.title("f0,f45,f90,f135");
+            plt.xlabel("time (s)");
+            plt.ylabel("intensity (DN)");
+            plt.plot().add(times, f0s, "r").label("f0");
+            plt.plot().add(times, f45s, "g").label("f45");
+            plt.plot().add(times, f90s, "b").label("f90");
+            plt.plot().add(times, f135s, "cyan").label("f135");
+            plt.legend();
 
-            Plot plt = Plot.create();
-
+            plt.subplot(2, 1, 2);
             plt.plot().add(times, aops, "r").label("AoP");
             plt.plot().add(times, dops, "g").label("DoLP");
             ArrayList[] aopErrs = errors(aops, aopstds);
@@ -333,13 +316,13 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             plt.plot().add(times, dopErrs[1], "g").linewidth(.4).linestyle("dotted");
             plt.xlabel("time (s)");
             plt.ylabel("AoP and DoLP");
-//            plt.text(0.5, 0.2, "text");
             plt.title("AoP and DoLP vs time");
             plt.legend();
             try {
                 plt.show();
             } catch (Exception ex) {
                 log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
+                showWarningDialogInSwingThread("<html>Cannot show the plot with pyplot - did you install python and matplotlib on path? <p>" + ex.toString(), "Cannot plot");
             }
         }
 
