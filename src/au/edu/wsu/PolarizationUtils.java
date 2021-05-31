@@ -13,7 +13,10 @@ public class PolarizationUtils {
      * For every position in the image, fills the index arrays with index of the
      * corresponding subpixels inside a macro pixel indexfA corresponds to the
      * index of the polarizer A
+     * 
+     * 
      */
+    
     public static void fillIndex(int[] indexf0, int[] indexf45, int[] indexf90, int[] indexf135, int height, int width) {
         int idx;
         for (int x = 0; x < width; x += 1) {
@@ -52,7 +55,7 @@ public class PolarizationUtils {
      * returns the index <code>y * width + x</code> into pixel arrays for a
      * given x,y location where x is horizontal address and y is vertical and it
      * starts at lower left corner with x,y=0,0 and x and y increase to right
-     * and up.
+     * and up. x increases fastest so the values are stored by row first (index changing fastest).
      *
      * @param x
      * @param y
