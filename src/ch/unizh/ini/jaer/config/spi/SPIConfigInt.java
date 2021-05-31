@@ -82,8 +82,12 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
     @Override
     public void preferenceChange(final PreferenceChangeEvent e) {
         if (e.getKey().equals(getPreferencesKey())) {
-            final int newVal = Integer.parseInt(e.getNewValue());
-            set(newVal);
+            try {
+                final int newVal = Integer.parseInt(e.getNewValue());
+                set(newVal);
+            } catch (NumberFormatException ex) {
+                log.warning(String.format("Could not set new for key %s using new value %s: got %s",e.getKey(),e.getNewValue(),ex.toString()));
+            }
         }
     }
 
