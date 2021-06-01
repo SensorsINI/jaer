@@ -993,7 +993,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         }
 
         private String getPreferencesKey() {
-            return getChip().getClass().getSimpleName() + ".";
+            return getChip().prefsHeader() + ".";
         }
 
         /**
