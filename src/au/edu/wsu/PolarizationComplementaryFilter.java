@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
@@ -60,6 +61,8 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
     private float meanf135 = Float.NaN;
     private float meanAoP = Float.NaN, meanDoP = Float.NaN;
     private Stats stats = null;
+    protected float statisticsLoggingIntervalMs = getFloat("statisticsLoggingIntervalMs", 1);
+    private int lastLoggingTimestamp = 0;
 
     public PolarizationComplementaryFilter(final AEChip chip) {
         super(chip);
@@ -78,19 +81,33 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         tobiLogger.setColumnHeaderLine("lastTimestamp(s),ROINumPixels,f0,f45,f90,f135,AoP(deg),AoPStd(deg),DoLP,DoLPStd"); // CSV columns, not including the first column which is system time in ms since epoch
         tobiLogger.setFileCommentString(String.format("useEvents=%s useFrames=%s onThresshold=%f offThreshold=%f crossoverFrequencyHz=%f kappa=%f lambda=%f",
                 useEvents, useFrames, onThreshold, offThreshold, crossoverFrequencyHz, kappa, lambda));
-        setPropertyTooltip("writePolarizationCSV", "Write a CSV file with the the mean and std of polarization AoP and DoLP for the ROI");
-        setPropertyTooltip("plotAoPDoLP", "Plot accumulated results using pyplot");
+        String pol="Polarization";
+        setPropertyTooltip(pol,"writePolarizationCSV", "Write a CSV file with the the mean and std of polarization AoP and DoLP for the ROI");
+        setPropertyTooltip(pol,"plotAoPDoLP", "Plot accumulated results using pyplot");
+        setPropertyTooltip(pol,"statisticsLoggingIntervalMs", "Min interval between saved samples in ms when using writePolarizationCSV");
     }
 
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         checkMaps();
         in = super.filterPacket(in);
-        computeAndShowPolarization(in);
+        computePolarization();
         if (showAPSFrameDisplay) {
             apsDisplayPola.repaint();
         }
         return in; // should be denoised output
+    }
+
+    @Override
+    protected void processEndOfFrameReadout(ApsDvsEvent e) {
+        super.processEndOfFrameReadout(e); //To change body of generated methods, choose Tools | Templates.
+        maybeWriteCSVRecord(e.timestamp, 0); // TODO fix num events
+    }
+
+    @Override
+    protected void processDvsEvent(ApsDvsEvent e) {
+        super.processDvsEvent(e); //To change body of generated methods, choose Tools | Templates.
+        maybeWriteCSVRecord(e.timestamp, 0); // TODO fix num events
     }
 
     private void checkMaps() {
@@ -121,7 +138,13 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         }
     }
 
-    synchronized private void computeAndShowPolarization(EventPacket<? extends BasicEvent> in) {
+    @Override
+    public synchronized void resetFilter() {
+        super.resetFilter();
+        lastLoggingTimestamp = 0;
+    }
+
+    synchronized private void computePolarization() {
         if (maxIDX != indexf0.length && maxIDX > 0) {
             indexf0 = new int[maxIDX];
             indexf45 = new int[maxIDX];
@@ -183,25 +206,24 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             meanDoP = meanDoPFromAvgs;
             meanAoP = meanAoPFromAvgs;
 
-            // log the mean values to the CSV if open, should match the header line 
-            if (tobiLogger.isEnabled()) {
-                final float time = 1e-6f * in.getLastTimestamp();
-                final float aopstd = (float) aopStats.getStandardDeviation();
-                final float dopstd = (float) dopStats.getStandardDeviation();
-                tobiLogger.log(String.format("%f,%d,%f,%f,%f,%f,%f,%f,%f,%f", time, nb, meanf0, meanf45, meanf90, meanf135, meanAoP, aopstd, meanDoP, dopstd));
-                stats.add(time, meanf0, meanf45, meanf90, meanf135, meanAoP, meanDoP, aopstd, dopstd);
-            }
         }
 
-//        System.out.printf("Angle: %f", m_aop * 180);
-        // Show the polarization display; the ROI values are shown in annotate
         PolarizationUtils.setDisplay(apsDisplayPixmapBufferAop, aop, dop, height, width);
         apsDisplayPola.setPixmapArray(apsDisplayPixmapBufferAop);
 
-//        PolarizationUtils.computeAoPDoP(logFinalFrame, aop, dop, exp, indexf0, indexf45, indexf90, indexf135, height, width);
-//        PolarizationUtils.setDisplay(apsDisplayPixmapBuffer, aop, dop, height, width);
-//        if(apsDisplayPixmapBufferAop.length > 0)
-//            apsDisplayPola.setPixmapArray(apsDisplayPixmapBufferAop);
+    }
+
+    private void maybeWriteCSVRecord(int ts, int nb) {
+        // log the mean values to the CSV if open, should match the header line
+        if (tobiLogger.isEnabled() && 1e-3f * ts >= 1e-3f * lastLoggingTimestamp + getStatisticsLoggingIntervalMs()) {
+            computePolarization();
+            final float time = 1e-6f * ts;
+            lastLoggingTimestamp = ts;
+            final float aopstd = (float) aopStats.getStandardDeviation();
+            final float dopstd = (float) dopStats.getStandardDeviation();
+            tobiLogger.log(String.format("%f,%d,%f,%f,%f,%f,%f,%f,%f,%f", time, nb, meanf0, meanf45, meanf90, meanf135, meanAoP, aopstd, meanDoP, dopstd));
+            stats.add(time, meanf0, meanf45, meanf90, meanf135, meanAoP, meanDoP, aopstd, dopstd);
+        }
     }
 
     public float getDoP(int x, int y) {
@@ -263,6 +285,21 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         }
     }
 
+    /**
+     * @return the statisticsLoggingIntervalMs
+     */
+    public float getStatisticsLoggingIntervalMs() {
+        return statisticsLoggingIntervalMs;
+    }
+
+    /**
+     * @param statisticsLoggingIntervalMs the statisticsLoggingIntervalMs to set
+     */
+    public void setStatisticsLoggingIntervalMs(float statisticsLoggingIntervalMs) {
+        this.statisticsLoggingIntervalMs = statisticsLoggingIntervalMs;
+        putFloat("statisticsLoggingIntervalMs", statisticsLoggingIntervalMs);
+    }
+
     private class Stats {
 
         final int n = 1000;
@@ -307,7 +344,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
 
             plt.subplot(2, 1, 2);
             plt.plot().add(times, aops, "r").label("AoP");
-            plt.plot().add(times, dops, "g").label("DoLP");
+            plt.plot().add(times, dops, "go-").label("DoLP");
             ArrayList[] aopErrs = errors(aops, aopstds);
             ArrayList[] dopErrs = errors(dops, dopstds);
             plt.plot().add(times, aopErrs[0], "r").linewidth(.4).linestyle("dotted");
