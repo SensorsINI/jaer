@@ -810,7 +810,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         if (hw == null) {
             throw new RuntimeException("no hardware interface found");
         }
-        net.sf.jaer.chip.AEChip chip = new ch.unizh.ini.jaer.chip.retina.Tmpdiff128(hw);
+        net.sf.jaer.chip.AEChip chip = new ch.unizh.ini.jaer.chip.retina.DVS128(hw);
         BiasgenFrame frame = new BiasgenFrame(chip);
         frame.setVisible(true);
     }

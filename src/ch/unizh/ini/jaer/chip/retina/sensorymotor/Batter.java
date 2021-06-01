@@ -12,6 +12,7 @@
 
 package ch.unizh.ini.jaer.chip.retina.sensorymotor;
 
+import ch.unizh.ini.jaer.chip.stereopsis.DVS128StereoPair;
 import java.awt.Graphics2D;
 import java.util.logging.Logger;
 
@@ -25,7 +26,6 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.ServoInterface;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_USBIO_ServoController;
 import net.sf.jaer.stereopsis.StereoClusterTracker;
-import ch.unizh.ini.jaer.chip.stereopsis.Tmpdiff128StereoPair;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import net.sf.jaer.event.BasicEvent;
@@ -51,7 +51,7 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     final int DISABLE_SERVOS_DELAY_MS=10000;
     
     ServoInterface servo=null;
-    Tmpdiff128StereoPair stereoChip=null;
+    DVS128StereoPair stereoChip=null;
     BallTracker tracker=null;
     private float swingBallDistance=getPrefs().getFloat("Batter.swingBallDistance",0.6f); // distance of ball to start swinging bat
     private boolean swapServos; // true to swap swing and height servos
@@ -71,8 +71,8 @@ public class Batter extends EventFilter2D implements FrameAnnotater {
     /** Creates a new instance of Batter */
     public Batter(AEChip chip) {
         super(chip);
-        if(chip!=null && chip instanceof Tmpdiff128StereoPair){
-            stereoChip=(Tmpdiff128StereoPair)chip;
+        if(chip!=null && chip instanceof DVS128StereoPair){
+            stereoChip=(DVS128StereoPair)chip;
         }
         setSwapServos(getPrefs().getBoolean("Batter.swapServos",false));
         tracker=new BallTracker(chip);

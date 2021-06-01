@@ -5,6 +5,7 @@
  */
 package net.sf.jaer.jaerappletviewer;
 
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 import java.awt.BorderLayout;
 import java.awt.Graphics;
 import java.io.BufferedInputStream;
@@ -28,7 +29,6 @@ import net.sf.jaer.eventio.AEUnicastSettings;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
-import ch.unizh.ini.jaer.chip.retina.Tmpdiff128;
 
 /**
  * Applet that plays events in a web browser from
@@ -97,13 +97,13 @@ public class JAERAppletViewer extends javax.swing.JApplet {
     @Override
 	synchronized public void init() {
         log.info("applet init");
-        liveChip = new Tmpdiff128();
+        liveChip = new DVS128();
         liveChip.setName("Live DVS");
         liveCanvas = liveChip.getCanvas();
         liveChip.getRenderer().setColorScale(2);
         liveChip.getRenderer().setColorMode(AEChipRenderer.ColorMode.GrayLevel);
 
-        recordedChip = new Tmpdiff128();
+        recordedChip = new DVS128();
         recordedChip.setName("Recorded DVS");
         recordedCanvas = recordedChip.getCanvas();
         recordedChip.getRenderer().setColorScale(2);
