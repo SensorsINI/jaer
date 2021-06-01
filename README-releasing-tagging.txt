@@ -1,6 +1,6 @@
 To generate a new github release
 
-See which is the latest release on https://github.com/SensorsINI/jaer/releases.
+See which is the latest release on https://github.com/SensorsINI/jaer/releases .
 Decide the next release version number, e.g. 1.8.1.
 
 You can also see the tags at https://github.com/SensorsINI/jaer/tags. Releases are made from a particular tag.
