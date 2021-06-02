@@ -61,7 +61,7 @@
                 <entry key="DAVIS240C.Chip.ResetTestPixel" value="true"/>
                 <entry key="DAVIS240C.DVS.AckDelayColumn" value="0"/>
                 <entry key="DAVIS240C.AddressedIPotCF.DiffBn.BitValueCoarse" value="3"/>
-                <entry key="DAVIS240C.IMU.RunAccel" value="false"/>
+                <entry key="DAVIS240C.IMU.RunAccel" value="true"/>
                 <entry key="DAVIS240C.ExtInput.DetectPulsePolarity" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.LocalBufBn.BitValueFine" value="164"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsCasEpc.BitValueFine" value="185"/>
@@ -83,7 +83,7 @@
                 <entry key="DAVIS240C.Masterbias.internalResistorUsed" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.AEPuXBp.LowCurrent" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PrCasBnc.Type" value="NORMAL"/>
-                <entry key="DAVIS240C.AddressedIPotCF.DiffBn.BitValueFine" value="73"/>
+                <entry key="DAVIS240C.AddressedIPotCF.DiffBn.BitValueFine" value="92"/>
                 <entry key="DAVIS240C.Chip.SpecialPixelControl" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.AEPdBn.Enabled" value="true"/>
                 <entry key="DAVIS240C.testPixel" value="false"/>
@@ -91,7 +91,7 @@
                 <entry key="DAVIS240C.IMU.TempStandby" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.LocalBufBn.Enabled" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
-                <entry key="DAVIS240C.AddressedIPotCF.OffBn.BitValueCoarse" value="4"/>
+                <entry key="DAVIS240C.AddressedIPotCF.OffBn.BitValueCoarse" value="5"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.Type" value="NORMAL"/>
                 <entry key="DAVIS240C.AddressedIPotCF.DiffCasBnc.BitValueFine" value="115"/>
                 <entry key="DAVIS240C.Masterbias.rint" value="46000.0"/>
@@ -124,7 +124,7 @@
                 <entry key="DAVIS240C.Chip.AnalogMux1" value="0"/>
                 <entry key="DAVIS240C.Chip.AnalogMux0" value="0"/>
                 <entry key="DAVIS240C.Chip.AnalogMux2" value="0"/>
-                <entry key="DAVIS240C.IMU.displayEnabled" value="true"/>
+                <entry key="DAVIS240C.IMU.displayEnabled" value="false"/>
                 <entry key="DAVIS240C.Chip.TypeNCalibNeuron" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.LowCurrent" value="false"/>
                 <entry key="DAVIS240C.APS.FrameInterval" value="50000"/>
@@ -145,9 +145,9 @@
                 <entry key="DAVIS240C.AddressedIPotCF.AEPuYBp.Enabled" value="true"/>
                 <entry key="DAVIS240C.IMU.AccelFullScale" value="2"/>
                 <entry key="DAVIS240C.AddressedIPotCF.AERxEBn.Type" value="NORMAL"/>
-                <entry key="DAVIS240C.AddressedIPotCF.OnBn.BitValueFine" value="224"/>
+                <entry key="DAVIS240C.AddressedIPotCF.OnBn.BitValueFine" value="48"/>
                 <entry key="DAVIS240C.VideoControl.autoWhiteBalance" value="false"/>
-                <entry key="DAVIS240C.AddressedIPotCF.OffBn.BitValueFine" value="35"/>
+                <entry key="DAVIS240C.AddressedIPotCF.OffBn.BitValueFine" value="160"/>
                 <entry key="DAVIS240C.TypeNCalibNeuron" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.BitValueFine" value="219"/>
                 <entry key="DAVIS240C.APS.Run" value="true"/>
@@ -165,7 +165,7 @@
                 <entry key="DAVIS240C.resetTestpixel" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.AEPdBn.Type" value="NORMAL"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsROSFBn.Sex" value="N"/>
-                <entry key="DAVIS240C.IMU.RunGyro" value="false"/>
+                <entry key="DAVIS240C.IMU.RunGyro" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
                 <entry key="DAVIS240C.DVS.FilterRefractoryPeriodTime" value="2"/>
                 <entry key="DAVIS240C.useAout" value="false"/>
@@ -190,9 +190,9 @@
                 <entry key="DAVIS240C.AddressedIPotCF.PixInvBn.Type" value="NORMAL"/>
                 <entry key="DAVIS240C.runAdc" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.apsOverflowLevel.Enabled" value="true"/>
-                <entry key="DAVIS240C.IMU.RunTemp" value="false"/>
+                <entry key="DAVIS240C.IMU.RunTemp" value="true"/>
                 <entry key="DAVIS240C.DVS.FilterPolaritySuppressType" value="false"/>
-                <entry key="DAVIS240C.VideoControl.displayFrames" value="false"/>
+                <entry key="DAVIS240C.VideoControl.displayFrames" value="true"/>
                 <entry key="DAVIS240C.AddressedIPotCF.AERxEBn.BitValueFine" value="165"/>
                 <entry key="DAVIS240C.APS.ResetSettle" value="10"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PrCasBnc.Enabled" value="true"/>
@@ -229,7 +229,7 @@
                 <entry key="DAVIS240C.ExtInput.RunGenerator" value="false"/>
                 <entry key="DAVIS240C.AddressedIPotCF.PrSFBp.Type" value="NORMAL"/>
                 <entry key="DAVIS240C.AddressedIPotCF.ApsCasEpc.LowCurrent" value="false"/>
-                <entry key="DAVIS240C.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
+                <entry key="DAVIS240C.AddressedIPotCF.OnBn.BitValueCoarse" value="1"/>
                 <entry key="DAVIS240C.extTrigger" value="false"/>
                 <entry key="DAVIS240C.VideoControl.displayEvents" value="true"/>
                 <entry key="DAVIS240C.APS.WaitOnTransferStall" value="true"/>
