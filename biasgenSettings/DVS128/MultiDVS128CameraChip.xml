@@ -13,20 +13,23 @@
             <map/>
             <node name="chip">
               <map/>
-              <node name="retina">
+              <node name="multicamera">
                 <map>
-                  <entry key="DVS128.IPot.cas" value="54"/>
-                  <entry key="DVS128.IPot.injGnd" value="1108364"/>
-                  <entry key="DVS128.IPot.reqPd" value="16777215"/>
-                  <entry key="DVS128.IPot.puX" value="8159221"/>
-                  <entry key="DVS128.IPot.diffOff" value="132"/>
-                  <entry key="DVS128.IPot.req" value="159147"/>
-                  <entry key="DVS128.IPot.refr" value="6"/>
-                  <entry key="DVS128.IPot.puY" value="16777215"/>
-                  <entry key="DVS128.IPot.diffOn" value="262144"/>
-                  <entry key="DVS128.IPot.diff" value="30153"/>
-                  <entry key="DVS128.IPot.foll" value="51"/>
-                  <entry key="DVS128.IPot.Pr" value="3"/>
+                  <entry key="FilterChain.timeLimitEnabled" value="false"/>
+                  <entry key="FilterChain.timeLimitMs" value="10"/>
+                  <entry key="DVS128.selectedBiasgenControlTab" value="1"/>
+                  <entry key="MultiDVS128CameraChip.IPot.cas" value="54"/>
+                  <entry key="MultiDVS128CameraChip.IPot.injGnd" value="1108364"/>
+                  <entry key="MultiDVS128CameraChip.IPot.reqPd" value="16777215"/>
+                  <entry key="MultiDVS128CameraChip.IPot.puX" value="8159221"/>
+                  <entry key="MultiDVS128CameraChip.IPot.diffOff" value="399"/>
+                  <entry key="MultiDVS128CameraChip.IPot.req" value="159147"/>
+                  <entry key="MultiDVS128CameraChip.IPot.refr" value="6"/>
+                  <entry key="MultiDVS128CameraChip.IPot.puY" value="16777215"/>
+                  <entry key="MultiDVS128CameraChip.IPot.diffOn" value="262144"/>
+                  <entry key="MultiDVS128CameraChip.IPot.diff" value="30153"/>
+                  <entry key="MultiDVS128CameraChip.IPot.foll" value="51"/>
+                  <entry key="MultiDVS128CameraChip.IPot.Pr" value="3"/>
                   <entry key="DVS128.Masterbias.rx" value="8200.0"/>
                   <entry key="DVS128.Masterbias.rint" value="46000.0"/>
                   <entry key="DVS128.Masterbias.internalResistorUsed" value="false"/>
