@@ -1,4 +1,0 @@
-List of employed external libraries
-
-jcommon - 1.0.18 - http://www.jfree.org/jcommon/
-jfreechart - 1.0.15 - http://www.jfree.org/jfreechart/
