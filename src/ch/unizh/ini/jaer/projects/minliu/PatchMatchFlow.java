@@ -2864,10 +2864,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             showSlicesScale = numScales - 1;
         }
         
-        byte[] grayImageBuffer = new byte[sizex * sizey];
-        for (int x = 0; x < sizex >> showSlicesScale; x++) {
-            for (int y = 0; y < sizey >> showSlicesScale; y++) {
-                // TODO only draw scale 0 (no subsampling) for now
+        int imageSizeX = sizex >> showSlicesScale;
+        int imageSizeY = sizey >> showSlicesScale;
+        byte[] grayImageBuffer = new byte[imageSizeX * imageSizeY];
+        for (int x = 0; x < imageSizeX; x++) {
+            for (int y = 0; y < imageSizeY; y++) {
                 int pixelValue = slices[d1][showSlicesScale][x][y];
                 sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * pixelValue, 0, 0);
                 // The minimum of byte is ox0(0), the maximum is 0xFF(-1); 
@@ -2877,11 +2878,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 {
                     imagePixelVal = 0;  // Background
                 }
-                grayImageBuffer[(sizey - 1 - y) * sizex + x] = (byte)imagePixelVal;
+                grayImageBuffer[(imageSizeY - 1 - y) * imageSizeX + x] = (byte)imagePixelVal;
             }
         }
-        final BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_BYTE_GRAY);
-        theImage.getRaster().setDataElements(0, 0, sizex, sizey, grayImageBuffer);
+        final BufferedImage theImage = new BufferedImage(imageSizeX, imageSizeY, BufferedImage.TYPE_BYTE_GRAY);
+        theImage.getRaster().setDataElements(0, 0, imageSizeX, imageSizeY, grayImageBuffer);
 
         if(saveSliceGrayImage)
         {
