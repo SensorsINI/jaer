@@ -633,7 +633,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion());
         }
         drawRateSamples(drawable);
-        if (measureSparsity) {
+        if (measureSparsity && sparsity!=null) {
             GLUT glut = chip.getCanvas().getGlut();
             gl.glRasterPos3f(10, (int) (chip.getSizeY() * .6f), 0);
             
