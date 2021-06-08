@@ -230,7 +230,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
-        s = String.format("TPR=%6.1f%% TNR=%6.1f%% TPO=%6.1f%%, dT=%.2fus", 100 * TPR, 100 * TNR, 100 * TPO, poissonDtUs);
+        s = String.format("TPR=%s%% TNR=%s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * TNR), poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
         s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
