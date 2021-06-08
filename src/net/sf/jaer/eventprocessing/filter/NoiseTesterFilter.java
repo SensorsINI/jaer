@@ -60,6 +60,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.graphics.ChipDataFilePreview;
@@ -424,7 +425,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // initialize filters with lastTimesMap to Poisson waiting times
             log.info("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
-                   f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
+                f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
             }
 
         }
@@ -601,10 +602,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         // insert noise between events of this packet after the first event, record their timestamp
+        // if there are no DVS events, then the iteration will not work. 
+        // In this case, we assume there are only IMU or APS events and insert noise events between them, because devices 
+        // typically do not include some special "clock" event to pass time.
         int preEts = 0;
 
+        int dvsEventCounter = 0;
         int lastEventTs = in.getFirstTimestamp();
         for (BasicEvent ie : in) {
+            dvsEventCounter++;
             // if it is the first event or any with first event timestamp then just copy them
             if (ie.timestamp == firstTsThisPacket) {
                 outItr.nextOutput().copyFrom(ie);
@@ -615,6 +621,22 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             lastEventTs = ie.timestamp;
             insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
             outItr.nextOutput().copyFrom(ie);
+        }
+        if (dvsEventCounter == 0 && (in instanceof ApsDvsEventPacket)) {
+            Iterator itr = ((ApsDvsEventPacket) in).fullIterator();
+            while (itr.hasNext()) {
+                BasicEvent ie = (BasicEvent) (itr.next());
+                // if it is the first event or any with first event timestamp then just copy them
+                if (ie.timestamp == firstTsThisPacket) {
+                    outItr.nextOutput().copyFrom(ie);
+                    continue;
+                }
+                // save the previous timestamp and get the next one, and then inject noise between them
+                preEts = lastEventTs;
+                lastEventTs = ie.timestamp;
+                insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
+                outItr.nextOutput().copyFrom(ie);
+            }
         }
     }
 
@@ -674,6 +696,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         e.y = (short) (y);
         e.timestamp = ts;
         e.polarity = PolarityEvent.Polarity.On;
+        e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
         noiseList.add(e);
     }
 
@@ -686,6 +709,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         e.y = (short) (y);
         e.timestamp = ts;
         e.polarity = PolarityEvent.Polarity.Off;
+        e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
         noiseList.add(e);
     }
 
@@ -938,7 +962,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
- 
     @Override
     public void setCorrelationTimeS(float dtS) {
         super.setCorrelationTimeS(dtS);
