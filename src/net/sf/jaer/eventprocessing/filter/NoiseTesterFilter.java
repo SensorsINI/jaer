@@ -18,8 +18,6 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.util.SplittableRandom;
-
 import com.google.common.collect.EvictingQueue;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -29,6 +27,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -54,6 +53,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
@@ -67,7 +67,6 @@ import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
-import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * Filter for testing noise filters
@@ -86,6 +85,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
+    private float shotNoiseRateCoVDecades = getFloat("shotNoiseRateCoVDecades", 0);
+    private float[][] shotNoiseRateArray = null;
+    private float[] shotNoiseRateIntervals = null; // stored by column, with y changing fastest
+
     private float poissonDtUs = 1;
 
     private float shotOffThresholdProb; // bounds for samppling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
@@ -100,9 +103,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private File csvFile = null;
     private BufferedWriter csvWriter = null;
 
-    // chip size values, set in initFilter()
-    private int sx = 0;
-    private int sy = 0;
+    /**
+     * Chip dimensions in pixels, set in initFilter()
+     */
+    private int sx = 0, sy = 0;
 
     private Integer lastTimestampPreviousPacket = null, firstSignalTimestmap = null; // use Integer Object so it can be null to signify no value yet
     private float TPR = 0;
@@ -113,7 +117,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
 
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
-    private final SplittableRandom random = new SplittableRandom();
+    private final Random random = new Random();
     private EventPacket<BasicEvent> signalAndNoisePacket = null;
 //    private EventList<BasicEvent> noiseList = new EventList();
     private AbstractNoiseFilter[] noiseFilters = null;
@@ -150,6 +154,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String out = "5. Output";
         String noise = "4. Noise";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
+        setPropertyTooltip(noise, "shotNoiseRateCoVDecades", "Coefficient of Variation of shot noise rate in decades across pixel array");
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
@@ -230,7 +235,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
-        s = String.format("TPR=%s%% FPR=%s%% TNR=%s%% dT=%.2fus", eng.format(100 * TPR),eng.format(100 * (1-TNR)), eng.format(100 * TNR), poissonDtUs);
+        s = String.format("TPR=%s%% FPR=%s%% TNR=%s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
         s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
@@ -488,7 +493,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 if (checkStopMe("after TN")) {
                     return in;
                 }
-                stopper.cancel();
 
 //            if (TN + FP != noiseList.size()) {
 //                System.err.println(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
@@ -530,6 +534,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 //        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
             }
+            stopper.cancel();
+
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
                 inSignalRateHz = (1e6f * in.getSize()) / deltaTime;
@@ -666,15 +672,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (prerecordedNoise == null) {
             final double randomnum = random.nextDouble();
             if (randomnum < shotOffThresholdProb) {
-                injectOffEvent(ts, outItr, noiseList);
+                injectNoiseEvent(ts, PolarityEvent.Polarity.Off, outItr, noiseList);
             } else if (randomnum > shotOnThresholdProb) {
-                injectOnEvent(ts, outItr, noiseList);
+                injectNoiseEvent(ts, PolarityEvent.Polarity.On, outItr, noiseList);
             }
             if (random.nextDouble() < leakOnThresholdProb) {
-                injectOnEvent(ts, outItr, noiseList);
+                injectNoiseEvent(ts, PolarityEvent.Polarity.On, outItr, noiseList);
             }
             return ts;
-        } else {
+        } else { // inject prerecorded noise event
             ArrayList<BasicEvent> noiseEvents = prerecordedNoise.nextEvents(ts); // these have timestamps of the prerecorded noise
             for (BasicEvent e : noiseEvents) {
                 PolarityEvent pe = (PolarityEvent) e;
@@ -685,6 +691,89 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             return ts;
         }
+    }
+
+    private void createShotNoiseCoVArray() {
+        if (shotNoiseRateArray == null) {
+            shotNoiseRateArray = new float[sx + 1][sy + 1];
+            shotNoiseRateIntervals = new float[(sx + 1) * (sy + 1)];
+        }
+        // fill float[][] with random normal dist values
+        int idx = 0;
+        double summedIntvls = 0;
+        for (float[] col : shotNoiseRateArray) {
+            for (int row = 0; row < col.length; row++) {
+                float randomVarMult = (float) Math.exp(random.nextGaussian() * shotNoiseRateCoVDecades * Math.log(10));
+                col[row] = randomVarMult;
+                shotNoiseRateIntervals[idx++] = randomVarMult;
+                summedIntvls += randomVarMult;
+            }
+        }
+        double f = 1 / summedIntvls;
+        for (int i = 0; i < shotNoiseRateIntervals.length; i++) {
+            shotNoiseRateIntervals[i] *= f; // store normalized intervals for indiv rates, the higher the pixel's rate, the longer its interval
+        }
+        // now compute the integrated intervals
+        for (int i = 1; i < shotNoiseRateIntervals.length; i++) {
+            shotNoiseRateIntervals[i] += shotNoiseRateIntervals[i - 1]; // store normalized intervals for indiv rates, the higher the pixel's rate, the longer its interval
+        }
+    }
+
+    private class XYPt {
+
+        short x, y;
+    }
+    private XYPt xyPt = new XYPt();
+
+    private XYPt shotXYFromIdx(int idx) {
+        xyPt.y = (short) (idx % (sy + 1)); // y changes fastest
+        xyPt.x = (short) (idx / (sy + 1));
+        return xyPt;
+    }
+
+    private XYPt sampleRandomShotNoisePixelXYAddress() {
+        float f = random.nextFloat();
+        // find location of f in list of intervals
+
+        int idx = search(f, shotNoiseRateIntervals);
+
+        return shotXYFromIdx(idx);
+    }
+
+    public static int search(float searchnum, float[] nums) {
+        int low = 0;
+        int high = nums.length - 1;
+        int mid = (low + high) / 2;
+        while (low < high) {
+            if (nums[mid] < searchnum) {
+                if (nums[mid + 1] > searchnum) {
+                    return mid;
+                } else {
+                    low = mid + 1;
+                }
+            } else {
+                high = mid - 1;
+            }
+            mid = (low + high) / 2;
+        }
+        return mid;
+    }
+
+    private void injectNoiseEvent(int ts, PolarityEvent.Polarity pol, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
+        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+        e.setSpecial(false);
+        if (shotNoiseRateCoVDecades < Float.MIN_VALUE) {
+            e.x = (short) random.nextInt(sx);
+            e.y = (short) random.nextInt(sy);
+        } else {
+            XYPt p = sampleRandomShotNoisePixelXYAddress();
+            e.x = p.x;
+            e.y = p.y;
+        }
+        e.timestamp = ts;
+        e.polarity = pol;
+        e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
+        noiseList.add(e);
     }
 
     private void injectOnEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
@@ -1151,6 +1240,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private void updateNnbHistograms(Classification classification, ArrayList<FilteredEventWithNNb> filteredInNnb) {
         for (FilteredEventWithNNb e : filteredInNnb) {
             nnbHistograms.addEvent(classification, e.nnb);
+        }
+    }
+
+    /**
+     * @return the shotNoiseRateCoVDecades
+     */
+    public float getShotNoiseRateCoVDecades() {
+        return shotNoiseRateCoVDecades;
+    }
+
+    /**
+     * @param shotNoiseRateCoVDecades the shotNoiseRateCoVDecades to set
+     */
+    public void setShotNoiseRateCoVDecades(float shotNoiseRateCoVDecades) {
+        this.shotNoiseRateCoVDecades = shotNoiseRateCoVDecades;
+        putFloat("shotNoiseRateCoVDecades", shotNoiseRateCoVDecades);
+        if (shotNoiseRateCoVDecades > Float.MIN_VALUE) {
+            createShotNoiseCoVArray();
         }
     }
 
