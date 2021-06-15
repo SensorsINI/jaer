@@ -418,7 +418,7 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
 
     /**
      * Returns the e.address field from the event, which is the address
-     * csaptured during hardware acquisition. If subclasses want to override
+     * captured during hardware acquisition. If subclasses want to override
      * this functionality they can either override this method to match what
      * their <code>EventExtractor2D</code> actually does, or perhaps use the
      * {@code #reconstructRawAddressFromEvent} method to provide a default
