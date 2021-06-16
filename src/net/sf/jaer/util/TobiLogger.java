@@ -63,17 +63,20 @@ public class TobiLogger {
      * filename and ".txt" is appended if it is not already the suffix, e.g.
      * "PencilBalancer-2008-10-12T10-23-58+0200.txt". The file is created in the
      * users home folder.
-     * @param headerLineComment a comment usually specifying the contents and
+     * @param columnHeaderLine a comment usually specifying the contents and
      * data fields, a {@value #DEFAULT_COMMENT} is prepended automatically. A second header line is also
      * written automatically with the file creation date, e.g. "# created Sat
      * Oct 11 13:04:34 CEST 2008"
+     * @see #setFileCommentString(java.lang.String) 
+     * @see #setColumnHeaderLine(java.lang.String) 
+     * @see #setCommentChar(java.lang.String) 
      */
-    public TobiLogger(String filename, String headerLineComment) {
+    public TobiLogger(String filename, String columnHeaderLine) {
         if (!filename.endsWith(".txt")) {
             filename = filename + ".txt";
         }
         this.fileNameBase = filename;
-        this.columnHeaderLine = headerLineComment;
+        this.columnHeaderLine = columnHeaderLine;
     }
 
     private String getTimestampedFilename() {

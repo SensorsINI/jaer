@@ -199,6 +199,19 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         getNoiseFilterControl().resetFilter();
     }
 
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes); 
+        // check if enclosed in NTF and warn user
+        // need to see if we are called from checkbox or from enum pulldown menu
+//        if(isEnclosed() && getEnclosingFilter() instanceof NoiseTesterFilter){
+//            showWarningDialogInSwingThread("Do not enable noise filter", USAGE);
+//            
+//        }
+    }
+    
+    
+
     /**
      * By default empty method (which logs warning if called) that initializes
      * filter to produce proper statistics for noise filtering by filling past
