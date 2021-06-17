@@ -82,6 +82,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
     private Stats stats = new Stats();
     private boolean rateEnabled = getBoolean("rateEnabled", true);
     private boolean isiHistEnabled = getBoolean("isiHistEnabled", true);
+    private boolean showRateDistribution = getBoolean("showRateDistribution", false);
     private boolean freqHistEnabled = getBoolean("freqHistEnabled", false);
     private boolean separateEventTypes = getBoolean("separateEventTypes", true);
     private boolean logISIEnabled = getBoolean("logISIEnabled", true);
@@ -114,8 +115,9 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         setPropertyTooltip(h, "isiMaxUs", "max ISI in us");
         setPropertyTooltip(h, "isiAutoScalingEnabled", "autoscale bounds for ISI histogram");
         setPropertyTooltip(h, "isiNumBins", "number of bins in the ISI");
-        setPropertyTooltip(h, "showAverageISIHistogram", "shows the average of the individual ISI histograms. The contributing histograms for each pixel are separate for each event type (e.g. ON/OFF)");
-        setPropertyTooltip(h, "showIndividualISIHistograms", "show the ISI histograms of all the cells in the selection. Each event type (e.g. ON/OFF) will generate its own histogram");
+        setPropertyTooltip(h, "showAverageISIHistogram", "shows the average of the individual ISI histograms.");
+        setPropertyTooltip(h, "showIndividualISIHistograms", "show the ISI histograms of all the cells in the selection. ");
+        setPropertyTooltip(h, "showRateDistribution", "show the histogram individual time-averaged event rates of all the cells in the ROI. ");
         setPropertyTooltip(h, "logISIEnabled", "histograms have logarithmically spaced bins rather than linearly spaced bins");
         setPropertyTooltip(h, "logProbEnabled", "probabilities on log scale");
 
@@ -413,8 +415,11 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
 
     private class Stats {
 
-        final private float[] GLOBAL_HIST_COLOR = {0, .1f, .1f, .5f}, INDIV_HIST_COLOR = {0, .0f, .5f, .5f}, HIST_OVERFLOW_COLOR = {
-            .6f, .4f, .2f, .6f};
+        final private float[] 
+                GLOBAL_HIST_COLOR = {0, .1f, .1f, .5f}, 
+                RATE_HIST_COLOR = {.1f, .1f, 0f, .5f}, 
+                INDIV_HIST_COLOR = {0, .0f, .5f, .5f}, 
+                HIST_OVERFLOW_COLOR = {.6f, .4f, .2f, .6f};
         private int isiMinUs = getInt("isiMinUs", 10), isiMaxUs = getInt("isiMaxUs", 100000), isiNumBins = getInt("isiNumBins", 100);
         private float freqMinHz = 1e6f / isiMaxUs, freqMaxHz = 1e6f / isiMinUs;
         private double logIsiMin = isiMinUs <= 0 ? 0 : Math.log10(isiMinUs), logIsiMax = Math.log10(isiMaxUs);
@@ -445,7 +450,8 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         int eventCount = 0; // last update event count
 
         private HashMap<Integer, IsiOrFreqHist> histMap = new HashMap();
-        IsiOrFreqHist globalHist = new IsiOrFreqHist(-1);
+        IsiOrFreqHist globalHist = new IsiOrFreqHist(-1,-1);
+        IsiOrFreqHist rateHist = new IsiOrFreqHist(-1,-1);
         IsiOrFreqHist[] averageTypeHistograms = null;
         private int nPixels = 0;
         private int lastExternalInputEventTimestamp = 0;
@@ -465,6 +471,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             if (roiSelecting) {
                 histMap.clear();
                 globalHist.reset();
+                rateHist.reset();
                 return;
             }
             nPixels = roiRect == null ? chip.getNumPixels() : (roiRect.width) * (roiRect.height);
@@ -483,15 +490,16 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                     continue; // added to deal with filteredOut events at the end of packets, which are not filtered out
                     // by the EventPacket inputIterator()
                 }
+                // if event inside ROI, add it it its histgram, maybe
                 if (insideRoi(e)) {
                     stats.eventCount++;
                     lastEventTimestamp = e.timestamp;
-                    if (isiHistEnabled && individualISIsEnabled) {
+                    if ((isiHistEnabled || showRateDistribution) && individualISIsEnabled) {
                         int histAddr = getHistIdx(e.x, e.y);
                         IsiOrFreqHist h = histMap.get(histAddr);
                         if (h == null) {
                             try {
-                                h = new IsiOrFreqHist(histAddr);
+                                h = new IsiOrFreqHist(e.x,e.y);
                                 histMap.put(histAddr, h);
                             } catch (OutOfMemoryError ex) {
                                 log.warning(String.format("Out of heap memory, try a smaller ROI?: See https://stackoverflow.com/questions/511013/how-to-handle-outofmemoryerror-in-java (%s)", ex.toString()));
@@ -516,8 +524,11 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             if (stats.eventCount > 0) {
                 computeAverageEps();
             }
-            if (isiHistEnabled && individualISIsEnabled) {
+            // assemble global summed hist from indiv pixel histograms
+            if ((isiHistEnabled || showRateDistribution) && individualISIsEnabled) {
                 globalHist.reset();
+                rateHist.reset();
+                // consider all pixel histograms
                 for (IsiOrFreqHist h : histMap.values()) {
                     if (h.maxCount == 0) {
                         continue; // no ISI yet, just one event
@@ -535,6 +546,12 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                     }
                     if (scaleHistogramsIncludingOverflow && (globalHist.moreCount > globalHist.maxCount)) {
                         globalHist.maxCount = globalHist.moreCount;
+                    }
+                    
+                    // rates
+                    if(showRateDistribution){
+                        int bin=getFreqBin(h.avgRateHz);
+                        rateHist.incrementBin(bin);
                     }
                 }
             }
@@ -647,21 +664,26 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
          */
         private class IsiOrFreqHist {
 
+            int x=-1,y=-1,address = -1;
             int[] bins = new int[isiNumBins];
             int lessCount = 0, moreCount = 0;
             int maxCount = 0; // set >0 when there are ISIs
             int lastT = 0;
             boolean virgin = true; // true on init, false on first event (but still has no ISI after first event)
-            int address = -1;
+            LowpassFilter rateFilter = new LowpassFilter(getRateTauMs());
+            float avgRateHz = 0;
 
-            public IsiOrFreqHist(int addr) {
-                address = addr;
+            public IsiOrFreqHist(int x, int y) {
+                this.x=x;
+                this.y=y;
+                int histAddr = getHistIdx(x, y);
+                address = histAddr;
             }
 
             @Override
             public String toString() {
-                return String.format("ISIHist: virgin=%s maxCount=%d lessCount=%d moreCount=%d isiMaxUs=% isiMinUs=%d",
-                        virgin, maxCount, lessCount, moreCount, isiMaxUs, isiMinUs);
+                return String.format("ISIHist: avgFreq=%sHz virgin=%s maxCount=%d lessCount=%d moreCount=%d isiMaxUs=%d isiMinUs=%d",
+                        virgin, engFmt.format(avgRateHz), maxCount, lessCount, moreCount, isiMaxUs, isiMinUs);
             }
 
             void addEvent(BasicEvent e) {
@@ -669,6 +691,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                     lastT = e.timestamp;
                     lastEventTimestamp = lastT;
                     virgin = false;
+                    rateFilter.reset();
                     return;
                 }
                 int isi;
@@ -681,6 +704,9 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                     lastT = e.timestamp; // handle wrapping
                     return;
                 }
+                float freqHz = isi == 0 ? Float.MAX_VALUE : 1e6f / isi;
+                avgRateHz = rateFilter.filter(freqHz, e.timestamp);
+
                 if (isiAutoScalingEnabled) {
                     if (isi > isiMaxUs) {
                         setIsiMaxUs(isi);
@@ -689,6 +715,12 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                     }
                 }
                 int bin = getIsiOrFreqBinNumber(isi);
+                incrementBin(bin);
+                lastT = e.timestamp;
+//                System.out.println(String.format("added isi=%10d",isi));
+            }
+
+            private void incrementBin(int bin) {
                 if (bin < 0) {
                     lessCount++;
                     if (scaleHistogramsIncludingOverflow && (lessCount > maxCount)) {
@@ -705,8 +737,6 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                         maxCount = v;
                     }
                 }
-                lastT = e.timestamp;
-//                System.out.println(String.format("added isi=%10d",isi));
             }
 
             /**
@@ -784,12 +814,16 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                     bins = new int[isiNumBins];
                 } else {
                     Arrays.fill(globalHist.bins, 0);
+                    Arrays.fill(rateHist.bins, 0);
                 }
                 lessCount = 0;
                 moreCount = 0;
                 maxCount = 0;
                 virgin = true;
+                rateFilter.reset();
             }
+            
+            
         }
 
         @Override
@@ -921,6 +955,13 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                                     h.draw(gl);
                                 } else {
                                     h.draw(gl, 1, SELECT_COLOR);
+//                                    renderer.begin3DRendering();
+//                                    renderer.setColor(SELECT_COLOR[0], SELECT_COLOR[1], SELECT_COLOR[2], SELECT_COLOR[3]);
+                                    String s=h.toString();
+                                    log.info(s);
+//                                    renderer.draw3D(s, currentMousePoint.x, currentMousePoint.y, 0, scale);
+//                                    renderer.end3DRendering();
+
                                 }
                                 gl.glPopMatrix();
                                 gl.glTranslatef(0, (float) chip.getSizeY() / n, 0);
@@ -930,6 +971,11 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                         if (showAverageISIHistogram) {
                             gl.glPushMatrix();
                             globalHist.draw(gl, 2, GLOBAL_HIST_COLOR);
+                            gl.glPopMatrix();
+                        }
+                        if (showRateDistribution) {
+                            gl.glPushMatrix();
+                            rateHist.draw(gl, 2, RATE_HIST_COLOR);
                             gl.glPopMatrix();
                         }
 
@@ -1131,37 +1177,45 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                 return isiNumBins;
             } else {
                 if (!freqHistEnabled) {
-                    if (!logISIEnabled) {
-                        int binSize = (isiMaxUs - isiMinUs) / isiNumBins;
-                        if (binSize <= 0) {
-                            return -1;
-                        }
-                        return (isi - isiMinUs) / binSize;
-                    } else {
-                        double logISI = isi <= 0 ? 0 : Math.log10(isi);
-                        double binSize = (logIsiMax - logIsiMin) / isiNumBins;
-                        if (binSize <= 0) {
-                            return -1;
-                        }
-                        return (int) Math.floor((logISI - logIsiMin) / binSize);
-                    }
+                    return getIsiBin(isi);
                 } else { // frequency histogram
                     float freqHz = isi <= isiMinUs ? freqMaxHz : 1e6f / isi;
-                    if (!logISIEnabled) {
-                        float binSize = (freqMaxHz - freqMinHz) / isiNumBins;
-                        if (binSize <= 0) {
-                            return -1;
-                        }
-                        return (int) Math.floor((freqHz - freqMinHz) / binSize);
-                    } else {
-                        double logFreqHz = Math.log10(freqHz);
-                        double binSize = (logFreqMax - logFreqMin) / isiNumBins;
-                        if (binSize <= 0) {
-                            return -1;
-                        }
-                        return (int) Math.floor((logFreqHz - logFreqMin) / binSize);
-                    }
+                    return getFreqBin(freqHz);
                 }
+            }
+        }
+
+        private int getIsiBin(int isi) {
+            if (!logISIEnabled) {
+                int binSize = (isiMaxUs - isiMinUs) / isiNumBins;
+                if (binSize <= 0) {
+                    return -1;
+                }
+                return (isi - isiMinUs) / binSize;
+            } else {
+                double logISI = isi <= 0 ? 0 : Math.log10(isi);
+                double binSize = (logIsiMax - logIsiMin) / isiNumBins;
+                if (binSize <= 0) {
+                    return -1;
+                }
+                return (int) Math.floor((logISI - logIsiMin) / binSize);
+            }
+        }
+
+        private int getFreqBin(float freqHz) {
+            if (!logISIEnabled) {
+                float binSize = (freqMaxHz - freqMinHz) / isiNumBins;
+                if (binSize <= 0) {
+                    return -1;
+                }
+                return (int) Math.floor((freqHz - freqMinHz) / binSize);
+            } else {
+                double logFreqHz = Math.log10(freqHz);
+                double binSize = (logFreqMax - logFreqMin) / isiNumBins;
+                if (binSize <= 0) {
+                    return -1;
+                }
+                return (int) Math.floor((logFreqHz - logFreqMin) / binSize);
             }
         }
 
@@ -1434,6 +1488,21 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             resetFilter();
         }
         getSupport().firePropertyChange("freqHistEnabled", old, freqHistEnabled);
+    }
+
+    /**
+     * @return the showRateDistribution
+     */
+    public boolean isShowRateDistribution() {
+        return showRateDistribution;
+    }
+
+    /**
+     * @param showRateDistribution the showRateDistribution to set
+     */
+    public void setShowRateDistribution(boolean showRateDistribution) {
+        this.showRateDistribution = showRateDistribution;
+        putBoolean("showRateDistribution", showRateDistribution);
     }
 
 }
