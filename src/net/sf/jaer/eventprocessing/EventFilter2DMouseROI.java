@@ -235,7 +235,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         }
         finishRoiSelection(e);
         roiSelecting = false;
-        log.info(String.format("ROI rect %s has %d pixels", roiRect, roiRect.height * roiRect.width));
+        if (roiRect != null) {
+            log.info(String.format("ROI rect %s has %d pixels", roiRect, roiRect.height * roiRect.width));
+        }
     }
 
     @Override
