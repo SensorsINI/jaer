@@ -52,6 +52,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -62,6 +63,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
@@ -85,9 +87,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
-    private float shotNoiseRateCoVDecades = getFloat("shotNoiseRateCoVDecades", 0);
-    private float[][] shotNoiseRateArray = null;
-    private float[] shotNoiseRateIntervals = null; // stored by column, with y changing fastest
+    private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
+    private float leakJitterFraction=getFloat("leakJitterFraction",0.1f); // fraction of interval to jitter leak events
+    private float[] noiseRateArray = null;
+    private float[] noiseRateIntervals = null; // stored by column, with y changing fastest
+    private PriorityQueue<PolarityEvent> leakNoiseQueue = null; // stored by column, with y changing fastest
 
     private double poissonDtUs = 1;
 
@@ -102,9 +106,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
     private File csvFile = null;
     private BufferedWriter csvWriter = null;
+    private int[][] timestampImage = null; // image of last event timestamps
 
     /**
-     * Chip dimensions in pixels, set in initFilter()
+     * Chip dimensions in pixels MINUS ONE, set in initFilter()
      */
     private int sx = 0, sy = 0;
 
@@ -151,7 +156,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse
-    private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");;
+    private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");
+    ;
     private final long MAX_FILTER_PROCESSING_TIME_MS = 5000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
 
@@ -160,7 +166,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String out = "5. Output";
         String noise = "4. Noise";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
-        setPropertyTooltip(noise, "shotNoiseRateCoVDecades", "Coefficient of Variation of shot noise rate in decades across pixel array");
+        setPropertyTooltip(noise, "noiseRateCoVDecades", "Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array");
+        setPropertyTooltip(noise, "leakJitterFraction", "Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution");
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
@@ -435,13 +442,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         if (resetCalled) {
             resetCalled = false;
-            int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-(
+            int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-( Or at least it used to, fixed now I think (Tobi)
             // initialize filters with lastTimesMap to Poisson waiting times
             log.info("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
                 f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
             }
-
+            initializeLeakStates(in.getFirstTimestamp());
         }
 
         // copy input events to inList
@@ -543,7 +550,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 //        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
             }
-            if(stopper!=null) stopper.cancel();
+            if (stopper != null) {
+                stopper.cancel();
+            }
 
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
@@ -702,16 +711,38 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (prerecordedNoise == null) { // sample 'ideal' shot noise
             final double randomnum = random.nextDouble();
             if (randomnum < shotOffThresholdProb) {
-                injectNoiseEvent(ts, PolarityEvent.Polarity.Off, outItr, noiseList);
+                injectShotNoiseEvent(ts, PolarityEvent.Polarity.Off, outItr, noiseList);
                 count++;
             } else if (randomnum > shotOnThresholdProb) {
-                injectNoiseEvent(ts, PolarityEvent.Polarity.On, outItr, noiseList);
+                injectShotNoiseEvent(ts, PolarityEvent.Polarity.On, outItr, noiseList);
                 count++;
             }
-            if (random.nextDouble() < leakOnThresholdProb) {
-                injectNoiseEvent(ts, PolarityEvent.Polarity.On, outItr, noiseList);
-                count++;
+            if (leakNoiseRateHz > 0) {
+                PolarityEvent le = leakNoiseQueue.peek();
+                while (le != null && ts >= le.timestamp) {
+                    le = leakNoiseQueue.poll();
+                    le.timestamp = ts;
+                    ApsDvsEvent eout = (ApsDvsEvent) outItr.nextOutput();
+                    eout.copyFrom(le);
+                    // cryptic next line uses the AEChip's event extractor to compute the 'true' raw AER address for this event assuming word parallel format.
+                    // this raw address is needed for CellStatsProber histograms
+                    // TODO consider using object hash code
+                    eout.address = ((TypedEventExtractor) chip.getEventExtractor()).reconstructDefaultRawAddressFromEvent(eout);
+                    eout.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
+                    noiseList.add(eout);
+                    // generate next leak event for this pixel
+                    int idx=getIdxFromXY(le.x, le.y);
+                    
+                    le.timestamp = le.timestamp + (int) (1e6f / (leakNoiseRateHz*noiseRateArray[idx]*(1-getLeakJitterFraction()*random.nextGaussian())));
+                    leakNoiseQueue.add(le);
+                    le = leakNoiseQueue.peek();
+                }
+
             }
+//            if (random.nextDouble() < leakOnThresholdProb) { // TODO replace with periodic leak noise model with log normal rate and jitter
+//                injectShotNoiseEvent(ts, PolarityEvent.Polarity.On, outItr, noiseList);
+//                count++;
+//            }
         } else { // inject prerecorded noise event
             ArrayList<BasicEvent> noiseEvents = prerecordedNoise.nextEvents(ts); // these have timestamps of the prerecorded noise
             for (BasicEvent e : noiseEvents) {
@@ -729,6 +760,29 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     /**
+     * Initializes the leak noise event states
+     *
+     * @param ts The current timestamp, leak event timestamps in future from ts
+     * are added to queue
+     */
+    private void initializeLeakStates(int ts) {
+        if (leakNoiseRateHz <= 0) {
+            return;
+        }
+        leakNoiseQueue.clear();
+        for (int i = 0; i < chip.getNumPixels(); i++) {
+            XYPt xy = getXYFromIdx(i);
+            PolarityEvent pe = new PolarityEvent();
+            pe.x = xy.x;
+            pe.y = xy.y;
+            pe.polarity = Polarity.On;
+            int t = random.nextInt((int) (1e6f / leakNoiseRateHz));
+            pe.timestamp = ts + t;
+            leakNoiseQueue.add(pe);
+        }
+    }
+
+    /**
      * Creates array of shot noise rates multipliers drawn from log normal
      * distribution. The final linear array of rates are integrated to form a
      * line of length 1 where each segment length is proportional to its rate
@@ -737,29 +791,31 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * search with cost log2(N) where N is the number of pixel, i.e.
      * log2(90k)=17 steps per sample.
      */
-    private void maybeCreateOrUpdateShotNoiseCoVArray() {
-        if (shotNoiseRateArray == null) {
-            shotNoiseRateArray = new float[sx + 1][sy + 1];
-            shotNoiseRateIntervals = new float[(sx + 1) * (sy + 1)];
+    private void maybeCreateOrUpdateNoiseCoVArray() {
+        if (noiseRateCoVDecades < Float.MIN_VALUE) {
+            return;
+        }
+
+        if (noiseRateArray == null) {
+            noiseRateArray = new float[chip.getNumPixels()];
+            noiseRateIntervals = new float[(sx + 1) * (sy + 1)];
         }
         // fill float[][] with random normal dist values
         int idx = 0;
         double summedIntvls = 0;
-        for (float[] col : shotNoiseRateArray) {
-            for (int row = 0; row < col.length; row++) {
-                float randomVarMult = (float) Math.exp(random.nextGaussian() * shotNoiseRateCoVDecades * Math.log(10));
-                col[row] = randomVarMult;
-                shotNoiseRateIntervals[idx++] = randomVarMult;
-                summedIntvls += randomVarMult;
-            }
+        for (int i = 0; i < noiseRateArray.length; i++) {
+            float randomVarMult = (float) Math.exp(random.nextGaussian() * noiseRateCoVDecades * Math.log(10));
+            noiseRateArray[i] = randomVarMult;
+            noiseRateIntervals[idx++] = randomVarMult;
+            summedIntvls += randomVarMult;
         }
         double f = 1 / summedIntvls;
-        for (int i = 0; i < shotNoiseRateIntervals.length; i++) {
-            shotNoiseRateIntervals[i] *= f; // store normalized intervals for indiv rates, the higher the pixel's rate, the longer its interval
+        for (int i = 0; i < noiseRateIntervals.length; i++) {
+            noiseRateIntervals[i] *= f; // store normalized intervals for indiv rates, the higher the pixel's rate, the longer its interval
         }
         // now compute the integrated intervals
-        for (int i = 1; i < shotNoiseRateIntervals.length; i++) {
-            shotNoiseRateIntervals[i] += shotNoiseRateIntervals[i - 1]; // store normalized intervals for indiv rates, the higher the pixel's rate, the longer its interval
+        for (int i = 1; i < noiseRateIntervals.length; i++) {
+            noiseRateIntervals[i] += noiseRateIntervals[i - 1]; // store normalized intervals for indiv rates, the higher the pixel's rate, the longer its interval
         }
     }
 
@@ -769,19 +825,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
     private XYPt xyPt = new XYPt();
 
-    private XYPt shotXYFromIdx(int idx) {
+    private XYPt getXYFromIdx(int idx) {
         xyPt.y = (short) (idx % (sy + 1)); // y changes fastest
         xyPt.x = (short) (idx / (sy + 1));
         return xyPt;
+    }
+    
+    private int getIdxFromXY(int x,int y){
+        return x*(sy+1)+y;
     }
 
     private XYPt sampleRandomShotNoisePixelXYAddress() {
         float f = random.nextFloat();
         // find location of f in list of intervals
 
-        int idx = search(f, shotNoiseRateIntervals);
+        int idx = search(f, noiseRateIntervals);
 
-        return shotXYFromIdx(idx);
+        return getXYFromIdx(idx);
     }
 
     /**
@@ -818,10 +878,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param outItr the output iterator to add event to
      * @param noiseList the noiseList to add event to
      */
-    private void injectNoiseEvent(int ts, PolarityEvent.Polarity pol, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
+    private void injectShotNoiseEvent(int ts, PolarityEvent.Polarity pol, OutputEventIterator<ApsDvsEvent> outItr, List<BasicEvent> noiseList) {
         ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
         e.setSpecial(false);
-        if (shotNoiseRateCoVDecades < Float.MIN_VALUE) { // if no variance in rates, just sample random pixel uniformly
+        if (noiseRateCoVDecades < Float.MIN_VALUE) { // if no variance in rates, just sample random pixel uniformly
             e.x = (short) random.nextInt(sx + 1);
             e.y = (short) random.nextInt(sy + 1);
         } else {
@@ -834,7 +894,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // cryptic next line uses the AEChip's event extractor to compute the 'true' raw AER address for this event assuming word parallel format.
         // this raw address is needed for CellStatsProber histograms
         // TODO consider using object hash code
-        e.address=((TypedEventExtractor)chip.getEventExtractor()).reconstructDefaultRawAddressFromEvent(e);
+        e.address = ((TypedEventExtractor) chip.getEventExtractor()).reconstructDefaultRawAddressFromEvent(e);
         e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
         noiseList.add(e);
     }
@@ -849,6 +909,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             prerecordedNoise.rewind();
         }
         nnbHistograms.reset();
+        for (int[] arrayRow : timestampImage) {
+            Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
+        }
     }
 
     /**
@@ -867,10 +930,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         poissonDtUs = ((tmp / POISSON_DIVIDER) * 1000000); // 1s = 1000000 us // POISSON_DIVIDER here to ensure that prob(>1 event per sample is low
         final float minPoissonDtUs = 1f / (1e-6f * MAX_TOTAL_NOISE_RATE_HZ);
         if (prerecordedNoise != null) {
-            log.info("Prerecoded noise input: clipping max noise rate to MAX_TOTAL_NOISE_RATE_HZ=" + eng.format(MAX_TOTAL_NOISE_RATE_HZ) + "Hz");
+            log.warning("Prerecoded noise input: clipping max noise rate to MAX_TOTAL_NOISE_RATE_HZ=" + eng.format(MAX_TOTAL_NOISE_RATE_HZ) + "Hz");
             poissonDtUs = minPoissonDtUs;
         } else if (poissonDtUs < minPoissonDtUs) {
-            log.info("clipping max noise rate to MAX_TOTAL_NOISE_RATE_HZ=" + eng.format(MAX_TOTAL_NOISE_RATE_HZ) + "Hz");
+            log.warning("clipping max noise rate to MAX_TOTAL_NOISE_RATE_HZ=" + eng.format(MAX_TOTAL_NOISE_RATE_HZ) + "Hz");
             poissonDtUs = minPoissonDtUs;
         }
         shotOffThresholdProb = (float) (0.5f * (poissonDtUs * 1e-6f * npix) * shotNoiseRateHz); // bounds for sampling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
@@ -905,10 +968,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+
+        timestampImage = new int[sx + 1][sy + 1];
+        leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
         signalAndNoisePacket = new EventPacket<>(ApsDvsEvent.class);
         setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
-        maybeCreateOrUpdateShotNoiseCoVArray();
+        maybeCreateOrUpdateNoiseCoVArray();
         //        setAnnotateAlpha(annotateAlpha);
         fixRendererAnnotationLayerShowing(); // make sure renderer is properly set up.
     }
@@ -1255,6 +1321,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 putString("chosenPrerecordedNoiseFilePath", chosenPrerecordedNoiseFilePath);
                 try {
                     prerecordedNoise = new PrerecordedNoise(fileChooser.getSelectedFile());
+                    if (leakNoiseRateHz + shotNoiseRateHz <= 0) {
+                        showWarningDialogInSwingThread("Set leakNoiseRateHz + shotNoiseRateHz to the approx. the prerecorded noise rate for correct operation", "Noise rate not set");
+                    }
                     computeProbs(); // set poissonDtUs after we construct prerecordedNoise so it is set properly
                 } catch (IOException ex) {
                     log.warning(String.format("Exception trying to open data file: " + ex));
@@ -1279,21 +1348,33 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     /**
-     * @return the shotNoiseRateCoVDecades
+     * @return the noiseRateCoVDecades
      */
-    public float getShotNoiseRateCoVDecades() {
-        return shotNoiseRateCoVDecades;
+    public float getNoiseRateCoVDecades() {
+        return noiseRateCoVDecades;
     }
 
     /**
-     * @param shotNoiseRateCoVDecades the shotNoiseRateCoVDecades to set
+     * @param noiseRateCoVDecades the noiseRateCoVDecades to set
      */
-    public void setShotNoiseRateCoVDecades(float shotNoiseRateCoVDecades) {
-        this.shotNoiseRateCoVDecades = shotNoiseRateCoVDecades;
-        putFloat("shotNoiseRateCoVDecades", shotNoiseRateCoVDecades);
-        if (shotNoiseRateCoVDecades > Float.MIN_VALUE) {
-            maybeCreateOrUpdateShotNoiseCoVArray();
-        }
+    public void setNoiseRateCoVDecades(float noiseRateCoVDecades) {
+        this.noiseRateCoVDecades = noiseRateCoVDecades;
+        putFloat("noiseRateCoVDecades", noiseRateCoVDecades);
+        maybeCreateOrUpdateNoiseCoVArray();
+    }
+
+    /**
+     * @return the leakJitterFraction
+     */
+    public float getLeakJitterFraction() {
+        return leakJitterFraction;
+    }
+
+    /**
+     * @param leakJitterFraction the leakJitterFraction to set
+     */
+    public void setLeakJitterFraction(float leakJitterFraction) {
+        this.leakJitterFraction = leakJitterFraction;
     }
 
     /**
