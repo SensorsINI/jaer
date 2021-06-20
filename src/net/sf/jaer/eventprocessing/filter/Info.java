@@ -98,8 +98,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private boolean showAccumulatedEventCount = getBoolean("showAccumulatedEventCount", true);
     private boolean measureSparsity = getBoolean("measureSparsity", false);
     private boolean[][] sparsityMap = null;
-    private DescriptiveStatistics sparsity=null;
-    private double lastSparsity=Double.NaN;
+    private DescriptiveStatistics sparsity = null;
+    private double lastSparsity = Double.NaN;
 
     private long accumulatedDVSEventCount = 0, accumulatedAPSSampleCount = 0, accumulatedIMUSampleCount = 0;
     private long accumulatedDVSOnEventCount = 0, accumulatedDVSOffEventCount = 0;
@@ -475,9 +475,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                         }
                     }
                     if (!typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
-                        rateHistories.get(typedEventRateEstimator).addSample(updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
+                        if (rateHistories != null) {
+                            rateHistories.get(typedEventRateEstimator).addSample(updateTimeMs, typedEventRateEstimator.getFilteredEventRate());
+                        }
                     } else {
-                        rateHistories.get(msg.source).addSample(updateTimeMs, ((EventRateEstimator) msg.source).getFilteredEventRate());
+                        if (rateHistories != null) {
+                            rateHistories.get(msg.source).addSample(updateTimeMs, ((EventRateEstimator) msg.source).getFilteredEventRate());
+                        }
                     }
                 }
                 if (logStatistics) {
@@ -590,8 +594,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             resetTimeOnNextPacket = true;
         }
         if (measureSparsity) {
-            if(sparsity==null){
-                sparsity=new DescriptiveStatistics(100000); // max this many samples
+            if (sparsity == null) {
+                sparsity = new DescriptiveStatistics(100000); // max this many samples
             }
             int occupiedCount = 0;
             for (boolean[] ba : sparsityMap) {
@@ -601,7 +605,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     }
                 }
             }
-            lastSparsity = ((double)(chip.getNumPixels() - occupiedCount)) / chip.getNumPixels();
+            lastSparsity = ((double) (chip.getNumPixels() - occupiedCount)) / chip.getNumPixels();
             sparsity.addValue(lastSparsity);
         }
         return in;
@@ -612,8 +616,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         typedEventRateEstimator.resetFilter();
         clearRateHistories();
         resetAccumulatedStatistics();
-        if(sparsity!=null) sparsity.clear();
-        lastSparsity=Double.NaN;
+        if (sparsity != null) {
+            sparsity.clear();
+        }
+        lastSparsity = Double.NaN;
     }
 
     @Override
@@ -633,11 +639,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion());
         }
         drawRateSamples(drawable);
-        if (measureSparsity && sparsity!=null) {
+        if (measureSparsity && sparsity != null) {
             GLUT glut = chip.getCanvas().getGlut();
             gl.glRasterPos3f(10, (int) (chip.getSizeY() * .6f), 0);
-            
-            String s = String.format("Sparsity: last: %.2f%% mean: %.2f%% median: %.2f%% min: %.2f%% max: %.2f%% N=%d",  lastSparsity* 100, sparsity.getMean()* 100, sparsity.getPercentile(50)* 100, sparsity.getMin()* 100, sparsity.getMax()* 100, sparsity.getN());
+
+            String s = String.format("Sparsity: last: %.2f%% mean: %.2f%% median: %.2f%% min: %.2f%% max: %.2f%% N=%d", lastSparsity * 100, sparsity.getMean() * 100, sparsity.getPercentile(50) * 100, sparsity.getMin() * 100, sparsity.getMax() * 100, sparsity.getN());
             glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         }
 
