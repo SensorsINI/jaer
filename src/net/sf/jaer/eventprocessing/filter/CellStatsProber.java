@@ -422,7 +422,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
          */
         private final float[] GLOBAL_HIST_COLOR = {0, .5f, .5f, 1},
                 RATE_HIST_COLOR = {.5f, .5f, 0f, 1},
-                INDIV_HIST_COLOR = {0, .0f, 1f, 1},
+                INDIV_HIST_COLOR = {0, .2f, 1f, 1},
                 HIST_OVERFLOW_COLOR = {.6f, .4f, .4f, 1};
         private int isiMinUs = getInt("isiMinUs", 10), isiMaxUs = getInt("isiMaxUs", 100000), isiNumBins = getInt("isiNumBins", 100);
         private float freqMinHz = 1e6f / isiMaxUs, freqMaxHz = 1e6f / isiMinUs;
