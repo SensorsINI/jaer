@@ -792,9 +792,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * log2(90k)=17 steps per sample.
      */
     private void maybeCreateOrUpdateNoiseCoVArray() {
-        if (noiseRateCoVDecades < Float.MIN_VALUE) {
-            return;
-        }
 
         if (noiseRateArray == null) {
             noiseRateArray = new float[chip.getNumPixels()];
