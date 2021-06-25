@@ -136,6 +136,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
+    
+    private int[][] lastTimesMap;
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
             fnList = new ArrayList(LIST_LENGTH),
@@ -470,6 +472,43 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         ArrayList<BasicEvent> signalAndNoiseList;
         try {
             signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
+            
+            for (BasicEvent event : signalAndNoiseList) {
+
+                if (csvWriter != null) {
+                    try {
+                    int ts = event.timestamp;
+                    final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
+                    int patchsize = 9;
+                    int radius = (patchsize - 1) / 2;
+                    if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
+                        continue;
+                    }
+                    if ((x - radius < 0) || (x + radius > sx) || (y - radius < 0) || (y + radius > sy)) {
+                        lastTimesMap[x][y] = ts;
+                        continue;
+                    }
+                    lastTimesMap[x][y] = ts;
+                    String absTstring = "";
+                    for (int indx = -radius; indx <= radius; indx++) {
+                        for (int indy = -radius; indy <= radius; indy++) {
+                        int absTs = lastTimesMap[x + indx][y + indy];
+                        absTstring = absTstring + absTs + "" + ",";
+                        }
+                    }
+                    if (signalList.contains(event)) {
+                        csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
+                            event.x, event.y, event.timestamp, 1, absTstring, firstE.timestamp)); // 1 means signal
+                    } else {
+                        csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
+                            event.x, event.y, event.timestamp, 0, absTstring, firstE.timestamp)); // 0 means noise
+                    }
+
+                    } catch (IOException e) {
+                    doCloseCsvFile();
+                    }
+                }
+	        }
 
             // filter the augmented packet
             // make sure to record events, turned off by default for normal use
@@ -561,15 +600,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 outSignalRateHz = (1e6f * TP) / deltaTime;
                 outNoiseRateHz = (1e6f * FP) / deltaTime;
             }
-            if (csvWriter != null) {
-                try {
-                    csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
-                            TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
-                            inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
-                } catch (IOException e) {
-                    doCloseCsvFile();
-                }
-            }
+//             if (csvWriter != null) {
+//                 try {
+//                     csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
+//                             TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
+//                             inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
+//                 } catch (IOException e) {
+//                     doCloseCsvFile();
+//                 }
+//             }
 
             if (overlayPositives) {
                 annotateNoiseFilteringEvents(tpList, fpList);
@@ -968,6 +1007,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
+        
+        lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
 
         timestampImage = new int[sx + 1][sy + 1];
         leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
