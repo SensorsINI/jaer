@@ -484,18 +484,29 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
                         continue;
                     }
-                    if ((x - radius < 0) || (x + radius > sx) || (y - radius < 0) || (y + radius > sy)) {
-                        lastTimesMap[x][y] = ts;
-                        continue;
-                    }
-                    lastTimesMap[x][y] = ts;
-                    String absTstring = "";
-                    for (int indx = -radius; indx <= radius; indx++) {
-                        for (int indy = -radius; indy <= radius; indy++) {
-                        int absTs = lastTimesMap[x + indx][y + indy];
-                        absTstring = absTstring + absTs + "" + ",";
-                        }
-                    }
+//                     if ((x - radius < 0) || (x + radius > sx) || (y - radius < 0) || (y + radius > sy)) {
+//                         lastTimesMap[x][y] = ts;
+//                         continue;
+//                     }
+//                     lastTimesMap[x][y] = ts;
+//                     String absTstring = "";
+//                     for (int indx = -radius; indx <= radius; indx++) {
+//                         for (int indy = -radius; indy <= radius; indy++) {
+//                         int absTs = lastTimesMap[x + indx][y + indy];
+//                         absTstring = absTstring + absTs + "" + ",";
+//                         }
+//                     }
+	            lastTimesMap[x][y] = ts;
+	            String absTstring = "";
+		    for (int indx = -radius; indx <= radius; indx++) {
+			for (int indy = -radius; indy <= radius; indy++) {
+		            int absTs = 0;
+			    if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)){
+				    absTs = lastTimesMap[x + indx][y + indy];
+			    }
+			    absTstring = absTstring + absTs + "" + ",";
+			}
+	            }
                     if (signalList.contains(event)) {
                         csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
                             event.x, event.y, event.timestamp, 1, absTstring, firstE.timestamp)); // 1 means signal
