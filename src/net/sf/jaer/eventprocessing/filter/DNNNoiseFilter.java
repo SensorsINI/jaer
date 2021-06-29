@@ -79,11 +79,11 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
     private SavedModelBundle tfSavedModelBundle = null;
     private Graph tfExecutionGraph = null;
     private Session tfSession = null;
-    private int tfBatchSizeEvents = getInt("batchSizeEvents", 128);
+    private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 128);
     private int tfNumInBatch = 0;
     private FloatBuffer tfInputFloatBuffer = null;
-    private ArrayList<BasicEvent> eventList=new ArrayList(tfBatchSizeEvents);
-    protected float signalClassifierThreshold=getFloat("signalClassifierThreshold",0.5f);
+    private ArrayList<BasicEvent> eventList = new ArrayList(getTfBatchSizeEvents());
+    protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 11);
     private int[][] timestampImage; // timestamp image
@@ -96,13 +96,13 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame along with estimated operations count (MAC=2OPS)");
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
-        setPropertyTooltip(tf, "batchSizeEvents", "Number of events to process in parallel for inference");
+        setPropertyTooltip(tf, "tfBatchSizeEvents", "Number of events to process in parallel for inference");
         setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
         setPropertyTooltip(tf, "signalClassifierThreshold", "threshold for clasifying event as signal"); // TODO fix default to match training
     }
 
     @Override
-    public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
         if (timestampImage == null) {
             allocateMaps(chip);
@@ -110,13 +110,6 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         int tauUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;
-        // for each event only keep it if it is within dt of the last time
-        // an event happened in the direct neighborhood
-        final boolean record = recordFilteredOutEvents; // to speed up loop, maybe
-        int ninputsTotal = tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
-        if (tfInputFloatBuffer == null || tfInputFloatBuffer.capacity() < ninputsTotal) {
-            tfInputFloatBuffer = FloatBuffer.allocate(ninputsTotal);
-        }
 
         for (BasicEvent e : in) {
             if (e == null) {
@@ -162,47 +155,55 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                     }
                 }
             }
-            if (tfNumInBatch >= tfBatchSizeEvents) {
-                tfNumInBatch=0;
+            if (tfNumInBatch >= getTfBatchSizeEvents()) {
+                tfNumInBatch = 0;
                 tfInputFloatBuffer.flip();
                 // Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
                 // i.e. y last order, with y index changing fastest.
-                Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfBatchSizeEvents, patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer);
+                Tensor<Float> tfInputTensor = Tensor.create(new long[]{getTfBatchSizeEvents(), patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer);
                 try {
-                    if (tfSession == null ) {
+                    if (tfSession == null) {
                         tfSession = new Session(tfExecutionGraph);
                     }
                     List<Tensor<?>> tfOutputs = tfSession.runner().feed("input", tfInputTensor).fetch("output/Sigmoid").run();
                     Tensor<Float> tfOutput = tfOutputs.get(0).expect(Float.class);
                     final long[] rshape = tfOutput.shape();
-                    if (tfOutput.numDimensions() != 2 || rshape[0] != tfBatchSizeEvents || rshape[1]!=1) {
+                    if (tfOutput.numDimensions() != 2 || rshape[0] != getTfBatchSizeEvents() || rshape[1] != 1) {
                         throw new RuntimeException(
                                 String.format(
                                         "Expected model to produce a [N 1] shaped tensor where N is the tfBatchSizeEvents, instead it produced one with shape %s",
                                         Arrays.toString(rshape)));
                     }
                     int nlabels = (int) rshape[0];
-                    if (nlabels != tfBatchSizeEvents) {
-                        throw new RuntimeException("got " + nlabels + " outputs from network; expected "+tfBatchSizeEvents);
+                    if (nlabels != getTfBatchSizeEvents()) {
+                        throw new RuntimeException("got " + nlabels + " outputs from network; expected " + getTfBatchSizeEvents());
                     }
-                    float[][] output2d=new float[nlabels][1];
+                    float[][] output2d = new float[nlabels][1];
+                    tfOutput.copyTo(output2d);
                     tfOutput.close();
                     tfInputFloatBuffer.clear();
-                    
-                    int idx=0;
-                    for(BasicEvent ev:eventList){
-                        if(output2d[idx++][0]>signalClassifierThreshold){
+                    float[] outputVector=new float[nlabels];
+                    for(int i=0;i<nlabels;i++){
+                        // TODO ugly
+                        outputVector[i]=output2d[i][0];
+                    }
+
+                    int idx = 0;
+                    for (BasicEvent ev : eventList) {
+                        float scalarClassification=outputVector[idx];
+                        if (scalarClassification > signalClassifierThreshold) {
                             filterIn(ev);
-                        }else{
+                        } else {
                             filterOut(ev);
                         }
+                        idx++;
                     }
                     eventList.clear();
                 } catch (Exception ex) {
                     log.log(Level.SEVERE, "Exception running network: " + ex.toString(), ex.getCause());
                     if (tfSession != null) {
                         tfSession.close();
-                        tfSession=null;
+                        tfSession = null;
                         setFilterEnabled(false);
                         resetFilter();
                     }
@@ -237,6 +238,8 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         sym1 = chip.getSizeY() - 1;
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;
+        int ninputsTotal = tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
+        tfInputFloatBuffer = FloatBuffer.allocate(ninputsTotal);
         allocateMaps(chip);
         resetFilter();
 
@@ -444,7 +447,25 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
      */
     public void setSignalClassifierThreshold(float signalClassifierThreshold) {
         this.signalClassifierThreshold = signalClassifierThreshold;
-        putFloat("signalClassifierThreshold",signalClassifierThreshold);
+        putFloat("signalClassifierThreshold", signalClassifierThreshold);
+    }
+
+    /**
+     * @return the tfBatchSizeEvents
+     */
+    public int getTfBatchSizeEvents() {
+        return tfBatchSizeEvents;
+    }
+
+    /**
+     * @param tfBatchSizeEvents the tfBatchSizeEvents to set
+     */
+    synchronized public void setTfBatchSizeEvents(int tfBatchSizeEvents) {
+        this.tfBatchSizeEvents = tfBatchSizeEvents;
+        putInt("tfBatchSizeEvents", tfBatchSizeEvents);
+        tfInputFloatBuffer.capacity();
+        int ninputsTotal = tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
+        tfInputFloatBuffer = FloatBuffer.allocate(ninputsTotal);
     }
 
 }
