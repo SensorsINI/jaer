@@ -31,7 +31,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     private int sx;
     private int sy;
 
-    int[][] lastTimesMap;
+    int[][] timestampImage;
     private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
 
     public BackgroundActivityFilter(AEChip chip) {
@@ -49,7 +49,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
-        if (lastTimesMap == null) {
+        if (timestampImage == null) {
             allocateMaps(chip);
         }
 
@@ -72,8 +72,8 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                 continue;
             }
 
-            if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
-                lastTimesMap[x][y] = ts;
+            if (timestampImage[x][y] == DEFAULT_TIMESTAMP) {
+                timestampImage[x][y] = ts;
                 if (letFirstEventThrough) {
                     filterIn(e);
                     continue;
@@ -93,7 +93,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
                     if (filterHotPixels && xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
                     }
-                    final int lastT = lastTimesMap[xx][yy];
+                    final int lastT = timestampImage[xx][yy];
                     final int deltaT = (ts - lastT);
                     if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) {
                         ncorrelated++;
@@ -106,7 +106,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             } else {
                 filterIn(e);
             }
-            lastTimesMap[x][y] = ts;
+            timestampImage[x][y] = ts;
         }
         getNoiseFilterControl().maybePerformControl(in);
         return in;
@@ -116,7 +116,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     public synchronized final void resetFilter() {
         super.resetFilter();
         log.info("resetting BackgroundActivityFilter");
-        for (int[] arrayRow : lastTimesMap) {
+        for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
     }
@@ -130,8 +130,8 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     }
     
            /**
-     * Fills lastTimesMap with waiting times drawn from Poisson process with
-     * rate noiseRateHz
+     * Fills timestampImage with waiting times drawn from Poisson process with
+ rate noiseRateHz
      *
      * @param noiseRateHz rate in Hz
      * @param lastTimestampUs the last timestamp; waiting times are created
@@ -140,7 +140,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     @Override
      public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
         Random random=new Random();
-        for (final int[] arrayRow : lastTimesMap) {
+        for (final int[] arrayRow : timestampImage) {
             for (int i = 0; i < arrayRow.length; i++) {
                 final double p = random.nextDouble();
                 final double t = -noiseRateHz * Math.log(1 - p);
@@ -152,13 +152,13 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
 
     private void allocateMaps(AEChip chip) {
-        if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
-            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
+        if ((chip != null) && (chip.getNumCells() > 0) && (timestampImage == null || timestampImage.length != chip.getSizeX() >> subsampleBy)) {
+            timestampImage = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
         }
     }
 
     public Object getFilterState() {
-        return lastTimesMap;
+        return timestampImage;
     }
 
     private String USAGE = "BackgroundFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx subsample xx\n";
