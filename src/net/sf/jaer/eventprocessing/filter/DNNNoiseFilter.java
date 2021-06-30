@@ -87,9 +87,9 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
     protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
 
     public enum TIPatchMethod {
-        ExponentialDecay, LinaerDecay
+        ExponentialDecay, LinearDecay
     };
-    private TIPatchMethod tiPatchMethod = TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.ExponentialDecay.toString()));
+    private TIPatchMethod tiPatchMethod =  TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.ExponentialDecay.toString()));
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 11);
     private int[][] timestampImage; // timestamp image
@@ -164,7 +164,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                                 float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
                                 tfInputFloatBuffer.put(expDt);
                                 break;
-                            case LinaerDecay:
+                            case LinearDecay:
                                 float linearDt;
                                 if (-dt > tauUs) {
                                     linearDt = 0;
@@ -215,15 +215,15 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                                 "Expected model to produce a [N 1] shaped tensor where N is the tfBatchSizeEvents, instead it produced one with shape %s",
                                 Arrays.toString(rshape)));
             }
-            int nlabels = (int) rshape[0];
-            if (nlabels != tfNumInBatchSoFar) {
-                throw new RuntimeException("got " + nlabels + " outputs from network; expected " + tfNumInBatchSoFar);
+            int nevents = (int) rshape[0];
+            if (nevents != tfNumInBatchSoFar) {
+                throw new RuntimeException("got " + nevents + " outputs from network; expected " + tfNumInBatchSoFar);
             }
-            float[][] output2d = new float[nlabels][1];
+            float[][] output2d = new float[nevents][1];
             tfOutput.copyTo(output2d);
             tfOutput.close();
-            float[] outputVector = new float[nlabels];
-            for (int i = 0; i < nlabels; i++) {
+            float[] outputVector = new float[nevents];
+            for (int i = 0; i < nevents; i++) {
                 // TODO ugly
                 outputVector[i] = output2d[i][0];
             }
