@@ -11,6 +11,7 @@ import java.beans.PropertyChangeEvent;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Observable;
+import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -42,7 +43,7 @@ public class MedianDtFilter extends AbstractNoiseFilter {
     private int ssx; // size of subsampled timestamp map
     private int ssy;
 
-    int[][] lastTimesMap;
+    int[][] timestampImage;
     private int ts = 0, lastTimestamp = DEFAULT_TIMESTAMP; // used to reset filter
 
     private int[] nnbDts = null;
@@ -62,9 +63,9 @@ public class MedianDtFilter extends AbstractNoiseFilter {
      * in place in the in packet.
      */
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in)     {
+    synchronized public EventPacket filterPacket(EventPacket in) {
         super.filterPacket(in);
-        if (lastTimesMap == null) {
+        if (timestampImage == null) {
             allocateMaps(chip);
         }
         final int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
@@ -90,8 +91,8 @@ public class MedianDtFilter extends AbstractNoiseFilter {
                 filterOut(e);
                 continue;
             }
-            if (lastTimesMap[x][y] == DEFAULT_TIMESTAMP) {
-                lastTimesMap[x][y] = ts;
+            if (timestampImage[x][y] == DEFAULT_TIMESTAMP) {
+                timestampImage[x][y] = ts;
                 if (letFirstEventThrough) {
                     filterIn(e);
                     continue;
@@ -105,7 +106,7 @@ public class MedianDtFilter extends AbstractNoiseFilter {
             int neighborNum = 0;
             outerloop:
             for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
-                final int[] col = lastTimesMap[xx];
+                final int[] col = timestampImage[xx];
                 for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
                     if (filterHotPixels && xx == x && yy == y) {
                         continue; // like BAF, don't correlate with ourself
@@ -125,17 +126,16 @@ public class MedianDtFilter extends AbstractNoiseFilter {
             } else {
                 filterIn(e);
             }
-            lastTimesMap[x][y] = ts;
+            timestampImage[x][y] = ts;
         }
         getNoiseFilterControl().maybePerformControl(in);
         return in;
     }
 
-  
     @Override
     public synchronized final void resetFilter() {
-       super.resetFilter();
-         for (int[] arrayRow : lastTimesMap) {
+        super.resetFilter();
+        for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
         Arrays.fill(nnbDts, DEFAULT_TIMESTAMP);
@@ -153,10 +153,31 @@ public class MedianDtFilter extends AbstractNoiseFilter {
     }
 
     private void allocateMaps(AEChip chip) {
-        if ((chip != null) && (chip.getNumCells() > 0) && (lastTimesMap == null || lastTimesMap.length != chip.getSizeX() >> subsampleBy)) {
-            lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
+        if ((chip != null) && (chip.getNumCells() > 0) && (timestampImage == null || timestampImage.length != chip.getSizeX() >> subsampleBy)) {
+            timestampImage = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
         }
         lastTimestamp = DEFAULT_TIMESTAMP;
+    }
+
+    /**
+     * Fills timestampImage with waiting times drawn from Poisson process with
+     * rate noiseRateHz
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        Random random = new Random();
+        for (final int[] arrayRow : timestampImage) {
+            for (int i = 0; i < arrayRow.length; i++) {
+                final double p = random.nextDouble();
+                final double t = -noiseRateHz * Math.log(1 - p);
+                final int tUs = (int) (1000000 * t);
+                arrayRow[i] = lastTimestampUs - tUs;
+            }
+        }
     }
 
     /**

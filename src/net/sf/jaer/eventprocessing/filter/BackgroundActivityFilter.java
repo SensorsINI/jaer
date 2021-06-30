@@ -115,7 +115,7 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
     @Override
     public synchronized final void resetFilter() {
         super.resetFilter();
-        log.info("resetting BackgroundActivityFilter");
+//        log.info("resetting BackgroundActivityFilter");
         for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }

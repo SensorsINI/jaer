@@ -8,6 +8,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
+import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -151,7 +152,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     continue;
                 }
                 totalEventCount++;
-                int ts=e.timestamp;
+                int ts = e.timestamp;
                 final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
                 if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                     filterOut(e);
@@ -204,8 +205,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     @Override
     public synchronized final void resetFilter() {
         super.resetFilter();
-        log.info("resetting SpatioTemporalCorrelationFilter");
-        if(timestampImage==null){
+//        log.info("resetting SpatioTemporalCorrelationFilter");
+        if (timestampImage == null) {
             log.warning("tried to clear lastTimesMap but it is null");
             return;
         }
@@ -227,6 +228,27 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (timestampImage == null || timestampImage.length != chip.getSizeX() >> subsampleBy)) {
             timestampImage = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
+        }
+    }
+
+    /**
+     * Fills timestampImage with waiting times drawn from Poisson process with
+     * rate noiseRateHz
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        Random random = new Random();
+        for (final int[] arrayRow : timestampImage) {
+            for (int i = 0; i < arrayRow.length; i++) {
+                final double p = random.nextDouble();
+                final double t = -noiseRateHz * Math.log(1 - p);
+                final int tUs = (int) (1000000 * t);
+                arrayRow[i] = lastTimestampUs - tUs;
+            }
         }
     }
 

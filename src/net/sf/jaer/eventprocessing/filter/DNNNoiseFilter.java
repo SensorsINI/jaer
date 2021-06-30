@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -80,9 +81,9 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
     private Graph tfExecutionGraph = null;
     private Session tfSession = null;
     private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 128);
-    private int tfNumInBatch = 0;
+    private int tfNumInBatchSoFar = 0;
     private FloatBuffer tfInputFloatBuffer = null;
-    private ArrayList<BasicEvent> eventList = new ArrayList(getTfBatchSizeEvents());
+    private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
     protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 11);
@@ -125,21 +126,23 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                 filterOut(e);
                 continue;
             }
-            if (timestampImage[x][y] == DEFAULT_TIMESTAMP) {
-                timestampImage[x][y] = ts;
+            if (timestampImage[x][y] == DEFAULT_TIMESTAMP) { // if it is the first event at this pixel
+                timestampImage[x][y] = ts; // save timestamp
                 if (letFirstEventThrough) {
-                    filterIn(e);
+                    filterIn(e); // if we let through every first event at each pixel, filter it in
                     continue;
                 } else {
-                    filterOut(e);
+                    filterOut(e); // otherwise filter out
                     continue;
                 }
             }
 
+            // make timestamp image patch to classify
             int radius = (patchWidthAndHeightPixels - 1) / 2;
-            tfNumInBatch++;
-            eventList.add(e);
+            tfNumInBatchSoFar++;
+            eventList.add(e); // add the event object to list so we can later filter it in or not, in the original order
             for (int indx = x - radius; indx <= x + radius; indx++) {
+                // iterate over NNb, computing the TI patch value
                 for (int indy = y - radius; indy <= y + radius; indy++) {
                     if (indx < 0 || indx >= ssx || indy < 0 || indy > ssy) {
                         tfInputFloatBuffer.put(0); // For NNbs that are outside chip address space, set the TI patch input to zero
@@ -147,7 +150,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                     }
                     int nnbTs = timestampImage[indx][indy]; // NNb timestamp 
                     if (nnbTs == DEFAULT_TIMESTAMP) {
-                        tfInputFloatBuffer.put(0);
+                        tfInputFloatBuffer.put(0); // if the NNb pixel had no event, then just write 0 to TI patch
                     } else {
                         float dt = nnbTs - ts; // When NNb ts is older, dt is more negative
                         float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
@@ -155,71 +158,94 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                     }
                 }
             }
-            if (tfNumInBatch >= getTfBatchSizeEvents()) {
-                tfNumInBatch = 0;
-                tfInputFloatBuffer.flip();
-                // Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
-                // i.e. y last order, with y index changing fastest.
-                Tensor<Float> tfInputTensor = Tensor.create(new long[]{getTfBatchSizeEvents(), patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer);
-                try {
-                    if (tfSession == null) {
-                        tfSession = new Session(tfExecutionGraph);
-                    }
-                    List<Tensor<?>> tfOutputs = tfSession.runner().feed("input", tfInputTensor).fetch("output/Sigmoid").run();
-                    Tensor<Float> tfOutput = tfOutputs.get(0).expect(Float.class);
-                    final long[] rshape = tfOutput.shape();
-                    if (tfOutput.numDimensions() != 2 || rshape[0] != getTfBatchSizeEvents() || rshape[1] != 1) {
-                        throw new RuntimeException(
-                                String.format(
-                                        "Expected model to produce a [N 1] shaped tensor where N is the tfBatchSizeEvents, instead it produced one with shape %s",
-                                        Arrays.toString(rshape)));
-                    }
-                    int nlabels = (int) rshape[0];
-                    if (nlabels != getTfBatchSizeEvents()) {
-                        throw new RuntimeException("got " + nlabels + " outputs from network; expected " + getTfBatchSizeEvents());
-                    }
-                    float[][] output2d = new float[nlabels][1];
-                    tfOutput.copyTo(output2d);
-                    tfOutput.close();
-                    tfInputFloatBuffer.clear();
-                    float[] outputVector=new float[nlabels];
-                    for(int i=0;i<nlabels;i++){
-                        // TODO ugly
-                        outputVector[i]=output2d[i][0];
-                    }
-
-                    int idx = 0;
-                    for (BasicEvent ev : eventList) {
-                        float scalarClassification=outputVector[idx];
-                        if (scalarClassification > signalClassifierThreshold) {
-                            filterIn(ev);
-                        } else {
-                            filterOut(ev);
-                        }
-                        idx++;
-                    }
-                    eventList.clear();
-                } catch (Exception ex) {
-                    log.log(Level.SEVERE, "Exception running network: " + ex.toString(), ex.getCause());
-                    if (tfSession != null) {
-                        tfSession.close();
-                        tfSession = null;
-                        setFilterEnabled(false);
-                        resetFilter();
-                    }
-                }
-
+            if (tfNumInBatchSoFar >= tfBatchSizeEvents) { // if we have a full batch, classify the events in it
+                classifyEvents();
             }
             // write TI *after* we classify S vs N
             timestampImage[x][y] = ts;
 
-            // TODO handle network batch output
-            filterIn(e);
-
         } // event packet loop
+
+        // classify remaining events as final batch for this packet, so that we process all events in packet even if only a few
+        if (tfNumInBatchSoFar > 0) {
+            classifyEvents();
+        }
+
         getNoiseFilterControl().maybePerformControl(in);
         return in;
     }
+
+    /**
+     * Classifies events in the assembled batch
+     *
+     */
+    private void classifyEvents() {
+        tfInputFloatBuffer.flip();
+        // Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
+        // i.e. y last order, with y index changing fastest.
+        Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer);
+        try {
+            if (tfSession == null) {
+                tfSession = new Session(tfExecutionGraph);
+            }
+            List<Tensor<?>> tfOutputs = tfSession.runner().feed("input", tfInputTensor).fetch("output/Sigmoid").run();
+            Tensor<Float> tfOutput = tfOutputs.get(0).expect(Float.class);
+            final long[] rshape = tfOutput.shape();
+            if (tfOutput.numDimensions() != 2 || rshape[0] != tfNumInBatchSoFar || rshape[1] != 1) {
+                throw new RuntimeException(
+                        String.format(
+                                "Expected model to produce a [N 1] shaped tensor where N is the tfBatchSizeEvents, instead it produced one with shape %s",
+                                Arrays.toString(rshape)));
+            }
+            int nlabels = (int) rshape[0];
+            if (nlabels != tfNumInBatchSoFar) {
+                throw new RuntimeException("got " + nlabels + " outputs from network; expected " + tfNumInBatchSoFar);
+            }
+            float[][] output2d = new float[nlabels][1];
+            tfOutput.copyTo(output2d);
+            tfOutput.close();
+            float[] outputVector = new float[nlabels];
+            for (int i = 0; i < nlabels; i++) {
+                // TODO ugly
+                outputVector[i] = output2d[i][0];
+            }
+
+            int idx = 0;
+            for (BasicEvent ev : eventList) {
+                float scalarClassification = outputVector[idx];
+                if (scalarClassification > signalClassifierThreshold) {
+                    filterIn(ev);
+                } else {
+                    filterOut(ev);
+                }
+                idx++;
+            }
+            tfInputFloatBuffer.clear();
+            eventList.clear();
+            tfNumInBatchSoFar = 0;
+        } catch (Exception ex) {
+            log.log(Level.SEVERE, "Exception running network: " + ex.toString(), ex.getCause());
+            if (tfSession != null) {
+                tfSession.close();
+                tfSession = null;
+                setFilterEnabled(false);
+                resetFilter();
+            }
+        }
+    }
+
+    @Override
+    public String infoString() {
+       String s = getClass().getSimpleName();
+        s = s.replaceAll("[a-z]", "");
+        s = s + String.format(": tau=%ss subSamp=%d TI dim=%dx%d threshold=%.2f", 
+                eng.format(getCorrelationTimeS()), 
+                getSubsampleBy(),
+                patchWidthAndHeightPixels, patchWidthAndHeightPixels,
+                getSignalClassifierThreshold()
+        );
+        return s;
+   }
 
     @Override
     public void initFilter() {
@@ -255,7 +281,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
-        tfNumInBatch = 0;
+        tfNumInBatchSoFar = 0;
         if (tfInputFloatBuffer != null) {
             tfInputFloatBuffer.clear();
         }
@@ -280,6 +306,27 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
             if ((measurePerformance == true) && (performanceString != null) /*&& !performanceString.equals(lastPerformanceString)*/) {
                 MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
                 lastPerformanceString = performanceString;
+            }
+        }
+    }
+
+    /**
+     * Fills timestampImage with waiting times drawn from Poisson process with
+     * rate noiseRateHz
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        Random random = new Random();
+        for (final int[] arrayRow : timestampImage) {
+            for (int i = 0; i < arrayRow.length; i++) {
+                final double p = random.nextDouble();
+                final double t = -noiseRateHz * Math.log(1 - p);
+                final int tUs = (int) (1000000 * t);
+                arrayRow[i] = lastTimestampUs - tUs;
             }
         }
     }

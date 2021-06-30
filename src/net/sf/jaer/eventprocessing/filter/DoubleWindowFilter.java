@@ -37,6 +37,7 @@ import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.util.Random;
 import java.util.stream.IntStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -246,6 +247,20 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
             }
         }
     }
+    
+       /**
+     * Fills windows with random events drawn from Poisson waiting time distribution
+     * rate noiseRateHz
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+//         TODO noop for now, how do we init the windows for noise rate after reset or rewind?
+    }
+
 
 //    // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
 //    public int getSubsampleBy() {

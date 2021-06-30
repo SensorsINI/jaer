@@ -21,6 +21,7 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GLAutoDrawable;
 import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
+import java.util.Random;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -91,6 +92,33 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         resetFilter();
     }
 
+    /**
+     * Fills 1d arrays with random events with waiting times drawn from Poisson process with
+     * rate noiseRateHz
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        Random random = new Random();
+        for (int i = 0; i < lastRowTs.length; i++) {
+            final double p = random.nextDouble();
+            final double t = -noiseRateHz * Math.log(1 - p);
+            final int tUs = (int) (1000000 * t);
+            lastRowTs[i] = lastTimestampUs - tUs;
+            lastXByRow[i]=random.nextInt(sy);
+        }
+        for (int i = 0; i < lastColTs.length; i++) {
+            final double p = random.nextDouble();
+            final double t = -noiseRateHz * Math.log(1 - p);
+            final int tUs = (int) (1000000 * t);
+            lastColTs[i] = lastTimestampUs - tUs;
+            lastYByCol[i]=random.nextInt(sx);
+        }
+    }
+
     private void checkAndFilterEvent(BasicEvent e, int dtUs) {
 
         // check all neighbors to see if there was event around us suffiently recently
@@ -134,7 +162,6 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
         lastRowTs[e.y] = e.timestamp;
     }
 
-  
     private String USAGE = "OrderNFilter needs at least 1 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx\n";
 
     @Override

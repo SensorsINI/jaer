@@ -223,7 +223,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * before this time
      */
     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
-        log.warning("method should be implemented for this filter to produce correct statistics after reset");
+        log.warning("method should be implemented for this filter "+this.getClass().getSimpleName()+" to produce correct statistics after reset");
     }
 
     /**
