@@ -201,8 +201,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         tfInputFloatBuffer.flip();
         // Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
         // i.e. y last order, with y index changing fastest.
-        Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer);
-        try {
+        try( Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer)) {
             if (tfSession == null) {
                 tfSession = new Session(tfExecutionGraph);
             }
@@ -215,18 +214,10 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                                 "Expected model to produce a [N 1] shaped tensor where N is the tfBatchSizeEvents, instead it produced one with shape %s",
                                 Arrays.toString(rshape)));
             }
-            int nevents = (int) rshape[0];
-            if (nevents != tfNumInBatchSoFar) {
-                throw new RuntimeException("got " + nevents + " outputs from network; expected " + tfNumInBatchSoFar);
-            }
-            float[][] output2d = new float[nevents][1];
-            tfOutput.copyTo(output2d);
+            float[] outputVector=new float[tfNumInBatchSoFar];
+            FloatBuffer fb=FloatBuffer.wrap(outputVector);
+            tfOutput.writeTo(fb);
             tfOutput.close();
-            float[] outputVector = new float[nevents];
-            for (int i = 0; i < nevents; i++) {
-                // TODO ugly
-                outputVector[i] = output2d[i][0];
-            }
 
             int idx = 0;
             for (BasicEvent ev : eventList) {
