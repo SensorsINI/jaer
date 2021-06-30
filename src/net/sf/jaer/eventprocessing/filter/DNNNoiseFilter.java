@@ -89,7 +89,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
     public enum TIPatchMethod {
         ExponentialDecay, LinearDecay
     };
-    private TIPatchMethod tiPatchMethod =  TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.ExponentialDecay.toString()));
+    private TIPatchMethod tiPatchMethod = TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.ExponentialDecay.toString()));
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 11);
     private int[][] timestampImage; // timestamp image
@@ -161,7 +161,8 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                         float dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
                         switch (tiPatchMethod) {
                             case ExponentialDecay:
-                                float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+//                                float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+                                float expDt = fastexp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
                                 tfInputFloatBuffer.put(expDt);
                                 break;
                             case LinearDecay:
@@ -201,7 +202,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         tfInputFloatBuffer.flip();
         // Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
         // i.e. y last order, with y index changing fastest.
-        try( Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer)) {
+        try (Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer)) {
             if (tfSession == null) {
                 tfSession = new Session(tfExecutionGraph);
             }
@@ -214,8 +215,8 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                                 "Expected model to produce a [N 1] shaped tensor where N is the tfBatchSizeEvents, instead it produced one with shape %s",
                                 Arrays.toString(rshape)));
             }
-            float[] outputVector=new float[tfNumInBatchSoFar];
-            FloatBuffer fb=FloatBuffer.wrap(outputVector);
+            float[] outputVector = new float[tfNumInBatchSoFar];
+            FloatBuffer fb = FloatBuffer.wrap(outputVector);
             tfOutput.writeTo(fb);
             tfOutput.close();
 
@@ -273,6 +274,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         sym1 = chip.getSizeY() - 1;
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;
+        buildexptable(-10, 0, .01f);// interpolation for exp approximation
         int ninputsTotal = tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
         tfInputFloatBuffer = FloatBuffer.allocate(ninputsTotal);
         allocateMaps(chip);
@@ -539,4 +541,33 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         putString("tiPatchMethod", tiPatchMethod.toString());
     }
 
+    // https://gist.github.com/Alrecenk/55be1682fe46cdd89663
+    public static float fastexp(float x) {
+        final int temp = (int) (12102203 * x + 1065353216);
+        return Float.intBitsToFloat(temp) * expadjust[(temp >> 15) & 0xff];
+    }
+
+    static float expadjust[];
+
+    /**
+     * build correction table to improve result in region of interest.
+     * If region of interest is large enough then improves result everywhere
+     */
+    public static void buildexptable(double min, double max, double step) {
+        expadjust = new float[256];
+        int amount[] = new int[256];
+        //calculate what adjustments should have been for values in region
+        for (double x = min; x < max; x += step) {
+            double exp = Math.exp(x);
+            int temp = (int) (12102203 * x + 1065353216);
+            int index = (temp >> 15) & 0xff;
+            double fexp = Float.intBitsToFloat(temp);
+            expadjust[index] += exp / fexp;
+            amount[index]++;
+        }
+        //average them out to get adjustment table
+        for (int k = 0; k < amount.length; k++) {
+            expadjust[k] /= amount[k];
+        }
+    }
 }
