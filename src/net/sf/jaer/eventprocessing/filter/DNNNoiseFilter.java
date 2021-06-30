@@ -86,6 +86,11 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
     private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
     protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
 
+    public enum TIPatchMethod {
+        ExponentialDecay, LinaerDecay
+    };
+    private TIPatchMethod tiPatchMethod = TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.ExponentialDecay.toString()));
+
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 11);
     private int[][] timestampImage; // timestamp image
 
@@ -100,6 +105,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         setPropertyTooltip(tf, "tfBatchSizeEvents", "Number of events to process in parallel for inference");
         setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
         setPropertyTooltip(tf, "signalClassifierThreshold", "threshold for clasifying event as signal"); // TODO fix default to match training
+        setPropertyTooltip(tf, "tiPatchMethod", "method used to compute the value of the timestamp image patch values"); // TODO fix default to match training
     }
 
     @Override
@@ -152,9 +158,21 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                     if (nnbTs == DEFAULT_TIMESTAMP) {
                         tfInputFloatBuffer.put(0); // if the NNb pixel had no event, then just write 0 to TI patch
                     } else {
-                        float dt = nnbTs - ts; // When NNb ts is older, dt is more negative
-                        float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-                        tfInputFloatBuffer.put(expDt);
+                        float dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
+                        switch (tiPatchMethod) {
+                            case ExponentialDecay:
+                                float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+                                tfInputFloatBuffer.put(expDt);
+                                break;
+                            case LinaerDecay:
+                                float linearDt;
+                                if (-dt > tauUs) {
+                                    linearDt = 0;
+                                } else {
+                                    linearDt = 1 - (float) (-dt / tauUs);  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
+                                }
+                                tfInputFloatBuffer.put(linearDt);
+                        }
                     }
                 }
             }
@@ -236,16 +254,16 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
 
     @Override
     public String infoString() {
-       String s = getClass().getSimpleName();
+        String s = getClass().getSimpleName();
         s = s.replaceAll("[a-z]", "");
-        s = s + String.format(": tau=%ss subSamp=%d TI dim=%dx%d threshold=%.2f", 
-                eng.format(getCorrelationTimeS()), 
+        s = s + String.format(": tau=%ss subSamp=%d TI dim=%dx%d threshold=%.2f",
+                eng.format(getCorrelationTimeS()),
                 getSubsampleBy(),
                 patchWidthAndHeightPixels, patchWidthAndHeightPixels,
                 getSignalClassifierThreshold()
         );
         return s;
-   }
+    }
 
     @Override
     public void initFilter() {
@@ -513,6 +531,21 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
         tfInputFloatBuffer.capacity();
         int ninputsTotal = tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
         tfInputFloatBuffer = FloatBuffer.allocate(ninputsTotal);
+    }
+
+    /**
+     * @return the tiPatchMethod
+     */
+    public TIPatchMethod getTiPatchMethod() {
+        return tiPatchMethod;
+    }
+
+    /**
+     * @param tiPatchMethod the tiPatchMethod to set
+     */
+    public void setTiPatchMethod(TIPatchMethod tiPatchMethod) {
+        this.tiPatchMethod = tiPatchMethod;
+        putString("tiPatchMethod", tiPatchMethod.toString());
     }
 
 }
