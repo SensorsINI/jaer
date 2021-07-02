@@ -91,7 +91,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
     };
     private TIPatchMethod tiPatchMethod = TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.ExponentialDecay.toString()));
 
-    private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 11);
+    private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
 
     public DNNNoiseFilter(AEChip chip) {
@@ -142,7 +142,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                     continue;
                 }
             }
-
+	    timestampImage[x][y] = ts;
             // make timestamp image patch to classify
             int radius = (patchWidthAndHeightPixels - 1) / 2;
             tfNumInBatchSoFar++;
@@ -170,7 +170,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                                 if (-dt > tauUs) {
                                     linearDt = 0;
                                 } else {
-                                    linearDt = 1 - (float) (-dt / tauUs);  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
+                                    linearDt = 1 - (float) (-dt) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
                                 }
                                 tfInputFloatBuffer.put(linearDt);
                         }
@@ -181,7 +181,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
                 classifyEvents();
             }
             // write TI *after* we classify S vs N
-            timestampImage[x][y] = ts;
+//            timestampImage[x][y] = ts;
 
         } // event packet loop
 
@@ -531,6 +531,25 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
      */
     public TIPatchMethod getTiPatchMethod() {
         return tiPatchMethod;
+    }
+    
+    /**
+     * @param patchWidthAndHeightPixels the patchWidthAndHeightPixels to set
+     */
+    public void setPatchWidthAndHeightPixels(int patchWidthAndHeightPixels) {
+        
+        
+	this.patchWidthAndHeightPixels = patchWidthAndHeightPixels;
+	putInt("patchWidthAndHeightPixels", patchWidthAndHeightPixels);
+//	getSupport().firePropertyChange("patchWidthAndHeightPixels", this.patchWidthAndHeightPixels, patchWidthAndHeightPixels);
+        
+    }
+
+    /**
+     * @return the patchWidthAndHeightPixels
+     */
+    public int getPatchWidthAndHeightPixels() {
+        return patchWidthAndHeightPixels;
     }
 
     /**
