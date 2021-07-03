@@ -88,7 +88,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
     private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
-    private float leakJitterFraction=getFloat("leakJitterFraction",0.1f); // fraction of interval to jitter leak events
+    private float leakJitterFraction = getFloat("leakJitterFraction", 0.1f); // fraction of interval to jitter leak events
     private float[] noiseRateArray = null;
     private float[] noiseRateIntervals = null; // stored by column, with y changing fastest
     private PriorityQueue<PolarityEvent> leakNoiseQueue = null; // stored by column, with y changing fastest
@@ -136,7 +136,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
-    
+
     private int[][] lastTimesMap;
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
@@ -150,11 +150,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public static final int POISSON_DIVIDER = 30;
 
-    /** Add AbstractNoiseFilter here to include in NTF */
+    /**
+     * Add AbstractNoiseFilter here to include in NTF
+     */
     public enum NoiseFilterEnum {
         None, BackgroundActivityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, MLPNoiseFilter
     }
-    private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
+    private NoiseFilterEnum selectedNoiseFilterEnum = null; // set in constructor to wrap with try/catch to handle renames by code changes
 
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
@@ -166,6 +168,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
+
+        try {
+            selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
+        } catch (java.lang.IllegalArgumentException e) {
+            selectedNoiseFilterEnum = NoiseFilterEnum.BackgroundActivityFilter;
+        }
         String out = "5. Output";
         String noise = "4. Noise";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
@@ -473,18 +481,18 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         ArrayList<BasicEvent> signalAndNoiseList;
         try {
             signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
-            
+
             for (BasicEvent event : signalAndNoiseList) {
 
                 if (csvWriter != null) {
                     try {
-                    int ts = event.timestamp;
-                    final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
-                    int patchsize = 9;
-                    int radius = (patchsize - 1) / 2;
-                    if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
-                        continue;
-                    }
+                        int ts = event.timestamp;
+                        final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
+                        int patchsize = 9;
+                        int radius = (patchsize - 1) / 2;
+                        if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
+                            continue;
+                        }
 //                     if ((x - radius < 0) || (x + radius > sx) || (y - radius < 0) || (y + radius > sy)) {
 //                         lastTimesMap[x][y] = ts;
 //                         continue;
@@ -497,30 +505,30 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                         absTstring = absTstring + absTs + "" + ",";
 //                         }
 //                     }
-	            lastTimesMap[x][y] = ts;
-	            String absTstring = "";
-		    for (int indx = -radius; indx <= radius; indx++) {
-			for (int indy = -radius; indy <= radius; indy++) {
-		            int absTs = 0;
-			    if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)){
-				    absTs = lastTimesMap[x + indx][y + indy];
-			    }
-			    absTstring = absTstring + absTs + "" + ",";
-			}
-	            }
-                    if (signalList.contains(event)) {
-                        csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
-                            event.x, event.y, event.timestamp, 1, absTstring, firstE.timestamp)); // 1 means signal
-                    } else {
-                        csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
-                            event.x, event.y, event.timestamp, 0, absTstring, firstE.timestamp)); // 0 means noise
-                    }
+                        lastTimesMap[x][y] = ts;
+                        String absTstring = "";
+                        for (int indx = -radius; indx <= radius; indx++) {
+                            for (int indy = -radius; indy <= radius; indy++) {
+                                int absTs = 0;
+                                if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)) {
+                                    absTs = lastTimesMap[x + indx][y + indy];
+                                }
+                                absTstring = absTstring + absTs + "" + ",";
+                            }
+                        }
+                        if (signalList.contains(event)) {
+                            csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
+                                    event.x, event.y, event.timestamp, 1, absTstring, firstE.timestamp)); // 1 means signal
+                        } else {
+                            csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
+                                    event.x, event.y, event.timestamp, 0, absTstring, firstE.timestamp)); // 0 means noise
+                        }
 
                     } catch (IOException e) {
-                    doCloseCsvFile();
+                        doCloseCsvFile();
                     }
                 }
-	        }
+            }
 
             // filter the augmented packet
             // make sure to record events, turned off by default for normal use
@@ -782,9 +790,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     eout.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
                     noiseList.add(eout);
                     // generate next leak event for this pixel
-                    int idx=getIdxFromXY(le.x, le.y);
-                    
-                    le.timestamp = le.timestamp + (int) (1e6f / (leakNoiseRateHz*noiseRateArray[idx]*(1-getLeakJitterFraction()*random.nextGaussian())));
+                    int idx = getIdxFromXY(le.x, le.y);
+
+                    le.timestamp = le.timestamp + (int) (1e6f / (leakNoiseRateHz * noiseRateArray[idx] * (1 - getLeakJitterFraction() * random.nextGaussian())));
                     leakNoiseQueue.add(le);
                     le = leakNoiseQueue.peek();
                 }
@@ -878,9 +886,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         xyPt.x = (short) (idx / (sy + 1));
         return xyPt;
     }
-    
-    private int getIdxFromXY(int x,int y){
-        return x*(sy+1)+y;
+
+    private int getIdxFromXY(int x, int y) {
+        return x * (sy + 1) + y;
     }
 
     private XYPt sampleRandomShotNoisePixelXYAddress() {
@@ -1016,7 +1024,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
-        
+
         lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
 
         timestampImage = new int[sx + 1][sy + 1];
