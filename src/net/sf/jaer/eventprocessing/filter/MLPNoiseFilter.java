@@ -60,7 +60,7 @@ import org.tensorflow.Tensor;
  */
 @Description("Denoising noise filter that uses a DNN deep neural network to classify events as signal or noise events")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DNNNoiseFilter extends AbstractNoiseFilter {
+public class MLPNoiseFilter extends AbstractNoiseFilter {
 
     private final String KEY_NETWORK_FILENAME = "lastNetworkFilename";
     private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
@@ -94,7 +94,7 @@ public class DNNNoiseFilter extends AbstractNoiseFilter {
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
 
-    public DNNNoiseFilter(AEChip chip) {
+    public MLPNoiseFilter(AEChip chip) {
         super(chip);
         String deb = "5. Debug", disp = "2. Display", anal = "4. Analysis", tf = "0. Tensorflow", input = "1. Input";
         setPropertyTooltip(tf, "loadNetwork", "Load a protobuf .pb file containing the network or select a folder holding SavedModelBundle");

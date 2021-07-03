@@ -152,7 +152,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     /** Add AbstractNoiseFilter here to include in NTF */
     public enum NoiseFilterEnum {
-        None, BackgroundActivityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, DNNNoiseFilter
+        None, BackgroundActivityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, MLPNoiseFilter
     }
     private NoiseFilterEnum selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
 
@@ -993,7 +993,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void initFilter() {
         if (chain == null) {
             chain = new FilterChain(chip);
-            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new DoubleWindowFilter(chip), new OrderNBackgroundActivityFilter((chip)), new MedianDtFilter(chip), new DNNNoiseFilter(chip)};
+            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new DoubleWindowFilter(chip), new OrderNBackgroundActivityFilter((chip)), new MedianDtFilter(chip), new MLPNoiseFilter(chip)};
             for (AbstractNoiseFilter n : noiseFilters) {
                 n.initFilter();
                 chain.add(n);
