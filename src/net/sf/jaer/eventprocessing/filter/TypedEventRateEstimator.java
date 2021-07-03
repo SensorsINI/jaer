@@ -43,7 +43,7 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!measureIndividualTypesEnabled) {
-            this.numCellTypes=1;
+            this.numCellTypes = 1;
             super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
             return in;
         }
@@ -105,6 +105,10 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     }
 
     public float getInstantaneousEventRate(int i) {
+        if (!measureIndividualTypesEnabled) {
+            return super.getInstantaneousEventRate();
+        }
+
         if ((i < 0) || (i >= numCellTypes)) {
             return Float.NaN;
         } else {
@@ -125,6 +129,9 @@ public class TypedEventRateEstimator extends EventRateEstimator {
 
     @Override
     public float getInstantaneousEventRate() {
+        if (!measureIndividualTypesEnabled) {
+            return super.getInstantaneousEventRate();
+        }
         if (numCellTypes == 0) {
             return Float.NaN;
         }
@@ -141,6 +148,10 @@ public class TypedEventRateEstimator extends EventRateEstimator {
 
     @Override
     public float getFilteredEventRate() {
+        if (!measureIndividualTypesEnabled) {
+            return super.getFilteredEventRate();
+        }
+
         if (numCellTypes == 0) {
             return Float.NaN;
         }
