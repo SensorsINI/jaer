@@ -56,6 +56,11 @@ import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import com.github.sh0nk.matplotlib4j.Plot;
 import com.google.common.primitives.Doubles;
+import java.awt.Dimension;
+import java.awt.geom.Point2D;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
+import net.sf.jaer.graphics.ImageDisplayTestKeyMouseHandler;
 
 /**
  * Noise filter that runs a DNN to denoise events
@@ -91,8 +96,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
 
     // plotting TI patches and stats
-    private ImageDisplay tiPatchDisplay = null;
     private DescriptiveStatistics stats = null;
+    // TI patch display
+    private ImageDisplay tiPatchDisplay = null;
+    private JFrame tiFrame = null;
+    private BasicEvent eventToDisplayTIPatchFor = null;
 
     public enum TIPatchMethod {
         ExponentialDecay, LinearDecay // default is LinearDecay since it works better (and is faster and cheaper)
@@ -113,8 +121,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         setPropertyTooltip(tf, "tfBatchSizeEvents", "Number of events to process in parallel for inference");
         setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
         setPropertyTooltip(tf, "signalClassifierThreshold", "Threshold for clasifying event as signal"); // TODO fix default to match training
-        setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values"); // TODO fix default to match training
-        setPropertyTooltip(tf, "showClassificationHistogram", "Shows a histogram of classification results"); // TODO fix default to match training
+        setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values");
+        setPropertyTooltip(tf, "showClassificationHistogram", "Shows a histogram of classification results");
+        setPropertyTooltip(tf, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
     }
 
     @Override
@@ -127,6 +136,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;
 
+        eventToDisplayTIPatchFor = null;
         for (BasicEvent e : in) {
             if (e == null) {
                 continue;
@@ -156,6 +166,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             int radius = (patchWidthAndHeightPixels - 1) / 2;
             tfNumInBatchSoFar++;
             eventList.add(e); // add the event object to list so we can later filter it in or not, in the original order
+            // see if we display this particular TI patch, only 1 per packet
+            if (eventToDisplayTIPatchFor==null && chip.getRenderer().isPixelSelected() && chip.getRenderer().getXsel() == e.x && chip.getRenderer().getYsel() == e.y) {
+                eventToDisplayTIPatchFor = e;
+            }
+            int xx = 0, yy = 0;
             for (int indx = x - radius; indx <= x + radius; indx++) {
                 // iterate over NNb, computing the TI patch value
                 for (int indy = y - radius; indy <= y + radius; indy++) {
@@ -168,24 +183,29 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                         tfInputFloatBuffer.put(0); // if the NNb pixel had no event, then just write 0 to TI patch
                     } else {
                         float dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
+                        float v = 0; // value put into TI patch
                         switch (tiPatchMethod) {
                             case ExponentialDecay:
 //                                float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-                                float expDt = fastexp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-                                tfInputFloatBuffer.put(expDt);
+                                v = fastexp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
                                 break;
                             case LinearDecay:
-                                float linearDt;
-                                if (-dt > tauUs) {
-                                    linearDt = 0;
-                                } else {
-                                    linearDt = 1 - (float) (-dt) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
+
+                                if (-dt < tauUs) {
+                                    v = 1 - (float) (-dt) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
                                 }
-                                tfInputFloatBuffer.put(linearDt);
+                        }
+                        tfInputFloatBuffer.put(v);
+                        if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null) {
+                            tiPatchDisplay.setPixmapGray(xx, yy, v); // shift back to 0,0 coordinate at LL
                         }
                     }
+                    yy++;
                 }
+                xx++;
+                yy = 0;
             }
+
             if (tfNumInBatchSoFar >= tfBatchSizeEvents) { // if we have a full batch, classify the events in it
                 classifyEvents();
             }
@@ -218,9 +238,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
      *
      */
     private void classifyEvents() {
-        tfInputFloatBuffer.flip();
         // Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
         // i.e. y last order, with y index changing fastest.
+        tfInputFloatBuffer.flip();
         try (Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer)) {
             if (tfSession == null) {
                 tfSession = new Session(tfExecutionGraph);
@@ -247,6 +267,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                     filterIn(ev);
                 } else {
                     filterOut(ev);
+                }
+                if (tiPatchDisplay != null && eventToDisplayTIPatchFor == ev) {
+                    tiPatchDisplay.setTitleLabel(String.format("C=%s (%s)", eng.format(scalarClassification), scalarClassification > signalClassifierThreshold ? "Signal" : "Noise"));
+                    tiPatchDisplay.repaint();
                 }
                 idx++;
             }
@@ -316,8 +340,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             tfInputFloatBuffer.clear();
         }
         eventList.clear();
-        if(stats==null){
-            stats=new DescriptiveStatistics(100000);
+        if (stats == null) {
+            stats = new DescriptiveStatistics(100000);
         }
         stats.clear();
 
@@ -492,7 +516,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         plt.title("S-N frequency histogram");
         plt.xlabel("S-N");
         plt.ylabel("frequency");
-        List<Double> l=Doubles.asList(stats.getValues());
+        List<Double> l = Doubles.asList(stats.getValues());
         plt.hist().add(l).bins(100);
 
         plt.legend();
@@ -502,6 +526,39 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
             showWarningDialogInSwingThread("<html>Cannot show the plot with pyplot - did you install python and matplotlib on path? <p>" + ex.toString(), "Cannot plot");
         }
+    }
+
+    public synchronized void doShowTimeimagePatch() {
+        if (tiFrame != null) {
+            tiFrame.setVisible(true);
+            return;
+        }
+        tiFrame = new JFrame("TI patch");  // make a JFrame to hold it
+        tiFrame.setPreferredSize(new Dimension(400, 400));  // set the window size
+
+        tiPatchDisplay = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+        int s = 300;
+        tiPatchDisplay.setPreferredSize(new Dimension(s, s));
+
+        tiFrame.getContentPane().add(tiPatchDisplay); // add the GLCanvas to the center of the window
+        tiFrame.pack(); // otherwise it wont fill up the display
+
+        final Point2D.Float mousePoint = new Point2D.Float();
+
+        tiFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // closing the frame exits
+        tiFrame.setVisible(true); // make the frame visible
+        int sizex = 3, sizey = 3;  // used later to define image size
+        tiPatchDisplay.setImageSize(patchWidthAndHeightPixels, patchWidthAndHeightPixels); // set dimensions of image		tiPatchDisplay.setxLabel("x label"); // add xaxis label and some tick markers
+        tiPatchDisplay.addXTick(0, "0");
+        tiPatchDisplay.addXTick(sizex, Integer.toString(sizex));
+        tiPatchDisplay.addXTick(sizey / 2, Integer.toString(sizey / 2));
+
+        tiPatchDisplay.setyLabel("y"); // same for y axis
+        tiPatchDisplay.addYTick(0, "0");
+        tiPatchDisplay.addYTick(sizey, Integer.toString(sizey));
+        tiPatchDisplay.addYTick(sizey / 2, Integer.toString(sizey / 2));
+
+        tiPatchDisplay.setTextColor(new float[]{.8f, 1, 1});
     }
 
     /**
