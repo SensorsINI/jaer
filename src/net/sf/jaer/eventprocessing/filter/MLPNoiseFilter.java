@@ -80,16 +80,16 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     private SavedModelBundle tfSavedModelBundle = null;
     private Graph tfExecutionGraph = null;
     private Session tfSession = null;
-    private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 128);
+    private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 1024);
     private int tfNumInBatchSoFar = 0;
     private FloatBuffer tfInputFloatBuffer = null;
     private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
     protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
 
     public enum TIPatchMethod {
-        ExponentialDecay, LinearDecay
+        ExponentialDecay, LinearDecay // default is LinearDecay since it works better (and is faster and cheaper)
     };
-    private TIPatchMethod tiPatchMethod = TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.ExponentialDecay.toString()));
+    private TIPatchMethod tiPatchMethod = TIPatchMethod.valueOf(getString("tiPatchMethod", TIPatchMethod.LinearDecay.toString()));
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
@@ -142,7 +142,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                     continue;
                 }
             }
-	    timestampImage[x][y] = ts;
+            timestampImage[x][y] = ts;
             // make timestamp image patch to classify
             int radius = (patchWidthAndHeightPixels - 1) / 2;
             tfNumInBatchSoFar++;
@@ -192,6 +192,15 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 
         getNoiseFilterControl().maybePerformControl(in);
         return in;
+    }
+
+    /** 
+     * Checks the FloatBuffer used to hold input vector to MLP to make sure it is the correct size
+     */
+    private void checkMlpInputFloatBufferSize() {
+        if (tfInputFloatBuffer==null || tfInputFloatBuffer.capacity() != tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels) {
+            tfInputFloatBuffer = FloatBuffer.allocate(tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels);
+        }
     }
 
     /**
@@ -275,8 +284,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;
         buildexptable(-10, 0, .01f);// interpolation for exp approximation
-        int ninputsTotal = tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
-        tfInputFloatBuffer = FloatBuffer.allocate(ninputsTotal);
+        checkMlpInputFloatBufferSize();
         allocateMaps(chip);
         resetFilter();
 
@@ -474,8 +482,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
      * @param lastManuallyLoadedNetwork the lastManuallyLoadedNetwork to set
      */
     public void setLastManuallyLoadedNetwork(String lastManuallyLoadedNetwork) {
+        String old = this.lastManuallyLoadedNetwork;
         this.lastManuallyLoadedNetwork = lastManuallyLoadedNetwork;
         putString("lastManuallyLoadedNetwork", lastManuallyLoadedNetwork);
+        getSupport().firePropertyChange("lastManuallyLoadedNetwork", old, this.lastManuallyLoadedNetwork);
     }
 
     /**
@@ -521,9 +531,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     synchronized public void setTfBatchSizeEvents(int tfBatchSizeEvents) {
         this.tfBatchSizeEvents = tfBatchSizeEvents;
         putInt("tfBatchSizeEvents", tfBatchSizeEvents);
-        tfInputFloatBuffer.capacity();
-        int ninputsTotal = tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
-        tfInputFloatBuffer = FloatBuffer.allocate(ninputsTotal);
+        checkMlpInputFloatBufferSize();
     }
 
     /**
@@ -532,17 +540,16 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     public TIPatchMethod getTiPatchMethod() {
         return tiPatchMethod;
     }
-    
+
     /**
      * @param patchWidthAndHeightPixels the patchWidthAndHeightPixels to set
      */
     public void setPatchWidthAndHeightPixels(int patchWidthAndHeightPixels) {
-        
-        
-	this.patchWidthAndHeightPixels = patchWidthAndHeightPixels;
-	putInt("patchWidthAndHeightPixels", patchWidthAndHeightPixels);
+
+        this.patchWidthAndHeightPixels = patchWidthAndHeightPixels;
+        putInt("patchWidthAndHeightPixels", patchWidthAndHeightPixels);
 //	getSupport().firePropertyChange("patchWidthAndHeightPixels", this.patchWidthAndHeightPixels, patchWidthAndHeightPixels);
-        
+        checkMlpInputFloatBufferSize();
     }
 
     /**
@@ -569,8 +576,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     static float expadjust[];
 
     /**
-     * build correction table to improve result in region of interest.
-     * If region of interest is large enough then improves result everywhere
+     * build correction table to improve result in region of interest. If region
+     * of interest is large enough then improves result everywhere
      */
     public static void buildexptable(double min, double max, double step) {
         expadjust = new float[256];
