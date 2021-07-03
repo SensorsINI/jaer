@@ -57,10 +57,10 @@ import org.tensorflow.Tensor;
 import com.github.sh0nk.matplotlib4j.Plot;
 import com.google.common.primitives.Doubles;
 import java.awt.Dimension;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
-import javax.swing.BoxLayout;
 import javax.swing.JFrame;
-import net.sf.jaer.graphics.ImageDisplayTestKeyMouseHandler;
 
 /**
  * Noise filter that runs a DNN to denoise events
@@ -167,7 +167,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             tfNumInBatchSoFar++;
             eventList.add(e); // add the event object to list so we can later filter it in or not, in the original order
             // see if we display this particular TI patch, only 1 per packet
-            if (eventToDisplayTIPatchFor==null && chip.getRenderer().isPixelSelected() && chip.getRenderer().getXsel() == e.x && chip.getRenderer().getYsel() == e.y) {
+            if (eventToDisplayTIPatchFor == null && chip.getRenderer().isPixelSelected() && chip.getRenderer().getXsel() == e.x && chip.getRenderer().getYsel() == e.y) {
                 eventToDisplayTIPatchFor = e;
             }
             int xx = 0, yy = 0;
@@ -263,12 +263,13 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             for (BasicEvent ev : eventList) {
                 float scalarClassification = outputVector[idx];
                 stats.addValue(scalarClassification);
-                if (scalarClassification > signalClassifierThreshold) {
+                final boolean signalEvent = scalarClassification > signalClassifierThreshold;
+                if (signalEvent) {
                     filterIn(ev);
                 } else {
                     filterOut(ev);
                 }
-                if (tiPatchDisplay != null && eventToDisplayTIPatchFor == ev) {
+                if (tiPatchDisplay != null && eventToDisplayTIPatchFor == ev ) {
                     tiPatchDisplay.setTitleLabel(String.format("C=%s (%s)", eng.format(scalarClassification), scalarClassification > signalClassifierThreshold ? "Signal" : "Noise"));
                     tiPatchDisplay.repaint();
                 }
@@ -545,7 +546,13 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 
         final Point2D.Float mousePoint = new Point2D.Float();
 
-        tiFrame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // closing the frame exits
+        tiFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // closing the frame exits
+        tiFrame.addWindowListener(new WindowAdapter() {
+            public void windowClosed(WindowEvent ev) {
+                tiPatchDisplay=null;
+                tiFrame=null;
+            }
+        });
         tiFrame.setVisible(true); // make the frame visible
         int sizex = 3, sizey = 3;  // used later to define image size
         tiPatchDisplay.setImageSize(patchWidthAndHeightPixels, patchWidthAndHeightPixels); // set dimensions of image		tiPatchDisplay.setxLabel("x label"); // add xaxis label and some tick markers
