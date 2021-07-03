@@ -46,12 +46,16 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.TimeLimiter;
+import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
+import com.github.sh0nk.matplotlib4j.Plot;
+import com.google.common.primitives.Doubles;
 
 /**
  * Noise filter that runs a DNN to denoise events
@@ -86,6 +90,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
     protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
 
+    // plotting TI patches and stats
+    private ImageDisplay tiPatchDisplay = null;
+    private DescriptiveStatistics stats = null;
+
     public enum TIPatchMethod {
         ExponentialDecay, LinearDecay // default is LinearDecay since it works better (and is faster and cheaper)
     };
@@ -98,14 +106,15 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         super(chip);
         String deb = "5. Debug", disp = "2. Display", anal = "4. Analysis", tf = "0. Tensorflow", input = "1. Input";
         setPropertyTooltip(tf, "loadNetwork", "Load a protobuf .pb file containing the network or select a folder holding SavedModelBundle");
-        setPropertyTooltip(tf, "lastManuallyLoadedNetwork", "last network we manually loaded");
+        setPropertyTooltip(tf, "lastManuallyLoadedNetwork", "Last network we manually loaded");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame along with estimated operations count (MAC=2OPS)");
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "tfBatchSizeEvents", "Number of events to process in parallel for inference");
         setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
-        setPropertyTooltip(tf, "signalClassifierThreshold", "threshold for clasifying event as signal"); // TODO fix default to match training
-        setPropertyTooltip(tf, "tiPatchMethod", "method used to compute the value of the timestamp image patch values"); // TODO fix default to match training
+        setPropertyTooltip(tf, "signalClassifierThreshold", "Threshold for clasifying event as signal"); // TODO fix default to match training
+        setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values"); // TODO fix default to match training
+        setPropertyTooltip(tf, "showClassificationHistogram", "Shows a histogram of classification results"); // TODO fix default to match training
     }
 
     @Override
@@ -194,11 +203,12 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         return in;
     }
 
-    /** 
-     * Checks the FloatBuffer used to hold input vector to MLP to make sure it is the correct size
+    /**
+     * Checks the FloatBuffer used to hold input vector to MLP to make sure it
+     * is the correct size
      */
     private void checkMlpInputFloatBufferSize() {
-        if (tfInputFloatBuffer==null || tfInputFloatBuffer.capacity() != tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels) {
+        if (tfInputFloatBuffer == null || tfInputFloatBuffer.capacity() != tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels) {
             tfInputFloatBuffer = FloatBuffer.allocate(tfBatchSizeEvents * patchWidthAndHeightPixels * patchWidthAndHeightPixels);
         }
     }
@@ -232,6 +242,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             int idx = 0;
             for (BasicEvent ev : eventList) {
                 float scalarClassification = outputVector[idx];
+                stats.addValue(scalarClassification);
                 if (scalarClassification > signalClassifierThreshold) {
                     filterIn(ev);
                 } else {
@@ -305,6 +316,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             tfInputFloatBuffer.clear();
         }
         eventList.clear();
+        if(stats==null){
+            stats=new DescriptiveStatistics(100000);
+        }
+        stats.clear();
 
     }
 
@@ -469,6 +484,24 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         putString(key, name);
         File file = c.getSelectedFile();
         return file;
+    }
+
+    public void doShowClassificationHistogram() {
+        Plot plt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
+        plt.subplot(1, 1, 1);
+        plt.title("S-N frequency histogram");
+        plt.xlabel("S-N");
+        plt.ylabel("frequency");
+        List<Double> l=Doubles.asList(stats.getValues());
+        plt.hist().add(l).bins(100);
+
+        plt.legend();
+        try {
+            plt.show();
+        } catch (Exception ex) {
+            log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
+            showWarningDialogInSwingThread("<html>Cannot show the plot with pyplot - did you install python and matplotlib on path? <p>" + ex.toString(), "Cannot plot");
+        }
     }
 
     /**
