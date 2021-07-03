@@ -402,6 +402,19 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     public FloatBuffer getPixmap() {
         return pixmap;
     }
+    
+    /**
+     * The rendered pixel map FloatBuffer, ordered by rgb/row/col. The first 3 elements are
+     * the RBB float values of the LL pixel (x=0,y=0). The next 3 are the RGB of
+     * the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1)
+     * is at position starting at 3*(chip.getSizeX()).
+     * 
+     *
+     */
+    public void setPixmap(FloatBuffer pixmap) {
+        this.pixmap=pixmap;
+    }
+
 
     /**
      * Sets the pixel RGB value.
