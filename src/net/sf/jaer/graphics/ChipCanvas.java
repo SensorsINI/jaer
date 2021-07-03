@@ -1185,7 +1185,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (size > (chip.getMinSize() / 3)) {
             size = chip.getMinSize() / 3;
         }
-        gl.glTranslatef(x, y, -1);
+        gl.glTranslatef(x+.5f, y+.5f, -1);
         selectedQuad = glu.gluNewQuadric();
         glu.gluQuadricDrawStyle(selectedQuad, GLU.GLU_FILL);
         glu.gluDisk(selectedQuad, size, size + 1, 16, 1);
