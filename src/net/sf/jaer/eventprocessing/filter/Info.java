@@ -275,6 +275,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
         }
 
+        /** Draw a particular rate trace
+         * 
+         * @param drawable
+         * @param sign -1 for OFf events, +1 for ON events
+         */
         synchronized private void draw(GLAutoDrawable drawable, int sign) {
             final int sx = chip.getSizeX(), sy = chip.getSizeY();
             final int yorig = sy / 3, ysize = sy / 4; // where graph starts along y axis of chip
@@ -833,7 +838,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         synchronized (this) {
             int i = 0;
             for (RateHistory r : rateHistories.values()) {
-                r.draw(drawable, (int) Math.signum((i % 2) - .5f)); // alternate -1, +1
+                r.draw(drawable, typedEventRateEstimator.getNumCellTypes()>1?(int) Math.signum((i % 2) - .5f):1); // alternate -1, +1
                 i++;
             }
         }
