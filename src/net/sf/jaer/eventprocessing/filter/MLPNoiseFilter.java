@@ -126,6 +126,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values");
         setPropertyTooltip(tf, "showClassificationHistogram", "Shows a histogram of classification results");
         setPropertyTooltip(tf, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
+        setPropertyTooltip(tf, "timeWindowS", "Window of time in seconds that the timestamp image counts past events; pixels with older events are set to zero");
     }
 
     @Override
@@ -271,7 +272,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                 } else {
                     filterOut(ev);
                 }
-                if (tiPatchDisplay != null && eventToDisplayTIPatchFor == ev ) {
+                if (tiPatchDisplay != null && eventToDisplayTIPatchFor == ev) {
                     tiPatchDisplay.setTitleLabel(String.format("C=%s (%s)", eng.format(scalarClassification), scalarClassification > signalClassifierThreshold ? "Signal" : "Noise"));
                     tiPatchDisplay.repaint();
                 }
@@ -398,7 +399,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
      * exported using Danny Neil's XML Matlab script cnntoxml.m.
      *
      */
-    public synchronized void doLoadNetwork() {
+    public void doLoadNetwork() {
         File file = null;
         file = openFileDialogAndGetFile("Choose a network, either tensorflow protobuf binary (pb),  or folder holding tensorflow SavedModelBundle",
                 KEY_NETWORK_FILENAME, "",
@@ -416,7 +417,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         }
     }
 
-    public void loadNetwork(File f) throws IOException {
+    synchronized public void loadNetwork(File f) throws IOException {
         if (f == null) {
             throw new IOException("null file");
         }
@@ -446,21 +447,28 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 //                        || s.contains("placeholder")
 //                        || s.contains("output")
 //                        || s.contains("prediction")) {  // find input placeholder & output
-                    int numOutputs = o.numOutputs();
+                int numOutputs = o.numOutputs();
 //                    if(! s.contains("output_shape") && !s.contains("conv2d_transpos")){
 //                    b.append("********** ");
 //                    ioLayers.add(s);
-                    for (int onum = 0; onum < numOutputs; onum++) {
-                        Output output = o.output(onum);
-                        b.append(opnum++ + ": " + o.toString() + "\t"+output.toString()+"\n");
-//                        Shape shape = output.shape();
+                for (int onum = 0; onum < numOutputs; onum++) {
+                    Output output = o.output(onum);
+                    Shape shape = output.shape();
+                    if (opnum == 0) { // assume input layer
+                        long nin=shape.size(1);
+                        int tiInputDim=(int)Math.round(Math.sqrt(nin));
+                        log.info(String.format("Setting patchWidthAndHeightPixels=%d according to input # pixels=%d",tiInputDim,nin));
+                        setPatchWidthAndHeightPixels(tiInputDim);
+                    }
+                    b.append(opnum++ + ": " + o.toString() + "\t" + output.toString() + "\n");
 //                        int numDimensions = shape.numDimensions();
 //                        for (int dimidx = 0; dimidx < numDimensions; dimidx++) {
 //                            long dim = shape.size(dimidx);
 //                        }
-                    }
-//                    int inputLength=o.inputListLength("");
                 }
+
+//                    int inputLength=o.inputListLength("");
+            }
             log.info(b.toString());
         } catch (Exception e) {
             log.warning(e.toString());
@@ -549,8 +557,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         tiFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // closing the frame exits
         tiFrame.addWindowListener(new WindowAdapter() {
             public void windowClosed(WindowEvent ev) {
-                tiPatchDisplay=null;
-                tiFrame=null;
+                tiPatchDisplay = null;
+                tiFrame = null;
             }
         });
         tiFrame.setVisible(true); // make the frame visible
@@ -642,10 +650,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
      * @param patchWidthAndHeightPixels the patchWidthAndHeightPixels to set
      */
     public void setPatchWidthAndHeightPixels(int patchWidthAndHeightPixels) {
-
+        int old=this.patchWidthAndHeightPixels;
         this.patchWidthAndHeightPixels = patchWidthAndHeightPixels;
         putInt("patchWidthAndHeightPixels", patchWidthAndHeightPixels);
-//	getSupport().firePropertyChange("patchWidthAndHeightPixels", this.patchWidthAndHeightPixels, patchWidthAndHeightPixels);
+	getSupport().firePropertyChange("patchWidthAndHeightPixels", old, this.patchWidthAndHeightPixels);
         checkMlpInputFloatBufferSize();
     }
 
@@ -693,4 +701,19 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             expadjust[k] /= amount[k];
         }
     }
+
+    /**
+     * Sets the noise filter correlation time. Empty method that can be
+     * overridden
+     *
+     * @param dtS time in seconds
+     */
+    public void setTimeWindowS(float dtS) {
+        super.setCorrelationTimeS(dtS);
+    }
+
+    public float getTimeWindowS() {
+        return super.getCorrelationTimeS();
+    }
+
 }

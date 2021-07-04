@@ -175,7 +175,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             selectedNoiseFilterEnum = NoiseFilterEnum.BackgroundActivityFilter;
         }
         String out = "5. Output";
-        String noise = "4. Noise";
+        String noise = "0. Noise";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip(noise, "noiseRateCoVDecades", "Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array");
         setPropertyTooltip(noise, "leakJitterFraction", "Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution");
