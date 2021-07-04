@@ -61,6 +61,8 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import javax.swing.JFrame;
+import org.tensorflow.Output;
+import org.tensorflow.Shape;
 
 /**
  * Noise filter that runs a DNN to denoise events
@@ -438,29 +440,27 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
             ioLayers.clear();
             while (itr.hasNext()) {
                 Operation o = itr.next();
-                final String s = o.toString().toLowerCase();
+//                b.append(o.toString().toLowerCase());
 //                if(s.contains("input") || s.contains("output") || s.contains("placeholder")){
-                if (s.contains("input")
-                        || s.contains("placeholder")
-                        || s.contains("output")
-                        || s.contains("prediction")) {  // find input placeholder & output
-//                    int numOutputs = o.numOutputs();
+//                if (s.contains("input")
+//                        || s.contains("placeholder")
+//                        || s.contains("output")
+//                        || s.contains("prediction")) {  // find input placeholder & output
+                    int numOutputs = o.numOutputs();
 //                    if(! s.contains("output_shape") && !s.contains("conv2d_transpos")){
-                    b.append("********** ");
-                    ioLayers.add(s);
-//                    for (int onum = 0; onum < numOutputs; onum++) {
-//                        Output output = o.output(onum);
+//                    b.append("********** ");
+//                    ioLayers.add(s);
+                    for (int onum = 0; onum < numOutputs; onum++) {
+                        Output output = o.output(onum);
+                        b.append(opnum++ + ": " + o.toString() + "\t"+output.toString()+"\n");
 //                        Shape shape = output.shape();
 //                        int numDimensions = shape.numDimensions();
 //                        for (int dimidx = 0; dimidx < numDimensions; dimidx++) {
 //                            long dim = shape.size(dimidx);
 //                        }
-//                    }
+                    }
 //                    int inputLength=o.inputListLength("");
-                    b.append(opnum++ + ": " + o.toString() + "\n");
-//                    }
                 }
-            }
             log.info(b.toString());
         } catch (Exception e) {
             log.warning(e.toString());
