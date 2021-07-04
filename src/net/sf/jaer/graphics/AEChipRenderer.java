@@ -208,8 +208,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         try {
             if (packet.getNumCellTypes() > 2) {
                 checkTypeColors(packet.getNumCellTypes());
-                if (!accumulateEnabled && !externalRenderer) {
+                if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
                     resetFrame(0);
+                    resetAccumulationFlag=false;
                 }
                 step = 1f / (colorScale);
                 for (Object obj : packet) {
@@ -246,8 +247,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             } else {
                 switch (colorMode) {
                     case GrayLevel:
-                        if (!accumulateEnabled && !externalRenderer) {
+                        if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
                             resetFrame(getGrayValue()); // also sets grayValue
+                            resetAccumulationFlag=false;
                         }
                         step = 2f / (colorScale + 1);
                         // colorScale=1,2,3; step = 1, 1/2, 1/3, 1/4, ;
@@ -335,8 +337,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 //                        }
 //                        break;
                     case RedGreen:
-                        if (!accumulateEnabled && !externalRenderer) {
+                        if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
                             resetFrame(getGrayValue());
+                            resetAccumulationFlag=false;
                         }
                         step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
                         for (Object obj : packet) {
@@ -356,8 +359,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                         }
                         break;
                     case ColorTime:
-                        if (!accumulateEnabled && !externalRenderer) {
+                        if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
                             resetFrame(getGrayValue());
+                            resetAccumulationFlag=false;
                         }
                         if (numEvents == 0) {
                             return;

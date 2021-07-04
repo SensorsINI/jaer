@@ -346,7 +346,8 @@ public class DavisRenderer extends AEChipRenderer {
             computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
         }
 
-        if (!accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
+        if (resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
+            resetAccumulationFlag=false;
             resetMaps();
 
             if (numEventTypes > 2) {
@@ -415,8 +416,9 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     protected void renderDvsEvents(final EventPacket pkt) {
-        if (!accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
+        if (resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
             resetMaps();
+            resetAccumulationFlag=false;
 
             if (numEventTypes > 2) {
                 resetAnnotationFrame(0.0f);

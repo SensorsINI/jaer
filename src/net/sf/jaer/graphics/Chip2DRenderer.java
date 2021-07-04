@@ -49,7 +49,7 @@ public class Chip2DRenderer implements Observer {
      * determines whether frame is reset to starting value on each rendering
      * cycle. True to accumulate.
      */
-    protected boolean accumulateEnabled = false;
+    protected boolean accumulateEnabled = false, resetAccumulationFlag=false;
     protected ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     protected int autoScaleValue = 1;
     /**
@@ -60,12 +60,12 @@ public class Chip2DRenderer implements Observer {
      * the number of events for full scale saturated color
      */
     protected int colorScale; // set in constructor to preference value so that eventContrast also gets set
-    
-    
-    /** Background color for chip output image RGB values
-     * 
+
+    /**
+     * Background color for chip output image RGB values
+     *
      */
-    protected float[] backgroundColor=new float[]{0,0,0};
+    protected float[] backgroundColor = new float[]{0, 0, 0};
 
     /**
      * value to add or subtract to pixel color for ON/OFF events, set by
@@ -281,13 +281,12 @@ public class Chip2DRenderer implements Observer {
             return autoScaleValue;
         }
     }
-    
-    public void setBackgroundColor(float[] rgb){
-        float[] old=this.backgroundColor;
-        this.backgroundColor=rgb;
+
+    public void setBackgroundColor(float[] rgb) {
+        float[] old = this.backgroundColor;
+        this.backgroundColor = rgb;
         getSupport().firePropertyChange(EVENT_SET_BACKGROUND, old, this.backgroundColor);
-        
-        
+
     }
 
     /**
@@ -299,7 +298,7 @@ public class Chip2DRenderer implements Observer {
     }
 
     synchronized public void setGrayValue(float value) {
-        float old=this.grayValue;
+        float old = this.grayValue;
         resetPixmapGrayLevel(value);
         grayValue = value;
         getSupport().firePropertyChange(EVENT_SET_GRAYLEVEL, old, this.grayValue);
@@ -340,10 +339,6 @@ public class Chip2DRenderer implements Observer {
         return getColorScale();
     }
 
-    public boolean isAccumulateEnabled() {
-        return this.accumulateEnabled;
-    }
-
     public boolean isAutoscaleEnabled() {
         return this.autoscaleEnabled;
     }
@@ -382,6 +377,18 @@ public class Chip2DRenderer implements Observer {
     synchronized public void resetAnnotationFrame(float value) {
         resetPixmapGrayLevel(value);
         grayValue = value;
+    }
+
+    public boolean isAccumulateEnabled() {
+        return this.accumulateEnabled;
+    }
+
+    /**
+     * Resets the accumulated frame values
+     *
+     */
+    public void resetAccumulation() {
+        resetAccumulationFlag=true;
     }
 
     /**

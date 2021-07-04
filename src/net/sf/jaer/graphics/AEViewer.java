@@ -463,9 +463,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (Desktop.isDesktopSupported()) {
                         log.info("opening folder for " + evt.getActionCommand());
                         try {
-                            File f=new File(evt.getActionCommand());
-                            if(f.isFile()){
-                                f=f.getParentFile();
+                            File f = new File(evt.getActionCommand());
+                            if (f.isFile()) {
+                                f = f.getParentFile();
                             }
                             Desktop.getDesktop().open(f);
                         } catch (IOException e) {
@@ -2587,6 +2587,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         displayMethodMenu = new javax.swing.JMenu();
         jSeparator12 = new javax.swing.JSeparator();
         acccumulateImageEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        resetAccumulationMenuItem = new javax.swing.JMenuItem();
         viewIgnorePolarityCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator18 = new javax.swing.JPopupMenu.Separator();
         increaseFrameRateMenuItem = new javax.swing.JMenuItem();
@@ -3130,6 +3131,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(acccumulateImageEnabledCheckBoxMenuItem);
+
+        resetAccumulationMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.SHIFT_MASK));
+        resetAccumulationMenuItem.setText("Reset accumulation");
+        resetAccumulationMenuItem.setToolTipText("Resets the accumulation (and enables accumulation if not enabled)");
+        resetAccumulationMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                resetAccumulationMenuItemActionPerformed(evt);
+            }
+        });
+        viewMenu.add(resetAccumulationMenuItem);
 
         viewIgnorePolarityCheckBoxMenuItem.setText("Ignore cell type");
         viewIgnorePolarityCheckBoxMenuItem.setToolTipText("Throws away cells type for rendering");
@@ -5676,6 +5687,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         getAePlayer().stepBackwardAction.actionPerformed(evt);
     }//GEN-LAST:event_viewStepBackwardsMIActionPerformed
 
+    private void resetAccumulationMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetAccumulationMenuItemActionPerformed
+        boolean old = getRenderer().isAccumulateEnabled();
+        getRenderer().resetAccumulation();
+        if (!old) {
+            getRenderer().setAccumulateEnabled(true);
+            getSupport().firePropertyChange(AEViewer.EVENT_ACCUMULATE_ENABLED, old, getRenderer().isAccumulateEnabled());
+            showActionText("Accumulate events=" + getRenderer().isAccumulateEnabled());
+        }
+    }//GEN-LAST:event_resetAccumulationMenuItemActionPerformed
+
     private KeyEvent lastKeyEvent = null;
 
     /**
@@ -6190,6 +6211,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu remoteMenu;
     private javax.swing.ButtonGroup renderModeButtonGroup;
     private javax.swing.JMenuItem reopenSocketInputStreamMenuItem;
+    private javax.swing.JMenuItem resetAccumulationMenuItem;
     private javax.swing.JLabel resizeLabel;
     private javax.swing.JPanel resizePanel;
     private javax.swing.JMenuItem rewindPlaybackMenuItem;
