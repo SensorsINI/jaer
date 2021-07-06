@@ -25,7 +25,7 @@ public interface AEDataFile {
 
 
     /** file extension for data files, including ".", e.g. ".aedat" */
-    public static final String DATA_FILE_EXTENSION = ".aedat";  // changed from .dat Apr 2010
+    public static final String DATA_FILE_EXTENSION = ".aedat", DATA_FILE_EXTENSION_AEDAT2=".aedat2";  // changed from .dat Apr 2010
     public static final String OLD_DATA_FILE_EXTENSION=".dat";
     /** file extension for index files that contain information about a set of related data files, ".adidx", including '.'. */
     public static final String INDEX_FILE_EXTENSION = ".aeidx"; // changed from .dat Apr 2010

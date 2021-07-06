@@ -4430,7 +4430,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("tried to log to null filename, aborting");
             return null;
         }
-        if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION) && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)) {
+        if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION) 
+                && !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
+                && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
+                ) {
             // allow both extensions for  backward compatibility
             filename = filename + AEDataFile.DATA_FILE_EXTENSION;
             log.info("Appended extension " + AEDataFile.DATA_FILE_EXTENSION + " to make filename=" + filename);
@@ -5767,8 +5770,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
                 java.util.List<File> files = (java.util.List<File>) transferable.getTransferData(DataFlavor.javaFileListFlavor);
                 for (File f : files) {
-                    if (f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)
-                            || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION) || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
+                    if (f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)
+                            || f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
+                            || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)
+                            || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
+                            || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)) {
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);

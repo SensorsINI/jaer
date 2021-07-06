@@ -412,7 +412,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 if (exception != null) {
                     JOptionPane.showMessageDialog(
                             viewer != null ? viewer : null,
-                            "in AElayer.startPlayback(), caught"+exception.toString(),
+                            "in AEPlayer.startPlayback(), caught"+exception.toString(),
                             "AEPlayer Exception",
                             JOptionPane.ERROR_MESSAGE
                     );

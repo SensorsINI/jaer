@@ -187,16 +187,18 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                     } else {
                         float dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
                         float v = 0; // value put into TI patch
-                        switch (tiPatchMethod) {
-                            case ExponentialDecay:
+                        if (dt < 0) { // if dt>0 then time was nonmonotonic, ignore this pixel
+                            switch (tiPatchMethod) {
+                                case ExponentialDecay:
 //                                float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-                                v = fastexp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-                                break;
-                            case LinearDecay:
+                                    v = fastexp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+                                    break;
+                                case LinearDecay:
 
-                                if (-dt < tauUs) {
-                                    v = 1 - (float) (-dt) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
-                                }
+                                    if (-dt < tauUs) {
+                                        v = 1 - (float) (-dt) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
+                                    }
+                            }
                         }
                         tfInputFloatBuffer.put(v);
                         if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null) {
@@ -455,9 +457,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                     Output output = o.output(onum);
                     Shape shape = output.shape();
                     if (opnum == 0) { // assume input layer
-                        long nin=shape.size(1);
-                        int tiInputDim=(int)Math.round(Math.sqrt(nin));
-                        log.info(String.format("Setting patchWidthAndHeightPixels=%d according to input # pixels=%d",tiInputDim,nin));
+                        long nin = shape.size(1);
+                        int tiInputDim = (int) Math.round(Math.sqrt(nin));
+                        log.info(String.format("Setting patchWidthAndHeightPixels=%d according to input # pixels=%d", tiInputDim, nin));
                         setPatchWidthAndHeightPixels(tiInputDim);
                     }
                     b.append(opnum++ + ": " + o.toString() + "\t" + output.toString() + "\n");
@@ -650,10 +652,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
      * @param patchWidthAndHeightPixels the patchWidthAndHeightPixels to set
      */
     public void setPatchWidthAndHeightPixels(int patchWidthAndHeightPixels) {
-        int old=this.patchWidthAndHeightPixels;
+        int old = this.patchWidthAndHeightPixels;
         this.patchWidthAndHeightPixels = patchWidthAndHeightPixels;
         putInt("patchWidthAndHeightPixels", patchWidthAndHeightPixels);
-	getSupport().firePropertyChange("patchWidthAndHeightPixels", old, this.patchWidthAndHeightPixels);
+        getSupport().firePropertyChange("patchWidthAndHeightPixels", old, this.patchWidthAndHeightPixels);
         checkMlpInputFloatBufferSize();
     }
 

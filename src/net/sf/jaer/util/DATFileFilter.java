@@ -31,7 +31,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals(EXTENSION)  || extension.equals(OLDEXTENSION) || extension.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)){
+            if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(OLDEXTENSION) || extension.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)){
                 return true;
             } else {
                 return false;
@@ -61,8 +61,13 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     static{
         EXTENSION=AEDataFile.DATA_FILE_EXTENSION.substring(AEDataFile.DATA_FILE_EXTENSION.lastIndexOf(".")+1,AEDataFile.DATA_FILE_EXTENSION.length());
     }
+    /** AEDAT-2.0 extension ".aedat2" */
+    public static final String EXTENSION2;
+    static{
+        EXTENSION2=AEDataFile.DATA_FILE_EXTENSION_AEDAT2.substring(AEDataFile.DATA_FILE_EXTENSION_AEDAT2.lastIndexOf(".")+1,AEDataFile.DATA_FILE_EXTENSION_AEDAT2.length());
+    }
 
-    /** The orignal extension for AE data files */
+    /** The original extension for AE data files */
     public static final String OLDEXTENSION="dat";
 
     
