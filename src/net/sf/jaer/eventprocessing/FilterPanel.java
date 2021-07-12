@@ -671,8 +671,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         // now remove group containers that are not populated.
         for (String s : groupContainerMap.keySet()) {
             if (!populatedGroupSet.contains(s)) { // remove this group
-                log.info("Removing emtpy container " + s + " from " + filter);
+                log.info("Removing emtpy container " + s + " from " + filter.getClass().getSimpleName());
                 controls.remove(groupContainerMap.get(s));
+                remove(groupContainerMap.get(s));
             }
         }
         add(Box.createHorizontalStrut(0));  // use up vertical space to get components to top
