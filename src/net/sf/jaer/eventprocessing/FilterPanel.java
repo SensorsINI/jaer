@@ -677,7 +677,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
         }
         add(Box.createHorizontalStrut(0));  // use up vertical space to get components to top
-        
+
         setControlsVisible(false);
 //        System.out.println("added glue to "+this);
     }
@@ -752,6 +752,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             add(label);
             add(control);
+            add(Box.createHorizontalGlue());
+
             try {
                 Object x = r.invoke(filter);
                 if (x == null) {
@@ -813,6 +815,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             add(label);
             add(textField);
+            add(Box.createHorizontalGlue());
             try {
                 String x = (String) r.invoke(filter);
                 if (x == null) {
@@ -1037,6 +1040,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 e.printStackTrace();
             }
             add(slider);
+            add(Box.createHorizontalGlue());
 
             slider.addChangeListener(new ChangeListener() {
 

@@ -615,7 +615,6 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 //        this.measurePerformance = measurePerformance;
 //        putBoolean("measurePerformance", measurePerformance);
 //    }
-
     /**
      * @return the signalClassifierThreshold
      */
@@ -629,6 +628,14 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     public void setSignalClassifierThreshold(float signalClassifierThreshold) {
         this.signalClassifierThreshold = signalClassifierThreshold;
         putFloat("signalClassifierThreshold", signalClassifierThreshold);
+    }
+
+    public float getMinSignalClassifierThreshold() {
+        return 0;
+    }
+
+    public float getMaxSignalClassifierThreshold() {
+        return 1;
     }
 
     /**
