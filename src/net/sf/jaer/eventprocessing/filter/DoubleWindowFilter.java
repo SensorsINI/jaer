@@ -84,7 +84,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
     private int basicThr = 0;
 
     private int wlen = getInt("wlen", 8); // window length
-    private int wlen2 = wlen/2;
+    private int wlen2 = wlen / 2;
     private short[][] lastREvents;// real window;
     private short[][] lastNEvents;// noise window;
 
@@ -100,6 +100,9 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         setPropertyTooltip(TT_FILT_CONTROL, "wlen", "total window length for holding previous events. If doubleMode selected, this window is split into signal and noise windows");
         setPropertyTooltip(TT_FILT_CONTROL, "useDoubleMode", "use two separate windows for storing real and noise events");
         setPropertyTooltip(TT_FILT_CONTROL, "disThr", "threshold for distance comparison, if too noisy, make this smaller, if too few events, make this larger");
+        hideProperty("correlationTimeS");
+        hideProperty("antiCasualEnabled");
+        hideProperty("sigmaDistPixels");
     }
 
     /**
@@ -139,10 +142,9 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
                 fillindex = fillindex + 1;
                 continue;
             }
-            
 
             if (useDoubleMode) {
-                int dwlen=wlen>1?wlen/2:1;
+                int dwlen = wlen > 1 ? wlen / 2 : 1;
 //                check real window first 
                 int[] disarray = new int[dwlen];
                 for (int i = 0; i < dwlen; i++) {
@@ -247,10 +249,10 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
             }
         }
     }
-    
-       /**
-     * Fills windows with random events drawn from Poisson waiting time distribution
-     * rate noiseRateHz
+
+    /**
+     * Fills windows with random events drawn from Poisson waiting time
+     * distribution rate noiseRateHz
      *
      * @param noiseRateHz rate in Hz
      * @param lastTimestampUs the last timestamp; waiting times are created
@@ -260,7 +262,6 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
 //         TODO noop for now, how do we init the windows for noise rate after reset or rewind?
     }
-
 
 //    // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
 //    public int getSubsampleBy() {
@@ -320,10 +321,10 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         }
         this.wlen = setValue;
         log.info(String.format("wlen is%d\n", this.wlen));
-        
+
         putInt("wlen", setValue);
         getSupport().firePropertyChange("wlen", this.wlen, setValue);
-        
+
         allocateMaps();
     }
 
@@ -408,10 +409,9 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         }
     }
 
-
     @Override
     public String infoString() {
-        String s = isUseDoubleMode()? "DWF" : "FWF";
+        String s = isUseDoubleMode() ? "DWF" : "FWF";
         s = s + ": L=" + wlen + " sigma=" + eng.format(disThr);
         return s;
     }

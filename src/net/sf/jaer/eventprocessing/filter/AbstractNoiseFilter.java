@@ -21,8 +21,10 @@ package net.sf.jaer.eventprocessing.filter;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.beans.BeanDescriptor;
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
+import java.beans.PropertyDescriptor;
+import java.beans.SimpleBeanInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,6 +32,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
@@ -54,6 +57,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     private ArrayList<FilteredEventWithNNb> filteredOutEvents = new ArrayList(), filteredInEvents = new ArrayList();
 
+    /**
+     * Use to format number to engineering notation
+     */
     protected EngineeringFormat eng = new EngineeringFormat();
 
     /**
@@ -115,7 +121,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setPropertyTooltip(TT_FILT_CONTROL, "sigmaDistPixels", "Neighborhood radisu in pixels to consider for event support");
         setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-        setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter correlation time is automatically adapted.");
+        setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter is automatically adapted with NoiseFilterControl algorithm (if filter adopts it for controlling itself).");
         setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip(TT_FILT_CONTROL, "antiCasualEnabled", "<html>Enable sending previous events that were filtered out if later event shows they were actually correlated (depends on filter if supported).<p>Note that timestamp will not be correct; event will inherit timestamp of current event to keep event stream monotonic in time.");
         getSupport().addPropertyChangeListener(this);
@@ -149,35 +155,33 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         }
     }
 
-    /**
-     * Use to filter out events, updates the list of such events when
-     * recordFilteredOutEvents is true
-     *
-     * @param e the event
-     * @param nnb the byte representing the occupation of nearest neighbors
-     */
-    protected void filterOutWithNNb(BasicEvent e, byte nnb) {
-        e.setFilteredOut(true);
-        filteredOutEventCount++;
-        if (recordFilteredOutEvents) {
-            filteredOutEvents.add(new FilteredEventWithNNb(e, nnb));
-        }
-    }
-
-    /**
-     * Use to filter in events, updates the list of such events when
-     * recordFilteredOutEvents is true
-     *
-     * @param e the event
-     * @param nnb the byte representing the occupation of nearest neighbors
-     */
-    protected void filterInWithNNb(BasicEvent e, byte nnb) {
-        e.setFilteredOut(false);
-        if (recordFilteredOutEvents) {
-            filteredInEvents.add(new FilteredEventWithNNb(e, nnb));
-        }
-    }
-
+//    /**
+//     * Use to filter out events, updates the list of such events when
+//     * recordFilteredOutEvents is true
+//     *
+//     * @param e the event
+//     * @param nnb the byte representing the occupation of nearest neighbors
+//     */
+//    protected void filterOutWithNNb(BasicEvent e, byte nnb) {
+//        e.setFilteredOut(true);
+//        filteredOutEventCount++;
+//        if (recordFilteredOutEvents) {
+//            filteredOutEvents.add(new FilteredEventWithNNb(e, nnb));
+//        }
+//    }
+//    /**
+//     * Use to filter in events, updates the list of such events when
+//     * recordFilteredOutEvents is true
+//     *
+//     * @param e the event
+//     * @param nnb the byte representing the occupation of nearest neighbors
+//     */
+//    protected void filterInWithNNb(BasicEvent e, byte nnb) {
+//        e.setFilteredOut(false);
+//        if (recordFilteredOutEvents) {
+//            filteredInEvents.add(new FilteredEventWithNNb(e, nnb));
+//        }
+//    }
     /**
      * Subclasses should call this before filtering to clear the
      * filteredOutEventCount and filteredOutEvents
@@ -201,7 +205,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        super.setFilterEnabled(yes); 
+        super.setFilterEnabled(yes);
         // check if enclosed in NTF and warn user
         // need to see if we are called from checkbox or from enum pulldown menu
 //        if(isEnclosed() && getEnclosingFilter() instanceof NoiseTesterFilter){
@@ -209,8 +213,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 //            
 //        }
     }
-    
-    
 
     /**
      * By default empty method (which logs warning if called) that initializes
@@ -223,7 +225,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * before this time
      */
     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
-        log.warning("method should be implemented for this filter "+this.getClass().getSimpleName()+" to produce correct statistics after reset");
+        log.warning("method should be implemented for this filter " + this.getClass().getSimpleName() + " to produce correct statistics after reset");
     }
 
     /**
@@ -547,6 +549,63 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         public FilteredEventWithNNb(BasicEvent e) {
             this.e = e;
             this.nnb = 0;
+        }
+    }
+
+    /**
+     * @return the noiseFilterControl
+     */
+    public NoiseFilterControl getNoiseFilterControl() {
+        return noiseFilterControl;
+    }
+
+    /**
+     * @param noiseFilterControl the noiseFilterControl to set
+     */
+    public void setNoiseFilterControl(NoiseFilterControl noiseFilterControl) {
+        this.noiseFilterControl = noiseFilterControl;
+    }
+
+    // not used in control
+    /**
+     * @return the antiCasualEnabled
+     */
+    public boolean isAntiCasualEnabled() {
+        return antiCasualEnabled;
+    }
+
+    /**
+     * @param antiCasualEnabled the antiCasualEnabled to set
+     */
+    public void setAntiCasualEnabled(boolean antiCasualEnabled) {
+        boolean old = this.antiCasualEnabled;
+        this.antiCasualEnabled = antiCasualEnabled;
+        putBoolean("antiCasualEnabled", antiCasualEnabled);
+        getSupport().firePropertyChange("antiCasualEnabled", old, this.antiCasualEnabled);
+    }
+
+//    /**
+//     * Exclude a property from Introspector to hide it from GUI. Use this for
+//     * example to hide the "correlationTimeS" property for noise filters that do
+//     * not use it.
+//     *
+//     * @param property the property name.
+//     */
+//    protected void hideProperty(String property) {
+//       beanInfo.hideProperty(property);
+//    }
+    protected void removeNoiseFilterControl() {
+        if (getEnclosedFilterChain() == null) {
+            return;
+        }
+        EventFilter nfc = null;
+        for (EventFilter f : getEnclosedFilterChain()) {
+            if (f instanceof NoiseFilterControl) {
+                nfc = f;
+            }
+        }
+        if (nfc != null) {
+            getEnclosedFilterChain().remove(nfc);
         }
     }
 
@@ -879,37 +938,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 tobiLogger.setEnabled(false);
             }
         }
-    }
 
-    /**
-     * @return the noiseFilterControl
-     */
-    public NoiseFilterControl getNoiseFilterControl() {
-        return noiseFilterControl;
-    }
-
-    /**
-     * @param noiseFilterControl the noiseFilterControl to set
-     */
-    public void setNoiseFilterControl(NoiseFilterControl noiseFilterControl) {
-        this.noiseFilterControl = noiseFilterControl;
-    }
-
-    /**
-     * @return the antiCasualEnabled
-     */
-    public boolean isAntiCasualEnabled() {
-        return antiCasualEnabled;
-    }
-
-    /**
-     * @param antiCasualEnabled the antiCasualEnabled to set
-     */
-    public void setAntiCasualEnabled(boolean antiCasualEnabled) {
-        boolean old = this.antiCasualEnabled;
-        this.antiCasualEnabled = antiCasualEnabled;
-        putBoolean("antiCasualEnabled", antiCasualEnabled);
-        getSupport().firePropertyChange("antiCasualEnabled", old, this.antiCasualEnabled);
-    }
+    } // NoiseFilterControl
 
 }

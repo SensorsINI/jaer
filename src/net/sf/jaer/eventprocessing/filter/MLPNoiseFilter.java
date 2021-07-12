@@ -61,6 +61,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import javax.swing.JFrame;
+import net.sf.jaer.eventprocessing.EventFilter;
 import org.tensorflow.Output;
 import org.tensorflow.Shape;
 
@@ -76,7 +77,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     private final String KEY_NETWORK_FILENAME = "lastNetworkFilename";
     private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
     private TextRenderer textRenderer = null;
-    private boolean measurePerformance = getBoolean("measurePerformance", true);
+//    private boolean measurePerformance = getBoolean("measurePerformance", true);
 
     private String performanceString = null; // holds string representation of processing time
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
@@ -114,7 +115,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 
     public MLPNoiseFilter(AEChip chip) {
         super(chip);
-        String deb = "5. Debug", disp = "2. Display", anal = "4. Analysis", tf = "0. Tensorflow", input = "1. Input";
+        String deb = "5. Debug", disp = "2. Display", anal = "4. Analysis", tf = "0. Multilayer Perceptron", input = "1. Input";
         setPropertyTooltip(tf, "loadNetwork", "Load a protobuf .pb file containing the network or select a folder holding SavedModelBundle");
         setPropertyTooltip(tf, "lastManuallyLoadedNetwork", "Last network we manually loaded");
         setPropertyTooltip(disp, "measurePerformance", "Measures and logs time in ms to process each frame along with estimated operations count (MAC=2OPS)");
@@ -127,6 +128,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         setPropertyTooltip(tf, "showClassificationHistogram", "Shows a histogram of classification results");
         setPropertyTooltip(tf, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
         setPropertyTooltip(tf, "timeWindowS", "Window of time in seconds that the timestamp image counts past events; pixels with older events are set to zero");
+        hideProperty("correlationTimeS");
+        hideProperty("antiCasualEnabled");
+        hideProperty("sigmaDistPixels");
+        hideProperty("adaptiveFilteringEnabled");
+        removeNoiseFilterControl();
     }
 
     @Override
@@ -363,15 +369,15 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
-        if (tfExecutionGraph != null) {
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
-            MultilineAnnotationTextRenderer.setScale(.3f);
-            MultilineAnnotationTextRenderer.renderMultilineString(this.getClass().getSimpleName());
-            if ((measurePerformance == true) && (performanceString != null) /*&& !performanceString.equals(lastPerformanceString)*/) {
-                MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
-                lastPerformanceString = performanceString;
-            }
-        }
+//        if (tfExecutionGraph != null) {
+//            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
+//            MultilineAnnotationTextRenderer.setScale(.3f);
+//            MultilineAnnotationTextRenderer.renderMultilineString(this.getClass().getSimpleName());
+//            if ((measurePerformance == true) && (performanceString != null) /*&& !performanceString.equals(lastPerformanceString)*/) {
+//                MultilineAnnotationTextRenderer.renderMultilineString(performanceString);
+//                lastPerformanceString = performanceString;
+//            }
+//        }
     }
 
     /**
@@ -595,20 +601,20 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         getSupport().firePropertyChange("lastManuallyLoadedNetwork", old, this.lastManuallyLoadedNetwork);
     }
 
-    /**
-     * @return the measurePerformance
-     */
-    public boolean isMeasurePerformance() {
-        return measurePerformance;
-    }
-
-    /**
-     * @param measurePerformance the measurePerformance to set
-     */
-    public void setMeasurePerformance(boolean measurePerformance) {
-        this.measurePerformance = measurePerformance;
-        putBoolean("measurePerformance", measurePerformance);
-    }
+//    /**
+//     * @return the measurePerformance
+//     */
+//    public boolean isMeasurePerformance() {
+//        return measurePerformance;
+//    }
+//
+//    /**
+//     * @param measurePerformance the measurePerformance to set
+//     */
+//    public void setMeasurePerformance(boolean measurePerformance) {
+//        this.measurePerformance = measurePerformance;
+//        putBoolean("measurePerformance", measurePerformance);
+//    }
 
     /**
      * @return the signalClassifierThreshold

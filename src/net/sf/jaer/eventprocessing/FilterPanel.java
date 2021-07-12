@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -213,7 +214,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private TitledBorder titledBorder;
     private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
     protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
-    private HashMap<String, Container> groupContainerMap = new HashMap();
+    private HashMap<String, Container> groupContainerMap = new HashMap(); // points from group name string to the panel holding the properties
+    private HashSet<String> populatedGroupSet = new HashSet(); // Set of all property groups that have at least one item in them
     private HashMap<String, MyControl> propertyControlMap = new HashMap();
     private JComponent ungroupedControls = null;
     private JPanel inheritedPanel = null;
@@ -289,6 +291,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                container.add(inherPan);
 //            }else{
             container.add(comp);
+            populatedGroupSet.add(groupName); // add to list of populated groups
 //            }
         } else {
             ungroupedControls.add(comp);
@@ -311,8 +314,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         try {
             info = Introspector.getBeanInfo(filter.getClass());
             // TODO check if class is public, otherwise we can't access methods usually
-            props = info.getPropertyDescriptors();
-            methods = filter.getClass().getMethods();
+            this.props = info.getPropertyDescriptors();
+            this.methods = filter.getClass().getMethods();
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
@@ -554,13 +557,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     groupPanel.setName(s);
                     groupPanel.setBorder(new TitledBorder(s));
                     groupPanel.setLayout(new GridLayout(0, 1));
-                    groupContainerMap.put(s, groupPanel);
+                    groupContainerMap.put(s, groupPanel); // point from group name to its panel container
                     add(groupPanel);
                     controls.add(groupPanel); // visibility list
                 }
             }
 
 //            ArrayList<Component> sortedControls=new ArrayList();
+            // iterate over all methods, adding controls to panel for each type of property
+            // but only for those properties that are not marked as "hidden"
             for (PropertyDescriptor p : props) {
 //                System.out.println("filter "+getFilter().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
 //                if(false){
@@ -585,6 +590,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         if (m.getDeclaringClass() != getFilter().getClass()) {
                             inherited = true;
                         }
+                    }
+
+                    boolean hidden = filter.isPropertyHidden(p.getName());
+                    if (hidden) {
+                        log.info("not constructing control for " + filter.getClass().getSimpleName() + " for hidden property " + p.getName());
+                        continue;
                     }
 
                     if ((c == Integer.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
@@ -643,8 +654,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + filter);
                 }
-            }
-            groupContainerMap = null;
+            } // properties
+
+//            groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
             log.warning("on adding controls for EventFilter " + filter + " caught " + e);
@@ -656,7 +668,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(Box.createVerticalStrut(0));
             add(ungroupedControls);
         }
+        // now remove group containers that are not populated.
+        for (String s : groupContainerMap.keySet()) {
+            if (!populatedGroupSet.contains(s)) { // remove this group
+                log.info("Removing emtpy container " + s + " from " + filter);
+                controls.remove(groupContainerMap.get(s));
+            }
+        }
         add(Box.createHorizontalStrut(0));  // use up vertical space to get components to top
+        
         setControlsVisible(false);
 //        System.out.println("added glue to "+this);
     }

@@ -22,8 +22,12 @@ import javax.swing.SwingUtilities;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLException;
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.beans.PropertyDescriptor;
 import java.io.Serializable;
 import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
@@ -32,6 +36,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventprocessing.filter.AbstractNoiseFilter;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -188,10 +193,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * default.
      */
     synchronized public void cleanup() {
-        if(getEnclosedFilter()!=null){
+        if (getEnclosedFilter() != null) {
             getEnclosedFilter().cleanup();
         }
-        if(getEnclosedFilterChain()!=null){
+        if (getEnclosedFilterChain() != null) {
             getEnclosedFilterChain().cleanup();
         }
     }
@@ -811,7 +816,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Puts a preference for arbitrary Object, using PrefObj utility.
      *
      * @param key the property name, e.g. "hotPixels"
-     * @param o the Serializable Object to be stored, e.g. some instance of HotPixelMap
+     * @param o the Serializable Object to be stored, e.g. some instance of
+     * HotPixelMap
      */
     public void putObject(String key, Serializable o) {
         try {
@@ -844,7 +850,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             log.warning(String.format("Could not load preference for %s; got %s", key, ex));
         } catch (ClassNotFoundException ex) {
             log.warning(String.format("Could not load preference for %s; got %s", key, ex));
-        } 
+        }
         return defObject;
     }
 
@@ -1188,6 +1194,35 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             }
         }
         return rtn;
+    }
+
+    /** List of hidden properties that subclasses can populate to hide properties in FilterPanel GUI.
+     * 
+     * @see FilterPanel
+     * @see #hideProperty(java.lang.String) 
+     */
+    protected ArrayList<String> hiddenProperties=new ArrayList();
+    
+    /**
+     * Exclude a property from Introspector to hide it from FilterPanel GUI. 
+     *
+     * @param propertyName the property name.
+     * 
+     * @see FilterPanel
+     */
+    protected void hideProperty(String propertyName) {
+       if(!hiddenProperties.contains(propertyName)){
+           hiddenProperties.add(propertyName);
+       }
+    }
+    
+    /** Returns true if the propertyName is meant to be hidden from GUI
+     * 
+     * @param propertyName
+     * @return true if in hidden list
+     */
+    public boolean isPropertyHidden(String propertyName){
+        return hiddenProperties.contains(propertyName);
     }
 
 }

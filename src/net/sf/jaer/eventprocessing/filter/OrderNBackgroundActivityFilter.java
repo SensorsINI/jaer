@@ -49,6 +49,10 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
 
     public OrderNBackgroundActivityFilter(AEChip chip) {
         super(chip);
+           hideProperty("correlationTimeS");
+        hideProperty("antiCasualEnabled");
+//        hideProperty("sigmaDistPixels");
+//        hideProperty("adaptiveFilteringEnabled");
     }
 
     @Override

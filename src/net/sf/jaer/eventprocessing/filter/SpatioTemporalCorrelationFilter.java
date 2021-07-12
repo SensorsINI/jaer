@@ -34,7 +34,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     private int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
-    protected boolean favorLines = getBoolean("favorLines", false);
+//    protected boolean favorLines = getBoolean("favorLines", false);
 
     private int sxm1; // size of chip minus 1
     private int sym1;
@@ -130,16 +130,16 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     }
                 }
                 if (ncorrelated < numMustBeCorrelated) {
-                    filterOutWithNNb(e, nnb);
+                    filterOut(e);
                 } else {
-                    if (!favorLines) {
-                        filterInWithNNb(e, nnb);
-                    } else {
-                        // only pass events that have bits set that form line with current pixel, at 45 degrees on 8 NNbs
-                        if ((nnb & 0x81) == 0x81 || (nnb & 0x18) == 0x18 || (nnb & 0x24) == 0x24 || (nnb & 0x42) == 0x42) {
-                            filterInWithNNb(e, nnb);
-                        }
-                    }
+//                    if (!favorLines) { // Tobi: shown not effective in experiments with Driving dataset
+                        filterIn(e);
+//                    } else {
+//                        // only pass events that have bits set that form line with current pixel, at 45 degrees on 8 NNbs
+//                        if ((nnb & 0x81) == 0x81 || (nnb & 0x18) == 0x18 || (nnb & 0x24) == 0x24 || (nnb & 0x42) == 0x42) {
+//                            filterInWithNNb(e, nnb);
+//                        }
+//                    }
                 }
                 timestampImage[x][y] = ts;
             } // event packet loop
@@ -334,19 +334,20 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         return s;
     }
 
-    /**
-     * @return the favorLines
-     */
-    public boolean isFavorLines() {
-        return favorLines;
-    }
-
-    /**
-     * @param favorLines the favorLines to set
-     */
-    public void setFavorLines(boolean favorLines) {
-        this.favorLines = favorLines;
-        putBoolean("favorLines", favorLines);
-    }
+    // Tobi removed, lines are not effective since NNb is too small
+//    /**
+//     * @return the favorLines
+//     */
+//    public boolean isFavorLines() {
+//        return favorLines;
+//    }
+//
+//    /**
+//     * @param favorLines the favorLines to set
+//     */
+//    public void setFavorLines(boolean favorLines) {
+//        this.favorLines = favorLines;
+//        putBoolean("favorLines", favorLines);
+//    }
 
 }
