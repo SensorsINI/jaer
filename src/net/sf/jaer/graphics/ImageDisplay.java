@@ -940,7 +940,6 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         }
         this.titleLabel = titleLabel;
         invalidate();
-        repaint();
     }
 
     /**
