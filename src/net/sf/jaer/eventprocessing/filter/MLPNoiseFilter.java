@@ -62,6 +62,7 @@ import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import javax.swing.JFrame;
 import net.sf.jaer.eventprocessing.EventFilter;
+import net.sf.jaer.util.EngineeringFormat;
 import org.tensorflow.Output;
 import org.tensorflow.Shape;
 
@@ -100,10 +101,12 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 
     // plotting TI patches and stats
     private DescriptiveStatistics stats = null;
+    private volatile boolean showThisTiPatch=false;
     // TI patch display
     private ImageDisplay tiPatchDisplay = null;
     private JFrame tiFrame = null;
     private BasicEvent eventToDisplayTIPatchFor = null;
+    private EngineeringFormat eng = new EngineeringFormat();
 
     public enum TIPatchMethod {
         ExponentialDecay, LinearDecay // default is LinearDecay since it works better (and is faster and cheaper)
@@ -112,6 +115,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
+    private boolean showOnlySignalTimeimages = getBoolean("showOnlySignalTimeimages", false);
+    private boolean showOnlyNoiseTimeimages = getBoolean("showOnlyNoiseTimeimages", false);
+
+    private final int NONONOTONIC_TIMESTAMP_WARNING_INTERVAL = 100000;
+    private int nonmonotonicWarningCount = 0;
 
     public MLPNoiseFilter(AEChip chip) {
         super(chip);
@@ -125,8 +133,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
         setPropertyTooltip(tf, "signalClassifierThreshold", "Threshold for clasifying event as signal"); // TODO fix default to match training
         setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values");
-        setPropertyTooltip(tf, "showClassificationHistogram", "Shows a histogram of classification results");
-        setPropertyTooltip(tf, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
+        setPropertyTooltip(disp, "showClassificationHistogram", "Shows a histogram of classification results");
+        setPropertyTooltip(disp, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
+        setPropertyTooltip(disp, "showOnlyNoiseTimeimages", "Shows timestamp image input to MLP only for noise classifications");
+        setPropertyTooltip(disp, "showOnlySignalTimeimages", "Shows timestamp image input to MLP only for signal classifications");
         setPropertyTooltip(tf, "timeWindowS", "Window of time in seconds that the timestamp image counts past events; pixels with older events are set to zero");
         hideProperty("correlationTimeS");
         hideProperty("antiCasualEnabled");
@@ -146,6 +156,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         ssy = sym1 >> subsampleBy;
 
         eventToDisplayTIPatchFor = null;
+        if (tiPatchDisplay != null) {
+            tiPatchDisplay.clearImage();
+        }
+        showThisTiPatch=false;
         for (BasicEvent e : in) {
             if (e == null) {
                 continue;
@@ -191,19 +205,23 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                     if (nnbTs == DEFAULT_TIMESTAMP) {
                         tfInputFloatBuffer.put(0); // if the NNb pixel had no event, then just write 0 to TI patch
                     } else {
-                        float dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
+                        int dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
                         float v = 0; // value put into TI patch
-                        if (dt < 0) { // if dt>0 then time was nonmonotonic, ignore this pixel
+                        if (dt <= 0) { // ok, NNb pixel timestamp is older than us
                             switch (tiPatchMethod) {
                                 case ExponentialDecay:
 //                                float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-                                    v = fastexp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+                                    v = fastexp((float) dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
                                     break;
                                 case LinearDecay:
 
                                     if (-dt < tauUs) {
-                                        v = 1 - (float) (-dt) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
+                                        v = 1 - ((float) (-dt)) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
                                     }
+                            }
+                        } else {  // if dt>0 then time was nonmonotonic, ignore this pixel
+                            if (nonmonotonicWarningCount++ % NONONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
+                                log.warning(String.format("timestamp in patch in future by %ss", eng.format(1e-6f * dt)));
                             }
                         }
                         tfInputFloatBuffer.put(v);
@@ -282,7 +300,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                 }
                 if (tiPatchDisplay != null && eventToDisplayTIPatchFor == ev) {
                     tiPatchDisplay.setTitleLabel(String.format("C=%s (%s)", eng.format(scalarClassification), scalarClassification > signalClassifierThreshold ? "Signal" : "Noise"));
-                    tiPatchDisplay.repaint();
+                    if ((!showOnlySignalTimeimages && !showOnlyNoiseTimeimages)
+                            || (showOnlyNoiseTimeimages && !signalEvent)
+                            || (showOnlySignalTimeimages && signalEvent)) {
+                        showThisTiPatch=true;
+                    }
                 }
                 idx++;
             }
@@ -369,6 +391,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
+        if(tiPatchDisplay!=null && showThisTiPatch){
+            tiPatchDisplay.repaint();
+        }
 //        if (tfExecutionGraph != null) {
 //            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
 //            MultilineAnnotationTextRenderer.setScale(.3f);
@@ -729,6 +754,34 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 
     public float getTimeWindowS() {
         return super.getCorrelationTimeS();
+    }
+
+    /**
+     * @return the showOnlySignalTimeimages
+     */
+    public boolean isShowOnlySignalTimeimages() {
+        return showOnlySignalTimeimages;
+    }
+
+    /**
+     * @param showOnlySignalTimeimages the showOnlySignalTimeimages to set
+     */
+    public void setShowOnlySignalTimeimages(boolean showOnlySignalTimeimages) {
+        this.showOnlySignalTimeimages = showOnlySignalTimeimages;
+    }
+
+    /**
+     * @return the showOnlyNoiseTimeimages
+     */
+    public boolean isShowOnlyNoiseTimeimages() {
+        return showOnlyNoiseTimeimages;
+    }
+
+    /**
+     * @param showOnlyNoiseTimeimages the showOnlyNoiseTimeimages to set
+     */
+    public void setShowOnlyNoiseTimeimages(boolean showOnlyNoiseTimeimages) {
+        this.showOnlyNoiseTimeimages = showOnlyNoiseTimeimages;
     }
 
 }
