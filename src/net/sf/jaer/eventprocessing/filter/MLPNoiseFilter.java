@@ -285,7 +285,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                             }
                         }
                         tfInputFloatBuffer.put(v);
-                        if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null) {
+                        if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null && e==eventToDisplayTIPatchFor) {
                             tiPatchDisplay.setPixmapGray(indx+radius-x, indy+radius-y, v); // shift back to 0,0 coordinate at LL
                         }
                     }
@@ -526,6 +526,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         try {
             loadNetwork(file);
             setLastManuallyLoadedNetwork(file.toString()); // store the last manually loaded network as the 
+            resetFilter();
 
         } catch (Exception ex) {
             Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
