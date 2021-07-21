@@ -56,12 +56,25 @@ import org.tensorflow.Session;
 import org.tensorflow.Tensor;
 import com.github.sh0nk.matplotlib4j.Plot;
 import com.google.common.primitives.Doubles;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.awt.GLCanvas;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import javax.swing.JFrame;
 import net.sf.jaer.eventprocessing.EventFilter;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
 import org.tensorflow.Output;
 import org.tensorflow.Shape;
@@ -73,7 +86,7 @@ import org.tensorflow.Shape;
  */
 @Description("Denoising noise filter that uses a DNN deep neural network to classify events as signal or noise events")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class MLPNoiseFilter extends AbstractNoiseFilter {
+public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener, MouseMotionListener, MouseWheelListener {
 
     private final String KEY_NETWORK_FILENAME = "lastNetworkFilename";
     private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
@@ -101,7 +114,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 
     // plotting TI patches and stats
     private DescriptiveStatistics stats = null;
-    private volatile boolean showThisTiPatch=false;
+    private volatile boolean showThisTiPatch = false;
     // TI patch display
     private ImageDisplay tiPatchDisplay = null;
     private JFrame tiFrame = null;
@@ -121,6 +134,48 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     private final int NONONOTONIC_TIMESTAMP_WARNING_INTERVAL = 100000;
     private int nonmonotonicWarningCount = 0;
 
+    /**
+     * Cursor size for drawn mouse cursor when filter is selected.
+     */
+    protected final float CURSOR_SIZE_CHIP_PIXELS = 7;
+    protected GLU glu = new GLU();
+    protected GLUquadric quad = null;
+    private boolean hasBlendChecked = false, hasBlend = false;
+    protected boolean showCrossHairCursor = true;
+    protected GLCanvas glCanvas;
+    protected ChipCanvas chipCanvas;
+    float[] cursorColor = null;
+
+    /**
+     * Flag that freezes ROI selection
+     */
+    protected boolean freezeRoi = getBoolean("freezeRoi", false);
+
+    // roiRect stuff
+    /**
+     * ROI start/end corner index
+     */
+    protected int roiStartx, roiStarty, roiEndx, roiEndy;
+    /**
+     * ROI start/end corners and last clicked mouse point
+     */
+    protected Point roiStartPoint = null, roiEndPoint = null, clickedPoint = null;
+    /**
+     * ROI rectangle
+     */
+    protected Rectangle roiRect = (Rectangle) getObject("roiRect", null);
+
+    /**
+     * Boolean that indicates ROI is being selected currently
+     */
+    protected volatile boolean roiSelecting = false;
+    final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
+
+    /**
+     * The current mouse point in chip pixels, updated by mouseMoved
+     */
+    protected Point currentMousePoint = null;
+
     public MLPNoiseFilter(AEChip chip) {
         super(chip);
         String deb = "5. Debug", disp = "2. Display", anal = "4. Analysis", tf = "0. Multilayer Perceptron", input = "1. Input";
@@ -138,6 +193,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         setPropertyTooltip(disp, "showOnlyNoiseTimeimages", "Shows timestamp image input to MLP only for noise classifications");
         setPropertyTooltip(disp, "showOnlySignalTimeimages", "Shows timestamp image input to MLP only for signal classifications");
         setPropertyTooltip(tf, "timeWindowS", "Window of time in seconds that the timestamp image counts past events; pixels with older events are set to zero");
+        String roi = "Region of interest";
+        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI (region of interest) selection");
+        setPropertyTooltip(roi, "clearROI", "Clears ROI (region of interest)");
         hideProperty("correlationTimeS");
         hideProperty("antiCasualEnabled");
         hideProperty("sigmaDistPixels");
@@ -159,7 +217,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
         if (tiPatchDisplay != null) {
             tiPatchDisplay.clearImage();
         }
-        showThisTiPatch=false;
+        showThisTiPatch = false;
         for (BasicEvent e : in) {
             if (e == null) {
                 continue;
@@ -184,16 +242,15 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                     continue;
                 }
             }
-            timestampImage[x][y] = ts;
+//            timestampImage[x][y] = ts;
             // make timestamp image patch to classify
             int radius = (patchWidthAndHeightPixels - 1) / 2;
             tfNumInBatchSoFar++;
             eventList.add(e); // add the event object to list so we can later filter it in or not, in the original order
             // see if we display this particular TI patch, only 1 per packet
-            if (eventToDisplayTIPatchFor == null && chip.getRenderer().isPixelSelected() && chip.getRenderer().getXsel() == e.x && chip.getRenderer().getYsel() == e.y) {
+            if (eventToDisplayTIPatchFor == null && insideRoi(e)) {
                 eventToDisplayTIPatchFor = e;
             }
-            int xx = 0, yy = 0;
             for (int indx = x - radius; indx <= x + radius; indx++) {
                 // iterate over NNb, computing the TI patch value
                 for (int indy = y - radius; indy <= y + radius; indy++) {
@@ -219,6 +276,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                                         v = 1 - ((float) (-dt)) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
                                     }
                             }
+//                            if (indx-x == 0 && indy-y == 0) {
+//                                log.info(String.format("dt=%d v=%.2f", dt, v));
+//                            }
                         } else {  // if dt>0 then time was nonmonotonic, ignore this pixel
                             if (nonmonotonicWarningCount++ % NONONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
                                 log.warning(String.format("timestamp in patch in future by %ss", eng.format(1e-6f * dt)));
@@ -226,20 +286,17 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                         }
                         tfInputFloatBuffer.put(v);
                         if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null) {
-                            tiPatchDisplay.setPixmapGray(xx, yy, v); // shift back to 0,0 coordinate at LL
+                            tiPatchDisplay.setPixmapGray(indx+radius-x, indy+radius-y, v); // shift back to 0,0 coordinate at LL
                         }
                     }
-                    yy++;
                 }
-                xx++;
-                yy = 0;
             }
 
             if (tfNumInBatchSoFar >= tfBatchSizeEvents) { // if we have a full batch, classify the events in it
                 classifyEvents();
             }
             // write TI *after* we classify S vs N
-//            timestampImage[x][y] = ts;
+            timestampImage[x][y] = ts;
 
         } // event packet loop
 
@@ -303,7 +360,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
                     if ((!showOnlySignalTimeimages && !showOnlyNoiseTimeimages)
                             || (showOnlyNoiseTimeimages && !signalEvent)
                             || (showOnlySignalTimeimages && signalEvent)) {
-                        showThisTiPatch=true;
+                        showThisTiPatch = true;
                     }
                 }
                 idx++;
@@ -391,7 +448,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
-        if(tiPatchDisplay!=null && showThisTiPatch){
+        if (tiPatchDisplay != null && showThisTiPatch) {
             tiPatchDisplay.repaint();
         }
 //        if (tfExecutionGraph != null) {
@@ -403,6 +460,32 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
 //                lastPerformanceString = performanceString;
 //            }
 //        }
+        glCanvas = (GLCanvas) chipCanvas.getCanvas();
+        if (glCanvas == null) {
+            return;
+        }
+        int sx = chip.getSizeX(), sy = chip.getSizeY();
+        Rectangle chipRect = new Rectangle(sx, sy);
+        if (roiRect != null && chipRect.intersects(roiRect)) {
+            drawRoi(gl, roiRect, SELECT_COLOR);
+        }
+
+        chip.getCanvas().checkGLError(gl, glu, "in annotate");
+    }
+
+    private void drawRoi(GL2 gl, Rectangle r, float[] c) {
+        gl.glPushMatrix();
+        gl.glColor3fv(c, 0);
+        gl.glLineWidth(3);
+//        gl.glTranslatef(-.5f, -.5f, 0);
+        gl.glBegin(GL.GL_LINE_LOOP);
+        gl.glVertex2f(roiRect.x, roiRect.y);
+        gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y);
+        gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y + roiRect.height);
+        gl.glVertex2f(roiRect.x, roiRect.y + roiRect.height);
+        gl.glEnd();
+        gl.glPopMatrix();
+
     }
 
     /**
@@ -782,6 +865,218 @@ public class MLPNoiseFilter extends AbstractNoiseFilter {
      */
     public void setShowOnlyNoiseTimeimages(boolean showOnlyNoiseTimeimages) {
         this.showOnlyNoiseTimeimages = showOnlyNoiseTimeimages;
+    }
+
+    /**
+     * When this is selected in the FilterPanel GUI, the mouse listeners will be
+     * added. When this is unselected, the listeners will be removed.
+     *
+     */
+    @Override
+    public void setSelected(boolean yes) {
+        super.setSelected(yes);
+        chipCanvas = chip.getCanvas();
+        if (chipCanvas == null) {
+            log.warning("null chip canvas, can't add mouse listeners");
+            return;
+        }
+        glCanvas = (GLCanvas) chipCanvas.getCanvas();
+        if (glCanvas == null) {
+            log.warning("null chip canvas GL drawable, can't add mouse listeners");
+            return;
+        }
+        if (yes) {
+            glCanvas.removeMouseListener(this);
+            glCanvas.removeMouseMotionListener(this);
+            glCanvas.removeMouseWheelListener(this);
+            glCanvas.addMouseListener(this);
+            glCanvas.addMouseMotionListener(this);
+            glCanvas.addMouseWheelListener(this);
+
+        } else {
+            glCanvas.removeMouseListener(this);
+            glCanvas.removeMouseMotionListener(this);
+            glCanvas.removeMouseWheelListener(this);
+        }
+    }
+
+    /**
+     * Returns the chip pixel position from the MouseEvent. Note that any calls
+     * that modify the GL model matrix (or viewport, etc) will make the location
+     * meaningless. Make sure that your graphics rendering code wraps transforms
+     * inside pushMatrix and popMatrix calls.
+     *
+     * @param e the mouse event
+     * @return the pixel position in the chip object, origin 0,0 in lower left
+     * corner.
+     */
+    protected Point getMousePixel(MouseEvent e) {
+        if (getChip().getCanvas() == null) {
+            return null;
+        }
+        Point p = getChip().getCanvas().getPixelFromMouseEvent(e);
+        if (getChip().getCanvas().wasMousePixelInsideChipBounds()) {
+            return p;
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @return the showCrossHairCursor
+     */
+    protected boolean isShowCrossHairCursor() {
+        return showCrossHairCursor;
+    }
+
+    /**
+     * By default a cross hair selection cursor is drawn. This method prevent
+     * drawing the cross hair.
+     *
+     * @param showCrossHairCursor the showCrossHairCursor to set
+     */
+    protected void setShowCrossHairCursor(boolean showCrossHairCursor) {
+        this.showCrossHairCursor = showCrossHairCursor;
+    }
+
+    // ROI roiRect stuff
+    synchronized public void doClearROI() {
+        if (freezeRoi) {
+            showWarningDialogInSwingThread("Are you sure you want to clear ROI? Uncheck freezeROI if you want to clear the ROI.", "ROI frozen");
+            return;
+        }
+        clearSelection();
+    }
+
+    private void clearSelection() {
+        roiRect = null;
+    }
+
+    synchronized private void startRoiSelection(MouseEvent e) {
+        Point p = getMousePixel(e);
+        if (p == null) {
+            roiRect = null;
+            return;
+        }
+        roiStartPoint = p;
+        log.info("ROI start point = " + p);
+        roiSelecting = true;
+    }
+
+    synchronized private void finishRoiSelection(MouseEvent e) {
+        Point p = getMousePixel(e);
+        if (p == null) {
+            roiRect = null;
+            return;
+        }
+
+        roiEndPoint = p;
+        roiStartx = min(roiStartPoint.x, roiEndPoint.x);
+        roiStarty = min(roiStartPoint.y, roiEndPoint.y);
+        roiEndx = max(roiStartPoint.x, roiEndPoint.x) + 1;
+        roiEndy = max(roiStartPoint.y, roiEndPoint.y) + 1;
+        int w = roiEndx - roiStartx;
+        int h = roiEndy - roiStarty;
+        roiRect = new Rectangle(roiStartx, roiStarty, w, h);
+        putObject("roiRect", roiRect);
+    }
+
+    /**
+     * Returns true if the event is inside (or on border) of ROI
+     *
+     * @param e an event
+     * @return true if on or inside ROI, false if no ROI or outside
+     */
+    protected boolean insideRoi(BasicEvent e) {
+        if (roiRect == null || roiRect.isEmpty() || roiRect.contains(e.x, e.y)) {
+            return true;
+        }
+        return false;
+    }
+
+    private int min(int a, int b) {
+        return a < b ? a : b;
+    }
+
+    private int max(int a, int b) {
+        return a > b ? a : b;
+    }
+
+    @Override
+    public void mousePressed(MouseEvent e) {
+        Point p = getMousePixel(e);
+        if (!freezeRoi) {
+            startRoiSelection(e);
+        }
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        if (freezeRoi || roiStartPoint == null) {
+            return;
+        }
+        finishRoiSelection(e);
+        roiSelecting = false;
+        if (roiRect != null) {
+            log.info(String.format("ROI rect %s has %d pixels", roiRect, roiRect.height * roiRect.width));
+        }
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        currentMousePoint = getMousePixel(e);
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+        roiSelecting = false;
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent e) {
+    }
+
+    @Override
+    public void mouseDragged(MouseEvent e) {
+        if (roiStartPoint == null) {
+            return;
+        }
+        if (freezeRoi) {
+            log.warning("disable freezeRoi if you want to select a region of interest");
+            return;
+        }
+        finishRoiSelection(e);
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        Point p = getMousePixel(e);
+        clickedPoint = p;
+    }
+
+    /**
+     * Handles wheel event. Empty by default
+     *
+     * @param mwe the mouse wheel roll event
+     */
+    @Override
+    public void mouseWheelMoved(MouseWheelEvent mwe) {
+
+    }
+
+    /**
+     * @return the freezeSelection
+     */
+    public boolean isFreezeRoi() {
+        return freezeRoi;
+    }
+
+    /**
+     * @param freezeSelection the freezeSelection to set
+     */
+    public void setFreezeRoi(boolean freezeRoi) {
+        this.freezeRoi = freezeRoi;
+        putBoolean("freezeRoi", freezeRoi);
     }
 
 }

@@ -33,6 +33,8 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
 
     protected GLCanvas glCanvas;
     protected ChipCanvas chipCanvas;
+    float[] cursorColor = null;
+
     /**
      * Cursor size for drawn mouse cursor when filter is selected.
      */
@@ -40,7 +42,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     protected GLU glu = new GLU();
     protected GLUquadric quad = null;
     private boolean hasBlendChecked = false, hasBlend = false;
-    protected boolean showCrossHairCursor=true;
+    protected boolean showCrossHairCursor = true;
 
     public EventFilter2DMouseAdaptor(AEChip chip) {
         super(chip);
@@ -48,11 +50,12 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
         }
     }
-    float[] cursorColor = null;
 
     /**
-     * Sets a cursor color vector 
-     * @param color a 4-vector. Set it to null to return to default white shadowed cursor.
+     * Sets a cursor color vector
+     *
+     * @param color a 4-vector. Set it to null to return to default white
+     * shadowed cursor.
      */
     protected void setCursorColor(float[] color) {
         if (color == null) {
@@ -220,7 +223,9 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
     }
 
     /**
-     * By default a cross hair selection cursor is drawn. This method prevent drawing the cross hair.
+     * By default a cross hair selection cursor is drawn. This method prevent
+     * drawing the cross hair.
+     *
      * @param showCrossHairCursor the showCrossHairCursor to set
      */
     protected void setShowCrossHairCursor(boolean showCrossHairCursor) {
