@@ -4,6 +4,7 @@
  */
 package net.sf.jaer.graphics;
 
+import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -36,8 +37,19 @@ import net.sf.jaer.JAERViewer;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.Date;
+import java.util.logging.Level;
+import javax.imageio.ImageIO;
 import javax.swing.BoxLayout;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import net.sf.jaer.eventio.AEDataFile;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import static net.sf.jaer.graphics.ImageDisplay.log;
+import org.apache.commons.io.FilenameUtils;
 
 /**
  * OpenGL display of 2d data as color image. See the main method for example of
@@ -48,9 +60,9 @@ import static net.sf.jaer.graphics.ImageDisplay.log;
  *
  * You create a new ImageDisplay by using the static factory method
  * createImageDisplay, set the x,y size on it, and then you access the frame
- * pixmap directly by setting float (0-1 range) RGB or gray values at chosen x, y locations. It
- * takes care of scaling, centering, etc for you. When you are ready to show the
- * frame, call display() or repaint() on the ImageDisplay.
+ * pixmap directly by setting float (0-1 range) RGB or gray values at chosen x,
+ * y locations. It takes care of scaling, centering, etc for you. When you are
+ * ready to show the frame, call display() or repaint() on the ImageDisplay.
  *
  *
  *
@@ -402,19 +414,18 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     public FloatBuffer getPixmap() {
         return pixmap;
     }
-    
+
     /**
-     * The rendered pixel map FloatBuffer, ordered by rgb/row/col. The first 3 elements are
-     * the RBB float values of the LL pixel (x=0,y=0). The next 3 are the RGB of
-     * the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1)
-     * is at position starting at 3*(chip.getSizeX()).
-     * 
+     * The rendered pixel map FloatBuffer, ordered by rgb/row/col. The first 3
+     * elements are the RBB float values of the LL pixel (x=0,y=0). The next 3
+     * are the RGB of the second pixel from the left in the bottom row
+     * (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()).
+     *
      *
      */
     public void setPixmap(FloatBuffer pixmap) {
-        this.pixmap=pixmap;
+        this.pixmap = pixmap;
     }
-
 
     /**
      * Sets the pixel RGB value.
@@ -445,7 +456,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Sets a gray value in range 0-1 for pixel x,y. Convenience wrapper around setPixmapRGB.
+     * Sets a gray value in range 0-1 for pixel x,y. Convenience wrapper around
+     * setPixmapRGB.
      *
      * @param x
      * @param y
@@ -493,9 +505,9 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Returns an int that can be used to index to a particular pixel'legendString RGB
- start location in the pixmap. The successive 3 entries are the float
-     * (0-1) RGB values.
+     * Returns an int that can be used to index to a particular
+     * pixel'legendString RGB start location in the pixmap. The successive 3
+     * entries are the float (0-1) RGB values.
      *
      * @param x pixel x, 0 is left side.
      * @param y pixel y, 0 is bottom.
@@ -1191,15 +1203,15 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         public void setLegendString(String legendString) {
             this.legendString = legendString;
         }
-        
-        public void setXY(float x, float y){
-            this.x=x;
-            this.y=y;
+
+        public void setXY(float x, float y) {
+            this.x = x;
+            this.y = y;
         }
-        
-        public void setPoint(Point2D.Float p){
-            this.x=p.x;
-            this.y=p.y;
+
+        public void setPoint(Point2D.Float p) {
+            this.x = p.x;
+            this.y = p.y;
         }
 
         /**
@@ -1322,6 +1334,69 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         p.x = (p.x * scale) + clipArea.left;
         p.y = sizeY - ((p.y * scale) + clipArea.bottom);
         return p;
+    }
+
+    /**
+     * Save image as PNG file
+     *
+     * @param filePath the File to save to
+     */
+    public void savePng(String filePath) throws IOException {
+        final BufferedImage theImage = new BufferedImage(getSizeX(),getSizeY(), BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < getSizeY(); y++) {
+            for (int x = 0; x < getSizeX(); x++) {
+                float[] rgb = getPixmapRGB(x, y);
+                final int value = ((int) (256 * rgb[0]) << 16) | ((int) (256 * rgb[1]) << 8) | (int) (256 * rgb[2]);
+                theImage.setRGB(x, y, value);
+            }
+        }
+        final Date d = new Date();
+        final String PNG = ".png";
+        if (!filePath.toLowerCase().endsWith(PNG)) {
+            log.warning(String.format("Appending .png to %s", filePath));
+            filePath = filePath + PNG;
+        }
+
+        File outputfile = new File(filePath);
+//        boolean done = false;
+//        while (!done) {
+//            JFileChooser fd = new JFileChooser(outputfile);
+//            fd.setApproveButtonText("Save as");
+//            fd.setSelectedFile(outputfile);
+//            fd.setVisible(true);
+//            final int ret = fd.showOpenDialog(null);
+//            if (ret != JFileChooser.APPROVE_OPTION) {
+//                return;
+//            }
+//            outputfile = fd.getSelectedFile();
+//            if (!FilenameUtils.isExtension(outputfile.getAbsolutePath(), PNG)) {
+//                String ext = FilenameUtils.getExtension(outputfile.toString());
+//                String newfile = outputfile.getAbsolutePath();
+//                if (ext != null && !ext.isEmpty() && !ext.equals(PNG)) {
+//                    newfile = outputfile.getAbsolutePath().replace(ext, PNG);
+//                } else {
+//                    newfile = newfile + "." + PNG;
+//                }
+//                outputfile = new File(newfile);
+//            }
+//            if (outputfile.exists()) {
+//                int overwrite = JOptionPane.showConfirmDialog(fd, outputfile.toString() + " exists, overwrite?");
+//                switch (overwrite) {
+//                    case JOptionPane.OK_OPTION:
+//                        done = true;
+//                        break;
+//                    case JOptionPane.CANCEL_OPTION:
+//                        return;
+//                    case JOptionPane.NO_OPTION:
+//                        break;
+//                }
+//            } else {
+//                done = true;
+//            }
+//        }
+        ImageIO.write(theImage, "png", outputfile);
+        log.info("wrote PNG " + outputfile);
+//            JOptionPane.showMessageDialog(chip.getFilterFrame(), "Wrote "+userDir+File.separator+fn, "Saved PNG image", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private static int windowCount = 0;
