@@ -44,10 +44,8 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.ImageDisplay;
-import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.tensorflow.Graph;
 import org.tensorflow.Operation;
@@ -60,6 +58,7 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -72,10 +71,11 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import javax.swing.JFrame;
-import net.sf.jaer.eventprocessing.EventFilter;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
+import static net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat.PNG;
+import org.apache.commons.io.FilenameUtils;
 import org.tensorflow.Output;
 import org.tensorflow.Shape;
 
@@ -130,6 +130,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private int[][] timestampImage; // timestamp image
     private boolean showOnlySignalTimeimages = getBoolean("showOnlySignalTimeimages", false);
     private boolean showOnlyNoiseTimeimages = getBoolean("showOnlyNoiseTimeimages", false);
+    protected boolean saveTiPatchImages = false;
+    private int tiFileCounter = 0;
+    private File saveDir = null;
 
     private final int NONONOTONIC_TIMESTAMP_WARNING_INTERVAL = 100000;
     private int nonmonotonicWarningCount = 0;
@@ -192,6 +195,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         setPropertyTooltip(disp, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
         setPropertyTooltip(disp, "showOnlyNoiseTimeimages", "Shows timestamp image input to MLP only for noise classifications");
         setPropertyTooltip(disp, "showOnlySignalTimeimages", "Shows timestamp image input to MLP only for signal classifications");
+        setPropertyTooltip(disp, "saveTiPatchImages", "Saves the TI patch images to a folder named MLPNoiseFilter-signal or MLPNoiseFilter-noise");
         setPropertyTooltip(tf, "timeWindowS", "Window of time in seconds that the timestamp image counts past events; pixels with older events are set to zero");
         String roi = "Region of interest";
         setPropertyTooltip(roi, "freezeRoi", "Freezes ROI (region of interest) selection");
@@ -285,8 +289,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                             }
                         }
                         tfInputFloatBuffer.put(v);
-                        if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null && e==eventToDisplayTIPatchFor) {
-                            tiPatchDisplay.setPixmapGray(indx+radius-x, indy+radius-y, v); // shift back to 0,0 coordinate at LL
+                        if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null && e == eventToDisplayTIPatchFor) {
+                            tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, v); // shift back to 0,0 coordinate at LL
                         }
                     }
                 }
@@ -450,6 +454,15 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         GL2 gl = drawable.getGL().getGL2();
         if (tiPatchDisplay != null && showThisTiPatch) {
             tiPatchDisplay.repaint();
+            if (saveTiPatchImages && saveDir != null) {
+                try {
+                    String fn = saveDir.toString() + File.separator + "patch-" + String.format("%04d", tiFileCounter) + ".png";
+                    tiPatchDisplay.savePng(fn);
+                    tiFileCounter++;
+                } catch (IOException e) {
+                    log.warning("Could not save image: " + e.toString());
+                }
+            }
         }
 //        if (tfExecutionGraph != null) {
 //            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 1f);
@@ -1078,6 +1091,56 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public void setFreezeRoi(boolean freezeRoi) {
         this.freezeRoi = freezeRoi;
         putBoolean("freezeRoi", freezeRoi);
+    }
+
+    /**
+     * @return the saveTiPatchImages
+     */
+    public boolean isSaveTiPatchImages() {
+        return saveTiPatchImages;
+    }
+
+    /**
+     * @param saveTiPatchImages the saveTiPatchImages to set
+     */
+    public void setSaveTiPatchImages(boolean saveTiPatchImages) {
+        if (saveTiPatchImages) {
+            saveDir = chooseImageFolder();
+        } else {
+            if (saveDir != null) {
+                if (!Desktop.isDesktopSupported()) {
+                    log.warning("Sorry, desktop operations are not supported, cannot show the folder " + saveDir);
+                    return;
+                }
+                try {
+                    if (saveDir.exists()) {
+                        Desktop.getDesktop().open(saveDir);
+                    } else {
+                        log.warning(saveDir + " does not exist to open folder to");
+                    }
+                } catch (Exception e) {
+                    log.warning(e.toString());
+                }
+            }
+        }
+        this.saveTiPatchImages = saveTiPatchImages;
+    }
+
+    private File chooseImageFolder() {
+        String defaultDir = System.getProperty("home.dir") + File.separator + "tipatches";
+        String dirName = getString("saveDir", defaultDir);
+        JFileChooser fileChooser = new JFileChooser(dirName);
+        fileChooser.setApproveButtonText("Save in");
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fileChooser.setSelectedFile(new File(dirName));
+        fileChooser.setVisible(true);
+        final int ret = fileChooser.showOpenDialog(null);
+        if (ret != JFileChooser.APPROVE_OPTION) {
+            return null;
+        }
+        putString("saveDir", fileChooser.getSelectedFile().toString());
+        File outputDir = fileChooser.getSelectedFile();
+        return outputDir;
     }
 
 }
