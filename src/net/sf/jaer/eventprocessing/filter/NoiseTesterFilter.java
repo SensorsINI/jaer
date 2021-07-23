@@ -133,6 +133,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private DavisRenderer renderer = null;
     private boolean overlayPositives = getBoolean("overlayPositives", false);
     private boolean overlayNegatives = getBoolean("overlayNegatives", false);
+    
+    private boolean outputTrainingData = getBoolean("outputTrainingData", false);
+    private boolean outputFilterStatistic = getBoolean("outputTrainingData", true);
 
     private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
@@ -184,6 +187,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
         setPropertyTooltip(out, "closeCsvFile", "Closes the output spreadsheet data file.");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
+        setPropertyTooltip(out, "outputTrainingData", "Output data for training MLP.");
+	    setPropertyTooltip(out, "outputFilterStatistic", "Output analyzable data of a filter.");
         setPropertyTooltip(TT_FILT_CONTROL, "selectedNoiseFilterEnum", "Choose a noise filter to test");
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
@@ -482,9 +487,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         try {
             signalAndNoiseList = createEventList((EventPacket<BasicEvent>) signalAndNoisePacket);
 
-            for (BasicEvent event : signalAndNoiseList) {
-
-                if (csvWriter != null) {
+            if (outputTrainingData && csvWriter != null) {
+                for (BasicEvent event : signalAndNoiseList) {  
                     try {
                         int ts = event.timestamp;
                         final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
@@ -493,19 +497,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
                             continue;
                         }
-//                     if ((x - radius < 0) || (x + radius > sx) || (y - radius < 0) || (y + radius > sy)) {
-//                         lastTimesMap[x][y] = ts;
-//                         continue;
-//                     }
-//                     lastTimesMap[x][y] = ts;
-//                     String absTstring = "";
-//                     for (int indx = -radius; indx <= radius; indx++) {
-//                         for (int indy = -radius; indy <= radius; indy++) {
-//                         int absTs = lastTimesMap[x + indx][y + indy];
-//                         absTstring = absTstring + absTs + "" + ",";
-//                         }
-//                     }
-                        lastTimesMap[x][y] = ts;
+
+                        
                         String absTstring = "";
                         for (int indx = -radius; indx <= radius; indx++) {
                             for (int indy = -radius; indy <= radius; indy++) {
@@ -523,6 +516,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             csvWriter.write(String.format("%d,%d,%d,%d,%s%d\n",
                                     event.x, event.y, event.timestamp, 0, absTstring, firstE.timestamp)); // 0 means noise
                         }
+                        lastTimesMap[x][y] = ts;
 
                     } catch (IOException e) {
                         doCloseCsvFile();
@@ -620,15 +614,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 outSignalRateHz = (1e6f * TP) / deltaTime;
                 outNoiseRateHz = (1e6f * FP) / deltaTime;
             }
-//             if (csvWriter != null) {
-//                 try {
-//                     csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
-//                             TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
-//                             inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
-//                 } catch (IOException e) {
-//                     doCloseCsvFile();
-//                 }
-//             }
+            
+            if (outputFilterStatistic && csvWriter != null) {
+                 try {
+                     csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
+                             TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
+                             inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
+                 } catch (IOException e) {
+                     doCloseCsvFile();
+                 }
+             }
 
             if (overlayPositives) {
                 annotateNoiseFilteringEvents(tpList, fpList);
@@ -1136,6 +1131,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         } catch (IOException ex) {
             log.warning(String.format("could not open %s for output; caught %s", fn, ex.toString()));
         }
+    }
+    
+    /**
+     * @return the outputTrainingData
+     */
+    public boolean isOutputTrainingData() {
+	    return outputTrainingData;
+    }
+
+    /**
+     * @param outputTrainingData the outputTrainingData to set
+     */
+    public void setOutputTrainingData(boolean outputTrainingData) {
+	    this.outputTrainingData = outputTrainingData;
+    }
+    
+    /**
+     * @return the outputFilterStatistic
+     */
+    public boolean isOutputFilterStatistic() {
+	    return outputFilterStatistic;
+    }
+
+    /**
+     * @param outputFilterStatistic the outputFilterStatistic to set
+     */
+    public void setOutputFilterStatistic(boolean outputFilterStatistic) {
+	    this.outputFilterStatistic = outputFilterStatistic;
     }
 
     @Override
