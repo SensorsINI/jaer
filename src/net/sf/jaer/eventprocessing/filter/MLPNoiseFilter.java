@@ -78,6 +78,7 @@ import static net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat.PNG;
 import org.apache.commons.io.FilenameUtils;
 import org.tensorflow.Output;
 import org.tensorflow.Shape;
+import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * Noise filter that runs a DNN to denoise events
@@ -380,6 +381,37 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 setFilterEnabled(false);
                 resetFilter();
             }
+        }
+    }
+    
+    private String USAGE = "MLPFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx thr xx\n";
+
+    // remote control for experiments e.g. with python / UDP remote control 
+    @Override
+    public String setParameters(RemoteControlCommand command, String input) {
+        String[] tok = input.split("\\s");
+
+        if (tok.length < 3) {
+            return USAGE;
+        }
+        try {
+
+            if ((tok.length - 1) % 2 == 0) {
+            for (int i = 1; i < tok.length; i++) {
+                if (tok[i].equals("dt")) {
+                setCorrelationTimeS(1e-6f * Integer.parseInt(tok[i + 1]));
+                } else if (tok[i].equals("thr")) {
+                setSignalClassifierThreshold(Float.parseFloat(tok[i + 1]));
+                }
+            }
+            String out = "successfully set MLPFilter parameters dt " + String.valueOf(getCorrelationTimeS()) + " and threshold " + String.valueOf(signalClassifierThreshold);
+            return out;
+            } else {
+            return USAGE;
+            }
+
+        } catch (Exception e) {
+            return "IOExeption in remotecontrol" + e.toString() + "\n";
         }
     }
 
@@ -748,8 +780,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * @param signalClassifierThreshold the signalClassifierThreshold to set
      */
     public void setSignalClassifierThreshold(float signalClassifierThreshold) {
+        float old = this.signalClassifierThreshold;
         this.signalClassifierThreshold = signalClassifierThreshold;
         putFloat("signalClassifierThreshold", signalClassifierThreshold);
+        getSupport().firePropertyChange("signalClassifierThreshold", old, this.signalClassifierThreshold);
+
     }
 
     public float getMinSignalClassifierThreshold() {
