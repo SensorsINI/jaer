@@ -143,6 +143,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private final int LIST_LENGTH = 10000;
 
     private int[][] lastTimesMap;
+    private int[][] lastPolMap;
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
 	    fnList = new ArrayList(LIST_LENGTH),
@@ -168,7 +169,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse
     private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");
     ;
-    private final long MAX_FILTER_PROCESSING_TIME_MS = 5000; // times out to avoid using up all heap
+    private final long MAX_FILTER_PROCESSING_TIME_MS = 500000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
 
     public NoiseTesterFilter(AEChip chip) {
@@ -463,6 +464,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 	    log.info("initializing timestamp maps with Poisson process waiting times");
 	    for (AbstractNoiseFilter f : noiseFilters) {
 		f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
+		for (int[] i : lastPolMap) {
+		    Arrays.fill(i, 0);
+		}
 	    }
 	    initializeLeakStates(in.getFirstTimestamp());
 	}
@@ -493,40 +497,46 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 			int ts = event.timestamp;
 			int type = event.getPolarity() == PolarityEvent.Polarity.Off ? -1 : 1;
 			final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
-			int patchsize = 9;
+			int patchsize = 25;
 			int radius = (patchsize - 1) / 2;
 			if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
 			    continue;
 			}
 
 			String absTstring = "";
+			String polString = "";
 			for (int indx = -radius; indx <= radius; indx++) {
 			    for (int indy = -radius; indy <= radius; indy++) {
 				int absTs = 0;
+				int pol = 0;
 				if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)) {
 				    absTs = lastTimesMap[x + indx][y + indy];
+				    pol = lastPolMap[x + indx][y + indy];
 				}
 				absTstring = absTstring + absTs + "" + ",";
+				polString = polString + pol + "" + ",";
+
 			    }
 			}
 			if (recordPureNoise) {
 			    if (signalList.contains(event)) {
-				csvWriter.write(String.format("%d,%d,%d,%d,%s%d,%d\n",
-					event.x, event.y, event.timestamp, 0, absTstring, firstE.timestamp, type)); // 1 means signal
+				csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+					type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 1 means signal
 			    } else {
-				csvWriter.write(String.format("%d,%d,%d,%d,%s%d,%d\n",
-					event.x, event.y, event.timestamp, 1, absTstring, firstE.timestamp, type)); // 0 means noise
+				csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+					type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 0 means noise
 			    }
 			} else {
 			    if (signalList.contains(event)) {
-				csvWriter.write(String.format("%d,%d,%d,%d,%s%d,%d\n",
-					event.x, event.y, event.timestamp, 1, absTstring, firstE.timestamp, type)); // 1 means signal
+				csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+					type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 1 means signal
 			    } else {
-				csvWriter.write(String.format("%d,%d,%d,%d,%s%d,%d\n",
-					event.x, event.y, event.timestamp, 0, absTstring, firstE.timestamp, type)); // 0 means noise
+				csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+					type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 0 means noise
 			    }
 			}
 			lastTimesMap[x][y] = ts;
+			lastPolMap[x][y] = type;
 
 		    } catch (IOException e) {
 			doCloseCsvFile();
@@ -1018,6 +1028,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 	sy = chip.getSizeY() - 1;
 
 	lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
+	lastPolMap = new int[chip.getSizeX()][chip.getSizeY()];
 
 	timestampImage = new int[sx + 1][sy + 1];
 	leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
@@ -1143,7 +1154,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setOutputTrainingData(boolean outputTrainingData) {
 	this.outputTrainingData = outputTrainingData;
     }
-    
+
     /**
      * @return the recordPureNoise
      */
