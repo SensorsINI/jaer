@@ -131,12 +131,14 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
     private int[][] lastPolMap; // timestamp image
+    private boolean usePolarity = getBoolean("usePolarity", false);
 
     private boolean showOnlySignalTimeimages = getBoolean("showOnlySignalTimeimages", false);
     private boolean showOnlyNoiseTimeimages = getBoolean("showOnlyNoiseTimeimages", false);
     protected boolean saveTiPatchImages = false;
     private int tiFileCounter = 0;
     private File saveDir = null;
+    private int inputSF = 1;
 
     private final int NONONOTONIC_TIMESTAMP_WARNING_INTERVAL = 100000;
     private int nonmonotonicWarningCount = 0;
@@ -194,6 +196,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 	setPropertyTooltip(tf, "tfBatchSizeEvents", "Number of events to process in parallel for inference");
 	setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
 	setPropertyTooltip(tf, "signalClassifierThreshold", "Threshold for clasifying event as signal"); // TODO fix default to match training
+	setPropertyTooltip(tf, "usePolarity", "use Polarity as part of input of MLP"); // TODO fix default to match training
 	setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values");
 	setPropertyTooltip(disp, "showClassificationHistogram", "Shows a histogram of classification results");
 	setPropertyTooltip(disp, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
@@ -212,7 +215,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     }
 
     @Override
-    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in)  {
+    synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
 	super.filterPacket(in);
 	if (timestampImage == null) {
 	    allocateMaps(chip);
@@ -308,20 +311,22 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 		    }
 		}
 	    }
-	    int pol = e.getPolarity() == PolarityEvent.Polarity.Off ? -1 : 1;
-	    lastPolMap[x][y] = pol;
+	    if (usePolarity) {
+		int pol = e.getPolarity() == PolarityEvent.Polarity.Off ? -1 : 1;
+		lastPolMap[x][y] = pol;
 
-	    for (int indx = x - radius; indx <= x + radius; indx++) {
-		// iterate over NNb, computing the TI patch value
-		for (int indy = y - radius; indy <= y + radius; indy++) {
-		    if (indx < 0 || indx >= ssx || indy < 0 || indy > ssy) {
-			tfInputFloatBuffer.put(0); // For NNbs that are outside chip address space, set the TI patch input to zero
-			continue;
+		for (int indx = x - radius; indx <= x + radius; indx++) {
+		    // iterate over NNb, computing the TI patch value
+		    for (int indy = y - radius; indy <= y + radius; indy++) {
+			if (indx < 0 || indx >= ssx || indy < 0 || indy > ssy) {
+			    tfInputFloatBuffer.put(0); // For NNbs that are outside chip address space, set the TI patch input to zero
+			    continue;
+			}
+			int p = lastPolMap[indx][indy];
+
+			tfInputFloatBuffer.put(p); // if the NNb pixel had no event, then just write 0 to TI patch
+
 		    }
-		    int p = lastPolMap[indx][indy];
-
-		    tfInputFloatBuffer.put(p); // if the NNb pixel had no event, then just write 0 to TI patch
-
 		}
 	    }
 
@@ -349,8 +354,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 //	}
 //
 //    }
-    
-        private ArrayList<PolarityEvent> createEventList(EventPacket<PolarityEvent> p) throws Exception {
+    private ArrayList<PolarityEvent> createEventList(EventPacket<PolarityEvent> p) throws Exception {
 	ArrayList<PolarityEvent> l = new ArrayList(p.getSize());
 	PolarityEvent pe = null;
 	for (PolarityEvent e : p) {
@@ -380,8 +384,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * Checks the FloatBuffer used to hold input vector to MLP to make sure it is the correct size
      */
     private void checkMlpInputFloatBufferSize() {
-	if (tfInputFloatBuffer == null || tfInputFloatBuffer.capacity() != tfBatchSizeEvents * 2 * patchWidthAndHeightPixels * patchWidthAndHeightPixels) {
-	    tfInputFloatBuffer = FloatBuffer.allocate(tfBatchSizeEvents * 2 * patchWidthAndHeightPixels * patchWidthAndHeightPixels);
+	if (tfInputFloatBuffer == null || tfInputFloatBuffer.capacity() != tfBatchSizeEvents * inputSF * patchWidthAndHeightPixels * patchWidthAndHeightPixels) {
+	    tfInputFloatBuffer = FloatBuffer.allocate(tfBatchSizeEvents * inputSF * patchWidthAndHeightPixels * patchWidthAndHeightPixels);
 	}
     }
 
@@ -393,7 +397,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 	// Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
 	// i.e. y last order, with y index changing fastest.
 	tfInputFloatBuffer.flip();
-	try (Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, 2 * patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer)) {
+	try (Tensor<Float> tfInputTensor = Tensor.create(new long[]{tfNumInBatchSoFar, inputSF * patchWidthAndHeightPixels * patchWidthAndHeightPixels}, tfInputFloatBuffer)) {
 	    if (tfSession == null) {
 		tfSession = new Session(tfExecutionGraph);
 	    }
@@ -679,7 +683,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 		    Output output = o.output(onum);
 		    Shape shape = output.shape();
 		    if (opnum == 0) { // assume input layer
-			long nin = shape.size(1)/2;
+			long nin = shape.size(1) / inputSF;
 			int tiInputDim = (int) Math.round(Math.sqrt(nin));
 			log.info(String.format("Setting patchWidthAndHeightPixels=%d according to input # pixels=%d", tiInputDim, nin));
 			setPatchWidthAndHeightPixels(tiInputDim);
@@ -959,6 +963,25 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      */
     public void setShowOnlySignalTimeimages(boolean showOnlySignalTimeimages) {
 	this.showOnlySignalTimeimages = showOnlySignalTimeimages;
+    }
+
+    /**
+     * @return the usePolarity
+     */
+    public boolean isUsePolarity() {
+	return usePolarity;
+    }
+
+    /**
+     * @param usePolarity the usePolarity to set
+     */
+    public void setUsePolarity(boolean usePolarity) {
+	this.usePolarity = usePolarity;
+	if (this.usePolarity) {
+	    inputSF = 2;
+	} else {
+	    inputSF = 1;
+	}
     }
 
     /**
