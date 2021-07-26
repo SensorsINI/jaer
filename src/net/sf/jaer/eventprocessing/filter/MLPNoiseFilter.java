@@ -329,6 +329,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 			    tfInputFloatBuffer.put(0); // For NNbs that are outside chip address space, set the TI patch input to zero
 			    continue;
 			}
+			if (indx == x && indy == y){
+			    tfInputFloatBuffer.put(pol);
+			    continue;
+			}
 
 			int p = lastPolMap[indx][indy];
 			int nnbTs = timestampImage[indx][indy];
