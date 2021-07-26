@@ -993,46 +993,67 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * @param useTI the useTI to set
      */
     public void setUseTI(boolean useTI) {
-	this.useTI = useTI;
-	if (this.useTI) {
-	    inputSF = 1;
-	}
+        boolean old = this.useTI;
+        this.useTI = useTI;
+        if (this.useTI) {
+            inputSF = 1;
+        }
+        putBoolean("useTI", useTI);
+        getSupport().firePropertyChange("useTI", old, this.useTI);
+        if (useTI) {
+            setUsePolarity(false);
+            setUseTIandPol(false);
+        }
     }
 
     /**
      * @return the usePolarity
      */
     public boolean isUsePolarity() {
-	return usePolarity;
+        return usePolarity;
     }
 
     /**
      * @param usePolarity the usePolarity to set
      */
     public void setUsePolarity(boolean usePolarity) {
-	this.usePolarity = usePolarity;
-	if (this.usePolarity) {
-	    inputSF = 1;
-	}
+        boolean old = this.usePolarity;
+        this.usePolarity = usePolarity;
+        if (this.usePolarity) {
+            inputSF = 1;
+        }
+        putBoolean("usePolarity", usePolarity);
+        getSupport().firePropertyChange("usePolarity", old, this.usePolarity);
+        if (usePolarity) {
+            setUseTI(false);
+            setUseTIandPol(false);
+        }
     }
 
     /**
      * @return the useTIandPol
      */
     public boolean isUseTIandPol() {
-	return usePolarity;
+        return useTIandPol;
     }
 
     /**
      * @param useTIandPol the useTIandPol to set
      */
     public void setUseTIandPol(boolean useTIandPol) {
-	this.useTIandPol = useTIandPol;
-	if (this.useTIandPol) {
-	    inputSF = 2;
-	} else {
-	    inputSF = 1;
-	}
+        boolean old = this.useTIandPol;
+        this.useTIandPol = useTIandPol;
+        if (this.useTIandPol) {
+            inputSF = 2;
+        } else {
+            inputSF = 1;
+        }
+        putBoolean("useTIandPol", useTIandPol);
+        getSupport().firePropertyChange("useTIandPol", old, this.useTIandPol);
+        if (useTIandPol) {
+            setUseTI(false);
+            setUsePolarity(false);
+        }
     }
 
     /**
