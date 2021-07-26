@@ -196,7 +196,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 	setPropertyTooltip(TT_FILT_CONTROL, "selectedNoiseFilterEnum", "Choose a noise filter to test");
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
 	setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
-	setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>TNs (green) are noise filtered out.<p>FNs (red) are signal filtered out.");
+	setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
 	setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
 	setPropertyTooltip(TT_DISP, "clearROCHistory", "Clears samples from display.");
     }
