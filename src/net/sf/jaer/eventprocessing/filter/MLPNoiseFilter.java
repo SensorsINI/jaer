@@ -131,7 +131,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
     private int[][] lastPolMap; // timestamp image
+    private boolean useTI = getBoolean("useTI", true);
     private boolean usePolarity = getBoolean("usePolarity", false);
+    private boolean useTIandPol = getBoolean("useTIandPol", false);
 
     private boolean showOnlySignalTimeimages = getBoolean("showOnlySignalTimeimages", false);
     private boolean showOnlyNoiseTimeimages = getBoolean("showOnlyNoiseTimeimages", false);
@@ -196,7 +198,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 	setPropertyTooltip(tf, "tfBatchSizeEvents", "Number of events to process in parallel for inference");
 	setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
 	setPropertyTooltip(tf, "signalClassifierThreshold", "Threshold for clasifying event as signal"); // TODO fix default to match training
-	setPropertyTooltip(tf, "usePolarity", "use Polarity as part of input of MLP"); // TODO fix default to match training
+	setPropertyTooltip(tf, "useTI", "use TI only as input of MLP"); // TODO fix default to match training
+	setPropertyTooltip(tf, "usePolarity", "use Polarity only as input of MLP"); // TODO fix default to match training
+	setPropertyTooltip(tf, "useTIandPol", "use both TI and Polarity as input of MLP"); // TODO fix default to match training
+
 	setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values");
 	setPropertyTooltip(disp, "showClassificationHistogram", "Shows a histogram of classification results");
 	setPropertyTooltip(disp, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
@@ -271,47 +276,49 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 	    if (eventToDisplayTIPatchFor == null && insideRoi(e)) {
 		eventToDisplayTIPatchFor = e;
 	    }
-	    for (int indx = x - radius; indx <= x + radius; indx++) {
-		// iterate over NNb, computing the TI patch value
-		for (int indy = y - radius; indy <= y + radius; indy++) {
-		    if (indx < 0 || indx >= ssx || indy < 0 || indy > ssy) {
-			tfInputFloatBuffer.put(0); // For NNbs that are outside chip address space, set the TI patch input to zero
-			continue;
-		    }
-		    int nnbTs = timestampImage[indx][indy]; // NNb timestamp 
-		    if (nnbTs == DEFAULT_TIMESTAMP) {
-			tfInputFloatBuffer.put(0); // if the NNb pixel had no event, then just write 0 to TI patch
-		    } else {
-			int dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
-			float v = 0; // value put into TI patch
-			if (dt <= 0) { // ok, NNb pixel timestamp is older than us
-			    switch (tiPatchMethod) {
-				case ExponentialDecay:
+	    if (useTI || useTIandPol) {
+		for (int indx = x - radius; indx <= x + radius; indx++) {
+		    // iterate over NNb, computing the TI patch value
+		    for (int indy = y - radius; indy <= y + radius; indy++) {
+			if (indx < 0 || indx >= ssx || indy < 0 || indy > ssy) {
+			    tfInputFloatBuffer.put(0); // For NNbs that are outside chip address space, set the TI patch input to zero
+			    continue;
+			}
+			int nnbTs = timestampImage[indx][indy]; // NNb timestamp 
+			if (nnbTs == DEFAULT_TIMESTAMP) {
+			    tfInputFloatBuffer.put(0); // if the NNb pixel had no event, then just write 0 to TI patch
+			} else {
+			    int dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
+			    float v = 0; // value put into TI patch
+			    if (dt <= 0) { // ok, NNb pixel timestamp is older than us
+				switch (tiPatchMethod) {
+				    case ExponentialDecay:
 //                                float expDt = (float) Math.exp(dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-				    v = fastexp((float) dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-				    break;
-				case LinearDecay:
+					v = fastexp((float) dt / tauUs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+					break;
+				    case LinearDecay:
 
-				    if (-dt < tauUs) {
-					v = 1 - ((float) (-dt)) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
-				    }
-			    }
+					if (-dt < tauUs) {
+					    v = 1 - ((float) (-dt)) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
+					}
+				}
 //                            if (indx-x == 0 && indy-y == 0) {
 //                                log.info(String.format("dt=%d v=%.2f", dt, v));
 //                            }
-			} else {  // if dt>0 then time was nonmonotonic, ignore this pixel
-			    if (nonmonotonicWarningCount++ % NONONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
-				log.warning(String.format("timestamp in patch in future by %ss", eng.format(1e-6f * dt)));
+			    } else {  // if dt>0 then time was nonmonotonic, ignore this pixel
+				if (nonmonotonicWarningCount++ % NONONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
+				    log.warning(String.format("timestamp in patch in future by %ss", eng.format(1e-6f * dt)));
+				}
 			    }
-			}
-			tfInputFloatBuffer.put(v);
-			if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null && e == eventToDisplayTIPatchFor) {
-			    tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, v); // shift back to 0,0 coordinate at LL
+			    tfInputFloatBuffer.put(v);
+			    if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null && e == eventToDisplayTIPatchFor) {
+				tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, v); // shift back to 0,0 coordinate at LL
+			    }
 			}
 		    }
 		}
 	    }
-	    if (usePolarity) {
+	    if (usePolarity || useTIandPol) {
 		int pol = e.getPolarity() == PolarityEvent.Polarity.Off ? -1 : 1;
 		lastPolMap[x][y] = pol;
 
@@ -966,6 +973,23 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     }
 
     /**
+     * @return the useTI
+     */
+    public boolean isUseTI() {
+	return useTI;
+    }
+
+    /**
+     * @param useTI the useTI to set
+     */
+    public void setUseTI(boolean useTI) {
+	this.useTI = useTI;
+	if (this.useTI) {
+	    inputSF = 1;
+	}
+    }
+
+    /**
      * @return the usePolarity
      */
     public boolean isUsePolarity() {
@@ -978,6 +1002,23 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public void setUsePolarity(boolean usePolarity) {
 	this.usePolarity = usePolarity;
 	if (this.usePolarity) {
+	    inputSF = 1;
+	}
+    }
+
+    /**
+     * @return the useTIandPol
+     */
+    public boolean isUseTIandPol() {
+	return usePolarity;
+    }
+
+    /**
+     * @param useTIandPol the useTIandPol to set
+     */
+    public void setUseTIandPol(boolean useTIandPol) {
+	this.useTIandPol = useTIandPol;
+	if (this.useTIandPol) {
 	    inputSF = 2;
 	} else {
 	    inputSF = 1;
