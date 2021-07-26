@@ -318,7 +318,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 		    }
 		}
 	    }
-	    if (usePolarity || useTIandPol) {
+            if (usePolarity || useTIandPol) {
 		int pol = e.getPolarity() == PolarityEvent.Polarity.Off ? -1 : 1;
 		lastPolMap[x][y] = pol;
 
@@ -329,12 +329,22 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 			    tfInputFloatBuffer.put(0); // For NNbs that are outside chip address space, set the TI patch input to zero
 			    continue;
 			}
+
 			int p = lastPolMap[indx][indy];
+			int nnbTs = timestampImage[indx][indy];
+			if (nnbTs == DEFAULT_TIMESTAMP) {
+			    p = 0; // if the NNb pixel had no event, then just write 0 to TI patch
+			} else {
+			    int dt = nnbTs - ts; // dt is negative delta time, i.e. the time in us of NNb event relative to us.  When NNb ts is older, dt is more negative
 
+			    if (-dt > tauUs) {
+				p = 0;
+			    }
+			}
 			tfInputFloatBuffer.put(p); // if the NNb pixel had no event, then just write 0 to TI patch
-
 		    }
 		}
+
 	    }
 
 	    if (tfNumInBatchSoFar >= tfBatchSizeEvents) { // if we have a full batch, classify the events in it
