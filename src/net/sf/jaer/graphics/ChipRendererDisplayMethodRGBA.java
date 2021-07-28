@@ -204,7 +204,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
             // rgb
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, GL2.GL_COMBINE); 
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, GL2.GL_REPLACE); 
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, GL2.GL_ADD_SIGNED); 
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_RGB, GL2.GL_PREVIOUS);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_RGB, GL2.GL_TEXTURE);
