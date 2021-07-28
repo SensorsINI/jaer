@@ -552,6 +552,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         for (int[] arrayRow : lastPolMap) {
             Arrays.fill(arrayRow, 0);
         }
+        checkMlpInputFloatBufferSize();  // in case size changed
         tfNumInBatchSoFar = 0;
         if (tfInputFloatBuffer != null) {
             tfInputFloatBuffer.clear();
@@ -1024,7 +1025,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     /**
      * @param useTI the useTI to set
      */
-    public void setUseTI(boolean useTI) {
+    synchronized public void setUseTI(boolean useTI) {
         boolean old = this.useTI;
         this.useTI = useTI;
         if (this.useTI) {
@@ -1036,6 +1037,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             setUsePolarity(false);
             setUseTIandPol(false);
         }
+        checkMlpInputFloatBufferSize();
     }
 
     /**
@@ -1048,7 +1050,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     /**
      * @param usePolarity the usePolarity to set
      */
-    public void setUsePolarity(boolean usePolarity) {
+    synchronized public void setUsePolarity(boolean usePolarity) {
         boolean old = this.usePolarity;
         this.usePolarity = usePolarity;
         if (this.usePolarity) {
@@ -1060,6 +1062,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             setUseTI(false);
             setUseTIandPol(false);
         }
+        checkMlpInputFloatBufferSize();
     }
 
     /**
@@ -1072,7 +1075,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     /**
      * @param useTIandPol the useTIandPol to set
      */
-    public void setUseTIandPol(boolean useTIandPol) {
+    synchronized public void setUseTIandPol(boolean useTIandPol) {
         boolean old = this.useTIandPol;
         this.useTIandPol = useTIandPol;
         if (this.useTIandPol) {
@@ -1086,6 +1089,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             setUseTI(false);
             setUsePolarity(false);
         }
+        checkMlpInputFloatBufferSize();
     }
 
     /**
