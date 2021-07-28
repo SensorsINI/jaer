@@ -406,8 +406,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * is the correct size
      */
     private void checkMlpInputFloatBufferSize() {
-        if (tfInputFloatBuffer == null || tfInputFloatBuffer.capacity() != tfBatchSizeEvents * inputSF * patchWidthAndHeightPixels * patchWidthAndHeightPixels) {
-            tfInputFloatBuffer = FloatBuffer.allocate(tfBatchSizeEvents * inputSF * patchWidthAndHeightPixels * patchWidthAndHeightPixels);
+        final int bufsize = tfBatchSizeEvents * inputSF * patchWidthAndHeightPixels * patchWidthAndHeightPixels;
+        if (tfInputFloatBuffer == null || tfInputFloatBuffer.capacity() != bufsize) {
+            log.info(String.format("resizing network input float buffer for tfBatchSizeEvents * inputSF * patchWidthAndHeightPixels * patchWidthAndHeightPixels = %d x %d x %d x %d",
+                    tfBatchSizeEvents, inputSF, patchWidthAndHeightPixels, patchWidthAndHeightPixels));
+            tfInputFloatBuffer = FloatBuffer.allocate(bufsize);
         }
     }
 
@@ -662,7 +665,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             return;
         }
         try {
-            String status=loadNetwork(file);
+            String status = loadNetwork(file);
             setLastManuallyLoadedNetwork(file.toString()); // store the last manually loaded network as the 
             resetFilter();
             showPlainMessageDialogInSwingThread(status, "MLPF network");
