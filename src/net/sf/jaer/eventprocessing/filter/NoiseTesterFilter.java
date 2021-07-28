@@ -283,14 +283,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 	    return;
 	}
 	renderer.clearAnnotationMap();
-	final int offset = 1;
+	final int offset = 1; // how many pixels offset is the annnotation overlay, so we can see original signal/noise event and its label
 //        final float a = getAnnotateAlpha();
 	final float[] noiseColor = {1f, 0, 0, 1}, sigColor = {0, 1f, 0, 1};
 	for (FilteredEventWithNNb e : outSig) {
-	    renderer.setAnnotateColorRGBA(e.e.x + 2 >= sx ? e.e.x : e.e.x + offset, e.e.y - 2 < 0 ? e.e.y : e.e.y - offset, sigColor);
+	    renderer.setAnnotateColorRGBA(e.e.x + offset >= sx ? e.e.x : e.e.x + offset, e.e.y - offset < 0 ? e.e.y : e.e.y - offset, sigColor);
 	}
 	for (FilteredEventWithNNb e : outNoise) {
-	    renderer.setAnnotateColorRGBA(e.e.x + 2 >= sx ? e.e.x : e.e.x + offset, e.e.y - 2 < 0 ? e.e.y : e.e.y - offset, noiseColor);
+	    renderer.setAnnotateColorRGBA(e.e.x + offset >= sx ? e.e.x : e.e.x + offset, e.e.y - offset < 0 ? e.e.y : e.e.y - offset, noiseColor);
 //            renderer.setAnnotateColorRGBA(e.x+2, e.y-2, noiseColor);
 	}
     }
