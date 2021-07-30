@@ -130,7 +130,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
-    private int[][] lastPolMap; // timestamp image
+    private int[][] lastPolMap; // last polarity image, contains 0 for not initialized, 1 for ON, -1 for OFF events
     private boolean useTI = getBoolean("useTI", true);
     private boolean usePolarity = getBoolean("usePolarity", false);
     private boolean useTIandPol = getBoolean("useTIandPol", false);
@@ -312,7 +312,18 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                             }
                             tfInputFloatBuffer.put(v);
                             if (tiPatchDisplay != null && eventToDisplayTIPatchFor != null && e == eventToDisplayTIPatchFor) {
-                                tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, v); // shift back to 0,0 coordinate at LL
+                                if (useTI) {
+                                    tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, v); // shift back to 0,0 coordinate at LL
+                                } else { //assume use polarity too
+                                    int p = lastPolMap[indx][indy];
+                                    if (p == 0) {
+                                        tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, 0); // shift back to 0,0 coordinate at LL
+                                    } else if (p > 0) {
+                                        tiPatchDisplay.setPixmapRGB(indx + radius - x, indy + radius - y, 0, v, 0); // shift back to 0,0 coordinate at LL
+                                    } else {
+                                        tiPatchDisplay.setPixmapRGB(indx + radius - x, indy + radius - y, v, 0, 0); // shift back to 0,0 coordinate at LL
+                                    }
+                                }
                             }
                         }
                     }
