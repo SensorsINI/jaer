@@ -316,6 +316,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                                     tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, v); // shift back to 0,0 coordinate at LL
                                 } else { //assume use polarity too
                                     int p = lastPolMap[indx][indy];
+                                    if (indx == x && indy == y) {
+                                        p = e.getPolaritySignum(); // center pixel should always be polarity of this event
+                                    }
                                     if (p == 0) {
                                         tiPatchDisplay.setPixmapGray(indx + radius - x, indy + radius - y, 0); // shift back to 0,0 coordinate at LL
                                     } else if (p > 0) {
@@ -330,7 +333,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 }
             }
             if (usePolarity || useTIandPol) {
-                int pol = e.getPolarity() == PolarityEvent.Polarity.Off ? -1 : 1;
+                int pol = e.getPolaritySignum(); // -1 OFF, +1 ON
                 lastPolMap[x][y] = pol;
 
                 for (int indx = x - radius; indx <= x + radius; indx++) {
