@@ -523,10 +523,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public String infoString() {
         String s = getClass().getSimpleName();
         s = s.replaceAll("[a-z]", "");
-        s = s + String.format(": tau=%ss subSamp=%d s_MLPF=%dpx T_MLPF=%.2f",
+        s = s + String.format(": tau=%ss subSamp=%d s_MLPF=%dx%dpx T_MLPF=%.2f",
                 eng.format(getCorrelationTimeS()),
                 getSubsampleBy(),
-                patchWidthAndHeightPixels, patchWidthAndHeightPixels,
+                patchWidthAndHeightPixels,patchWidthAndHeightPixels,
                 getSignalClassifierThreshold()
         );
         return s;

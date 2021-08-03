@@ -265,7 +265,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             s = String.format("NTF: Precorded noise from %s. %s", prerecordedNoise.file.getName(),
                     overlayString);
         } else {
-            s = String.format("NTF: Synthetic noise: Leak %sHz, Shot %sHz. %s", eng.format(leakNoiseRateHz), eng.format(shotNoiseRateHz),
+            s = String.format("NTF: Synthetic noise: CoV %s dec, Leak %sHz+/-%s jitter, Shot %sHz. %s", eng.format(noiseRateCoVDecades), eng.format(leakNoiseRateHz), eng.format(leakJitterFraction), eng.format(shotNoiseRateHz),
                     overlayString);
         }
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
