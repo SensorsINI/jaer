@@ -203,10 +203,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
         setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
-        setPropertyTooltip(TT_DISP, "overlayTP", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
-        setPropertyTooltip(TT_DISP, "overlayTN", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
-        setPropertyTooltip(TT_DISP, "overlayFP", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
-        setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
+        setPropertyTooltip(TT_DISP, "overlayTP", "<html><p>Overlay TP in green <br>(signal events correctly classified)");
+        setPropertyTooltip(TT_DISP, "overlayTN", "<html><p>Overlay TN in red <br>(noise events correctly classified)");
+        setPropertyTooltip(TT_DISP, "overlayFP", "<html><p>Overlay FP in red <br>(noise events incorrectly classified as signal)");
+        setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay FN in green <br>(signal events incorrectly classified as noise)");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
         setPropertyTooltip(TT_DISP, "clearROCHistory", "Clears samples from display.");
     }
