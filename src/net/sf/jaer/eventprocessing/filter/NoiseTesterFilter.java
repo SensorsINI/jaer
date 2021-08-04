@@ -134,6 +134,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private DavisRenderer renderer = null;
     private boolean overlayPositives = getBoolean("overlayPositives", false);
     private boolean overlayNegatives = getBoolean("overlayNegatives", false);
+    private boolean overlayTP = getBoolean("overlayTP", false);
+    private boolean overlayTN = getBoolean("overlayTN", false);
+    private boolean overlayFP = getBoolean("overlayFP", false);
+    private boolean overlayFN = getBoolean("overlayFN", false);
+    final float[] NOISE_COLOR = {1f, 0, 0, 1}, SIG_COLOR = {0, 1f, 0, 1};
+    final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
 
     private boolean outputTrainingData = getBoolean("outputTrainingData", false);
     private boolean recordPureNoise = getBoolean("recordPureNoise", false);
@@ -197,6 +203,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
         setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
         setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
+        setPropertyTooltip(TT_DISP, "overlayTP", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
+        setPropertyTooltip(TT_DISP, "overlayTN", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
+        setPropertyTooltip(TT_DISP, "overlayFP", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
+        setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
         setPropertyTooltip(TT_DISP, "clearROCHistory", "Clears samples from display.");
     }
@@ -258,8 +268,17 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (overlayPositives) {
             overlayString += "positives: TP (green), FP (red)";
         }
-        if ((!overlayPositives) && (!overlayNegatives)) {
-            overlayString += "None";
+        if (overlayFN) {
+            overlayString += " FN (green) ";
+        }
+        if (overlayFP) {
+            overlayString += " FP (red) ";
+        }
+        if (overlayTN) {
+            overlayString += " TN (red) ";
+        }
+        if (overlayTP) {
+            overlayString += " TP (green) ";
         }
         if (prerecordedNoise != null) {
             s = String.format("NTF: Precorded noise from %s. %s", prerecordedNoise.file.getName(),
@@ -284,16 +303,20 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (renderer == null) {
             return;
         }
-        renderer.clearAnnotationMap();
-        final int offset = 1; // how many pixels offset is the annnotation overlay, so we can see original signal/noise event and its label
-//        final float a = getAnnotateAlpha();
-        final float[] noiseColor = {1f, 0, 0, 1}, sigColor = {0, 1f, 0, 1};
         for (FilteredEventWithNNb e : outSig) {
-            renderer.setAnnotateColorRGBA(e.e.x + offset >= sx ? e.e.x : e.e.x + offset, e.e.y - offset < 0 ? e.e.y : e.e.y - offset, sigColor);
+            renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, SIG_COLOR);
         }
         for (FilteredEventWithNNb e : outNoise) {
-            renderer.setAnnotateColorRGBA(e.e.x + offset >= sx ? e.e.x : e.e.x + offset, e.e.y - offset < 0 ? e.e.y : e.e.y - offset, noiseColor);
-//            renderer.setAnnotateColorRGBA(e.x+2, e.y-2, noiseColor);
+            renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, NOISE_COLOR);
+        }
+    }
+
+    private void annotateNoiseFilteringEvents(ArrayList<FilteredEventWithNNb> events, float[] color) {
+        if (renderer == null) {
+            return;
+        }
+        for (FilteredEventWithNNb e : events) {
+            renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, color);
         }
     }
 
@@ -650,11 +673,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
+            if (renderer != null) {
+                renderer.clearAnnotationMap();
+            }
             if (overlayPositives) {
                 annotateNoiseFilteringEvents(tpList, fpList);
             }
             if (overlayNegatives) {
                 annotateNoiseFilteringEvents(fnList, tnList);
+            }
+            if (overlayTP) {
+                annotateNoiseFilteringEvents(tpList, SIG_COLOR);
+            }
+            if (overlayTN) {
+                annotateNoiseFilteringEvents(tnList, NOISE_COLOR);
+            }
+            if (overlayFP) {
+                annotateNoiseFilteringEvents(fpList, NOISE_COLOR);
+            }
+            if (overlayFN) {
+                annotateNoiseFilteringEvents(fnList, SIG_COLOR);
             }
 
             rocHistory.addSample(1 - TNR, TPR, getCorrelationTimeS());
@@ -1349,7 +1387,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     private void fixRendererAnnotationLayerShowing() {
         if (renderer != null) {
-            renderer.setDisplayAnnotation(this.overlayNegatives || this.overlayPositives);
+            renderer.setDisplayAnnotation(overlayNegatives || overlayPositives
+                    || overlayFN || overlayFP || overlayTP || overlayTN);
         }
     }
 
@@ -1497,6 +1536,66 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public void setLeakJitterFraction(float leakJitterFraction) {
         this.leakJitterFraction = leakJitterFraction;
+    }
+
+    /**
+     * @return the overlayTP
+     */
+    public boolean isOverlayTP() {
+        return overlayTP;
+    }
+
+    /**
+     * @param overlayTP the overlayTP to set
+     */
+    public void setOverlayTP(boolean overlayTP) {
+        this.overlayTP = overlayTP;
+        fixRendererAnnotationLayerShowing();
+    }
+
+    /**
+     * @return the overlayTN
+     */
+    public boolean isOverlayTN() {
+        return overlayTN;
+    }
+
+    /**
+     * @param overlayTN the overlayTN to set
+     */
+    public void setOverlayTN(boolean overlayTN) {
+        this.overlayTN = overlayTN;
+        fixRendererAnnotationLayerShowing();
+    }
+
+    /**
+     * @return the overlayFP
+     */
+    public boolean isOverlayFP() {
+        return overlayFP;
+    }
+
+    /**
+     * @param overlayFP the overlayFP to set
+     */
+    public void setOverlayFP(boolean overlayFP) {
+        this.overlayFP = overlayFP;
+        fixRendererAnnotationLayerShowing();
+    }
+
+    /**
+     * @return the overlayFN
+     */
+    public boolean isOverlayFN() {
+        return overlayFN;
+    }
+
+    /**
+     * @param overlayFN the overlayFN to set
+     */
+    public void setOverlayFN(boolean overlayFN) {
+        this.overlayFN = overlayFN;
+        fixRendererAnnotationLayerShowing();
     }
 
     /**
