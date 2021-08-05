@@ -113,6 +113,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private FloatBuffer tfInputFloatBuffer = null;
     private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
     protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
+    protected float timeWindowS = getFloat("timeWindowS", .1f);
 
     // plotting TI patches and stats
     private DescriptiveStatistics stats = null;
@@ -196,8 +197,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         setPropertyTooltip(tf, "inputLayerName", "(TensorFlow only) Input layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "outputLayerName", "(TensorFlow only) Output layer; parse it from loading the network and examining console output for layers for lines starting with ****");
         setPropertyTooltip(tf, "tfBatchSizeEvents", "Number of events to process in parallel for inference");
-        setPropertyTooltip(tf, "patchWidthAndHeightPixels", "Dimension (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
-        setPropertyTooltip(tf, "signalClassifierThreshold", "Threshold for clasifying event as signal"); // TODO fix default to match training
+        setPropertyTooltip(tf, "patchWidthAndHeightPixels", "<html>Dimension s<sub>MLPF</sub> (width and height in pixels) of the timestamp image input to DNN around each event (default 11)"); // TODO fix default to match training
+        setPropertyTooltip(tf, "signalClassifierThreshold", "<html>Threshold T<sub>MLPF</sub>  for clasifying event as signal"); // TODO fix default to match training
         setPropertyTooltip(tf, "useTI", "use TI only as input of MLP"); // TODO fix default to match training
         setPropertyTooltip(tf, "usePolarity", "use Polarity only as input of MLP"); // TODO fix default to match training
         setPropertyTooltip(tf, "useTIandPol", "use both TI and Polarity as input of MLP"); // TODO fix default to match training
@@ -208,7 +209,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         setPropertyTooltip(disp, "showOnlyNoiseTimeimages", "Shows timestamp image input to MLP only for noise classifications");
         setPropertyTooltip(disp, "showOnlySignalTimeimages", "Shows timestamp image input to MLP only for signal classifications");
         setPropertyTooltip(disp, "saveTiPatchImages", "Saves the TI patch images to a folder named MLPNoiseFilter-signal or MLPNoiseFilter-noise");
-        setPropertyTooltip(tf, "timeWindowS", "Window of time in seconds that the timestamp image counts past events; pixels with older events are set to zero");
+        setPropertyTooltip(tf, "timeWindowS", "<html>Window of time tau in seconds that the timestamp image counts past events; <br>pixels with older events are set to zero.<p> Windows within window are linearly or exponentially decayed to zero as dt approaches timeWindowS");
         String roi = "Region of interest";
         setPropertyTooltip(roi, "freezeRoi", "Freezes ROI (region of interest) selection");
         setPropertyTooltip(roi, "clearROI", "Clears ROI (region of interest)");
@@ -225,7 +226,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         if (timestampImage == null) {
             allocateMaps(chip);
         }
-        int tauUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
+        int tauUs = (int) Math.round(timeWindowS * 1e6f);
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;
 
@@ -508,7 +509,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                         setSignalClassifierThreshold(Float.parseFloat(tok[i + 1]));
                     }
                 }
-                String out = "successfully set MLPFilter parameters dt " + String.valueOf(getCorrelationTimeS()) + " and threshold " + String.valueOf(signalClassifierThreshold);
+                String out = "successfully set MLPFilter parameters time window tau=" + String.valueOf(timeWindowS) + " and threshold T_MLPF " + String.valueOf(signalClassifierThreshold);
                 return out;
             } else {
                 return USAGE;
@@ -523,8 +524,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public String infoString() {
         String s = getClass().getSimpleName();
         s = s.replaceAll("[a-z]", "");
-        s = s + String.format(": timeWindow=%ss s_MLPF=%dx%dpx T_MLPF=%.2f subSamp=%d",
-                eng.format(getTimeWindowS()),
+        s = s + String.format(": tau=%ss s_MLPF=%dx%dpx T_MLPF=%.2f subSamp=%d",
+                eng.format(timeWindowS),
                 patchWidthAndHeightPixels,patchWidthAndHeightPixels,
                 getSignalClassifierThreshold(),
                 getSubsampleBy()
@@ -1005,17 +1006,17 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     }
 
     /**
-     * Sets the noise filter correlation time. Empty method that can be
-     * overridden
+     * Sets the time window for TI input patch time surface computation.
      *
      * @param dtS time in seconds
      */
     public void setTimeWindowS(float dtS) {
-        super.setCorrelationTimeS(dtS);
+        this.timeWindowS=dtS;
+        putFloat("timeWindowS",this.timeWindowS);
     }
 
     public float getTimeWindowS() {
-        return super.getCorrelationTimeS();
+        return timeWindowS;
     }
 
     /**
