@@ -156,7 +156,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             fpList = new ArrayList(LIST_LENGTH),
             tnList = new ArrayList(LIST_LENGTH); // output of classification
     private ArrayList<PolarityEvent> noiseList = new ArrayList<PolarityEvent>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
-    private NNbHistograms nnbHistograms = new NNbHistograms(); // tracks stats of neighbors to events when they are filtered in or out
     /**
      * How time is split up for Poisson sampling using bounds trick
      */
@@ -195,6 +194,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
         setPropertyTooltip(out, "closeCsvFile", "Closes the output spreadsheet data file.");
+        setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see "+out+" section).");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip(out, "outputTrainingData", "Output data for training MLP.");
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
@@ -590,23 +590,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
                 // now we sort out the mess
                 TP = countIntersect(signalList, positiveList, tpList);   // True positives: Signal that was correctly retained by filtering
-                updateNnbHistograms(Classification.TP, tpList);
                 if (checkStopMe("after TP")) {
                     return in;
                 }
 
                 FN = countIntersect(signalList, negativeList, fnList);            // False negatives: Signal that was incorrectly removed by filter.
-                updateNnbHistograms(Classification.FN, fnList);
                 if (checkStopMe("after FN")) {
                     return in;
                 }
                 FP = countIntersect(noiseList, positiveList, fpList);    // False positives: Noise that is incorrectly passed by filter
-                updateNnbHistograms(Classification.FP, fpList);
                 if (checkStopMe("after FP")) {
                     return in;
                 }
                 TN = countIntersect(noiseList, negativeList, tnList);             // True negatives: Noise that was correctly removed by filter
-                updateNnbHistograms(Classification.TN, tnList);
                 if (checkStopMe("after TN")) {
                     return in;
                 }
@@ -1022,7 +1018,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (prerecordedNoise != null) {
             prerecordedNoise.rewind();
         }
-        nnbHistograms.reset();
         for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
@@ -1164,7 +1159,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putString("csvFileName", csvFileName);
         getSupport().firePropertyChange("csvFileName", this.csvFileName, csvFileName);
         this.csvFileName = csvFileName;
-        openCvsFiile();
+        doOpenCsvFile();
     }
 
     public void doCloseCsvFile() {
@@ -1181,7 +1176,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    private void openCvsFiile() {
+    public void doOpenCsvFile() {
         String fn = csvFileName + ".csv";
         csvFile = new File(fn);
         log.info(String.format("opening %s for output", fn));
@@ -1451,10 +1446,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         rocHistory.reset();
     }
 
-    synchronized public void doPrintNnbInfo() {
-        System.out.print(nnbHistograms.toString());
-    }
-
     synchronized public void doCloseNoiseSourceRecording() {
         if (prerecordedNoise != null) {
             log.info("clearing recoerded noise input data");
@@ -1500,12 +1491,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private enum Classification {
         None, TP, FP, TN, FN
-    }
-
-    private void updateNnbHistograms(Classification classification, ArrayList<FilteredEventWithNNb> filteredInNnb) {
-        for (FilteredEventWithNNb e : filteredInNnb) {
-            nnbHistograms.addEvent(classification, e.nnb);
-        }
     }
 
     /**
