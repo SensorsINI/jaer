@@ -73,7 +73,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     static protected HashMap<Object, Integer> noiseStatDrawingMap = new HashMap();
     protected final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
-    protected int MAX_DT_US = 300000;
+    protected int MAX_DT_US = 2000000;
     protected int MIN_DT_US = 10;
 
     /**
@@ -359,7 +359,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     public float getMaxCorrelationTimeS() {
-        return MAX_DT_US * 1e-6f;
+        return 0.3f;
     }
 
     public int getSubsampleBy() {
