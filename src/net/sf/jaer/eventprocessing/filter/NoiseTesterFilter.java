@@ -108,6 +108,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private File csvFile = null;
     private BufferedWriter csvWriter = null;
     private int[][] timestampImage = null; // image of last event timestamps
+    private int[][] lastPolMap;
 
     /**
      * Chip dimensions in pixels MINUS ONE, set in initFilter()
@@ -141,15 +142,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     final float[] NOISE_COLOR = {1f, 0, 0, 1}, SIG_COLOR = {0, 1f, 0, 1};
     final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
 
-    private boolean outputTrainingData = getBoolean("outputTrainingData", false);
-    private boolean recordPureNoise = getBoolean("recordPureNoise", false);
-    private boolean outputFilterStatistic = getBoolean("outputTrainingData", true);
+    private boolean outputTrainingData = false;
+    private boolean recordPureNoise = false;
+    private boolean outputFilterStatistic = false;
 
     private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
 
-    private int[][] lastTimesMap;
-    private int[][] lastPolMap;
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
             fnList = new ArrayList(LIST_LENGTH),
@@ -194,7 +193,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
         setPropertyTooltip(out, "closeCsvFile", "Closes the output spreadsheet data file.");
-        setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see "+out+" section).");
+        setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see " + out + " section).");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
         setPropertyTooltip(out, "outputTrainingData", "Output data for training MLP.");
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
@@ -488,6 +487,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (resetCalled) {
             resetCalled = false;
             int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-( Or at least it used to, fixed now I think (Tobi)
+            initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts);
             // initialize filters with lastTimesMap to Poisson waiting times
             log.info("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
@@ -538,7 +538,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                                 int absTs = 0;
                                 int pol = 0;
                                 if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)) {
-                                    absTs = lastTimesMap[x + indx][y + indy];
+                                    absTs = timestampImage[x + indx][y + indy];
                                     pol = lastPolMap[x + indx][y + indy];
                                 }
                                 absTstring = absTstring + absTs + "" + ",";
@@ -546,7 +546,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
                             }
                         }
-                        if (recordPureNoise) {
+                        if (recordPureNoise) { // if pure noise, labels must reversed otherwise the events will be labeled as signal
                             if (signalList.contains(event)) {
                                 csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
                                         type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 1 means signal
@@ -563,7 +563,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                                         type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 0 means noise
                             }
                         }
-                        lastTimesMap[x][y] = ts;
+                        timestampImage[x][y] = ts;
                         lastPolMap[x][y] = type;
 
                     } catch (IOException e) {
@@ -1078,7 +1078,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
 
-        lastTimesMap = new int[chip.getSizeX()][chip.getSizeY()];
+        timestampImage = new int[chip.getSizeX()][chip.getSizeY()];
         lastPolMap = new int[chip.getSizeX()][chip.getSizeY()];
 
         timestampImage = new int[sx + 1][sy + 1];
@@ -1954,6 +1954,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             noiseNextEvent = noiseFirstEvent;
             signalMostRecentTs = null;
             noiseEventCounter = 0;
+        }
+    }
+
+    /**
+     * By default empty method (which logs warning if called) that initializes
+     * filter to produce proper statistics for noise filtering by filling past
+     * events history with past events according to Poisson times of noise
+     * events
+     *
+     * @param noiseRateHz rate in Hz
+     * @param lastTimestampUs the last timestamp; waiting times are created
+     * before this time
+     */
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        Random random = new Random();
+        for (final int[] arrayRow : timestampImage) {
+            for (int i = 0; i < arrayRow.length; i++) {
+                final double p = random.nextDouble();
+                final double t = -noiseRateHz * Math.log(1 - p);
+                final int tUs = (int) (1000000 * t);
+                arrayRow[i] = lastTimestampUs - tUs;
+            }
+        }
+        for (final int[] arrayRow : lastPolMap) {
+            for (int i = 0; i < arrayRow.length; i++) {
+                final boolean b=random.nextBoolean();
+                arrayRow[i] = b?1:-1;
+            }
         }
     }
 
