@@ -412,7 +412,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 if (exception != null) {
                     JOptionPane.showMessageDialog(
                             viewer != null ? viewer : null,
-                            "in AEPlayer.startPlayback(), caught"+exception.toString(),
+                            "in AEPlayer.startPlayback(), caught" + exception.toString(),
                             "AEPlayer Exception",
                             JOptionPane.ERROR_MESSAGE
                     );
@@ -488,10 +488,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if (aeFileInputStream == null) {
             return;
         }
-//            System.out.println(Thread.currentThread()+" AEViewer.AEPlayer.rewind() called, rewinding "+aeFileInputStream);
         try {
             aeFileInputStream.rewind();
-            viewer.filterChain.reset();
+            if (viewer != null) {
+                viewer.filterChain.reset();
+                viewer.getRenderer().resetAccumulation();
+            }else{
+                log.warning("null AEViewer, cannot reset filter change or accumulation mode");
+            }
         } catch (Exception e) {
             log.warning("rewind exception: " + e.getMessage());
             e.printStackTrace();
@@ -511,7 +515,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         AEPacketRaw aeRaw = null;
 
 //        log.info(this+" viewer.getAePlayer().getTimesliceUs()="+viewer.getAePlayer().getTimesliceUs());
-        
         try {
             if (!jogOccuring || (jogOccuring && jogPacketsLeft == 0)) {
                 if (!viewer.aePlayer.isFlexTimeEnabled()) {
