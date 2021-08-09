@@ -1263,12 +1263,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         selectedFilter = null;
         for (AbstractNoiseFilter n : noiseFilters) {
             if (selectedNoiseFilter != null && n.getClass().getSimpleName().equals(selectedNoiseFilter.toString())) {
+                log.info("setting " + n.getClass().getSimpleName() + " enabled");
                 n.initFilter();
                 n.setFilterEnabled(true);
-                log.info("setting " + n.getClass().getSimpleName() + " enabled");
+                n.setControlsVisible(true);
                 selectedFilter = n;
             } else {
                 n.setFilterEnabled(false);
+                n.setControlsVisible(false);
             }
         }
         resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
