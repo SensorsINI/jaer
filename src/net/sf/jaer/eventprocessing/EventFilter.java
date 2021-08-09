@@ -244,11 +244,47 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         support.firePropertyChange("filterEnabled", wasEnabled, enabled);
     }
 
+    /** Set the controls visible for this filter
+     * 
+     * @param yes true to show controls, false to collapse them
+     */
+    public void setControlsVisible(boolean yes) {
+        FilterPanel p = getFilterPanel();
+        if (p == null) {
+            log.warning("FilterPanel for "+this+" is null; cannot set visibilty");
+            return;
+        }
+        p.setControlsVisible(yes);
+    }
+
+    /** Checks if controls are visible (expanded).
+     * 
+     * @return true if expanded, false if null or collapsed. 
+     */
+    public boolean isControlsVisible() {
+        FilterPanel p = getFilterPanel();
+        if (p == null) {
+            return false;
+        }
+        return p.isControlsVisible();
+    }
+
     /**
      * @return the chip this filter is filtering for
      */
     public AEChip getChip() {
         return chip;
+    }
+
+    /** Get the FilterPanel view for controlling this filter if available.
+     * 
+     * @return the FilterPanel or null if EventFilter does not have a view. 
+     */
+    public FilterPanel getFilterPanel() {
+        if (chip == null || chip.getFilterFrame() == null || chip.getFilterFrame().getFilterPanelForFilter(this) == null) {
+            return null;
+        }
+        return chip.getFilterFrame().getFilterPanelForFilter(this);
     }
 
     /**
@@ -1196,32 +1232,35 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         return rtn;
     }
 
-    /** List of hidden properties that subclasses can populate to hide properties in FilterPanel GUI.
-     * 
-     * @see FilterPanel
-     * @see #hideProperty(java.lang.String) 
-     */
-    protected ArrayList<String> hiddenProperties=new ArrayList();
-    
     /**
-     * Exclude a property from Introspector to hide it from FilterPanel GUI. 
+     * List of hidden properties that subclasses can populate to hide properties
+     * in FilterPanel GUI.
+     *
+     * @see FilterPanel
+     * @see #hideProperty(java.lang.String)
+     */
+    protected ArrayList<String> hiddenProperties = new ArrayList();
+
+    /**
+     * Exclude a property from Introspector to hide it from FilterPanel GUI.
      *
      * @param propertyName the property name.
-     * 
+     *
      * @see FilterPanel
      */
     protected void hideProperty(String propertyName) {
-       if(!hiddenProperties.contains(propertyName)){
-           hiddenProperties.add(propertyName);
-       }
+        if (!hiddenProperties.contains(propertyName)) {
+            hiddenProperties.add(propertyName);
+        }
     }
-    
-    /** Returns true if the propertyName is meant to be hidden from GUI
-     * 
+
+    /**
+     * Returns true if the propertyName is meant to be hidden from GUI
+     *
      * @param propertyName
      * @return true if in hidden list
      */
-    public boolean isPropertyHidden(String propertyName){
+    public boolean isPropertyHidden(String propertyName) {
         return hiddenProperties.contains(propertyName);
     }
 

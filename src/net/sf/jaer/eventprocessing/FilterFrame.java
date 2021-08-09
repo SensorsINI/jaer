@@ -841,12 +841,24 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     /**
      * Return the filter panel for the specified filter. This can be used when
-     * adding custom controls
+     * adding custom controls. The panel is returned even if it is within an enclosed FilterChain
+     * 
+     * @param filt the filter to look for panel for
+     * @return the panel, or null
      */
     public FilterPanel getFilterPanelForFilter(EventFilter filt) {
         for (FilterPanel p : filterPanels) {
             if (p.getFilter() == filt) {
                 return p;
+            }
+            // if the panel's filter has chain, then check if filt is one of these filters
+            else if(p.getFilter().getEnclosedFilterChain()!=null){
+                FilterChain c=p.getFilter().getEnclosedFilterChain();
+                for(EventFilter enclFilt:c){
+                    if(enclFilt==filt){ // we found the enclosed filter, now we need the panel for it
+                        return p.getEnclosedFilterPanel(enclFilt);
+                    }
+                }
             }
         }
 

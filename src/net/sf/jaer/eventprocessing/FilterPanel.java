@@ -210,15 +210,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private static Logger log = Logger.getLogger("Filters");
     private EventFilter filter = null;
     final float fontSize = 10f;
-    private Border normalBorder, redLineBorder;
+    private Border normalBorder, redLineBorder, enclosedFilterSelectedBorder;
     private TitledBorder titledBorder;
     private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
     protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
+    private HashMap<EventFilter, FilterPanel> enclosedFilterPanels = new HashMap(); // points from enclosed filter to its panel
     private HashMap<String, Container> groupContainerMap = new HashMap(); // points from group name string to the panel holding the properties
     private HashSet<String> populatedGroupSet = new HashSet(); // Set of all property groups that have at least one item in them
     private HashMap<String, MyControl> propertyControlMap = new HashMap();
     private JComponent ungroupedControls = null;
-    private JPanel inheritedPanel = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
 
     /**
@@ -242,7 +242,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
         setBorder(titledBorder);
         normalBorder = titledBorder.getBorder();
-        redLineBorder = BorderFactory.createLineBorder(Color.red);
+        redLineBorder = BorderFactory.createLineBorder(Color.red, 3);
+        enclosedFilterSelectedBorder = BorderFactory.createLineBorder(Color.orange, 3);
         enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
         // when filter fires a property change event, we getString called here and we update all our controls
@@ -504,6 +505,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             FilterPanel enclPanel = new FilterPanel(enclFilter);
                             this.add(enclPanel);
                             controls.add(enclPanel);
+                            enclosedFilterPanels.put(enclFilter, enclPanel);
                             ((TitledBorder) enclPanel.getBorder()).setTitle("enclosed: " + enclFilter.getClass().getSimpleName());
                         }
 //                        FilterChain chain=getFilter().getEnclosedFilterChain();
@@ -531,6 +533,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 FilterPanel enclPanel = new FilterPanel(f);
                                 this.add(enclPanel);
                                 controls.add(enclPanel);
+                                enclosedFilterPanels.put(f, enclPanel);
                                 ((TitledBorder) enclPanel.getBorder()).setTitle("enclosed: " + f.getClass().getSimpleName());
                             }
                         }
@@ -1748,8 +1751,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private void setBorderActive(final boolean yes) {
         // see http://forum.java.sun.com/thread.jspa?threadID=755789
         if (yes) {
-            ((TitledBorder) getBorder()).setTitleColor(SystemColor.textText);
-            titledBorder.setBorder(redLineBorder);
+            ((TitledBorder) getBorder()).setTitleColor(SystemColor.red);
+            if (!getFilter().isEnclosed()) {
+                titledBorder.setBorder(redLineBorder);
+            } else {
+                titledBorder.setBorder(enclosedFilterSelectedBorder);
+            }
         } else {
             ((TitledBorder) getBorder()).setTitleColor(SystemColor.textInactiveText);
             titledBorder.setBorder(normalBorder);
@@ -1770,6 +1777,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         this.filter = filter;
     }
 
+    /**
+     * Returns the FilterPanel controls for enclosed filter
+     *
+     * @param filter
+     * @return the panel, or null if there is no panel or the filter is not
+     * enclosed by this filter
+     */
+    public FilterPanel getEnclosedFilterPanel(EventFilter filter) {
+        return enclosedFilterPanels.get(filter);
+    }
+
     private void enabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enabledCheckBoxActionPerformed
         boolean yes = enabledCheckBox.isSelected();
         if (getFilter() != null) {
@@ -1777,7 +1795,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 
         if (yes) {
-            ((TitledBorder) getBorder()).setTitleColor(SystemColor.textText);
+            ((TitledBorder) getBorder()).setTitleColor(SystemColor.textHighlight);
             titledBorder.setBorder(redLineBorder);
         } else {
             ((TitledBorder) getBorder()).setTitleColor(SystemColor.textInactiveText);
