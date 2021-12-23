@@ -25,6 +25,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.MotionFlowStatistics.GlobalMotion;
 import com.jogamp.opengl.GLException;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -67,8 +68,9 @@ import net.sf.jaer.util.filter.LowpassFilter;
 import org.apache.commons.lang3.ArrayUtils;
 
 /**
- * Uses adaptive block matching optical flow (ABMOF) to measureTT local optical flow. <b>Not</b> gradient
- * based, but rather matches local features backwards in time.
+ * Uses adaptive block matching optical flow (ABMOF) to measureTT local optical
+ * flow. <b>Not</b> gradient based, but rather matches local features backwards
+ * in time.
  *
  * @author Tobi and Min, Jan 2016
  */
@@ -137,6 +139,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
     private int sliceDurationMinLimitUS = getInt("sliceDurationMinLimitUS", 100);
     private int sliceDurationMaxLimitUS = getInt("sliceDurationMaxLimitUS", 300000);
+    protected boolean outlierRejectionEnabled = getBoolean("outlierRejectionEnabled", false);
+    protected float outlierRejectionThresholdSigma = getFloat("outlierRejectionThresholdSigma", 2f);
 
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
 
@@ -157,11 +161,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private boolean enableImuTimesliceLogging = false;
     private TobiLogger imuTimesliceLogger = null;
     private volatile boolean resetOFHistogramFlag; // signals to reset the OF histogram after it is rendered
-    
+
     private float cornerThr = getFloat("cornerThr", 0.2f);
     private boolean saveSliceGrayImage = false;
     private PrintWriter dvsWriter = null;
-    
+
     // These variables are only used by HW_ABMOF. 
     // HW_ABMOF send slice rotation flag so we need to indicate the real rotation timestamp
     // HW_ABMOF is only supported for davis346Zynq
@@ -172,11 +176,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
     }
-    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.AND; // Tobi changes to AND which is the condition used in paper
+    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.valueOf(getString("cornerCircleSelection",CornerCircleSelection.AND.name())); // Tobi changes to AND which is the condition used in paper
 
     protected static String DEFAULT_FILENAME = "jAER.txt";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
-    
+
     public enum PatchCompareMethod {
         /*JaccardDistance,*/ /*HammingDistance*/
         SAD/*, EventSqeDistance*/
@@ -234,9 +238,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private ImageDisplay blockMatchingImageDisplay[] = new ImageDisplay[numScales];
     private ImageDisplay blockMatchingImageDisplayTarget[] = new ImageDisplay[numScales]; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private Legend blockMatchingDisplayLegend[] = new Legend[numScales];
-    private Legend blockMatchingDisplayLegendTarget[] = new Legend[numScales];  
+    private Legend blockMatchingDisplayLegendTarget[] = new Legend[numScales];
     private static final String LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH = "G: search area\nR: ref block area\nB: best match";
-    
+
     private JFrame sliceBitMapFrame = null;
     private ImageDisplay sliceBitmapImageDisplay; // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
     private Legend sliceBitmapImageDisplayLegend;
@@ -247,10 +251,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private Legend timeStampBlockImageDisplayLegend;
     private static final String TIME_STAMP_BLOCK_LEGEND_SLICES = "R: Inner Circle\nB: Outer Circle\nG: Current event";
     private static final int circle1[][] = {{0, 1}, {1, 1}, {1, 0}, {1, -1},
-    {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}};      
+    {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}};
     private static final int circle2[][] = {{0, 2}, {1, 2}, {2, 1}, {2, 0},
     {2, -1}, {1, -2}, {0, -2}, {-1, -2},
-    {-2, -1}, {-2, 0}, {-2, 1}, {-1, 2}}; 
+    {-2, -1}, {-2, 0}, {-2, 1}, {-1, 2}};
     private static final int circle3[][] = {{0, 3}, {1, 3}, {2, 2}, {3, 1},
     {3, 0}, {3, -1}, {2, -2}, {1, -3},
     {0, -3}, {-1, -3}, {-2, -2}, {-3, -1},
@@ -259,20 +263,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     {4, 1}, {4, 0}, {4, -1}, {3, -2},
     {2, -3}, {1, -4}, {0, -4}, {-1, -4},
     {-2, -3}, {-3, -2}, {-4, -1}, {-4, 0},
-    {-4, 1}, {-3, 2}, {-2, 3}, {-1, 4}}; 
-    
+    {-4, 1}, {-3, 2}, {-2, 3}, {-1, 4}};
+
     int innerCircle[][] = circle1;
     int innerCircleSize = innerCircle.length;
     int xInnerOffset[] = new int[innerCircleSize];
-    int yInnerOffset[] = new int[innerCircleSize];      
+    int yInnerOffset[] = new int[innerCircleSize];
     int innerTsValue[] = new int[innerCircleSize];
- 
-    int outerCircle[][] = circle2;        
-    int outerCircleSize = outerCircle.length;        
-    int yOuterOffset[] = new int[outerCircleSize];  
+
+    int outerCircle[][] = circle2;
+    int outerCircleSize = outerCircle.length;
+    int yOuterOffset[] = new int[outerCircleSize];
     int xOuterOffset[] = new int[outerCircleSize];
-    int outerTsValue[] = new int[outerCircleSize]; 
-        
+    int outerTsValue[] = new int[outerCircleSize];
+
     private HWCornerPointRenderer keypointFilter = null;
     /**
      * A PropertyChangeEvent with this value is fired when the slices has been
@@ -281,11 +285,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public static final String EVENT_NEW_SLICES = "eventNewSlices";
 
     TobiLogger sadValueLogger = new TobiLogger("sadvalues", "sadvalue,scale"); // TODO debug
-    
+
     private boolean calcOFonCornersEnabled = getBoolean("calcOFonCornersEnabled", true);
 
     private final ApsFrameExtractor apsFrameExtractor;
-    
+
     // Corner events array; only used for rendering.
     private boolean showCorners = getBoolean("showCorners", false);
     private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
@@ -310,16 +314,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //        Date date = new Date();
         // Log file for the OF distribution's statistics
 //        outputFilename = "PMF_HistStdDev" + formatter.format(date) + ".txt";
-        String patchTT = "0a: Block matching";
 //        String eventSqeMatching = "Event squence matching";
 //        String preProcess = "Denoise";
-        String metricConfid = "0ab: Density checks";
         try {
             patchCompareMethod = PatchCompareMethod.valueOf(getString("patchCompareMethod", PatchCompareMethod.SAD.toString()));
         } catch (IllegalArgumentException e) {
             patchCompareMethod = PatchCompareMethod.SAD;
         }
-      
+
         String hwTip = "0b: Hardware EDFLOW";
         setPropertyTooltip(hwTip, "HWABMOFEnabled", "Select to show output of hardware EDFLOW camera");
 
@@ -329,9 +331,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(cornerTip, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
         setPropertyTooltip(cornerTip, "cornerCircleSelection", "Determines SFAST circles used for detecting the corner/keypoint");
 
-        setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
-        setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
-        setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
+        String patchTT = "0a: Block matching";
         setPropertyTooltip(patchTT, "blockDimension", "linear dimenion of patches to match on coarse scale, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches; SAD=sum of absolute differences, HammingDistance is same as SAD for binary bitmaps");
@@ -366,8 +366,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "startRecordingForEDFLOW", "Start to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
         setPropertyTooltip(patchTT, "stopRecordingForEDFLOW", "Stop to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
         setPropertyTooltip(patchTT, "sliceDurationMinLimitUS", "The minimum value (us) of slice duration.");
-        setPropertyTooltip(patchTT, "sliceDurationMaxLimitUS", "The maximum value (us) of slice duration.");        
-        
+        setPropertyTooltip(patchTT, "sliceDurationMaxLimitUS", "The maximum value (us) of slice duration.");
+        setPropertyTooltip(patchTT, "outlierRejectionEnabled", "Enable outlier flow vector rejection");
+        setPropertyTooltip(patchTT, "outlierRejectionThresholdSigma", "Flow vectors that are larger than this many sigma from global flow variation are discarded");
+
+        String metricConfid = "0ab: Density checks";
+        setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
+        setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
+        setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
+
         String patchDispTT = "0b: Block matching display";
         setPropertyTooltip(patchDispTT, "showSlices", "enables displaying the entire bitmaps slices (the current slices)");
         setPropertyTooltip(patchDispTT, "showSlicesScale", "sets which scale of the slices to display");
@@ -382,7 +389,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP, this);
         computeAveragePossibleMatchDistance();
-        
+
         numInputTypes = 2;   // allocate timestamp map
     }
 
@@ -445,21 +452,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             if (xyFilter()) {
                 continue;
             }
-           if (isInvalidTimestamp()) {
+            if (isInvalidTimestamp()) {
                 continue;
             }
 
             countIn++;
-            
+
             // compute flow
             SADResult result = null;
-            
-            if(HWABMOFEnabled)                   // Only use it when there is hardware supported. Hardware is davis346Zynq
+
+            if (HWABMOFEnabled) // Only use it when there is hardware supported. Hardware is davis346Zynq
             {
                 SADResult sliceResult = new SADResult();
 
                 int data = ein.address & 0x7ff;
-              
+
                 // The OF result from the hardware has following procotol:
                 // If the data is 0x7ff, it indicates that this result is an invalid result
                 // if the data is 0x7fe, then it means slice rotated on this event,
@@ -468,39 +475,33 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 // The valid OF data is represented in a compressed data format.
                 // It is calculated by OF_x * (2 * maxSearchDistanceRadius + 1) + OF_y.
                 // Therefore, simple decompress is required.
-                if((data & 0x7ff) == 0x7ff)
-                {
+                if ((data & 0x7ff) == 0x7ff) {
                     continue;
-                } 
-                else if((data & 0x7ff) == 0x7fe)
-                {
+                } else if ((data & 0x7ff) == 0x7fe) {
                     tMinus2RotateTs_HW = tMinus1RotateTs_HW;
                     tMinus1RotateTs_HW = curretnRotatTs_HW;
                     curretnRotatTs_HW = ts;
-                    
-                    deltaTsMs_HW = (float)(tMinus1RotateTs_HW - tMinus2RotateTs_HW)/(float)1000.0;
+
+                    deltaTsMs_HW = (float) (tMinus1RotateTs_HW - tMinus2RotateTs_HW) / (float) 1000.0;
                     continue;
-                } 
-                else
-                {   final int searchDistanceHW = 3;     // hardcoded on hardware.             
+                } else {
+                    final int searchDistanceHW = 3;     // hardcoded on hardware.             
                     final int maxSearchDistanceRadius = (4 + 2 + 1) * searchDistanceHW;
-                    int OF_x = (data/(2 * maxSearchDistanceRadius + 1)) - maxSearchDistanceRadius;
-                    int OF_y = (data%(2 * maxSearchDistanceRadius + 1)) - maxSearchDistanceRadius;
+                    int OF_x = (data / (2 * maxSearchDistanceRadius + 1)) - maxSearchDistanceRadius;
+                    int OF_y = (data % (2 * maxSearchDistanceRadius + 1)) - maxSearchDistanceRadius;
 
                     sliceResult.dx = -OF_x;
                     sliceResult.dy = OF_y;
-                    sliceResult.vx = (float) (1e3 * sliceResult.dx/deltaTsMs_HW);
-                    sliceResult.vy = (float) (1e3 * sliceResult.dy/deltaTsMs_HW);
-                    result = sliceResult;  
+                    sliceResult.vx = (float) (1e3 * sliceResult.dx / deltaTsMs_HW);
+                    sliceResult.vy = (float) (1e3 * sliceResult.dy / deltaTsMs_HW);
+                    result = sliceResult;
                     vx = result.vx;
                     vy = result.vy;
                     v = (float) Math.sqrt((vx * vx) + (vy * vy));
-                    
+
                     cornerEvents.add(e);
                 }
-            } 
-            else
-            {
+            } else {
                 float[] sadVals = new float[numScales]; // TODO debug
                 int[] dxInitVals = new int[numScales];
                 int[] dyInitVals = new int[numScales];
@@ -517,60 +518,56 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                             nCountPerSlicePacket = 0;      // Reset counter for next slice packet.
                         }
                         nCountPerSlicePacket++;
-    //                    if (ein.x >= subSizeX || ein.y > subSizeY) {
-    //                        log.warning("event out of range");
-    //                        continue;
-    //                    }
+                        //                    if (ein.x >= subSizeX || ein.y > subSizeY) {
+                        //                        log.warning("event out of range");
+                        //                        continue;
+                        //                    }
 
                         if (!accumulateEvent(ein)) { // maybe skip events here
-                            if(dvsWriter != null)
-                            {
-                                dvsWriter.println(String.format("%d %d %d %d %d %d %d %d %d", ein.timestamp, ein.x, ein.y, ein.polarity == PolarityEvent.Polarity.Off ? 0 : 1, 0x7, 0x7, 0, rotateFlg, 0));                           
-                            }              
+                            if (dvsWriter != null) {
+                                dvsWriter.println(String.format("%d %d %d %d %d %d %d %d %d", ein.timestamp, ein.x, ein.y, ein.polarity == PolarityEvent.Polarity.Off ? 0 : 1, 0x7, 0x7, 0, rotateFlg, 0));
+                            }
                             break;
                         }
 
                         SADResult sliceResult = new SADResult();
                         minDistScale = 0;
                         boolean OFRetValidFlag = true;
-                        
+
                         // Sorts scalesToComputeArray[] in descending order
                         Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
 
                         for (int scale : scalesToComputeArray) {
                             if (scale >= numScales) {
-    //                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
-    //                            break;
+                                //                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
+                                //                            break;
                             }
                             int dx_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dx >> scale) : 0;
                             int dy_init = ((result != null) && !isNotSufficientlyAccurate(sliceResult)) ? (sliceResult.dy >> scale) : 0;
-    //                        dx_init = 0;
-    //                        dy_init = 0;                            
+                            //                        dx_init = 0;
+                            //                        dy_init = 0;                            
 
                             // The reason why we inverse dx_init, dy_init i is the offset is pointing from previous slice to current slice.
                             // The dx_init, dy_init are from the corse scale's result, and it is used as the finer scale's initial guess.
                             sliceResult = minSADDistance(ein.x, ein.y, -dx_init, -dy_init, slices[sliceIndex(1)], slices[sliceIndex(2)], scale); // from ref slice to past slice k+1, using scale 0,1,....
-    //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
-    //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
+                            //                        sliceSummedSADValues[sliceIndex(scale + 2)] += sliceResult.sadValue; // accumulate SAD for this past slice
+                            //                        sliceSummedSADCounts[sliceIndex(scale + 2)]++; // accumulate SAD count for this past slice
                             // sliceSummedSADValues should end up filling 2 values for 4 slices 
 
                             sadVals[scale] = sliceResult.sadValue; // TODO debug 
                             dxInitVals[scale] = dx_init;
                             dyInitVals[scale] = dy_init;
 
-                            if(sliceResult.sadValue >= this.maxAllowedSadDistance)
-                            {
+                            if (sliceResult.sadValue >= this.maxAllowedSadDistance) {
                                 OFRetValidFlag = false;
                                 break;
-                            }
-                            else
-                            {
+                            } else {
                                 if ((result == null) || (sliceResult.sadValue < result.sadValue)) {
                                     result = sliceResult; // result holds the overall min sad result
                                     minDistScale = scale;
                                 }
                             }
-    //                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
+                            //                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
                         }
                         result = sliceResult;
                         minDistScale = 0;
@@ -579,21 +576,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                             result.vx = result.dx / dt; // hack, convert to pix/second
                             result.vy = result.dy / dt; // TODO clean up, make time for each slice, since could be different when const num events
                         }
-                        if(dvsWriter != null)
-                        {
-                            dvsWriter.println(String.format("%d %d %d %d %d %d %d %d %d", ein.timestamp, ein.x, ein.y, ein.polarity == PolarityEvent.Polarity.Off ? 0 : 1, result.dx, result.dy, OFRetValidFlag ? 1 : 0, rotateFlg, 1));                           
+                        if (dvsWriter != null) {
+                            dvsWriter.println(String.format("%d %d %d %d %d %d %d %d %d", ein.timestamp, ein.x, ein.y, ein.polarity == PolarityEvent.Polarity.Off ? 0 : 1, result.dx, result.dy, OFRetValidFlag ? 1 : 0, rotateFlg, 1));
                         }
                         break;
-    //                case JaccardDistance:
-    //                    maybeRotateSlices();
-    //                    if (!accumulateEvent(in)) {
-    //                        break;
-    //                    }
-    //                    result = minJaccardDistance(x, y, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
-    //                    float dtj=(sliceDeltaTimeUs(2) * 1e-6f);
-    //                    result.dx = result.dx / dtj;
-    //                    result.dy = result.dy / dtj;
-    //                    break;
+                    //                case JaccardDistance:
+                    //                    maybeRotateSlices();
+                    //                    if (!accumulateEvent(in)) {
+                    //                        break;
+                    //                    }
+                    //                    result = minJaccardDistance(x, y, bitmaps[sliceIndex(2)], bitmaps[sliceIndex(1)]);
+                    //                    float dtj=(sliceDeltaTimeUs(2) * 1e-6f);
+                    //                    result.dx = result.dx / dtj;
+                    //                    result.dy = result.dy / dtj;
+                    //                    break;
 
                 }
                 if (result == null || result.sadValue == Float.MAX_VALUE) {
@@ -603,11 +599,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 if (isNotSufficientlyAccurate(result)) {
                     continue;
                 }
+
+                if (isOutlierFlowVector(result)) {
+                    countOutliers++;
+                    continue;
+                }
                 scaleResultCounts[minDistScale]++;
                 vx = result.vx;
                 vy = result.vy;
                 v = (float) Math.sqrt((vx * vx) + (vy * vy));
-                
+
                 // TODO debug
                 StringBuilder sadValsString = new StringBuilder();
                 for (int k = 0; k < sadVals.length - 1; k++) {
@@ -623,16 +624,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     final SADResult thisResult = result;
                     final PolarityEvent thisEvent = ein;
                     final byte[][][][] thisSlices = slices;
-    //                SwingUtilities.invokeLater(new Runnable() {
-    //                    @Override
-    //                    public void run() {
-                            drawMatching(thisResult, thisEvent, thisSlices, sadVals, dxInitVals, dyInitVals); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
-                            drawTimeStampBlock(thisEvent);
-    //                    }
-    //                });
+                    //                SwingUtilities.invokeLater(new Runnable() {
+                    //                    @Override
+                    //                    public void run() {
+                    drawMatching(thisResult, thisEvent, thisSlices, sadVals, dxInitVals, dyInitVals); // ein.x >> result.scale, ein.y >> result.scale, (int) result.dx >> result.scale, (int) result.dy >> result.scale, slices[sliceIndex(1)][result.scale], slices[sliceIndex(2)][result.scale], result.scale);
+                    drawTimeStampBlock(thisEvent);
+                    //                    }
+                    //                });
                 }
             }
-                    
+
             if (resultHistogram != null) {
                 resultHistogram[result.dx + computeMaxSearchDistance()][result.dy + computeMaxSearchDistance()]++;
                 resultHistogramCount++;
@@ -652,10 +653,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
 
         motionFlowStatistics.updatePacket(countIn, countOut, ts);
+        float fracOutliers=(float)countOutliers/(countOut+countOutliers);
+        System.out.println(String.format("Fraction of outliers: %%%.1f",100*fracOutliers));
         adaptEventSkipping();
         if (rewindFlg) {
             rewindFlg = false;
-            
+
             for (byte[][][] b : slices) {
                 clearSlice(b);
             }
@@ -673,20 +676,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public void doDefaults() {
         setSearchMethod(SearchMethod.DiamondSearch);
         setBlockDimension(21);
-        setNumScales(2);
-        setSearchDistance(4);
+        setNumScales(3);
+        setSearchDistance(3);
         setAdaptiveEventSkipping(true);
         setAdaptiveSliceDuration(true);
         setMaxAllowedSadDistance(.5f);
         setDisplayVectorsEnabled(true);
-        setPpsScaleDisplayRelativeOFLength(true);
+        setPpsScaleDisplayRelativeOFLength(false);
         setDisplayGlobalMotion(true);
         setPpsScale(.1f);
-        setSliceMaxValue(7);
+        setSliceMaxValue(15);
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
         setValidPixOccupancy(.01f); // at least this fraction of pixels from each block must both have nonzero values
         setSliceMethod(SliceMethod.AreaEventNumber);
-        setSliceDurationMaxLimitUS(100);
+        setSliceDurationMinLimitUS(1000);
         setSliceDurationMaxLimitUS(300000);
         setCalcOFonCornersEnabled(true);   // Enable corner detector
         // compute nearest power of two over block dimension
@@ -816,8 +819,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 if (!isDisplayGlobalMotion()) {
                     setDisplayGlobalMotion(true);
                 }
-                adaptiveSliceDurationLogger.log(String.format("%f\t%d\t%d\t%f\t%f\t%f\t%d\t%d", e.timestamp * 1e-6f , 
-                        adaptiveSliceDurationPacketCount++, nCountPerSlicePacket, avgMatchDistance, err, 
+                adaptiveSliceDurationLogger.log(String.format("%f\t%d\t%d\t%f\t%f\t%f\t%d\t%d", e.timestamp * 1e-6f,
+                        adaptiveSliceDurationPacketCount++, nCountPerSlicePacket, avgMatchDistance, err,
                         motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDeltaT, sliceEventCount));
             }
         }
@@ -1031,9 +1034,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             gl.glVertex2f(xx - sd, yy + sd);
             gl.glEnd();
         }
-        
-        if(showCorners)
-        {
+
+        if (showCorners) {
             gl.glColor4f(1f, 0, 0, 0.1f);
             for (BasicEvent e : cornerEvents) {
                 gl.glPushMatrix();
@@ -1136,36 +1138,37 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     }
 
-    void saveAPSImage()
-    {
+    void saveAPSImage() {
         byte[] grayImageBuffer = new byte[sizex * sizey];
         for (int y = 0; y < sizey; y++) {
             for (int x = 0; x < sizex; x++) {
                 final int idx = x + (sizey - y - 1) * chip.getSizeX();
                 float bufferValue = apsFrameExtractor.getRawFrame()[idx];
-                grayImageBuffer[x + y * chip.getSizeX()] = (byte)(int)(bufferValue * 0.5f);
+                grayImageBuffer[x + y * chip.getSizeX()] = (byte) (int) (bufferValue * 0.5f);
             }
         }
         final BufferedImage theImage = new BufferedImage(chip.getSizeX(), chip.getSizeY(), BufferedImage.TYPE_BYTE_GRAY);
         theImage.getRaster().setDataElements(0, 0, sizex, sizey, grayImageBuffer);
-        
+
         final Date d = new Date();
         final String PNG = "png";
         final String fn = "ApsFrame-" + sliceEndTimeUs[sliceIndex(1)] + "." + PNG;
         // if user is playing a file, use folder that file lives in
-        String userDir = Paths.get(".").toAbsolutePath().normalize().toString();   
+        String userDir = Paths.get(".").toAbsolutePath().normalize().toString();
 
-        File APSFrmaeDir = new File(userDir + File.separator + "APSFrames"+ File.separator + getChip().getAeInputStream().getFile().getName());
-        if(!APSFrmaeDir.exists()) APSFrmaeDir.mkdirs();
-        File outputfile = new File(APSFrmaeDir + File.separator + fn);        
+        File APSFrmaeDir = new File(userDir + File.separator + "APSFrames" + File.separator + getChip().getAeInputStream().getFile().getName());
+        if (!APSFrmaeDir.exists()) {
+            APSFrmaeDir.mkdirs();
+        }
+        File outputfile = new File(APSFrmaeDir + File.separator + fn);
 
         try {
             ImageIO.write(theImage, "png", outputfile);
         } catch (IOException ex) {
             Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
-        }  
-    }  
-    
+        }
+    }
+
     /**
      * Rotates slices by incrementing the slice pointer with rollover back to
      * zero, and sets currentSliceIdx and currentBitmap. Clears the new
@@ -1202,7 +1205,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //            saveAPSImage();                    
 //            saveSliceGrayImage = true;
 //        }        
-        if (showSlices && !rewindFlg) {
+        if (isShowSlices() && !rewindFlg) {
             // TODO danger, drawing outside AWT thread
             final byte[][][][] thisSlices = slices;
 //            log.info("making runnable to draw slices in EDT");
@@ -1529,13 +1532,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     DSDy = result.dy;
                 }
                 break;
-            case FullSearch:    
-                if((e.timestamp) == 81160149)
-                {
+            case FullSearch:
+                if ((e.timestamp) == 81160149) {
                     System.out.printf("Scale %d with Refblock is: \n", subSampleBy);
                     int xscale = (x >> subSampleBy);
                     int yscale = (y >> subSampleBy);
-                    for (int xx =  xscale - r; xx <= (xscale + r); xx++) {
+                    for (int xx = xscale - r; xx <= (xscale + r); xx++) {
                         for (int yy = yscale - r; yy <= (yscale + r); yy++) {
                             System.out.printf("%d\t", curSlice[subSampleBy][xx][yy]);
                         }
@@ -1544,14 +1546,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     System.out.printf("\n");
 
                     System.out.printf("Tagblock is: \n");
-                    for (int xx =  xscale + dx_init - r - searchDistance; xx <= (xscale + dx_init + r + searchDistance); xx++) {
+                    for (int xx = xscale + dx_init - r - searchDistance; xx <= (xscale + dx_init + r + searchDistance); xx++) {
                         for (int yy = yscale + dy_init - r - searchDistance; yy <= (yscale + dy_init + r + searchDistance); yy++) {
                             System.out.printf("%d\t", prevSlice[subSampleBy][xx][yy]);
                         }
                         System.out.printf("\n");
-                    }                  
-                } 
-                
+                    }
+                }
+
                 for (dx = -searchDistance; dx <= searchDistance; dx++) {
                     for (dy = -searchDistance; dy <= searchDistance; dy++) {
                         sum = sadDistance(x, y, dx_init + dx, dy_init + dy, curSlice, prevSlice, subSampleBy);
@@ -1564,9 +1566,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                         }
                     }
                 }
-                
+
 //                System.out.printf("result is %s: \n", result.toString());
-                
                 if (outputSearchErrorInfo) {
                     FSCnt += 1;
                     FSDx = result.dx;
@@ -2147,7 +2148,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         putString("patchCompareMethod", patchCompareMethod.toString());
     }
 
-   /**
+    /**
      *
      * @return the search method
      */
@@ -2166,16 +2167,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         getSupport().firePropertyChange("searchMethod", old, this.searchMethod);
     }
 
-    private int computeMaxSearchDistance()
-    {
+    private int computeMaxSearchDistance() {
         int sumScales = 0;
-        for (int i = 0; i < numScales; i++)
-        {
+        for (int i = 0; i < numScales; i++) {
             sumScales += (1 << i);
         }
         return searchDistance * sumScales;
     }
-    
+
     private void computeAveragePossibleMatchDistance() {
         int n = 0;
         double s = 0;
@@ -2587,8 +2586,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
      */
     synchronized private void drawMatching(SADResult result, PolarityEvent ein, byte[][][][] slices, float[] sadVals, int[] dxInitVals, int[] dyInitVals) {
 //    synchronized private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock, int subSampleBy) {
-        for(int dispIdx = 0; dispIdx < numScales; dispIdx++)
-        {
+        for (int dispIdx = 0; dispIdx < numScales; dispIdx++) {
             int x = ein.x >> dispIdx, y = ein.y >> dispIdx;
             int dx = (int) result.dx >> dispIdx, dy = (int) result.dy >> dispIdx;
             byte[][] refBlock = slices[sliceIndex(1)][dispIdx], searchBlock = slices[sliceIndex(2)][dispIdx];
@@ -2656,24 +2654,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
             float scale = 1f / getSliceMaxValue();
             try {
-    //            if ((x >= radius) && ((x + radius) < subSizeX)
-    //                    && (y >= radius) && ((y + radius) < subSizeY))
+                //            if ((x >= radius) && ((x + radius) < subSizeX)
+                //                    && (y >= radius) && ((y + radius) < subSizeY))
                 {
 
-                if (dimNew != blockMatchingImageDisplay[dispIdx].getWidth()) {
-                    dim = dimNew;
-                    blockMatchingImageDisplay[dispIdx].setImageSize(dimNew, dimNew);
-                    blockMatchingImageDisplay[dispIdx].clearLegends();
-                    blockMatchingDisplayLegend[dispIdx] = blockMatchingImageDisplay[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-                }
+                    if (dimNew != blockMatchingImageDisplay[dispIdx].getWidth()) {
+                        dim = dimNew;
+                        blockMatchingImageDisplay[dispIdx].setImageSize(dimNew, dimNew);
+                        blockMatchingImageDisplay[dispIdx].clearLegends();
+                        blockMatchingDisplayLegend[dispIdx] = blockMatchingImageDisplay[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+                    }
 
-                if (dimNew != blockMatchingImageDisplayTarget[dispIdx].getWidth()) {
-                    dim = dimNew;
-                    blockMatchingImageDisplayTarget[dispIdx].setImageSize(dimNew, dimNew);
-                    blockMatchingImageDisplayTarget[dispIdx].clearLegends();
-                    blockMatchingDisplayLegendTarget[dispIdx] = blockMatchingImageDisplayTarget[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
-                }
-    //        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
+                    if (dimNew != blockMatchingImageDisplayTarget[dispIdx].getWidth()) {
+                        dim = dimNew;
+                        blockMatchingImageDisplayTarget[dispIdx].setImageSize(dimNew, dimNew);
+                        blockMatchingImageDisplayTarget[dispIdx].clearLegends();
+                        blockMatchingDisplayLegendTarget[dispIdx] = blockMatchingImageDisplayTarget[dispIdx].addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
+                    }
+                    //        TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12));
 
                     if (blockMatchingDisplayLegend[dispIdx] != null) {
                         blockMatchingDisplayLegend[dispIdx].setLegendString("R: ref block area"
@@ -2682,21 +2680,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                                 + "\nSAD: "
                                 + engFmt.format(sadVals[dispIdx])
                                 + "\nTimestamp: " + ein.timestamp);
-                    }                
+                    }
                     if (blockMatchingDisplayLegendTarget[dispIdx] != null) {
                         blockMatchingDisplayLegendTarget[dispIdx].setLegendString("G: search area"
-                                + "\nx: " + ein.x 
+                                + "\nx: " + ein.x
                                 + "\ny: " + ein.y
                                 + "\ndx_init: " + dxInitVals[dispIdx]
                                 + "\ndy_init: " + dyInitVals[dispIdx]);
-                    } 
+                    }
 
                     /* Reset the image first */
                     blockMatchingImageDisplay[dispIdx].clearImage();
                     blockMatchingImageDisplayTarget[dispIdx].clearImage();
 
                     /* Rendering the reference patch in t-imuWarningDialog slice, it's on the center with color red */
-                    for (int i = searchDistance; i < (refRadius *2 + 1 + searchDistance); i++) {
+                    for (int i = searchDistance; i < (refRadius * 2 + 1 + searchDistance); i++) {
                         for (int j = searchDistance; j < (refRadius * 2 + 1 + searchDistance); j++) {
                             float[] f = blockMatchingImageDisplay[dispIdx].getPixmapRGB(i, j);
                             // Scale the pixel value to make it brighter for finer scale slice.
@@ -2732,8 +2730,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
     }
 
-    synchronized private void drawTimeStampBlock(PolarityEvent ein)
-    {
+    synchronized private void drawTimeStampBlock(PolarityEvent ein) {
         int dim = 11;
         int sliceScale = 2;
         int eX = ein.x >> sliceScale, eY = ein.y >> sliceScale, eType = ein.type;
@@ -2765,28 +2762,29 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (!timeStampBlockFrame.isVisible()) {
             timeStampBlockFrame.setVisible(true);
         }
-        
+
         timeStampBlockImageDisplay.clearImage();
-        
-           
-        for(int i = 0; i < innerCircleSize; i++)
-        {
+
+        for (int i = 0; i < innerCircleSize; i++) {
             xInnerOffset[i] = innerCircle[i][0];
             yInnerOffset[i] = innerCircle[i][1];
             innerTsValue[i] = lastTimesMap[eX + xInnerOffset[i]][eY + yInnerOffset[i]][type];
-            innerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xInnerOffset[i]][eY + yInnerOffset[i]];            
-            if(innerTsValue[i] == 0x80000000) innerTsValue[i] = 0;
-        }        
+            innerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xInnerOffset[i]][eY + yInnerOffset[i]];
+            if (innerTsValue[i] == 0x80000000) {
+                innerTsValue[i] = 0;
+            }
+        }
 
-        for(int i = 0; i < outerCircleSize; i++)
-        {
+        for (int i = 0; i < outerCircleSize; i++) {
             xOuterOffset[i] = outerCircle[i][0];
             yOuterOffset[i] = outerCircle[i][1];
             outerTsValue[i] = lastTimesMap[eX + xOuterOffset[i]][eY + yOuterOffset[i]][type];
-            outerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xOuterOffset[i]][eY + yOuterOffset[i]];            
-            if(outerTsValue[i] == 0x80000000) outerTsValue[i] = 0;
-        }        
-        
+            outerTsValue[i] = slices[sliceIndex(1)][sliceScale][eX + xOuterOffset[i]][eY + yOuterOffset[i]];
+            if (outerTsValue[i] == 0x80000000) {
+                outerTsValue[i] = 0;
+            }
+        }
+
         List innerList = Arrays.asList(ArrayUtils.toObject(innerTsValue));
         int innerMax = (int) Collections.max(innerList);
         int innerMin = (int) Collections.min(innerList);
@@ -2796,29 +2794,27 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         int outerMax = (int) Collections.max(outerList);
         int outerMin = (int) Collections.min(outerList);
         float outerScale = 1f / (outerMax - outerMin);
-        
-        float scale = 1f / getSliceMaxValue();
-        timeStampBlockImageDisplay.setPixmapRGB(dim/2, dim/2, 0, lastTimesMap[eX][eY][type] * scale , 0);
-        timeStampBlockImageDisplay.setPixmapRGB(dim/2, dim/2, 0, slices[sliceIndex(1)][sliceScale][eX][eY] * scale , 0);
 
-        for(int i = 0; i < innerCircleSize; i++)
-        {
-            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim/2, yInnerOffset[i] + dim/2, innerScale * (innerTsValue[i] - innerMin), 0, 0);            
-            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim/2, yInnerOffset[i] + dim/2, scale * (innerTsValue[i]), 0, 0);
+        float scale = 1f / getSliceMaxValue();
+        timeStampBlockImageDisplay.setPixmapRGB(dim / 2, dim / 2, 0, lastTimesMap[eX][eY][type] * scale, 0);
+        timeStampBlockImageDisplay.setPixmapRGB(dim / 2, dim / 2, 0, slices[sliceIndex(1)][sliceScale][eX][eY] * scale, 0);
+
+        for (int i = 0; i < innerCircleSize; i++) {
+            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim / 2, yInnerOffset[i] + dim / 2, innerScale * (innerTsValue[i] - innerMin), 0, 0);
+            timeStampBlockImageDisplay.setPixmapRGB(xInnerOffset[i] + dim / 2, yInnerOffset[i] + dim / 2, scale * (innerTsValue[i]), 0, 0);
         }
-        for(int i = 0; i < outerCircleSize; i++)
-        {
-            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim/2, yOuterOffset[i] + dim/2, 0, 0, outerScale * (outerTsValue[i] - outerMin));            
-            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim/2, yOuterOffset[i] + dim/2, 0, 0, scale * (outerTsValue[i]));
+        for (int i = 0; i < outerCircleSize; i++) {
+            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim / 2, yOuterOffset[i] + dim / 2, 0, 0, outerScale * (outerTsValue[i] - outerMin));
+            timeStampBlockImageDisplay.setPixmapRGB(xOuterOffset[i] + dim / 2, yOuterOffset[i] + dim / 2, 0, 0, scale * (outerTsValue[i]));
         }
-        
+
         if (timeStampBlockImageDisplayLegend != null) {
             timeStampBlockImageDisplayLegend.setLegendString(TIME_STAMP_BLOCK_LEGEND_SLICES);
         }
 
-        timeStampBlockImageDisplay.repaint();        
+        timeStampBlockImageDisplay.repaint();
     }
-        
+
     private void drawSlices(byte[][][][] slices) {
 //        log.info("drawing slices");
         if (sliceBitMapFrame == null) {
@@ -2848,7 +2844,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (!sliceBitMapFrame.isVisible()) {
             sliceBitMapFrame.setVisible(true);
         }
-        
+
         int dimNewX = sizex >> showSlicesScale;
         int dimNewY = sizey >> showSlicesScale;
         if (dimNewX != sliceBitmapImageDisplay.getWidth() || dimNewY != sliceBitmapImageDisplay.getHeight()) {
@@ -2856,51 +2852,54 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             sliceBitmapImageDisplay.clearLegends();
             sliceBitmapImageDisplayLegend = sliceBitmapImageDisplay.addLegend(LEGEND_G_SEARCH_AREA_R_REF_BLOCK_AREA_B_BEST_MATCH, 0, dim);
         }
-        
+
         float scale = 1f / getSliceMaxValue();
         sliceBitmapImageDisplay.clearImage();
         int d1 = sliceIndex(1), d2 = sliceIndex(2);
         if (showSlicesScale >= numScales) {
             showSlicesScale = numScales - 1;
         }
-        
+
         int imageSizeX = sizex >> showSlicesScale;
         int imageSizeY = sizey >> showSlicesScale;
         byte[] grayImageBuffer = new byte[imageSizeX * imageSizeY];
-        for (int x = 0; x < imageSizeX; x++) {
-            for (int y = 0; y < imageSizeY; y++) {
-                int pixelValue = slices[d1][showSlicesScale][x][y];
-                sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * pixelValue, 0, 0);
-                // The minimum of byte is ox0(0), the maximum is 0xFF(-1); 
-                // It is from 0 to 127 and then -128 to -1;
-                int imagePixelVal = (int) (pixelValue*255.0f/getSliceMaxValue() + 128);
-                if(imagePixelVal == 0)
-                {
-                    imagePixelVal = 0;  // Background
+        for (int slice = 1; slice <= 2; slice++) {
+            for (int x = 0; x < imageSizeX; x++) {
+                for (int y = 0; y < imageSizeY; y++) {
+                    int pixelValue1 = slices[d1][showSlicesScale][x][y];
+                    int pixelValue2 = slices[d2][showSlicesScale][x][y];
+                    sliceBitmapImageDisplay.setPixmapRGB(x, y, scale * pixelValue1, scale * pixelValue2, 0);
+                    // The minimum of byte is ox0(0), the maximum is 0xFF(-1); 
+                    // It is from 0 to 127 and then -128 to -1;
+                    int imagePixelVal = (int) (pixelValue1 * 255.0f / getSliceMaxValue() + 128) + (int) (pixelValue2 * 255.0f / getSliceMaxValue());
+                    if (imagePixelVal == 0) {
+                        imagePixelVal = 0;  // Background
+                    }
+                    grayImageBuffer[(imageSizeY - 1 - y) * imageSizeX + x] = (byte) imagePixelVal;
                 }
-                grayImageBuffer[(imageSizeY - 1 - y) * imageSizeX + x] = (byte)imagePixelVal;
             }
         }
         final BufferedImage theImage = new BufferedImage(imageSizeX, imageSizeY, BufferedImage.TYPE_BYTE_GRAY);
         theImage.getRaster().setDataElements(0, 0, imageSizeX, imageSizeY, grayImageBuffer);
 
-        if(saveSliceGrayImage)
-        {
+        if (saveSliceGrayImage) {
             final Date d = new Date();
             final String PNG = "png";
 //            final String fn = "EventSlice-" + AEDataFile.DATE_FORMAT.format(d) + "." + PNG;
-            final String fn = "EventSlice-" + sliceEndTimeUs[d1] + "." + PNG;            
+            final String fn = "EventSlice-" + sliceEndTimeUs[d1] + "." + PNG;
             // if user is playing a file, use folder that file lives in
             String userDir = Paths.get(".").toAbsolutePath().normalize().toString();
             File eventSliceDir = new File(userDir + File.separator + "EventSlices" + File.separator + getChip().getAeInputStream().getFile().getName());
-            if(!eventSliceDir.exists()) eventSliceDir.mkdirs();
-            File outputfile = new File(eventSliceDir + File.separator + fn);        
+            if (!eventSliceDir.exists()) {
+                eventSliceDir.mkdirs();
+            }
+            File outputfile = new File(eventSliceDir + File.separator + fn);
 
             try {
                 ImageIO.write(theImage, "png", outputfile);
             } catch (IOException ex) {
                 Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
-            }  
+            }
             saveSliceGrayImage = false;
         }
 
@@ -3316,24 +3315,23 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         putInt("sliceDurationMaxLimitUS", sliceDurationMaxLimitUS);
     }
 
-    
     public boolean isShowCorners() {
         return showCorners;
     }
 
     public void setShowCorners(boolean showCorners) {
         this.showCorners = showCorners;
-        putBoolean("showCorners", showCorners);        
+        putBoolean("showCorners", showCorners);
     }
-    
+
     public boolean isHWABMOFEnabled() {
-        return HWABMOFEnabled;        
+        return HWABMOFEnabled;
     }
 
     public void setHWABMOFEnabled(boolean HWABMOFEnabled) {
         this.HWABMOFEnabled = HWABMOFEnabled;
     }
-    
+
     public boolean isCalcOFonCornersEnabled() {
         return calcOFonCornersEnabled;
     }
@@ -3349,18 +3347,21 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     public void setCornerThr(float cornerThr) {
         this.cornerThr = cornerThr;
-        if(this.cornerThr > 1) this.cornerThr = 1;
+        if (this.cornerThr > 1) {
+            this.cornerThr = 1;
+        }
         putFloat("cornerThr", cornerThr);
     }
-    
+
     public CornerCircleSelection getCornerCircleSelection() {
         return cornerCircleSelection;
     }
-     
+
     public void setCornerCircleSelection(CornerCircleSelection cornerCircleSelection) {
         this.cornerCircleSelection = cornerCircleSelection;
-        putString("cornerCircleSelection", cornerCircleSelection.toString());        
-    }    
+        putString("cornerCircleSelection", cornerCircleSelection.toString());
+    }
+
     synchronized public void doStartRecordingForEDFLOW() {
         JFileChooser c = new JFileChooser(lastFileName);
         c.setFileFilter(new FileFilter() {
@@ -3393,13 +3394,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         dvsWriter.println("# created " + new Date().toString());
         dvsWriter.println("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)"));
         dvsWriter.println("# dvs-events: One event per line:  timestamp(us) x y polarity(0=off,1=on) dx dy OFRetValid rotateFlg SFAST");
-    }  
-    
+    }
+
     synchronized public void doStopRecordingForEDFLOW() {
         dvsWriter.close();
         dvsWriter = null;
-    }  
-    
+    }
+
     // This is the BFAST (or SFAST in paper) corner dector. EFAST refer to HWCornerPointRender
     boolean PatchFastDetectorisFeature(PolarityEvent ein) {
         boolean found_streak = false;
@@ -3409,47 +3410,45 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         int scale = numScales - 1;
         int pix_x = ein.x >> scale;
         int pix_y = ein.y >> scale;
-                
+
         byte featureSlice[][] = slices[sliceIndex(1)][scale];
         int circle3_[][] = innerCircle;
-        int circle4_[][] = outerCircle;        
+        int circle4_[][] = outerCircle;
         final int innerSize = circle3_.length;
         final int outerSize = circle4_.length;
-        
+
         int innerStartX = 0, innerEndX = 0, innerStartY = 0, innerEndY = 0;
-        int outerStartX, outerEndX, outerStartY, outerEndY;   
-        
+        int outerStartX, outerEndX, outerStartY, outerEndY;
+
         // only check if not too close to border
         if (pix_x < 4 || pix_x >= (getChip().getSizeX() >> scale) - 4
                 || pix_y < 4 || pix_y >= (getChip().getSizeY() >> scale) - 4) {
             found_streak = false;
             return found_streak;
         }
-        
+
         found_streak_inner = false;
         boolean exit_inner_loop = false;
 
         int centerValue = 0;
         int xInnerOffset[] = new int[innerCircleSize];
-        int yInnerOffset[] = new int[innerCircleSize]; 
+        int yInnerOffset[] = new int[innerCircleSize];
 //        int innerTsValue[] = new int[innerCircleSize];
-        for(int i = 0; i < innerCircleSize; i++)
-        {
+        for (int i = 0; i < innerCircleSize; i++) {
             xInnerOffset[i] = innerCircle[i][0];
             yInnerOffset[i] = innerCircle[i][1];
             innerTsValue[i] = featureSlice[pix_x + xInnerOffset[i]][pix_y + yInnerOffset[i]];
         }
-        
+
         int xOuterOffset[] = new int[outerCircleSize];
-        int yOuterOffset[] = new int[outerCircleSize];    
+        int yOuterOffset[] = new int[outerCircleSize];
 //        int outerTsValue[] = new int[outerCircleSize];         
-        for(int i = 0; i < outerCircleSize; i++)
-        {
+        for (int i = 0; i < outerCircleSize; i++) {
             xOuterOffset[i] = outerCircle[i][0];
             yOuterOffset[i] = outerCircle[i][1];
             outerTsValue[i] = featureSlice[pix_x + xOuterOffset[i]][pix_y + yOuterOffset[i]];
-        } 
-        
+        }
+
         isFeatureOutterLoop:
         for (int i = 0; i < innerSize; i++) {
             FastDetectorisFeature_label2:
@@ -3468,33 +3467,31 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 double min_t = Math.abs(featureSlice[pix_x + circle3_[i][0]][pix_y + circle3_[i][1]] - centerValue);
                 FastDetectorisFeature_label1:
                 for (int j = 1; j < streak_size; j++) {
-                    final double tj =  Math.abs(featureSlice[pix_x + circle3_[(i + j) % innerSize][0]][pix_y + circle3_[(i + j) % innerSize][1]] - centerValue);
+                    final double tj = Math.abs(featureSlice[pix_x + circle3_[(i + j) % innerSize][0]][pix_y + circle3_[(i + j) % innerSize][1]] - centerValue);
                     if (tj < min_t) {
                         min_t = tj;
-                    } 
+                    }
                 }
 
                 //check if corner timestamp is higher than corner
                 boolean did_break = false;
-                double max_t = featureSlice[pix_x + circle3_[(i + streak_size) % innerSize][0]][pix_y + circle3_[(i + streak_size) % innerSize][1]];                
+                double max_t = featureSlice[pix_x + circle3_[(i + streak_size) % innerSize][0]][pix_y + circle3_[(i + streak_size) % innerSize][1]];
                 FastDetectorisFeature_label0:
                 for (int j = streak_size; j < innerSize; j++) {
-                    final double tj =  Math.abs(featureSlice[pix_x + circle3_[(i + j) % innerSize][0]][pix_y + circle3_[(i + j) % innerSize][1]] - centerValue);
+                    final double tj = Math.abs(featureSlice[pix_x + circle3_[(i + j) % innerSize][0]][pix_y + circle3_[(i + j) % innerSize][1]] - centerValue);
 
-                    if(tj > max_t)
-                    {
+                    if (tj > max_t) {
                         max_t = tj;
                     }
                     if (tj >= min_t - cornerThr * getSliceMaxValue()) {
                         did_break = true;
                         break;
                     }
-                }                
+                }
                 // The maximum value of the non-streak is on the border, remove it.
                 if (!did_break) {
-                    if((max_t >= 7) && (max_t == featureSlice[pix_x + circle3_[(i + streak_size) % innerSize][0]][pix_y + circle3_[(i + streak_size) % innerSize][1]]
-                       || max_t == featureSlice[pix_x + circle3_[(i + innerSize - 1) % innerSize][0]][pix_y + circle3_[(i + innerSize - 1) % innerSize][1]]))
-                    {
+                    if ((max_t >= 7) && (max_t == featureSlice[pix_x + circle3_[(i + streak_size) % innerSize][0]][pix_y + circle3_[(i + streak_size) % innerSize][1]]
+                            || max_t == featureSlice[pix_x + circle3_[(i + innerSize - 1) % innerSize][0]][pix_y + circle3_[(i + innerSize - 1) % innerSize][1]])) {
 //                        did_break = true;
                     }
                 }
@@ -3502,20 +3499,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 if (!did_break) {
                     innerI = i;
                     innerStreakSize = streak_size;
-                    innerStartX = innerCircle[innerI%innerSize][0];
-                    innerEndX = innerCircle[(innerI + innerStreakSize - 1)%innerSize][0];
-                    innerStartY = innerCircle[innerI%innerSize][1];
-                    innerEndY = innerCircle[(innerI + innerStreakSize - 1)%innerSize][1];
-                    int condDiff = (streak_size%2 == 1) ? 0 : 1;  // If streak_size is even, then set it to 1. Otherwise 0.                    
-                    if((streak_size == innerCircleSize - 1) || Math.abs(innerStartX - innerEndX) <= condDiff || Math.abs(innerStartY - innerEndY) <= condDiff 
-//                            || featureSlice[pix_x + innerStartX][pix_y + innerEndX] < 12
-//                            || featureSlice[pix_x + innerEndX][pix_y + innerEndY] < 12
-                            )
-                    {
+                    innerStartX = innerCircle[innerI % innerSize][0];
+                    innerEndX = innerCircle[(innerI + innerStreakSize - 1) % innerSize][0];
+                    innerStartY = innerCircle[innerI % innerSize][1];
+                    innerEndY = innerCircle[(innerI + innerStreakSize - 1) % innerSize][1];
+                    int condDiff = (streak_size % 2 == 1) ? 0 : 1;  // If streak_size is even, then set it to 1. Otherwise 0.                    
+                    if ((streak_size == innerCircleSize - 1) || Math.abs(innerStartX - innerEndX) <= condDiff || Math.abs(innerStartY - innerEndY) <= condDiff //                            || featureSlice[pix_x + innerStartX][pix_y + innerEndX] < 12
+                            //                            || featureSlice[pix_x + innerEndX][pix_y + innerEndY] < 12
+                            ) {
                         found_streak_inner = false;
-                    }
-                    else
-                    {
+                    } else {
                         found_streak_inner = true;
                     }
                     exit_inner_loop = true;
@@ -3529,7 +3522,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
 
         found_streak_outer = false;
-        
+
 //        if (found_streak) 
         {
             found_streak_outer = false;
@@ -3540,33 +3533,34 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 FastDetectorisFeature_label5:
                 for (int i = 0; i < outerSize; i++) {
                     // check that first event is larger than neighbor
-                    if ( Math.abs(featureSlice[pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue) <  Math.abs(featureSlice[pix_x + circle4_[(i - 1 + outerSize) % outerSize][0]][pix_y + circle4_[(i - 1 + outerSize) % outerSize][1]] - centerValue)) {
+                    if (Math.abs(featureSlice[pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue) < Math.abs(featureSlice[pix_x + circle4_[(i - 1 + outerSize) % outerSize][0]][pix_y + circle4_[(i - 1 + outerSize) % outerSize][1]] - centerValue)) {
                         continue;
                     }
 
                     // check that streak event is larger than neighbor
-                    if ( Math.abs(featureSlice[pix_x + circle4_[(i + streak_size - 1) % outerSize][0]][pix_y + circle4_[(i + streak_size - 1) % outerSize][1]] - centerValue) <  Math.abs(featureSlice[pix_x + circle4_[(i + streak_size) % outerSize][0]][pix_y + circle4_[(i + streak_size) % outerSize][1]] - centerValue)) {
+                    if (Math.abs(featureSlice[pix_x + circle4_[(i + streak_size - 1) % outerSize][0]][pix_y + circle4_[(i + streak_size - 1) % outerSize][1]] - centerValue) < Math.abs(featureSlice[pix_x + circle4_[(i + streak_size) % outerSize][0]][pix_y + circle4_[(i + streak_size) % outerSize][1]] - centerValue)) {
                         continue;
                     }
 
-                    double min_t =  Math.abs(featureSlice[pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue);
+                    double min_t = Math.abs(featureSlice[pix_x + circle4_[i][0]][pix_y + circle4_[i][1]] - centerValue);
                     FastDetectorisFeature_label4:
                     for (int j = 1; j < streak_size; j++) {
-                        final double tj =  Math.abs(featureSlice[pix_x + circle4_[(i + j) % outerSize][0]][pix_y + circle4_[(i + j) % outerSize][1]] - centerValue);
+                        final double tj = Math.abs(featureSlice[pix_x + circle4_[(i + j) % outerSize][0]][pix_y + circle4_[(i + j) % outerSize][1]] - centerValue);
                         if (tj < min_t) {
                             min_t = tj;
-                        } 
+                        }
                     }
-                    
+
                     boolean did_break = false;
-                    double max_t = featureSlice[pix_x + circle4_[(i + streak_size) % outerSize][0]][pix_y + circle4_[(i + streak_size) % outerSize][1]];                                    
+                    double max_t = featureSlice[pix_x + circle4_[(i + streak_size) % outerSize][0]][pix_y + circle4_[(i + streak_size) % outerSize][1]];
                     float thr = cornerThr * getSliceMaxValue();
-                    if(streak_size >= 9) thr += 1;
+                    if (streak_size >= 9) {
+                        thr += 1;
+                    }
                     FastDetectorisFeature_label3:
                     for (int j = streak_size; j < outerSize; j++) {
-                        final double tj =  Math.abs(featureSlice[pix_x + circle4_[(i + j) % outerSize][0]][pix_y + circle4_[(i + j) % outerSize][1]] - centerValue);
-                        if(tj > max_t)
-                        {
+                        final double tj = Math.abs(featureSlice[pix_x + circle4_[(i + j) % outerSize][0]][pix_y + circle4_[(i + j) % outerSize][1]] - centerValue);
+                        if (tj > max_t) {
                             max_t = tj;
                         }
                         if (tj >= min_t - thr) {
@@ -3574,38 +3568,32 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                             break;
                         }
                     }
-                    
+
                     if (!did_break) {
-                        if(streak_size == 9 && (max_t >= 7))
-                        {
+                        if (streak_size == 9 && (max_t >= 7)) {
                             int tmp = 0;
                         }
                     }
-                
+
                     if (!did_break) {
                         outerI = i;
                         outerStreakSize = streak_size;
-                        outerStartX = outerCircle[outerI%outerSize][0];
-                        outerEndX = outerCircle[(outerI + outerStreakSize - 1)%outerSize][0];
-                        outerStartY = outerCircle[outerI%outerSize][1];
-                        outerEndY = outerCircle[(outerI + outerStreakSize - 1)%outerSize][1];
-                        int condDiff = (streak_size%2 == 1) ? 0 : 1;  // If streak_size is even, then set it to 1. Otherwise 0.
-                        if((streak_size == outerCircleSize - 1) || Math.abs(outerStartX - outerEndX) <= condDiff || Math.abs(outerStartY - outerEndY) <= condDiff
-//                                || featureSlice[pix_x + outerStartX][pix_y + outerStartY] < 12
-//                                || featureSlice[pix_x + outerEndX][pix_y + outerEndX] < 12
-                                )
-                        {
-                            found_streak_outer = false;                        
-                        }
-                        else
-                        {
+                        outerStartX = outerCircle[outerI % outerSize][0];
+                        outerEndX = outerCircle[(outerI + outerStreakSize - 1) % outerSize][0];
+                        outerStartY = outerCircle[outerI % outerSize][1];
+                        outerEndY = outerCircle[(outerI + outerStreakSize - 1) % outerSize][1];
+                        int condDiff = (streak_size % 2 == 1) ? 0 : 1;  // If streak_size is even, then set it to 1. Otherwise 0.
+                        if ((streak_size == outerCircleSize - 1) || Math.abs(outerStartX - outerEndX) <= condDiff || Math.abs(outerStartY - outerEndY) <= condDiff //                                || featureSlice[pix_x + outerStartX][pix_y + outerStartY] < 12
+                                //                                || featureSlice[pix_x + outerEndX][pix_y + outerEndX] < 12
+                                ) {
+                            found_streak_outer = false;
+                        } else {
                             found_streak_outer = true;
                         }
-                        if(min_t - max_t != 15 || streak_size != 10)
-                        {
+                        if (min_t - max_t != 15 || streak_size != 10) {
 //                            found_streak_outer = false; 
                         }
-                        exit_outer_loop = true;                        
+                        exit_outer_loop = true;
                         break;
                     }
                 }
@@ -3615,7 +3603,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
         }
 
-        switch(cornerCircleSelection){
+        switch (cornerCircleSelection) {
             case InnerCircle:
                 found_streak = found_streak_inner;
                 break;
@@ -3630,9 +3618,48 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 break;
             default:
                 found_streak = found_streak_inner && found_streak_outer;
-                break;                
+                break;
         }
         return found_streak;
     }
-    
+
+    /**
+     * @return the outlierRejectionEnabled
+     */
+    public boolean isOutlierRejectionEnabled() {
+        return outlierRejectionEnabled;
+    }
+
+    /**
+     * @param outlierRejectionEnabled the outlierRejectionEnabled to set
+     */
+    public void setOutlierRejectionEnabled(boolean outlierRejectionEnabled) {
+        this.outlierRejectionEnabled = outlierRejectionEnabled;
+        putBoolean("outlierRejectionEnabled", outlierRejectionEnabled);
+    }
+
+    /**
+     * @return the outlierRejectionThresholdSigma
+     */
+    public float getOutlierRejectionThresholdSigma() {
+        return outlierRejectionThresholdSigma;
+    }
+
+    /**
+     * @param outlierRejectionThresholdSigma the outlierRejectionThresholdSigma
+     * to set
+     */
+    public void setOutlierRejectionThresholdSigma(float outlierRejectionThresholdSigma) {
+        this.outlierRejectionThresholdSigma = outlierRejectionThresholdSigma;
+        putFloat("outlierRejectionThresholdSigma", outlierRejectionThresholdSigma);
+    }
+
+    private boolean isOutlierFlowVector(PatchMatchFlow.SADResult result) {
+        if(!isOutlierRejectionEnabled()) return false;
+        GlobalMotion gm=motionFlowStatistics.getGlobalMotion();
+        if((Math.abs(result.vx-gm.meanGlobalVx)>outlierRejectionThresholdSigma*gm.sdGlobalVx) 
+            || (Math.abs(result.vy-gm.meanGlobalVy)>outlierRejectionThresholdSigma*gm.sdGlobalVy)) 
+            return true;
+        return false;
+    }
 }
