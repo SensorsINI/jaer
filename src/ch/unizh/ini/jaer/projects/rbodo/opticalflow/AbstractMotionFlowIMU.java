@@ -118,6 +118,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     // Global translation, rotation and expansion.
     private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
+    protected int globalFlowWindowEvents=getInt("globalFlowWindowEvents",300);
 
     protected EngineeringFormat engFmt = new EngineeringFormat();
 
@@ -159,7 +160,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     private String loggingFolder = getPrefs().get("DataLogger.loggingFolder", System.getProperty("user.dir"));
     public boolean measureAccuracy = getBoolean("measureAccuracy", true);
     boolean measureProcessingTime = getBoolean("measureProcessingTime", false);
-    public int countIn, countOut;
+    public int countIn, countOut, countOutliers;
     protected MotionFlowStatistics motionFlowStatistics;
 
     double[][] vxGTframe, vyGTframe, tsGTframe;
@@ -231,7 +232,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         imuFlowEstimator = new ImuFlowEstimator();
         dirPacket = new EventPacket(ApsDvsMotionOrientationEvent.class);
         filterClassName = getClass().getSimpleName();
-        motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY);
+        motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY,globalFlowWindowEvents);
         setMeasureAccuracy(getBoolean("measureAccuracy", true));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
         setDisplayGlobalMotion(getBoolean("displayGlobalMotion", true));// these setters set other flags, so call them to set these flags to default values
@@ -267,6 +268,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
+        setPropertyTooltip(dispTT, "globalFlowWindowEvents", "Window in events for measuring statistics of global flow");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
@@ -722,7 +724,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         sizey = chip.getSizeY();
         subSizeX = sizex >> subSampleShift;
         subSizeY = sizey >> subSampleShift;
-        motionFlowStatistics.reset(subSizeX, subSizeY);
+        motionFlowStatistics.reset(subSizeX, subSizeY, globalFlowWindowEvents);
         imuFlowEstimator.reset();
         exportedFlowToMatlab = false;
         motionField.reset();
@@ -1004,6 +1006,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
         countIn = 0;
         countOut = 0;
+        countOutliers = 0;
         if (measureProcessingTime) {
             motionFlowStatistics.processingTime.startTime = System.nanoTime();
         }
@@ -1096,9 +1099,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
         }
 
-        if (displayGlobalMotion || ppsScaleDisplayRelativeOFLength) {
-            motionFlowStatistics.getGlobalMotion().update(vx, vy, v, eout.x, eout.y);
-        }
         
         if (motionVectorEventLogger != null && motionVectorEventLogger.isEnabled()) {
             if(getClass().getSimpleName().equals("PatchMatchFlow"))
@@ -2308,6 +2308,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         if (cameraCalibration != null) {
             cameraCalibration.setFilterEnabled(false); // disable camera cameraCalibration; force user to enable it every time
         }
+    }
+
+    /**
+     * @return the globalFlowWindowEvents
+     */
+    public int getGlobalFlowWindowEvents() {
+        return globalFlowWindowEvents;
+    }
+
+    /**
+     * @param globalFlowWindowEvents the globalFlowWindowEvents to set
+     */
+    public void setGlobalFlowWindowEvents(int globalFlowWindowEvents) {
+        this.globalFlowWindowEvents = globalFlowWindowEvents;
+        putInt("globalFlowWindowEvents",globalFlowWindowEvents);
+        motionFlowStatistics.getGlobalMotion().setWindowLength(this.globalFlowWindowEvents);
     }
 
 }

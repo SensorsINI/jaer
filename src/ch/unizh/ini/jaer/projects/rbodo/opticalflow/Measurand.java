@@ -11,9 +11,14 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
  */
 public class Measurand extends DescriptiveStatistics {
 
-    public static final int WINDOW_SIZE=10000;
+    public static final int WINDOW_SIZE = 1000;
+
     public Measurand() {
         setWindowSize(WINDOW_SIZE);
+    }
+
+    public Measurand(int windowLength) {
+        setWindowSize(windowLength);
     }
 
     @Override
@@ -38,16 +43,16 @@ public class Measurand extends DescriptiveStatistics {
 
     public static void main(String[] args) {
         Measurand m = new Measurand();
-        Random r=new Random();
-        for(int i=0;i<1000;i++){
-            float v=r.nextFloat();
+        Random r = new Random();
+        for (int i = 0; i < 1000; i++) {
+            float v = r.nextFloat();
             m.addValue(v);
 //            System.out.print(v+" ");
         }
-        for(float p=10;p<=100;p+=10){
-            System.out.println(String.format("%f %f",p,m.getPercentile(p)));
+        for (float p = 10; p <= 100; p += 10) {
+            System.out.println(String.format("%f %f", p, m.getPercentile(p)));
         }
-        System.out.println("\n"+m.toString());
+        System.out.println("\n" + m.toString());
     }
 
 }

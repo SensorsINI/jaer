@@ -50,7 +50,7 @@ public class MotionFlowStatistics {
     ProcessingTime processingTime;
     EventDensity eventDensity;
     TobiLogger globalMotionVectorLogger;
-       
+
     // For logging.
     private static String filename;
     private final DateFormat DATE_FORMAT;
@@ -71,24 +71,24 @@ public class MotionFlowStatistics {
 
     private List<Double> globalFlows = new ArrayList<>();
 
-    protected MotionFlowStatistics(String filterClassName, int sX, int sY) {
+    protected MotionFlowStatistics(String filterClassName, int sX, int sY, int globalFlowWindowLengthEvents) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
-        reset(sX, sY);
+        reset(sX, sY, globalFlowWindowLengthEvents);
 //        globalMotionVectorLogger = new TobiLogger("logfiles/" + "GlobalMotion" + filterClassName ,  "Global Motion vector for every generated slice");
 //        globalMotionVectorLogger.setNanotimeEnabled(false);
 //        globalMotionVectorLogger.setEnabled(true);
         this.filterClassName = filterClassName;
     }
 
-    protected final void reset(int sX, int sY) {
-        globalMotion = new GlobalMotion(sX, sY);
+    protected final void reset(int sX, int sY, int globalFlowWindowLengthEvents) {
+        globalMotion = new GlobalMotion(sX, sY, globalFlowWindowLengthEvents);
         angularError = new AngularError();
         endpointErrorAbs = new EndpointErrorAbs();
         endpointErrorRel = new EndpointErrorRel();
         processingTime = new ProcessingTime();
         eventDensity = new EventDensity();
         warmupCounter = 8;
-        if(globalMotionVectorLogger != null) {
+        if (globalMotionVectorLogger != null) {
             // globalMotionVectorLogger.setEnabled(false);            
             // globalMotionVectorLogger = new TobiLogger("logfiles/" + "GlobalMotion" + filterClassName ,  "Global Motion vector for every generated slice");
             // globalMotionVectorLogger.setNanotimeEnabled(false);
@@ -96,11 +96,11 @@ public class MotionFlowStatistics {
         }
         ArrayList list = new ArrayList();
         Double[] globalFlowArray = new Double[globalFlows.size()];
-        globalFlowArray =  globalFlows.toArray(globalFlowArray);
+        globalFlowArray = globalFlows.toArray(globalFlowArray);
         globalFlows.clear();
         list.add(new MLDouble("global_flow", globalFlowArray, 3));
         Date d = new Date();
-        String fn= "flowExport"+ "_" + AEDataFile.DATE_FORMAT.format(d) + "_" + System.currentTimeMillis() + "_" + filterClassName + ".mat";
+        String fn = "flowExport" + "_" + AEDataFile.DATE_FORMAT.format(d) + "_" + System.currentTimeMillis() + "_" + filterClassName + ".mat";
 //        try {          
 //            File logDir = new File("logfiles");
 //
@@ -146,6 +146,14 @@ public class MotionFlowStatistics {
         endpointErrorRel.update(vx, vy, v, vxGT, vyGT, vGT);
     }
 
+    /**
+     * Updates statistics about number of input and output events and measures
+     * processing time
+     *
+     * @param countIn
+     * @param countOut
+     * @param currentTs
+     */
     public void updatePacket(int countIn, int countOut, int currentTs) {
         eventDensity.update(countIn, countOut);
         if (measureProcessingTime) {
@@ -230,7 +238,7 @@ public class MotionFlowStatistics {
                     getClass().getSimpleName(), getTotalDensity());
         }
     }
- 
+
     /**
      * Tracks global motion
      *
@@ -245,34 +253,51 @@ public class MotionFlowStatistics {
          * onto circumferences around center.
          */
         public float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, meanGlobalTrans, sdGlobalTrans,
-                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed;
+                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed, sdGlobalSpeed;
         private final Measurand globalVx, globalVy, globalRotation, globalExpansion, globalSpeed;
-        private Point2D.Float flowVelocityPps=new Point2D.Float();
+        private Point2D.Float flowVelocityPps = new Point2D.Float();
         private int rx, ry;
         private int subSizeX, subSizeY;
         private final Measurand rollDps;
         private final Measurand pitchDps;
         private final Measurand yawDps;
 
+        private int windowLength = Measurand.WINDOW_SIZE;
+
         /**
-         * New instance
+         * makes a new instance
          *
          * @param sX x resolution, could be subsampled
          * @param sY
+         * @param windowLength window for statistics, in events
          */
-        GlobalMotion(int sX, int sY) {
+        GlobalMotion(int sX, int sY, int windowLength) {
             subSizeX = sX;
             subSizeY = sY;
-            globalVx = new Measurand();
-            globalVy = new Measurand();
-            globalRotation = new Measurand();
-            globalExpansion = new Measurand();
-            globalSpeed = new Measurand();
-            rollDps=new Measurand();
-            pitchDps=new Measurand();
-            yawDps=new Measurand();
+            globalVx = new Measurand(windowLength);
+            globalVy = new Measurand(windowLength);
+            globalRotation = new Measurand(windowLength);
+            globalExpansion = new Measurand(windowLength);
+            globalSpeed = new Measurand(windowLength);
+            rollDps = new Measurand(windowLength);
+            pitchDps = new Measurand(windowLength);
+            yawDps = new Measurand(windowLength);
         }
 
+        public void setWindowLength(int windowLength) {
+            globalVy.setWindowSize(windowLength);
+            globalVy.setWindowSize(windowLength);
+            globalRotation.setWindowSize(windowLength);
+            globalExpansion.setWindowSize(windowLength);
+            globalSpeed.setWindowSize(windowLength);
+        }
+
+        /**
+         * Clears statistics
+         *
+         * @param sX subsampling x dimension size
+         * @param sY
+         */
         void reset(int sX, int sY) {
             subSizeX = sX;
             subSizeY = sY;
@@ -283,7 +308,17 @@ public class MotionFlowStatistics {
             globalSpeed.clear();
         }
 
-        void update(float vx, float vy, float v, int x, int y) {
+        /**
+         * Updates statistics, to be computed on each valid flow result
+         *
+         * @param vx flow x
+         * @param vy flow y
+         * @param v speed
+         * @param x coordinate x horizontal (for radial and circular flow
+         * computations)
+         * @param y coordinate y vertical
+         */
+        public void update(float vx, float vy, float v, int x, int y) {
             // Translation
             if (v == 0) {
                 return;
@@ -341,22 +376,28 @@ public class MotionFlowStatistics {
 
         }
 
+        /**
+         * To be applied at each of packet, updates values of statistics.
+         *
+         * @param currentTs end of packet timestamp in us
+         */
         void bufferMean(int currentTs) {
-            meanGlobalVx = (float)globalVx.getMean();
-            sdGlobalVx = (float)globalVx.getStandardDeviation();
-            meanGlobalVy = (float)globalVy.getMean();
-            sdGlobalVy = (float)globalVy.getStandardDeviation();
+            meanGlobalVx = (float) globalVx.getMean();
+            sdGlobalVx = (float) globalVx.getStandardDeviation();
+            meanGlobalVy = (float) globalVy.getMean();
+            sdGlobalVy = (float) globalVy.getStandardDeviation();
             meanGlobalTrans = (float) Math.sqrt(meanGlobalVx * meanGlobalVx + meanGlobalVy * meanGlobalVy);
             sdGlobalTrans = (float) Math.sqrt(sdGlobalVx * sdGlobalVx + sdGlobalVy * sdGlobalVy);
-            meanGlobalRotation = (float)globalRotation.getMean();
-            sdGlobalRotation = (float)globalRotation.getStandardDeviation();
-            meanGlobalExpansion = (float)globalExpansion.getMean();
-            sdGlobalExpansion = (float)globalExpansion.getStandardDeviation();
-            meanGlobalSpeed = (float)globalSpeed.getMean();
+            meanGlobalRotation = (float) globalRotation.getMean();
+            sdGlobalRotation = (float) globalRotation.getStandardDeviation();
+            meanGlobalExpansion = (float) globalExpansion.getMean();
+            sdGlobalExpansion = (float) globalExpansion.getStandardDeviation();
+            meanGlobalSpeed = (float) globalSpeed.getMean();
+            sdGlobalSpeed = (float) globalSpeed.getStandardDeviation();
 
-            globalFlows.add((double)currentTs);
-            globalFlows.add((double)meanGlobalVx);
-            globalFlows.add((double)meanGlobalVy);
+            globalFlows.add((double) currentTs);
+            globalFlows.add((double) meanGlobalVx);
+            globalFlows.add((double) meanGlobalVy);
 
             //globalVxList.add(new MLDouble("vy", meanGlobalVy));
             if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
@@ -365,11 +406,12 @@ public class MotionFlowStatistics {
             }
             // Call resets here because global motion should in general not
             // be averaged over more than one packet.
-            globalVx.clear();
-            globalVy.clear();
-            globalRotation.clear();
-            globalExpansion.clear();
-            globalSpeed.clear();
+            // Tobi changed so that stats do not depend on packet length, so that outlier rejection can work robustly
+//            globalVx.clear();
+//            globalVy.clear();
+//            globalRotation.clear();
+//            globalExpansion.clear();
+//            globalSpeed.clear();
         }
 
         @Override
