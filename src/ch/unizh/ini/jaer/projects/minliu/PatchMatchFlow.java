@@ -176,7 +176,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
     }
-    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.valueOf(getString("cornerCircleSelection",CornerCircleSelection.AND.name())); // Tobi changes to AND which is the condition used in paper
+    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.valueOf(getString("cornerCircleSelection", CornerCircleSelection.AND.name())); // Tobi changes to AND which is the condition used in paper
 
     protected static String DEFAULT_FILENAME = "jAER.txt";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
@@ -600,10 +600,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     continue;
                 }
 
-                if (isOutlierFlowVector(result)) {
-                    countOutliers++;
-                    continue;
-                }
                 scaleResultCounts[minDistScale]++;
                 vx = result.vx;
                 vy = result.vy;
@@ -634,10 +630,16 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
             }
 
-            if (resultHistogram != null) {
-                resultHistogram[result.dx + computeMaxSearchDistance()][result.dy + computeMaxSearchDistance()]++;
-                resultHistogramCount++;
+            // update global flow here before outlier rejection, otherwise stats are not updated and std shrinks to zero
+            if (isDisplayGlobalMotion() || isOutlierRejectionEnabled() || isPpsScaleDisplayRelativeOFLength()) {
+                motionFlowStatistics.getGlobalMotion().update(vx, vy, v, (x << getSubSampleShift()), (y << getSubSampleShift()));
             }
+
+            if (isOutlierFlowVector(result)) {
+                countOutliers++;
+                continue;
+            }
+
 //            if (result.dx != 0 || result.dy != 0) {
 //                final int bin = (int) Math.round(ANGLE_HISTOGRAM_COUNT * (Math.atan2(result.dy, result.dx) + Math.PI) / (2 * Math.PI));
 //                int v = ++resultAngleHistogram[bin];
@@ -646,15 +648,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                    resultAngleHistogramMax = v;
 //                }
 //            }
-
             processGoodEvent();
+            if (resultHistogram != null) {
+                resultHistogram[result.dx + computeMaxSearchDistance()][result.dy + computeMaxSearchDistance()]++;
+                resultHistogramCount++;
+            }
             lastGoodSadResult.set(result);
 
         }
 
         motionFlowStatistics.updatePacket(countIn, countOut, ts);
-        float fracOutliers=(float)countOutliers/(countOut+countOutliers);
-        System.out.println(String.format("Fraction of outliers: %%%.1f",100*fracOutliers));
+//        float fracOutliers = (float) countOutliers / countIn;
+//        System.out.println(String.format("Fraction of outliers: %.1f%%", 100 * fracOutliers));
         adaptEventSkipping();
         if (rewindFlg) {
             rewindFlg = false;
@@ -969,6 +974,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 if (timeLimiter.isTimedOut()) {
                     String s4 = String.format("Timed out: skipped %d events", nSkipped);
                     textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
+                }
+                if (outlierRejectionEnabled) {
+                    String s5 = String.format("Outliers: %%%.0f", 100 * (float) countOutliers / countIn);
+                    textRenderer.draw3D(s5, 0, 5 * (float) (rt.getHeight()) * sc, 0, sc);
                 }
                 textRenderer.end3DRendering();
                 gl.glPopMatrix(); // back to original chip coordinates
@@ -3655,11 +3664,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     private boolean isOutlierFlowVector(PatchMatchFlow.SADResult result) {
-        if(!isOutlierRejectionEnabled()) return false;
-        GlobalMotion gm=motionFlowStatistics.getGlobalMotion();
-        if((Math.abs(result.vx-gm.meanGlobalVx)>outlierRejectionThresholdSigma*gm.sdGlobalVx) 
-            || (Math.abs(result.vy-gm.meanGlobalVy)>outlierRejectionThresholdSigma*gm.sdGlobalVy)) 
+        if (!outlierRejectionEnabled) {
+            return false;
+        }
+        GlobalMotion gm = motionFlowStatistics.getGlobalMotion();
+        float speed = (float) Math.sqrt(result.vx * result.vx + result.vy * result.vy);
+        // if the current vector speed is too many stds outside the mean speed then it is an outlier
+        if (Math.abs(speed - gm.meanGlobalSpeed)
+                > outlierRejectionThresholdSigma * gm.sdGlobalSpeed) {
             return true;
+        }
+//        if((Math.abs(result.vx-gm.meanGlobalVx)>outlierRejectionThresholdSigma*gm.sdGlobalVx) 
+//            || (Math.abs(result.vy-gm.meanGlobalVy)>outlierRejectionThresholdSigma*gm.sdGlobalVy)) 
+//            return true;
         return false;
     }
 }
