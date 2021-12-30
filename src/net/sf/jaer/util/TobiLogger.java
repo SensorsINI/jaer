@@ -55,6 +55,11 @@ public class TobiLogger {
     
     private boolean suppressShowingFolder=false;
     private boolean suppressTimeField=false;
+    
+    /** Add a version string for this logger.
+     When this file is changed, please increase this version number.
+     **/
+    private static final String TOBI_LOGGER_VERSION = "1.0";
 
     /**
      * Creates a new instance of TobiLogger.
@@ -255,7 +260,7 @@ public class TobiLogger {
 
     @Override
     public String toString() {
-        return "TobiLogger{" + "absoluteTimeEnabled=" + absoluteTimeEnabled + ", nanotimeEnabled=" + nanotimeEnabled + ", startingTime=" + startingTime + ", headerLine=" + getColumnHeaderLine() + ", fileNameActual=" + getFileNameActual() + '}';
+        return "TobiLogger{V" + TOBI_LOGGER_VERSION + ", absoluteTimeEnabled=" + absoluteTimeEnabled + ", nanotimeEnabled=" + nanotimeEnabled + ", startingTime=" + startingTime + ", headerLine=" + getColumnHeaderLine() + ", fileNameActual=" + getFileNameActual() + '}';
     }
 
     /**
