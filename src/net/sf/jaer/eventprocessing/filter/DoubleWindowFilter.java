@@ -91,6 +91,8 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
     private int disThr = getInt("disThr", 10);
     private boolean useDoubleMode = getBoolean("useDoubleMode", true);
     private int fillindex = 0;
+	
+    private int numMustBeCorrelated = getInt("numMustBeCorrelated", 1);
 
     int maxDisThr = sx + sy;
     final int minDisThr = 0;
@@ -100,6 +102,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         setPropertyTooltip(TT_FILT_CONTROL, "wlen", "total window length for holding previous events. If doubleMode selected, this window is split into signal and noise windows");
         setPropertyTooltip(TT_FILT_CONTROL, "useDoubleMode", "use two separate windows for storing real and noise events");
         setPropertyTooltip(TT_FILT_CONTROL, "disThr", "threshold for distance comparison, if too noisy, make this smaller, if too few events, make this larger");
+	setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of dis (3x3) neighbors (including our own event location) must have had event within the time duration implied in the dis window");
         hideProperty("correlationTimeS");
         hideProperty("antiCasualEnabled");
         hideProperty("sigmaDistPixels");
@@ -359,6 +362,27 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         putBoolean("useDoubleMode", useDoubleMode);
         getSupport().firePropertyChange("useDoubleMode", this.useDoubleMode, useDoubleMode);
         this.useDoubleMode = useDoubleMode;
+    }
+	
+    /**
+     * @return the numMustBeCorrelated
+     */
+    public int getNumMustBeCorrelated() {
+	return numMustBeCorrelated;
+    }
+
+    /**
+     * @param numMustBeCorrelated the numMustBeCorrelated to set
+     */
+    public void setNumMustBeCorrelated(int numMustBeCorrelated) {
+	if (numMustBeCorrelated < 1) {
+	    numMustBeCorrelated = 1;
+	} else if (numMustBeCorrelated > getNumNeighbors()) {
+	    numMustBeCorrelated = getNumNeighbors();
+	}
+	putInt("numMustBeCorrelated", numMustBeCorrelated);
+	this.numMustBeCorrelated = numMustBeCorrelated;
+	getSupport().firePropertyChange("numMustBeCorrelated", this.numMustBeCorrelated, numMustBeCorrelated);
     }
 
     /**
