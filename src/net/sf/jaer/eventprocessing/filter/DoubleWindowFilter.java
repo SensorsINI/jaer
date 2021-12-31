@@ -143,79 +143,93 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
                 continue;
             }
 
-            if (useDoubleMode) {
-                int dwlen = wlen > 1 ? wlen / 2 : 1;
+            int ncorrelated = 0;
+
+	    if (useDoubleMode) {
+		int dwlen = wlen > 1 ? wlen / 2 : 1;
+		boolean noiseflag = true; // at first considered to be noise event
 //                check real window first 
-                int[] disarray = new int[dwlen];
-                for (int i = 0; i < dwlen; i++) {
-                    disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
-                }
-                int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
-                int mindisvalue = disarray[minindex];
-                boolean noiseflag = false;
+		int[] disarray = new int[dwlen];
+		for (int i = 0; i < dwlen; i++) {
+		    disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
+		    if (disarray[i] < disThr) {
+			ncorrelated++;
+			if (ncorrelated == numMustBeCorrelated) {
+			    noiseflag = false;
+			    break;
+			}
+		    }
+		}
 
-//                if events in real window do not support correlation, check noise window
-//                the reason to check noise window is that there might be real events 
-//                        that are caused due to objects beginning moving in a different area and 
-//                        far away from current real events
-                if (mindisvalue > disThr) {
-                    for (int i = 0; i < dwlen; i++) {
-                        disarray[i] = (Math.abs(e.x - lastNEvents[i][0])) + (Math.abs(e.y - lastNEvents[i][1]));
-                    }
-                    minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
-                    mindisvalue = disarray[minindex];
 
-                    if (mindisvalue > disThr) {
-                        noiseflag = true;
+		
+		if (ncorrelated < numMustBeCorrelated) {
+		    for (int i = 0; i < dwlen; i++) {
+			disarray[i] = (Math.abs(e.x - lastNEvents[i][0])) + (Math.abs(e.y - lastNEvents[i][1]));
+			if (disarray[i] < disThr) {
+			    ncorrelated++;
+			    if (ncorrelated == numMustBeCorrelated) {
+				noiseflag = false;
+				break;
+			    }
+			}
+		    }
 
-                    } else {
-                        noiseflag = false;
-                    }
-                }
+
+		    
+		}
 
 //            update real window or noise window based on the output of filter
-                if (noiseflag == false) {
-                    filterIn(e);
-                    for (int i = 0; i < dwlen - 1; i++) {
+		if (noiseflag == false) {
+		    filterIn(e);
+		    for (int i = 0; i < dwlen - 1; i++) { // leftshift
 
-                        lastREvents[i][0] = lastREvents[i + 1][0];
-                        lastREvents[i][1] = lastREvents[i + 1][1];
-                    }
-                    lastREvents[dwlen - 1][0] = e.x;
-                    lastREvents[dwlen - 1][1] = e.y;
-                } else {
-                    filterOut(e);
-                    for (int i = 0; i < dwlen - 1; i++) {
+			lastREvents[i][0] = lastREvents[i + 1][0];
+			lastREvents[i][1] = lastREvents[i + 1][1];
+		    }
+		    lastREvents[dwlen - 1][0] = e.x;
+		    lastREvents[dwlen - 1][1] = e.y;
+		} else {
+		    filterOut(e);
+		    for (int i = 0; i < dwlen - 1; i++) {
 
-                        lastNEvents[i][0] = lastNEvents[i + 1][0];
-                        lastNEvents[i][1] = lastNEvents[i + 1][1];
-                    }
-                    lastNEvents[dwlen - 1][0] = e.x;
-                    lastNEvents[dwlen - 1][1] = e.y;
-                }
-            } else { // fwf, single window
+			lastNEvents[i][0] = lastNEvents[i + 1][0];
+			lastNEvents[i][1] = lastNEvents[i + 1][1];
+		    }
+		    lastNEvents[dwlen - 1][0] = e.x;
+		    lastNEvents[dwlen - 1][1] = e.y;
+		}
+	    } else { // fwf, single window
 //                only use lastREvents to store the past events
-                int[] disarray = new int[wlen];
-                for (int i = 0; i < wlen; i++) {
-                    disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
-                }
-                int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
-                int mindisvalue = disarray[minindex];
+		int[] disarray = new int[wlen];
+		boolean noiseflag = true;
+		for (int i = 0; i < wlen; i++) {
+		    disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
+		    if (disarray[i] < disThr){
+			ncorrelated ++;
+			if (ncorrelated == numMustBeCorrelated){
+			    noiseflag = false;
+			    break;
+			} 
+		    } 
+		}
+//		int minindex = IntStream.range(0, disarray.length).reduce((i, j) -> disarray[i] > disarray[j] ? j : i).getAsInt();
+//		int mindisvalue = disarray[minindex];
 
-                if (mindisvalue > disThr) {
-                    filterOut(e);
-                } else {
-                    filterIn(e);
-                }
+		if (noiseflag) {
+		    filterOut(e);
+		} else {
+		    filterIn(e);
+		}
 
 //                update window
-                for (int i = 0; i < wlen - 1; i++) {
-                    lastREvents[i][0] = lastREvents[i + 1][0];
-                    lastREvents[i][1] = lastREvents[i + 1][1];
-                }
-                lastREvents[wlen - 1][0] = e.x;
-                lastREvents[wlen - 1][1] = e.y;
-            }
+		for (int i = 0; i < wlen - 1; i++) {
+		    lastREvents[i][0] = lastREvents[i + 1][0];
+		    lastREvents[i][1] = lastREvents[i + 1][1];
+		}
+		lastREvents[wlen - 1][0] = e.x;
+		lastREvents[wlen - 1][1] = e.y;
+	    }
         }
         getNoiseFilterControl().maybePerformControl(in);
 
