@@ -12,7 +12,7 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Color;
-import java.awt.geom.Point2D;
+import java.awt.Cursor;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -24,8 +24,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -53,8 +51,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
 import org.jetbrains.bio.npy.NpyArray;
-import org.jetbrains.bio.npy.NpzEntry;
-import org.jetbrains.bio.npy.NpzFile;
+import org.jetbrains.bio.npy.NpyFile;
 
 /**
  * Abstract base class for motion flow filters. The filters that extend this
@@ -118,7 +115,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     // Global translation, rotation and expansion.
     private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
-    protected int globalFlowWindowEvents=getInt("globalFlowWindowEvents",300);
+    protected int globalFlowWindowEvents = getInt("globalFlowWindowEvents", 300);
 
     protected EngineeringFormat engFmt = new EngineeringFormat();
 
@@ -167,6 +164,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     public float vxGT, vyGT, vGT;
     private boolean importedGTfromMatlab;
     private boolean importedGTfromNPZ = false;
+    private String npzFilePath = getString("npzFilePath", "");
 
     // Discard events that are considerably faster than average
     private float avgSpeed = 0;
@@ -222,20 +220,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     protected SingleCameraCalibration cameraCalibration = null;
     int uidx;
     protected boolean useColorForMotionVectors = getBoolean("useColorForMotionVectors", true);
-    private int[] tsShape;
+    // NPZ ground truth data files from MVSEC
+    float MVSEC_FPS = 45; // of the MVSEC frames
     private float[] tsData;
     private float[] xOFData;
     private float[] yOFData;
-    
+
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
         imuFlowEstimator = new ImuFlowEstimator();
         dirPacket = new EventPacket(ApsDvsMotionOrientationEvent.class);
         filterClassName = getClass().getSimpleName();
-        motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY,globalFlowWindowEvents);
-        setMeasureAccuracy(getBoolean("measureAccuracy", true));
-        setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
-        setDisplayGlobalMotion(getBoolean("displayGlobalMotion", true));// these setters set other flags, so call them to set these flags to default values
 
         FilterChain chain = new FilterChain(chip);
         try {
@@ -288,7 +283,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(imuTT, "startIMUCalibration", "<html> Starts estimating the IMU offsets based on next calibrationSamples samples. Should be used only with stationary recording to store these offsets in the preferences. <p> <b>measureAccuracy</b> must be selected as well to actually do the calibration.");
         setPropertyTooltip(imuTT, "eraseIMUCalibration", "Erases the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
         setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
-        setPropertyTooltip(imuTT, "importGTfromNPZ", "Allows importing ground truth from numpy file, only used for MVSEC dataset.");
+        setPropertyTooltip(imuTT, "importGTfromNPZ", "Allows importing ground truth from numpy uncompressed zip archive of multiple variables file (NPZ); only used for MVSEC dataset.");
         setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
         setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
 //        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
@@ -351,9 +346,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
         chooser.setMultiSelectionEnabled(false);
         if (chooser.showOpenDialog(chip.getAeViewer().getFilterFrame()) == JFileChooser.APPROVE_OPTION) {
-            try {                
+            try {
                 vxGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("vxGT")).getArray();
-                vyGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("vyGT")).getArray();                
+                vyGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("vyGT")).getArray();
                 tsGTframe = ((MLDouble) (new MatFileReader(chooser.getSelectedFile().getPath())).getMLArray("ts")).getArray();
                 importedGTfromMatlab = true;
                 log.info("Imported ground truth file");
@@ -363,50 +358,57 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
     }
 
-                
+    float[] readNpyFile(String ps, boolean subtractFirst, float scale) {
+        Path p = new File(ps).toPath();
+        log.info("Loading " + p);
+        double[] d = NpyFile.read(p, 1 << 18).asDoubleArray();
+        float[] f = new float[d.length];
+        double sub = subtractFirst ? d[0] : 0;
+        for (int i = 0; i < d.length; i++) {
+            f[i] = (float) (scale * (d[i] - sub));
+        }
+        return f;
+    }
+
     // Allows importing two 2D-arrays containing the x-/y- components of the 
     // motion flow field used as ground truth from numpy file .npz.   
     // Primarily used for MVSEC dataset.
     synchronized public void doImportGTfromNPZ() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Choose ground truth file");
-        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        JFileChooser chooser = new JFileChooser(npzFilePath);
+        chooser.setDialogTitle("Choose ground truth MVSEC extracted folder that has the timestamps, vx and vy .npy files");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+//        FileFilter filter = new FileNameExtensionFilter("NPZ folder", "npz", "NPZ");
+//        chooser.setFileFilter(filter);
         chooser.setMultiSelectionEnabled(false);
         if (chooser.showOpenDialog(chip.getAeViewer().getFilterFrame()) == JFileChooser.APPROVE_OPTION) {
             String fileName = chooser.getSelectedFile().getPath();
-            Path filePath = new File(fileName).toPath();
-            NpzFile.Reader reader = NpzFile.read(filePath);
-            List<NpzEntry> entryList = reader.introspect();
-            entryList.size();    
-            NpyArray tsArray = reader.get("timestamps", 1 << 18);
-            tsData = tsArray.asFloatArray();
-            tsShape = tsArray.getShape();
-            float firtTs = tsData[0];
-            for(int i = 0; i < tsShape[0]; i++)
-            {
-                tsData[i] = tsData[i] - firtTs;
-                tsData[i] = tsData[i] * 1e6f; // Convert to us.
+            File dir = new File(fileName);
+            npzFilePath = dir.toString();
+            putString("npzFilePath", npzFilePath);
+            try {
+                setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                tsData = readNpyFile(npzFilePath + File.separator + "timestamps.npy", true, 1e6f);
+                MVSEC_FPS = 1e6f / (tsData[1] - tsData[0]);
+                xOFData = readNpyFile(npzFilePath + File.separator + "x_flow_dist.npy", false, MVSEC_FPS);
+                yOFData = readNpyFile(npzFilePath + File.separator + "y_flow_dist.npy", false, MVSEC_FPS);
+                String s = String.format("Imported %d frames. Frame rate is %.1fHz", tsData.length, MVSEC_FPS);
+                log.info(s);
+                showPlainMessageDialogInSwingThread(s, "NPZ load succeeded");
+                importedGTfromNPZ = true;
+            } catch (Exception e) {
+                log.warning("Could not parse, caught " + e.toString());
+                showWarningDialogInSwingThread("Could not parse, caught " + e.toString(), "NPZ load error");
+                return;
+            } catch (OutOfMemoryError e) {
+                log.warning("Ran out of memory: " + e.toString());
+                showWarningDialogInSwingThread("Ran out of memory: " + e.toString(), "Out of memory");
+            } finally {
+                setCursor(Cursor.getDefaultCursor());
             }
-            NpyArray xOFArray = reader.get("x_flow_dist", 1 << 18);
-            xOFData = xOFArray.asFloatArray();
-            for (int i = 0; i < xOFData.length; i++)
-            {
-                xOFData[i] = (float)(xOFData[i]/0.05);
-            }
-            int[] xOFShape = xOFArray.getShape();
-            NpyArray yOFArray = reader.get("y_flow_dist", 1 << 18);
-            yOFData = yOFArray.asFloatArray();
-            for (int i = 0; i < yOFData.length; i++)
-            {
-                yOFData[i] = (float)(yOFData[i]/0.05);
-            }            
-            int[] yOFShape = yOFArray.getShape();      
-            reader.close();
-            importedGTfromNPZ = true;
-            log.info("Imported ground truth file from npz file.");
+
         }
-    }                
-    
+    }
+
     // Allows exporting flow vectors that were accumulated between tmin and tmax
     // to a mat-file which can be processed in MATLAB.
     public void exportFlowToMatlab(final int tmin, final int tmax) {
@@ -441,7 +443,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             }
         }
     }
-    
+
     void resetGroundTruth() {
         importedGTfromMatlab = false;
         vxGTframe = null;
@@ -542,11 +544,36 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
          * Calculate GT motion flow from IMU sample.
          *
          * @param o event
-         * @return true if event is an IMU event, so enclosing loop can continue
+         * @return true if flow is computed, either from IMU sample or GT flow loaded from file.
+         * If event is an IMU event, so enclosing loop can continue
          * to next event, skipping flow processing of this IMU event. Return
          * false if event is not IMU event.
          */
         public boolean calculateImuFlow(Object o) {
+            if (importedGTfromMatlab) {
+                if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
+                    vx = (float) vxGTframe[y][x];
+                    vy = (float) vyGTframe[y][x];
+                    v = (float) Math.sqrt(vx * vx + vy * vy);
+                } else {
+                    vx = 0;
+                    vy = 0;
+                }
+                return true;
+            } else if (importedGTfromNPZ) {
+                int frameIdx = (int) (ts / (MVSEC_FPS * 1000));    // MVSEC's OF is updated at 45 MVSEC_FPS
+                if (frameIdx < tsData.length) {
+                    vx = (float) xOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
+                    vy = (float) yOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
+                    vy = -vy;
+                    v = (float) Math.sqrt(vx * vx + vy * vy);
+                } else {
+                    vx = 0;
+                    vy = 0;
+                    v = 0;
+                }
+                return true;
+            }
             if (!(o instanceof ApsDvsEvent)) {
                 return true; // continue processing this event outside
             }
@@ -580,31 +607,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                 rollRateDps = rollRateDpsSample - rollOffset;
 
                 return true;
-            }
-            if (importedGTfromMatlab) {
-                if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
-                    vx = (float) vxGTframe[y][x];
-                    vy = (float) vyGTframe[y][x];
-                    v = (float) Math.sqrt(vx * vx + vy * vy);
-                } else {
-                    vx = 0;
-                    vy = 0;
-                }
-            } else if (importedGTfromNPZ) {
-                int frameIdx = ts/50000;    // MVSEC's OF is updated every 50ms.
-                if(frameIdx < tsShape[0])
-                {
-                    vx = (float)xOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
-                    vy = (float)yOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
-                    vy = -vy;
-                    v = (float) Math.sqrt(vx * vx + vy * vy);                  
-                }
-                else
-                {
-                    vx = 0;
-                    vy = 0;
-                    v = 0;
-                }
             } else {
                 // otherwise, if not IMU sample, use last IMU sample to compute GT flow from last IMU sample and event location
                 // then transform, then move them back to their origin.
@@ -694,41 +696,30 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     @Override
     public abstract EventPacket filterPacket(EventPacket in);
 
-    synchronized void allocateMap() {
+    synchronized void allocateMaps() {
+        subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
+        lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];
+        resetMaps();
+    }
 
-        if (subSizeY * subSizeX * numInputTypes == 0) {
-            return;
-        }
-
-        if (subsampledPixelIsSet == null) {
-            subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
-        }
-
+    protected void resetMaps() {
         for (boolean[] a : subsampledPixelIsSet) {
             Arrays.fill(a, false);
         }
-        lastTimesMap = new int[subSizeX][subSizeY][numInputTypes];
-
         for (int[][] a : lastTimesMap) {
             for (int[] b : a) {
                 Arrays.fill(b, Integer.MIN_VALUE);
             }
         }
-        motionFlowStatistics.getGlobalMotion().reset(subSizeX, subSizeY);
-//        log.info("Reset filter storage after parameter change or reset.");
     }
 
     @Override
     public synchronized void resetFilter() {
-        sizex = chip.getSizeX();
-        sizey = chip.getSizeY();
-        subSizeX = sizex >> subSampleShift;
-        subSizeY = sizey >> subSampleShift;
-        motionFlowStatistics.reset(subSizeX, subSizeY, globalFlowWindowEvents);
+        resetMaps();
         imuFlowEstimator.reset();
         exportedFlowToMatlab = false;
         motionField.reset();
-        allocateMap();
+        motionFlowStatistics.reset(subSizeX, subSizeY, globalFlowWindowEvents);
         if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
             getEnclosedFilter().resetFilter();
         }
@@ -738,6 +729,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     @Override
     public void initFilter() {
+        sizex = chip.getSizeX();
+        sizey = chip.getSizeY();
+        subSizeX = sizex >> subSampleShift;
+        subSizeY = sizey >> subSampleShift;
+        motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY, globalFlowWindowEvents);
+        allocateMaps();
+        setMeasureAccuracy(getBoolean("measureAccuracy", true));
+        setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
+        setDisplayGlobalMotion(getBoolean("displayGlobalMotion", true));// these setters set other flags, so call them to set these flags to default values
         resetFilter();
     }
 
@@ -806,7 +806,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             }
 
             float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
-            DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels/3, 1);
+            DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels / 3, 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {
@@ -1041,7 +1041,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     }
 
     /**
-     * returns true if timestamp is invalid
+     * returns true if timestamp is invalid, e.g. if the timestamp is LATER (nonmonotonic) or is too soon after the last event from the same pixel |refractoryPeriodUs).
+     * Does NOT check for events that are too old relative to the current event.
+     * <p>
+     * If the event is nonmonotonic, triggers a resetFilter()
      *
      * @return true if invalid timestamp, older than refractoryPeriodUs ago
      */
@@ -1099,30 +1102,32 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             getMotionFlowStatistics().update(vx, vy, v, vxGT, vyGT, vGT);
         }
 
-        
+        if (displayGlobalMotion || ppsScaleDisplayRelativeOFLength) {
+            motionFlowStatistics.getGlobalMotion().update(vx, vy, v, eout.x, eout.y);
+        }
+
         if (motionVectorEventLogger != null && motionVectorEventLogger.isEnabled()) {
-            if(getClass().getSimpleName().equals("PatchMatchFlow"))
-            {
+            if (getClass().getSimpleName().equals("PatchMatchFlow")) {
                 try {
                     Method sliceIndexMethod;
                     sliceIndexMethod = getClass().getDeclaredMethod("sliceIndex", Integer.TYPE);
                     sliceIndexMethod.setAccessible(true);
-                    Object currentSliceIdxObj = sliceIndexMethod.invoke(this, 1);  
+                    Object currentSliceIdxObj = sliceIndexMethod.invoke(this, 1);
                     int currentSliceIdx = (int) currentSliceIdxObj;
 
                     Field startTimeFiled = getClass().getDeclaredField("sliceStartTimeUs");
                     startTimeFiled.setAccessible(true);
-                    Object sliceTminus1StartTime = startTimeFiled.get((PatchMatchFlow)this);
-                    int[] sliceStartTimeUs = (int[])sliceTminus1StartTime; 
+                    Object sliceTminus1StartTime = startTimeFiled.get((PatchMatchFlow) this);
+                    int[] sliceStartTimeUs = (int[]) sliceTminus1StartTime;
                     Field endTimeFiled = getClass().getDeclaredField("sliceEndTimeUs");
                     endTimeFiled.setAccessible(true);
-                    Object sliceTminus1EndTime = endTimeFiled.get((PatchMatchFlow)this);
-                    int[] sliceEndTimeUs = (int[])sliceTminus1EndTime; 
+                    Object sliceTminus1EndTime = endTimeFiled.get((PatchMatchFlow) this);
+                    int[] sliceEndTimeUs = (int[]) sliceTminus1EndTime;
 
-                    String s = String.format("%d %d %d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, 
+                    String s = String.format("%d %d %d %d %d %d %.3g %.3g %.3g %d", eout.timestamp,
                             sliceStartTimeUs[currentSliceIdx], sliceEndTimeUs[currentSliceIdx],
                             eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
-                    motionVectorEventLogger.log(s);             
+                    motionVectorEventLogger.log(s);
                 } catch (NoSuchFieldException ex) {
                     Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (NoSuchMethodException ex) {
@@ -1135,12 +1140,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                     Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (InvocationTargetException ex) {
                     Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
-                }                
-            }
-            else
-            {
+                }
+            } else {
                 String s = String.format("%d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
-                motionVectorEventLogger.log(s);                
+                motionVectorEventLogger.log(s);
             }
 
         }
@@ -1238,10 +1241,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             putString("lastFile", file.toString());
             motionVectorEventLogger = new TobiLogger(file.getPath(), "Motion vector events output from normal optical flow method");
             motionVectorEventLogger.setNanotimeEnabled(false);
-            if(getClass().getSimpleName().equals("PatchMatchFlow"))
-            {
-                motionVectorEventLogger.setColumnHeaderLine("timestamp(us) sliceStartTime(us) sliceEndTime(us) x y type vx(pps) vy(pps) speed(pps) validity");      
+            if (getClass().getSimpleName().equals("PatchMatchFlow")) {
+                motionVectorEventLogger.setColumnHeaderLine("system_time(ms) timestamp(us) sliceStartTime(us) sliceEndTime(us) x y type vx(pps) vy(pps) speed(pps) validity");
                 motionVectorEventLogger.setSeparator(" ");
+            } else {
+                motionVectorEventLogger.setColumnHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
             }
             else
             {
@@ -1501,7 +1505,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         putInt("subSampleShift", subSampleShift);
         subSizeX = sizex >> subSampleShift;
         subSizeY = sizey >> subSampleShift;
-        allocateMap();
+        allocateMaps();
     }
     // </editor-fold>
 
@@ -2322,7 +2326,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
      */
     public void setGlobalFlowWindowEvents(int globalFlowWindowEvents) {
         this.globalFlowWindowEvents = globalFlowWindowEvents;
-        putInt("globalFlowWindowEvents",globalFlowWindowEvents);
+        putInt("globalFlowWindowEvents", globalFlowWindowEvents);
         motionFlowStatistics.getGlobalMotion().setWindowLength(this.globalFlowWindowEvents);
     }
 
