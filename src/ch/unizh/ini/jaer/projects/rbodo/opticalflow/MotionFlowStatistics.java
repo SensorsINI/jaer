@@ -72,6 +72,9 @@ public class MotionFlowStatistics {
 
     private List<Double> globalFlows = new ArrayList<>();
 
+    public final float OUTLIER_ABS_PPS = 30, OUTLIER_RELATIVE_PERCENT = 5;
+    private int sampleCount = 0, outlierCountAbs = 0, outlierCountRel=0;
+
     public MotionFlowStatistics(String filterClassName, int sX, int sY, int windowSize) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
         reset(sX, sY, windowSize);
@@ -82,6 +85,9 @@ public class MotionFlowStatistics {
     }
 
     protected final void reset(int sX, int sY, int windowSize) {
+        sampleCount = 0;
+        outlierCountAbs = 0;
+        outlierCountRel = 0;
         globalMotion = new GlobalMotion(sX, sY, windowSize);
         angularError = new AngularError();
         endpointErrorAbs = new EndpointErrorAbs();
@@ -140,6 +146,11 @@ public class MotionFlowStatistics {
     public int getWindowSize() {
         return windowSize;
     }
+    
+    public float getOutlierPercentage(){
+        if(sampleCount==0) return Float.NaN;
+        return 100f*(float)(outlierCountAbs+outlierCountRel)/sampleCount;
+    }
 
     /**
      * Updates the statistics given a measurement and ground truth
@@ -156,6 +167,7 @@ public class MotionFlowStatistics {
             warmupCounter--;
             return;
         }
+        sampleCount++;
         angularError.update(vx, vy, v, vxGT, vyGT, vGT);
         endpointErrorAbs.update(vx, vy, v, vxGT, vyGT, vGT);
         endpointErrorRel.update(vx, vy, v, vxGT, vyGT, vGT);
@@ -181,7 +193,7 @@ public class MotionFlowStatistics {
 
     @Override
     public String toString() {
-        return String.format("Motion Flow Statistics Summary: (global flow: N=%d samples) %n", globalMotion.windowSize)
+        return String.format("Motion Flow Statistics Summary: (windowSize=%,d N=%,d samples) %n Outlier percentage: %.1f", windowSize, globalMotion.globalSpeed.getN(),getOutlierPercentage())
                 + eventDensity.toString() + globalMotion.toString()
                 + processingTime.toString() + angularError.toString()
                 + endpointErrorAbs.toString() + endpointErrorRel.toString();
@@ -571,7 +583,6 @@ public class MotionFlowStatistics {
         private final float X1 = 1;
         private final float X2 = 10;
         private final float X3 = 20;
-        private float tmp;
 
         EndpointErrorAbs() {
             histogram = new Histogram(START, NUM_BINS, SIZE_BINS);
@@ -587,13 +598,16 @@ public class MotionFlowStatistics {
             if (v == 0 || vGT == 0) {
                 return;
             }
-            tmp = (float) Math.sqrt((vx - vxGT) * (vx - vxGT) + (vy - vyGT) * (vy - vyGT));
+            float tmp = (float) Math.sqrt((vx - vxGT) * (vx - vxGT) + (vy - vyGT) * (vy - vyGT));
 //            tmp = (float) (Math.abs(vx - vxGT) + Math.abs(vy - vyGT));
 //            if(getN()==0)System.out.println("EE pps: ");
 //            System.out.print(String.format("%6.2f ",tmp));
 //            if(getN()%20==0)System.out.println("");
             addValue(tmp);
             histogram.update(tmp);
+            if (Math.abs(tmp) > OUTLIER_ABS_PPS) {
+                outlierCountAbs++;
+            }
         }
 
         @Override
@@ -616,7 +630,6 @@ public class MotionFlowStatistics {
         private final int NUM_BINS = 20;
         private final int SIZE_BINS = 100;
         private final int START = 2;
-        private float tmp;
 
         EndpointErrorRel() {
             histogram = new Histogram(START, NUM_BINS, SIZE_BINS);
@@ -632,10 +645,13 @@ public class MotionFlowStatistics {
             if (v == 0 || vGT == 0) {
                 return;
             }
-            tmp = (float) Math.sqrt((vx - vxGT) * (vx - vxGT) + (vy - vyGT) * (vy - vyGT)) * 100 / vGT;
+            float tmp = (float) Math.sqrt((vx - vxGT) * (vx - vxGT) + (vy - vyGT) * (vy - vyGT)) * 100 / vGT;
 //            tmp = (float) (Math.abs(vx - vxGT) + Math.abs(vy - vyGT)) * 100 / vGT;
             addValue(tmp);
             histogram.update(tmp);
+            if (Math.abs(tmp) > OUTLIER_RELATIVE_PERCENT) {
+                outlierCountRel++;
+            }
         }
 
         @Override
