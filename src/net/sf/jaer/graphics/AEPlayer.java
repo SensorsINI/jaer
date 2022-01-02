@@ -436,8 +436,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
         });
 
-        worker.execute();
-    }
+            worker.execute();
+        }
 
     /**
      * stops playback. If not in PLAYBACK mode, then just returns. If playing
