@@ -1101,6 +1101,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.eventDensity.graphicsString("Density:", "%"));
             gl.glPopMatrix();
+            gl.glPushMatrix();
+            gl.glRasterPos2i(xoffset, ystart+5 * yoffset);
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+                    String.format("Outliers: %.1f%%",motionFlowStatistics.getOutlierPercentage()));
+            gl.glPopMatrix();
         }
 
         motionField.draw(gl);
