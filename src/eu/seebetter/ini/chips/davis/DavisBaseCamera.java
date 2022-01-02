@@ -521,8 +521,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     final boolean pixLast = lastFrameAddress(x, y); // Last event of frame (addresses get flipped)
 
                     ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
+                    final int readout_type = (data & DavisChip.ADC_READCYCLE_MASK) >> DavisChip.ADC_NUMBER_OF_TRAILING_ZEROS;
 
-                    switch ((data & DavisChip.ADC_READCYCLE_MASK) >> DavisChip.ADC_NUMBER_OF_TRAILING_ZEROS) {
+                    switch (readout_type) {
                         case 0: // ApsDvsEvent.ReadOutType.ResetRead.code
                             readoutType = ApsDvsEvent.ReadoutType.ResetRead;
                             break;
@@ -538,7 +539,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         default:
                             if ((warningCount < WARNING_COUNT_MAX) || ((warningCount % DavisEventExtractor.WARNING_COUNT_DIVIDER) == 0)) {
                                 Chip.log.warning(
-                                        "Event with unknown readout cycle was sent out! You might be reading a file that had the deprecated C readout mode enabled.");
+                                        "Event with unknown readout cycle "+readout_type+" was read. You might be reading a file that had the deprecated type 2 C readout mode enabled. See https://inivation.github.io/inivation-docs/Software%20user%20guides/AEDAT_file_formats.html#dvs-or-aps");
                             }
                             warningCount++;
                             break;
