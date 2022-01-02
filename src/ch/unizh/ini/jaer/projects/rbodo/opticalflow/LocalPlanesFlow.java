@@ -81,18 +81,36 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             planeEstimator = LocalPlanesFlow.PlaneEstimator.RobustLP;
             putString("planeEstimator", "RobustLP");
         }
-        setPlaneEstimator(planeEstimator);
         numInputTypes = 2;
-        resetFilter();
-        setPropertyTooltip("Local Planes", "th1", "Accuracy of iterative estimation. The 'IterativeFit' "
+        final String lpTip = "0: Local Planes";
+        setPropertyTooltip(lpTip, "th1", "Accuracy of iterative estimation. The 'IterativeFit' "
                 + "and 'HomogeneousCoordinates' algorithm will reject outliers and recompute "
                 + "the plane as long as the summed difference between old and new fit parameters "
                 + "is greater than this threshold. Usually not set lower than 1e-5.");
-        setPropertyTooltip("Local Planes", "th2", "In 'IterativeFit' and 'HomogeneousCoordinates', events that are further away"
+        setPropertyTooltip(lpTip, "th2", "In 'IterativeFit' and 'HomogeneousCoordinates', events that are further away"
                 + "from the fitted plane than this threshold are discarded. Usually not set lower than 0.01.");
-        setPropertyTooltip("Local Planes", "th3", "When the gradient of the fitted plane is below this threshold, "
+        setPropertyTooltip(lpTip, "th3", "When the gradient of the fitted plane is below this threshold, "
                 + "the corresponding velocity component is set to zero (unrealistically high speed due to flat plane). Usually not set higher than 0.01.");
-        setPropertyTooltip("Local Planes", "planeEstimator", "<html>Select method to fit plane to most-recent timestamps map in neighborhood of event<ul><li>OriginalLP:Robust iterative least squares fit using th1 and th2 but with biased derivative estimate that skews vector angles<li>RobustLP: least squares fit iterative least squares fit using th1 and th2 and disregarding events older than maxDtThreshold and computing velocity using homogenous coordinates that properly handles small x or y derivatives<li>SingleFit: single linear fit including outliers (timestamps that are obsolute); disregards th1 th2 and th3<li>LinearSavitzkyGolay: feedforward computation of slopes using smoothing of derivatives in perpindicular direction and not including events older than maxDtThreshold");
+        setPropertyTooltip(lpTip, "planeEstimator", "<html>Select method to fit plane to most-recent timestamps map in neighborhood of event<ul><li>OriginalLP:Robust iterative least squares fit using th1 and th2 but with biased derivative estimate that skews vector angles<li>RobustLP: least squares fit iterative least squares fit using th1 and th2 and disregarding events older than maxDtThreshold and computing velocity using homogenous coordinates that properly handles small x or y derivatives<li>SingleFit: single linear fit including outliers (timestamps that are obsolute); disregards th1 th2 and th3<li>LinearSavitzkyGolay: feedforward computation of slopes using smoothing of derivatives in perpindicular direction and not including events older than maxDtThreshold");
+        setPropertyTooltip(lpTip, "refractoryPeriodUs", "ignore event if too soon relative to last event at this pixel; typical value for LP method is 50,000 us (50ms).");
+        setPropertyTooltip(lpTip, "maxDtThreshold", "Max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
+        setPropertyTooltip(lpTip, "searchDistance", "search distance to each side (radius of square plane fit area)");
+        // check reasonable parameters set for other parameters of this filter
+        if(!isPreferenceStored("maxDtThreshold")){
+            setMaxDtThreshold(50000);
+        }
+        if(!isPreferenceStored("refractoryPeriodUs")){
+            setRefractoryPeriodUs(50000);
+        }
+        if(!isPreferenceStored("searchDistance")){
+            setSearchDistance(2);
+        }
+    }
+
+    @Override
+    public void initFilter() {
+        super.initFilter();
+        setPlaneEstimator(planeEstimator); // lazy, after AEChip constructed
     }
 
     synchronized void initializeDataMatrix() {
@@ -125,15 +143,16 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
          * sense a polynomial of order "fitOrder" to the data, which in this
          * case consists of the most recent timestamps "lastTimesMap" as a
          * function of pixel location (x,y). The underlying method is the
-         * convolution of a patch of the timesmap with a Savitzky-Golay
+         * convolution of a patch of the lastTimesMap with a Savitzky-Golay
          * smoothing kernel. Important assumption for calculating the fitting
          * parameters: All points in the neighborhood must exist and be valid,
-         * e.g. not too old or negative or zero. Because this is not always
-         * satisfied for our timesmap, the Savitzky-Golay kernel cannot be
-         * applied directly. However, for the 2D linear fit (plane), we can
-         * instead perform the low-level derivative computations, which as a
-         * whole constitute the kernel, by hand and thus control the inclusion
-         * of each point individually.
+         * e.g. not too old or negative or initial value Integer.MIN_VALUE.
+         * Because these conditions are not always satisfied for our
+         * lastTimesMap, the Savitzky-Golay kernel cannot be applied directly.
+         * However, for the 2D linear fit (plane), we can instead perform the
+         * low-level derivative computations, which as a whole constitute the
+         * kernel, by hand and thus control the inclusion of each point
+         * individually.
          */
 
         jj = 0;
@@ -429,7 +448,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         setupFilter(in);
         firstTs = in.getFirstTimestamp();
 
-         // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
+        // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
         // block STARTS
         Iterator i = null;
         if (in instanceof ApsDvsEventPacket) {
@@ -439,21 +458,23 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         }
 
         while (i.hasNext()) {
-            Object o=i.next();
-             if (o == null) {
+            Object o = i.next();
+            if (o == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
             }
-             if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent)o).isApsData()) {
+            if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
                 continue;
             }
             PolarityEvent ein = (PolarityEvent) o;
-           
+
             if (!extractEventInfo(o)) {
                 continue;
             }
-            if ( measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
-                if(imuFlowEstimator.calculateImuFlow(o)) continue;
+            if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
+                if (imuFlowEstimator.calculateImuFlow(o)) {
+                    continue;
+                }
             }
             // block ENDS
             if (isInvalidAddress(searchDistance)) {
