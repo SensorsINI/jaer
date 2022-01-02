@@ -140,7 +140,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
     }
 
     @Override
-    final synchronized void allocateMap() {
+    final synchronized void allocateMaps() {
         timestamps = new ArrayDeque[subSizeX][subSizeY][2];
         timestamps2 = new ArrayDeque[subSizeX][subSizeY][2];
         for (i = 0; i < timestamps.length; i++) {
@@ -155,7 +155,7 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         tempDerivNeighb = new float[(2 * searchDistance + 1) * (2 * searchDistance + 1)];
         neighb = new int[(2 * searchDistance + 3) * (2 * searchDistance + 3)];
         currPix = 2 * searchDistance * (searchDistance + 1);
-        super.allocateMap();
+        super.allocateMaps();
     }
 
     synchronized private void computeFittingParameters() {
