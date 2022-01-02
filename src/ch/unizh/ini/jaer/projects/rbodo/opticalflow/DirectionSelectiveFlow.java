@@ -49,7 +49,6 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
         // returns the orientation events, 
         // not the input packet.
         setEnclosedFilter(oriFilter);
-        resetFilter();
         setPropertyTooltip("Dir. Selective", "minDtThreshold", "min delta time (us) "
                 + "for past events allowed for selecting a particular direction. "
                 + "E.g. 100 us filter out speeds higher than 10 cm/s (for a pixelWidth of 10 um)");
