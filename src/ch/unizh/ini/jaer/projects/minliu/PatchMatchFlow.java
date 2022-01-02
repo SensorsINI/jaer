@@ -25,6 +25,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.AbstractMotionFlow;
+import ch.unizh.ini.jaer.projects.rbodo.opticalflow.MotionFlowStatistics;
 import ch.unizh.ini.jaer.projects.rbodo.opticalflow.MotionFlowStatistics.GlobalMotion;
 import com.jogamp.opengl.GLException;
 import java.awt.image.BufferedImage;
@@ -139,8 +140,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
     private int sliceDurationMinLimitUS = getInt("sliceDurationMinLimitUS", 100);
     private int sliceDurationMaxLimitUS = getInt("sliceDurationMaxLimitUS", 300000);
-    protected boolean outlierRejectionEnabled = getBoolean("outlierRejectionEnabled", false);
-    protected float outlierRejectionThresholdSigma = getFloat("outlierRejectionThresholdSigma", 2f);
+    private boolean outlierRejectionEnabled = getBoolean("outlierRejectionEnabled", false);
+    private float outlierRejectionThresholdSigma = getFloat("outlierRejectionThresholdSigma", 2f);
+    private MotionFlowStatistics outlierRejectionMotionFlowStatistics;
 
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
 
@@ -176,7 +178,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
     }
-    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.valueOf(getString("cornerCircleSelection", CornerCircleSelection.AND.name())); // Tobi changes to AND which is the condition used in paper
+    private CornerCircleSelection cornerCircleSelection = CornerCircleSelection.valueOf(getString("cornerCircleSelection", CornerCircleSelection.OuterCircle.name())); // Tobi change to Outer which is the condition used for experimental results in paper
 
     protected static String DEFAULT_FILENAME = "jAER.txt";
     protected String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
@@ -287,6 +289,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     TobiLogger sadValueLogger = new TobiLogger("sadvalues", "sadvalue,scale"); // TODO debug
 
     private boolean calcOFonCornersEnabled = getBoolean("calcOFonCornersEnabled", true);
+    protected boolean useEFASTnotSFAST = getBoolean("useEFASTnotSFAST", false);
 
     private final ApsFrameExtractor apsFrameExtractor;
 
@@ -303,7 +306,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         apsFrameExtractor = new ApsFrameExtractor(chip);
         apsFrameExtractor.setShowAPSFrameDisplay(false);
         getEnclosedFilterChain().add(apsFrameExtractor);
-//        getEnclosedFilterChain().add(keypointFilter);
+//        getEnclosedFilterChain().add(keypointFilter); // use for EFAST
 
         setSliceDurationUs(getSliceDurationUs());   // 40ms is good for the start of the slice duration adatative since 4ms is too fast and 500ms is too slow.
         setDefaultScalesToCompute();
@@ -330,6 +333,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(cornerTip, "cornerThr", "Threshold difference for SFAST detection as fraction of maximum event count value; increase for fewer corners");
         setPropertyTooltip(cornerTip, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
         setPropertyTooltip(cornerTip, "cornerCircleSelection", "Determines SFAST circles used for detecting the corner/keypoint");
+        setPropertyTooltip(cornerTip, "useEFASTnotSFAST", "Use EFAST corner detector, not SFAST which is default");
 
         String patchTT = "0a: Block matching";
         setPropertyTooltip(patchTT, "blockDimension", "linear dimenion of patches to match on coarse scale, in pixels");
@@ -630,11 +634,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
             }
 
-            // update global flow here before outlier rejection, otherwise stats are not updated and std shrinks to zero
-            if (isDisplayGlobalMotion() || isOutlierRejectionEnabled() || isPpsScaleDisplayRelativeOFLength()) {
-                motionFlowStatistics.getGlobalMotion().update(vx, vy, v, (x << getSubSampleShift()), (y << getSubSampleShift()));
-            }
-
             if (isOutlierFlowVector(result)) {
                 countOutliers++;
                 continue;
@@ -658,6 +657,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
 
         motionFlowStatistics.updatePacket(countIn, countOut, ts);
+        outlierRejectionMotionFlowStatistics.updatePacket(countIn, countOut, ts);
 //        float fracOutliers = (float) countOutliers / countIn;
 //        System.out.println(String.format("Fraction of outliers: %.1f%%", 100 * fracOutliers));
         adaptEventSkipping();
@@ -1055,6 +1055,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     @Override
+    public void initFilter() {
+        super.initFilter();
+        outlierRejectionMotionFlowStatistics = new MotionFlowStatistics(this.getClass().getSimpleName(), subSizeX, subSizeY, globalFlowWindowEvents);
+        outlierRejectionMotionFlowStatistics.setMeasureGlobalMotion(true);
+    }
+
+    @Override
     public synchronized void resetFilter() {
         setSubSampleShift(0); // filter breaks with super's bit shift subsampling
         super.resetFilter();
@@ -1318,9 +1325,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
         }
         // detect if keypoint here
-        boolean isEASTCorner = ((e.getAddress() & 1) == 1);  // supported only HWCornerPointRender or HW EFAST is used
+        boolean isEASTCorner = (useEFASTnotSFAST && ((e.getAddress() & 1) == 1));  // supported only HWCornerPointRender or HW EFAST is used
         boolean isBFASTCorner = PatchFastDetectorisFeature(e);
-        boolean isCorner = isBFASTCorner;
+        boolean isCorner = (useEFASTnotSFAST && isEASTCorner) || (!useEFASTnotSFAST && isBFASTCorner);
         if (calcOFonCornersEnabled && !isCorner) {
             return false;
         }
@@ -3667,7 +3674,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (!outlierRejectionEnabled) {
             return false;
         }
-        GlobalMotion gm = motionFlowStatistics.getGlobalMotion();
+        GlobalMotion gm = outlierRejectionMotionFlowStatistics.getGlobalMotion();
+        // update global flow here before outlier rejection, otherwise stats are not updated and std shrinks to zero
+        gm.update(vx, vy, v, (x << getSubSampleShift()), (y << getSubSampleShift()));
         float speed = (float) Math.sqrt(result.vx * result.vx + result.vy * result.vy);
         // if the current vector speed is too many stds outside the mean speed then it is an outlier
         if (Math.abs(speed - gm.meanGlobalSpeed)
@@ -3679,4 +3688,39 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //            return true;
         return false;
     }
+
+    /**
+     * @return the useEFASTnotSFAST
+     */
+    public boolean isUseEFASTnotSFAST() {
+        return useEFASTnotSFAST;
+    }
+
+    /**
+     * @param useEFASTnotSFAST the useEFASTnotSFAST to set
+     */
+    public void setUseEFASTnotSFAST(boolean useEFASTnotSFAST) {
+        this.useEFASTnotSFAST = useEFASTnotSFAST;
+        putBoolean("useEFASTnotSFAST", useEFASTnotSFAST);
+        checkForEASTCornerDetectorEnclosedFilter();
+    }
+
+    private void checkForEASTCornerDetectorEnclosedFilter() {
+        if (useEFASTnotSFAST) {
+            // add enclosed filter if not there
+            if (keypointFilter == null) {
+                keypointFilter = new HWCornerPointRenderer(chip);
+            }
+            if (!getEnclosedFilterChain().contains(keypointFilter)) {
+                getEnclosedFilterChain().add(keypointFilter); // use for EFAST
+            }
+            getChip().getAeViewer().getFilterFrame().rebuildContents();
+        } else {
+            if (keypointFilter != null && getEnclosedFilterChain().contains(keypointFilter)) {
+                getEnclosedFilterChain().remove(keypointFilter);
+                getChip().getAeViewer().getFilterFrame().rebuildContents();
+            }
+        }
+    }
+
 }
