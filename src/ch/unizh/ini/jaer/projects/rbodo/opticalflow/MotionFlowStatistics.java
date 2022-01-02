@@ -72,8 +72,10 @@ public class MotionFlowStatistics {
 
     private List<Double> globalFlows = new ArrayList<>();
 
-    public final float OUTLIER_ABS_PPS = 30, OUTLIER_RELATIVE_PERCENT = 5;
-    private int sampleCount = 0, outlierCountAbs = 0, outlierCountRel=0;
+    /** Definitions of outliers, according to KITTI standard as used in EV-FlowNet, since EV-FlowNet had 45Hz frames (KITTI had only 10Hz FPS) */
+    public final float OUTLIER_ABS_PPS = 3*45, OUTLIER_RELATIVE_PERCENT = 5;
+    private int sampleCount = 0, outlierCount = 0;
+    private boolean wasAbsOutlier = false; // flag 
 
     public MotionFlowStatistics(String filterClassName, int sX, int sY, int windowSize) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
@@ -86,8 +88,8 @@ public class MotionFlowStatistics {
 
     protected final void reset(int sX, int sY, int windowSize) {
         sampleCount = 0;
-        outlierCountAbs = 0;
-        outlierCountRel = 0;
+        outlierCount = 0;
+        wasAbsOutlier = false;
         globalMotion = new GlobalMotion(sX, sY, windowSize);
         angularError = new AngularError();
         endpointErrorAbs = new EndpointErrorAbs();
@@ -146,10 +148,12 @@ public class MotionFlowStatistics {
     public int getWindowSize() {
         return windowSize;
     }
-    
-    public float getOutlierPercentage(){
-        if(sampleCount==0) return Float.NaN;
-        return 100f*(float)(outlierCountAbs+outlierCountRel)/sampleCount;
+
+    public float getOutlierPercentage() {
+        if (sampleCount == 0) {
+            return Float.NaN;
+        }
+        return 100f * (float) (outlierCount) / sampleCount;
     }
 
     /**
@@ -170,7 +174,7 @@ public class MotionFlowStatistics {
         sampleCount++;
         angularError.update(vx, vy, v, vxGT, vyGT, vGT);
         endpointErrorAbs.update(vx, vy, v, vxGT, vyGT, vGT);
-        endpointErrorRel.update(vx, vy, v, vxGT, vyGT, vGT);
+        endpointErrorRel.update(vx, vy, v, vxGT, vyGT, vGT); // make sure this runs second for accurate outlier count
     }
 
     /**
@@ -193,7 +197,7 @@ public class MotionFlowStatistics {
 
     @Override
     public String toString() {
-        return String.format("Motion Flow Statistics Summary: (windowSize=%,d N=%,d samples) %n Outlier percentage: %.1f", windowSize, globalMotion.globalSpeed.getN(),getOutlierPercentage())
+        return String.format("Motion Flow Statistics Summary: (windowSize=%,d N=%,d samples) %n Outlier percentage: %.1f", windowSize, globalMotion.globalSpeed.getN(), getOutlierPercentage())
                 + eventDensity.toString() + globalMotion.toString()
                 + processingTime.toString() + angularError.toString()
                 + endpointErrorAbs.toString() + endpointErrorRel.toString();
@@ -606,7 +610,10 @@ public class MotionFlowStatistics {
             addValue(tmp);
             histogram.update(tmp);
             if (Math.abs(tmp) > OUTLIER_ABS_PPS) {
-                outlierCountAbs++;
+                outlierCount++;
+                wasAbsOutlier = true;
+            } else {
+                wasAbsOutlier = false;
             }
         }
 
@@ -650,8 +657,11 @@ public class MotionFlowStatistics {
             addValue(tmp);
             histogram.update(tmp);
             if (Math.abs(tmp) > OUTLIER_RELATIVE_PERCENT) {
-                outlierCountRel++;
+                if (!wasAbsOutlier) {
+                    outlierCount++; // don't double count outliers
+                }
             }
+            wasAbsOutlier=false; // TODO depends on absolute outlier check first
         }
 
         @Override
