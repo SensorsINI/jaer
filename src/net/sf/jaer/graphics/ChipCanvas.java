@@ -1365,6 +1365,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                 final Point mouseChipPixel = getMousePixel();
                 // find the relative fraction of clip area that the 
                 // mouse position is in chip pixels and zoom clip area aournd that point
+                if(mouseChipPixel==null){
+                    log.warning("null mouse point, will not zoom out");
+                    return;
+                }
 
                 // clip area width and height
                 double cw = (clipArea.right - clipArea.left), ch = (clipArea.top - clipArea.bottom);
