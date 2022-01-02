@@ -2042,7 +2042,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
         @Override
         public String toString() {
-            return String.format("(dx,dy=%5d,%5d), (vx,vy=%.1f,%.1f pps), SAD=%f, scale=%d", dx, dy, vx, vy, sadValue, scale);
+            return String.format("(dx,dy=%5d,%5d), (vx,vy=%.1f,%.1f px/s), SAD=%f, scale=%d", dx, dy, vx, vy, sadValue, scale);
         }
 
     }
