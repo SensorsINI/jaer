@@ -12,6 +12,7 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -20,6 +21,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,7 +29,9 @@ import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
+import javax.swing.ProgressMonitor;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -50,7 +54,6 @@ import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
-import org.jetbrains.bio.npy.NpyArray;
 import org.jetbrains.bio.npy.NpyFile;
 
 /**
@@ -115,7 +118,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     // Global translation, rotation and expansion.
     private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
-    protected int globalFlowWindowEvents = getInt("globalFlowWindowEvents", 300);
+    protected int statisticsWindowSize = getInt("statisticsWindowSize", 10000);
 
     protected EngineeringFormat engFmt = new EngineeringFormat();
 
@@ -254,6 +257,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
+        setPropertyTooltip(measureTT, "statisticsWindowSize", "Window in samples for measuring statistics of global flow, optical flow errors, and processing times");
+
+
         setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of pixels per second to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
@@ -263,7 +269,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
-        setPropertyTooltip(dispTT, "globalFlowWindowEvents", "Window in events for measuring statistics of global flow");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
@@ -358,14 +363,33 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
     }
 
-    float[] readNpyFile(String ps, boolean subtractFirst, float scale) {
+    float[] readNpyFile(String ps, boolean subtractFirst, float scale, ProgressMonitor progressMonitor) {
+        if (ps == null) {
+            return null;
+        }
         Path p = new File(ps).toPath();
-        log.info("Loading " + p);
+        long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+        long presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
+        final String msg = String.format("Loading %s; Free RAM %.1f GB", p, 1e-9 * presumableFreeMemory);
+        log.info(msg);
+        progressMonitor.setNote(msg);
         double[] d = NpyFile.read(p, 1 << 18).asDoubleArray();
+        allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+        presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
+        final String msg2 = String.format("Converting %s to float[]; Free RAM %.1f GB", p, 1e-9 * presumableFreeMemory);
+        progressMonitor.setNote(msg2);
         float[] f = new float[d.length];
+        progressMonitor.setMaximum(d.length);
         double sub = subtractFirst ? d[0] : 0;
+        final int checkInterval = 10000;
         for (int i = 0; i < d.length; i++) {
             f[i] = (float) (scale * (d[i] - sub));
+            if (i % checkInterval == 0) {
+                if (progressMonitor.isCanceled()) {
+                    return null;
+                }
+                progressMonitor.setProgress(i);
+            }
         }
         return f;
     }
@@ -380,32 +404,81 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 //        FileFilter filter = new FileNameExtensionFilter("NPZ folder", "npz", "NPZ");
 //        chooser.setFileFilter(filter);
         chooser.setMultiSelectionEnabled(false);
-        if (chooser.showOpenDialog(chip.getAeViewer().getFilterFrame()) == JFileChooser.APPROVE_OPTION) {
+        Component comp = chip.getAeViewer().getFilterFrame();
+        if (chooser.showOpenDialog(comp) == JFileChooser.APPROVE_OPTION) {
             String fileName = chooser.getSelectedFile().getPath();
             File dir = new File(fileName);
             npzFilePath = dir.toString();
             putString("npzFilePath", npzFilePath);
-            try {
-                setCursor(new Cursor(Cursor.WAIT_CURSOR));
-                tsData = readNpyFile(npzFilePath + File.separator + "timestamps.npy", true, 1e6f);
-                MVSEC_FPS = 1e6f / (tsData[1] - tsData[0]);
-                xOFData = readNpyFile(npzFilePath + File.separator + "x_flow_dist.npy", false, MVSEC_FPS);
-                yOFData = readNpyFile(npzFilePath + File.separator + "y_flow_dist.npy", false, MVSEC_FPS);
-                String s = String.format("Imported %d frames. Frame rate is %.1fHz", tsData.length, MVSEC_FPS);
-                log.info(s);
-                showPlainMessageDialogInSwingThread(s, "NPZ load succeeded");
-                importedGTfromNPZ = true;
-            } catch (Exception e) {
-                log.warning("Could not parse, caught " + e.toString());
-                showWarningDialogInSwingThread("Could not parse, caught " + e.toString(), "NPZ load error");
-                return;
-            } catch (OutOfMemoryError e) {
-                log.warning("Ran out of memory: " + e.toString());
-                showWarningDialogInSwingThread("Ran out of memory: " + e.toString(), "Out of memory");
-            } finally {
-                setCursor(Cursor.getDefaultCursor());
-            }
 
+            final ProgressMonitor progressMonitor = new ProgressMonitor(comp, "Opening " + npzFilePath, "Reading npy files", 0, 100);
+            progressMonitor.setMillisToPopup(300);
+            progressMonitor.setMillisToDecideToPopup(300);
+            final SwingWorker<Void, Void> worker = new SwingWorker() {
+                String checkPaths(String f1, String f2) {
+                    String s = null;
+                    s = npzFilePath + File.separator + f1;
+                    if (Files.isReadable(new File(s).toPath())) {
+                        return s;
+                    }
+                    s = npzFilePath + File.separator + f2;
+                    if (Files.isReadable(new File(s).toPath())) {
+                        return s;
+                    }
+                    return null;
+                }
+
+                @Override
+                protected Object doInBackground() throws Exception {
+                    try {
+
+                        if (comp != null) {
+                            comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+                        }
+                        progressMonitor.setProgress(0);
+                        tsData = readNpyFile(checkPaths("timestamps.npy", "ts.npy"), true, 1e6f, progressMonitor);
+                        if (tsData == null) {
+                            return null;
+                        }
+                        MVSEC_FPS = 1e6f / (tsData[1] - tsData[0]);
+                        xOFData = readNpyFile(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), false, MVSEC_FPS, progressMonitor);
+                        if (xOFData == null) {
+                            return null;
+                        }
+                        yOFData = readNpyFile(checkPaths("y_flow_dist.npy", "y_flow_tensor.npy"), false, MVSEC_FPS, progressMonitor);
+                        if (yOFData == null) {
+                            return null;
+                        }
+                        String s = String.format("Imported %d frames. Frame rate is %.1fHz", tsData.length, MVSEC_FPS);
+                        log.info(s);
+                        showPlainMessageDialogInSwingThread(s, "NPZ load succeeded");
+                        progressMonitor.close();
+                        importedGTfromNPZ = true;
+                        return true;
+                    } catch (Exception e) {
+                        log.warning("Could not parse, caught " + e.toString());
+                        showWarningDialogInSwingThread("Could not parse, caught " + e.toString(), "NPZ load error");
+                        return e;
+                    } catch (OutOfMemoryError e) {
+                        long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+                        long presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
+                        final String s = "<html>Ran out of memory: " + e.toString() + "; increase VM with e.g.  -Xmx10000m for 10GB VM in JVM startup"
+                                +"<p> Presumable free memory now is "+String.format("%,fGB",(float)presumableFreeMemory*1e-9f);
+                        log.warning(s);
+                        showWarningDialogInSwingThread(s, "Out of memory");
+                        return e;
+                    } finally {
+                        comp.setCursor(Cursor.getDefaultCursor());
+                    }
+                }
+
+                @Override
+                protected void done() {
+                    progressMonitor.close();
+                }
+
+            };
+            worker.execute();
         }
     }
 
@@ -540,14 +613,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             return calibrated;
         }
 
+        private int imuFlowGTWarnings = 0, imuFlowGTWarningsPrintedInterval = 10000;
+
         /**
          * Calculate GT motion flow from IMU sample.
          *
          * @param o event
-         * @return true if flow is computed, either from IMU sample or GT flow loaded from file.
-         * If event is an IMU event, so enclosing loop can continue
-         * to next event, skipping flow processing of this IMU event. Return
-         * false if event is not IMU event.
+         * @return true if flow is computed, either from IMU sample or GT flow
+         * loaded from file. If event is an IMU event, so enclosing loop can
+         * continue to next event, skipping flow processing of this IMU event.
+         *
+         * Return false if event is real event or no flow available. Return true
+         * if IMU event or calibration loaded that lables every time with GT
+         * flow for x,y address.
          */
         public boolean calculateImuFlow(Object o) {
             if (importedGTfromMatlab) {
@@ -559,20 +637,42 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                     vx = 0;
                     vy = 0;
                 }
-                return true;
+                return false;
             } else if (importedGTfromNPZ) {
-                int frameIdx = (int) (ts / (MVSEC_FPS * 1000));    // MVSEC's OF is updated at 45 MVSEC_FPS
-                if (frameIdx < tsData.length) {
-                    vx = (float) xOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
-                    vy = (float) yOFData[frameIdx * (260 * 346) + (259 - y) * 346 + x];
-                    vy = -vy;
-                    v = (float) Math.sqrt(vx * vx + vy * vy);
-                } else {
+                final int tsRelativeToStart = ((ts - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
+                if (tsRelativeToStart < 0 || tsRelativeToStart >= tsData[tsData.length - 1]) {
+                    if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
+                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, tsData array bounds are [%,.0f,%,.0f]", tsRelativeToStart, tsData[0], tsData[tsData.length - 1]));
+                    }
+                    imuFlowGTWarnings++;
+                    return false;
+                }
+
+//                int frameIdx = (int) (ts / (MVSEC_FPS * 1000));    // MVSEC's OF is updated at 45 MVSEC_FPS
+                int frameIdx = Math.abs(Arrays.binarySearch(tsData, tsRelativeToStart));
+                /* Returns:
+                        index of the search key, if it is contained in the array; otherwise, (-(insertion point) - 1). 
+                The insertion point is defined as the point at which the key would be inserted into the array: 
+                the index of the first element greater than the key, or a.length if all elements in the array are 
+                less than the specified key. Note that this guarantees that the return value will be >= 0 if and only if the key is found.
+                 */
+                if (frameIdx < 0 || frameIdx >= tsData.length) {
+                    if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
+                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData array bounds [%,.0f,%,.0f]", tsRelativeToStart, frameIdx, tsData[0], tsData[tsData.length - 1]));
+                    }
+                    imuFlowGTWarnings++;
                     vx = 0;
                     vy = 0;
                     v = 0;
+                    return false;
                 }
-                return true;
+                final int npix = chip.getNumPixels();
+                final int sx = chip.getSizeX(), sy = chip.getSizeY();
+                vx = (float) xOFData[frameIdx * (npix) + (sy - 1 - y) * sx + x];
+                vy = (float) yOFData[frameIdx * (npix) + (sy - 1 - y) * sx + x];
+                vy = -vy;
+                v = (float) Math.sqrt(vx * vx + vy * vy);
+                return false;
             }
             if (!(o instanceof ApsDvsEvent)) {
                 return true; // continue processing this event outside
@@ -719,7 +819,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         imuFlowEstimator.reset();
         exportedFlowToMatlab = false;
         motionField.reset();
-        motionFlowStatistics.reset(subSizeX, subSizeY, globalFlowWindowEvents);
+        motionFlowStatistics.reset(subSizeX, subSizeY, statisticsWindowSize);
         if ("DirectionSelectiveFlow".equals(filterClassName) && getEnclosedFilter() != null) {
             getEnclosedFilter().resetFilter();
         }
@@ -733,7 +833,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         sizey = chip.getSizeY();
         subSizeX = sizex >> subSampleShift;
         subSizeY = sizey >> subSampleShift;
-        motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY, globalFlowWindowEvents);
+        motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY, statisticsWindowSize);
         allocateMaps();
         setMeasureAccuracy(getBoolean("measureAccuracy", true));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
@@ -880,7 +980,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                     0, 16);
             gl.glPopMatrix();
 
-// Draw global rotation vector as line left/right
+            // Draw global rotation vector as line left/right
             gl.glPushMatrix();
             DrawGL.drawLine(gl,
                     sizex / 2,
@@ -1041,8 +1141,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     }
 
     /**
-     * returns true if timestamp is invalid, e.g. if the timestamp is LATER (nonmonotonic) or is too soon after the last event from the same pixel |refractoryPeriodUs).
-     * Does NOT check for events that are too old relative to the current event.
+     * returns true if timestamp is invalid, e.g. if the timestamp is LATER
+     * (nonmonotonic) or is too soon after the last event from the same pixel
+     * |refractoryPeriodUs). Does NOT check for events that are too old relative
+     * to the current event.
      * <p>
      * If the event is nonmonotonic, triggers a resetFilter()
      *
@@ -2310,19 +2412,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     }
 
     /**
-     * @return the globalFlowWindowEvents
+     * @return the statisticsWindowSize
      */
-    public int getGlobalFlowWindowEvents() {
-        return globalFlowWindowEvents;
+    public int getStatisticsWindowSize() {
+        return statisticsWindowSize;
     }
 
     /**
-     * @param globalFlowWindowEvents the globalFlowWindowEvents to set
+     * @param statisticsWindowSize the statisticsWindowSize to set
      */
-    public void setGlobalFlowWindowEvents(int globalFlowWindowEvents) {
-        this.globalFlowWindowEvents = globalFlowWindowEvents;
-        putInt("globalFlowWindowEvents", globalFlowWindowEvents);
-        motionFlowStatistics.getGlobalMotion().setWindowLength(this.globalFlowWindowEvents);
+    public void setStatisticsWindowSize(int statisticsWindowSize) {
+        this.statisticsWindowSize = statisticsWindowSize;
+        putInt("statisticsWindowSize", statisticsWindowSize);
+        motionFlowStatistics.setWindowSize(this.statisticsWindowSize);
     }
 
 }

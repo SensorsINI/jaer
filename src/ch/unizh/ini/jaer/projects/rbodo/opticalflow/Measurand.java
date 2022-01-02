@@ -38,7 +38,7 @@ public class Measurand extends DescriptiveStatistics {
 
     public String graphicsString(String header, String units) {
         Point2D.Float q = getQuartileErrors();
-        return String.format("%s mean: %4.2f quartiles:[%.2f,%.2f] %s", header, getMean(), q.x, q.y, units);
+        return String.format("%s mean: %4.2f quartiles:[%.2f,%.2f] %s [N=%,d]", header, getMean(), q.x, q.y, units,getN());
     }
 
     public static void main(String[] args) {

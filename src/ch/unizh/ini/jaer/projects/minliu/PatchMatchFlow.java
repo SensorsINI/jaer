@@ -142,6 +142,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private int sliceDurationMaxLimitUS = getInt("sliceDurationMaxLimitUS", 300000);
     private boolean outlierRejectionEnabled = getBoolean("outlierRejectionEnabled", false);
     private float outlierRejectionThresholdSigma = getFloat("outlierRejectionThresholdSigma", 2f);
+    protected int outlierRejectionWindowSize=getInt("outlierRejectionWindowSize",300);
     private MotionFlowStatistics outlierRejectionMotionFlowStatistics;
 
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
@@ -373,6 +374,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "sliceDurationMaxLimitUS", "The maximum value (us) of slice duration.");
         setPropertyTooltip(patchTT, "outlierRejectionEnabled", "Enable outlier flow vector rejection");
         setPropertyTooltip(patchTT, "outlierRejectionThresholdSigma", "Flow vectors that are larger than this many sigma from global flow variation are discarded");
+        setPropertyTooltip(patchTT, "outlierRejectionWindowSize", "Window in events for measurement of average flow for outlier rejection");
 
         String metricConfid = "0ab: Density checks";
         setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event.");
@@ -1057,7 +1059,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     @Override
     public void initFilter() {
         super.initFilter();
-        outlierRejectionMotionFlowStatistics = new MotionFlowStatistics(this.getClass().getSimpleName(), subSizeX, subSizeY, globalFlowWindowEvents);
+        outlierRejectionMotionFlowStatistics = new MotionFlowStatistics(this.getClass().getSimpleName(), subSizeX, subSizeY, outlierRejectionWindowSize);
         outlierRejectionMotionFlowStatistics.setMeasureGlobalMotion(true);
     }
 
@@ -3721,6 +3723,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 getChip().getAeViewer().getFilterFrame().rebuildContents();
             }
         }
+    }
+
+    /**
+     * @return the outlierRejectionWindowSize
+     */
+    public int getOutlierRejectionWindowSize() {
+        return outlierRejectionWindowSize;
+    }
+
+    /**
+     * @param outlierRejectionWindowSize the outlierRejectionWindowSize to set
+     */
+    public void setOutlierRejectionWindowSize(int outlierRejectionWindowSize) {
+        this.outlierRejectionWindowSize = outlierRejectionWindowSize;
+        putInt("outlierRejectionWindowSize",outlierRejectionWindowSize);
+        outlierRejectionMotionFlowStatistics.setWindowSize(outlierRejectionWindowSize);
     }
 
 }

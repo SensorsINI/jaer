@@ -43,13 +43,14 @@ import net.sf.jaer.util.TobiLogger;
  */
 public class MotionFlowStatistics {
 
-    private GlobalMotion globalMotion;
-    AngularError angularError;
+    public GlobalMotion globalMotion;
+    public AngularError angularError;
     public EndpointErrorAbs endpointErrorAbs;
-    EndpointErrorRel endpointErrorRel;
-    ProcessingTime processingTime;
-    EventDensity eventDensity;
+    public EndpointErrorRel endpointErrorRel;
+    public ProcessingTime processingTime;
+    public EventDensity eventDensity;
     TobiLogger globalMotionVectorLogger;
+    private int windowSize = Measurand.WINDOW_SIZE;
 
     // For logging.
     private static String filename;
@@ -71,17 +72,17 @@ public class MotionFlowStatistics {
 
     private List<Double> globalFlows = new ArrayList<>();
 
-    public MotionFlowStatistics(String filterClassName, int sX, int sY, int globalFlowWindowLengthEvents) {
+    public MotionFlowStatistics(String filterClassName, int sX, int sY, int windowSize) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
-        reset(sX, sY, globalFlowWindowLengthEvents);
+        reset(sX, sY, windowSize);
 //        globalMotionVectorLogger = new TobiLogger("logfiles/" + "GlobalMotion" + filterClassName ,  "Global Motion vector for every generated slice");
 //        globalMotionVectorLogger.setNanotimeEnabled(false);
 //        globalMotionVectorLogger.setEnabled(true);
         this.filterClassName = filterClassName;
     }
 
-    protected final void reset(int sX, int sY, int globalFlowWindowLengthEvents) {
-        globalMotion = new GlobalMotion(sX, sY, globalFlowWindowLengthEvents);
+    protected final void reset(int sX, int sY, int windowSize) {
+        globalMotion = new GlobalMotion(sX, sY, windowSize);
         angularError = new AngularError();
         endpointErrorAbs = new EndpointErrorAbs();
         endpointErrorRel = new EndpointErrorRel();
@@ -112,6 +113,7 @@ public class MotionFlowStatistics {
 //        } catch (IOException ex) {
 //            log.log(Level.SEVERE, null, ex);
 //        }
+        setWindowSize(windowSize);
     }
 
     public final void setMeasureAccuracy(boolean measureAccuracy) {
@@ -126,6 +128,19 @@ public class MotionFlowStatistics {
         this.measureGlobalMotion = measureGlobalMotion;
     }
 
+    public void setWindowSize(int windowSize) {
+        this.windowSize = windowSize;
+        globalMotion.setWindowSize(windowSize);
+        angularError.setWindowSize(windowSize);
+        endpointErrorAbs.setWindowSize(windowSize);
+        endpointErrorRel.setWindowSize(windowSize);
+        processingTime.setWindowSize(windowSize);
+    }
+
+    public int getWindowSize(){
+        return windowSize;
+    }
+    
     /**
      * Updates the statistics given a measurement and ground truth
      *
@@ -166,7 +181,7 @@ public class MotionFlowStatistics {
 
     @Override
     public String toString() {
-        return String.format("Motion Flow Statistics Summary: (global flow: N=%d samples) %n",globalMotion.windowLength)
+        return String.format("Motion Flow Statistics Summary: (global flow: N=%d samples) %n", globalMotion.windowSize)
                 + eventDensity.toString() + globalMotion.toString()
                 + processingTime.toString() + angularError.toString()
                 + endpointErrorAbs.toString() + endpointErrorRel.toString();
@@ -262,7 +277,7 @@ public class MotionFlowStatistics {
         private final Measurand pitchDps;
         private final Measurand yawDps;
 
-        private int windowLength = Measurand.WINDOW_SIZE;
+        private int windowSize = Measurand.WINDOW_SIZE;
 
         /**
          * makes a new instance
@@ -274,7 +289,7 @@ public class MotionFlowStatistics {
         GlobalMotion(int sX, int sY, int windowLength) {
             subSizeX = sX;
             subSizeY = sY;
-            this.windowLength=windowLength;
+            this.windowSize = windowLength;
             globalVx = new Measurand(windowLength);
             globalVy = new Measurand(windowLength);
             globalRotation = new Measurand(windowLength);
@@ -285,13 +300,17 @@ public class MotionFlowStatistics {
             yawDps = new Measurand(windowLength);
         }
 
-        public void setWindowLength(int windowLength) {
-            this.windowLength=windowLength;
-            globalVy.setWindowSize(windowLength);
-            globalVy.setWindowSize(windowLength);
-            globalRotation.setWindowSize(windowLength);
-            globalExpansion.setWindowSize(windowLength);
-            globalSpeed.setWindowSize(windowLength);
+        public void setWindowSize(int windowSize) {
+            this.windowSize = windowSize;
+            globalVy.setWindowSize(windowSize);
+            globalVy.setWindowSize(windowSize);
+            globalRotation.setWindowSize(windowSize);
+            globalExpansion.setWindowSize(windowSize);
+            globalSpeed.setWindowSize(windowSize);
+        }
+
+        public int getWindowSize() {
+            return this.windowSize;
         }
 
         /**
@@ -492,14 +511,14 @@ public class MotionFlowStatistics {
 
         // <editor-fold defaultstate="collapsed" desc="Comment">
         /**
-         * Returns the angle in degrees between the observed optical flow and ground truth.
-         * The case that either one or both v and vGT are zero is unnatural
-         * because in principle every event should be the result of motion (in
-         * this context). So we skip it by returning 181 (which is large so that
-         * the event is still filtered out when calculateAngularError() is
-         * called in the context of discarding outliers during filterPacket).
-         * When updating PacketStatistics, we detect 181 and skip updating the
-         * statistics.
+         * Returns the angle in degrees between the observed optical flow and
+         * ground truth. The case that either one or both v and vGT are zero is
+         * unnatural because in principle every event should be the result of
+         * motion (in this context). So we skip it by returning 181 (which is
+         * large so that the event is still filtered out when
+         * calculateAngularError() is called in the context of discarding
+         * outliers during filterPacket). When updating PacketStatistics, we
+         * detect 181 and skip updating the statistics.
          */
         // </editor-fold> 
         float calculateError(float vx, float vy, float v, float vxGT, float vyGT, float vGT) {
