@@ -54,6 +54,7 @@ import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
+import org.jetbrains.bio.npy.NpyArray;
 import org.jetbrains.bio.npy.NpyFile;
 
 /**
@@ -259,7 +260,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(measureTT, "statisticsWindowSize", "Window in samples for measuring statistics of global flow, optical flow errors, and processing times");
 
-
         setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of pixels per second to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
@@ -370,10 +370,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         Path p = new File(ps).toPath();
         long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
         long presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
-        final String msg = String.format("Loading %s; Free RAM %.1f GB", p, 1e-9 * presumableFreeMemory);
+        final String msg = String.format("Loading %s; Free RAM %.1f GB", p.toString(), 1e-9 * presumableFreeMemory);
         log.info(msg);
         progressMonitor.setNote(msg);
-        double[] d = NpyFile.read(p, 1 << 18).asDoubleArray();
+        NpyArray a = NpyFile.read(p, 1 << 18);
+        double[] d = a.asDoubleArray();
         allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
         presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
         final String msg2 = String.format("Converting %s to float[]; Free RAM %.1f GB", p, 1e-9 * presumableFreeMemory);
@@ -415,7 +416,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             progressMonitor.setMillisToPopup(300);
             progressMonitor.setMillisToDecideToPopup(300);
             final SwingWorker<Void, Void> worker = new SwingWorker() {
-                String checkPaths(String f1, String f2) {
+                private String checkPaths(String f1, String f2) {
                     String s = null;
                     s = npzFilePath + File.separator + f1;
                     if (Files.isReadable(new File(s).toPath())) {
@@ -463,7 +464,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                         long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
                         long presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
                         final String s = "<html>Ran out of memory: " + e.toString() + "; increase VM with e.g.  -Xmx10000m for 10GB VM in JVM startup"
-                                +"<p> Presumable free memory now is "+String.format("%,fGB",(float)presumableFreeMemory*1e-9f);
+                                + "<p> Presumable free memory now is " + String.format("%,fGB", (float) presumableFreeMemory * 1e-9f);
                         log.warning(s);
                         showWarningDialogInSwingThread(s, "Out of memory");
                         return e;
@@ -1001,12 +1002,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             final float speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
             DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
             e.setVelocity(speed, 0);
-            final int px = 10, py = -3;
+            final int px = 10, py = -10;
 
             e.setX((short) px);
             e.setY((short) py);
             drawMotionVector(gl, e);
 //            DrawGL.drawVector(gl, 10, -3, speed, 0, 4, ppsScale);
+            gl.glLineWidth(2f);
+            gl.glColor3f(1, 1, 1);
             gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f px/s avg. speed and OF vector scale", speed));
             gl.glPopMatrix();
@@ -1078,20 +1081,25 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            final int offset = -10;
-            gl.glRasterPos2i(chip.getSizeX() / 2, offset);
+            final int ystart=-15, yoffset = -10, xoffset=10;
+            gl.glRasterPos2i(xoffset, ystart+yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "px/s"));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX() / 2, 2 * offset);
+            gl.glRasterPos2i(xoffset, ystart+2 * yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.endpointErrorRel.graphicsString("AEE(rel):", "%"));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(chip.getSizeX() / 2, 3 * offset);
+            gl.glRasterPos2i(xoffset, ystart+3 * yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.angularError.graphicsString("AAE:", "deg"));
+            gl.glPopMatrix();
+            gl.glPushMatrix();
+            gl.glRasterPos2i(xoffset, ystart+4 * yoffset);
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+                    motionFlowStatistics.eventDensity.graphicsString("Density:", "%"));
             gl.glPopMatrix();
         }
 
