@@ -866,7 +866,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             gl.glRasterPos2i(2, 10);
             String flowMagPps = engFmt.format(motionFlowStatistics.getGlobalMotion().meanGlobalTrans);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. trans.=%s pps (local: %s)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
+                    String.format("glob. trans.=%s px/s (local: %s)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
             gl.glPopMatrix();
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
@@ -908,7 +908,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             drawMotionVector(gl, e);
 //            DrawGL.drawVector(gl, 10, -3, speed, 0, 4, ppsScale);
             gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f pps avg. speed and OF vector scale", speed));
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f px/s avg. speed and OF vector scale", speed));
             gl.glPopMatrix();
 
         }
@@ -981,7 +981,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             final int offset = -10;
             gl.glRasterPos2i(chip.getSizeX() / 2, offset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "pps"));
+                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "px/s"));
             gl.glPopMatrix();
             gl.glPushMatrix();
             gl.glRasterPos2i(chip.getSizeX() / 2, 2 * offset);
