@@ -1247,11 +1247,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             } else {
                 motionVectorEventLogger.setColumnHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
             }
-            else
-            {
-                motionVectorEventLogger.setColumnHeaderLine("timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
-                motionVectorEventLogger.setSeparator(" ");
-            }
             motionVectorEventLogger.setEnabled(true);
         } else {
             log.info("Cancelled logging motion vectors");
