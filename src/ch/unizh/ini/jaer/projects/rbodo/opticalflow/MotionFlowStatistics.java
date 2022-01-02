@@ -420,7 +420,7 @@ public class MotionFlowStatistics {
         public String toString() {
             return !measureGlobalMotion ? "Global flow not measured. Select measureGlobalMotion.\n"
                     : String.format(Locale.ENGLISH, "Global velocity: "
-                            + "[%1$4.2f, %2$4.2f] +/- [%3$4.2f, %4$4.2f] pixel/s, global rotation: "
+                            + "[%1$4.2f, %2$4.2f] +/- [%3$4.2f, %4$4.2f] px/s, global rotation: "
                             + "%5$4.2f +/- %6$2.2f °/s %n", meanGlobalVx, meanGlobalVy, sdGlobalVx,
                             sdGlobalVy, meanGlobalRotation, sdGlobalRotation);
         }
