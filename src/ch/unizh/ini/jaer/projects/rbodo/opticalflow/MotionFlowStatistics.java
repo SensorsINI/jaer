@@ -71,7 +71,7 @@ public class MotionFlowStatistics {
 
     private List<Double> globalFlows = new ArrayList<>();
 
-    protected MotionFlowStatistics(String filterClassName, int sX, int sY, int globalFlowWindowLengthEvents) {
+    public MotionFlowStatistics(String filterClassName, int sX, int sY, int globalFlowWindowLengthEvents) {
         DATE_FORMAT = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
         reset(sX, sY, globalFlowWindowLengthEvents);
 //        globalMotionVectorLogger = new TobiLogger("logfiles/" + "GlobalMotion" + filterClassName ,  "Global Motion vector for every generated slice");
@@ -114,15 +114,15 @@ public class MotionFlowStatistics {
 //        }
     }
 
-    protected final void setMeasureAccuracy(boolean measureAccuracy) {
+    public final void setMeasureAccuracy(boolean measureAccuracy) {
         this.measureAccuracy = measureAccuracy;
     }
 
-    protected final void setMeasureProcessingTime(boolean measureProcessingTime) {
+    public final void setMeasureProcessingTime(boolean measureProcessingTime) {
         this.measureProcessingTime = measureProcessingTime;
     }
 
-    protected final void setMeasureGlobalMotion(boolean measureGlobalMotion) {
+    public final void setMeasureGlobalMotion(boolean measureGlobalMotion) {
         this.measureGlobalMotion = measureGlobalMotion;
     }
 
@@ -166,7 +166,7 @@ public class MotionFlowStatistics {
 
     @Override
     public String toString() {
-        return String.format("Motion Flow Statistics Summary: %n")
+        return String.format("Motion Flow Statistics Summary: (global flow: N=%d samples) %n",globalMotion.windowLength)
                 + eventDensity.toString() + globalMotion.toString()
                 + processingTime.toString() + angularError.toString()
                 + endpointErrorAbs.toString() + endpointErrorRel.toString();
@@ -274,6 +274,7 @@ public class MotionFlowStatistics {
         GlobalMotion(int sX, int sY, int windowLength) {
             subSizeX = sX;
             subSizeY = sY;
+            this.windowLength=windowLength;
             globalVx = new Measurand(windowLength);
             globalVy = new Measurand(windowLength);
             globalRotation = new Measurand(windowLength);
@@ -285,6 +286,7 @@ public class MotionFlowStatistics {
         }
 
         public void setWindowLength(int windowLength) {
+            this.windowLength=windowLength;
             globalVy.setWindowSize(windowLength);
             globalVy.setWindowSize(windowLength);
             globalRotation.setWindowSize(windowLength);
@@ -490,7 +492,7 @@ public class MotionFlowStatistics {
 
         // <editor-fold defaultstate="collapsed" desc="Comment">
         /**
-         * Returns the angle between the observed optical flow and ground truth.
+         * Returns the angle in degrees between the observed optical flow and ground truth.
          * The case that either one or both v and vGT are zero is unnatural
          * because in principle every event should be the result of motion (in
          * this context). So we skip it by returning 181 (which is large so that
