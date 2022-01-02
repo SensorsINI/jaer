@@ -27,7 +27,6 @@ public class ImuFlow extends AbstractMotionFlowIMU {
     public ImuFlow(AEChip chip) {
         super(chip);
         numInputTypes = 2;
-        resetFilter();
     }
 
     @Override
