@@ -49,7 +49,7 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     public AbstractMotionFlow(AEChip chip) {
         super(chip);
         computeSavitzkyGolayCoefficients();
-        setPropertyTooltip(smoothingTT, "searchDistance", "search distance to each side");
+        setPropertyTooltip(smoothingTT, "searchDistance", "search distance to each side (radius of square search area)");
         setPropertyTooltip(smoothingTT, "maxDtThreshold", "(Only for relevant algorithms) max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
         setPropertyTooltip(dispTT, "showTimestampMap", "(Only for relevant algorithms) Superimposes a color-coded timestamp map on the display. This map shows the lastTimesMap[][][] of the latest event as a color code. The type of events shown is set by showTimestampMapMask.");
         setPropertyTooltip(dispTT, "showTimestampMapMask", "(Only for relevant algorithms) The timestamps shown from the map are set by this mask value. ");
