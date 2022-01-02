@@ -137,10 +137,10 @@ public class MotionFlowStatistics {
         processingTime.setWindowSize(windowSize);
     }
 
-    public int getWindowSize(){
+    public int getWindowSize() {
         return windowSize;
     }
-    
+
     /**
      * Updates the statistics given a measurement and ground truth
      *
@@ -219,7 +219,7 @@ public class MotionFlowStatistics {
         /**
          * Returns overall density over all packets since reset
          *
-         * @return
+         * @return density, in percent 0-100
          */
         public float getTotalDensity() {
             return totalIn == 0 ? 0 : (float) 100 * totalOut / totalIn;
@@ -252,6 +252,11 @@ public class MotionFlowStatistics {
             return String.format(Locale.ENGLISH, "%1$s: %2$4.2f%% %n",
                     getClass().getSimpleName(), getTotalDensity());
         }
+
+        public String graphicsString(String header, String units) {
+            return String.format("%s mean: %4.2f %s", header, getTotalDensity(), units);
+        }
+
     }
 
     /**
