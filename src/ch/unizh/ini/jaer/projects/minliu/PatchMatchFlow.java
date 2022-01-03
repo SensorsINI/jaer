@@ -1059,6 +1059,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     @Override
     public void initFilter() {
         super.initFilter();
+        checkForEASTCornerDetectorEnclosedFilter();
         outlierRejectionMotionFlowStatistics = new MotionFlowStatistics(this.getClass().getSimpleName(), subSizeX, subSizeY, outlierRejectionWindowSize);
         outlierRejectionMotionFlowStatistics.setMeasureGlobalMotion(true);
     }
@@ -3716,6 +3717,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             if (!getEnclosedFilterChain().contains(keypointFilter)) {
                 getEnclosedFilterChain().add(keypointFilter); // use for EFAST
             }
+            keypointFilter.setFilterEnabled(isFilterEnabled());
             getChip().getAeViewer().getFilterFrame().rebuildContents();
         } else {
             if (keypointFilter != null && getEnclosedFilterChain().contains(keypointFilter)) {
