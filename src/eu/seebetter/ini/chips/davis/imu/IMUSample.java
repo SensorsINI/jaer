@@ -58,7 +58,8 @@ public class IMUSample {
 
     /**
      * IMU sensitivity scaling: The IMU 16-bit values are scaled by this amount
-     * to result in either deg/s, g, or deg C
+     * to result in either deg/s, g, or deg C. when using the default values of MPU-6150 https://www.cdiweb.com/datasheets/invensense/ps-mpu-6100a.pdf
+     * gyro FS_SEL=1 (500 deg/s full scale) and AFS_SEL=1 (4g full scale)
      */
     private static float accelSensitivityScaleFactorGPerLsb = 1f / 8192,
             gyroSensitivityScaleFactorDegPerSecPerLsb = 1f / 65.5f, temperatureScaleFactorDegCPerLsb = 1f / 340,
