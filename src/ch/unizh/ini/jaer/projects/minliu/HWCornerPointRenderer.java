@@ -306,7 +306,7 @@ public class HWCornerPointRenderer extends EventFilter2D implements FrameAnnotat
         gl.glColor4f(1f, 0, 0, 1.0f);
         for (BasicEvent e : cornerEvents) {
             gl.glPushMatrix();
-            DrawGL.drawBox(gl, e.x, e.y, 4, 4, 0);
+            DrawGL.drawBox(gl, e.x, e.y, 2, 2, 0);
             gl.glPopMatrix();
         }
         gl.glDisable(GL2.GL_BLEND);
