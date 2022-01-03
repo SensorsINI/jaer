@@ -1177,8 +1177,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glColor3f(1f, 0, 1);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
-            x = ((vectorScale * imuSampleRender.getGyroYawY() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
-            y = ((vectorScale * imuSampleRender.getGyroTiltX() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
+            final float gyroVectorScale=5;
+            x = ((gyroVectorScale*vectorScale * imuSampleRender.getGyroYawY() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
+            y = ((gyroVectorScale*vectorScale * imuSampleRender.getGyroTiltX() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
             gl.glVertex2f(x, y);
             gl.glEnd();
 
@@ -1189,7 +1190,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             imuTextRenderer.end3DRendering();
 
             // gyro roll
-            x = ((vectorScale * imuSampleRender.getGyroRollZ() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
+            x = ((gyroVectorScale*vectorScale * imuSampleRender.getGyroRollZ() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
             y = chip.getSizeY() * .25f;
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, y);
