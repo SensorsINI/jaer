@@ -142,7 +142,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private int sliceDurationMaxLimitUS = getInt("sliceDurationMaxLimitUS", 300000);
     private boolean outlierRejectionEnabled = getBoolean("outlierRejectionEnabled", false);
     private float outlierRejectionThresholdSigma = getFloat("outlierRejectionThresholdSigma", 2f);
-    protected int outlierRejectionWindowSize=getInt("outlierRejectionWindowSize",300);
+    protected int outlierRejectionWindowSize = getInt("outlierRejectionWindowSize", 300);
     private MotionFlowStatistics outlierRejectionMotionFlowStatistics;
 
     private TimeLimiter timeLimiter = new TimeLimiter(); // private instance used to accumulate events to slices even if packet has timed out
@@ -296,6 +296,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     // Corner events array; only used for rendering.
     private boolean showCorners = getBoolean("showCorners", false);
+    protected int cornerSize = getInt("cornerSize", 3);
     private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
 
     public PatchMatchFlow(AEChip chip) {
@@ -335,6 +336,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(cornerTip, "calcOFonCornersEnabled", "Calculate OF based on corners or not");
         setPropertyTooltip(cornerTip, "cornerCircleSelection", "Determines SFAST circles used for detecting the corner/keypoint");
         setPropertyTooltip(cornerTip, "useEFASTnotSFAST", "Use EFAST corner detector, not SFAST which is default");
+        setPropertyTooltip(cornerTip, "cornerSize", "Dimension WxH of the drawn detector corners in chip pixels");
 
         String patchTT = "0a: Block matching";
         setPropertyTooltip(patchTT, "blockDimension", "linear dimenion of patches to match on coarse scale, in pixels");
@@ -1050,7 +1052,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             gl.glColor4f(1f, 0, 0, 0.1f);
             for (BasicEvent e : cornerEvents) {
                 gl.glPushMatrix();
-                DrawGL.drawBox(gl, e.x, e.y, 4, 4, 0);
+                DrawGL.drawBox(gl, e.x, e.y, getCornerSize(), getCornerSize(), 0);
                 gl.glPopMatrix();
             }
         }
@@ -1333,8 +1335,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         boolean isCorner = (useEFASTnotSFAST && isEASTCorner) || (!useEFASTnotSFAST && isBFASTCorner);
         if (calcOFonCornersEnabled && !isCorner) {
             return false;
+        } else {
+            cornerEvents.add(e);
         }
-        cornerEvents.add(e);
+        
+        // now finally compute flow
 
         if (timeLimiter.isTimedOut()) {
             nSkipped++;
@@ -3718,11 +3723,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 getEnclosedFilterChain().add(keypointFilter); // use for EFAST
             }
             keypointFilter.setFilterEnabled(isFilterEnabled());
-            getChip().getAeViewer().getFilterFrame().rebuildContents();
+            if (getChip().getAeViewer().getFilterFrame() != null) {
+                getChip().getAeViewer().getFilterFrame().rebuildContents();
+            }
         } else {
             if (keypointFilter != null && getEnclosedFilterChain().contains(keypointFilter)) {
                 getEnclosedFilterChain().remove(keypointFilter);
-                getChip().getAeViewer().getFilterFrame().rebuildContents();
+                if (getChip().getAeViewer().getFilterFrame() != null) {
+                    getChip().getAeViewer().getFilterFrame().rebuildContents();
+                }
             }
         }
     }
@@ -3739,8 +3748,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
      */
     public void setOutlierRejectionWindowSize(int outlierRejectionWindowSize) {
         this.outlierRejectionWindowSize = outlierRejectionWindowSize;
-        putInt("outlierRejectionWindowSize",outlierRejectionWindowSize);
+        putInt("outlierRejectionWindowSize", outlierRejectionWindowSize);
         outlierRejectionMotionFlowStatistics.setWindowSize(outlierRejectionWindowSize);
+    }
+
+    /**
+     * @return the cornerSize
+     */
+    public int getCornerSize() {
+        return cornerSize;
+    }
+
+    /**
+     * @param cornerSize the cornerSize to set
+     */
+    public void setCornerSize(int cornerSize) {
+        this.cornerSize = cornerSize;
     }
 
 }
