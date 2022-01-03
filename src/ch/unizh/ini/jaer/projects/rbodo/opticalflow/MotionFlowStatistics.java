@@ -197,7 +197,7 @@ public class MotionFlowStatistics {
 
     @Override
     public String toString() {
-        return String.format("Motion Flow Statistics Summary: (windowSize=%,d N=%,d samples) %n Outlier percentage: %.1f", windowSize, globalMotion.globalSpeed.getN(), getOutlierPercentage())
+        return String.format("Motion Flow Statistics Summary: (windowSize=%,d N=%,d samples) %n Outliers (>%.0f px/s): %.1f", windowSize, globalMotion.globalSpeed.getN(), OUTLIER_ABS_PPS, getOutlierPercentage())
                 + eventDensity.toString() + globalMotion.toString()
                 + processingTime.toString() + angularError.toString()
                 + endpointErrorAbs.toString() + endpointErrorRel.toString();
@@ -656,11 +656,12 @@ public class MotionFlowStatistics {
 //            tmp = (float) (Math.abs(vx - vxGT) + Math.abs(vy - vyGT)) * 100 / vGT;
             addValue(tmp);
             histogram.update(tmp);
-            if (Math.abs(tmp) > OUTLIER_RELATIVE_PERCENT) {
-                if (!wasAbsOutlier) {
-                    outlierCount++; // don't double count outliers
-                }
-            }
+            // don't use percentag3e outliers since EV-Flownet did not use them
+//            if (Math.abs(tmp) > OUTLIER_RELATIVE_PERCENT) {
+//                if (!wasAbsOutlier) {
+//                    outlierCount++; // don't double count outliers
+//                }
+//            }
             wasAbsOutlier=false; // TODO depends on absolute outlier check first
         }
 

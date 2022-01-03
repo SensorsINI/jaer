@@ -1104,7 +1104,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             gl.glPushMatrix();
             gl.glRasterPos2i(xoffset, ystart+5 * yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("Outliers: %.1f%%",motionFlowStatistics.getOutlierPercentage()));
+                    String.format("Outliers (>%.0f px/s error): %.1f%%",motionFlowStatistics.OUTLIER_ABS_PPS,motionFlowStatistics.getOutlierPercentage()));
             gl.glPopMatrix();
         }
 
