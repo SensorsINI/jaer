@@ -450,7 +450,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                         if (yOFData == null) {
                             return null;
                         }
-                        String s = String.format("Imported %d frames. Frame rate is %.1fHz", tsData.length, MVSEC_FPS);
+                        String s = String.format("Imported %,d frames. Frame rate is %.1fHz", tsData.length, MVSEC_FPS);
                         log.info(s);
                         showPlainMessageDialogInSwingThread(s, "NPZ load succeeded");
                         progressMonitor.close();
@@ -690,7 +690,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                         panOffset = (float) panCalibrator.getMean();
                         tiltOffset = (float) tiltCalibrator.getMean();
                         rollOffset = (float) rollCalibrator.getMean();
-                        log.info(String.format("calibration finished. %d samples averaged"
+                        log.info(String.format("calibration finished. %,d samples averaged"
                                 + " to (pan,tilt,roll)=(%.3f,%.3f,%.3f)", getCalibrationSamples(), panOffset, tiltOffset, rollOffset));
                         calibrated = true;
                         putFloat("panOffset", panOffset);
@@ -1167,7 +1167,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         lastTs = lastTimesMap[x][y][type];
         lastTimesMap[x][y][type] = ts;
         if (ts < lastTs) {
-            log.warning(String.format("invalid timestamp ts=%d < lastTs=%d, resetting filter", ts, lastTs));
+            log.warning(String.format("invalid timestamp ts=%,d < lastTs=%,d, resetting filter", ts, lastTs));
             resetFilter(); // For NonMonotonicTimeException.
         }
         return ts < lastTs + refractoryPeriodUs;
