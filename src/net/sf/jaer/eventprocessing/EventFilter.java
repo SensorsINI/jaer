@@ -183,7 +183,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * called after the AEChip is constructed and preferred filters are added to
      * the AEChip and after the EventFilter is added to the chip's FilterChain
      * via the ClassChooserDialog, when filterChain.contructPreferredFilters()
-     * is called.
+     * is called. The AEViewer will also exist before initFilter is called.
      */
     abstract public void initFilter();
 
