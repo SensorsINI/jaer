@@ -584,8 +584,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
     /**
      * Handles PropertyChangeEvent sent to us from various sources.
-     * Unfortunately we need to add ourselves as listeners for these property
-     * changes. Use maybeAddListeners in filterPacket to ensure
+     * <p>
+     * Unfortunately we need to lazy add ourselves as listeners for these property
+     * changes in the initFilter() method, or use maybeAddListeners in filterPacket to ensure
      * PropertyChangeEvent are sent to us.
      * <p>
      * The default implementation handles
