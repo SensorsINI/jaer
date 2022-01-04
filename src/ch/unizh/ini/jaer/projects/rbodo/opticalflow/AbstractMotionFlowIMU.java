@@ -1168,7 +1168,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         lastTimesMap[x][y][type] = ts;
         if (ts < lastTs) {
             log.warning(String.format("invalid timestamp ts=%d < lastTs=%d, resetting filter", ts, lastTs));
-            resetFilter(); // For NonMonotonicTimeException.
+//            resetFilter(); // For NonMonotonicTimeException.
         }
         return ts < lastTs + refractoryPeriodUs;
     }
