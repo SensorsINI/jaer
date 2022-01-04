@@ -113,7 +113,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private int[] sliceEndTimeUs; // holds the time interval between reference slice and this slice
     private byte[][][] currentSlice;
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0, 0); // used for consistency check
-    private int blockDimension = getInt("blockDimension", 7);    // This is the block dimension of the coarse scale.
+    public static final int BLOCK_DIMENSION_DEFAULT = 7;
+    private int blockDimension = getInt("blockDimension", BLOCK_DIMENSION_DEFAULT);    // This is the block dimension of the coarse scale.
 //    private float cost = getFloat("cost", 0.001f);
     public static final float MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT = .5f;
     private float maxAllowedSadDistance = getFloat("maxAllowedSadDistance", MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT);
@@ -351,8 +352,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         // move ppsScale to main top GUI since we use it a lot
         setPropertyTooltip(patchTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
-        setPropertyTooltip(patchTT, "blockDimension", "linear dimenion of patches to match on coarse scale, in pixels");
-        setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
+        setPropertyTooltip(patchTT, "blockDimension", "Linear dimenion of patches to match on coarse scale, in pixels. Median and fine scale block sizes are scaled up approx by powers of 2.");
+        setPropertyTooltip(patchTT, "searchDistance", "Search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches; SAD=sum of absolute differences, HammingDistance is same as SAD for binary bitmaps");
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
         setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
@@ -695,7 +696,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     public void doDefaults() {
         setSearchMethod(SearchMethod.DiamondSearch);
-        setBlockDimension(21);
+        setBlockDimension(BLOCK_DIMENSION_DEFAULT);
         setNumScales(3);
         setSearchDistance(3);
         
