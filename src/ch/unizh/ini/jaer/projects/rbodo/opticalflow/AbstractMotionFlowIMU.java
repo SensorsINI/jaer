@@ -1357,10 +1357,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             motionVectorEventLogger = new TobiLogger(file.getPath(), "Motion vector events output from normal optical flow method");
             motionVectorEventLogger.setNanotimeEnabled(false);
             if (getClass().getSimpleName().equals("PatchMatchFlow")) {
-                motionVectorEventLogger.setColumnHeaderLine("system_time(ms) timestamp(us) sliceStartTime(us) sliceEndTime(us) x y type vx(pps) vy(pps) speed(pps) validity");
+                motionVectorEventLogger.setColumnHeaderLine("timestamp(us) sliceStartTime(us) sliceEndTime(us) x y type vx(pps) vy(pps) speed(pps) validity");
                 motionVectorEventLogger.setSeparator(" ");
             } else {
-                motionVectorEventLogger.setColumnHeaderLine("system_time(ms) timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
+                motionVectorEventLogger.setColumnHeaderLine("timestamp(us) x y type vx(pps) vy(pps) speed(pps) validity");
+                motionVectorEventLogger.setSeparator(" ");
             }
             motionVectorEventLogger.setEnabled(true);
         } else {
