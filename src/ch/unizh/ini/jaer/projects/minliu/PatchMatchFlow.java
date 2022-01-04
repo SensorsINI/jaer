@@ -115,8 +115,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private SADResult lastGoodSadResult = new SADResult(0, 0, 0, 0); // used for consistency check
     private int blockDimension = getInt("blockDimension", 7);    // This is the block dimension of the coarse scale.
 //    private float cost = getFloat("cost", 0.001f);
-    private float maxAllowedSadDistance = getFloat("maxAllowedSadDistance", .5f);
-    private float validPixOccupancy = getFloat("validPixOccupancy", 0.01f);  // threshold for valid pixel percent for one block
+    public static final float MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT = .5f;
+    private float maxAllowedSadDistance = getFloat("maxAllowedSadDistance", MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT);
+    public static final float VALID_PIXEL_OCCUPANCY_DEFAULT = 0.01f;
+    private float validPixOccupancy = getFloat("validPixOccupancy", VALID_PIXEL_OCCUPANCY_DEFAULT);  // threshold for valid pixel percent for one block
     private float weightDistance = getFloat("weightDistance", 0.95f);        // confidence value consists of the distance and the dispersion, this value set the distance value
     private static final int MAX_SKIP_COUNT = 1000;
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
@@ -136,7 +138,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private float adapativeSliceDurationProportionalErrorGain = getFloat("adapativeSliceDurationProportionalErrorGain", 0.05f); // factor by which an error signal on match distance changes slice duration
     private boolean adapativeSliceDurationUseProportionalControl = getBoolean("adapativeSliceDurationUseProportionalControl", false);
     private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
-    private int sliceMaxValue = getInt("sliceMaxValue", 7);
+    public static final int SLICE_MAX_VALUE_DEFAULT = 15;
+    private int sliceMaxValue = getInt("sliceMaxValue", SLICE_MAX_VALUE_DEFAULT);
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
     private int sliceDurationMinLimitUS = getInt("sliceDurationMinLimitUS", 100);
     private int sliceDurationMaxLimitUS = getInt("sliceDurationMaxLimitUS", 300000);
@@ -168,6 +171,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private float cornerThr = getFloat("cornerThr", 0.2f);
     private boolean saveSliceGrayImage = false;
     private PrintWriter dvsWriter = null;
+
+    private EngineeringFormat engFmt;
+    private TextRenderer textRenderer = null;
 
     // These variables are only used by HW_ABMOF. 
     // HW_ABMOF send slice rotation flag so we need to indicate the real rotation timestamp
@@ -303,6 +309,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     public PatchMatchFlow(AEChip chip) {
         super(chip);
+        this.engFmt = new EngineeringFormat();
 
         getEnclosedFilterChain().clear();
 //        getEnclosedFilterChain().add(new SpatioTemporalCorrelationFilter(chip));
@@ -691,34 +698,42 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setBlockDimension(21);
         setNumScales(3);
         setSearchDistance(3);
+        
         setAdaptiveEventSkipping(false);
         setSkipProcessingEventsCount(0);
         setProcessingTimeLimitMs(5000);
-        setAdaptiveSliceDuration(true);
-        setSliceEventCount(SLICE_EVENT_COUNT_DEFAULT);
-        setMaxAllowedSadDistance(.5f);
         setDisplayVectorsEnabled(true);
         setPpsScaleDisplayRelativeOFLength(false);
         setDisplayGlobalMotion(true);
-        setPpsScale(.1f);
-        setSliceMaxValue(15);
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
-        setValidPixOccupancy(.1f); // at least this fraction of pixels from each block must both have nonzero values
+        setPpsScale(.1f);
+        setSliceMaxValue(SLICE_MAX_VALUE_DEFAULT);
+        
+        setValidPixOccupancy(VALID_PIXEL_OCCUPANCY_DEFAULT); // at least this fraction of pixels from each block must both have nonzero values
+        setMaxAllowedSadDistance(MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT);
+        
         setSliceMethod(SliceMethod.AreaEventNumber);
-        setSliceDurationMinLimitUS(1000);
-        setSliceDurationMaxLimitUS(300000);
-        setShowCorners(true);
-        setCalcOFonCornersEnabled(true);   // Enable corner detector
-        setCornerCircleSelection(CornerCircleSelection.OuterCircle);
-        setCornerThr(0.2f);
+        setAdaptiveSliceDuration(true);
+        setSliceEventCount(SLICE_EVENT_COUNT_DEFAULT);
+        
         // compute nearest power of two over block dimension
-        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2));
+        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2)) + 1;
         setAreaEventNumberSubsampling(ss);
+        
         // set event count so that count=block area * sliceMaxValue/4; 
         // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
         final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
         setSliceEventCount(eventCount);
+        
+        setSliceDurationMinLimitUS(1000);
+        setSliceDurationMaxLimitUS(300000);
         setSliceDurationUs(50000); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
+        
+        setShowCorners(true);
+        setCalcOFonCornersEnabled(true);   // Enable corner detector
+        setCornerCircleSelection(CornerCircleSelection.OuterCircle);
+        setCornerThr(0.2f);
+        
     }
 
     private void adaptSliceDuration() {
@@ -881,9 +896,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         Arrays.fill(scaleResultCounts, 0);
         clearResetOFHistogramFlag();
     }
-
-    private EngineeringFormat engFmt = new EngineeringFormat();
-    private TextRenderer textRenderer = null;
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
@@ -1060,7 +1072,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
         if (showCorners) {
             gl.glColor4f(1f, 0, 0, 0.1f);
-            for (BasicEvent e :  cornerEvents) {
+            for (BasicEvent e : cornerEvents) {
                 gl.glPushMatrix();
                 DrawGL.drawBox(gl, e.x, e.y, getCornerSize(), getCornerSize(), 0);
                 gl.glPopMatrix();
@@ -1349,9 +1361,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         } else {
             cornerEvents.add(e);
         }
-        
-        // now finally compute flow
 
+        // now finally compute flow
         if (timeLimiter.isTimedOut()) {
             nSkipped++;
             return false;
@@ -3393,8 +3404,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     public void setCornerCircleSelection(CornerCircleSelection cornerCircleSelection) {
+        CornerCircleSelection old = this.cornerCircleSelection;
         this.cornerCircleSelection = cornerCircleSelection;
         putString("cornerCircleSelection", cornerCircleSelection.toString());
+        getSupport().firePropertyChange("cornerCircleSelection", old, this.cornerCircleSelection);
     }
 
     synchronized public void doStartRecordingForEDFLOW() {
