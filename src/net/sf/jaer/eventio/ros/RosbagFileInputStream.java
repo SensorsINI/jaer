@@ -120,7 +120,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //    private static final String[] TOPICS = {"/dvs/events"};\
     private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER = "/davis/left/"; // TODO arbitrarily choose left camera for MVSEC for now
     private static final String TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
-    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE, TOPIC_IMU, TOPIC_EXPOSURE};
+    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE/*, TOPIC_IMU, TOPIC_EXPOSURE*/}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
 //    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE};
     private ArrayList<String> topicList = new ArrayList();
     private ArrayList<String> topicFieldNames = new ArrayList();
@@ -992,7 +992,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         if (wasIndexed) {
             return;
         }
-        log.info("creating index for all topics");
+        log.info("creating or loading cached index for all topics");
         if (!maybeLoadCachedMsgIndexes(progressMonitor)) {
             msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
             cacheMsgIndexes();
@@ -1139,7 +1139,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      */
     private final class AEFifo extends ApsDvsEventPacket {
 
-        private final int MAX_EVENTS = 1 << 24;
+        private final int MAX_EVENTS = 1 << 20;
         int nextToPopIndex = 0;
         private boolean full = false;
 
@@ -1158,7 +1158,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             }
             if (size == MAX_EVENTS) {
                 full = true;
-                log.warning("FIFO has reached capacity " + MAX_EVENTS + ": " + toString());
+                log.warning(String.format("FIFO has reached capacity RosbagFileInputStream.MAX_EVENTS=%,d events: %s", MAX_EVENTS,toString()));
                 return;
             }
             appendCopy(event);
