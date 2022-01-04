@@ -74,7 +74,8 @@ public class MotionFlowStatistics {
 
     /** Definitions of outliers, according to KITTI standard as used in EV-FlowNet, since EV-FlowNet had 45Hz frames (KITTI had only 10Hz FPS) */
     public final float OUTLIER_ABS_PPS = 3*45, OUTLIER_RELATIVE_PERCENT = 5;
-    private int sampleCount = 0, outlierCount = 0;
+    protected int sampleCount = 0;
+    private int outlierCount = 0;
     private boolean wasAbsOutlier = false; // flag 
 
     public MotionFlowStatistics(String filterClassName, int sX, int sY, int windowSize) {
@@ -799,5 +800,12 @@ public class MotionFlowStatistics {
                     : String.format(Locale.ENGLISH, "%1$s: %2$4.2f +/- %3$5.2f us/event %n",
                             getClass().getSimpleName(), getMean(), getStandardDeviation());
         }
+    }
+
+    /**
+     * @return the sampleCount
+     */
+    public int getSampleCount() {
+        return sampleCount;
     }
 }
