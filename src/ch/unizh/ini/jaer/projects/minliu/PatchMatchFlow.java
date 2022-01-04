@@ -976,7 +976,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
                 textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
                 if (timeLimiter.isTimedOut()) {
-                    String s4 = String.format("Timed out: skipped %d events", nSkipped);
+                    String s4 = String.format("Timed out: skipped %,d events", nSkipped);
                     textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
                 }
                 if (outlierRejectionEnabled) {
@@ -1050,7 +1050,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
         if (showCorners) {
             gl.glColor4f(1f, 0, 0, 0.1f);
-            for (BasicEvent e : cornerEvents) {
+            for (BasicEvent e :  cornerEvents) {
                 gl.glPushMatrix();
                 DrawGL.drawBox(gl, e.x, e.y, getCornerSize(), getCornerSize(), 0);
                 gl.glPopMatrix();
