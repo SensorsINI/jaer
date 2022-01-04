@@ -110,9 +110,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     private boolean displayZeroLengthVectorsEnabled = getBoolean("displayZeroLengthVectorsEnabled", true);
     private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
-    private boolean randomScatterOnFlowVectorOrigins=getBoolean("randomScatterOnFlowVectorOrigins",true);
-    private static final float RANDOM_SCATTER_PIXELS=3;
-    private Random random=new Random();
+    private boolean randomScatterOnFlowVectorOrigins = getBoolean("randomScatterOnFlowVectorOrigins", true);
+    private static final float RANDOM_SCATTER_PIXELS = 3;
+    private Random random = new Random();
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
@@ -807,6 +807,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     @Override
     public synchronized void resetFilter() {
+        if (measureAccuracy || measureProcessingTime && (motionFlowStatistics!=null && motionFlowStatistics.getSampleCount()>0)) {
+            doPrintStatistics();
+        }
         resetMaps();
         imuFlowEstimator.reset();
         exportedFlowToMatlab = false;
@@ -839,7 +842,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        super.propertyChange(evt);
         if (this.filterEnabled) {
             switch (evt.getPropertyName()) {
                 case AEViewer.EVENT_TIMESTAMPS_RESET:
@@ -849,12 +851,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                 case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
                 case AEInputStream.EVENT_REPOSITIONED:
                     log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
-                    if (measureAccuracy || measureProcessingTime) {
-                        doPrintStatistics();
-                    }
                     doStopLoggingGlobalMotionFlows();
                     doStopLoggingMotionVectorEvents();
-                    resetFilter(); // will grab this instance. if called from AWT via e.g. slider, then can deadlock if we also invokeAndWait to draw something in ViewLoop
                     break;
                 case AEViewer.EVENT_FILEOPEN:
                     log.info("File Open");
@@ -867,6 +865,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                     break;
             }
         }
+        super.propertyChange(evt); // call super.propertyChange() after we have processed event here first, to e.g. print statistics
     }
 
     /**
@@ -904,12 +903,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             }
 
             float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
-            float rx=0,ry=0;
-            if(randomScatterOnFlowVectorOrigins){
-                rx=RANDOM_SCATTER_PIXELS*(random.nextFloat()-.5f);
-                ry=RANDOM_SCATTER_PIXELS*(random.nextFloat()-.5f);
+            float rx = 0, ry = 0;
+            if (randomScatterOnFlowVectorOrigins) {
+                rx = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
+                ry = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
             }
-            DrawGL.drawVector(gl, x0+rx, y0+ry, dx, dy, motionVectorLineWidthPixels / 3, 1);
+            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels / 3, 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {
@@ -1312,6 +1311,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     // <editor-fold defaultstate="collapsed" desc="Statistics logging trigger button">
     synchronized public void doPrintStatistics() {
+        if (motionFlowStatistics.getSampleCount() == 0) {
+            log.warning("No samples collected");
+            return;
+        }
         log.log(Level.INFO, "{0}\n{1}", new Object[]{this.getClass().getSimpleName(), motionFlowStatistics.toString()});
         if (!imuFlowEstimator.isCalibrationSet()) {
             log.warning("IMU has not been calibrated yet! Load a file with no camera motion and hit the StartIMUCalibration button");
@@ -2453,11 +2456,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     }
 
     /**
-     * @param randomScatterOnFlowVectorOrigins the randomScatterOnFlowVectorOrigins to set
+     * @param randomScatterOnFlowVectorOrigins the
+     * randomScatterOnFlowVectorOrigins to set
      */
     public void setRandomScatterOnFlowVectorOrigins(boolean randomScatterOnFlowVectorOrigins) {
         this.randomScatterOnFlowVectorOrigins = randomScatterOnFlowVectorOrigins;
-        putBoolean("randomScatterOnFlowVectorOrigins",randomScatterOnFlowVectorOrigins);
+        putBoolean("randomScatterOnFlowVectorOrigins", randomScatterOnFlowVectorOrigins);
     }
 
 }
