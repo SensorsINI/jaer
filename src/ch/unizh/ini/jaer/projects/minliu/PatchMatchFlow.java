@@ -722,10 +722,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2)) + 1;
         setAreaEventNumberSubsampling(AREA_EVENT_NUMBER_SUBSAMPLING_DEFAULT); // set to paper value
 
-        // set event count so that count=block area * sliceMaxValue/4; 
-        // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
-        final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
-        setSliceEventCount(eventCount);
+//        // set event count so that count=block area * sliceMaxValue/4; 
+//        // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
+//        final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
+//        setSliceEventCount(eventCount);
 
         setSliceDurationMinLimitUS(1000);
         setSliceDurationMaxLimitUS(300000);
