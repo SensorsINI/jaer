@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
@@ -109,6 +110,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     private boolean displayZeroLengthVectorsEnabled = getBoolean("displayZeroLengthVectorsEnabled", true);
     private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
+    private boolean randomScatterOnFlowVectorOrigins=getBoolean("randomScatterOnFlowVectorOrigins",true);
+    private static final float RANDOM_SCATTER_PIXELS=3;
+    private Random random=new Random();
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
@@ -270,6 +274,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
+        setPropertyTooltip(dispTT, "randomScatterOnFlowVectorOrigins", "scatters flow vectors a bit to show density better");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
         setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
@@ -899,7 +904,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             }
 
             float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
-            DrawGL.drawVector(gl, x0, y0, dx, dy, motionVectorLineWidthPixels / 3, 1);
+            float rx=0,ry=0;
+            if(randomScatterOnFlowVectorOrigins){
+                rx=RANDOM_SCATTER_PIXELS*(random.nextFloat()-.5f);
+                ry=RANDOM_SCATTER_PIXELS*(random.nextFloat()-.5f);
+            }
+            DrawGL.drawVector(gl, x0+rx, y0+ry, dx, dy, motionVectorLineWidthPixels / 3, 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {
@@ -2433,6 +2443,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         this.statisticsWindowSize = statisticsWindowSize;
         putInt("statisticsWindowSize", statisticsWindowSize);
         motionFlowStatistics.setWindowSize(this.statisticsWindowSize);
+    }
+
+    /**
+     * @return the randomScatterOnFlowVectorOrigins
+     */
+    public boolean isRandomScatterOnFlowVectorOrigins() {
+        return randomScatterOnFlowVectorOrigins;
+    }
+
+    /**
+     * @param randomScatterOnFlowVectorOrigins the randomScatterOnFlowVectorOrigins to set
+     */
+    public void setRandomScatterOnFlowVectorOrigins(boolean randomScatterOnFlowVectorOrigins) {
+        this.randomScatterOnFlowVectorOrigins = randomScatterOnFlowVectorOrigins;
+        putBoolean("randomScatterOnFlowVectorOrigins",randomScatterOnFlowVectorOrigins);
     }
 
 }
