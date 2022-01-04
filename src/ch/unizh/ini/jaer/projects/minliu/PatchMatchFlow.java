@@ -215,7 +215,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.AreaEventNumber.toString()));
     // counting events into subsampled areas, when count exceeds the threshold in any area, the slices are rotated
-    private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 5);
+    public static final int AREA_EVENT_NUMBER_SUBSAMPLING_DEFAULT = 5;
+    private int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", AREA_EVENT_NUMBER_SUBSAMPLING_DEFAULT);
     private int[][] areaCounts = null;
     private int numAreas = 1;
 
@@ -699,7 +700,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setBlockDimension(BLOCK_DIMENSION_DEFAULT);
         setNumScales(3);
         setSearchDistance(3);
-        
+
         setAdaptiveEventSkipping(false);
         setSkipProcessingEventsCount(0);
         setProcessingTimeLimitMs(5000);
@@ -709,32 +710,32 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
         setPpsScale(.1f);
         setSliceMaxValue(SLICE_MAX_VALUE_DEFAULT);
-        
+
         setValidPixOccupancy(VALID_PIXEL_OCCUPANCY_DEFAULT); // at least this fraction of pixels from each block must both have nonzero values
         setMaxAllowedSadDistance(MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT);
-        
+
         setSliceMethod(SliceMethod.AreaEventNumber);
         setAdaptiveSliceDuration(true);
         setSliceEventCount(SLICE_EVENT_COUNT_DEFAULT);
-        
+
         // compute nearest power of two over block dimension
-        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2)) + 1;
-        setAreaEventNumberSubsampling(ss);
-        
+//        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2)) + 1;
+        setAreaEventNumberSubsampling(AREA_EVENT_NUMBER_SUBSAMPLING_DEFAULT); // set to paper value
+
         // set event count so that count=block area * sliceMaxValue/4; 
         // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
         final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
         setSliceEventCount(eventCount);
-        
+
         setSliceDurationMinLimitUS(1000);
         setSliceDurationMaxLimitUS(300000);
         setSliceDurationUs(50000); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
-        
+
         setShowCorners(true);
         setCalcOFonCornersEnabled(true);   // Enable corner detector
         setCornerCircleSelection(CornerCircleSelection.OuterCircle);
         setCornerThr(0.2f);
-        
+
     }
 
     private void adaptSliceDuration() {
