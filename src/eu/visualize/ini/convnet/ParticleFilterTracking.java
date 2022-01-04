@@ -323,20 +323,7 @@ public class ParticleFilterTracking extends EventFilter2D implements PropertyCha
         }
     }
 
-    public final void maybeAddListeners(AEChip chip) {
-        if (chip.getAeViewer() != null) {
-            if (!addedViewerPropertyChangeListener) {
-                chip.getAeViewer().addPropertyChangeListener(this);
-                addedViewerPropertyChangeListener = true;
-            }
-            if (!addTimeStampsResetPropertyChangeListener) {
-                chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
-                addTimeStampsResetPropertyChangeListener = true;
-            }
-        }
-    }
-        
-    @Override
+     @Override
     public void annotate(GLAutoDrawable drawable) {
         final GL2 gl = drawable.getGL().getGL2();
         try {

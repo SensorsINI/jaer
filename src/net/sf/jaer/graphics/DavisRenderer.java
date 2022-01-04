@@ -325,7 +325,7 @@ public class DavisRenderer extends AEChipRenderer {
         if (!addedPropertyChangeListener) {
             if (chip != null) {
                 if (chip.getAeViewer() != null) {
-                    chip.getAeViewer().addPropertyChangeListener(this);
+                    chip.getAeViewer().getSupport().addPropertyChangeListener(this);
                     addedPropertyChangeListener = true;
                 }
             }

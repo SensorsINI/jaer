@@ -201,6 +201,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * PropertyChangeEvent fired from this AEViewer to the PropertyChangeSupport
      * that is part of AEViewer. <b>This support is different than the Java AWT
      * property change support</b>.
+     * 
+     * <p>
+     * <b>IMPORTANT:</b> it is a bug to getAeViewer().addPropertyChangeListener - this will add the listener to the AWT component!!
+     * Instead use getAeViewer()<b>.getSupport()</b>.addPropertyChangeListener
      *
      * @see #getSupport()
      */
@@ -4206,7 +4210,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         } else if (evt.getPropertyName().equals("cleared")) {
             setStatusMessage(null);
-        } else if (evt.getSource() instanceof AEFileInputStream) {
+        } else if (evt.getSource() instanceof AEFileInputStreamInterface) { // Tobi 4.1.21 changed to AEFileInputStreamInterface from AEFileInputStream to handle RosbagFileInputStream too
             switch (evt.getPropertyName()) {
                 case AEInputStream.EVENT_REWOUND:
                     log.info("rewind");

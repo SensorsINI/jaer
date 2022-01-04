@@ -183,7 +183,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             if (chip instanceof AEChip) {
                 AEChip aeChip = chip;
                 if (aeChip.getAeViewer() != null) {
-                    aeChip.getAeViewer().addPropertyChangeListener(this);
+                    aeChip.getAeViewer().getSupport().addPropertyChangeListener(this);
                     addedPropertyChangeListener = true;
                 }
             }

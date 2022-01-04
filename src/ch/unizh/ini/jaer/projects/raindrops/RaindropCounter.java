@@ -138,7 +138,6 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
 
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        maybeAddListeners(chip);
         getEnclosedFilterChain().filterPacket(in);
         computeSummaryStatistics();
         return in;
@@ -163,6 +162,7 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
 
     @Override
     public void initFilter() {
+        maybeAddListeners(chip);
         tracker.initFilter();
     }
 

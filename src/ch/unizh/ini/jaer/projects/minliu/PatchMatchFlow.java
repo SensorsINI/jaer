@@ -196,7 +196,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.DiamondSearch.toString()));
 
     private int sliceDurationUs = getInt("sliceDurationUs", 20000);
-    private int sliceEventCount = getInt("sliceEventCount", 1000);
+    public static final int SLICE_EVENT_COUNT_DEFAULT = 700;
+
+    private int sliceEventCount = getInt("sliceEventCount", SLICE_EVENT_COUNT_DEFAULT);
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
 
     private boolean displayResultHistogram = getBoolean("displayResultHistogram", true);
@@ -295,8 +297,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private final ApsFrameExtractor apsFrameExtractor;
 
     // Corner events array; only used for rendering.
-    private boolean showCorners = getBoolean("showCorners", false);
-    protected int cornerSize = getInt("cornerSize", 3);
+    private boolean showCorners = getBoolean("showCorners", true);
+    protected int cornerSize = getInt("cornerSize", 2);
     private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
 
     public PatchMatchFlow(AEChip chip) {
@@ -339,6 +341,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(cornerTip, "cornerSize", "Dimension WxH of the drawn detector corners in chip pixels");
 
         String patchTT = "0a: Block matching";
+        // move ppsScale to main top GUI since we use it a lot
+        setPropertyTooltip(patchTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
+                + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(patchTT, "blockDimension", "linear dimenion of patches to match on coarse scale, in pixels");
         setPropertyTooltip(patchTT, "searchDistance", "search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches; SAD=sum of absolute differences, HammingDistance is same as SAD for binary bitmaps");
@@ -387,7 +392,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchDispTT, "showSlices", "enables displaying the entire bitmaps slices (the current slices)");
         setPropertyTooltip(patchDispTT, "showSlicesScale", "sets which scale of the slices to display");
         setPropertyTooltip(patchDispTT, "showBlockMatches", "enables displaying the individual block matches");
-        setPropertyTooltip(patchDispTT, "ppsScale", "scale of pixels per second to draw local motion vectors; global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE);
         setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(patchDispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
         setPropertyTooltip(patchDispTT, "printScaleCntStatEnabled", "enables printing the statics of scale counts");
@@ -687,8 +691,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setBlockDimension(21);
         setNumScales(3);
         setSearchDistance(3);
-        setAdaptiveEventSkipping(true);
+        setAdaptiveEventSkipping(false);
+        setSkipProcessingEventsCount(0);
+        setProcessingTimeLimitMs(5000);
         setAdaptiveSliceDuration(true);
+        setSliceEventCount(SLICE_EVENT_COUNT_DEFAULT);
         setMaxAllowedSadDistance(.5f);
         setDisplayVectorsEnabled(true);
         setPpsScaleDisplayRelativeOFLength(false);
@@ -696,11 +703,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPpsScale(.1f);
         setSliceMaxValue(15);
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
-        setValidPixOccupancy(.01f); // at least this fraction of pixels from each block must both have nonzero values
+        setValidPixOccupancy(.1f); // at least this fraction of pixels from each block must both have nonzero values
         setSliceMethod(SliceMethod.AreaEventNumber);
         setSliceDurationMinLimitUS(1000);
         setSliceDurationMaxLimitUS(300000);
+        setShowCorners(true);
         setCalcOFonCornersEnabled(true);   // Enable corner detector
+        setCornerCircleSelection(CornerCircleSelection.OuterCircle);
+        setCornerThr(0.2f);
         // compute nearest power of two over block dimension
         int ss = (int) (Math.log(blockDimension - 1) / Math.log(2));
         setAreaEventNumberSubsampling(ss);
@@ -1091,6 +1101,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
         clearAreaCounts();
         clearNonGreedyRegions();
+        setSliceEventCount(getInt("sliceEventCount", SLICE_EVENT_COUNT_DEFAULT));
     }
 
     private LowpassFilter speedFilter = new LowpassFilter();

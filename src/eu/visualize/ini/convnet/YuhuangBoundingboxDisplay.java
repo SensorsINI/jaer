@@ -248,16 +248,6 @@ public class YuhuangBoundingboxDisplay extends EventFilter2D implements FrameAnn
         }
     }
 
-    public final void maybeAddListeners(AEChip chip) {
-        if (chip.getAeViewer() != null) {
-            if (!addedViewerPropertyChangeListener) {
-                chip.getAeViewer().addPropertyChangeListener(this);
-                addedViewerPropertyChangeListener = true;
-            }
-
-        }
-    }
-
     /**
      * @return the showFilename
      */

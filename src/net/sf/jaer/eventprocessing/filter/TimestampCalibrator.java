@@ -84,7 +84,7 @@ public class TimestampCalibrator extends EventFilter2D implements FrameAnnotater
         }
         if (!propertyChangeListenersAdded) {
             propertyChangeListenersAdded = true;
-            chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
+            chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
         }
         int currentTs = in.getLastTimestamp();
         long currentClockNs = System.nanoTime();

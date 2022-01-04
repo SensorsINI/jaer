@@ -563,7 +563,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
-     * Use this method at start of e.g. EventFilter.filterPacket() to add the
+     * Use this method in initFilter to add the
      * property change listeners if needed.
      *
      * @param chip

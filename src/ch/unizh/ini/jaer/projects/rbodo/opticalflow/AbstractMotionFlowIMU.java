@@ -260,7 +260,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(measureTT, "statisticsWindowSize", "Window in samples for measuring statistics of global flow, optical flow errors, and processing times");
 
-        setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of pixels per second to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
+        setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
         setPropertyTooltip(dispTT, "displayVectorsEnabled", "shows local motion vector evemts as arrows");
@@ -325,20 +325,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                 log.log(Level.INFO, "Selected data logging folder {0}", loggingFolder);
             } else {
                 log.log(Level.WARNING, "Tried to select invalid logging folder named {0}", f);
-            }
-        }
-    }
-
-    public final void maybeAddListeners(AEChip chip) {
-        if (chip.getAeViewer() != null) {
-            if (!addedViewerPropertyChangeListener) {
-                chip.getAeViewer().addPropertyChangeListener(this);
-                addedViewerPropertyChangeListener = true;
-            }
-            if (!addTimeStampsResetPropertyChangeListener) {
-                chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
-                chip.getAeViewer().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-                addTimeStampsResetPropertyChangeListener = true;
             }
         }
     }
@@ -835,6 +821,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         subSizeX = sizex >> subSampleShift;
         subSizeY = sizey >> subSampleShift;
         motionFlowStatistics = new MotionFlowStatistics(filterClassName, subSizeX, subSizeY, statisticsWindowSize);
+        if (chip.getAeViewer() != null) {
+            chip.getAeViewer().getSupport().addPropertyChangeListener(this); // AEViewer refires these events for convenience
+        }
+
         allocateMaps();
         setMeasureAccuracy(getBoolean("measureAccuracy", true));
         setMeasureProcessingTime(getBoolean("measureProcessingTime", false));
@@ -857,6 +847,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                     if (measureAccuracy || measureProcessingTime) {
                         doPrintStatistics();
                     }
+                    doStopLoggingGlobalMotionFlows();
+                    doStopLoggingMotionVectorEvents();
                     resetFilter(); // will grab this instance. if called from AWT via e.g. slider, then can deadlock if we also invokeAndWait to draw something in ViewLoop
                     break;
                 case AEViewer.EVENT_FILEOPEN:
@@ -1081,30 +1073,30 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
         if (measureAccuracy) {
             gl.glPushMatrix();
-            final int ystart=-15, yoffset = -10, xoffset=10;
-            gl.glRasterPos2i(xoffset, ystart+yoffset);
+            final int ystart = -15, yoffset = -10, xoffset = 10;
+            gl.glRasterPos2i(xoffset, ystart + yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "px/s"));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart+2 * yoffset);
+            gl.glRasterPos2i(xoffset, ystart + 2 * yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.endpointErrorRel.graphicsString("AEE(rel):", "%"));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart+3 * yoffset);
+            gl.glRasterPos2i(xoffset, ystart + 3 * yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.angularError.graphicsString("AAE:", "deg"));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart+4 * yoffset);
+            gl.glRasterPos2i(xoffset, ystart + 4 * yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
                     motionFlowStatistics.eventDensity.graphicsString("Density:", "%"));
             gl.glPopMatrix();
             gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart+5 * yoffset);
+            gl.glRasterPos2i(xoffset, ystart + 5 * yoffset);
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("Outliers (>%.0f px/s error): %.1f%%",motionFlowStatistics.OUTLIER_ABS_PPS,motionFlowStatistics.getOutlierPercentage()));
+                    String.format("Outliers (>%.0f px/s error): %.1f%%", motionFlowStatistics.OUTLIER_ABS_PPS, motionFlowStatistics.getOutlierPercentage()));
             gl.glPopMatrix();
         }
 
@@ -1373,6 +1365,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         if (motionVectorEventLogger == null) {
             return;
         }
+        log.info("stopping motion vector logging from " + motionVectorEventLogger);
         motionVectorEventLogger.setEnabled(false);
         motionVectorEventLogger = null;
     }
@@ -1416,6 +1409,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         if (motionFlowStatistics.globalMotionVectorLogger == null) {
             return;
         }
+        log.info("Stopping global motion logging from " + motionFlowStatistics.globalMotionVectorLogger);
         motionFlowStatistics.globalMotionVectorLogger.setEnabled(false);
         motionFlowStatistics.globalMotionVectorLogger = null;
     }

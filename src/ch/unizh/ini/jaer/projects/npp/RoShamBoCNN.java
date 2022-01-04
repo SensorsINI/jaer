@@ -397,7 +397,7 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
 
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
-        chip.getAeViewer().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, statistics);
+        chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, statistics);
         super.setFilterEnabled(yes);
         if (!yes) {
             closeSerial();

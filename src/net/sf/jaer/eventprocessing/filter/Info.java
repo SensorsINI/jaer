@@ -529,15 +529,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (!addedViewerPropertyChangeListener) {
             if (chip.getAeViewer() != null) {
-                chip.getAeViewer().addPropertyChangeListener(this);
+                chip.getAeViewer().getSupport().addPropertyChangeListener(this);
                 chip.getAeViewer().getAePlayer().getSupport().addPropertyChangeListener(this); // TODO might be duplicated callback
                 addedViewerPropertyChangeListener = true;
                 getAbsoluteStartingTimeMsFromFile();
             }
         }
-//        if ((in != null) && (in.getSize() > 0)) {
-//
-//        }
         if (resetTimeOnNextPacket) {
             resetTimeOnNextPacket = false;  //awkward to deal with rewind in AEFileInputStream that called it for the last packet in time section, not first at start
             log.info("restting time to packet first timestamp in Info");
