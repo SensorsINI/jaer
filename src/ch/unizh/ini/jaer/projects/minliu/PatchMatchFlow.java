@@ -900,6 +900,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         try {
             gl.glEnable(GL.GL_BLEND);
@@ -918,7 +919,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
         }
         // then on top, draw the motion vectors
-        super.annotate(drawable);
 
         if (displayResultHistogram && (resultHistogram != null)) {
             // draw histogram as shaded in 2d hist above color wheel
