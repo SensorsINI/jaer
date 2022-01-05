@@ -259,6 +259,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip("startLoggingGlobalMotionFlows", "starts saving global motion flow vectors to a human readable file");
         setPropertyTooltip("stopLoggingGlobalMotionFlows", "stops logging global motion flow vectors to a human readable file");
         setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
+        setPropertyTooltip("reseetStatistics", "Reset (clear) statistics collected");
         setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
@@ -807,7 +808,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
     @Override
     public synchronized void resetFilter() {
-        if (measureAccuracy || measureProcessingTime && (motionFlowStatistics!=null && motionFlowStatistics.getSampleCount()>0)) {
+        if (measureAccuracy || measureProcessingTime && (motionFlowStatistics != null && motionFlowStatistics.getSampleCount() > 0)) {
             doPrintStatistics();
         }
         resetMaps();
@@ -1308,6 +1309,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     // </editor-fold>
 
     WarningDialogWithDontShowPreference imuWarningDialog;
+
+    synchronized public void doResetStatistics() {
+        if (motionFlowStatistics != null) {
+            motionFlowStatistics.reset(subSizeX, subSizeY, statisticsWindowSize);
+        }
+    }
 
     // <editor-fold defaultstate="collapsed" desc="Statistics logging trigger button">
     synchronized public void doPrintStatistics() {
