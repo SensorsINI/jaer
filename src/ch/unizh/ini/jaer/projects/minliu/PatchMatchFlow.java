@@ -726,7 +726,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //        // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
 //        final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
 //        setSliceEventCount(eventCount);
-
         setSliceDurationMinLimitUS(1000);
         setSliceDurationMaxLimitUS(300000);
         setSliceDurationUs(50000); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
@@ -901,7 +900,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
-        super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
         try {
             gl.glEnable(GL.GL_BLEND);
@@ -910,6 +908,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         } catch (GLException e) {
             e.printStackTrace();
         }
+        // first draw corners
+        if (showCorners) {
+            gl.glColor4f(1f, 0, 0, 0.1f);
+            for (BasicEvent e : cornerEvents) {
+                gl.glPushMatrix();
+                DrawGL.drawBox(gl, e.x, e.y, getCornerSize(), getCornerSize(), 0);
+                gl.glPopMatrix();
+            }
+        }
+        // then on top, draw the motion vectors
+        super.annotate(drawable);
+
         if (displayResultHistogram && (resultHistogram != null)) {
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
@@ -1072,14 +1082,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             gl.glEnd();
         }
 
-        if (showCorners) {
-            gl.glColor4f(1f, 0, 0, 0.1f);
-            for (BasicEvent e : cornerEvents) {
-                gl.glPushMatrix();
-                DrawGL.drawBox(gl, e.x, e.y, getCornerSize(), getCornerSize(), 0);
-                gl.glPopMatrix();
-            }
-        }
     }
 
     @Override
