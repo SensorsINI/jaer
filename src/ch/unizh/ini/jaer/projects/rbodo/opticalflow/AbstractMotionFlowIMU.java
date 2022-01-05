@@ -111,7 +111,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     private boolean displayRawInput = getBoolean("displayRawInput", true);
     private boolean displayColorWheelLegend = getBoolean("displayColorWheelLegend", true);
     private boolean randomScatterOnFlowVectorOrigins = getBoolean("randomScatterOnFlowVectorOrigins", true);
-    private static final float RANDOM_SCATTER_PIXELS = 3;
+    private static final float RANDOM_SCATTER_PIXELS = 1;
     private Random random = new Random();
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
@@ -361,11 +361,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
         Path p = new File(ps).toPath();
         long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+        progressMonitor.setMaximum(3);
+        progressMonitor.setProgress(0);
         long presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
-        final String msg = String.format("Loading %s; Free RAM %.1f GB", p.toString(), 1e-9 * presumableFreeMemory);
+        final String msg = String.format("Loading Numpy NdArray %s; Free RAM %.1f GB", p.toString(), 1e-9 * presumableFreeMemory);
         log.info(msg);
         progressMonitor.setNote(msg);
+        progressMonitor.setProgress(1);
         NpyArray a = NpyFile.read(p, 1 << 18);
+        progressMonitor.setProgress(2);
         double[] d = a.asDoubleArray();
         allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
         presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
@@ -428,7 +432,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                         if (comp != null) {
                             comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         }
-                        progressMonitor.setProgress(0);
                         tsData = readNpyFile(checkPaths("timestamps.npy", "ts.npy"), true, 1e6f, progressMonitor);
                         if (tsData == null) {
                             return null;
@@ -909,7 +912,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                 rx = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
                 ry = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
             }
-            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels / 3, 1);
+            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels / 2, 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {
@@ -930,7 +933,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     }
 
     protected float[] motionColor(MotionOrientationEventInterface e1) {
-        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, .5f); // use brightness 0.5 to match color wheel and render full gamut
+        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, 1f); // use brightness 0.5 to match color wheel and render full gamut
     }
 
     protected float[] motionColor(float x, float y, float saturation, float brightness) {
@@ -982,7 +985,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
 
         if (isDisplayGlobalMotion()) {
-            gl.glLineWidth(4f);
+            gl.glLineWidth(getMotionVectorLineWidthPixels()*4);
             gl.glColor3f(1, 1, 1);
 
             // Draw global translation vector
