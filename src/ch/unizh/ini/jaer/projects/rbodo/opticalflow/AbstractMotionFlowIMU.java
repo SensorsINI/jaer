@@ -956,6 +956,31 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
 
         checkBlend(gl);
 
+        // Draw individual motion vectors
+        if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
+            gl.glLineWidth(2f);
+//            boolean timeoutEnabled = dirPacket.isTimeLimitEnabled();
+//            dirPacket.setTimeLimitEnabled(false);
+            for (Object o : dirPacket) {
+                MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
+                // If we passAllEvents then the check is needed to not annotate 
+                // the events without a real direction.
+                if (ei.isHasDirection()) {
+                    drawMotionVector(gl, ei);
+                } else if (displayZeroLengthVectorsEnabled) {
+                    gl.glPushMatrix();
+                    gl.glTranslatef(ei.getX(), ei.getY(), 0);
+                    gl.glPointSize(motionVectorLineWidthPixels * 2);
+                    gl.glColor3f(1, 1, 1);
+                    gl.glBegin(GL.GL_POINTS);
+                    gl.glVertex2i(0, 0);
+                    gl.glEnd();
+                    gl.glPopMatrix();
+                }
+            }
+//            dirPacket.setTimeLimitEnabled(timeoutEnabled);
+        }
+
         if (isDisplayGlobalMotion()) {
             gl.glLineWidth(4f);
             gl.glColor3f(1, 1, 1);
@@ -1016,31 +1041,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f px/s avg. speed and OF vector scale", speed));
             gl.glPopMatrix();
 
-        }
-
-        // Draw individual motion vectors
-        if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
-            gl.glLineWidth(2f);
-//            boolean timeoutEnabled = dirPacket.isTimeLimitEnabled();
-//            dirPacket.setTimeLimitEnabled(false);
-            for (Object o : dirPacket) {
-                MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
-                // If we passAllEvents then the check is needed to not annotate 
-                // the events without a real direction.
-                if (ei.isHasDirection()) {
-                    drawMotionVector(gl, ei);
-                } else if (displayZeroLengthVectorsEnabled) {
-                    gl.glPushMatrix();
-                    gl.glTranslatef(ei.getX(), ei.getY(), 0);
-                    gl.glPointSize(motionVectorLineWidthPixels * 2);
-                    gl.glColor3f(1, 1, 1);
-                    gl.glBegin(GL.GL_POINTS);
-                    gl.glVertex2i(0, 0);
-                    gl.glEnd();
-                    gl.glPopMatrix();
-                }
-            }
-//            dirPacket.setTimeLimitEnabled(timeoutEnabled);
         }
 
         if (displayColorWheelLegend) {
