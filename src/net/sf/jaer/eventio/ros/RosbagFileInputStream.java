@@ -113,8 +113,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int nextMessageNumber = 0, numMessages = 0;
 
     private long absoluteStartingTimeMs = 0; // in system time since 1970 in ms
-   /** The ZoneID of this file; for ROS bag files there is no recorded time zone so the zoneId is systemDefault() */
-    private ZoneId zoneId=ZoneId.systemDefault();
+    /**
+     * The ZoneID of this file; for ROS bag files there is no recorded time zone
+     * so the zoneId is systemDefault()
+     */
+    private ZoneId zoneId = ZoneId.systemDefault();
     private FileChannel channel = null;
 
 //    private static final String[] TOPICS = {"/dvs/events"};\
@@ -140,8 +143,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private AEFifo dvsFifo = new AEFifo(), apsFifo = new AEFifo(), imuFifo = new AEFifo();
     private MutableBoolean[] hasDvsApsImu = {hasDvs, hasAps, hasImu};
     private AEFifo[] aeFifos = {dvsFifo, apsFifo, imuFifo};
-    private int MAX_RAW_EVENTS_BUFFER_SIZE=1000000;
-
+    private int MAX_RAW_EVENTS_BUFFER_SIZE = 1000000;
 
     private enum RosbagFileType {
         RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), Unknown("???");
@@ -266,24 +268,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     synchronized private MessageWithIndex getNextMsg() throws BagReaderException, EOFException {
         MessageType msg = null;
-        if (nextMessageNumber == markOut) { // TODO check exceptions here for markOut set before markIn
-            getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
-            if (isRepeat()) {
-                try {
-                    rewind();
-                } catch (IOException ex) {
-                    Logger.getLogger(RosbagFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
-                    throw new BagReaderException("on reaching markOut, got " + ex);
-                }
-                return getNextMsg();
-            } else {
-                return null;
-            }
-        }
         try {
+            if (nextMessageNumber == markOut) { // TODO check exceptions here for markOut set before markIn
+                throw new EOFException("Hit OUT marker at messange number "+markOut);
+            }
             msg = bagFile.getMessageFromIndex(msgIndexes, nextMessageNumber);
         } catch (ArrayIndexOutOfBoundsException e) {
-            throw new EOFException();
+            throw new EOFException("Hit ArrayIndexOutOfBoundsException, probably at end of file");
+        } catch (IOException e) {
+            throw new EOFException("Hit IOException at end of file");
         }
 
         MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(nextMessageNumber));
@@ -303,7 +296,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      * @return timestamp for jAER in us
      */
     private int getTimestampUsRelative(Timestamp timestamp, boolean updateLargestTimestamp) {
-        updateLargestTimestamp = true; // TODO hack before removing
+//        updateLargestTimestamp = true; // TODO hack before removing
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
         long tsMs = timestamp.getTime(); // the time in ms including ns, i.e. time(s)*1000+ns/1000000. 
@@ -720,7 +713,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             try {
                 aePacketRawBuffered.append(getNextRawPacket()); // reaching EOF here will throw EOFException
             } catch (EOFException ex) {
-                aePacketRawBuffered.clear();
+                clearAccumulatedEvents();
                 rewind();
                 return readPacketByTime(dt);
             } catch (BagReaderException ex) {
@@ -773,8 +766,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         nonMonotonicTimestampExceptionsChecked = yes;
     }
 
-    /** Returns starting time of file since epoch, in UTC time 
-     * 
+    /**
+     * Returns starting time of file since epoch, in UTC time
+     *
      * @return the time in ms since epoch (1970)
      */
     @Override
@@ -814,13 +808,27 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public void position(long n) {
-        // TODO, will be hard
+        if (n < 0) {
+            n = 0;
+        } else if (n >= numMessages) {
+            n = numMessages - 1;
+        }
+        nextMessageNumber = (int) n;
     }
 
     @Override
     synchronized public void rewind() throws IOException {
-        nextMessageNumber = (int) (isMarkInSet() ? getMarkInPosition() : 0);
-        currentStartTimestamp = (int) firstTimestamp;
+        position(isMarkInSet() ? getMarkInPosition() : 0);
+        clearAccumulatedEvents();
+        try {
+            MessageWithIndex msg = getNextMsg();
+            if (msg != null) {
+                currentStartTimestamp = getTimestampUsRelative(msg.messageIndex.timestamp, false);
+                position(isMarkInSet() ? getMarkInPosition() : 0);
+            }
+        } catch (BagReaderException e) {
+            log.warning(String.format("Exception %s getting timestamp after rewind from ROS message", e.toString()));
+        }
         clearAccumulatedEvents();
         rewindFlag = true;
     }
@@ -842,13 +850,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public void setFractionalPosition(float frac) {
-        nextMessageNumber = (int) (frac * numMessages); // must also clear partially accumulated events in collecting packet and reset the timestamp
+        position((int) (frac * numMessages)); // must also clear partially accumulated events in collecting packet and reset the timestamp
         clearAccumulatedEvents();
         try {
-            AEPacketRaw raw=getNextRawPacket();
-            while(raw==null){
-                log.warning(String.format("got null packet at fractional position %.2f which should have been message number %d, trying next packet",frac,nextMessageNumber));
-                raw=getNextRawPacket();
+            AEPacketRaw raw = getNextRawPacket();
+            while (raw == null) {
+                log.warning(String.format("got null packet at fractional position %.2f which should have been message number %d, trying next packet", frac, nextMessageNumber));
+                raw = getNextRawPacket();
             }
             aePacketRawBuffered.append(raw); // reaching EOF here will throw EOFException
         } catch (EOFException ex) {
@@ -1158,7 +1166,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             }
             if (size == MAX_EVENTS) {
                 full = true;
-                log.warning(String.format("FIFO has reached capacity RosbagFileInputStream.MAX_EVENTS=%,d events: %s", MAX_EVENTS,toString()));
+                log.warning(String.format("FIFO has reached capacity RosbagFileInputStream.MAX_EVENTS=%,d events: %s", MAX_EVENTS, toString()));
                 return;
             }
             appendCopy(event);
