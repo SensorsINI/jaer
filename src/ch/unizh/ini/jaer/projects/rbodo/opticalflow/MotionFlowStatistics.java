@@ -198,7 +198,7 @@ public class MotionFlowStatistics {
 
     @Override
     public String toString() {
-        return String.format("Motion Flow Statistics Summary: (windowSize=%,d N=%,d samples) %n Outliers (>%.0f px/s): %.1f", windowSize, globalMotion.globalSpeed.getN(), OUTLIER_ABS_PPS, getOutlierPercentage())
+        return String.format("Motion Flow Statistics Summary: (windowSize=%,d N=%,d samples) %nOutliers (>%.0f px/s): %.1f%n", windowSize, globalMotion.globalSpeed.getN(), OUTLIER_ABS_PPS, getOutlierPercentage())
                 + eventDensity.toString() + globalMotion.toString()
                 + processingTime.toString() + angularError.toString()
                 + endpointErrorAbs.toString() + endpointErrorRel.toString();
