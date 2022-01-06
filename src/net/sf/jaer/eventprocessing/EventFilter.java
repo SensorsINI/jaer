@@ -153,8 +153,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     protected AEChip chip;
 
     // for checkBlend()
-    private boolean hasBlendChecked = false;
-    private boolean hasBlend = false;
+    protected boolean hasBlendChecked = false;
+    protected boolean hasBlend = false;
 
     protected PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
