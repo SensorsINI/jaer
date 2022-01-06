@@ -99,8 +99,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private AEChip chip = null;
     private File file = null;
     BagFile bagFile = null;
-    // the most recently read event timestamp, the first one in file, and the last one in file
-    private int mostRecentTimestamp, largestTimestamp = Integer.MIN_VALUE;
+    // the most recently read event timestamp and the largest one read so far in this playback cycle
+    private int mostRecentTimestamp, largestTimestampReadSinceRewind = Integer.MIN_VALUE;
+    // first and last timestamp in the entire recording
     private long firstTimestamp, lastTimestamp;
     private long firstTimestampUsAbsolute; // the absolute (ROS) first timestamp in us
     private boolean firstTimestampWasRead = false;
@@ -258,11 +259,23 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
         public MessageType messageType;
         public BagFile.MessageIndex messageIndex;
+        public int ourIndex;
 
-        public MessageWithIndex(MessageType messageType, BagFile.MessageIndex messageIndex) {
+        public MessageWithIndex(MessageType messageType, BagFile.MessageIndex messageIndex, int ourIndex) {
             this.messageType = messageType;
             this.messageIndex = messageIndex;
+            this.ourIndex=ourIndex;
         }
+
+        @Override
+        public String toString() {
+            return String.format("MessagesWithIndex with ourIndex=%d, MessageType [package=%s, name=%s, type=%s], MessageIndex %s",
+                    ourIndex,
+                    messageType.getPackage(),messageType.getName(),  messageType.getType(),
+                    messageIndex.toString()); //To change body of generated methods, choose Tools | Templates.
+        }
+        
+        
 
     }
 
@@ -279,7 +292,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             throw new EOFException("Hit IOException at end of file");
         }
 
-        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(nextMessageNumber));
+        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(nextMessageNumber), nextMessageNumber);
         nextMessageNumber++;
         return rtn;
     }
@@ -309,16 +322,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //        if (ts == 0) {
 //            log.warning("zero timestamp detected for Image ");
 //        }
-        if (updateLargestTimestamp && ts > largestTimestamp) {
-            largestTimestamp = ts;
+        if (updateLargestTimestamp && ts >= largestTimestampReadSinceRewind) {
+            largestTimestampReadSinceRewind = ts;
         }
         final int dt = ts - mostRecentTimestamp;
         if (dt < 0 && nonMonotonicTimestampExceptionsChecked) {
             if (nonmonotonicTimestampCounter % NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
-                log.warning("Nonmonotonic timestamp=" + timestamp + " with dt=" + dt + "; replacing with largest timestamp=" + largestTimestamp + "; skipping next " + NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL + " warnings");
+                log.warning("Nonmonotonic timestamp=" + timestamp + " with dt=" + dt + "; replacing with largest timestamp=" + largestTimestampReadSinceRewind + "; skipping next " + NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL + " warnings");
             }
             nonmonotonicTimestampCounter++;
-            ts = largestTimestamp; // replace actual timestamp with largest one so far
+            ts = largestTimestampReadSinceRewind; // replace actual timestamp with largest one so far
             nonMonotonicTimestampDetected = true;
         } else {
             nonMonotonicTimestampDetected = false;
@@ -578,6 +591,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             Logger.getLogger(ExampleRosBagReader.class.getName()).log(Level.SEVERE, null, ex);
             throw new BagReaderException(ex);
         }
+        // if we were not checking time order, then events were directly copied to output packet oe already
         if (nonMonotonicTimestampExceptionsChecked) {
             // now pop events in time order from the FIFOs to the output packet and then reconstruct the raw packet
             ApsDvsEvent ev;
@@ -706,7 +720,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         if (dt < 0) {
             return emptyPacket;
         }
-        int newEndTime = currentStartTimestamp + dt; // problem is that time advances even when the data time might not.
+        int newEndTime = currentStartTimestamp + dt; // TODO problem is that time advances even when the data time might not.
         while (aePacketRawBuffered.isEmpty()
                 || (aePacketRawBuffered.getLastTimestamp() < newEndTime
                 && aePacketRawBuffered.getNumEvents() < MAX_RAW_EVENTS_BUFFER_SIZE)) {
@@ -820,10 +834,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     synchronized public void rewind() throws IOException {
         position(isMarkInSet() ? getMarkInPosition() : 0);
         clearAccumulatedEvents();
+        largestTimestampReadSinceRewind=0; // timestamps start at 0 by constuction of timestamps
         try {
             MessageWithIndex msg = getNextMsg();
             if (msg != null) {
-                currentStartTimestamp = getTimestampUsRelative(msg.messageIndex.timestamp, false);
+                currentStartTimestamp = getTimestampUsRelative(msg.messageIndex.timestamp, true);  // reind, so update the largest timestamp read in this cycle to first timestamp
                 position(isMarkInSet() ? getMarkInPosition() : 0);
             }
         } catch (BagReaderException e) {
@@ -841,7 +856,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     private void clearAccumulatedEvents() {
-        largestTimestamp = Integer.MIN_VALUE;
         aePacketRawBuffered.clear();
         for (AEFifo f : aeFifos) {
             f.clear();
