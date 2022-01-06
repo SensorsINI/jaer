@@ -900,23 +900,24 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
-        super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
+        // first draw corners
+        if (showCorners) {
+            gl.glLineWidth(getMotionVectorLineWidthPixels());
+            gl.glColor4f(.5f, 0, 0, 0.5f);
+            for (BasicEvent e : cornerEvents) {
+                gl.glPushMatrix();
+                DrawGL.drawCross(gl, e.x, e.y, getCornerSize(), 0);
+                gl.glPopMatrix();
+            }
+        }
+        super.annotate(drawable);
         try {
             gl.glEnable(GL.GL_BLEND);
             gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
             gl.glBlendEquation(GL.GL_FUNC_ADD);
         } catch (GLException e) {
             e.printStackTrace();
-        }
-        // first draw corners
-        if (showCorners) {
-            gl.glColor4f(1f, 0, 0, 0.1f);
-            for (BasicEvent e : cornerEvents) {
-                gl.glPushMatrix();
-                DrawGL.drawBox(gl, e.x, e.y, getCornerSize(), getCornerSize(), 0);
-                gl.glPopMatrix();
-            }
         }
         // then on top, draw the motion vectors
 
