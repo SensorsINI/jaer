@@ -978,7 +978,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             return;
         }
 
-        checkBlend(gl);
+//        checkBlend(gl); // setting this blending messes up rendering of ON and OFF events for unknown reason. Rendering is better without setting blending
 
         // Draw individual motion vectors
         if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
