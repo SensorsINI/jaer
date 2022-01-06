@@ -355,7 +355,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
     }
 
-    float[] readNpyFile(String ps, boolean subtractFirst, float scale, ProgressMonitor progressMonitor) {
+    /** Read numpy file with ground truth flow information as provided by MVSEC
+     * 
+     * @param ps The file full path
+     * @param checkArraySizeAgainstChip set true to check this array's shape against this AEChip to pop up warning if size does not match
+     * @param subtractFirst set true to subtract the first value from later one (for timestamps)
+     * @param scale set scale to scale all value (for flow vector scaling from pix to px/s)
+     * @param progressMonitor a progress monitor to show progress
+     * @return the final float[] array which is flattened for the flow u and v matrices
+     */
+    private float[] readNpyFile(String ps, boolean checkArraySizeAgainstChip, boolean subtractFirst, float scale, ProgressMonitor progressMonitor) {
         if (ps == null) {
             return null;
         }
@@ -369,6 +378,18 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         progressMonitor.setNote(msg);
         progressMonitor.setProgress(1);
         NpyArray a = NpyFile.read(p, 1 << 18);
+        if(checkArraySizeAgainstChip){
+            String err=null;
+            int[] sh=a.getShape();
+            if(sh.length !=3){
+                err=String.format("Shape of input NpyArray is wrong, got %d dimensions and not 3",sh.length);
+            }else if(sh[1]!=chip.getSizeY() || sh[2]!=chip.getSizeX()){
+                err=String.format("Dimension of NpyArray flow matrix is wrong, got [%d,%d] and should have [%d,%d]",sh[1],sh[2],chip.getSizeY(),chip.getSizeX());
+            }
+            if(err!=null){
+                showWarningDialogInSwingThread(err, "Wrong AEChip or wrong GT file?");
+            }
+        }
         progressMonitor.setProgress(2);
         double[] d = a.asDoubleArray();
         allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
@@ -432,16 +453,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                         if (comp != null) {
                             comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         }
-                        tsData = readNpyFile(checkPaths("timestamps.npy", "ts.npy"), true, 1e6f, progressMonitor);
+                        tsData = readNpyFile(checkPaths("timestamps.npy", "ts.npy"), false, true, 1e6f, progressMonitor); // don't check size for timestamp array
                         if (tsData == null) {
                             return null;
                         }
                         MVSEC_FPS = 1e6f / (tsData[1] - tsData[0]);
-                        xOFData = readNpyFile(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), false, MVSEC_FPS, progressMonitor);
+                        xOFData = readNpyFile(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), true, false, MVSEC_FPS, progressMonitor); // check size for vx, vy arrays
                         if (xOFData == null) {
                             return null;
                         }
-                        yOFData = readNpyFile(checkPaths("y_flow_dist.npy", "y_flow_tensor.npy"), false, MVSEC_FPS, progressMonitor);
+                        yOFData = readNpyFile(checkPaths("y_flow_dist.npy", "y_flow_tensor.npy"), true, false, MVSEC_FPS, progressMonitor);
                         if (yOFData == null) {
                             return null;
                         }
