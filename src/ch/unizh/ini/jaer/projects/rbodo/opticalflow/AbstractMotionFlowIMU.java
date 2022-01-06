@@ -384,7 +384,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             if(sh.length !=3){
                 err=String.format("Shape of input NpyArray is wrong, got %d dimensions and not 3",sh.length);
             }else if(sh[1]!=chip.getSizeY() || sh[2]!=chip.getSizeX()){
-                err=String.format("Dimension of NpyArray flow matrix is wrong, got [%d,%d] and should have [%d,%d]",sh[1],sh[2],chip.getSizeY(),chip.getSizeX());
+                err=String.format("<html>Dimension of NpyArray flow matrix is wrong, got [%d,%d] and should have [%d,%d]<p>Did you choose the correct AEChip and GT file to match?",sh[1],sh[2],chip.getSizeY(),chip.getSizeX());
             }
             if(err!=null){
                 showWarningDialogInSwingThread(err, "Wrong AEChip or wrong GT file?");
