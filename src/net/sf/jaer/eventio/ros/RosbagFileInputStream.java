@@ -718,6 +718,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
         int oldPosition = nextMessageNumber;
         if (dt < 0) {
+            log.warning(String.format("dt=%d is negative but RosbagFileInputStream only supports forward playing so far",dt));
             return emptyPacket;
         }
         int newEndTime = currentStartTimestamp + dt; // TODO problem is that time advances even when the data time might not.
