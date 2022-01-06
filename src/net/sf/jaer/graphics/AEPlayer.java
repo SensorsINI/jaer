@@ -355,8 +355,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     aeFileInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
                     aeFileInputStream.getSupport().addPropertyChangeListener(viewer);
                     // so that users of the stream can get the file information
-                    if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() == 1)) {
+                    if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() > 1)) {
                         // if there is only one viewer, start it there
+                        // tobi changed rewind at starting playback 6.1.21, no need for rewind when opening file for first time if we are the only viewer
                         try {
                             aeFileInputStream.rewind();
                         } catch (IOException e) {
