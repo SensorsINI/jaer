@@ -456,7 +456,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                 @Override
                 protected Object doInBackground() throws Exception {
                     try {
-
+                        chip.getAeViewer().getAePlayer().setPaused(true); // to speed up disk access
                         if (comp != null) {
                             comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         }
@@ -492,6 +492,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                         showWarningDialogInSwingThread(s, "Out of memory");
                         return e;
                     } finally {
+                        chip.getAeViewer().getAePlayer().setPaused(false); // to speed up disk access
                         comp.setCursor(Cursor.getDefaultCursor());
                     }
                 }
@@ -908,13 +909,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
      * @param e the event
      */
     protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
-        float[] rgb = null;
+        float[] rgba = null;
         if (useColorForMotionVectors) {
-            rgb = motionColor(e);
+            rgba = motionColor(e);
         } else {
-            rgb = new float[]{0, 0, 1};
+            rgba = new float[]{0, 0, 1, motionVectorTransparencyAlpha};
         }
-        gl.glColor3fv(rgb, 0);
+        gl.glColor4fv(rgba, 0);
         float scale = ppsScale;
         if (ppsScaleDisplayRelativeOFLength && displayGlobalMotion) {
             scale = 100 * ppsScale / motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
@@ -961,7 +962,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     }
 
     protected float[] motionColor(MotionOrientationEventInterface e1) {
-        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, motionVectorTransparencyAlpha); // use brightness 0.5 to match color wheel and render full gamut
+        float[] c = motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, 1);
+        return new float[]{c[0], c[1], c[2], motionVectorTransparencyAlpha};
     }
 
     protected float[] motionColor(float x, float y, float saturation, float brightness) {
@@ -2514,7 +2516,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
      */
     public void setMotionVectorTransparencyAlpha(float motionVectorTransparencyAlpha) {
         if (motionVectorTransparencyAlpha < 0) {
-            motionVectorTransparencyAlpha=0;
+            motionVectorTransparencyAlpha = 0;
         } else if (motionVectorTransparencyAlpha > 1) {
             motionVectorTransparencyAlpha = 1;
         }
