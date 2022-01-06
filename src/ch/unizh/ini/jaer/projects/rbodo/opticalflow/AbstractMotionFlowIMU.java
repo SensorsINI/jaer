@@ -113,6 +113,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     private boolean randomScatterOnFlowVectorOrigins = getBoolean("randomScatterOnFlowVectorOrigins", true);
     private static final float RANDOM_SCATTER_PIXELS = 1;
     private Random random = new Random();
+    protected float motionVectorTransparencyAlpha = getFloat("motionVectorTransparencyAlpha", .7f);
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
@@ -281,6 +282,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         setPropertyTooltip(dispTT, "yMin", "events with y-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "yMax", "events with y-coordinate above this are filtered out.");
         setPropertyTooltip(dispTT, "motionVectorLineWidthPixels", "line width to draw motion vectors");
+        setPropertyTooltip(dispTT, "motionVectorTransparencyAlpha", "transparency alpha setting for motion vector rendering");
         setPropertyTooltip(dispTT, "useColorForMotionVectors", "display the output motion vectors in color");
         setPropertyTooltip(smoothingTT, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
         setPropertyTooltip(smoothingTT, "refractoryPeriodUs", "compute no flow vector if a flow vector has already been computed within this period at the same location.");
@@ -355,14 +357,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
     }
 
-    /** Read numpy file with ground truth flow information as provided by MVSEC
-     * 
+    /**
+     * Read numpy file with ground truth flow information as provided by MVSEC
+     *
      * @param ps The file full path
-     * @param checkArraySizeAgainstChip set true to check this array's shape against this AEChip to pop up warning if size does not match
-     * @param subtractFirst set true to subtract the first value from later one (for timestamps)
-     * @param scale set scale to scale all value (for flow vector scaling from pix to px/s)
+     * @param checkArraySizeAgainstChip set true to check this array's shape
+     * against this AEChip to pop up warning if size does not match
+     * @param subtractFirst set true to subtract the first value from later one
+     * (for timestamps)
+     * @param scale set scale to scale all value (for flow vector scaling from
+     * pix to px/s)
      * @param progressMonitor a progress monitor to show progress
-     * @return the final float[] array which is flattened for the flow u and v matrices
+     * @return the final float[] array which is flattened for the flow u and v
+     * matrices
      */
     private float[] readNpyFile(String ps, boolean checkArraySizeAgainstChip, boolean subtractFirst, float scale, ProgressMonitor progressMonitor) {
         if (ps == null) {
@@ -378,15 +385,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         progressMonitor.setNote(msg);
         progressMonitor.setProgress(1);
         NpyArray a = NpyFile.read(p, 1 << 18);
-        if(checkArraySizeAgainstChip){
-            String err=null;
-            int[] sh=a.getShape();
-            if(sh.length !=3){
-                err=String.format("Shape of input NpyArray is wrong, got %d dimensions and not 3",sh.length);
-            }else if(sh[1]!=chip.getSizeY() || sh[2]!=chip.getSizeX()){
-                err=String.format("<html>Dimension of NpyArray flow matrix is wrong, got [%d,%d] and should have [%d,%d]<p>Did you choose the correct AEChip and GT file to match?",sh[1],sh[2],chip.getSizeY(),chip.getSizeX());
+        if (checkArraySizeAgainstChip) {
+            String err = null;
+            int[] sh = a.getShape();
+            if (sh.length != 3) {
+                err = String.format("Shape of input NpyArray is wrong, got %d dimensions and not 3", sh.length);
+            } else if (sh[1] != chip.getSizeY() || sh[2] != chip.getSizeX()) {
+                err = String.format("<html>Dimension of NpyArray flow matrix is wrong, got [%d,%d] and should have [%d,%d]<p>Did you choose the correct AEChip and GT file to match?", sh[1], sh[2], chip.getSizeY(), chip.getSizeX());
             }
-            if(err!=null){
+            if (err != null) {
                 showWarningDialogInSwingThread(err, "Wrong AEChip or wrong GT file?");
             }
         }
@@ -954,7 +961,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     }
 
     protected float[] motionColor(MotionOrientationEventInterface e1) {
-        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, 1f); // use brightness 0.5 to match color wheel and render full gamut
+        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, motionVectorTransparencyAlpha); // use brightness 0.5 to match color wheel and render full gamut
     }
 
     protected float[] motionColor(float x, float y, float saturation, float brightness) {
@@ -979,7 +986,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
 
 //        checkBlend(gl); // setting this blending messes up rendering of ON and OFF events for unknown reason. Rendering is better without setting blending
-
         // Draw individual motion vectors
         if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
             gl.glLineWidth(2f);
@@ -1006,7 +1012,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
 
         if (isDisplayGlobalMotion()) {
-            gl.glLineWidth(getMotionVectorLineWidthPixels()*4);
+            gl.glLineWidth(getMotionVectorLineWidthPixels() * 4);
             gl.glColor3f(1, 1, 1);
 
             // Draw global translation vector
@@ -2493,6 +2499,27 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     public void setRandomScatterOnFlowVectorOrigins(boolean randomScatterOnFlowVectorOrigins) {
         this.randomScatterOnFlowVectorOrigins = randomScatterOnFlowVectorOrigins;
         putBoolean("randomScatterOnFlowVectorOrigins", randomScatterOnFlowVectorOrigins);
+    }
+
+    /**
+     * @return the motionVectorTransparencyAlpha
+     */
+    public float getMotionVectorTransparencyAlpha() {
+        return motionVectorTransparencyAlpha;
+    }
+
+    /**
+     * @param motionVectorTransparencyAlpha the motionVectorTransparencyAlpha to
+     * set
+     */
+    public void setMotionVectorTransparencyAlpha(float motionVectorTransparencyAlpha) {
+        if (motionVectorTransparencyAlpha < 0) {
+            motionVectorTransparencyAlpha=0;
+        } else if (motionVectorTransparencyAlpha > 1) {
+            motionVectorTransparencyAlpha = 1;
+        }
+        this.motionVectorTransparencyAlpha = motionVectorTransparencyAlpha;
+        putFloat("motionVectorTransparencyAlpha", motionVectorTransparencyAlpha);
     }
 
 }
