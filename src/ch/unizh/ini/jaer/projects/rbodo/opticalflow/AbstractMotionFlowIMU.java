@@ -437,8 +437,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             putString("npzFilePath", npzFilePath);
 
             final ProgressMonitor progressMonitor = new ProgressMonitor(comp, "Opening " + npzFilePath, "Reading npy files", 0, 100);
-            progressMonitor.setMillisToPopup(300);
-            progressMonitor.setMillisToDecideToPopup(300);
+            progressMonitor.setMillisToPopup(0);
+            progressMonitor.setMillisToDecideToPopup(0);
             final SwingWorker<Void, Void> worker = new SwingWorker() {
                 private String checkPaths(String f1, String f2) {
                     String s = null;
@@ -987,12 +987,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
             return;
         }
 
-//        checkBlend(gl); // setting this blending messes up rendering of ON and OFF events for unknown reason. Rendering is better without setting blending
         // Draw individual motion vectors
         if (dirPacket != null && (displayVectorsEnabled || displayVectorsAsColorDots)) {
-            gl.glLineWidth(2f);
-//            boolean timeoutEnabled = dirPacket.isTimeLimitEnabled();
-//            dirPacket.setTimeLimitEnabled(false);
+            gl.glEnable(GL.GL_BLEND);
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_DST_COLOR);
+            gl.glBlendEquation(GL.GL_FUNC_ADD);
             for (Object o : dirPacket) {
                 MotionOrientationEventInterface ei = (MotionOrientationEventInterface) o;
                 // If we passAllEvents then the check is needed to not annotate 
@@ -1010,7 +1009,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                     gl.glPopMatrix();
                 }
             }
-//            dirPacket.setTimeLimitEnabled(timeoutEnabled);
+            gl.glDisable(GL.GL_BLEND);
         }
 
         if (isDisplayGlobalMotion()) {
