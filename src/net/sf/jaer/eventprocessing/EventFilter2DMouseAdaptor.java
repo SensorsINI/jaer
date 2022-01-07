@@ -299,7 +299,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
      *
      * @param e the mouse event
      * @return the pixel position in the chip object, origin 0,0 in lower left
-     * corner.
+     * corner. Or null if outside chip bounds.
      */
     protected Point getMousePixel(MouseEvent e) {
         if (getChip().getCanvas() == null) {
