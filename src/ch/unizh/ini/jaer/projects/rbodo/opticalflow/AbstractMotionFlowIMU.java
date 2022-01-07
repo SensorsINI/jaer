@@ -2560,7 +2560,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (v > 0) {
             e.velocity.x = imuFlowEstimator.vx;
             e.velocity.y = imuFlowEstimator.vy;
-            mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f] for [x,y]=[%d,%d]", e.velocity.x, e.velocity.y, v, x, y);
+            e.speed=(float)Math.sqrt(e.velocity.x*e.velocity.x+e.velocity.y*e.velocity.y);
+            mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f] for [x,y]=[%d,%d]", e.velocity.x, e.velocity.y, e.speed, e.x, e.y);
             log.info(mouseVectorString);
             mouseVectorEvent = e;
         } else {
