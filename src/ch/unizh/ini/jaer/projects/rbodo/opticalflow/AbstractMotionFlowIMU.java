@@ -14,6 +14,8 @@ import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -37,6 +39,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
@@ -45,7 +48,7 @@ import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -68,7 +71,7 @@ import org.jetbrains.bio.npy.NpyFile;
  */
 @Description("Abstract base class for motion optical flow.")
 @DevelopmentStatus(DevelopmentStatus.Status.Abstract)
-abstract public class AbstractMotionFlowIMU extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
+abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
     // Observed motion flow.
     public static float vx, vy, v;
@@ -235,6 +238,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
     private float[] xOFData;
     private float[] yOFData;
 
+    // for drawing GT flow at a point
+    private volatile MotionOrientationEventInterface mouseVectorEvent = new ApsDvsMotionOrientationEvent();
+    private volatile String mouseVectorString = null;
+
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
         imuFlowEstimator = new ImuFlowEstimator();
@@ -380,7 +387,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         progressMonitor.setMaximum(3);
         progressMonitor.setProgress(0);
         long presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
-        final String msg = String.format("Loading Numpy NdArray %s; Free RAM %.1f GB", p.toString(), 1e-9 * presumableFreeMemory);
+        final String msg = String.format("<html>Loading Numpy NdArray <br>%s; <p>Free RAM %.1f GB", p.toString(), 1e-9 * presumableFreeMemory);
         log.info(msg);
         progressMonitor.setNote(msg);
         progressMonitor.setProgress(1);
@@ -664,6 +671,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
                 }
                 return false;
             } else if (importedGTfromNPZ) {
+                if (getChip().getAeViewer().getAePlayer().getAEInputStream() == null) {
+                    return false;
+                }
                 final int tsRelativeToStart = ((ts - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
                 if (tsRelativeToStart < 0 || tsRelativeToStart >= tsData[tsData.length - 1]) {
                     if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
@@ -1142,6 +1152,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
 
         motionField.draw(gl);
+
+        // draw the mouse vector GT flow event
+        if (mouseVectorEvent != null && mouseVectorString != null) {
+            gl.glPushMatrix();
+            drawMotionVector(gl, mouseVectorEvent);
+            DrawGL.drawString(drawable, 20, (float) mouseVectorEvent.getX() / chip.getSizeX(), (float) mouseVectorEvent.getY() / chip.getSizeY(), .5f, Color.yellow, mouseVectorString);
+            gl.glPopMatrix();
+        }
 
     }
 
@@ -2521,6 +2539,41 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2D implements Fra
         }
         this.motionVectorTransparencyAlpha = motionVectorTransparencyAlpha;
         putFloat("motionVectorTransparencyAlpha", motionVectorTransparencyAlpha);
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent mouseEvent) {
+        if (!measureAccuracy) {
+            return;
+        }
+        Point2D p = getMousePixel(mouseEvent);
+        if (p == null || p.getX() < 0 || p.getY() < 0 || p.getX() >= chip.getSizeX() || p.getY() >= chip.getSizeY()) {
+            return;
+        }
+        ApsDvsMotionOrientationEvent e = new ApsDvsMotionOrientationEvent();
+        e.x = (short) p.getX();
+        e.y = (short) p.getY();
+        e.timestamp = ts;
+        x = e.x;
+        y = e.y; // must set stupid globals to compute the GT flow in calculateImuFlow
+        imuFlowEstimator.calculateImuFlow(e);
+        if (v > 0) {
+            e.velocity.x = imuFlowEstimator.vx;
+            e.velocity.y = imuFlowEstimator.vy;
+            mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f] for [x,y]=[%d,%d]", e.velocity.x, e.velocity.y, v, x, y);
+            log.info(mouseVectorString);
+            mouseVectorEvent = e;
+        } else {
+            mouseVectorEvent = null;
+            mouseVectorString = null;
+        }
+        super.mouseMoved(mouseEvent); //repaints
+    }
+
+    @Override
+    public void mouseExited(MouseEvent e) {
+        mouseVectorString = null;
+        mouseVectorEvent = null;
     }
 
 }
