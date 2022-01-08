@@ -103,6 +103,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             for (short x = 0; x < sx; x += k) {
                 for (short y = 0; y < sy; y += k) {
                     eout = (ApsDvsMotionOrientationEvent) outItr.nextOutput();
+                    eout.timestamp=in.getLastTimestamp();
                     
                     eout.x = x;
                     eout.y = y;

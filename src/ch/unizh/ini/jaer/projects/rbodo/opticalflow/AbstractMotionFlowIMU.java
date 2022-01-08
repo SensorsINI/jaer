@@ -580,7 +580,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     // <editor-fold defaultstate="collapsed" desc="ImuFlowEstimator Class">    
     public class ImuFlowEstimator {
 
-        // Motion flow from IMU gyro values.
+        // Motion flow from IMU gyro values or GT file
         private float vx;
         private float vy;
         private float v;
@@ -670,10 +670,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 return false;
             } else if (importedGTfromNPZ) {
+                if (!(o instanceof ApsDvsEvent)) {
+                    return true; // continue processing this event outside
+                }
+                ApsDvsEvent e=(ApsDvsEvent)o;
                 if (getChip().getAeViewer().getAePlayer().getAEInputStream() == null) {
                     return false;
                 }
-                final int tsRelativeToStart = ((ts - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
+                final int tsRelativeToStart = ((e.timestamp - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
                 if (tsRelativeToStart < 0 || tsRelativeToStart >= tsData[tsData.length - 1]) {
                     if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
                         log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, tsData array bounds are [%,.0f,%,.0f]", tsRelativeToStart, tsData[0], tsData[tsData.length - 1]));
@@ -702,8 +706,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 final int npix = chip.getNumPixels();
                 final int sx = chip.getSizeX(), sy = chip.getSizeY();
-                vx = (float) xOFData[frameIdx * (npix) + (sy - 1 - y) * sx + x];
-                vy = (float) yOFData[frameIdx * (npix) + (sy - 1 - y) * sx + x];
+                vx = (float) xOFData[frameIdx * (npix) + (sy - 1 - e.y) * sx + e.x];
+                vy = (float) yOFData[frameIdx * (npix) + (sy - 1 - e.y) * sx + e.x];
                 vy = -vy;
                 v = (float) Math.sqrt(vx * vx + vy * vy);
                 return false;
