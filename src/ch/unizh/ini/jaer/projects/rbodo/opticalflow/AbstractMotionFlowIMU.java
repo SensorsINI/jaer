@@ -234,7 +234,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected boolean useColorForMotionVectors = getBoolean("useColorForMotionVectors", true);
     // NPZ ground truth data files from MVSEC
     float MVSEC_FPS = 45; // of the MVSEC frames
-    private float[] tsData; // timestamp of frames in MVSEC GT ** in float microseconds!!
+    private float[] tsDataS; // timestamp of frames in MVSEC GT in seconds (to avoid roundoff problems in us
     private float[] xOFData;
     private float[] yOFData;
 
@@ -467,11 +467,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         if (comp != null) {
                             comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         }
-                        tsData = readNpyFile(checkPaths("timestamps.npy", "ts.npy"), false, true, 1e6f, progressMonitor); // don't check size for timestamp array
-                        if (tsData == null) {
+                        tsDataS = readNpyFile(checkPaths("timestamps.npy", "ts.npy"), false, true, 1, progressMonitor); // don't check size for timestamp array
+                        if (tsDataS == null) {
                             return null;
                         }
-                        MVSEC_FPS = 1e6f / (tsData[1] - tsData[0]);
+                        MVSEC_FPS = 1/ (tsDataS[1] - tsDataS[0]);
                         xOFData = readNpyFile(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), true, false, MVSEC_FPS, progressMonitor); // check size for vx, vy arrays
                         if (xOFData == null) {
                             return null;
@@ -480,8 +480,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         if (yOFData == null) {
                             return null;
                         }
-                        String s = String.format("<html>Imported %,d frames spanning t=[%.1f,%.1f]s<br>from %s. <p>Frame rate is %.1fHz", tsData.length, 
-                                1e-6f * tsData[0], 1e-6f * tsData[tsData.length - 1], npzFilePath,
+                        String s = String.format("<html>Imported %,d frames spanning t=[%.1f,%.1f]s<br>from %s. <p>Frame rate is %.1fHz", tsDataS.length,
+                                tsDataS[0], tsDataS[tsDataS.length - 1], npzFilePath,
                                 MVSEC_FPS);
                         log.info(s);
                         showPlainMessageDialogInSwingThread(s, "NPZ import succeeded");
@@ -559,10 +559,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         vxGT = 0;
         vyGT = 0;
         vGT = 0;
-        tsData=null;
-        xOFData=null;
-        yOFData=null;
-        importedGTfromNPZ=false;
+        tsDataS = null;
+        xOFData = null;
+        yOFData = null;
+        importedGTfromNPZ = false;
     }
 
     synchronized public void doClearGroundTruth() {
@@ -634,7 +634,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             vy = 0;
             v = 0;
         }
-        
+
         float getVx() {
             return vx;
         }
@@ -685,16 +685,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     return false;
                 }
                 final int tsRelativeToStartUs = ((e.timestamp - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
-                if (tsRelativeToStartUs < 0 || tsRelativeToStartUs >= tsData[tsData.length - 1]) {
+                if (tsRelativeToStartUs < 0 || tsRelativeToStartUs >= 1e6f*tsDataS[tsDataS.length - 1]) {
                     if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
-                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, tsData array bounds are [%,.0f,%,.0f]", tsRelativeToStartUs, tsData[0], tsData[tsData.length - 1]));
+                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, tsData array bounds are [%,.0f,%,.0f]", tsRelativeToStartUs, tsDataS[0], tsDataS[tsDataS.length - 1]));
                     }
                     imuFlowGTWarnings++;
                     return false;
                 }
 
 //                int frameIdx = (int) (ts / (MVSEC_FPS * 1000));    // MVSEC's OF is updated at 45 MVSEC_FPS
-                int frameIdx = Math.abs(Arrays.binarySearch(tsData, tsRelativeToStartUs))-2; 
+                int frameIdx = Math.abs(Arrays.binarySearch(tsDataS, tsRelativeToStartUs*1e-6f)) - 2;
+                
                 // minus 2 is because for timestamps less than the 2nd time (the first time is zero), 
                 // the insertion point would be 1, so binarySearch returns -1-1=-2 but we want 0 for the frameIdx
                 /* binarySearch Returns:
@@ -703,9 +704,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 the index of the first element greater than the key, or a.length if all elements in the array are 
                 less than the specified key. Note that this guarantees that the return value will be >= 0 if and only if the key is found.
                  */
-                if (frameIdx < 0 || frameIdx >= tsData.length) {
+                if (frameIdx < 0 || frameIdx >= tsDataS.length) {
                     if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
-                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData array bounds [%,.0f,%,.0f]", tsRelativeToStartUs, frameIdx, tsData[0], tsData[tsData.length - 1]));
+                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d us in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData times array bounds [%,.0f,%,.0f] s", tsRelativeToStartUs, frameIdx, tsDataS[0], tsDataS[tsDataS.length - 1]));
                     }
                     imuFlowGTWarnings++;
                     vx = 0;
@@ -932,8 +933,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      * @param y y location
      * @param vx x component of velocity in px/s
      * @param vy y component in px/s
+     * @return the float[] RGBA color used to draw the vector
      */
-    protected void drawMotionVector(GL2 gl, int x, int y, float vx, float vy) {
+    protected float[] drawMotionVector(GL2 gl, int x, int y, float vx, float vy) {
 
         float[] rgba = null;
         if (useColorForMotionVectors) {
@@ -977,6 +979,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             gl.glVertex2f(e.getX(), e.getY());
             gl.glEnd();
         }
+        return rgba;
     }
 
     /**
@@ -984,10 +987,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      * times scaling. Color vectors by angle to x-axis.
      *
      * @param gl the OpenGL context
-     * @param e the event
+     * @return the float[] RGBA color used to draw the vector
      */
-    protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
-        drawMotionVector(gl, e.getX(), e.getY(), (float) e.getVelocity().getX(), (float) e.getVelocity().getY());
+    protected float[] drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
+        return drawMotionVector(gl, e.getX(), e.getY(), (float) e.getVelocity().getX(), (float) e.getVelocity().getY());
     }
 
     protected float[] motionColor(float angle) {
@@ -1058,24 +1061,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
             // draw scale bar vector at bottom
             gl.glPushMatrix();
-            float speed = (chip.getSizeX()/2);
+            float speed = (chip.getSizeX() / 2);
             if (displayGlobalMotion) {
                 speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
             }
             DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
             final int px = 10, py = -10;
 
-            drawMotionVector(gl, px,py,speed,0);
-            gl.glLineWidth(2f);
-            gl.glColor3f(1, 1, 1);
+            float[] rgba=drawMotionVector(gl, px, py, speed, 0);
             gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
             String s = null;
             if (displayGlobalMotion) {
                 s = String.format("%.1f px/s avg. speed and OF vector scale", speed);
             } else {
-                s = String.format("%.1f px/s OF scale",speed);
+                s = String.format("%.1f px/s OF scale", speed);
             }
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+//            gl.glColor3f(1, 1, 1);
+            DrawGL.drawString(gl, 10, px, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
             gl.glPopMatrix();
 
         }
