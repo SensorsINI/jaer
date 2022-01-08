@@ -30,7 +30,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
 
     private boolean showCompleteVectorField = getBoolean("showCompleteVectorField", false);
     private int vectorFieldDownsampling = getInt("vectorFieldDownsampling", 4);
-    private int renderingCounter=0;
+    private int renderingCounter = 0;
 
     public ImuFlow(AEChip chip) {
         super(chip);
@@ -89,7 +89,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
                 //exportFlowToMatlab(2500000,2600000); // for IMU_APS_translSin
                 //exportFlowToMatlab(1360000,1430000); // for IMU_APS_rotDisk
                 //exportFlowToMatlab(295500000,296500000); // for IMU_APS_translBoxes
-                if(renderingCounter++%(1<<vectorFieldDownsampling)==0){ // skip drawing some vectors for visibility
+                if (renderingCounter++ % (1 << vectorFieldDownsampling) == 0) { // skip drawing some vectors for visibility
                     processGoodEvent();
                 }
             }
@@ -97,21 +97,23 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             getMotionFlowStatistics().updatePacket(countIn, countOut, ts);
             return isDisplayRawInput() ? in : dirPacket;
         } else { // draw vector field
-            // fill the dirPacket with OF events at regular downsampled locations that show the GT flow; this packet gets drawn by annotate in AbstractMotionFlowIMU
+            if (in == null || in.isEmpty()) {
+                return in; //no timestamp available
+            }            // fill the dirPacket with OF events at regular downsampled locations that show the GT flow; this packet gets drawn by annotate in AbstractMotionFlowIMU
             int sx = chip.getSizeX(), sy = chip.getSizeY();
             int k = 1 << vectorFieldDownsampling;
             for (short x = 0; x < sx; x += k) {
                 for (short y = 0; y < sy; y += k) {
                     eout = (ApsDvsMotionOrientationEvent) outItr.nextOutput();
-                    eout.timestamp=in.getLastTimestamp();
-                    
+                    eout.timestamp = in.getLastTimestamp();
+
                     eout.x = x;
                     eout.y = y;
                     imuFlowEstimator.calculateImuFlow(eout);
                     eout.velocity.x = imuFlowEstimator.getVx();
                     eout.velocity.y = imuFlowEstimator.getVy();
                     eout.speed = imuFlowEstimator.getV();
-                    eout.hasDirection = v != 0;
+                    eout.hasDirection = eout.speed> 0;
                 }
             }
             return in;

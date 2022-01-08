@@ -234,7 +234,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected boolean useColorForMotionVectors = getBoolean("useColorForMotionVectors", true);
     // NPZ ground truth data files from MVSEC
     float MVSEC_FPS = 45; // of the MVSEC frames
-    private float[] tsData;
+    private float[] tsData; // timestamp of frames in MVSEC GT ** in float microseconds!!
     private float[] xOFData;
     private float[] yOFData;
 
@@ -303,7 +303,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(imuTT, "eraseIMUCalibration", "Erases the IMU offsets to zero. Can be used to observe effect of these offsets on a stationary recording in the IMUFlow filter.");
         setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
         setPropertyTooltip(imuTT, "importGTfromNPZ", "Allows importing ground truth from numpy uncompressed zip archive of multiple variables file (NPZ); only used for MVSEC dataset.");
-        setPropertyTooltip(imuTT, "resetGroundTruth", "Resets the ground truth optical flow that was imported from matlab. Used in the measureAccuracy option.");
+        setPropertyTooltip(imuTT, "clearGroundTruth", "Clears the ground truth optical flow that was imported from matlab or NPZ files. Used in the measureAccuracy option.");
         setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
 //        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
         setPropertyTooltip(motionFieldTT, "displayMotionField", "computes and shows the average motion field (see MotionField section)");
@@ -463,6 +463,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 protected Object doInBackground() throws Exception {
                     try {
                         chip.getAeViewer().getAePlayer().setPaused(true); // to speed up disk access
+                        System.gc();
                         if (comp != null) {
                             comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         }
@@ -479,9 +480,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         if (yOFData == null) {
                             return null;
                         }
-                        String s = String.format("Imported %,d frames. Frame rate is %.1fHz", tsData.length, MVSEC_FPS);
+                        String s = String.format("<html>Imported %,d frames spanning t=[%.1f,%.1f]s<br>from %s. <p>Frame rate is %.1fHz", tsData.length, 
+                                1e-6f * tsData[0], 1e-6f * tsData[tsData.length - 1], npzFilePath,
+                                MVSEC_FPS);
                         log.info(s);
-                        showPlainMessageDialogInSwingThread(s, "NPZ load succeeded");
+                        showPlainMessageDialogInSwingThread(s, "NPZ import succeeded");
                         progressMonitor.close();
                         importedGTfromNPZ = true;
                         return true;
@@ -548,7 +551,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
     }
 
-    void resetGroundTruth() {
+    void clearGroundTruth() {
         importedGTfromMatlab = false;
         vxGTframe = null;
         vyGTframe = null;
@@ -556,10 +559,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         vxGT = 0;
         vyGT = 0;
         vGT = 0;
+        tsData=null;
+        xOFData=null;
+        yOFData=null;
+        importedGTfromNPZ=false;
     }
 
-    synchronized public void doResetGroundTruth() {
-        resetGroundTruth();
+    synchronized public void doClearGroundTruth() {
+        clearGroundTruth();
     }
 
     /**
@@ -627,7 +634,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             vy = 0;
             v = 0;
         }
-
+        
         float getVx() {
             return vx;
         }
@@ -673,22 +680,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 if (!(o instanceof ApsDvsEvent)) {
                     return true; // continue processing this event outside
                 }
-                ApsDvsEvent e=(ApsDvsEvent)o;
+                ApsDvsEvent e = (ApsDvsEvent) o;
                 if (getChip().getAeViewer().getAePlayer().getAEInputStream() == null) {
                     return false;
                 }
-                final int tsRelativeToStart = ((e.timestamp - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
-                if (tsRelativeToStart < 0 || tsRelativeToStart >= tsData[tsData.length - 1]) {
+                final int tsRelativeToStartUs = ((e.timestamp - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
+                if (tsRelativeToStartUs < 0 || tsRelativeToStartUs >= tsData[tsData.length - 1]) {
                     if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
-                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, tsData array bounds are [%,.0f,%,.0f]", tsRelativeToStart, tsData[0], tsData[tsData.length - 1]));
+                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, tsData array bounds are [%,.0f,%,.0f]", tsRelativeToStartUs, tsData[0], tsData[tsData.length - 1]));
                     }
                     imuFlowGTWarnings++;
                     return false;
                 }
 
 //                int frameIdx = (int) (ts / (MVSEC_FPS * 1000));    // MVSEC's OF is updated at 45 MVSEC_FPS
-                int frameIdx = Math.abs(Arrays.binarySearch(tsData, tsRelativeToStart));
-                /* Returns:
+                int frameIdx = Math.abs(Arrays.binarySearch(tsData, tsRelativeToStartUs))-2; 
+                // minus 2 is because for timestamps less than the 2nd time (the first time is zero), 
+                // the insertion point would be 1, so binarySearch returns -1-1=-2 but we want 0 for the frameIdx
+                /* binarySearch Returns:
                         index of the search key, if it is contained in the array; otherwise, (-(insertion point) - 1). 
                 The insertion point is defined as the point at which the key would be inserted into the array: 
                 the index of the first element greater than the key, or a.length if all elements in the array are 
@@ -696,7 +705,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                  */
                 if (frameIdx < 0 || frameIdx >= tsData.length) {
                     if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
-                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData array bounds [%,.0f,%,.0f]", tsRelativeToStart, frameIdx, tsData[0], tsData[tsData.length - 1]));
+                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData array bounds [%,.0f,%,.0f]", tsRelativeToStartUs, frameIdx, tsData[0], tsData[tsData.length - 1]));
                     }
                     imuFlowGTWarnings++;
                     vx = 0;
@@ -1046,6 +1055,29 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
             }
             gl.glDisable(GL.GL_BLEND);
+
+            // draw scale bar vector at bottom
+            gl.glPushMatrix();
+            float speed = (chip.getSizeX()/2);
+            if (displayGlobalMotion) {
+                speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
+            }
+            DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
+            final int px = 10, py = -10;
+
+            drawMotionVector(gl, px,py,speed,0);
+            gl.glLineWidth(2f);
+            gl.glColor3f(1, 1, 1);
+            gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
+            String s = null;
+            if (displayGlobalMotion) {
+                s = String.format("%.1f px/s avg. speed and OF vector scale", speed);
+            } else {
+                s = String.format("%.1f px/s OF scale",speed);
+            }
+            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+            gl.glPopMatrix();
+
         }
 
         if (isDisplayGlobalMotion()) {
@@ -1089,23 +1121,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             gl.glPushMatrix();
             DrawGL.drawCircle(gl, sizex / 2, sizey / 2, ppsScale * GLOBAL_MOTION_DRAWING_SCALE
                     * (1 + motionFlowStatistics.getGlobalMotion().meanGlobalExpansion), 15);
-            gl.glPopMatrix();
-
-            // draw scale bar vector at bottom
-            gl.glPushMatrix();
-            final float speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
-            DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
-            e.setVelocity(speed, 0);
-            final int px = 10, py = -10;
-
-            e.setX((short) px);
-            e.setY((short) py);
-            drawMotionVector(gl, e);
-//            DrawGL.drawVector(gl, 10, -3, speed, 0, 4, ppsScale);
-            gl.glLineWidth(2f);
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, String.format("%.1f px/s avg. speed and OF vector scale", speed));
             gl.glPopMatrix();
 
         }
