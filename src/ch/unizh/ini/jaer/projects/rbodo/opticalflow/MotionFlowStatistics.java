@@ -51,6 +51,10 @@ public class MotionFlowStatistics {
     public EventDensity eventDensity;
     TobiLogger globalMotionVectorLogger;
     private int windowSize = Measurand.WINDOW_SIZE;
+   /**
+     * Used for logging accuracy stats
+     */
+    TobiLogger accuracyStatisticsLogger = null;
 
     // For logging.
     private static String filename;
@@ -446,6 +450,10 @@ public class MotionFlowStatistics {
             if (globalMotionVectorLogger != null && globalMotionVectorLogger.isEnabled()) {
                 String s = String.format("%d %.3g %.3g", currentTs, meanGlobalVx, meanGlobalVy);
                 globalMotionVectorLogger.log(s);
+            }
+            if (accuracyStatisticsLogger != null && accuracyStatisticsLogger.isEnabled()) {
+                String s = String.format("%d %.3g %.3g %.3g %d", currentTs, endpointErrorAbs.getMean(), endpointErrorRel.getMean(), angularError.getMean(), sampleCount);
+                accuracyStatisticsLogger.log(s);
             }
             // Call resets here because global motion should in general not
             // be averaged over more than one packet.

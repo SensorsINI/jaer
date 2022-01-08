@@ -215,6 +215,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      */
     protected TobiLogger motionVectorEventLogger = null;
 
+ 
     final String filterClassName;
 
     private boolean exportedFlowToMatlab;
@@ -262,10 +263,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setEnclosedFilterChain(chain);
 
         // Labels for setPropertyTooltip.
-        setPropertyTooltip("startLoggingMotionVectorEvents", "starts saving motion vector events to a human readable file");
-        setPropertyTooltip("stopLoggingMotionVectorEvents", "stops logging motion vector events to a human readable file");
-        setPropertyTooltip("startLoggingGlobalMotionFlows", "starts saving global motion flow vectors to a human readable file");
-        setPropertyTooltip("stopLoggingGlobalMotionFlows", "stops logging global motion flow vectors to a human readable file");
+        setPropertyTooltip("LogMotionVectorEvents", "toggles saving motion vector events to a human readable file; auto stops on rewind");
+        setPropertyTooltip("LogAccuracyStatistics", "toggles logging accuracy statisticcs; automatically stops on rewind");
+        setPropertyTooltip("logGlobalMotionFlows", "toggle saving global motion flow vectors to a human readable file; auto stops on rewind");
         setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
         setPropertyTooltip("reseetStatistics", "Reset (clear) statistics collected");
         setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
@@ -894,8 +894,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
                 case AEInputStream.EVENT_REPOSITIONED:
                     log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
-                    doStopLoggingGlobalMotionFlows();
-                    doStopLoggingMotionVectorEvents();
+                    doToggleOffLogGlobalMotionFlows();
+                    doToggleOffLogMotionVectorEvents();
+                    doToggleOffLogAccuracyStatistics();
                     break;
                 case AEViewer.EVENT_FILEOPEN:
                     log.info("File Open");
@@ -1400,7 +1401,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
     // </editor-fold>
 
-    synchronized public void doStartLoggingMotionVectorEvents() {
+    synchronized public void doToggleOnLogMotionVectorEvents() {
         if (motionVectorEventLogger != null && motionVectorEventLogger.isEnabled()) {
             log.info("logging already started");
             return;
@@ -1430,7 +1431,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
     }
 
-    synchronized public void doStopLoggingMotionVectorEvents() {
+    synchronized public void doToggleOffLogMotionVectorEvents() {
         if (motionVectorEventLogger == null) {
             return;
         }
@@ -1439,17 +1440,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         motionVectorEventLogger = null;
     }
 
-    protected void logMotionVectorEvents(EventPacket ep) {
-        if (motionVectorEventLogger == null) {
-            return;
-        }
-
-        for (Object o : ep) {
-
-        }
-    }
-
-    synchronized public void doStartLoggingGlobalMotionFlows() {
+    synchronized public void doToggleOnLogGlobalMotionFlows() {
         if (motionFlowStatistics.globalMotionVectorLogger != null && motionFlowStatistics.globalMotionVectorLogger.isEnabled()) {
             log.info("logging already started");
             return;
@@ -1464,7 +1455,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (ret == JFileChooser.APPROVE_OPTION) {
             File file = fc.getSelectedFile();
             putString("lastFile", file.toString());
-            motionFlowStatistics.globalMotionVectorLogger = new TobiLogger(file.getPath(), "Global flows output from normal optical flow method");
+            motionFlowStatistics.globalMotionVectorLogger = new TobiLogger(file.getPath(), "Global flows output from optical flow method");
             motionFlowStatistics.globalMotionVectorLogger.setNanotimeEnabled(false);
             motionFlowStatistics.globalMotionVectorLogger.setColumnHeaderLine("system_time(ms) timestamp(us) meanGlobalVx(pps) meanGlobalVy(pps)");
             motionFlowStatistics.globalMotionVectorLogger.setSeparator(" ");
@@ -1474,13 +1465,47 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
     }
 
-    synchronized public void doStopLoggingGlobalMotionFlows() {
+    synchronized public void doToggleOffLogGlobalMotionFlows() {
         if (motionFlowStatistics.globalMotionVectorLogger == null) {
             return;
         }
         log.info("Stopping global motion logging from " + motionFlowStatistics.globalMotionVectorLogger);
         motionFlowStatistics.globalMotionVectorLogger.setEnabled(false);
         motionFlowStatistics.globalMotionVectorLogger = null;
+    }
+
+    synchronized public void doToggleOnLogAccuracyStatistics() {
+        if (motionFlowStatistics.accuracyStatisticsLogger != null && motionFlowStatistics.accuracyStatisticsLogger.isEnabled()) {
+            log.info("logging already started");
+            return;
+        }
+        String filename = null, filepath = null;
+        final JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(new File(getString("lastFile", System.getProperty("user.dir"))));  // defaults to startup runtime folder
+        fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fc.setSelectedFile(new File(getString("lastFile", System.getProperty("user.dir"))));
+        fc.setDialogTitle("Select folder and base file name for the logged motionFlowStatistics.accuracyStatisticsLogger");
+        int ret = fc.showOpenDialog(chip.getAeViewer() != null && chip.getAeViewer().getFilterFrame() != null ? chip.getAeViewer().getFilterFrame() : null);
+        if (ret == JFileChooser.APPROVE_OPTION) {
+            File file = fc.getSelectedFile();
+            putString("lastFile", file.toString());
+            motionFlowStatistics.accuracyStatisticsLogger = new TobiLogger(file.getPath(), "Accuracy statistics");
+            motionFlowStatistics.accuracyStatisticsLogger.setNanotimeEnabled(false);
+            motionFlowStatistics.accuracyStatisticsLogger.setColumnHeaderLine("system_time(ms) timestamp(us) AEE(px/s) AREE(%) AAE(deg) N");
+            motionFlowStatistics.accuracyStatisticsLogger.setSeparator(" ");
+            motionFlowStatistics.accuracyStatisticsLogger.setEnabled(true);
+        } else {
+            log.info("Cancelled logging motionFlowStatistics.accuracyStatisticsLogger");
+        }
+    }
+
+    synchronized public void doToggleOffLogAccuracyStatistics() {
+        if (motionFlowStatistics.accuracyStatisticsLogger == null) {
+            return;
+        }
+        log.info("Stopping motionFlowStatistics.accuracyStatisticsLogger logging from " + motionFlowStatistics.accuracyStatisticsLogger);
+        motionFlowStatistics.accuracyStatisticsLogger.setEnabled(false);
+        motionFlowStatistics.accuracyStatisticsLogger = null;
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --speedControlEnabled--">
@@ -2560,7 +2585,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (v > 0) {
             e.velocity.x = imuFlowEstimator.vx;
             e.velocity.y = imuFlowEstimator.vy;
-            e.speed=(float)Math.sqrt(e.velocity.x*e.velocity.x+e.velocity.y*e.velocity.y);
+            e.speed = (float) Math.sqrt(e.velocity.x * e.velocity.x + e.velocity.y * e.velocity.y);
             mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f] for [x,y]=[%d,%d]", e.velocity.x, e.velocity.y, e.speed, e.x, e.y);
             log.info(mouseVectorString);
             mouseVectorEvent = e;
