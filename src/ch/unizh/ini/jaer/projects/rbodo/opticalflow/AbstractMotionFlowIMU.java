@@ -215,7 +215,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      */
     protected TobiLogger motionVectorEventLogger = null;
 
- 
     final String filterClassName;
 
     private boolean exportedFlowToMatlab;
@@ -913,16 +912,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     /**
-     * Plots a single motion vector which is the number of pixels per second
-     * times scaling. Color vectors by angle to x-axis.
+     * Draw a motion vector at location x,y with velocity vx, vy
      *
-     * @param gl the OpenGL context
-     * @param e the event
+     * @param gl GL2 context
+     * @param x x location
+     * @param y y location
+     * @param vx x component of velocity in px/s
+     * @param vy y component in px/s
      */
-    protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
+    protected void drawMotionVector(GL2 gl, int x, int y, float vx, float vy) {
+
         float[] rgba = null;
         if (useColorForMotionVectors) {
-            rgba = motionColor(e);
+            rgba = motionColor(vx, vy, 1, 1);
         } else {
             rgba = new float[]{0, 0, 1, motionVectorTransparencyAlpha};
         }
@@ -938,15 +940,15 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
             // center arrow on location, rather that start from event location
             float dx, dy;
-            dx = e.getVelocity().x * scale;
-            dy = e.getVelocity().y * scale;
+            dx = vx * scale;
+            dy = vy * scale;
             if (displayVectorsAsUnitVectors) {
                 float s = 100 * scale / (float) Math.sqrt(dx * dx + dy * dy);
                 dx *= s;
                 dy *= s;
             }
 
-            float x0 = e.getX() - (dx / 2) + .5f, y0 = e.getY() - (dy / 2) + .5f;
+            float x0 = x - (dx / 2) + .5f, y0 = y - (dy / 2) + .5f;
             float rx = 0, ry = 0;
             if (randomScatterOnFlowVectorOrigins) {
                 rx = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
@@ -964,6 +966,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
     }
 
+    /**
+     * Plots a single motion vector which is the number of pixels per second
+     * times scaling. Color vectors by angle to x-axis.
+     *
+     * @param gl the OpenGL context
+     * @param e the event
+     */
+    protected void drawMotionVector(GL2 gl, MotionOrientationEventInterface e) {
+        drawMotionVector(gl, e.getX(), e.getY(), (float) e.getVelocity().getX(), (float) e.getVelocity().getY());
+    }
+
     protected float[] motionColor(float angle) {
         return motionColor((float) Math.cos(angle), (float) Math.sin(angle), 1, 1);
     }
@@ -973,18 +986,26 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     protected float[] motionColor(MotionOrientationEventInterface e1) {
-        float[] c = motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, 1);
-        return new float[]{c[0], c[1], c[2], motionVectorTransparencyAlpha};
+        return motionColor(e1.getVelocity().x, e1.getVelocity().y, 1, 1);
     }
 
+    /**
+     * Returns a motion barb vector color including transparency
+     *
+     * @param x x component of velocity
+     * @param y y component of velocity
+     * @param saturation
+     * @param brightness
+     * @return float[] with 4 components RGBA
+     */
     protected float[] motionColor(float x, float y, float saturation, float brightness) {
         float angle01 = (float) (Math.atan2(y, x) / (2 * Math.PI) + 0.5);
         // atan2 returns -pi to +pi, so dividing by 2*pi gives -.5 to +.5. Adding .5 gives range 0 to 1.
 //                    angle01=.5f; // debug
         int rgbValue = Color.HSBtoRGB(angle01, saturation, brightness);
         Color color = new Color(rgbValue);
-        float[] rgb = color.getRGBComponents(null);
-        return rgb;
+        float[] c = color.getRGBComponents(null);
+        return new float[]{c[0], c[1], c[2], motionVectorTransparencyAlpha};
     }
 
     @Override
