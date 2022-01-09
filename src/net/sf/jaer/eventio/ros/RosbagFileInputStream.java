@@ -103,7 +103,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int mostRecentTimestamp, largestTimestampReadSinceRewind = Integer.MIN_VALUE;
     // first and last timestamp in the entire recording
     private long firstTimestampUs, lastTimestampUs;
-    private double startAbsoluteTimeS;
+    private double startAbsoluteTimeS, endAbsoluteTimeS, durationS;
     private Timestamp startAbsoluteTimestamp;
     private long firstTimestampUsAbsolute; // the absolute (ROS) first timestamp in us
     private boolean firstTimestampWasRead = false;
@@ -135,6 +135,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private HashMultimap<String, PropertyChangeListener> msgListeners = HashMultimap.create();
     private boolean firstReadCompleted = false;
     private ArrayList<String> extraTopics = null; // extra topics that listeners can subscribe to
+    private String rosbagInfoString = null;
 
     private boolean nonMonotonicTimestampExceptionsChecked = true;
     private boolean nonMonotonicTimestampDetected = false; // flag set by nonmonotonic timestamp if detection enabled
@@ -210,7 +211,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         sb.append("Chunks: " + bagFile.getChunks().size() + "\n");
         sb.append("Num messages: " + bagFile.getMessageCount() + "\n");
         sb.append("File type is detected as " + rosbagFileType);
-        log.info(sb.toString());
+        rosbagInfoString = sb.toString();
 
         for (String s : STANARD_TOPICS) {
             String topic = rosbagFileType.header + s;
@@ -219,6 +220,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         }
 
         generateMessageIndexes(progressMonitor);
+        log.info(rosbagInfoString);
     }
 
     @Override
@@ -1025,9 +1027,22 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         markOut = numMessages;
         startAbsoluteTimestamp = msgIndexes.get(0).timestamp;
         startAbsoluteTimeS = 1e-3 * startAbsoluteTimestamp.getTime();
+        endAbsoluteTimeS = 1e-3 * msgIndexes.get(numMessages - 1).timestamp.getTime();
+        durationS = endAbsoluteTimeS - startAbsoluteTimeS;
         firstTimestampUs = getTimestampUsRelative(msgIndexes.get(0).timestamp, true);
         lastTimestampUs = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp, false); // don't update largest timestamp with last timestamp
         wasIndexed = true;
+        StringBuilder sb = new StringBuilder();
+        String s = String.format("%nRecording start Date %s%nRecording start time since epoch %,.3fs%nDuration %,.3fs",
+                startAbsoluteTimestamp.toString(),
+                startAbsoluteTimeS,
+                durationS);
+        rosbagInfoString = rosbagInfoString + s;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + Character.LINE_SEPARATOR + rosbagInfoString;
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
