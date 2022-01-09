@@ -241,7 +241,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private float[] yOFData;
     private int[] gtOFArrayShape;
     // for computing offset to find corresponding GT data for DVS events
-    private transient double aeInputStartTimeS = Double.NaN, gtInputStartTimeS = Double.NaN, offsetTimeThatGTStartsAfterRosbagS = Double.NaN;
+    private double aeInputStartTimeS = Double.NaN;
+    private double gtInputStartTimeS = Double.NaN;
+    private double offsetTimeThatGTStartsAfterRosbagS = Double.NaN;
 
     // for drawing GT flow at a point
     private volatile MotionOrientationEventInterface mouseVectorEvent = new ApsDvsMotionOrientationEvent();
@@ -439,7 +441,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (err != null) {
             showWarningDialogInSwingThread(err, "Wrong AEChip or wrong GT file?");
         }
-        gtOFArrayShape=a.getShape(); // hack, save the shape of whatever the last flow data to look up values in float[] later.
+        gtOFArrayShape = a.getShape(); // hack, save the shape of whatever the last flow data to look up values in float[] later.
         progressMonitor.setProgress(2);
         double[] d = a.asDoubleArray();
         allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
@@ -512,8 +514,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         gtInputStartTimeS = tsDataS[0];
                         offsetTimeThatGTStartsAfterRosbagS = ((gtInputStartTimeS - aeInputStartTimeS)); // pos if GT later than DVS
                         MVSEC_FPS = (float) (1 / (tsDataS[1] - tsDataS[0]));
-                        for(int i=0;i<tsDataS.length;i++){ // subtract first time from all others
-                            tsDataS[i]-=gtInputStartTimeS;
+                        for (int i = 0; i < tsDataS.length; i++) { // subtract first time from all others
+                            tsDataS[i] -= gtInputStartTimeS;
                         }
 
                         xOFData = readNpyOFArray(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), MVSEC_FPS, progressMonitor); // check size for vx, vy arrays
@@ -539,7 +541,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                                 MVSEC_FPS,
                                 offsetTimeThatGTStartsAfterRosbagS);
                         log.info(s);
-                        log.info(String.format("NPZ starts at epoch timestamp %,.3fs",tsDataS[0]));
+                        log.info(String.format("NPZ starts at epoch timestamp %,.3fs", tsDataS[0]));
                         showPlainMessageDialogInSwingThread(s, "NPZ import succeeded");
                         importedGTfromNPZ = true;
                         return true;
@@ -777,22 +779,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 final int cpix = chip.getNumPixels();
                 final int cx = chip.getSizeX(), cy = chip.getSizeY();
-                final int sx = gtOFArrayShape[2], sy = gtOFArrayShape[1], npix=sx*sy; // the loaded GT or EV-Flownet shape is used to look up values
+                final int sx = gtOFArrayShape[2], sy = gtOFArrayShape[1], npix = sx * sy; // the loaded GT or EV-Flownet shape is used to look up values
                 // now find the GT flow. Assume the GT array is centered on the chip
                 // subtract from the event address half of the difference in width and height
-                final int ex=e.x-((cx-sx)/2), ey=e.y-((cy-sy)/2);
-                if(ex<0 || ex>=sx || ey<0 || ey>=sy){
-                    vx=0;
-                    vy=0;
-                    v=0;
+                final int ex = e.x - ((cx - sx) / 2), ey = e.y - ((cy - sy) / 2);
+                if (ex < 0 || ex >= sx || ey < 0 || ey >= sy) {
+                    vx = 0;
+                    vy = 0;
+                    v = 0;
                     return false;
                 }
-                final int idx=(frameIdx * npix) + ((sy - 1 - ey) * sx) + ex;
-                if(idx<0 || idx>xOFData.length){
+                final int idx = (frameIdx * npix) + ((sy - 1 - ey) * sx) + ex;
+                if (idx < 0 || idx > xOFData.length) {
                     if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
                         log.warning(String.format("idx=%,d is outside bounds of the flow arrays", idx));
                     }
-                   return false;
+                    return false;
                 }
                 vx = (float) xOFData[idx];
                 vy = (float) yOFData[idx];
@@ -976,33 +978,37 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (this.filterEnabled) {
-            switch (evt.getPropertyName()) {
-                case AEViewer.EVENT_TIMESTAMPS_RESET:
+        switch (evt.getPropertyName()) {
+            case AEViewer.EVENT_TIMESTAMPS_RESET:
+                if (isFilterEnabled()) {
                     resetFilter();
-                    break;
-                case AEInputStream.EVENT_REWOUND:
-                case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
-                case AEInputStream.EVENT_REPOSITIONED:
+                }
+                break;
+            case AEInputStream.EVENT_REWOUND:
+            case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
+            case AEInputStream.EVENT_REPOSITIONED:
+                if (isFilterEnabled()) {
                     log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
                     doToggleOffLogGlobalMotionFlows();
                     doToggleOffLogMotionVectorEvents();
                     doToggleOffLogAccuracyStatistics();
-                    break;
-                case AEViewer.EVENT_FILEOPEN:
-                    log.info("EVENT_FILEOPEN=" + evt.toString());
-                    if ((chip.getAeInputStream() != null) && (chip.getAeInputStream() instanceof RosbagFileInputStream)) {
-                        RosbagFileInputStream rosbag = (RosbagFileInputStream) chip.getAeInputStream();
-                        aeInputStartTimeS = rosbag.getStartAbsoluteTimeS();
-                        offsetTimeThatGTStartsAfterRosbagS = ((gtInputStartTimeS - aeInputStartTimeS)); // pos if GT later than DVS
+                }
+                break;
+            case AEViewer.EVENT_FILEOPEN:
+                log.info("EVENT_FILEOPEN=" + evt.toString());
+                if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer().getAEInputStream() instanceof RosbagFileInputStream)) {
+                    RosbagFileInputStream rosbag = (RosbagFileInputStream) chip.getAeViewer().getAePlayer().getAEInputStream();
+                    aeInputStartTimeS = rosbag.getStartAbsoluteTimeS();
+                    offsetTimeThatGTStartsAfterRosbagS = ((gtInputStartTimeS - aeInputStartTimeS)); // pos if GT later than DVS
 //                        showPlainMessageDialogInSwingThread("Opened a rosbag file input stream", "Opened Rosbag first");
-                    }
+                }
+                if (isFilterEnabled()) {
                     resetFilter();
-                    break;
-                case AEViewer.EVENT_CHIP:
-                    clearGroundTruth(); // save a lot of memory
-                    break;
-            }
+                }
+                break;
+            case AEViewer.EVENT_CHIP:
+                clearGroundTruth(); // save a lot of memory
+                break;
         }
         super.propertyChange(evt); // call super.propertyChange() after we have processed event here first, to e.g. print statistics
     }
@@ -1253,7 +1259,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //            MultilineAnnotationTextRenderer.setDefaultScale();
             MultilineAnnotationTextRenderer.setScale(.4f);
 //            MultilineAnnotationTextRenderer.setFontSize(24);
-            String s=String.format("Accuracy statistics:%n%s%n%s%n%s",
+            String s = String.format("Accuracy statistics:%n%s%n%s%n%s",
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE:", "px/s"),
                     motionFlowStatistics.endpointErrorRel.graphicsString("AREE:", "%"),
                     motionFlowStatistics.angularError.graphicsString("AAE:", "deg"),
