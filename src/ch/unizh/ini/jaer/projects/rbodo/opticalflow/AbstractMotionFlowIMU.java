@@ -47,6 +47,7 @@ import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import net.sf.jaer.event.orientation.DvsMotionOrientationEvent;
 import net.sf.jaer.event.orientation.MotionOrientationEventInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -234,9 +235,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected boolean useColorForMotionVectors = getBoolean("useColorForMotionVectors", true);
     // NPZ ground truth data files from MVSEC
     float MVSEC_FPS = 45; // of the MVSEC frames
-    private float[] tsDataS; // timestamp of frames in MVSEC GT in seconds (to avoid roundoff problems in us
+    private double[] tsDataS; // timestamp of frames in MVSEC GT in seconds (to avoid roundoff problems in us
     private float[] xOFData;
     private float[] yOFData;
+    // for computing offset to find corresponding GT data for DVS events
+    double aeInputStartTimeS = Double.NaN, gtInputStartTimeS = Double.NaN, offsetS = Double.NaN;
 
     // for drawing GT flow at a point
     private volatile MotionOrientationEventInterface mouseVectorEvent = new ApsDvsMotionOrientationEvent();
@@ -364,24 +367,20 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     /**
-     * Read numpy file with ground truth flow information as provided by MVSEC
+     * Read numpy timestamps of ground truth flow information as provided by
+     * MVSEC
      *
-     * @param ps The file full path
-     * @param checkArraySizeAgainstChip set true to check this array's shape
-     * against this AEChip to pop up warning if size does not match
-     * @param subtractFirst set true to subtract the first value from later one
-     * (for timestamps)
+     * @param filePath The file full path
      * @param scale set scale to scale all value (for flow vector scaling from
      * pix to px/s)
      * @param progressMonitor a progress monitor to show progress
-     * @return the final float[] array which is flattened for the flow u and v
-     * matrices
+     * @return the final double[] times array
      */
-    private float[] readNpyFile(String ps, boolean checkArraySizeAgainstChip, boolean subtractFirst, float scale, ProgressMonitor progressMonitor) {
-        if (ps == null) {
+    private double[] readNpyTsArray(String filePath, ProgressMonitor progressMonitor) {
+        if (filePath == null) {
             return null;
         }
-        Path p = new File(ps).toPath();
+        Path p = new File(filePath).toPath();
         long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
         progressMonitor.setMaximum(3);
         progressMonitor.setProgress(0);
@@ -391,30 +390,64 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         progressMonitor.setNote(msg);
         progressMonitor.setProgress(1);
         NpyArray a = NpyFile.read(p, 1 << 18);
-        if (checkArraySizeAgainstChip) {
-            String err = null;
-            int[] sh = a.getShape();
-            if (sh.length != 3) {
-                err = String.format("Shape of input NpyArray is wrong, got %d dimensions and not 3", sh.length);
-            } else if (sh[1] != chip.getSizeY() || sh[2] != chip.getSizeX()) {
-                err = String.format("<html>Dimension of NpyArray flow matrix is wrong, got [%d,%d] and should have [%d,%d]<p>Did you choose the correct AEChip and GT file to match?", sh[1], sh[2], chip.getSizeY(), chip.getSizeX());
-            }
-            if (err != null) {
-                showWarningDialogInSwingThread(err, "Wrong AEChip or wrong GT file?");
-            }
+        String err = null;
+        int[] sh = a.getShape();
+        if (sh.length != 1) {
+            err = String.format("Shape of input NpyArray is wrong, got %d dimensions and not 1", sh.length);
+        }
+        if (err != null) {
+            showWarningDialogInSwingThread(err, "Bad timestamp file?");
+        }
+        progressMonitor.setProgress(2);
+        double[] d = a.asDoubleArray();
+        return d;
+    }
+
+    /**
+     * Read numpy file with ground truth flow information as provided by MVSEC
+     *
+     * @param filePath The file full path
+     * @param scale set scale to scale all value (for flow vector scaling from
+     * pix to px/s)
+     * @param progressMonitor a progress monitor to show progress
+     * @return the final float[] array which is flattened for the flow u and v
+     * matrices
+     */
+    private float[] readNpyOFArray(String filePath, float scale, ProgressMonitor progressMonitor) {
+        if (filePath == null) {
+            return null;
+        }
+        Path p = new File(filePath).toPath();
+        long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+        progressMonitor.setMaximum(3);
+        progressMonitor.setProgress(0);
+        long presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
+        final String msg = String.format("<html>Loading Numpy NdArray <br>%s; <p>Free RAM %.1f GB", p.toString(), 1e-9 * presumableFreeMemory);
+        log.info(msg);
+        progressMonitor.setNote(msg);
+        progressMonitor.setProgress(1);
+        NpyArray a = NpyFile.read(p, 1 << 20); // make it large enough to hold really big array of frames of flow component data
+        String err = null;
+        int[] sh = a.getShape();
+        if (sh.length != 3) {
+            err = String.format("Shape of input NpyArray is wrong, got %d dimensions and not 3", sh.length);
+        } else if (sh[1] != chip.getSizeY() || sh[2] != chip.getSizeX()) {
+            err = String.format("<html>Dimension of NpyArray flow matrix is wrong, got [%d,%d] but this chip has [%d,%d] pixels.<p>Did you choose the correct AEChip and GT file to match?", sh[1], sh[2], chip.getSizeY(), chip.getSizeX());
+        }
+        if (err != null) {
+            showWarningDialogInSwingThread(err, "Wrong AEChip or wrong GT file?");
         }
         progressMonitor.setProgress(2);
         double[] d = a.asDoubleArray();
         allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
         presumableFreeMemory = Runtime.getRuntime().maxMemory() - allocatedMemory;
-        final String msg2 = String.format("Converting %s to float[]; Free RAM %.1f GB", p, 1e-9 * presumableFreeMemory);
+        final String msg2 = String.format("<html>Converting %s to float[]<p>Free RAM %.1f GB", p, 1e-9 * presumableFreeMemory);
         progressMonitor.setNote(msg2);
         float[] f = new float[d.length];
         progressMonitor.setMaximum(d.length);
-        double sub = subtractFirst ? d[0] : 0;
         final int checkInterval = 10000;
         for (int i = 0; i < d.length; i++) {
-            f[i] = (float) (scale * (d[i] - sub));
+            f[i] = (float) (scale * (d[i]));
             if (i % checkInterval == 0) {
                 if (progressMonitor.isCanceled()) {
                     return null;
@@ -429,6 +462,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     // motion flow field used as ground truth from numpy file .npz.   
     // Primarily used for MVSEC dataset.
     synchronized public void doImportGTfromNPZ() {
+
+        // check to ensure a rosbag file is playing already, so that we have starting time of the file
         JFileChooser chooser = new JFileChooser(npzFilePath);
         chooser.setDialogTitle("Choose ground truth MVSEC extracted folder that has the timestamps, vx and vy .npy files");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
@@ -467,23 +502,34 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         if (comp != null) {
                             comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         }
-                        tsDataS = readNpyFile(checkPaths("timestamps.npy", "ts.npy"), false, true, 1, progressMonitor); // don't check size for timestamp array
+                        tsDataS = readNpyTsArray(checkPaths("timestamps.npy", "ts.npy"), progressMonitor); // don't check size for timestamp array
                         if (tsDataS == null) {
-                            return null;
+                            throw new IOException("could not read timestamps for flow data from " + npzFilePath);
                         }
-                        MVSEC_FPS = 1/ (tsDataS[1] - tsDataS[0]);
-                        xOFData = readNpyFile(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), true, false, MVSEC_FPS, progressMonitor); // check size for vx, vy arrays
+                        gtInputStartTimeS = tsDataS[0];
+                        offsetS = ((gtInputStartTimeS - aeInputStartTimeS)); // pos if GT later than DVS
+                        MVSEC_FPS = (float) (1 / (tsDataS[1] - tsDataS[0]));
+                        for(int i=0;i<tsDataS.length;i++){ // subtract first time from all others
+                            tsDataS[i]-=gtInputStartTimeS;
+                        }
+
+                        xOFData = readNpyOFArray(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), MVSEC_FPS, progressMonitor); // check size for vx, vy arrays
                         if (xOFData == null) {
-                            return null;
+                            throw new IOException("could not read vx flow data from " + npzFilePath);
                         }
-                        yOFData = readNpyFile(checkPaths("y_flow_dist.npy", "y_flow_tensor.npy"), true, false, MVSEC_FPS, progressMonitor);
+                        yOFData = readNpyOFArray(checkPaths("y_flow_dist.npy", "y_flow_tensor.npy"), MVSEC_FPS, progressMonitor);
                         if (yOFData == null) {
-                            return null;
+                            throw new IOException("could not read vy flow data from " + npzFilePath);
                         }
-                        String s = String.format("<html>Imported %,d frames spanning t=[%.1f,%.1f]s<br>from %s. <p>Frame rate is %.1fHz", tsDataS.length,
-                                tsDataS[0], tsDataS[tsDataS.length - 1], npzFilePath,
-                                MVSEC_FPS);
+                        String s = String.format("<html>Imported %,d frames spanning t=[%,g]s<br>from %s. <p>Frame rate is %.1fHz. <p>GT flow starts %.3fs later than rosbag",
+                                tsDataS.length,
+                                (tsDataS[tsDataS.length - 1] - tsDataS[0]), npzFilePath,
+                                MVSEC_FPS,
+                                offsetS);
                         log.info(s);
+                        progressMonitor.setNote("Running garbage collection and finalization");
+                        System.gc();
+                        System.runFinalization();
                         showPlainMessageDialogInSwingThread(s, "NPZ import succeeded");
                         progressMonitor.close();
                         importedGTfromNPZ = true;
@@ -651,7 +697,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             return calibrated;
         }
 
-        private int imuFlowGTWarnings = 0, imuFlowGTWarningsPrintedInterval = 10000;
+        private int imuFlowGTWarnings = 0;
+        final private int GT_Flow_WarningsPrintedInterval = 100000;
 
         /**
          * Calculate GT motion flow from IMU sample.
@@ -684,18 +731,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 if (getChip().getAeViewer().getAePlayer().getAEInputStream() == null) {
                     return false;
                 }
-                final int tsRelativeToStartUs = ((e.timestamp - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
-                if (tsRelativeToStartUs < 0 || tsRelativeToStartUs >= 1e6f*tsDataS[tsDataS.length - 1]) {
-                    if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
-                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d in tsData from NPZ GT, tsData array bounds are [%,.0f,%,.0f]", tsRelativeToStartUs, tsDataS[0], tsDataS[tsDataS.length - 1]));
+                double tsRelativeToStartS = 1e-6 * ((e.timestamp - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
+                if (Double.isNaN(offsetS)) {
+                    if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
+                        log.warning(String.format("Offset between starting times of GT flow and rosbag input not available"));
                     }
-                    imuFlowGTWarnings++;
+                    return false;
+                }
+                if (tsRelativeToStartS - offsetS < 0 || tsRelativeToStartS - offsetS >= (tsDataS[tsDataS.length - 1] - tsDataS[0])) {
+                    if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
+                        log.warning(String.format("Cannot find GT flow for time relative to rosbag start of %.3fs in tsData from NPZ GT",
+                                tsRelativeToStartS));
+                    }
                     return false;
                 }
 
 //                int frameIdx = (int) (ts / (MVSEC_FPS * 1000));    // MVSEC's OF is updated at 45 MVSEC_FPS
-                int frameIdx = Math.abs(Arrays.binarySearch(tsDataS, tsRelativeToStartUs*1e-6f)) - 2;
-                
+                int frameIdx = Math.abs(Arrays.binarySearch(tsDataS, tsRelativeToStartS - offsetS)) - 2;
+
                 // minus 2 is because for timestamps less than the 2nd time (the first time is zero), 
                 // the insertion point would be 1, so binarySearch returns -1-1=-2 but we want 0 for the frameIdx
                 /* binarySearch Returns:
@@ -705,8 +758,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 less than the specified key. Note that this guarantees that the return value will be >= 0 if and only if the key is found.
                  */
                 if (frameIdx < 0 || frameIdx >= tsDataS.length) {
-                    if (imuFlowGTWarnings % imuFlowGTWarningsPrintedInterval == 0) {
-                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,d us in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData times array bounds [%,.0f,%,.0f] s", tsRelativeToStartUs, frameIdx, tsDataS[0], tsDataS[tsDataS.length - 1]));
+                    if (imuFlowGTWarnings % GT_Flow_WarningsPrintedInterval == 0) {
+                        log.warning(String.format("Cannot find GT flow for relative to start ts=%,.6fs in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData times array bounds [%,.0f,%,.0f] s", tsRelativeToStartS, frameIdx, tsDataS[0], tsDataS[tsDataS.length - 1]));
                     }
                     imuFlowGTWarnings++;
                     vx = 0;
@@ -912,13 +965,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     doToggleOffLogAccuracyStatistics();
                     break;
                 case AEViewer.EVENT_FILEOPEN:
-                    log.info("File Open");
-//                    AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-//                    AEFileInputStream in = (player.getAEInputStream());
-//                    in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND,this);
-//                    in.getSupport().addPropertyChangeListener(AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP,this);
-                    // Treat FileOpen same as a rewind
+                    log.info("EVENT_FILEOPEN=" + evt.toString());
+                    if ((chip.getAeInputStream() != null) && (chip.getAeInputStream() instanceof RosbagFileInputStream)) {
+                        RosbagFileInputStream rosbag = (RosbagFileInputStream) chip.getAeInputStream();
+                        aeInputStartTimeS = rosbag.getStartAbsoluteTimeS();
+                        offsetS = ((gtInputStartTimeS - aeInputStartTimeS)); // pos if GT later than DVS
+//                        showPlainMessageDialogInSwingThread("Opened a rosbag file input stream", "Opened Rosbag first");
+                    }
                     resetFilter();
+                    break;
+                case AEViewer.EVENT_CHIP:
+                    clearGroundTruth(); // save a lot of memory
                     break;
             }
         }
@@ -1068,7 +1125,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
             final int px = 10, py = -10;
 
-            float[] rgba=drawMotionVector(gl, px, py, speed, 0);
+            float[] rgba = drawMotionVector(gl, px, py, speed, 0);
             gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
             String s = null;
             if (displayGlobalMotion) {
