@@ -102,7 +102,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     // the most recently read event timestamp and the largest one read so far in this playback cycle
     private int mostRecentTimestamp, largestTimestampReadSinceRewind = Integer.MIN_VALUE;
     // first and last timestamp in the entire recording
-    private long firstTimestamp, lastTimestamp;
+    private long firstTimestampUs, lastTimestampUs;
+    private double startAbsoluteTimeS;
+    private Timestamp startAbsoluteTimestamp;
     private long firstTimestampUsAbsolute; // the absolute (ROS) first timestamp in us
     private boolean firstTimestampWasRead = false;
 
@@ -264,18 +266,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         public MessageWithIndex(MessageType messageType, BagFile.MessageIndex messageIndex, int ourIndex) {
             this.messageType = messageType;
             this.messageIndex = messageIndex;
-            this.ourIndex=ourIndex;
+            this.ourIndex = ourIndex;
         }
 
         @Override
         public String toString() {
             return String.format("MessagesWithIndex with ourIndex=%d, MessageType [package=%s, name=%s, type=%s], MessageIndex %s",
                     ourIndex,
-                    messageType.getPackage(),messageType.getName(),  messageType.getType(),
+                    messageType.getPackage(), messageType.getName(), messageType.getType(),
                     messageIndex.toString()); //To change body of generated methods, choose Tools | Templates.
         }
-        
-        
 
     }
 
@@ -283,7 +283,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         MessageType msg = null;
         try {
             if (nextMessageNumber == markOut) { // TODO check exceptions here for markOut set before markIn
-                throw new EOFException("Hit OUT marker at messange number "+markOut);
+                throw new EOFException("Hit OUT marker at messange number " + markOut);
             }
             msg = bagFile.getMessageFromIndex(msgIndexes, nextMessageNumber);
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -404,7 +404,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                         switch (type) {
                             case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
                                 // Make sure the image is from APS, otherwise some other image topic will be also processed here.
-                                if (!(topic.equalsIgnoreCase(MVSEC_TOPIC_HEADER+"image_raw") || topic.equalsIgnoreCase(RPG_TOPIC_HEADER+"image_raw"))) {
+                                if (!(topic.equalsIgnoreCase(MVSEC_TOPIC_HEADER + "image_raw") || topic.equalsIgnoreCase(RPG_TOPIC_HEADER + "image_raw"))) {
                                     continue;
                                 }
                                 hasAps.setTrue();
@@ -718,7 +718,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
         int oldPosition = nextMessageNumber;
         if (dt < 0) {
-            log.warning(String.format("dt=%d is negative but RosbagFileInputStream only supports forward playing so far",dt));
+            log.warning(String.format("dt=%d is negative but RosbagFileInputStream only supports forward playing so far", dt));
             return emptyPacket;
         }
         int newEndTime = currentStartTimestamp + dt; // TODO problem is that time advances even when the data time might not.
@@ -803,7 +803,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public int getFirstTimestamp() {
-        return (int) firstTimestamp;
+        return (int) firstTimestampUs;
     }
 
     @Override
@@ -835,7 +835,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     synchronized public void rewind() throws IOException {
         position(isMarkInSet() ? getMarkInPosition() : 0);
         clearAccumulatedEvents();
-        largestTimestampReadSinceRewind=0; // timestamps start at 0 by constuction of timestamps
+        largestTimestampReadSinceRewind = 0; // timestamps start at 0 by constuction of timestamps
         try {
             MessageWithIndex msg = getNextMsg();
             if (msg != null) {
@@ -961,7 +961,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public int getLastTimestamp() {
-        return (int) lastTimestamp; // TODO, from last DVS event timestamp
+        return (int) lastTimestampUs; // TODO, from last DVS event timestamp
     }
 
     @Override
@@ -995,7 +995,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public int getCurrentStartTimestamp() {
-        return (int) lastTimestamp;
+        return (int) lastTimestampUs;
     }
 
     @Override
@@ -1023,8 +1023,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         numMessages = msgIndexes.size();
         markIn = 0;
         markOut = numMessages;
-        firstTimestamp = getTimestampUsRelative(msgIndexes.get(0).timestamp, true);
-        lastTimestamp = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp, false); // don't update largest timestamp with last timestamp
+        startAbsoluteTimestamp = msgIndexes.get(0).timestamp;
+        startAbsoluteTimeS = 1e-3 * startAbsoluteTimestamp.getTime();
+        firstTimestampUs = getTimestampUsRelative(msgIndexes.get(0).timestamp, true);
+        lastTimestampUs = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp, false); // don't update largest timestamp with last timestamp
         wasIndexed = true;
     }
 
@@ -1223,6 +1225,26 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             return "AEFifo with capacity " + MAX_EVENTS + " nextToPopIndex=" + nextToPopIndex + " holding " + super.toString();
         }
 
+    }
+
+    /**
+     *
+     * Returns the absolute time since the 1979 unix epoch in double seconds.
+     *
+     * @return the startAbsoluteTimeS
+     */
+    public double getStartAbsoluteTimeS() {
+        return startAbsoluteTimeS;
+    }
+
+    /**
+     * Returns the absolute time of first message in unix absolute time since
+     * 1970 epoch
+     *
+     * @return the startAbsoluteTimestamp
+     */
+    public Timestamp getStartAbsoluteTimestamp() {
+        return startAbsoluteTimestamp;
     }
 
 }
