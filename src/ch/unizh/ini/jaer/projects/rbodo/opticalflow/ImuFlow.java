@@ -37,7 +37,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
         numInputTypes = 2;
         String tt = "0: IMUFlow";
         setPropertyTooltip(tt, "showCompleteVectorField", "Select to draw vector field, deselect to draw vectors only on events");
-        setPropertyTooltip(tt, "vectorFieldDownsampling", "Drawn vectors are downsampled (decimated/skipped) by 2^vectorFieldDownsampling for visibilty");
+        setPropertyTooltip(tt, "vectorFieldDownsampling", "Drawn motion vector barbs are downsampled (decimated/skipped) by 2^vectorFieldDownsampling for visibilty");
     }
 
     @Override
