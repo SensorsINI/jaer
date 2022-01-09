@@ -237,7 +237,7 @@ public final class DrawGL {
     }
 
     /**
-     * Draws a string using TextRenderer.draw
+     * Draws a string using TextRenderer.draw somewhere on the entire drawing surface
      *
      * @param drawable surface
      * @param fontSize typically 12 to 36
@@ -260,5 +260,28 @@ public final class DrawGL {
         textRenderer.draw(s, (int) ((x * drawable.getSurfaceWidth()) - alignmentX * r.getWidth()), (int) (y * drawable.getSurfaceHeight()));
         textRenderer.endRendering();
     }
+    
+        /**
+     * Draws a string using TextRenderer.draw using native GL coordinates, usually setup to represent pixels on AEChip
+     *
+     * @param gl the rendering context surface
+     * @param fontSize typically 12 to 36
+     * @param x x position (0 at left)
+     * @param y y position (0 at bottom)
+     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
+     * @param color, e.g. Color.red
+     * @param s the string to draw
+     */
+    public static void drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+        if (textRenderer == null || textRenderer.getFont().getSize() != fontSize) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false);
+        }
+        textRenderer.begin3DRendering();
+        textRenderer.setColor(color);
+        Rectangle2D r = textRenderer.getBounds(s);
+        textRenderer.draw(s, (int) (x - alignmentX * r.getWidth()), (int)(y));
+        textRenderer.end3DRendering();
+    }
+    
 
 }
