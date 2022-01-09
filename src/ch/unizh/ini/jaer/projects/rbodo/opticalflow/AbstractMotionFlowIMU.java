@@ -53,6 +53,7 @@ import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
@@ -521,17 +522,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         if (yOFData == null) {
                             throw new IOException("could not read vy flow data from " + npzFilePath);
                         }
+                        progressMonitor.setMinimum(0);
+                        progressMonitor.setMaximum(2);
+                        progressMonitor.setProgress(0);
+                        progressMonitor.setNote("Running garbage collection and finalization");
+                        System.gc();
+                        progressMonitor.setProgress(1);
+                        System.runFinalization();
+                        progressMonitor.setProgress(2);
+                        progressMonitor.close();
                         String s = String.format("<html>Imported %,d frames spanning t=[%,g]s<br>from %s. <p>Frame rate is %.1fHz. <p>GT flow starts %.3fs later than rosbag",
                                 tsDataS.length,
                                 (tsDataS[tsDataS.length - 1] - tsDataS[0]), npzFilePath,
                                 MVSEC_FPS,
                                 offsetS);
                         log.info(s);
-                        progressMonitor.setNote("Running garbage collection and finalization");
-                        System.gc();
-                        System.runFinalization();
                         showPlainMessageDialogInSwingThread(s, "NPZ import succeeded");
-                        progressMonitor.close();
                         importedGTfromNPZ = true;
                         return true;
                     } catch (Exception e) {
@@ -1224,32 +1230,42 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
 
         if (measureAccuracy) {
-            gl.glPushMatrix();
-            final int ystart = -15, yoffset = -10, xoffset = 10;
-            gl.glRasterPos2i(xoffset, ystart + yoffset);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "px/s"));
-            gl.glPopMatrix();
-            gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart + 2 * yoffset);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    motionFlowStatistics.endpointErrorRel.graphicsString("AEE(rel):", "%"));
-            gl.glPopMatrix();
-            gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart + 3 * yoffset);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    motionFlowStatistics.angularError.graphicsString("AAE:", "deg"));
-            gl.glPopMatrix();
-            gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart + 4 * yoffset);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    motionFlowStatistics.eventDensity.graphicsString("Density:", "%"));
-            gl.glPopMatrix();
-            gl.glPushMatrix();
-            gl.glRasterPos2i(xoffset, ystart + 5 * yoffset);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(-20);
+//            MultilineAnnotationTextRenderer.setDefaultScale();
+            MultilineAnnotationTextRenderer.setScale(.4f);
+//            MultilineAnnotationTextRenderer.setFontSize(24);
+            String s=String.format("Accuracy statistics:%n%s%n%s%n%s",
+                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE:", "px/s"),
+                    motionFlowStatistics.endpointErrorRel.graphicsString("AREE:", "%"),
+                    motionFlowStatistics.angularError.graphicsString("AAE:", "deg"),
                     String.format("Outliers (>%.0f px/s error): %.1f%%", motionFlowStatistics.OUTLIER_ABS_PPS, motionFlowStatistics.getOutlierPercentage()));
-            gl.glPopMatrix();
+            MultilineAnnotationTextRenderer.renderMultilineString(s);
+//            gl.glPushMatrix();
+//            final int ystart = -15, yoffset = -10, xoffset = 10;
+//            gl.glRasterPos2i(xoffset, ystart + yoffset);
+//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+//                    motionFlowStatistics.endpointErrorAbs.graphicsString("AEE(abs):", "px/s"));
+//            gl.glPopMatrix();
+//            gl.glPushMatrix();
+//            gl.glRasterPos2i(xoffset, ystart + 2 * yoffset);
+//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+//                    motionFlowStatistics.endpointErrorRel.graphicsString("AEE(rel):", "%"));
+//            gl.glPopMatrix();
+//            gl.glPushMatrix();
+//            gl.glRasterPos2i(xoffset, ystart + 3 * yoffset);
+//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+//                    motionFlowStatistics.angularError.graphicsString("AAE:", "deg"));
+//            gl.glPopMatrix();
+//            gl.glPushMatrix();
+//            gl.glRasterPos2i(xoffset, ystart + 4 * yoffset);
+//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+//                    motionFlowStatistics.eventDensity.graphicsString("Density:", "%"));
+//            gl.glPopMatrix();
+//            gl.glPushMatrix();
+//            gl.glRasterPos2i(xoffset, ystart + 5 * yoffset);
+//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
+//                    String.format("Outliers (>%.0f px/s error): %.1f%%", motionFlowStatistics.OUTLIER_ABS_PPS, motionFlowStatistics.getOutlierPercentage()));
+//            gl.glPopMatrix();
         }
 
         motionField.draw(gl);
@@ -2682,7 +2698,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         x = e.x;
         y = e.y; // must set stupid globals to compute the GT flow in calculateImuFlow
         imuFlowEstimator.calculateImuFlow(e);
-        if (v > 0) {
+        if (imuFlowEstimator.getV() > 0) {
             e.velocity.x = imuFlowEstimator.vx;
             e.velocity.y = imuFlowEstimator.vy;
             e.speed = (float) Math.sqrt(e.velocity.x * e.velocity.x + e.velocity.y * e.velocity.y);
