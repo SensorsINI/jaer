@@ -119,6 +119,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private static final float RANDOM_SCATTER_PIXELS = 1;
     private Random random = new Random();
     protected float motionVectorTransparencyAlpha = getFloat("motionVectorTransparencyAlpha", .7f);
+    protected boolean showFilterName=getBoolean("showFilterName", true);
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
@@ -289,6 +290,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
         setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
+        setPropertyTooltip(dispTT, "showFilterName", "shows the class simple name on display, useful for generating videos");
         setPropertyTooltip(dispTT, "randomScatterOnFlowVectorOrigins", "scatters flow vectors a bit to show density better");
         setPropertyTooltip(dispTT, "xMin", "events with x-coordinate below this are filtered out.");
         setPropertyTooltip(dispTT, "xMax", "events with x-coordinate above this are filtered out.");
@@ -1165,8 +1167,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(gl, 10, px+20, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(gl, 10, px + 20, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+
+            if (showFilterName) {
+                DrawGL.drawString(gl, 18, 10, 10, 0, Color.white, getClass().getSimpleName());
+            }
             gl.glPopMatrix();
 
         }
@@ -2741,6 +2747,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     public void mouseExited(MouseEvent e) {
         mouseVectorString = null;
         mouseVectorEvent = null;
+    }
+
+    /**
+     * @return the showFilterName
+     */
+    public boolean isShowFilterName() {
+        return showFilterName;
+    }
+
+    /**
+     * @param showFilterName the showFilterName to set
+     */
+    public void setShowFilterName(boolean showFilterName) {
+        this.showFilterName = showFilterName;
+        putBoolean("showFilterName", showFilterName);
     }
 
 }
