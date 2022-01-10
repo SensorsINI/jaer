@@ -1165,14 +1165,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(gl, 10, px, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(gl, 10, px+20, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
             gl.glPopMatrix();
 
         }
 
         if (isDisplayGlobalMotion()) {
-            gl.glLineWidth(getMotionVectorLineWidthPixels() * 4);
+            gl.glLineWidth(getMotionVectorLineWidthPixels());
             gl.glColor3f(1, 1, 1);
 
             // Draw global translation vector
