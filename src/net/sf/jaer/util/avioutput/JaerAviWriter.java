@@ -29,6 +29,8 @@ public class JaerAviWriter extends AbstractAviWriter {
     private boolean showTimeFactor = getBoolean("showTimeFactor", false);
     private float showTimeFactorTextScale = getFloat("showTimeFactorTextScale", .2f);
     private float timeExpansionFactor = 1;
+    
+    private volatile boolean writeFrameNowFlag=false;
 
     public JaerAviWriter(AEChip chip) {
         super(chip);
@@ -42,6 +44,8 @@ public class JaerAviWriter extends AbstractAviWriter {
         if (in.getDurationUs() > 0) {
             timeExpansionFactor = in.getDurationUs() * 1e-6f * getFrameRate();
         }
+        writeFrameNowFlag=true; // frame is processed by filter chain, write it on next rendering cycle
+//        log.info("processing"); // TODO debug
         return in;
     }
 
@@ -60,11 +64,12 @@ public class JaerAviWriter extends AbstractAviWriter {
             MultilineAnnotationTextRenderer.renderMultilineString(s);
         }
 
-        if (isRecordingActive() && isWriteEnabled()) {
+        if (isRecordingActive() && isWriteEnabled() && writeFrameNowFlag) {
             GL2 gl = drawable.getGL().getGL2();
             BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
             int timecode = chip.getAeViewer().getAePlayer().getTime();
             writeFrame(bi, timecode);
+            writeFrameNowFlag=false; // TODO move to super
         }
     }
 
