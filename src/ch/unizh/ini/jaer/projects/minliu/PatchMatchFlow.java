@@ -3371,8 +3371,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     public void setShowCorners(boolean showCorners) {
+        boolean old=this.showCorners;
         this.showCorners = showCorners;
         putBoolean("showCorners", showCorners);
+        getSupport().firePropertyChange("showCorners", old, this.showCorners);
     }
 
     public boolean isHWABMOFEnabled() {
@@ -3388,8 +3390,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     public void setCalcOFonCornersEnabled(boolean calcOFonCornersEnabled) {
+        boolean old=this.calcOFonCornersEnabled;
         this.calcOFonCornersEnabled = calcOFonCornersEnabled;
         putBoolean("calcOFonCornersEnabled", calcOFonCornersEnabled);
+        getSupport().firePropertyChange("calcOFonCornersEnabled", old, this.calcOFonCornersEnabled);
     }
 
     public float getCornerThr() {
