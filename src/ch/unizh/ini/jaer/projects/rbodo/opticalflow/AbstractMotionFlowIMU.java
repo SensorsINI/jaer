@@ -313,7 +313,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(imuTT, "importGTfromMatlab", "Allows importing two 2D-arrays containing the x-/y- components of the motion flow field used as ground truth.");
         setPropertyTooltip(imuTT, "importGTfromNPZ", "Allows importing ground truth from numpy uncompressed zip archive of multiple variables file (NPZ); only used for MVSEC dataset.");
         setPropertyTooltip(imuTT, "clearGroundTruth", "Clears the ground truth optical flow that was imported from matlab or NPZ files. Used in the measureAccuracy option.");
-        setPropertyTooltip(imuTT, "selectLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
+        setPropertyTooltip(imuTT, "s electLoggingFolder", "Allows selection of the folder to store the measured accuracies and optical flow events.");
 //        setPropertyTooltip(motionFieldTT, "motionFieldMixingFactor", "Flow events are mixed with the motion field with this factor. Use 1 to replace field content with each event, or e.g. 0.01 to update only by 1%.");
         setPropertyTooltip(motionFieldTT, "displayMotionField", "computes and shows the average motion field (see MotionField section)");
         setPropertyTooltip(motionFieldTT, "motionFieldSubsamplingShift", "The motion field is computed at this subsampled resolution, e.g. 1 means 1 motion field vector for each 2x2 pixel area.");
@@ -1304,8 +1304,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         // draw the mouse vector GT flow event
         if (mouseVectorEvent != null && mouseVectorString != null) {
             gl.glPushMatrix();
-            drawMotionVector(gl, mouseVectorEvent);
-            DrawGL.drawString(drawable, 20, (float) mouseVectorEvent.getX() / chip.getSizeX(), (float) mouseVectorEvent.getY() / chip.getSizeY(), .5f, Color.yellow, mouseVectorString);
+            float[] c=drawMotionVector(gl, mouseVectorEvent);
+            DrawGL.drawString(gl, 10, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY()+3, .5f,Color.white, mouseVectorString);
             gl.glPopMatrix();
         }
 
