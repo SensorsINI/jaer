@@ -1118,7 +1118,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
         clearAreaCounts();
         clearNonGreedyRegions();
-        setSliceEventCount(getInt("sliceEventCount", SLICE_EVENT_COUNT_DEFAULT));
+//        setSliceEventCount(getInt("sliceEventCount", SLICE_EVENT_COUNT_DEFAULT));
     }
 
     private LowpassFilter speedFilter = new LowpassFilter();
