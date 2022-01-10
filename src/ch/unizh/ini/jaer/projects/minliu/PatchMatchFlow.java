@@ -558,6 +558,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                         // Sorts scalesToComputeArray[] in descending order
                         Arrays.sort(scalesToComputeArray, Collections.reverseOrder());
 
+                        minDistScale = 0;
                         for (int scale : scalesToComputeArray) {
                             if (scale >= numScales) {
                                 //                            log.warning("scale " + scale + " is out of range of " + numScales + "; fix scalesToCompute for example by clearing it");
@@ -591,7 +592,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                             //                        result=sliceResult; // TODO tobi: override the absolute minimum to always use the finest scale result, which has been guided by coarser scales
                         }
                         result = sliceResult;
-                        minDistScale = 0;
                         float dt = (sliceDeltaTimeUs(2) * 1e-6f);
                         if (result != null) {
                             result.vx = result.dx / dt; // hack, convert to pix/second
