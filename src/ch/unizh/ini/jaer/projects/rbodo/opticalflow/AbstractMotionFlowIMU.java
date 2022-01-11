@@ -1187,11 +1187,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     motionFlowStatistics.getGlobalMotion().meanGlobalVx,
                     motionFlowStatistics.getGlobalMotion().meanGlobalVy,
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
-            gl.glRasterPos2i(2, 10);
             String flowMagPps = engFmt.format(motionFlowStatistics.getGlobalMotion().meanGlobalTrans);
-            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,
-                    String.format("glob. trans.=%s px/s (local: %s)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs."));
+            String globMotionString= String.format("glob. trans.=%s px/s (%s, N=%,d)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs.",getStatisticsWindowSize());
+//            gl.glRasterPos2i(2, 10);
+//            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
             gl.glPopMatrix();
+            DrawGL.drawString(gl, 10, chip.getSizeX()/2, chip.getSizeY()/2+1, 0, Color.white, globMotionString);
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
             // draw quartiles statistics ellipse
