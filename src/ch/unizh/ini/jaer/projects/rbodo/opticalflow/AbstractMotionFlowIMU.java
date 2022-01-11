@@ -1156,7 +1156,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
             }
             DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
-            final int px = 10, py = -10;
+            final int px = 10, py = -13;
 
             float[] rgba = drawMotionVector(gl, px, py, speed, 0);
             gl.glRasterPos2f(px + 100 * ppsScale, py); // use same scaling
@@ -1167,7 +1167,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(gl, 10, px + 20, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(gl, 12, px + 4+ speed*ppsScale/2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
 
             if (showFilterName) {
