@@ -279,10 +279,9 @@ public class AEPacketRaw extends AEPacket {
         if (getNumEvents() == 0) {
             return super.toString();
         } else {
-            return super.toString() + (numEvents > 0 ? 
-                    String.format(" tstart=%d tend=%d dt=%d", timestamps[0], timestamps[numEvents - 1], (timestamps[numEvents - 1]- timestamps[0])) 
-                    :
-                    " empty");
+            return super.toString() + (numEvents > 0
+                    ? String.format(" tstart=%,d tend=%,d dt=%,d", timestamps[0], timestamps[numEvents - 1], (timestamps[numEvents - 1] - timestamps[0]))
+                    : " empty");
         }
     }
 
@@ -291,6 +290,7 @@ public class AEPacketRaw extends AEPacket {
      *
      * @param source
      * @return the appended packet
+     * @see #prepend(net.sf.jaer.aemonitor.AEPacketRaw) 
      */
     public AEPacketRaw append(AEPacketRaw source) {
         if (source == null || source.getNumEvents() == 0) {
@@ -299,6 +299,29 @@ public class AEPacketRaw extends AEPacket {
         ensureCapacity(getNumEvents() + source.getNumEvents());
         System.arraycopy(source.getAddresses(), 0, addresses, numEvents, source.getNumEvents());
         System.arraycopy(source.getTimestamps(), 0, timestamps, numEvents, source.getNumEvents());
+        setNumEvents(getNumEvents() + source.getNumEvents());
+        return this;
+    }
+
+    /**
+     * Prepends another AEPacketRaw *before* this one.
+     *
+     * @param source
+     * @return the appended packet
+     * @since 12.1.21 - to support RosbagFileInputStream backwards mode
+     * @see #append(net.sf.jaer.aemonitor.AEPacketRaw) 
+     */
+    public AEPacketRaw prepend(AEPacketRaw source) {
+        if (source == null || source.getNumEvents() == 0) {
+            return this;
+        }
+        ensureCapacity(getNumEvents() + source.getNumEvents()); // makes arrays large enough
+        // copy current packet to the new positions to the right
+        System.arraycopy(addresses, 0, addresses, source.getNumEvents(), numEvents);
+        System.arraycopy(timestamps, 0, timestamps, source.getNumEvents(), numEvents);
+        // copy source to start of add/timestamp arrays
+        System.arraycopy(source.getAddresses(), 0, addresses, 0, source.getNumEvents());
+        System.arraycopy(source.getTimestamps(), 0, timestamps, 0, source.getNumEvents());
         setNumEvents(getNumEvents() + source.getNumEvents());
         return this;
     }
