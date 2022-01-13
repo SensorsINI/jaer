@@ -281,21 +281,38 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     }
 
-    synchronized private MessageWithIndex getNextMsg() throws BagReaderException, EOFException {
+    synchronized private MessageWithIndex getMsg(int msgIndex) throws BagReaderException, EOFException {
         MessageType msg = null;
         try {
             if (nextMessageNumber == markOut) { // TODO check exceptions here for markOut set before markIn
                 throw new EOFException("Hit OUT marker at messange number " + markOut);
             }
-            msg = bagFile.getMessageFromIndex(msgIndexes, nextMessageNumber);
+            msg = bagFile.getMessageFromIndex(msgIndexes, msgIndex);
         } catch (ArrayIndexOutOfBoundsException e) {
             throw new EOFException("Hit ArrayIndexOutOfBoundsException, probably at end of file");
         } catch (IOException e) {
             throw new EOFException("Hit IOException at end of file");
         }
 
-        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(nextMessageNumber), nextMessageNumber);
-        nextMessageNumber++;
+        MessageWithIndex rtn = new MessageWithIndex(msg, msgIndexes.get(msgIndex), msgIndex);
+        return rtn;
+    }
+
+    private MessageWithIndex getNextMsg() throws BagReaderException, EOFException {
+        if (nextMessageNumber >= numMessages) {
+            throw new EOFException(String.format("tried to read message %,d past end of file", nextMessageNumber));
+        }
+        MessageWithIndex rtn = getMsg(nextMessageNumber);
+        nextMessageNumber++; // inc after read so nexx read gets next msg
+        return rtn;
+    }
+
+    private MessageWithIndex getPrevMsg() throws BagReaderException, EOFException {
+        nextMessageNumber--; // dec before read so we get the previous packet, fwd-rev-fwd gives the same packet 3 times
+        if (nextMessageNumber < 0) {
+            throw new EOFException(String.format("trying to read message from %,d before start of file", nextMessageNumber));
+        }
+        MessageWithIndex rtn = getMsg(nextMessageNumber);
         return rtn;
     }
 
@@ -307,10 +324,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      * event
      * @param updateLargestTimestamp true if we want to update the largest
      * timestamp with this value, false if we leave it unchanged
+     * @param checkNonmonotonic checks if timestamp is earlier that last one
+     * read. Set false for reverse mode.
      *
      * @return timestamp for jAER in us
      */
-    private int getTimestampUsRelative(Timestamp timestamp, boolean updateLargestTimestamp) {
+    private int getTimestampUsRelative(Timestamp timestamp, boolean updateLargestTimestamp, boolean checkNonmonotonic) {
 //        updateLargestTimestamp = true; // TODO hack before removing
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
@@ -328,7 +347,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             largestTimestampReadSinceRewind = ts;
         }
         final int dt = ts - mostRecentTimestamp;
-        if (dt < 0 && nonMonotonicTimestampExceptionsChecked) {
+        if (checkNonmonotonic && dt < 0 && nonMonotonicTimestampExceptionsChecked) {
             if (nonmonotonicTimestampCounter % NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
                 log.warning("Nonmonotonic timestamp=" + timestamp + " with dt=" + dt + "; replacing with largest timestamp=" + largestTimestampReadSinceRewind + "; skipping next " + NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL + " warnings");
             }
@@ -363,9 +382,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      * Gets the next raw packet. The packets are buffered to ensure that all the
      * data is monotonic in time.
      *
+     * @param forwards true to look forwards, false to look backwards
+     *
      * @return the packet
      */
-    synchronized private AEPacketRaw getNextRawPacket() throws EOFException, BagReaderException {
+    synchronized private AEPacketRaw getNextRawPacket(boolean forwards) throws EOFException, BagReaderException {
         DavisBaseCamera davisCamera = null;
         if (chip instanceof DavisBaseCamera) {
             davisCamera = (DavisBaseCamera) chip;
@@ -375,7 +396,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         try {
             boolean gotEventsOrFrame = false;
             while (!gotEventsOrFrame) {
-                MessageWithIndex message = getNextMsg();
+                MessageWithIndex message = forwards ? getNextMsg() : getPrevMsg();
                 // send to listeners if topic is one we have subscribers for
                 String topic = message.messageIndex.topic;
                 Set<PropertyChangeListener> listeners = msgListeners.get(topic);
@@ -417,7 +438,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                int width = (int) (messageType.<UInt32Type>getField("width").getValue()).intValue();
 //                                int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
-                                int ts = getTimestampUsRelative(timestamp, true); // don't update largest timestamp with frame time
+                                int ts = getTimestampUsRelative(timestamp, true, forwards); // don't update largest timestamp with frame time
                                 gotEventsOrFrame = true;
                                 byte[] bytes = data.getAsBytes();
                                 final int sizey1 = chip.getSizeY() - 1, sizex = chip.getSizeX();
@@ -512,7 +533,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                List<String> fieldNames = messageType.getFieldNames();
                                 MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
-                                int ts = getTimestampUsRelative(timestamp, false); // do update largest timestamp with IMU time
+                                int ts = getTimestampUsRelative(timestamp, true, forwards); // do update largest timestamp with IMU time
                                 MessageType angular_velocity = messageType.getField("angular_velocity");
 //                                List<String> angvelfields=angular_velocity.getFieldNames();
 //                                for(String s:angvelfields){
@@ -573,7 +594,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     int y = eventMsg.<UInt16Type>getField("y").getValue();
                                     boolean pol = eventMsg.<BoolType>getField("polarity").getValue(); // false==off, true=on
                                     Timestamp timestamp = (Timestamp) eventMsg.<TimeType>getField("ts").getValue();
-                                    int ts = getTimestampUsRelative(timestamp, true); // sets nonMonotonicTimestampDetected flag, faster than throwing exception, updates largest timestamp
+                                    int ts = getTimestampUsRelative(timestamp, true, forwards); // sets nonMonotonicTimestampDetected flag, faster than throwing exception, updates largest timestamp
 //                                    ApsDvsEvent e = outItr.nextOutput();
                                     e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
                                     e.timestamp = ts;
@@ -693,7 +714,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         aePacketRawOutput.setNumEvents(0);
         while (aePacketRawBuffered.getNumEvents() < numEventsToRead && aePacketRawBuffered.getNumEvents() < AEPacketRaw.MAX_PACKET_SIZE_EVENTS) {
             try {
-                aePacketRawBuffered.append(getNextRawPacket());
+                aePacketRawBuffered.append(getNextRawPacket(numEventsToRead > 0));
             } catch (EOFException ex) {
                 rewind();
                 return readPacketByNumber(numEventsToRead);
@@ -716,23 +737,72 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return aePacketRawOutput;
     }
 
+    private boolean lastDirectionForwards = true;
+
     @Override
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
         int oldPosition = nextMessageNumber;
-        if (dt < 0) {
-            log.warning(String.format("dt=%d is negative but RosbagFileInputStream only supports forward playing so far", dt));
-            return emptyPacket;
+        int newEndTime = currentStartTimestamp + dt;
+        boolean directionForwards = dt > 0;
+        boolean changedDirection = directionForwards ^ lastDirectionForwards;
+
+        if (changedDirection) { // xor them, if different then clear events so far
+            clearAccumulatedEvents();
         }
-        int newEndTime = currentStartTimestamp + dt; // TODO problem is that time advances even when the data time might not.
-        while (aePacketRawBuffered.isEmpty()
-                || (aePacketRawBuffered.getLastTimestamp() < newEndTime
-                && aePacketRawBuffered.getNumEvents() < MAX_RAW_EVENTS_BUFFER_SIZE)) {
-            try {
-                aePacketRawBuffered.append(getNextRawPacket()); // reaching EOF here will throw EOFException
-            } catch (EOFException ex) {
+        if (newEndTime < 0) {
+            newEndTime = 0; // so we don't trh to read before 0
+        }
+        // keep getting ros messages until we get a timestamp later (or earlier for negative dt) the desired new end time
+        if (directionForwards) {
+            while (aePacketRawBuffered.isEmpty() || aePacketRawBuffered.getLastTimestamp() < newEndTime
+                    && aePacketRawBuffered.getNumEvents() < MAX_RAW_EVENTS_BUFFER_SIZE) {
+                try {
+                    AEPacketRaw p = getNextRawPacket(directionForwards);
+                    if (p.isEmpty()) {
+                        continue;
+                    }
+                    aePacketRawBuffered.append(p); // reaching EOF here will throw EOFException
+                } catch (BagReaderException ex) {
+                    if (ex.getCause() instanceof ClosedByInterruptException) { // ignore, caussed by interrupting ViewLoop to change rendering mode 
+                        return emptyPacket;
+                    }
+                    throw new IOException(ex);
+                }
+            }
+
+            if (!changedDirection) {
+                // copy off events that are too late
+                int[] ts = aePacketRawBuffered.getTimestamps();
+                int idx = aePacketRawBuffered.getNumEvents() - 1;
+                while (idx > 0 && ts[idx] > newEndTime) {
+                    idx--;
+                }
+                aePacketRawOutput.clear(); // just in case 0 copied to packet
+                //public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
+                AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, idx); // copy over collected events
+                // now use tmp packet to copy rest of buffered to, and then make that the new buffered
+                aePacketRawTmp.setNumEvents(0); // in case we copy 0 events over
+                AEPacketRaw.copy(aePacketRawBuffered, idx, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - idx);
+                AEPacketRaw tmp = aePacketRawBuffered;
+                aePacketRawBuffered = aePacketRawTmp;
+                aePacketRawTmp = tmp;
+            } else {
+                aePacketRawOutput.clear(); // just in case 0 copied to packet
+                //public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
+                AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, aePacketRawBuffered.getNumEvents()); // copy over collected events
                 clearAccumulatedEvents();
-                rewind();
-                return readPacketByTime(dt);
+            }
+            if (aePacketRawOutput.isEmpty()) {
+                currentStartTimestamp = newEndTime;
+            } else {
+                currentStartTimestamp = aePacketRawOutput.getLastTimestamp();
+            }
+        } else { // backwards, only read one packet
+            try {
+                aePacketRawOutput = getNextRawPacket(false);// read one packet backwards. leaving nextMessageNumber at this same messsage. Reaching EOF here will throw EOFException that AEPlayer will handle
+                if (aePacketRawOutput != null && !aePacketRawOutput.isEmpty()) {
+                    currentStartTimestamp = aePacketRawOutput.getFirstTimestamp(); // update according to what we actually got
+                }
             } catch (BagReaderException ex) {
                 if (ex.getCause() instanceof ClosedByInterruptException) { // ignore, caussed by interrupting ViewLoop to change rendering mode 
                     return emptyPacket;
@@ -740,27 +810,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 throw new IOException(ex);
             }
         }
-        int[] ts = aePacketRawBuffered.getTimestamps();
-        int idx = aePacketRawBuffered.getNumEvents() - 1;
-        while (idx > 0 && ts[idx] > newEndTime) {
-            idx--;
-        }
-        aePacketRawOutput.clear();
-        //public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
-        AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, idx); // copy over collected events
-        // now use tmp packet to copy rest of buffered to, and then make that the new buffered
-        aePacketRawTmp.setNumEvents(0);
-        AEPacketRaw.copy(aePacketRawBuffered, idx, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - idx);
-        AEPacketRaw tmp = aePacketRawBuffered;
-        aePacketRawBuffered = aePacketRawTmp;
-        aePacketRawTmp = tmp;
-        if (aePacketRawOutput.isEmpty()) {
-            currentStartTimestamp = newEndTime;
-        } else {
-            currentStartTimestamp = aePacketRawOutput.getLastTimestamp();
-        }
         getSupport().firePropertyChange(AEInputStream.EVENT_POSITION, oldPosition, nextMessageNumber);
         maybeSendRewoundEvent(oldPosition);
+        lastDirectionForwards = directionForwards;
         return aePacketRawOutput;
     }
 
@@ -841,7 +893,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         try {
             MessageWithIndex msg = getNextMsg();
             if (msg != null) {
-                currentStartTimestamp = getTimestampUsRelative(msg.messageIndex.timestamp, true);  // reind, so update the largest timestamp read in this cycle to first timestamp
+                currentStartTimestamp = getTimestampUsRelative(msg.messageIndex.timestamp, true, false);  // reind, so update the largest timestamp read in this cycle to first timestamp
                 position(isMarkInSet() ? getMarkInPosition() : 0);
             }
         } catch (BagReaderException e) {
@@ -870,10 +922,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         position((int) (frac * numMessages)); // must also clear partially accumulated events in collecting packet and reset the timestamp
         clearAccumulatedEvents();
         try {
-            AEPacketRaw raw = getNextRawPacket();
+            AEPacketRaw raw = getNextRawPacket(true);
             while (raw == null) {
                 log.warning(String.format("got null packet at fractional position %.2f which should have been message number %d, trying next packet", frac, nextMessageNumber));
-                raw = getNextRawPacket();
+                raw = getNextRawPacket(true);
             }
             aePacketRawBuffered.append(raw); // reaching EOF here will throw EOFException
         } catch (EOFException ex) {
@@ -1029,8 +1081,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         startAbsoluteTimeS = 1e-3 * startAbsoluteTimestamp.getTime();
         endAbsoluteTimeS = 1e-3 * msgIndexes.get(numMessages - 1).timestamp.getTime();
         durationS = endAbsoluteTimeS - startAbsoluteTimeS;
-        firstTimestampUs = getTimestampUsRelative(msgIndexes.get(0).timestamp, true);
-        lastTimestampUs = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp, false); // don't update largest timestamp with last timestamp
+        firstTimestampUs = getTimestampUsRelative(msgIndexes.get(0).timestamp, true, false);
+        lastTimestampUs = getTimestampUsRelative(msgIndexes.get(numMessages - 1).timestamp, false, false); // don't update largest timestamp with last timestamp
         wasIndexed = true;
         StringBuilder sb = new StringBuilder();
         String s = String.format("%nRecording start Date %s%nRecording start time since epoch %,.3fs%nDuration %,.3fs",
