@@ -209,7 +209,7 @@ public abstract class AEPacket {
 
     @Override
     public String toString() {
-        return "AEPacket " + super.toString() + " of capacity " + capacity + " with " + numEvents + " events";
+        return String.format("AEPacket %s of capacity %,d with %,d events",super.toString(),capacity,numEvents);
     }
 
     /**
