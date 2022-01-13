@@ -11,6 +11,7 @@ package net.sf.jaer.aemonitor;
 
 import java.util.Collection;
 import net.sf.jaer.aemonitor.EventRaw.EventType;
+import net.sf.jaer.eventio.AEFileInputStream;
 
 /**
  * A structure containing a packer of AEs: addresses, timestamps. The AE packet
@@ -285,17 +286,34 @@ public class AEPacketRaw extends AEPacket {
         }
     }
 
+    private void checkTimeOrder(AEPacketRaw first, AEPacketRaw second) throws IllegalArgumentException {
+        if (first == null || second == null) {
+            return;
+        }
+        if (first.isEmpty() || second.isEmpty()) {
+            return;
+        }
+        if (first.getFirstTimestamp() > second.getFirstTimestamp()) {
+            throw new IllegalArgumentException(String.format("first packet %s starts later than start of second packet %s", first.toString(), second.toString()));
+        }
+        if (first.getLastTimestamp() > second.getFirstTimestamp()) {
+            throw new IllegalArgumentException(String.format("first packet %s ends later than start of second packet %s", first.toString(), second.toString()));
+        }
+    }
+
     /**
-     * Appends another AEPacketRaw to this one
+     * Appends another AEPacketRaw to this one. The packets must be in strict
+     * time order so that first and last timestamp make sense.
      *
      * @param source
      * @return the appended packet
-     * @see #prepend(net.sf.jaer.aemonitor.AEPacketRaw) 
+     * @see #prepend(net.sf.jaer.aemonitor.AEPacketRaw)
      */
     public AEPacketRaw append(AEPacketRaw source) {
         if (source == null || source.getNumEvents() == 0) {
             return this;
         }
+//        checkTimeOrder(this, source);
         ensureCapacity(getNumEvents() + source.getNumEvents());
         System.arraycopy(source.getAddresses(), 0, addresses, numEvents, source.getNumEvents());
         System.arraycopy(source.getTimestamps(), 0, timestamps, numEvents, source.getNumEvents());
@@ -304,44 +322,58 @@ public class AEPacketRaw extends AEPacket {
     }
 
     /**
-     * Prepends another AEPacketRaw *before* this one.
+     * Prepends another AEPacketRaw *before* this one. The packets must be in
+     * strict time order so that first and last timestamp make sense.
      *
      * @param source
      * @return the appended packet
      * @since 12.1.21 - to support RosbagFileInputStream backwards mode
-     * @see #append(net.sf.jaer.aemonitor.AEPacketRaw) 
+     * @see #append(net.sf.jaer.aemonitor.AEPacketRaw)
      */
     public AEPacketRaw prepend(AEPacketRaw source) {
         if (source == null || source.getNumEvents() == 0) {
             return this;
         }
+        checkTimeOrder(source, this);
         ensureCapacity(getNumEvents() + source.getNumEvents()); // makes arrays large enough
         // copy current packet to the new positions to the right
         System.arraycopy(addresses, 0, addresses, source.getNumEvents(), numEvents);
         System.arraycopy(timestamps, 0, timestamps, source.getNumEvents(), numEvents);
-        // copy source to start of add/timestamp arrays
+        // copy source to start of address and timestamp arrays
         System.arraycopy(source.getAddresses(), 0, addresses, 0, source.getNumEvents());
         System.arraycopy(source.getTimestamps(), 0, timestamps, 0, source.getNumEvents());
         setNumEvents(getNumEvents() + source.getNumEvents());
+        AEPacketRaw.timestampCheck(this);
         return this;
     }
 
     /**
-     * Static method to copy from one AEPacketRaw to another
+     * Static method to copy from one AEPacketRaw to another. Assumes events
+     * before <i>destPos</i> make sense.
      *
      * @param src source packet
      * @param srcPos the starting index in src
      * @param dest destination packet
      * @param destPos the starting index in destination
-     * @param length the number of events to copy
+     * @param length the number of events to copy from src
      */
     public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
+        // num events in dest =destPos+length
+
         if (src == null || dest == null) {
             throw new NullPointerException("null src or dest");
         }
-        dest.ensureCapacity(dest.getNumEvents() + length);
+        dest.ensureCapacity(destPos + length);
         System.arraycopy(src.getAddresses(), srcPos, dest.getAddresses(), destPos, length);
         System.arraycopy(src.getTimestamps(), srcPos, dest.getTimestamps(), destPos, length);
-        dest.setNumEvents(dest.getNumEvents() + length);
+        dest.setNumEvents(destPos + length);
+        timestampCheck(dest);
     }
+
+    private static void timestampCheck(AEPacketRaw dest) {
+        if (!dest.isEmpty() && dest.getFirstTimestamp() > dest.getLastTimestamp()) {
+            throw new RuntimeException(String.format("First timestamp later than last timestamp for %s", dest));
+        }
+    }
+
 }
