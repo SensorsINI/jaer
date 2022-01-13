@@ -990,7 +990,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 gl.glPopMatrix(); // back to original chip coordinates
                 gl.glPushMatrix();
                 textRenderer.begin3DRendering();
-                String s = String.format("dt=%.1f ms, davg=%1.f", 1e-3f * sliceDeltaT, avgMatchDistance);
+                String s = String.format("dt=%.1f ms, davg=%.1f", 1e-3f * sliceDeltaT, avgMatchDistance);
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getWidth(), .1f);
                 // determine width of string in pixels and scale accordingly
                 FontRenderContext frc = textRenderer.getFontRenderContext();
