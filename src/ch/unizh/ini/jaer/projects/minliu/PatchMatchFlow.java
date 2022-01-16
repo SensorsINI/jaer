@@ -426,6 +426,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
+        if(in==null) return new EventPacket();
         setupFilter(in);
         checkArrays();
         if (processingTimeLimitMs > 0) {
@@ -710,6 +711,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
         setPpsScale(.1f);
         setSliceMaxValue(SLICE_MAX_VALUE_DEFAULT);
+        setSkipProcessingEventsCount(0);
+        setDisplayGlobalMotion(true);
 
         setValidPixOccupancy(VALID_PIXEL_OCCUPANCY_DEFAULT); // at least this fraction of pixels from each block must both have nonzero values
         setMaxAllowedSadDistance(MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT);
@@ -904,10 +907,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         // first draw corners
         if (showCorners) {
             gl.glLineWidth(getMotionVectorLineWidthPixels());
-            gl.glColor4f(.5f, 0, 0, 0.5f);
+            gl.glColor4f(1, 1, 1, 0.5f);
             for (BasicEvent e : cornerEvents) {
                 gl.glPushMatrix();
-                DrawGL.drawCross(gl, e.x, e.y, getCornerSize(), 0);
+                DrawGL.drawCircle(gl, e.x, e.y, getCornerSize(), 16);
                 gl.glPopMatrix();
             }
         }
