@@ -120,6 +120,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private Random random = new Random();
     protected float motionVectorTransparencyAlpha = getFloat("motionVectorTransparencyAlpha", .7f);
     protected boolean showFilterName=getBoolean("showFilterName", true);
+    protected int timestampGapThresholdUs=getInt("timestampGapThresholdUs",10000);
+    protected int timestampGapToBeRemoved=0;
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
@@ -300,6 +302,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(dispTT, "motionVectorTransparencyAlpha", "transparency alpha setting for motion vector rendering");
         setPropertyTooltip(dispTT, "useColorForMotionVectors", "display the output motion vectors in color");
         setPropertyTooltip(smoothingTT, "subSampleShift", "shift subsampled timestamp map stores by this many bits");
+        setPropertyTooltip(smoothingTT, "timestampGapThresholdUs", "<html>threshold in us for removing big gaps in timestamps;<br> to deal with recordings of fast motion with pauses for disk IO.<p>To disable, set to 0");
         setPropertyTooltip(smoothingTT, "refractoryPeriodUs", "compute no flow vector if a flow vector has already been computed within this period at the same location.");
         setPropertyTooltip(smoothingTT, "speedControlEnabled", "enables filtering of excess speeds");
         setPropertyTooltip(smoothingTT, "speedControl_ExcessSpeedRejectFactor", "local speeds this factor higher than average are rejected as non-physical");
@@ -958,6 +961,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
         setXMax(chip.getSizeX());
         setYMax(chip.getSizeY());
+        timestampGapToBeRemoved=0;
     }
 
     @Override
@@ -1167,7 +1171,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(gl, 12, px + 4+ speed*ppsScale/2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(gl, 15, px + 4+ speed*ppsScale/2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
 
             if (showFilterName) {
@@ -1188,11 +1192,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     motionFlowStatistics.getGlobalMotion().meanGlobalVy,
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             String flowMagPps = engFmt.format(motionFlowStatistics.getGlobalMotion().meanGlobalTrans);
-            String globMotionString= String.format("glob. trans.=%s px/s (%s, N=%,d)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs.",getStatisticsWindowSize());
+            String globMotionString= String.format("mean=%s px/s (%s, N=%,d)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs.",getStatisticsWindowSize());
 //            gl.glRasterPos2i(2, 10);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
             gl.glPopMatrix();
-            DrawGL.drawString(gl, 10, chip.getSizeX()/2, chip.getSizeY()/2+1, 0, Color.white, globMotionString);
+            DrawGL.drawString(gl, 15, chip.getSizeX()/2+1, chip.getSizeY()/2, .5f, Color.black, globMotionString);
+            DrawGL.drawString(gl, 15, chip.getSizeX()/2, chip.getSizeY()/2+1, .5f, Color.white, globMotionString);
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
             // draw quartiles statistics ellipse
@@ -1314,6 +1319,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     synchronized public void setupFilter(EventPacket in) {
         maybeAddListeners(chip);
+        if(in==null) return; // could be caused by some pre-filter that returns null packet
         inItr = in.iterator();
         outItr = dirPacket.outputIterator();
         subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
@@ -1364,6 +1370,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      * @return true if invalid timestamp, older than refractoryPeriodUs ago
      */
     protected synchronized boolean isInvalidTimestamp() {
+        
         lastTs = lastTimesMap[x][y][type];
         lastTimesMap[x][y][type] = ts;
         if (ts < lastTs) {
@@ -1388,7 +1395,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
         x = e.x >> subSampleShift;
         y = e.y >> subSampleShift;
+        int prevTs=ts;
         ts = e.getTimestamp();
+        final int dt = ts-prevTs;
+        if(timestampGapThresholdUs>0 && (dt>timestampGapThresholdUs)){
+            timestampGapToBeRemoved+=dt;
+            log.warning(String.format("For event %s,%ndeteceted timestamp gap of %,dus which is greater than timestampGapThresholdUs (%,dus). timestampGapToBeRemoved=%,dus now",
+                    e.toString(), dt,timestampGapThresholdUs, timestampGapToBeRemoved));
+            ts-=timestampGapToBeRemoved;
+        }
+
         type = e.getPolarity() == PolarityEvent.Polarity.Off ? 0 : 1;
         return true;
     }
@@ -2763,6 +2779,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     public void setShowFilterName(boolean showFilterName) {
         this.showFilterName = showFilterName;
         putBoolean("showFilterName", showFilterName);
+    }
+
+    /**
+     * @return the timestampGapThresholdUs
+     */
+    public int getTimestampGapThresholdUs() {
+        return timestampGapThresholdUs;
+    }
+
+    /**
+     * @param timestampGapThresholdUs the timestampGapThresholdUs to set
+     */
+    public void setTimestampGapThresholdUs(int timestampGapThresholdUs) {
+        this.timestampGapThresholdUs = timestampGapThresholdUs;
+        putInt("timestampGapThresholdUs", timestampGapThresholdUs);
     }
 
 }
