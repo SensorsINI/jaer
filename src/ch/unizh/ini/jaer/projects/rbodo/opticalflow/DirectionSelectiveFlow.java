@@ -132,9 +132,6 @@ public class DirectionSelectiveFlow extends AbstractMotionFlow {
             if (isInvalidAddress(searchDistance)) {
                 continue;
             }
-            if (isInvalidTimestamp()) {
-                continue;
-            }
             if (xyFilter()) {
                 continue;
             }

@@ -117,15 +117,16 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                 }
             }
         }
-        // if leftOverEvents is growing, slow down playback, otherwise speed it up
-        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
-            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-            if (leftOverEvents.getSize() > 1000) {
-                player.slowerAction.actionPerformed(null);
-            } else {
-                player.fasterAction.actionPerformed(null);
-            }
-        }
+//        // if leftOverEvents is growing, slow down playback, otherwise speed it up
+//        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
+//            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+//            final int leftOverCount = leftOverEvents.getSize();
+//            if (leftOverCount > 1000000) {
+//                player.slowerAction.actionPerformed(null);
+//            } else if(leftOverCount<10000) {
+//                player.fasterAction.actionPerformed(null);
+//            }
+//        }
 
         leftOverEvents.clear();
         while (i.hasNext()) {
@@ -181,7 +182,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                 }
             }
         }
-        return null;
+        return new EventPacket(); // should not come here often, only if there are no events in this period
     }
 
     private void clearAreaCounts() {

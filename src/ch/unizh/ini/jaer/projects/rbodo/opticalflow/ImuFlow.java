@@ -73,9 +73,6 @@ public class ImuFlow extends AbstractMotionFlowIMU {
                 if (isInvalidAddress(0)) {
                     continue;
                 }
-                if (isInvalidTimestamp()) {
-                    continue;
-                }
                 if (xyFilter()) {
                     continue;
                 }

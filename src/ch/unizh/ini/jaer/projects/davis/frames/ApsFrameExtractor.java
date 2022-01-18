@@ -216,6 +216,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
             in = getEnclosedFilterChain().filterPacket(in);
         }
 
+        if(!(in instanceof ApsDvsEventPacket)) return in;
         final ApsDvsEventPacket packet = (ApsDvsEventPacket) in;
         if (packet == null) {
             return null;

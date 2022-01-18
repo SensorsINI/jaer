@@ -170,8 +170,9 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " timestamp=" + timestamp + " address=" + address + " x=" + x + " y=" + y + " special="
-                + special + " filteredOut=" + filteredOut;
+        return String.format("%s: timestamp=%,d address=0x%X x=%d y=%d special=%s filteredOut=%s",getClass().getSimpleName(),timestamp,address,x,y,special,filteredOut);
+//        return getClass().getSimpleName() + " timestamp=" + timestamp + " address=" + address + " x=" + x + " y=" + y + " special="
+//                + special + " filteredOut=" + filteredOut;
     }
 
     public void reset() {

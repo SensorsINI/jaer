@@ -437,8 +437,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
         });
 
-            worker.execute();
-        }
+        worker.execute();
+    }
 
     /**
      * stops playback. If not in PLAYBACK mode, then just returns. If playing
@@ -492,9 +492,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         try {
             aeFileInputStream.rewind();
             if (viewer != null) {
-                viewer.filterChain.reset();
+                viewer.filterChain.reset(); // already done in aePlayer
                 viewer.getRenderer().resetAccumulation();
-            }else{
+            } else {
                 log.warning("null AEViewer, cannot reset filter change or accumulation mode");
             }
         } catch (Exception e) {
@@ -555,10 +555,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             if (repeat) {
                 viewer.getAePlayer().rewind();
             }
-            viewer.getAePlayer().rewind();
-            // we force a rewind on all players in case we are not the only one
-//                                if(!aePlayer.isPlayingForwards())
-            //getAePlayer().toggleDirection();
             return aeRaw;
         } catch (Exception anyOtherException) {
             setDirectionForwards(true);
@@ -682,6 +678,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
         aeFileInputStream.setFractionalPosition(frac);
+        if (viewer != null) {
+            viewer.filterChain.reset(); // already done in aePlayer
+            viewer.getRenderer().resetAccumulation();
+        }
     }
 
     @Override

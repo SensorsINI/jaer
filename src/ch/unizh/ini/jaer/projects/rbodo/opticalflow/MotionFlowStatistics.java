@@ -72,7 +72,7 @@ public class MotionFlowStatistics {
 
     private boolean measureAccuracy = false;
 
-    private boolean measureGlobalMotion = false;
+    private boolean measureGlobalMotion = true;
 
     private List<Double> globalFlows = new ArrayList<>();
 
@@ -287,14 +287,22 @@ public class MotionFlowStatistics {
     public class GlobalMotion {
 
         /**
-         * Means and standard deviations of flow. meanGlobalTrans is the average
-         * translational flow. meanGlobalSpeed is the average magnitude of the
-         * flow vector. meanGlobalExpansion is the average flow projected onto
+         * Means and standard deviations of flow. 
+         * 
+         * <p> meanGlobalTrans is the average
+         * translational flow. </p>
+         * 
+         * <p>meanGlobalSpeed is the average magnitude of the
+         * flow vector. </p>
+         * 
+         * <p>meanGlobalExpansion is the average flow projected onto
          * radii from center, and meanGlobalRotation is the average projected
-         * onto circumferences around center.
+         * onto circumferences around center.</p>
+         * 
+         * <p> covGlobalSpeed is the coefficient of variation (sigma/mean) of the speeds. </p>
          */
         public float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, meanGlobalTrans, sdGlobalTrans,
-                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed, sdGlobalSpeed;
+                sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed, sdGlobalSpeed, covGlobalSpeed;
         private final Measurand globalVx, globalVy, globalRotation, globalExpansion, globalSpeed;
         private Point2D.Float flowVelocityPps = new Point2D.Float();
         private int rx, ry;
@@ -441,6 +449,7 @@ public class MotionFlowStatistics {
             sdGlobalExpansion = (float) globalExpansion.getStandardDeviation();
             meanGlobalSpeed = (float) globalSpeed.getMean();
             sdGlobalSpeed = (float) globalSpeed.getStandardDeviation();
+            covGlobalSpeed=!Float.isNaN(meanGlobalSpeed)?sdGlobalSpeed/meanGlobalSpeed:Float.NaN;
 
             globalFlows.add((double) currentTs);
             globalFlows.add((double) meanGlobalVx);

@@ -603,7 +603,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             switch (evt.getPropertyName()) {
                 case AEViewer.EVENT_TIMESTAMPS_RESET:
                 case AEInputStream.EVENT_REWOUND:
-                    resetFilter();
+//                    resetFilter(); // already done by AEPlayer
                     break;
                 case AEViewer.EVENT_FILEOPEN:
                     log.info("File Open");
@@ -615,6 +615,14 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
                     break;
             }
         }
+    }
+
+    /** By default returns getClass().getSimpleName().Subclasses can override.
+     * 
+     * @return getClass().getSimpleName(), e.g. "BackgroundActivityFilter" 
+     */
+    public String getShortName() {
+        return getClass().getSimpleName();
     }
 
     /**

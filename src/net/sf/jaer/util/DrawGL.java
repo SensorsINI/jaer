@@ -249,8 +249,9 @@ public final class DrawGL {
      * aligned
      * @param color, e.g. Color.red
      * @param s the string to draw
+     * @return the bounds of the text
      */
-    public static void drawString(GLAutoDrawable drawable, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+    public static Rectangle2D drawString(GLAutoDrawable drawable, int fontSize, float x, float y, float alignmentX, Color color, String s) {
         if (textRenderer == null || textRenderer.getFont().getSize() != fontSize) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false);
         }
@@ -259,6 +260,7 @@ public final class DrawGL {
         Rectangle2D r = textRenderer.getBounds(s);
         textRenderer.draw(s, (int) ((x * drawable.getSurfaceWidth()) - alignmentX * r.getWidth()), (int) (y * drawable.getSurfaceHeight()));
         textRenderer.endRendering();
+        return r;
     }
     
         /**
@@ -271,8 +273,9 @@ public final class DrawGL {
      * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
      * @param color, e.g. Color.red
      * @param s the string to draw
+     * @return the bounds of the text
      */
-    public static void drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+    public static Rectangle2D drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
         if (textRenderer == null || textRenderer.getFont().getSize() != fontSize) {
             textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false);
         }
@@ -281,6 +284,7 @@ public final class DrawGL {
         Rectangle2D r = textRenderer.getBounds(s);
         textRenderer.draw(s, (int) (x - alignmentX * r.getWidth()), (int)(y));
         textRenderer.end3DRendering();
+        return r;
     }
     
 

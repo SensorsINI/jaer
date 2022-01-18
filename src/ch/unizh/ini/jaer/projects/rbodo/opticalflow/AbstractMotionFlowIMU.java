@@ -87,6 +87,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     public int x, y, ts, type, lastTs;
 
     /**
+     * The most immediate previous event timestamp from any pixel
+     */
+    protected int prevTs;
+
+    /**
      * (Subsampled) chip sizes.
      */
     protected int sizex, sizey, subSizeX, subSizeY;
@@ -119,9 +124,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private static final float RANDOM_SCATTER_PIXELS = 1;
     private Random random = new Random();
     protected float motionVectorTransparencyAlpha = getFloat("motionVectorTransparencyAlpha", .7f);
-    protected boolean showFilterName=getBoolean("showFilterName", true);
-    protected int timestampGapThresholdUs=getInt("timestampGapThresholdUs",10000);
-    protected int timestampGapToBeRemoved=0;
+    protected boolean showFilterName = getBoolean("showFilterName", true);
+    protected int timestampGapThresholdUs = getInt("timestampGapThresholdUs", 10000);
+    protected int timestampGapToBeRemoved = 0;
 
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
@@ -961,7 +966,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
         setXMax(chip.getSizeX());
         setYMax(chip.getSizeY());
-        timestampGapToBeRemoved=0;
+        timestampGapToBeRemoved = 0;
     }
 
     @Override
@@ -1007,9 +1012,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     aeInputStartTimeS = rosbag.getStartAbsoluteTimeS();
                     offsetTimeThatGTStartsAfterRosbagS = ((gtInputStartTimeS - aeInputStartTimeS)); // pos if GT later than DVS
 //                        showPlainMessageDialogInSwingThread("Opened a rosbag file input stream", "Opened Rosbag first");
-                }
-                if (isFilterEnabled()) {
-                    resetFilter();
                 }
                 break;
             case AEViewer.EVENT_CHIP:
@@ -1171,11 +1173,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(gl, 15, px + 4+ speed*ppsScale/2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(gl, 15, px + 4 + speed * ppsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
 
             if (showFilterName) {
-                DrawGL.drawString(gl, 18, 10, 10, 0, Color.white, getClass().getSimpleName());
+                DrawGL.drawString(gl, 18, 10, 10, 0, Color.white, getShortName());
             }
             gl.glPopMatrix();
 
@@ -1192,12 +1194,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     motionFlowStatistics.getGlobalMotion().meanGlobalVy,
                     4, ppsScale * GLOBAL_MOTION_DRAWING_SCALE);
             String flowMagPps = engFmt.format(motionFlowStatistics.getGlobalMotion().meanGlobalTrans);
-            String globMotionString= String.format("mean=%s px/s (%s, N=%,d)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs.",getStatisticsWindowSize());
+            String globMotionString = String.format("mean=%s px/s (%s N=%,d)", flowMagPps, ppsScaleDisplayRelativeOFLength ? "rel." : "abs.", getStatisticsWindowSize());
 //            gl.glRasterPos2i(2, 10);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
             gl.glPopMatrix();
-            DrawGL.drawString(gl, 15, chip.getSizeX()/2+1, chip.getSizeY()/2, .5f, Color.black, globMotionString);
-            DrawGL.drawString(gl, 15, chip.getSizeX()/2, chip.getSizeY()/2+1, .5f, Color.white, globMotionString);
+            DrawGL.drawString(gl, 15, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2, .5f, Color.black, globMotionString);
+            DrawGL.drawString(gl, 15, chip.getSizeX() / 2, chip.getSizeY() / 2 + 1, .5f, Color.white, globMotionString); // drop shadow
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
             // draw quartiles statistics ellipse
@@ -1310,8 +1312,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         // draw the mouse vector GT flow event
         if (mouseVectorEvent != null && mouseVectorString != null) {
             gl.glPushMatrix();
-            float[] c=drawMotionVector(gl, mouseVectorEvent);
-            DrawGL.drawString(gl, 10, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY()+3, .5f,Color.white, mouseVectorString);
+            float[] c = drawMotionVector(gl, mouseVectorEvent);
+            DrawGL.drawString(gl, 10, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
             gl.glPopMatrix();
         }
 
@@ -1319,7 +1321,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     synchronized public void setupFilter(EventPacket in) {
         maybeAddListeners(chip);
-        if(in==null) return; // could be caused by some pre-filter that returns null packet
+        if (in == null) {
+            return; // could be caused by some pre-filter that returns null packet
+        }
         inItr = in.iterator();
         outItr = dirPacket.outputIterator();
         subsampledPixelIsSet = new boolean[subSizeX][subSizeY];
@@ -1369,14 +1373,24 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      *
      * @return true if invalid timestamp, older than refractoryPeriodUs ago
      */
-    protected synchronized boolean isInvalidTimestamp() {
-        
-        lastTs = lastTimesMap[x][y][type];
-        lastTimesMap[x][y][type] = ts;
-        if (ts < lastTs) {
-            log.warning(String.format("invalid timestamp ts=%,d < lastTs=%,d, resetting filter", ts, lastTs));
-            resetFilter(); // For NonMonotonicTimeException.
+    private synchronized boolean isInvalidTimestamp(PolarityEvent e) {
+
+        prevTs = ts;
+        int ts = e.getTimestamp();
+        final int dt = ts - prevTs;
+        if (timestampGapThresholdUs > 0 && (dt > timestampGapThresholdUs)) {
+            timestampGapToBeRemoved += dt;
+            log.warning(String.format("For event %s,%ndeteceted timestamp gap of %,dus which is greater than timestampGapThresholdUs (%,dus). timestampGapToBeRemoved=%,dus now",
+                    e.toString(), dt, timestampGapThresholdUs, timestampGapToBeRemoved));
+            return false;
         }
+        lastTs = lastTimesMap[x][y][type];
+        if (ts < lastTs) {
+            log.warning(String.format("For event %s,%nnonmontoic timestamp ts=%,d < lastTs=%,d", e.toString(), ts, lastTs));
+            return false;
+        }
+        lastTimesMap[x][y][type] = ts;
+
         return ts < lastTs + refractoryPeriodUs;
     }
 
@@ -1391,20 +1405,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      */
     protected synchronized boolean extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
-        // If camera calibrated, undistort pixel locations
 
+        if (isInvalidTimestamp(e)) {
+            return false;
+        }
+        ts = e.timestamp-timestampGapToBeRemoved;
         x = e.x >> subSampleShift;
         y = e.y >> subSampleShift;
-        int prevTs=ts;
-        ts = e.getTimestamp();
-        final int dt = ts-prevTs;
-        if(timestampGapThresholdUs>0 && (dt>timestampGapThresholdUs)){
-            timestampGapToBeRemoved+=dt;
-            log.warning(String.format("For event %s,%ndeteceted timestamp gap of %,dus which is greater than timestampGapThresholdUs (%,dus). timestampGapToBeRemoved=%,dus now",
-                    e.toString(), dt,timestampGapThresholdUs, timestampGapToBeRemoved));
-            ts-=timestampGapToBeRemoved;
-        }
-
         type = e.getPolarity() == PolarityEvent.Polarity.Off ? 0 : 1;
         return true;
     }
@@ -1792,12 +1799,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     public void setDisplayGlobalMotion(boolean displayGlobalMotion) {
         boolean old = this.displayGlobalMotion;
-        motionFlowStatistics.setMeasureGlobalMotion(displayGlobalMotion);
         this.displayGlobalMotion = displayGlobalMotion;
         putBoolean("displayGlobalMotion", displayGlobalMotion);
-        if (displayGlobalMotion) {
-            resetFilter();
-        }
         getSupport().firePropertyChange("displayGlobalMotion", old, displayGlobalMotion);
     }
     // </editor-fold>
