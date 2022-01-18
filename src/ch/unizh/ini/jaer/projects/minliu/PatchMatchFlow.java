@@ -132,7 +132,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private TobiLogger adaptiveSliceDurationLogger = null;
     private int adaptiveSliceDurationPacketCount = 0;
     private boolean useSubsampling = getBoolean("useSubsampling", false);
-    private int adaptiveSliceDurationMinVectorsToControl = getInt("adaptiveSliceDurationMinVectorsToControl", 10);
+    private int adaptiveSliceDurationMinVectorsToControl = getInt("adaptiveSliceDurationMinVectorsToControl", 50);
     private boolean showBlockMatches = getBoolean("showBlockMatches", false); // Display the bitmaps
     private boolean showSlices = false; // Display the bitmaps
     private int showSlicesScale = 0; // Display the bitmaps
@@ -426,7 +426,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        if(in==null) return new EventPacket();
+        if (in == null) {
+            return new EventPacket();
+        }
         setupFilter(in);
         checkArrays();
         if (processingTimeLimitMs > 0) {
@@ -472,9 +474,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
             // block ENDS
             if (xyFilter()) {
-                continue;
-            }
-            if (isInvalidTimestamp()) {
                 continue;
             }
 
@@ -742,6 +741,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     private void adaptSliceDuration() {
         // measure last hist to get control signal on slice duration
+
         // measures avg match distance.  weights the average so that long distances with more pixels in hist are not overcounted, simply
         // by having more pixels.
         if (rewindFlg) {
@@ -767,91 +767,47 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (countSum > 0) {
             avgMatchDistance = radiusSum / (countSum); // compute average match distance from reference block
         }
+
+        // Check for slice overexposore. Only need to check coarse scale of most recent t-d slice.
+//        int saturatedCount = 0;
+//        byte[][] coarseSlice = slices[sliceIndex(1)][numSlices - 1];
+//        int nx = coarseSlice.length;
+//        int ny = coarseSlice[0].length;
+//        for (int x = 0; x < nx; x++) {
+//            for (int y = 0; y < ny; y++) {
+//                byte count = coarseSlice[x][y];
+//                if (count == sliceMaxValue) {
+//                    saturatedCount++;
+//                }
+//            }
+//        }
+//        float fracSaturated = (float) saturatedCount / (nx * ny);
+//        boolean overexposed = false, underexposed = false;
+//        String underOverString = "";
+//        float overExposureFraction = .2f;
+//        float underexposureFraction = .01f;
+//        if (fracSaturated > overExposureFraction) {
+//            overexposed = true;
+//            underOverString = "Overexposed";
+//        } else if (fracSaturated < underexposureFraction) {
+//            underexposed = true;
+//            underOverString = "Underexposed";
+//        }
+//        System.out.println(String.format("fraction saturated pixels in course slice=%6.2f: %s", fracSaturated, underOverString));
+        float err = Float.NaN;
         if (adaptiveSliceDuration && (countSum > adaptiveSliceDurationMinVectorsToControl)) {
-//            if (resultHistogramCount > 0) {
+//            if (underexposed) {
+//                changeSliceDuration(.5f);
+//            } else if (overexposed) {
+//                changeSliceDuration(2f);
+//            } else 
+            {
+                // compute error signal.
+                // If err<1 it means the average match distance is too short, so we need to increase slice duration
+                // If err>1, it means the avg match distance is too long, so decrease slice duration
+                err = avgMatchDistance / (avgPossibleMatchDistance); // use target that is smaller than average possible to bound excursions to large slices better
+                changeSliceDuration(err);
 
-// following stats not currently used
-//                double[] rstHist1D = new double[resultHistogram.length * resultHistogram.length];
-//                int index = 0;
-////                int rstHistMax = 0;
-//                for (int[] resultHistogram1 : resultHistogram) {
-//                    for (int element : resultHistogram1) {
-//                        rstHist1D[index++] = element;
-//                    }
-//                }
-//
-//                Statistics histStats = new Statistics(rstHist1D);
-//                // double histMax = Collections.max(Arrays.asList(ArrayUtils.toObject(rstHist1D)));
-//                double histMax = histStats.getMax();
-//                for (int m = 0; m < rstHist1D.length; m++) {
-//                    rstHist1D[m] = rstHist1D[m] / histMax;
-//                }
-//                lastHistStdDev = histStdDev;
-//
-//                histStdDev = (float) histStats.getStdDev();
-//                try (FileWriter outFile = new FileWriter(outputFilename,true)) {
-//                            outFile.write(String.format(in.getFirstEvent().getTimestamp() + " " + histStdDev + "\r\n"));
-//                            outFile.close();
-//                } catch (IOException ex) {
-//                    Logger.getLogger(PatchMatchFlow.class.getName()).log(Level.SEVERE, null, ex);
-//                } catch (Exception e) {
-//                    log.warning("Caught " + e + ". See following stack trace.");
-//                    e.printStackTrace();
-//                }
-//                float histMean = (float) histStats.getMean();
-// compute error signal.
-// If err<0 it means the average match distance is larger than target avg match distance, so we need to reduce slice duration
-// If err>0, it means the avg match distance is too short, so increse time slice
-            final float err = avgMatchDistance / (avgPossibleMatchDistance); // use target that is smaller than average possible to bound excursions to large slices better
-//            final float err = avgPossibleMatchDistance / 2 - avgMatchDistance; // use target that is smaller than average possible to bound excursions to large slices better
-//                final float err = ((searchDistance << (numScales - 1)) / 2) - avgMatchDistance;
-//                final float lastErr = searchDistance / 2 - lastHistStdDev;
-//                final double err = histMean - 1/ (rstHist1D.length * rstHist1D.length);
-            float errSign = Math.signum(err - 1);
-//                float avgSad2 = sliceSummedSADValues[sliceIndex(4)] / sliceSummedSADCounts[sliceIndex(4)];
-//                float avgSad3 = sliceSummedSADValues[sliceIndex(3)] / sliceSummedSADCounts[sliceIndex(3)];
-//                float errSign = avgSad2 <= avgSad3 ? 1 : -1;
-
-//                if(Math.abs(err) > Math.abs(lastErr)) {
-//                    errSign = -errSign;
-//                }
-//                if(histStdDev >= 0.14) {
-//                    if(lastHistStdDev > histStdDev) {
-//                        errSign = -lastErrSign;
-//                    } else {
-//                        errSign = lastErrSign;
-//                    }
-//                    errSign = 1;
-//                } else {
-//                    errSign = (float) Math.signum(err);
-//                }
-//                lastErrSign = errSign;
-// problem with following is that if sliceDurationUs gets really big, then of course the avgMatchDistance becomes small because
-// of the biased-towards-zero search policy that selects the closest match
-            switch (sliceMethod) {
-                case ConstantDuration:
-                    if (adapativeSliceDurationUseProportionalControl) { // proportional
-                        setSliceDurationUs(Math.round((1 / (1 + (err - 1) * adapativeSliceDurationProportionalErrorGain)) * sliceDurationUs));
-                    } else { // bang bang
-                        int durChange = (int) (-errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
-                        setSliceDurationUs(sliceDurationUs + durChange);
-                    }
-                    break;
-                case ConstantEventNumber:
-                case AreaEventNumber:
-                    if (adapativeSliceDurationUseProportionalControl) { // proportional
-                        setSliceEventCount(Math.round((1 / (1 + (err - 1) * adapativeSliceDurationProportionalErrorGain)) * sliceEventCount));
-                    } else {
-                        if (errSign < 0) { // match distance too short, increase duration
-                            // match too short, increase count
-                            setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
-                        } else if (errSign > 0) { // match too long, decrease duration
-                            setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
-                        }
-                    }
-                    break;
-                case ConstantIntegratedFlow:
-                    setSliceEventCount(eventCounter);
             }
             if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
                 if (!isDisplayGlobalMotion()) {
@@ -863,6 +819,43 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             }
         }
 
+    }
+
+    /**
+     * Changes slice duration depending on proportional or stepping control
+     *
+     * @param err ratio of avg match distance to possible match distances, >1
+     * for too long exposure, <1 for too short
+     */
+    private void changeSliceDuration(final float err) {
+        // problem with following is that if sliceDurationUs gets really big, then of course the avgMatchDistance becomes small because
+        // of the biased-towards-zero search policy that selects the closest match
+        int errSign = (int) Math.signum(err - 1); // pos too long exposure
+        switch (sliceMethod) {
+            case ConstantDuration:
+                if (adapativeSliceDurationUseProportionalControl) { // proportional
+                    setSliceDurationUs(Math.round((1 / (1 + (err - 1) * adapativeSliceDurationProportionalErrorGain)) * sliceDurationUs));
+                } else { // bang bang
+                    int durChange = (int) (-errSign * adapativeSliceDurationProportionalErrorGain * sliceDurationUs);
+                    setSliceDurationUs(sliceDurationUs + durChange);
+                }
+                break;
+            case ConstantEventNumber:
+            case AreaEventNumber:
+                if (adapativeSliceDurationUseProportionalControl) { // proportional
+                    setSliceEventCount(Math.round((1 / (1 + (err - 1) * adapativeSliceDurationProportionalErrorGain)) * sliceEventCount));
+                } else {
+                    if (errSign < 0) { // match distance too short, increase duration
+                        // match too short, increase count
+                        setSliceEventCount(Math.round(sliceEventCount * (1 + adapativeSliceDurationProportionalErrorGain)));
+                    } else if (errSign > 0) { // match too long, decrease duration
+                        setSliceEventCount(Math.round(sliceEventCount * (1 - adapativeSliceDurationProportionalErrorGain)));
+                    }
+                }
+                break;
+            case ConstantIntegratedFlow:
+                setSliceEventCount(eventCounter);
+        }
     }
 
     private void setResetOFHistogramFlag() {
@@ -927,8 +920,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (displayResultHistogram && (resultHistogram != null)) {
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
-            int rhDim = resultHistogram.length; // this.computeMaxSearchDistance();
             gl.glPushMatrix();
+            int rhDim = resultHistogram.length; // this.computeMaxSearchDistance();
             final float scale = 30f / rhDim; // size same as the color wheel
             gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);  // center above color wheel
             gl.glScalef(scale, scale, 1);
@@ -952,6 +945,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
             }
             if (max == 0) {
+                gl.glPushMatrix();
                 gl.glTranslatef(0, rhDim / 2, 0); // translate to UL corner of histogram
                 textRenderer.begin3DRendering();
                 textRenderer.draw3D("No data", 0, 0, 0, .07f);
@@ -973,56 +967,57 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                         gl.glEnd();
                     }
                 }
+                gl.glPopMatrix();
                 final int tsd = computeMaxSearchDistance();
-                if (avgMatchDistance > 0) {
+                if (avgMatchDistance > 0) { // draw avg search result distance circle
                     gl.glPushMatrix();
                     gl.glColor4f(1f, 0, 0, .5f);
                     gl.glLineWidth(5f);
                     DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
                     gl.glPopMatrix();
                 }
-                if (avgPossibleMatchDistance > 0) {
+                if (avgPossibleMatchDistance > 0) { // draw target search distance avg
                     gl.glPushMatrix();
                     gl.glColor4f(0, 1f, 0, .5f);
                     gl.glLineWidth(5f);
                     DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance, 16); // draw circle at target match distance
                     gl.glPopMatrix();
                 }
-                // a bunch of cryptic crap to draw a string the same width as the histogram...
-                gl.glPopMatrix();
-                gl.glPopMatrix(); // back to original chip coordinates
-                gl.glPushMatrix();
-                textRenderer.begin3DRendering();
-                String s = String.format("dt=%.1f ms, davg=%.1f", 1e-3f * sliceDeltaT, avgMatchDistance);
+                gl.glPopMatrix(); // back to original chip coordinates after hist
+            }
+            // a bunch of cryptic crap to draw a string the same width as the histogram...
+            gl.glPushMatrix();
+            textRenderer.begin3DRendering();
+            String s = String.format("dt=%.1f ms, davg=%.1f", 1e-3f * sliceDeltaT, avgMatchDistance);
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getWidth(), .1f);
-                // determine width of string in pixels and scale accordingly
-                FontRenderContext frc = textRenderer.getFontRenderContext();
-                Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
-                Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
+            // determine width of string in pixels and scale accordingly
+            FontRenderContext frc = textRenderer.getFontRenderContext();
+            Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
+            Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
 //            float ps = chip.getCanvas().getScale();
-                float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
-                float sc = subSizeX / w / 6; // scale to histogram width
-                gl.glTranslatef(0, .65f * subSizeY, 0); // translate to UL corner of histogram
-                textRenderer.draw3D(s, 0, 0, 0, sc);
-                String s2 = String.format("Skip: %d", skipProcessingEventsCount);
-                textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
-                String s3 = String.format("Slice events: %d", sliceEventCount);
-                textRenderer.draw3D(s3, 0, 2 * (float) (rt.getHeight()) * sc, 0, sc);
-                StringBuilder sb = new StringBuilder("Scale counts: ");
-                for (int c : scaleResultCounts) {
-                    sb.append(String.format("%d ", c));
-                }
-                textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
-                if (timeLimiter.isTimedOut()) {
-                    String s4 = String.format("Timed out: skipped %,d events", nSkipped);
-                    textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
-                }
-                if (outlierRejectionEnabled) {
-                    String s5 = String.format("Outliers: %%%.0f", 100 * (float) countOutliers / countIn);
-                    textRenderer.draw3D(s5, 0, 5 * (float) (rt.getHeight()) * sc, 0, sc);
-                }
-                textRenderer.end3DRendering();
-                gl.glPopMatrix(); // back to original chip coordinates
+            float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
+            float sc = subSizeX / w / 6; // scale to histogram width
+            gl.glTranslatef(0, .65f * subSizeY, 0); // translate to UL corner of histogram
+            textRenderer.draw3D(s, 0, 0, 0, sc);
+            String s2 = String.format("Skip: %d", skipProcessingEventsCount);
+            textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
+            String s3 = String.format("Slice events: %d", sliceEventCount);
+            textRenderer.draw3D(s3, 0, 2 * (float) (rt.getHeight()) * sc, 0, sc);
+            StringBuilder sb = new StringBuilder("Scale counts: ");
+            for (int c : scaleResultCounts) {
+                sb.append(String.format("%d ", c));
+            }
+            textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
+            if (timeLimiter.isTimedOut()) {
+                String s4 = String.format("Timed out: skipped %,d events", nSkipped);
+                textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
+            }
+            if (outlierRejectionEnabled) {
+                String s5 = String.format("Outliers: %%%.0f", 100 * (float) countOutliers / countIn);
+                textRenderer.draw3D(s5, 0, 5 * (float) (rt.getHeight()) * sc, 0, sc);
+            }
+            textRenderer.end3DRendering();
+            gl.glPopMatrix(); // back to original chip coordinates
 //                log.info(String.format("processed %.1f%% (%d/%d)", 100 * (float) nProcessed / (nSkipped + nProcessed), nProcessed, (nProcessed + nSkipped)));
 
 //                // draw histogram of angles around center of image
@@ -1042,7 +1037,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                    gl.glEnd();
 //                    gl.glPopMatrix();
 //                }
-            }
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
             int d = 1 << areaEventNumberSubsampling;
@@ -3374,7 +3368,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     public void setShowCorners(boolean showCorners) {
-        boolean old=this.showCorners;
+        boolean old = this.showCorners;
         this.showCorners = showCorners;
         putBoolean("showCorners", showCorners);
         getSupport().firePropertyChange("showCorners", old, this.showCorners);
@@ -3393,7 +3387,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     public void setCalcOFonCornersEnabled(boolean calcOFonCornersEnabled) {
-        boolean old=this.calcOFonCornersEnabled;
+        boolean old = this.calcOFonCornersEnabled;
         this.calcOFonCornersEnabled = calcOFonCornersEnabled;
         putBoolean("calcOFonCornersEnabled", calcOFonCornersEnabled);
         getSupport().firePropertyChange("calcOFonCornersEnabled", old, this.calcOFonCornersEnabled);
@@ -3802,4 +3796,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         this.cornerSize = cornerSize;
     }
 
+    @Override
+    public String getShortName() {
+        return super.getShortName() + (isCalcOFonCornersEnabled() ? " on corners" : "");
+    }
 }
