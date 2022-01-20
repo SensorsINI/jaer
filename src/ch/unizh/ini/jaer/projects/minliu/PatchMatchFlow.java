@@ -1093,6 +1093,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 String s5 = String.format("Outliers: %%%.0f", 100 * (float) countOutliers / countIn);
                 textRenderer.draw3D(s5, 0, 5 * (float) (rt.getHeight()) * sc, 0, sc);
             }
+            String s6 = String.format("SliceMethod: %s", sliceMethodDescription());
+            textRenderer.draw3D(s6, 0, 6 * (float) (rt.getHeight()) * sc, 0, sc);
+
             textRenderer.end3DRendering();
             gl.glPopMatrix(); // back to original chip coordinates
 //                log.info(String.format("processed %.1f%% (%d/%d)", 100 * (float) nProcessed / (nSkipped + nProcessed), nProcessed, (nProcessed + nSkipped)));
@@ -2284,6 +2287,25 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //            setDisplayGlobalMotion(true);
 //        }
         getSupport().firePropertyChange("sliceMethod", old, this.sliceMethod);
+    }
+    
+    private String sliceMethodDescription(){
+        StringBuilder sb=new StringBuilder(sliceMethod.toString()+": ");
+        switch (sliceMethod){
+                case AreaEventNumber:
+                    sb.append(String.format("k=%,d",sliceEventCount));
+                    break;
+                case CoarseSliceSaturation:
+                    sb.append(String.format("frac > %.2f%%",coarseSliceSaturationFraction*100));
+                    break;
+                case ConstantDuration:
+                    sb.append(String.format("dt > %.2ms",sliceDurationUs*1e-3f));
+                    break;
+                case ConstantIntegratedFlow:
+                    sb.append("flow >1 pixel");
+                    break;
+        }
+        return sb.toString();
     }
 
     public PatchCompareMethod getPatchCompareMethod() {
