@@ -142,8 +142,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public static final int SLICE_MAX_VALUE_DEFAULT = 15;
     private int sliceMaxValue = getInt("sliceMaxValue", SLICE_MAX_VALUE_DEFAULT);
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
+
     private int sliceDurationMinLimitUS = getInt("sliceDurationMinLimitUS", 100);
     private int sliceDurationMaxLimitUS = getInt("sliceDurationMaxLimitUS", 300000);
+
+    protected int sliceEventCountMinLimit = getInt("sliceEventCountMinLimit", 100);
+    protected int sliceEventCountMaxLimit = getInt("sliceEventCountMaxLimit", 100000);
+
     private boolean outlierRejectionEnabled = getBoolean("outlierRejectionEnabled", false);
     private float outlierRejectionThresholdSigma = getFloat("outlierRejectionThresholdSigma", 2f);
     protected int outlierRejectionWindowSize = getInt("outlierRejectionWindowSize", 300);
@@ -183,6 +188,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private float deltaTsMs_HW = 0;
     private boolean HWABMOFEnabled = false;
 
+    /**
+     * for CoarseSliceSaturation method
+     */
+    private int numCourseSlicePixels = 0;
+    private int saturatedCourseSlicePixels = 0;
+
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
     }
@@ -202,16 +213,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     };
     private SearchMethod searchMethod = SearchMethod.valueOf(getString("searchMethod", SearchMethod.DiamondSearch.toString()));
 
-    private int sliceDurationUs = getInt("sliceDurationUs", 20000);
-    public static final int SLICE_EVENT_COUNT_DEFAULT = 700;
+    private static final int SLICE_DURATION_TIME_US_DEFAULT = 50000;
+    private int sliceDurationUs = getInt("sliceDurationUs", SLICE_DURATION_TIME_US_DEFAULT);
 
+    public static final int SLICE_EVENT_COUNT_DEFAULT = 700;
     private int sliceEventCount = getInt("sliceEventCount", SLICE_EVENT_COUNT_DEFAULT);
+
+    protected boolean resetSliceDurationOnHittingLimit = getBoolean("resetSliceDurationOnHittingLimit", true);
+
     private boolean rewindFlg = false; // The flag to indicate the rewind event.
 
     private boolean displayResultHistogram = getBoolean("displayResultHistogram", true);
 
     public enum SliceMethod {
-        ConstantDuration, ConstantEventNumber, AreaEventNumber, ConstantIntegratedFlow
+        ConstantDuration, ConstantEventNumber, AreaEventNumber, CoarseSliceSaturation, ConstantIntegratedFlow
     };
     private SliceMethod sliceMethod = SliceMethod.valueOf(getString("sliceMethod", SliceMethod.AreaEventNumber.toString()));
     // counting events into subsampled areas, when count exceeds the threshold in any area, the slices are rotated
@@ -309,6 +324,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     protected int cornerSize = getInt("cornerSize", 2);
     private ArrayList<BasicEvent> cornerEvents = new ArrayList(1000);
 
+    // plane fit for global speed feedforward control of slice duration
+    private float[][] planeFitAvergeTimestamps = new float[2][2];
+    private float planeFitMixingFactor = getFloat("planeFitMixingFactor", 1e-3f);
+    private int planeFitFirstTimestamp = 0;
+
+    private static final float  COARSE_SLICE_SATURATION_DEFAULT=0.01f;
+    protected float coarseSliceSaturationFraction = getFloat("coarseSliceSaturationFraction", COARSE_SLICE_SATURATION_DEFAULT);
+
     public PatchMatchFlow(AEChip chip) {
         super(chip);
         this.engFmt = new EngineeringFormat();
@@ -338,9 +361,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             patchCompareMethod = PatchCompareMethod.SAD;
         }
 
-        String hwTip = "0b: Hardware EDFLOW";
-        setPropertyTooltip(hwTip, "HWABMOFEnabled", "Select to show output of hardware EDFLOW camera");
-
         String cornerTip = "0c: Corners/Keypoints";
         setPropertyTooltip(cornerTip, "showCorners", "Select to show corners (as red overlay)");
         setPropertyTooltip(cornerTip, "cornerThr", "Threshold difference for SFAST detection as fraction of maximum event count value; increase for fewer corners");
@@ -357,24 +377,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "searchDistance", "Search distance for matching patches, in pixels");
         setPropertyTooltip(patchTT, "patchCompareMethod", "method to compare two patches; SAD=sum of absolute differences, HammingDistance is same as SAD for binary bitmaps");
         setPropertyTooltip(patchTT, "searchMethod", "method to search patches");
-        setPropertyTooltip(patchTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
-        setPropertyTooltip(patchTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
-        setPropertyTooltip(patchTT, "sliceMethod", "<html>Method for determining time slice duration for block matching<ul>"
-                + "<li>ConstantDuration: slices are fixed time duration"
-                + "<li>ConstantEventNumber: slices are fixed event number"
-                + "<li>AreaEventNumber: slices are fixed event number in any subsampled area defined by areaEventNumberSubsampling"
-                + "<li>ConstantIntegratedFlow: slices are rotated when average speeds times delta time exceeds half the search distance");
-        setPropertyTooltip(patchTT, "areaEventNumberSubsampling", "<html>how to subsample total area to count events per unit subsampling blocks for AreaEventNumber method. <p>For example, if areaEventNumberSubsampling=5, <br> then events falling into 32x32 blocks of pixels are counted <br>to determine when they exceed sliceEventCount to make new slice");
-        setPropertyTooltip(patchTT, "adapativeSliceDurationProportionalErrorGain", "gain for proporportional change of duration or slice event number. typically 0.05f for bang-bang, and 0.5f for proportional control");
-        setPropertyTooltip(patchTT, "adapativeSliceDurationUseProportionalControl", "If true, then use proportional error control. If false, use bang-bang control with sign of match distance error");
-        setPropertyTooltip(patchTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
-        setPropertyTooltip(patchTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
-        setPropertyTooltip(patchTT, "adaptiveSliceDuration", "<html>Enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match distance is too small, increaes duration or event count, and if too far, decreases duration or event count.<p>If using <i>AreaEventNumber</i> slice rotation method, don't increase count if actual duration is already longer than <i>sliceDurationUs</i>");
-        setPropertyTooltip(patchTT, "nonGreedyFlowComputingEnabled", "<html>Enables fairer distribution of computing flow by areas; an area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use <i>processingTimeLimitMs</i> to ensure minimum frame rate");
-        setPropertyTooltip(patchTT, "nonGreedyFractionToBeServiced", "An area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use the timeLimiter to ensure minimum frame rate");
-        setPropertyTooltip(patchTT, "useSubsampling", "<html>Enables using both full and subsampled block matching; <p>when using adaptiveSliceDuration, enables adaptive slice duration using feedback controlusing difference between full and subsampled resolution slice matching");
-        setPropertyTooltip(patchTT, "adaptiveSliceDurationMinVectorsToControl", "<html>Min flow vectors computed in packet to control slice duration, increase to reject control during idle periods");
-        setPropertyTooltip(patchTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
         setPropertyTooltip(patchTT, "outputSearchErrorInfo", "enables displaying the search method error information");
         setPropertyTooltip(patchTT, "outlierMotionFilteringEnabled", "(Currently has no effect) discards first optical flow event that points in opposite direction as previous one (dot product is negative)");
         setPropertyTooltip(patchTT, "numSlices", "<html>Number of bitmaps to use.  <p>At least 3: 1 to collect on, and two more to match on. <br>If >3, then best match is found between last slice reference block and all previous slices.");
@@ -386,24 +388,53 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "enableImuTimesliceLogging", "Logs IMU and rate gyro");
         setPropertyTooltip(patchTT, "startRecordingForEDFLOW", "Start to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
         setPropertyTooltip(patchTT, "stopRecordingForEDFLOW", "Stop to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
-        setPropertyTooltip(patchTT, "sliceDurationMinLimitUS", "The minimum value (us) of slice duration.");
-        setPropertyTooltip(patchTT, "sliceDurationMaxLimitUS", "The maximum value (us) of slice duration.");
         setPropertyTooltip(patchTT, "outlierRejectionEnabled", "Enable outlier flow vector rejection");
         setPropertyTooltip(patchTT, "outlierRejectionThresholdSigma", "Flow vectors that are larger than this many sigma from global flow variation are discarded");
         setPropertyTooltip(patchTT, "outlierRejectionWindowSize", "Window in events for measurement of average flow for outlier rejection");
 
-        String metricConfid = "0ab: Density checks";
+        String adaptTT = "0b: Slice and processing adaptation";
+        setPropertyTooltip(adaptTT, "sliceEventCount", "number of events collected to fill a slice, when ConstantEventNumber method is used");
+        setPropertyTooltip(adaptTT, "sliceMethod", "<html>Method for determining time slice duration for block matching<ul>"
+                + "<li>ConstantDuration: slices are fixed time duration"
+                + "<li>ConstantEventNumber: slices are fixed event number"
+                + "<li>AreaEventNumber: slices are fixed event number in any subsampled area defined by areaEventNumberSubsampling"
+                + "<li>CoarseSliceSaturation: slices are rotated when coarse slice pixels fill up to <i>coarseSliceSaturationFraction</i>"
+                + "<li>ConstantIntegratedFlow: slices are rotated when average speeds times delta time exceeds half the search distance");
+        setPropertyTooltip(patchTT, "areaEventNumberSubsampling", "<html>how to subsample total area to count events per unit subsampling blocks for AreaEventNumber method. <p>For example, if areaEventNumberSubsampling=5, <br> then events falling into 32x32 blocks of pixels are counted <br>to determine when they exceed sliceEventCount to make new slice");
+        setPropertyTooltip(patchTT, "useSubsampling", "<html>Enables using both full and subsampled block matching; <p>when using adaptiveSliceDuration, enables adaptive slice duration using feedback controlusing difference between full and subsampled resolution slice matching");
+        setPropertyTooltip(adaptTT, "sliceDurationUs", "duration of bitmaps in us, also called sample interval, when ConstantDuration method is used");
+        setPropertyTooltip(adaptTT, "sliceDurationMinLimitUS", "The minimum value (us) of slice duration.");
+        setPropertyTooltip(adaptTT, "sliceDurationMaxLimitUS", "The maximum value (us) of slice duration.");
+        setPropertyTooltip(adaptTT, "adapativeSliceDurationProportionalErrorGain", "gain for proporportional change of duration or slice event number. typically 0.05f for bang-bang, and 0.5f for proportional control");
+        setPropertyTooltip(adaptTT, "sliceEventCountMinLimit", "The minimum value of slice event count.");
+        setPropertyTooltip(adaptTT, "sliceEventCountMaxLimit", "The maximum value of slice event count.");
+        setPropertyTooltip(adaptTT, "adapativeSliceDurationProportionalErrorGain", "gain for proporportional change of duration or slice event number. typically 0.05f for bang-bang, and 0.5f for proportional control");
+        setPropertyTooltip(adaptTT, "adapativeSliceDurationUseProportionalControl", "If true, then use proportional error control. If false, use bang-bang control with sign of match distance error");
+        setPropertyTooltip(adaptTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
+        setPropertyTooltip(adaptTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
+        setPropertyTooltip(adaptTT, "adaptiveSliceDuration", "<html>Enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match distance is too small, increaes duration or event count, and if too far, decreases duration or event count.<p>If using <i>AreaEventNumber</i> slice rotation method, don't increase count if actual duration is already longer than <i>sliceDurationUs</i>");
+        setPropertyTooltip(adaptTT, "nonGreedyFlowComputingEnabled", "<html>Enables fairer distribution of computing flow by areas; an area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use <i>processingTimeLimitMs</i> to ensure minimum frame rate");
+        setPropertyTooltip(adaptTT, "nonGreedyFractionToBeServiced", "An area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use the timeLimiter to ensure minimum frame rate");
+        setPropertyTooltip(adaptTT, "adaptiveSliceDurationMinVectorsToControl", "<html>Min flow vectors computed in packet to control slice duration, increase to reject control during idle periods");
+        setPropertyTooltip(adaptTT, "processingTimeLimitMs", "<html>time limit for processing packet in ms to process OF events (events still accumulate). <br> Set to 0 to disable. <p>Alternative to the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events");
+        setPropertyTooltip(adaptTT, "resetSliceDurationOnHittingLimit", String.format("<html>Enables reset of slice duration to default values k=%,d events and dt=%,dus on hitting limits", SLICE_EVENT_COUNT_DEFAULT, SLICE_DURATION_TIME_US_DEFAULT));
+        setPropertyTooltip(adaptTT, "coarseSliceSaturationFraction", "When sliceMethod is CoarseSliceSaturation, slices are rotated when this fraction of coarse scale pixels reach saturation accuulation count sliceMaxValue");
+
+        String metricConfid = "0c: Density checks";
         setPropertyTooltip(metricConfid, "maxAllowedSadDistance", "<html>SAD distance threshold for rejecting unresonable block matching result; <br> events with SAD distance larger than this value are rejected. <p>Lower value means it is harder to accept the event. <p> Distance is sum of absolute differences for this best match normalized by number of pixels in reference area.");
         setPropertyTooltip(metricConfid, "validPixOccupancy", "<html>Threshold for valid pixel percent for each block; Range from 0 to 1. <p>If either matching block is less occupied than this fraction, no motion vector will be calculated.");
         setPropertyTooltip(metricConfid, "weightDistance", "<html>The confidence value consists of the distance and the dispersion; <br>weightDistance sets the weighting of the distance value compared with the dispersion value; Range from 0 to 1. <p>To count only e.g. hamming distance, set weighting to 1. <p> To count only dispersion, set to 0.");
 
-        String patchDispTT = "0b: Block matching display";
+        String patchDispTT = "0d: Block matching display";
         setPropertyTooltip(patchDispTT, "showSlices", "enables displaying the entire bitmaps slices (the current slices)");
         setPropertyTooltip(patchDispTT, "showSlicesScale", "sets which scale of the slices to display");
         setPropertyTooltip(patchDispTT, "showBlockMatches", "enables displaying the individual block matches");
         setPropertyTooltip(patchDispTT, "displayOutputVectors", "display the output motion vectors or not");
         setPropertyTooltip(patchDispTT, "displayResultHistogram", "display the output motion vectors histogram to show disribution of results for each packet. Only implemented for HammingDistance");
         setPropertyTooltip(patchDispTT, "printScaleCntStatEnabled", "enables printing the statics of scale counts");
+
+        String hwTip = "0e: Hardware EDFLOW";
+        setPropertyTooltip(hwTip, "HWABMOFEnabled", "Select to show output of hardware EDFLOW camera");
 
         getSupport().addPropertyChangeListener(AEViewer.EVENT_TIMESTAMPS_RESET, this);
         getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
@@ -467,13 +498,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             if (!extractEventInfo(o)) {
                 continue;
             }
+
+//            updatePlaneFitValues(ein); // TODO fix to use brightness constancy equations
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 if (imuFlowEstimator.calculateImuFlow(o)) {
                     continue;
                 }
             }
             // block ENDS
-            if (xyFilter()) {
+            if (xyFilter()) { // TODO move inside extractEventInfo
                 continue;
             }
 
@@ -730,12 +763,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //        setSliceEventCount(eventCount);
         setSliceDurationMinLimitUS(1000);
         setSliceDurationMaxLimitUS(300000);
-        setSliceDurationUs(50000); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
+        setSliceDurationUs(SLICE_DURATION_TIME_US_DEFAULT); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
 
         setShowCorners(true);
         setCalcOFonCornersEnabled(true);   // Enable corner detector
         setCornerCircleSelection(CornerCircleSelection.OuterCircle);
         setCornerThr(0.2f);
+        
+        setCoarseSliceSaturationFraction(COARSE_SLICE_SATURATION_DEFAULT);
 
     }
 
@@ -747,6 +782,40 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (rewindFlg) {
             return; // don't adapt during rewind or delay before playing again
         }
+
+        float err = Float.NaN;
+        if (resetSliceDurationOnHittingLimit) {
+            switch (sliceMethod) {
+                case AreaEventNumber:
+                case ConstantEventNumber:
+                    if (sliceEventCount <= sliceEventCountMinLimit) {
+                        log.info("slice event count got too small, resetting to default value");
+                        setSliceEventCount(SLICE_EVENT_COUNT_DEFAULT);
+                        logSliceDuration(err);
+                        return;
+                    } else if (sliceEventCount >= sliceEventCountMaxLimit) {
+                        log.info("slice event count got too large, resetting to default value");
+                        setSliceEventCount(SLICE_EVENT_COUNT_DEFAULT);
+                        logSliceDuration(err);
+                        return;
+                    }
+                    break;
+                case ConstantDuration:
+                    if (sliceDurationUs <= sliceDurationMinLimitUS) {
+                        log.info("slice duration got too brief, resetting to default value");
+                        setSliceDurationUs(SLICE_DURATION_TIME_US_DEFAULT);
+                        logSliceDuration(err);
+                        return;
+                    } else if (sliceDurationUs >= sliceDurationMaxLimitUS) {
+                        log.info("slice duration got too long, resetting to default value");
+                        setSliceDurationUs(SLICE_DURATION_TIME_US_DEFAULT);
+                        logSliceDuration(err);
+                        return;
+                    }
+                    break;
+            }
+        }
+
         float radiusSum = 0;
         int countSum = 0;
 
@@ -794,7 +863,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //            underOverString = "Underexposed";
 //        }
 //        System.out.println(String.format("fraction saturated pixels in course slice=%6.2f: %s", fracSaturated, underOverString));
-        float err = Float.NaN;
         if (adaptiveSliceDuration && (countSum > adaptiveSliceDurationMinVectorsToControl)) {
 //            if (underexposed) {
 //                changeSliceDuration(.5f);
@@ -809,16 +877,20 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 changeSliceDuration(err);
 
             }
-            if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
-                if (!isDisplayGlobalMotion()) {
-                    setDisplayGlobalMotion(true);
-                }
-                adaptiveSliceDurationLogger.log(String.format("%f\t%d\t%d\t%f\t%f\t%f\t%d\t%d", e.timestamp * 1e-6f,
-                        adaptiveSliceDurationPacketCount++, nCountPerSlicePacket, avgMatchDistance, err,
-                        motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDeltaT, sliceEventCount));
-            }
         }
+        logSliceDuration(err);
 
+    }
+
+    private void logSliceDuration(float err) {
+        if (adaptiveSliceDurationLogger != null && adaptiveSliceDurationLogger.isEnabled()) {
+            if (!isDisplayGlobalMotion()) {
+                setDisplayGlobalMotion(true);
+            }
+            adaptiveSliceDurationLogger.log(String.format("%f\t%d\t%d\t%f\t%f\t%f\t%d\t%d", e.timestamp * 1e-6f,
+                    adaptiveSliceDurationPacketCount++, nCountPerSlicePacket, avgMatchDistance, err,
+                    motionFlowStatistics.getGlobalMotion().getGlobalSpeed().getMean(), sliceDeltaT, sliceEventCount));
+        }
     }
 
     /**
@@ -1116,6 +1188,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         clearAreaCounts();
         clearNonGreedyRegions();
 //        setSliceEventCount(getInt("sliceEventCount", SLICE_EVENT_COUNT_DEFAULT));
+        for (float[] f : planeFitAvergeTimestamps) {
+            Arrays.fill(f, Float.NaN);
+        }
+        planeFitFirstTimestamp = 0;
+        saturatedCourseSlicePixels=0;
     }
 
     private LowpassFilter speedFilter = new LowpassFilter();
@@ -1151,6 +1228,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             case AreaEventNumber:
                 // If dt is too small, we should rotate it later until it has enough accumulation time.
                 if (!areaCountExceeded && dt < getSliceDurationMaxLimitUS() || (dt < getSliceDurationMinLimitUS())) {
+                    return false;
+                }
+                break;
+            case CoarseSliceSaturation:
+                if ((float) saturatedCourseSlicePixels / numCourseSlicePixels < coarseSliceSaturationFraction) {
                     return false;
                 }
                 break;
@@ -1225,6 +1307,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (e != null) {
             sliceEndTimeUs[currentSliceIdx] = e.timestamp;
         }
+        saturatedCourseSlicePixels = 0;
         /*Thus if 0 is current index for current filling slice, then sliceIndex returns 1,2 for pointer =1,2.
         * Then if NUM_SLICES=3, after rotateSlices(),
         currentSliceIdx=NUM_SLICES-1=2, and sliceIndex(0)=2, sliceIndex(1)=0, sliceIndex(2)=1.
@@ -1320,8 +1403,19 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                log.warning("event out of range");
 //                return false;
 //            }
-            int cv = currentSlice[s][xx][yy];
-            cv += rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1);
+            int accVal = rectifyPolarties ? 1 : (e.polarity == PolarityEvent.Polarity.On ? 1 : -1); // new event to accumulate
+            int cv = currentSlice[s][xx][yy]; // current value
+            if (sliceMethod == SliceMethod.CoarseSliceSaturation && s == numScales - 1) {
+                if (rectifyPolarties) {
+                    if (cv == sliceMaxValue - 1) { // if we just saturated pixel on this event, then increase count
+                        saturatedCourseSlicePixels++;
+                    }
+                } else if ((accVal > 0 && cv == sliceMaxValue - 1) || (accVal < 0 && cv == -(sliceMaxValue - 1))) {
+                    saturatedCourseSlicePixels++;
+                }
+            }
+
+            cv += accVal;
 //            cv = cv << (numScales - 1 - legendString);
             if (cv > sliceMaxValue) {
                 cv = sliceMaxValue;
@@ -2293,15 +2387,18 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     }
 
     /**
+     * Sets slice event count, but sets it according to the area event count so
+     * that it applies to entire scene by number of areas.
+     *
      * @param sliceEventCount the sliceEventCount to set
      */
     public void setSliceEventCount(int sliceEventCount) {
         final int div = sliceMethod == SliceMethod.AreaEventNumber ? numAreas : 1;
         final int old = this.sliceEventCount;
-        if (sliceEventCount < MIN_SLICE_EVENT_COUNT_FULL_FRAME / div) {
-            sliceEventCount = MIN_SLICE_EVENT_COUNT_FULL_FRAME / div;
-        } else if (sliceEventCount > MAX_SLICE_EVENT_COUNT_FULL_FRAME / div) {
-            sliceEventCount = MAX_SLICE_EVENT_COUNT_FULL_FRAME / div;
+        if (sliceEventCount < sliceEventCountMinLimit) {
+            sliceEventCount = sliceEventCountMinLimit;
+        } else if (sliceEventCount > sliceEventCountMaxLimit) {
+            sliceEventCount = sliceEventCountMaxLimit;
         }
         this.sliceEventCount = sliceEventCount;
         putInt("sliceEventCount", sliceEventCount);
@@ -2385,6 +2482,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                         if (slices[n][s] == null || slices[n][s].length != nx
                                 || slices[n][s][0] == null || slices[n][s][0].length != ny) {
                             slices[n][s] = new byte[nx][ny];
+                        }
+                        if (s == numScales - 1) {
+                            numCourseSlicePixels = nx * ny;
                         }
                     }
                 }
@@ -3799,5 +3899,94 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     @Override
     public String getShortName() {
         return super.getShortName() + (isCalcOFonCornersEnabled() ? " on corners" : "");
+    }
+
+    private void updatePlaneFitValues(PolarityEvent e) {
+        if (planeFitFirstTimestamp == 0) {
+            planeFitFirstTimestamp = e.timestamp;
+        }
+        int xx = 0;
+        if (e.x > chip.getSizeX() / 2) {
+            xx = 1;
+        }
+        int yy = 0;
+        if (e.y > chip.getSizeY() / 2) {
+            yy = 1;
+        }
+        float t = 1e-6f * (e.timestamp - planeFitFirstTimestamp);
+        float told = planeFitAvergeTimestamps[xx][yy];
+        if (Float.isNaN(told)) {
+            planeFitAvergeTimestamps[xx][yy] = t;
+        } else {
+            float tnew = told * (1 - planeFitMixingFactor) + t * planeFitMixingFactor;
+            planeFitAvergeTimestamps[xx][yy] = tnew;
+        }
+    }
+
+    /**
+     * @return the resetSliceDurationOnHittingLimit
+     */
+    public boolean isResetSliceDurationOnHittingLimit() {
+        return resetSliceDurationOnHittingLimit;
+    }
+
+    /**
+     * @param resetSliceDurationOnHittingLimit the
+     * resetSliceDurationOnHittingLimit to set
+     */
+    public void setResetSliceDurationOnHittingLimit(boolean resetSliceDurationOnHittingLimit) {
+        this.resetSliceDurationOnHittingLimit = resetSliceDurationOnHittingLimit;
+        putBoolean("resetSliceDurationOnHittingLimit", resetSliceDurationOnHittingLimit);
+    }
+
+    /**
+     * @return the sliceEventCountMinLimit
+     */
+    public int getSliceEventCountMinLimit() {
+        return sliceEventCountMinLimit;
+    }
+
+    /**
+     * @param sliceEventCountMinLimit the sliceEventCountMinLimit to set
+     */
+    public void setSliceEventCountMinLimit(int sliceEventCountMinLimit) {
+        this.sliceEventCountMinLimit = sliceEventCountMinLimit;
+        putInt("sliceEventCountMinLimit", sliceEventCountMinLimit);
+    }
+
+    /**
+     * @return the sliceEventCountMaxLimit
+     */
+    public int getSliceEventCountMaxLimit() {
+        return sliceEventCountMaxLimit;
+    }
+
+    /**
+     * @param sliceEventCountMaxLimit the sliceEventCountMaxLimit to set
+     */
+    public void setSliceEventCountMaxLimit(int sliceEventCountMaxLimit) {
+        this.sliceEventCountMaxLimit = sliceEventCountMaxLimit;
+        putInt("sliceEventCountMaxLimit", sliceEventCountMaxLimit);
+    }
+
+    /**
+     * @return the coarseSliceSaturationFraction
+     */
+    public float getCoarseSliceSaturationFraction() {
+        return coarseSliceSaturationFraction;
+    }
+
+    /**
+     * @param coarseSliceSaturationFraction the coarseSliceSaturationFraction to
+ set
+     */
+    public void setCoarseSliceSaturationFraction(float coarseSliceSaturationFraction) {
+        if (coarseSliceSaturationFraction < 0) {
+            coarseSliceSaturationFraction = 0;
+        } else if (coarseSliceSaturationFraction > 1) {
+            coarseSliceSaturationFraction = 1;
+        }
+        this.coarseSliceSaturationFraction = coarseSliceSaturationFraction;
+        putFloat("coarseSliceSaturationFraction", coarseSliceSaturationFraction);
     }
 }
