@@ -329,7 +329,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private float planeFitMixingFactor = getFloat("planeFitMixingFactor", 1e-3f);
     private int planeFitFirstTimestamp = 0;
 
-    private static final float  COARSE_SLICE_SATURATION_DEFAULT=0.01f;
+    private static final float COARSE_SLICE_SATURATION_DEFAULT = 0.01f;
     protected float coarseSliceSaturationFraction = getFloat("coarseSliceSaturationFraction", COARSE_SLICE_SATURATION_DEFAULT);
 
     public PatchMatchFlow(AEChip chip) {
@@ -769,7 +769,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setCalcOFonCornersEnabled(true);   // Enable corner detector
         setCornerCircleSelection(CornerCircleSelection.OuterCircle);
         setCornerThr(0.2f);
-        
+
         setCoarseSliceSaturationFraction(COARSE_SLICE_SATURATION_DEFAULT);
 
     }
@@ -927,6 +927,11 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 break;
             case ConstantIntegratedFlow:
                 setSliceEventCount(eventCounter);
+                break;
+            case CoarseSliceSaturation:
+                float f = getCoarseSliceSaturationFraction();
+                setCoarseSliceSaturationFraction(f * (1 - errSign * adapativeSliceDurationProportionalErrorGain)); // pos err, matches too long, decrease saturation fraction
+                break;
         }
     }
 
@@ -1192,7 +1197,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             Arrays.fill(f, Float.NaN);
         }
         planeFitFirstTimestamp = 0;
-        saturatedCourseSlicePixels=0;
+        saturatedCourseSlicePixels = 0;
     }
 
     private LowpassFilter speedFilter = new LowpassFilter();
@@ -3978,9 +3983,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     /**
      * @param coarseSliceSaturationFraction the coarseSliceSaturationFraction to
- set
+     * set
      */
     public void setCoarseSliceSaturationFraction(float coarseSliceSaturationFraction) {
+        float old = this.coarseSliceSaturationFraction;
         if (coarseSliceSaturationFraction < 0) {
             coarseSliceSaturationFraction = 0;
         } else if (coarseSliceSaturationFraction > 1) {
@@ -3988,5 +3994,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
         this.coarseSliceSaturationFraction = coarseSliceSaturationFraction;
         putFloat("coarseSliceSaturationFraction", coarseSliceSaturationFraction);
+        getSupport().firePropertyChange("coarseSliceSaturationFraction", old, this.coarseSliceSaturationFraction);
     }
 }
