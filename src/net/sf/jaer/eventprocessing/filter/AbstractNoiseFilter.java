@@ -634,7 +634,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
         public NoiseFilterControl(AEChip chip) {
             super(chip);
-            setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropyReduction between two limits");
+            setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropy reduction between two limits");
             setPropertyTooltip(TT_ADAP, "entropyReductionLowLimit", "if entropy reduction from filtering is below this limit, decrease dt");
             setPropertyTooltip(TT_ADAP, "entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
             setPropertyTooltip(TT_ADAP, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
