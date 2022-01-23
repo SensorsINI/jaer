@@ -107,6 +107,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
      * byte[numSlices][numScales][subSizeX][subSizeY] [slice][scale][x][y]
      */
     private byte[][][][] slices = null;
+    /**
+     * Number of pixels at each scale for slices, 0 is fine, 1 is medium, 2 is
+     * coarse
+     */
+    private int[] numSlicePixels = null;
+    /**
+     * for CoarseSliceSaturation method
+     */
+    private int numCoarseSlicePixels = 0;
     private float[] sliceSummedSADValues = null; // tracks the total summed SAD differences between reference and past slices, to adjust the slice duration
     private int[] sliceSummedSADCounts = null; // tracks the total summed SAD differences between reference and past slices, to adjust the slice duration
     private int[] sliceStartTimeUs; // holds the time interval between reference slice and this slice
@@ -189,10 +198,13 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private boolean HWABMOFEnabled = false;
 
     /**
-     * for CoarseSliceSaturation method
+     * The entropic measure of fraction of occupied coarse slice pixels
      */
-    private int numCourseSlicePixels = 0;
-    private int saturatedCourseSlicePixels = 0;
+    private float coarseSliceOccupancy;
+    /**
+     * The number of saturated coarse slice pixels
+     */
+    private int saturatedCoarseSlicePixels = 0;
 
     public enum CornerCircleSelection {
         InnerCircle, OuterCircle, OR, AND
@@ -774,6 +786,40 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
     }
 
+    /**
+     * Given float[[][] array, measures the log_2 entropy. The entropy E is zero
+     * for a single peak, and takes maximum value E=log_2(n) for n pixels all
+     * the same values. Therefore, 2^E is the number of "occupied" pixels in the
+     * array.
+     *
+     * @param f the array of int accumulation values; the absolute values are
+     * used to count
+     * @return -sum(p log_2(p)) ; if all pixels are zero then return flat entropy value
+     */
+    private float computeEntropy(byte[][] a) {
+        int sum = 0;
+        float sumLog = 0;
+        int n = 0;
+        for (byte[] a1 : a) {
+            for (byte f : a1) {
+                sum += (int) Math.abs(f);
+                n++;
+            }
+        }
+        if(sum==0) return (float)(Math.log(n)/Math.log(2));
+        for (byte[] a1 : a) {
+            for (byte f : a1) {
+                if (f != 0) {
+                    float k = Math.abs(f);
+                    float p=k/sum;
+                    sumLog += (float) (p * Math.log(p));
+                }
+            }
+        }
+        float e = -(float) ((sumLog) / Math.log(2));
+        return e;
+    }
+
     private void adaptSliceDuration() {
         // measure last hist to get control signal on slice duration
 
@@ -784,7 +830,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
 
         float err = Float.NaN;
-        if (resetSliceDurationOnHittingLimit) {
+        if (adaptiveSliceDuration && resetSliceDurationOnHittingLimit) {
             switch (sliceMethod) {
                 case AreaEventNumber:
                 case ConstantEventNumber:
@@ -1200,7 +1246,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             Arrays.fill(f, Float.NaN);
         }
         planeFitFirstTimestamp = 0;
-        saturatedCourseSlicePixels = 0;
+        saturatedCoarseSlicePixels = 0;
     }
 
     private LowpassFilter speedFilter = new LowpassFilter();
@@ -1240,7 +1286,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
                 break;
             case CoarseSliceSaturation:
-                if ((float) saturatedCourseSlicePixels / numCourseSlicePixels < coarseSliceSaturationFraction) {
+                if ((float) saturatedCoarseSlicePixels / (numCoarseSlicePixels*coarseSliceOccupancy) < coarseSliceSaturationFraction) {
                     return false;
                 }
                 break;
@@ -1315,7 +1361,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (e != null) {
             sliceEndTimeUs[currentSliceIdx] = e.timestamp;
         }
-        saturatedCourseSlicePixels = 0;
+        saturatedCoarseSlicePixels = 0;
         /*Thus if 0 is current index for current filling slice, then sliceIndex returns 1,2 for pointer =1,2.
         * Then if NUM_SLICES=3, after rotateSlices(),
         currentSliceIdx=NUM_SLICES-1=2, and sliceIndex(0)=2, sliceIndex(1)=0, sliceIndex(2)=1.
@@ -1330,9 +1376,17 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         //sliceStartTimeUs[currentSliceIdx] = ts; // current event timestamp; set on first event to slice
         clearSlice(currentSlice);
         clearAreaCounts();
+
+        if (sliceMethod == SliceMethod.CoarseSliceSaturation) {
+            float entropy = computeEntropy(getCoarseSlice());
+            float n = numCoarseSlicePixels;
+            coarseSliceOccupancy = (float) Math.pow(2, entropy) / n; // "fraction" of occupied pixels
+        }
+//        System.out.println(String.format("coarse slice entropy=%.2f occupancy=%.2f%%",entropy,100*coarseSliceOccupancy));
         eventCounter = 0;
         sliceDeltaT = ts - sliceLastTs;
         sliceLastTs = ts;
+
         if (imuTimesliceLogger != null && imuTimesliceLogger.isEnabled()) {
             imuTimesliceLogger.log(String.format("%d %d %.3f", ts, sliceDeltaT, imuFlowEstimator.getPanRateDps()));
         }
@@ -1368,6 +1422,15 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
      */
     private int sliceIndex(int pointer) {
         return (currentSliceIdx + pointer) % numSlices;
+    }
+
+    /**
+     * Returns coarse slice most recently collected
+     *
+     * @return byte[subSizeX][subSizeY]
+     */
+    private byte[][] getCoarseSlice() {
+        return slices[sliceIndex(1)][numSlices - 1];
     }
 
     /**
@@ -1416,10 +1479,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             if (sliceMethod == SliceMethod.CoarseSliceSaturation && s == numScales - 1) {
                 if (rectifyPolarties) {
                     if (cv == sliceMaxValue - 1) { // if we just saturated pixel on this event, then increase count
-                        saturatedCourseSlicePixels++;
+                        saturatedCoarseSlicePixels++;
                     }
                 } else if ((accVal > 0 && cv == sliceMaxValue - 1) || (accVal < 0 && cv == -(sliceMaxValue - 1))) {
-                    saturatedCourseSlicePixels++;
+                    saturatedCoarseSlicePixels++;
                 }
             }
 
@@ -2288,22 +2351,22 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //        }
         getSupport().firePropertyChange("sliceMethod", old, this.sliceMethod);
     }
-    
-    private String sliceMethodDescription(){
-        StringBuilder sb=new StringBuilder(sliceMethod.toString()+": ");
-        switch (sliceMethod){
-                case AreaEventNumber:
-                    sb.append(String.format("k=%,d",sliceEventCount));
-                    break;
-                case CoarseSliceSaturation:
-                    sb.append(String.format("frac > %.2f%%",coarseSliceSaturationFraction*100));
-                    break;
-                case ConstantDuration:
-                    sb.append(String.format("dt > %.2ms",sliceDurationUs*1e-3f));
-                    break;
-                case ConstantIntegratedFlow:
-                    sb.append("flow >1 pixel");
-                    break;
+
+    private String sliceMethodDescription() {
+        StringBuilder sb = new StringBuilder(sliceMethod.toString() + ": ");
+        switch (sliceMethod) {
+            case AreaEventNumber:
+                sb.append(String.format("k=%,d", sliceEventCount));
+                break;
+            case CoarseSliceSaturation:
+                sb.append(String.format("saturated > %.2f%% * %.2f%% (occupied)", coarseSliceSaturationFraction * 100, 100*coarseSliceOccupancy ));
+                break;
+            case ConstantDuration:
+                sb.append(String.format("dt > %.2fms", sliceDurationUs * 1e-3f));
+                break;
+            case ConstantIntegratedFlow:
+                sb.append("flow >1 pixel");
+                break;
         }
         return sb.toString();
     }
@@ -2495,6 +2558,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //    }
     synchronized private void checkArrays() {
 
+        if (numSlicePixels == null || numSlicePixels.length != numScales) {
+            numSlicePixels = new int[numScales];
+        }
+
         if (subSizeX == 0 || subSizeY == 0) {
             return; // don't do on init when chip is not known yet
         }
@@ -2509,9 +2576,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                         if (slices[n][s] == null || slices[n][s].length != nx
                                 || slices[n][s][0] == null || slices[n][s][0].length != ny) {
                             slices[n][s] = new byte[nx][ny];
+                            numSlicePixels[s] = nx * ny;
                         }
                         if (s == numScales - 1) {
-                            numCourseSlicePixels = nx * ny;
+                            numCoarseSlicePixels = nx * ny;
                         }
                     }
                 }
