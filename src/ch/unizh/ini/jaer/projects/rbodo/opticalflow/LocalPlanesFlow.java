@@ -35,24 +35,32 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     // Magnitude of accuracy from iterative estimation algorithm. 
     // In each iteration of the local plane-fitting, this threshold is compared 
     // to the distance of the most recent plane estimate to the previous.
-    private float th1 = getFloat("th1", 1e-5f);
+    private float th1 = getFloat("th1", DEFAULT_TH1);
+    private static final float DEFAULT_TH1 = 1e-5f;
     private float eps;
     private boolean change;
 
     // When an event in the neighborhood is farther away from the local plane estimate 
     // than this threshold value, it is discarded from the data set.
-    private float th2 = getFloat("th2", 5e-2f);
+    private float th2 = getFloat("th2", DEFAULT_TH2);
+    private static final float DEFAULT_TH2 = 4e-3f;
 
     // Threshold for flat planes causing events to be assigned an unrealistically
     // high velocity.
-    private float th3 = getFloat("th3", 1e-3f);
+    private float th3 = getFloat("th3", DEFAULT_TH3);
+    private static final float DEFAULT_TH3 = 3e-3f;
 
+    private static int DEFAULT_LOCAL_PLANES_REFRACTORY_PERIOD_US=50000;
+    
     private ArrayList<double[]> neighborhood;
     private final float[] planeParameters;
     private Matrix planeEstimate, planeEstimate_old, A;
 
     private float sx2, sy2, st2, sxy, sxt, syt, sxx, syy, stt;
     private int xx, yy;
+    
+    /** Default search distance according to EDFLOW paper and Aung HW FPGA flow paper (5x5 area) */
+    public static final int DEFAULT_LOCAL_PLANES_SEARCH_DISTANCE_PIXELS=2;
 
     public enum PlaneEstimator {
         OriginalLP, RobustLP, SingleFit, LinearSavitzkyGolay
@@ -100,7 +108,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             setMaxDtThreshold(50000);
         }
         if(!isPreferenceStored("refractoryPeriodUs")){
-            setRefractoryPeriodUs(50000);
+            setRefractoryPeriodUs(DEFAULT_LOCAL_PLANES_REFRACTORY_PERIOD_US);
         }
         if(!isPreferenceStored("searchDistance")){
             setSearchDistance(2);
@@ -112,6 +120,18 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         super.initFilter();
         setPlaneEstimator(planeEstimator); // lazy, after AEChip constructed
     }
+
+    @Override
+    public void doSetDefaults() {
+        super.doSetDefaults(); //To change body of generated methods, choose Tools | Templates.
+        setTh1(DEFAULT_TH1);
+        setTh2(DEFAULT_TH2);
+        setTh3(DEFAULT_TH3);
+        setRefractoryPeriodUs(DEFAULT_LOCAL_PLANES_REFRACTORY_PERIOD_US);
+        setSearchDistance(DEFAULT_LOCAL_PLANES_SEARCH_DISTANCE_PIXELS);
+    }
+    
+    
 
     synchronized void initializeDataMatrix() {
         sx2 = 0;
@@ -286,6 +306,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (neighborhood.size() < 3) {
                 vx = 0;
                 vy = 0;
+                v=0;
                 return;
             }
             initializeDataMatrix();
@@ -293,6 +314,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (sx2 * sy2 * st2 + 2 * sxy * sxt * syt - sxt * sxt * sy2 - sx2 * syt * syt - sxy * sxy * st2 == 0) {
                 vx = 0;
                 vy = 0;
+                v=0;
                 return;
             }
             planeParameters[0] = sxx * (syt * syt - sy2 * st2) + syy * (sxy * st2 - sxt * syt) + stt * (sxt * sy2 - sxy * syt);
@@ -330,6 +352,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (neighborhood.size() < 4) {
                 vx = 0;
                 vy = 0;
+                v=0;
                 return;
             }
 
@@ -379,6 +402,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 } else {
                     vx = 0;
                     vy = 0;
+                    v=0;
                     return;
                 }
             }
