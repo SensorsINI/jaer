@@ -89,7 +89,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     /**
      * The most immediate previous event timestamp from any pixel
      */
-    protected int prevTs;
+    protected int prevTs = Integer.MIN_VALUE;
 
     /**
      * (Subsampled) chip sizes.
@@ -131,12 +131,16 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private float ppsScale = getFloat("ppsScale", 0.1f);
     private boolean ppsScaleDisplayRelativeOFLength = getBoolean("ppsScaleDisplayRelativeOFLength", false);
 
-    // A pixel can fire an event only after this period. Used for smoother flow
-    // and speedup.
-    private int refractoryPeriodUs = getInt("refractoryPeriodUs", 0);
+    /**
+     * A pixel can fire an event only after this period. Used for smoother flow
+     * and speedup.
+     */
+    protected int refractoryPeriodUs = getInt("refractoryPeriodUs", DEFAULT_REFRACTORY_PERIOD_US);
+    protected static final int DEFAULT_REFRACTORY_PERIOD_US = 0;
 
     // Global translation, rotation and expansion.
     private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
+    private boolean displayGlobalMotionAngleHistogram = getBoolean("displayGlobalMotionAngleHistogram", false);
     protected int statisticsWindowSize = getInt("statisticsWindowSize", 10000);
 
     protected EngineeringFormat engFmt = new EngineeringFormat();
@@ -277,11 +281,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setEnclosedFilterChain(chain);
 
         // Labels for setPropertyTooltip.
+        setPropertyTooltip("setDefaults", "Sets reasonable defaults");
         setPropertyTooltip("LogMotionVectorEvents", "toggles saving motion vector events to a human readable file; auto stops on rewind");
         setPropertyTooltip("LogAccuracyStatistics", "toggles logging accuracy statisticcs; automatically stops on rewind");
         setPropertyTooltip("logGlobalMotionFlows", "toggle saving global motion flow vectors to a human readable file; auto stops on rewind");
+
         setPropertyTooltip("printStatistics", "<html> Prints to console as log output a single instance of statistics collected since <b>measureAccuracy</b> was selected. (These statistics are reset when the filter is reset, e.g. at rewind.)");
-        setPropertyTooltip("reseetStatistics", "Reset (clear) statistics collected");
+
+        setPropertyTooltip("resetStatistics", "Reset (clear) statistics collected");
         setPropertyTooltip(measureTT, "measureAccuracy", "<html> Writes a txt file with various motion statistics, by comparing the ground truth <br>(either estimated online using an embedded IMUFlow or loaded from file) <br> with the measured optical flow events.  <br>This measurment function is called for every event to assign the local ground truth<br> (vxGT,vyGT) at location (x,y) a value from the imported ground truth field (vxGTframe,vyGTframe).");
         setPropertyTooltip(measureTT, "measureProcessingTime", "writes a text file with timestamp filename with the packet's mean processing time of an event. Processing time is also logged to console.");
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
@@ -295,7 +302,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(dispTT, "displayVectorsAsUnitVectors", "shows local motion vector events with unit vector length");
         setPropertyTooltip(dispTT, "displayZeroLengthVectorsEnabled", "shows local motion vector evemts even if they indicate zero motion (stationary features)");
         setPropertyTooltip(dispTT, "displayColorWheelLegend", "Plots a color wheel to show flow direction colors.");
+
         setPropertyTooltip(dispTT, "displayGlobalMotion", "shows global tranlational, rotational, and expansive motion. These vectors are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " pixels/second per chip pixel");
+        setPropertyTooltip(dispTT, "displayGlobalMotionAngleHistogram", "shows global motion histogram. These values are scaled by ppsScale * " + GLOBAL_MOTION_DRAWING_SCALE + " px/s per chip pixel");
+
         setPropertyTooltip(dispTT, "displayRawInput", "shows the input events, instead of the motion types");
         setPropertyTooltip(dispTT, "showFilterName", "shows the class simple name on display, useful for generating videos");
         setPropertyTooltip(dispTT, "randomScatterOnFlowVectorOrigins", "scatters flow vectors a bit to show density better");
@@ -651,6 +661,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         putBoolean("useColorForMotionVectors", useColorForMotionVectors);
     }
 
+    /* Sets default values. Subclasses can override to add defaults to this button.
+    
+     */
+    public void doSetDefaults() {
+        setDisplayVectorsEnabled(true);
+        setPpsScaleDisplayRelativeOFLength(false);
+        setMotionVectorLineWidthPixels(2);
+        setDisplayGlobalMotion(true);
+        setPpsScale(0.1F);
+        setDisplayGlobalMotion(true);
+        setRefractoryPeriodUs(DEFAULT_REFRACTORY_PERIOD_US);
+    }
+
     // <editor-fold defaultstate="collapsed" desc="ImuFlowEstimator Class">    
     public class ImuFlowEstimator {
 
@@ -957,6 +980,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             doPrintStatistics();
         }
         resetMaps();
+        prevTs = Integer.MIN_VALUE;
         imuFlowEstimator.reset();
         exportedFlowToMatlab = false;
         motionField.reset();
@@ -1121,7 +1145,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     @Override
-    public void annotate(GLAutoDrawable drawable) {
+    synchronized public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
         }
@@ -1161,7 +1185,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             if (displayGlobalMotion) {
                 speed = motionFlowStatistics.getGlobalMotion().meanGlobalSpeed;
             }
-            DvsMotionOrientationEvent e = new DvsMotionOrientationEvent();
             final int px = 10, py = -13;
 
             float[] rgba = drawMotionVector(gl, px, py, speed, 0);
@@ -1183,8 +1206,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
         }
 
-        if (isDisplayGlobalMotion()) {
-            gl.glLineWidth(getMotionVectorLineWidthPixels());
+        if (displayGlobalMotion) {
+            gl.glLineWidth(motionVectorLineWidthPixels);
             gl.glColor3f(1, 1, 1);
 
             // Draw global translation vector
@@ -1198,7 +1221,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //            gl.glRasterPos2i(2, 10);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
             gl.glPopMatrix();
-            DrawGL.drawString(gl, 15, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2, .5f, Color.black, globMotionString);
+            DrawGL.drawString(gl, 13, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2, .5f, Color.black, globMotionString);
             DrawGL.drawString(gl, 15, chip.getSizeX() / 2, chip.getSizeY() / 2 + 1, .5f, Color.white, globMotionString); // drop shadow
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
@@ -1227,6 +1250,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             DrawGL.drawCircle(gl, sizex / 2, sizey / 2, ppsScale * GLOBAL_MOTION_DRAWING_SCALE
                     * (1 + motionFlowStatistics.getGlobalMotion().meanGlobalExpansion), 15);
             gl.glPopMatrix();
+
+            // Draw angle histogram
+            if (displayGlobalMotionAngleHistogram) {
+                gl.glPushMatrix();
+                gl.glTranslatef(chip.getSizeX() / 2, .6f * chip.getSizeY(), 0);
+                gl.glColor3f(1, 1, 1);
+                gl.glLineWidth(motionVectorLineWidthPixels);
+                motionFlowStatistics.getGlobalMotion().drawAngleHistogram(gl, chip.getSizeX()/2);
+                DrawGL.drawString(gl, 10, 0,0, .5f, Color.white, "Angle dist."); 
+                gl.glPopMatrix();
+            }
 
         }
 
@@ -1374,17 +1408,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      * @return true if invalid timestamp, older than refractoryPeriodUs ago
      */
     private synchronized boolean isInvalidTimestamp(PolarityEvent e) {
-
-        prevTs = ts;
+        if (prevTs == Integer.MIN_VALUE) {
+            prevTs = e.timestamp;
+            return false;
+        }
         int ts = e.getTimestamp();
         final int dt = ts - prevTs;
         if (timestampGapThresholdUs > 0 && (dt > timestampGapThresholdUs)) {
             timestampGapToBeRemoved += dt;
             log.warning(String.format("For event %s,%ndeteceted timestamp gap of %,dus which is greater than timestampGapThresholdUs (%,dus). timestampGapToBeRemoved=%,dus now",
                     e.toString(), dt, timestampGapThresholdUs, timestampGapToBeRemoved));
+            prevTs = ts;
             return false;
         }
-        lastTs = lastTimesMap[x][y][type];
+        prevTs = ts;
+        lastTs = lastTimesMap[e.x][e.y][e.type];
         if (ts < lastTs) {
             log.warning(String.format("For event %s,%nnonmontoic timestamp ts=%,d < lastTs=%,d", e.toString(), ts, lastTs));
             return false;
@@ -1409,7 +1447,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (isInvalidTimestamp(e)) {
             return false;
         }
-        ts = e.timestamp-timestampGapToBeRemoved;
+        ts = e.timestamp - timestampGapToBeRemoved;
         x = e.x >> subSampleShift;
         y = e.y >> subSampleShift;
         type = e.getPolarity() == PolarityEvent.Polarity.Off ? 0 : 1;
@@ -2797,6 +2835,22 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     public void setTimestampGapThresholdUs(int timestampGapThresholdUs) {
         this.timestampGapThresholdUs = timestampGapThresholdUs;
         putInt("timestampGapThresholdUs", timestampGapThresholdUs);
+    }
+
+    /**
+     * @return the displayGlobalMotionAngleHistogram
+     */
+    public boolean isDisplayGlobalMotionAngleHistogram() {
+        return displayGlobalMotionAngleHistogram;
+    }
+
+    /**
+     * @param displayGlobalMotionAngleHistogram the
+     * displayGlobalMotionAngleHistogram to set
+     */
+    public void setDisplayGlobalMotionAngleHistogram(boolean displayGlobalMotionAngleHistogram) {
+        this.displayGlobalMotionAngleHistogram = displayGlobalMotionAngleHistogram;
+        putBoolean("displayGlobalMotionAngleHistogram", displayGlobalMotionAngleHistogram);
     }
 
 }
