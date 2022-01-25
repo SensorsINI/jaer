@@ -396,7 +396,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(patchTT, "sliceMaxValue", "<html> the maximum value used to represent each pixel in the time slice:<br>1 for binary or signed binary slice, (in conjunction with rectifyEventPolarities==true), etc, <br>up to 127 by these byte values");
         setPropertyTooltip(patchTT, "rectifyPolarties", "<html> whether to rectify ON and OFF polarities to unsigned counts; true ignores polarity for block matching, false uses polarity with sliceNumBits>1");
         setPropertyTooltip(patchTT, "scalesToCompute", "Scales to compute, e.g. 1,2; blank for all scales. 0 is full resolution, 1 is subsampled 2x2, etc");
-        setPropertyTooltip(patchTT, "defaults", "Sets reasonable defaults");
         setPropertyTooltip(patchTT, "enableImuTimesliceLogging", "Logs IMU and rate gyro");
         setPropertyTooltip(patchTT, "startRecordingForEDFLOW", "Start to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
         setPropertyTooltip(patchTT, "stopRecordingForEDFLOW", "Stop to record events and its OF result to a file which can be converted to a .bin file for EDFLOW.");
@@ -740,50 +739,39 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         return isDisplayRawInput() ? in : dirPacket;
     }
 
-    public void doDefaults() {
-        setSearchMethod(SearchMethod.DiamondSearch);
-        setBlockDimension(BLOCK_DIMENSION_DEFAULT);
+    @Override
+    public void doSetDefaults() {
+        super.doSetDefaults(); //To change body of generated methods, choose Tools | Templates.
+        setSearchMethod(PatchMatchFlow.SearchMethod.DiamondSearch);
+        setBlockDimension(PatchMatchFlow.BLOCK_DIMENSION_DEFAULT);
         setNumScales(3);
         setSearchDistance(3);
-
         setAdaptiveEventSkipping(false);
         setSkipProcessingEventsCount(0);
-        setProcessingTimeLimitMs(5000);
-        setDisplayVectorsEnabled(true);
-        setPpsScaleDisplayRelativeOFLength(false);
-        setDisplayGlobalMotion(true);
+        setCornerSize(1);
         setRectifyPolarties(true); // rectify to better handle cases of steadicam where pan/tilt flips event polarities
-        setPpsScale(.1f);
-        setSliceMaxValue(SLICE_MAX_VALUE_DEFAULT);
+        setSliceMaxValue(PatchMatchFlow.SLICE_MAX_VALUE_DEFAULT);
         setSkipProcessingEventsCount(0);
-        setDisplayGlobalMotion(true);
-
-        setValidPixOccupancy(VALID_PIXEL_OCCUPANCY_DEFAULT); // at least this fraction of pixels from each block must both have nonzero values
-        setMaxAllowedSadDistance(MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT);
-
-        setSliceMethod(SliceMethod.AreaEventNumber);
+        setValidPixOccupancy(PatchMatchFlow.VALID_PIXEL_OCCUPANCY_DEFAULT); // at least this fraction of pixels from each block must both have nonzero values
+        setMaxAllowedSadDistance(PatchMatchFlow.MAX_ALLOWABLE_SAD_DISTANCE_DEFAULT);
+        setSliceMethod(PatchMatchFlow.SliceMethod.AreaEventNumber);
         setAdaptiveSliceDuration(true);
-        setSliceEventCount(SLICE_EVENT_COUNT_DEFAULT);
-
+        setSliceEventCount(PatchMatchFlow.SLICE_EVENT_COUNT_DEFAULT);
         // compute nearest power of two over block dimension
-//        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2)) + 1;
-        setAreaEventNumberSubsampling(AREA_EVENT_NUMBER_SUBSAMPLING_DEFAULT); // set to paper value
-
-//        // set event count so that count=block area * sliceMaxValue/4; 
-//        // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
-//        final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
-//        setSliceEventCount(eventCount);
+        //        int ss = (int) (Math.log(blockDimension - 1) / Math.log(2)) + 1;
+        setAreaEventNumberSubsampling(PatchMatchFlow.AREA_EVENT_NUMBER_SUBSAMPLING_DEFAULT); // set to paper value
+        //        // set event count so that count=block area * sliceMaxValue/4;
+        //        // i.e. set count to roll over when slice pixels from most subsampled scale are half full if they are half stimulated
+        //        final int eventCount = (((blockDimension * blockDimension) * sliceMaxValue) / 2) >> (numScales - 1);
+        //        setSliceEventCount(eventCount);
         setSliceDurationMinLimitUS(1000);
         setSliceDurationMaxLimitUS(300000);
-        setSliceDurationUs(SLICE_DURATION_TIME_US_DEFAULT); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
-
+        setSliceDurationUs(PatchMatchFlow.SLICE_DURATION_TIME_US_DEFAULT); // set a bit smaller max duration in us to avoid instability where count gets too high with sparse input
         setShowCorners(true);
-        setCalcOFonCornersEnabled(true);   // Enable corner detector
-        setCornerCircleSelection(CornerCircleSelection.OuterCircle);
-        setCornerThr(0.2f);
-
-        setCoarseSliceSaturationFraction(COARSE_SLICE_SATURATION_DEFAULT);
-
+        setCalcOFonCornersEnabled(true); // Enable corner detector
+        setCornerCircleSelection(PatchMatchFlow.CornerCircleSelection.OuterCircle);
+        setCornerThr(0.2F);
+        setCoarseSliceSaturationFraction(PatchMatchFlow.COARSE_SLICE_SATURATION_DEFAULT);
     }
 
     /**
@@ -794,7 +782,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
      *
      * @param f the array of int accumulation values; the absolute values are
      * used to count
-     * @return -sum(p log_2(p)) ; if all pixels are zero then return flat entropy value
+     * @return -sum(p log_2(p)) ; if all pixels are zero then return flat
+     * entropy value
      */
     private float computeEntropy(byte[][] a) {
         int sum = 0;
@@ -806,12 +795,14 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 n++;
             }
         }
-        if(sum==0) return (float)(Math.log(n)/Math.log(2));
+        if (sum == 0) {
+            return (float) (Math.log(n) / Math.log(2));
+        }
         for (byte[] a1 : a) {
             for (byte f : a1) {
                 if (f != 0) {
                     float k = Math.abs(f);
-                    float p=k/sum;
+                    float p = k / sum;
                     sumLog += (float) (p * Math.log(p));
                 }
             }
@@ -1023,10 +1014,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         // first draw corners
         if (showCorners) {
             gl.glLineWidth(getMotionVectorLineWidthPixels());
-            gl.glColor4f(1, 1, 1, 0.5f);
+            gl.glColor4f(.8f, .8f, .8f, 0.25f);
             for (BasicEvent e : cornerEvents) {
                 gl.glPushMatrix();
-                DrawGL.drawCircle(gl, e.x, e.y, getCornerSize(), 16);
+                DrawGL.drawCircle(gl, e.x, e.y, cornerSize, 16);
                 gl.glPopMatrix();
             }
         }
@@ -1286,7 +1277,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 }
                 break;
             case CoarseSliceSaturation:
-                if ((float) saturatedCoarseSlicePixels / (numCoarseSlicePixels*coarseSliceOccupancy) < coarseSliceSaturationFraction) {
+                if ((float) saturatedCoarseSlicePixels / (numCoarseSlicePixels * coarseSliceOccupancy) < coarseSliceSaturationFraction) {
                     return false;
                 }
                 break;
@@ -2359,7 +2350,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 sb.append(String.format("k=%,d", sliceEventCount));
                 break;
             case CoarseSliceSaturation:
-                sb.append(String.format("saturated > %.2f%% * %.2f%% (occupied)", coarseSliceSaturationFraction * 100, 100*coarseSliceOccupancy ));
+                sb.append(String.format("saturated > %.2f%% * %.2f%% (occupied)", coarseSliceSaturationFraction * 100, 100 * coarseSliceOccupancy));
                 break;
             case ConstantDuration:
                 sb.append(String.format("dt > %.2fms", sliceDurationUs * 1e-3f));
