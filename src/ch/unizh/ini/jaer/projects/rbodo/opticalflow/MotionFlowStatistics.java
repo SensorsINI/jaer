@@ -1,24 +1,27 @@
 package ch.unizh.ini.jaer.projects.rbodo.opticalflow;
 
 import java.awt.geom.Point2D;
-import com.jmatio.io.MatFileWriter;
 import com.jmatio.types.MLDouble;
+import com.jogamp.opengl.GL;
+import com.jogamp.opengl.GL2;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.logging.Level;
 import net.sf.jaer.eventio.AEDataFile;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.TobiLogger;
+import org.apache.commons.math3.stat.Frequency;
 
 /**
  * This class computes and prints several objects of interest when evaluating
@@ -51,7 +54,7 @@ public class MotionFlowStatistics {
     public EventDensity eventDensity;
     TobiLogger globalMotionVectorLogger;
     private int windowSize = Measurand.WINDOW_SIZE;
-   /**
+    /**
      * Used for logging accuracy stats
      */
     TobiLogger accuracyStatisticsLogger = null;
@@ -76,8 +79,11 @@ public class MotionFlowStatistics {
 
     private List<Double> globalFlows = new ArrayList<>();
 
-    /** Definitions of outliers, according to KITTI standard as used in EV-FlowNet, since EV-FlowNet had 45Hz frames (KITTI had only 10Hz FPS) */
-    public final float OUTLIER_ABS_PPS = 3*45, OUTLIER_RELATIVE_PERCENT = 5;
+    /**
+     * Definitions of outliers, according to KITTI standard as used in
+     * EV-FlowNet, since EV-FlowNet had 45Hz frames (KITTI had only 10Hz FPS)
+     */
+    public final float OUTLIER_ABS_PPS = 3 * 45, OUTLIER_RELATIVE_PERCENT = 5;
     protected int sampleCount = 0;
     private int outlierCount = 0;
     private boolean wasAbsOutlier = false; // flag 
@@ -287,19 +293,22 @@ public class MotionFlowStatistics {
     public class GlobalMotion {
 
         /**
-         * Means and standard deviations of flow. 
-         * 
-         * <p> meanGlobalTrans is the average
-         * translational flow. </p>
-         * 
-         * <p>meanGlobalSpeed is the average magnitude of the
-         * flow vector. </p>
-         * 
-         * <p>meanGlobalExpansion is the average flow projected onto
-         * radii from center, and meanGlobalRotation is the average projected
-         * onto circumferences around center.</p>
-         * 
-         * <p> covGlobalSpeed is the coefficient of variation (sigma/mean) of the speeds. </p>
+         * Means and standard deviations of flow.
+         *
+         * <p>
+         * meanGlobalTrans is the average translational flow. </p>
+         *
+         * <p>
+         * meanGlobalSpeed is the average magnitude of the flow vector. </p>
+         *
+         * <p>
+         * meanGlobalExpansion is the average flow projected onto radii from
+         * center, and meanGlobalRotation is the average projected onto
+         * circumferences around center.</p>
+         *
+         * <p>
+         * covGlobalSpeed is the coefficient of variation (sigma/mean) of the
+         * speeds. </p>
          */
         public float meanGlobalVx, sdGlobalVx, meanGlobalVy, sdGlobalVy, meanGlobalRotation, meanGlobalTrans, sdGlobalTrans,
                 sdGlobalRotation, meanGlobalExpansion, sdGlobalExpansion, meanGlobalSpeed, sdGlobalSpeed, covGlobalSpeed;
@@ -310,6 +319,8 @@ public class MotionFlowStatistics {
         private final Measurand rollDps;
         private final Measurand pitchDps;
         private final Measurand yawDps;
+        public Frequency globalMotionAngleFrequency;
+        public float ANGLE_BIN_DEGREES = 10, ANGLE_HISTOGRAM_MAX_RADIUS_PIXELS=100;
 
         private int windowSize = Measurand.WINDOW_SIZE;
 
@@ -332,6 +343,7 @@ public class MotionFlowStatistics {
             rollDps = new Measurand(windowLength);
             pitchDps = new Measurand(windowLength);
             yawDps = new Measurand(windowLength);
+            globalMotionAngleFrequency = new Frequency();
         }
 
         public void setWindowSize(int windowSize) {
@@ -361,6 +373,7 @@ public class MotionFlowStatistics {
             globalRotation.clear();
             globalExpansion.clear();
             globalSpeed.clear();
+            globalMotionAngleFrequency.clear();
         }
 
         /**
@@ -429,6 +442,30 @@ public class MotionFlowStatistics {
             final float exProj = (vx * rx + vy * ry);
             globalExpansion.addValue(exProj / (rx * rx + ry * ry));
 
+            double angleDeg = 180 / Math.PI * Math.atan2(vy, vx);
+            int angleBin = (int) Math.round(angleDeg / ANGLE_BIN_DEGREES);
+            if (globalMotionAngleFrequency.getSumFreq() >= windowSize) {
+                globalMotionAngleFrequency.clear();
+            } else {
+                globalMotionAngleFrequency.addValue(angleBin);
+            }
+
+        }
+
+        public void drawAngleHistogram(GL2 gl, float fullScalePixels) {
+            Iterator it = globalMotionAngleFrequency.valuesIterator();
+            gl.glBegin(GL.GL_LINES);
+            while (it.hasNext()) {
+                Long k = (long) (it.next());
+                double angleRad = (Math.PI / 180) * ANGLE_BIN_DEGREES * k;
+                double radius = fullScalePixels * globalMotionAngleFrequency.getPct(k);
+                double x = (radius * Math.cos(angleRad));
+                double y = (radius * Math.sin(angleRad));
+                gl.glVertex2d(0,0);
+                gl.glVertex2d(x, y);
+
+            }
+            gl.glEnd();
         }
 
         /**
@@ -449,7 +486,7 @@ public class MotionFlowStatistics {
             sdGlobalExpansion = (float) globalExpansion.getStandardDeviation();
             meanGlobalSpeed = (float) globalSpeed.getMean();
             sdGlobalSpeed = (float) globalSpeed.getStandardDeviation();
-            covGlobalSpeed=!Float.isNaN(meanGlobalSpeed)?sdGlobalSpeed/meanGlobalSpeed:Float.NaN;
+            covGlobalSpeed = !Float.isNaN(meanGlobalSpeed) ? sdGlobalSpeed / meanGlobalSpeed : Float.NaN;
 
             globalFlows.add((double) currentTs);
             globalFlows.add((double) meanGlobalVx);
@@ -680,7 +717,7 @@ public class MotionFlowStatistics {
 //                    outlierCount++; // don't double count outliers
 //                }
 //            }
-            wasAbsOutlier=false; // TODO depends on absolute outlier check first
+            wasAbsOutlier = false; // TODO depends on absolute outlier check first
         }
 
         @Override
