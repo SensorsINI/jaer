@@ -130,7 +130,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     public static final float VALID_PIXEL_OCCUPANCY_DEFAULT = 0.01f;
     private float validPixOccupancy = getFloat("validPixOccupancy", VALID_PIXEL_OCCUPANCY_DEFAULT);  // threshold for valid pixel percent for one block
     private float weightDistance = getFloat("weightDistance", 0.95f);        // confidence value consists of the distance and the dispersion, this value set the distance value
-    private static final int MAX_SKIP_COUNT = 1000;
+    private static final int MAX_SKIP_COUNT = 200;
     private int skipProcessingEventsCount = getInt("skipProcessingEventsCount", 0); // skip this many events for processing (but not for accumulating to bitmaps)
     private int skipCounter = 0;
     private boolean adaptiveEventSkipping = getBoolean("adaptiveEventSkipping", true);
@@ -421,7 +421,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(adaptTT, "sliceEventCountMaxLimit", "The maximum value of slice event count.");
         setPropertyTooltip(adaptTT, "adapativeSliceDurationProportionalErrorGain", "gain for proporportional change of duration or slice event number. typically 0.05f for bang-bang, and 0.5f for proportional control");
         setPropertyTooltip(adaptTT, "adapativeSliceDurationUseProportionalControl", "If true, then use proportional error control. If false, use bang-bang control with sign of match distance error");
-        setPropertyTooltip(adaptTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps)");
+        setPropertyTooltip(adaptTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps). Limited to "+MAX_SKIP_COUNT+" events.");
         setPropertyTooltip(adaptTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
         setPropertyTooltip(adaptTT, "adaptiveSliceDuration", "<html>Enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match distance is too small, increaes duration or event count, and if too far, decreases duration or event count.<p>If using <i>AreaEventNumber</i> slice rotation method, don't increase count if actual duration is already longer than <i>sliceDurationUs</i>");
         setPropertyTooltip(adaptTT, "nonGreedyFlowComputingEnabled", "<html>Enables fairer distribution of computing flow by areas; an area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use <i>processingTimeLimitMs</i> to ensure minimum frame rate");
