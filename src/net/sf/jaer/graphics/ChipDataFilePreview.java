@@ -278,6 +278,11 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             if (ae != null) {
                 renderer.render(ae);
                 ArrayList<FrameAnnotater> annotators = canvas.getDisplayMethod().getAnnotators();
+//                if (chip.getFilterChain() != null) {
+//                    chip.getFilterChain().setFilteringEnabled(false);
+//                }
+                
+
                 canvas.getDisplayMethod().setAnnotators(null);
                 canvas.paintFrame();
                 canvas.getDisplayMethod().setAnnotators(annotators);

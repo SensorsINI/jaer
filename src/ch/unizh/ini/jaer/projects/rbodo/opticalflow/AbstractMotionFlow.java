@@ -24,10 +24,12 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     /**
      * The search distance on each side of event in pixels
      */
-    protected int searchDistance = getInt("searchDistance", 3);
+    protected int searchDistance = getInt("searchDistance", DEFAULT_SEARCH_DISTANCE);
+    private static final int DEFAULT_SEARCH_DISTANCE = 3;
 
     /* Events must occur in this time interval before curernt event to be considered. */
-    protected int maxDtThreshold = getInt("maxDtThreshold", 100000);
+    protected int maxDtThreshold = getInt("maxDtThreshold", DEFAULT_MAX_DT);
+    private static final int DEFAULT_MAX_DT = 50000;
 
     private boolean showTimestampMap = getBoolean("showTimestampMap", false);
 
@@ -118,6 +120,15 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
 
         }
     }
+
+    @Override
+    public void doSetDefaults() {
+        super.doSetDefaults(); //To change body of generated methods, choose Tools | Templates.
+        setMaxDtThreshold(DEFAULT_MAX_DT);
+        setSearchDistance(DEFAULT_SEARCH_DISTANCE);
+    }
+    
+    
 
     // Compute the convolution coefficients of a two-dimensional Savitzky-Golay
     // filter used to smooth the data.

@@ -14,7 +14,8 @@ import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 
 /**
- * Static utility methods for drawing stuff. Surround these calls with pushMatrix/popMatrix.
+ * Static utility methods for drawing stuff. Surround these calls with
+ * pushMatrix/popMatrix.
  *
  * @author Bjoern, Tobi Delbruck
  */
@@ -93,7 +94,7 @@ public final class DrawGL {
     private static int boxDisplayListId = 0;
     private static float boxLastW, boxLastH;
 
-   /**
+    /**
      * Draws a box using current open gl color
      *
      * @param gl the opengl context
@@ -110,7 +111,7 @@ public final class DrawGL {
             gl.glRotatef(angle * RAD_TO_DEG, 0, 0, 1);
         }
 
-        if (boxDisplayListId == 0 || width != 2*boxLastW || height != 2*boxLastH) {
+        if (boxDisplayListId == 0 || width != 2 * boxLastW || height != 2 * boxLastH) {
             if (boxDisplayListId != 0) {
                 gl.glDeleteLists(boxDisplayListId, 1);
             }
@@ -131,7 +132,7 @@ public final class DrawGL {
         gl.glCallList(boxDisplayListId);
 
     }
-    
+
     private static int crossDisplayListId = 0;
     private static float crossLastL;
 
@@ -144,14 +145,14 @@ public final class DrawGL {
      * @param length The x length of cross
      * @param angle the angle relative to E
      */
-   public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length,  final float angle) {
+    public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length, final float angle) {
 
         gl.glTranslatef(centerX, centerY, 0);
         if (angle != 0) {
             gl.glRotatef(angle * RAD_TO_DEG, 0, 0, 1);
         }
 
-        if (crossDisplayListId == 0 || length != 2*crossLastL  ) {
+        if (crossDisplayListId == 0 || length != 2 * crossLastL) {
             if (crossDisplayListId != 0) {
                 gl.glDeleteLists(crossDisplayListId, 1);
             }
@@ -237,7 +238,8 @@ public final class DrawGL {
     }
 
     /**
-     * Draws a string using TextRenderer.draw somewhere on the entire drawing surface
+     * Draws a string using TextRenderer.draw somewhere on the entire drawing
+     * surface
      *
      * @param drawable surface
      * @param fontSize typically 12 to 36
@@ -262,9 +264,10 @@ public final class DrawGL {
         textRenderer.endRendering();
         return r;
     }
-    
-        /**
-     * Draws a string using TextRenderer.draw using native GL coordinates, usually setup to represent pixels on AEChip
+
+    /**
+     * Draws a string using TextRenderer.draw using native GL coordinates,
+     * usually setup to represent pixels on AEChip
      *
      * @param gl the rendering context surface
      * @param fontSize typically 12 to 36
@@ -282,10 +285,27 @@ public final class DrawGL {
         textRenderer.begin3DRendering();
         textRenderer.setColor(color);
         Rectangle2D r = textRenderer.getBounds(s);
-        textRenderer.draw(s, (int) (x - alignmentX * r.getWidth()), (int)(y));
+        textRenderer.draw(s, (int) (x - alignmentX * r.getWidth()), (int) (y));
         textRenderer.end3DRendering();
         return r;
     }
-    
 
+   /**
+     * Draws a string with drop shadow effect using TextRenderer.draw using native GL coordinates,
+     * usually setup to represent pixels on AEChip
+     *
+     * @param gl the rendering context surface
+     * @param fontSize typically 12 to 36
+     * @param x x position (0 at left)
+     * @param y y position (0 at bottom)
+     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
+     * @param color, e.g. Color.red
+     * @param s the string to draw
+     * @return the bounds of the text
+     */
+       public static Rectangle2D drawStrinDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+        drawString(gl, fontSize, x+1, y-1, alignmentX, Color.black, s);
+        Rectangle2D r = drawString(gl, fontSize, x, y, alignmentX, color, s);
+        return r;
+    }
 }
