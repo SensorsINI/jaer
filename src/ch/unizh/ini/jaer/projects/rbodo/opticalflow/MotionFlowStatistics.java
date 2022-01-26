@@ -457,10 +457,15 @@ public class MotionFlowStatistics {
             gl.glBegin(GL.GL_LINES);
             while (it.hasNext()) {
                 Long k = (long) (it.next());
-                double angleRad = (Math.PI / 180) * ANGLE_BIN_DEGREES * k;
                 double radius = fullScalePixels * globalMotionAngleFrequency.getPct(k);
+                if(radius==0) continue;
+                double angleRad = (Math.PI / 180) * ANGLE_BIN_DEGREES * k;
                 double x = (radius * Math.cos(angleRad));
                 double y = (radius * Math.sin(angleRad));
+                gl.glColor3f(0,0,0);
+                gl.glVertex2d(1,-1);
+                gl.glVertex2d(x+1, y-1);
+                gl.glColor3f(1,1,1);
                 gl.glVertex2d(0,0);
                 gl.glVertex2d(x, y);
 
