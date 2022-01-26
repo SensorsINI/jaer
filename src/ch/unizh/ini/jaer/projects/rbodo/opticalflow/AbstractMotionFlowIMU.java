@@ -1020,7 +1020,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 break;
             case AEInputStream.EVENT_REWOUND:
-            case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
+//            case AEInputStream.EVENT_NON_MONOTONIC_TIMESTAMP:
             case AEInputStream.EVENT_REPOSITIONED:
                 if (isFilterEnabled()) {
                     log.info(evt.toString() + ": resetting filter after printing collected statistics if measurement enabled");
@@ -1221,8 +1221,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //            gl.glRasterPos2i(2, 10);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
             gl.glPopMatrix();
-            DrawGL.drawString(gl, 13, chip.getSizeX() / 2+1, chip.getSizeY() / 2-1, .5f, Color.black, globMotionString);
-            DrawGL.drawString(gl, 13, chip.getSizeX() / 2 , chip.getSizeY() / 2, .5f, Color.white, globMotionString); // drop shadow
+            DrawGL.drawString(gl, 13, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2 - 1, .5f, Color.black, globMotionString);
+            DrawGL.drawString(gl, 13, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, globMotionString); // drop shadow
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
             // draw quartiles statistics ellipse
@@ -1257,8 +1257,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 gl.glTranslatef(chip.getSizeX() / 2, .6f * chip.getSizeY(), 0);
                 gl.glColor3f(1, 1, 1);
                 gl.glLineWidth(motionVectorLineWidthPixels);
-                motionFlowStatistics.getGlobalMotion().drawAngleHistogram(gl, chip.getSizeX()/2);
-                DrawGL.drawString(gl, 10, 0,0, .5f, Color.white, String.format("Angle dist. N=%,d",motionFlowStatistics.getGlobalMotion().globalMotionAngleFrequency.getSumFreq())); 
+                motionFlowStatistics.getGlobalMotion().drawAngleHistogram(gl, chip.getSizeX() / 2);
+                DrawGL.drawString(gl, 10, 0, 0, .5f, Color.white, String.format("Angle dist. N=%,d", motionFlowStatistics.getGlobalMotion().globalMotionAngleFrequency.getSumFreq()));
                 gl.glPopMatrix();
             }
 
@@ -1647,6 +1647,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         log.info("stopping motion vector logging from " + motionVectorEventLogger);
         motionVectorEventLogger.setEnabled(false);
         motionVectorEventLogger = null;
+        getSupport().firePropertyChange("doToggleOffLogMotionVectorEvents", true, false);
     }
 
     synchronized public void doToggleOnLogGlobalMotionFlows() {
@@ -1681,6 +1682,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         log.info("Stopping global motion logging from " + motionFlowStatistics.globalMotionVectorLogger);
         motionFlowStatistics.globalMotionVectorLogger.setEnabled(false);
         motionFlowStatistics.globalMotionVectorLogger = null;
+        getSupport().firePropertyChange("doToggleOffLogGlobalMotionFlows", true, false);
     }
 
     synchronized public void doToggleOnLogAccuracyStatistics() {
@@ -1715,6 +1717,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         log.info("Stopping motionFlowStatistics.accuracyStatisticsLogger logging from " + motionFlowStatistics.accuracyStatisticsLogger);
         motionFlowStatistics.accuracyStatisticsLogger.setEnabled(false);
         motionFlowStatistics.accuracyStatisticsLogger = null;
+        getSupport().firePropertyChange("doToggleOffLogAccuracyStatistics", true, false);
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --speedControlEnabled--">
