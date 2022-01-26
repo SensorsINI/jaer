@@ -477,7 +477,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
         return isDisplayRawInput() ? in : dirPacket;
     }
 
-    public void doDefaults() {
+    public void doSetDefaults() {
         setSearchMethod(SearchMethod.DiamondSearch);
         setBlockDimension(21);
         setNumScales(2);
