@@ -220,6 +220,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private HashMap<String, MyControl> propertyControlMap = new HashMap();
     private JComponent ungroupedControls = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
+    ArrayList<AbstractButton> doButList = new ArrayList();
 
     /**
      * Creates new form FilterPanel
@@ -322,7 +323,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             // these methods, e.g. "void doDisableServo()" do an action.
             // also, a pair of methods doPressXXX and doReleaseXXX will add a button that calls the first method on press and the 2nd on release
             Insets butInsets = new Insets(0, 0, 0, 0);
-            ArrayList<AbstractButton> doButList = new ArrayList();
+
             for (Method method : methods) {
                 // add a button XXX that calls doPressXXX on press and doReleaseXXX on release of button
                 if (method.getName().startsWith("doPress")
@@ -1569,6 +1570,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                if (yes) {
 //                    log.info("selecting checkbox from " + propertyChangeEvent);
 //                }
+            } else if (propertyChangeEvent.getPropertyName().startsWith("doToggleOff")) {
+                // handle toggle off property changes to disable buttons that may have started logging, for example
+                for (AbstractButton b : doButList) {
+                    if((b instanceof JToggleButton) && b.getText().equals(propertyChangeEvent.getPropertyName().substring(11))){
+                        b.setSelected(false);
+                    }
+                }
             } else {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
