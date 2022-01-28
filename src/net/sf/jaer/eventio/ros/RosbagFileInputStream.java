@@ -124,9 +124,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private FileChannel channel = null;
 
 //    private static final String[] TOPICS = {"/dvs/events"};\
-    private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER = "/davis/left/"; // TODO arbitrarily choose left camera for MVSEC for now
-    private static final String TOPIC_EVENTS = "events", TOPIC_IMAGE = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
-    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE/*, TOPIC_IMU, TOPIC_EXPOSURE*/}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
 //    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE};
     private ArrayList<String> topicList = new ArrayList();
     private ArrayList<String> topicFieldNames = new ArrayList();
@@ -149,8 +146,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private AEFifo[] aeFifos = {dvsFifo, apsFifo, imuFifo};
     private int MAX_RAW_EVENTS_BUFFER_SIZE = 1000000;
 
+    private static final String TOPIC_EVENTS = "events", TOPIC_IMAGE_RAW = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
+    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE_RAW/*, TOPIC_IMU, TOPIC_EXPOSURE*/}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
+
+    private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER = "/davis/left/", EV_IMO_TOPIC_HEADER = "/samsung/camera/"; // TODO arbitrarily choose left camera for MVSEC for now
+
     private enum RosbagFileType {
-        RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), Unknown("???");
+        RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), EV_IMO(EV_IMO_TOPIC_HEADER), Unknown("???");
         private String header;
 
         private RosbagFileType(String header) {
@@ -195,7 +197,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
         log.info("reading rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);
-        StringBuilder sb = new StringBuilder("Bagfile information:\n");
+        StringBuilder sb = new StringBuilder("Bagfile information:\nTopic_name\tMessage_count\tMessage_type\n------------------------\n");
         for (TopicInfo topic : bagFile.getTopics()) {
             sb.append(topic.getName() + " \t\t" + topic.getMessageCount()
                     + " msgs \t: " + topic.getMessageType() + " \t"
@@ -203,8 +205,26 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                     + "\n");
             if (topic.getName().contains(RosbagFileType.MVSEC.header)) {
                 rosbagFileType = RosbagFileType.MVSEC;
+                log.warning("MVSEC bag: Arbitarily using camera input " + MVSEC_TOPIC_HEADER);
+                for (String s : STANARD_TOPICS) {
+                    String t = rosbagFileType.header + s;
+                    topicList.add(t);
+                    topicFieldNames.add(t.substring(t.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
+                }
             } else if (topic.getName().contains(RosbagFileType.RPG.header)) {
                 rosbagFileType = RosbagFileType.RPG;
+                log.warning("RPG dataset bag: Arbitarily using camera input " + RPG_TOPIC_HEADER);
+                for (String s : STANARD_TOPICS) {
+                    String t = rosbagFileType.header + s;
+                    topicList.add(t);
+                    topicFieldNames.add(t.substring(t.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
+                }
+            } else if (topic.getName().contains(RosbagFileType.EV_IMO.header)) {
+                rosbagFileType = RosbagFileType.EV_IMO;
+                log.warning("EV_IMO bag: Arbitarily using camera input " + EV_IMO_TOPIC_HEADER);
+                String t = rosbagFileType.header + TOPIC_EVENTS;
+                topicList.add(t);
+                topicFieldNames.add(t.substring(t.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
             }
         }
         sb.append("Duration: " + bagFile.getDurationS() + "s\n");
@@ -219,8 +239,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             topicFieldNames.add(topic.substring(topic.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
         }
 
-        generateMessageIndexes(progressMonitor);
         log.info(rosbagInfoString);
+        generateMessageIndexes(progressMonitor);
     }
 
     @Override
@@ -424,7 +444,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
                     }
                     break;
-                    case "sensor_msgs":
+                    case "sensor_msgs": // for RPG and MVSEC
                         switch (type) {
                             case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
                                 // Make sure the image is from APS, otherwise some other image topic will be also processed here.
@@ -573,6 +593,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                         }
                         break;
                     case "dvs_msgs":
+                    case "samsung_event_msgs": // for EV_IMO
                         hasDvs.setTrue();
                         switch (type) {
                             case "EventArray":
@@ -718,15 +739,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         while (aePacketRawBuffered.getNumEvents() < numEventsToRead && aePacketRawBuffered.getNumEvents() < AEPacketRaw.MAX_PACKET_SIZE_EVENTS) {
             try {
                 aePacketRawBuffered.append(getNextRawPacket(numEventsToRead > 0));
-            } catch (EOFException ex) {
-                rewind();
-                return readPacketByNumber(numEventsToRead);
             } catch (BagReaderException ex) {
                 throw new IOException(ex);
             }
         }
+        aePacketRawOutput.clear();
         AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, numEventsToRead); // copy over collected events
-        // now use tmp packet to copy rest of buffered to, and then make that the new buffered
+        // now use tmp packet to copy rest of buffered to
         aePacketRawTmp.setNumEvents(0);
         AEPacketRaw.copy(aePacketRawBuffered, numEventsToRead, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - numEventsToRead);
         AEPacketRaw tmp = aePacketRawBuffered;
@@ -1182,7 +1201,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             ObjectOutputStream oos = new ObjectOutputStream(out);
             oos.writeObject(msgIndexes);
             oos.flush();
-            log.info("cached the index for rosbag file " + getFile() + " in " + file);
+            log.info(String.format("cached the message index for %,d messages for rosbag file %s in %s", msgIndexes.size(), getFile(), file));
         } catch (Exception e) {
             log.warning("could not cache the message index to disk: " + e.toString());
         }
@@ -1217,6 +1236,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 }
                 progressMonitor.setNote("done reading cached index");
                 progressMonitor.setProgress(progressMonitor.getMaximum());
+            }
+            if (msgIndexes.size() == 0) {
+                log.warning(String.format("cached index file %s has size zero; rebuilding it", file));
+                return false;
             }
             return true;
         } catch (Exception e) {
