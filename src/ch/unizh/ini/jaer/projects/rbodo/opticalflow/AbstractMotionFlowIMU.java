@@ -752,11 +752,14 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
          * loaded from file. If event is an IMU event, so enclosing loop can
          * continue to next event, skipping flow processing of this IMU event.
          *
-         * Return false if event is real event or no flow available. Return true
+         * Return false if measureAccuracy is false, or if event is real event or no flow available. Return true
          * if IMU event or calibration loaded that lables every time with GT
          * flow for x,y address.
          */
         public boolean calculateImuFlow(Object o) {
+            if (!measureAccuracy) {
+                return false;
+            }
             if (importedGTfromMatlab) {
                 if (ts >= tsGTframe[0][0] && ts < tsGTframe[0][1]) {
                     vx = (float) vxGTframe[y][x];
@@ -836,7 +839,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 return false;
             }
             if (!(o instanceof ApsDvsEvent)) {
-                return true; // continue processing this event outside
+                return false; // continue processing this event outside, i.e. for pure DVS events
             }
             ApsDvsEvent e = (ApsDvsEvent) o;
             if (e.isImuSample()) {
