@@ -1103,6 +1103,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                         gl.glPopMatrix();
                     }
                 }
+                gl.glPopMatrix();
                 {// a bunch of cryptic crap to draw a string the same width as the histogram...
                     gl.glPushMatrix();
                     textRenderer.begin3DRendering();
@@ -1140,7 +1141,6 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                     textRenderer.end3DRendering();
                     gl.glPopMatrix();
                 } // after text
-                gl.glPopMatrix();
             } // back to original chip coordinates
 //                log.info(String.format("processed %.1f%% (%d/%d)", 100 * (float) nProcessed / (nSkipped + nProcessed), nProcessed, (nProcessed + nSkipped)));
 
