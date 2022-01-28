@@ -77,7 +77,7 @@ import org.apache.commons.lang3.ArrayUtils;
  */
 @Description("<html>EDFLOW: Computes optical flow with vector direction using SFAST keypoint/corner detection and adaptive time slice block matching (ABMOF) as published in<br>"
         + "Liu, M., and Delbruck, T. (2018). <a href=\"http://bmvc2018.org/contents/papers/0280.pdf\">Adaptive Time-Slice Block-Matching Optical Flow Algorithm for Dynamic Vision Sensors</a>.<br> in BMVC 2018 (Nescatle upon Tyne)")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater {
 
     /* LDSP is Large Diamond Search Pattern, and SDSP mens Small Diamond Search Pattern.
