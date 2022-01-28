@@ -318,6 +318,7 @@ public class AEPacketRaw extends AEPacket {
         System.arraycopy(source.getAddresses(), 0, addresses, numEvents, source.getNumEvents());
         System.arraycopy(source.getTimestamps(), 0, timestamps, numEvents, source.getNumEvents());
         setNumEvents(getNumEvents() + source.getNumEvents());
+        AEPacketRaw.timestampCheck(this);
         return this;
     }
 
@@ -351,9 +352,9 @@ public class AEPacketRaw extends AEPacket {
      * Static method to copy from one AEPacketRaw to another. Assumes events
      * before <i>destPos</i> make sense.
      *
-     * @param src source packet
+     * @param src source packet, cannot be null
      * @param srcPos the starting index in src
-     * @param dest destination packet
+     * @param dest destination packet, cannot be null
      * @param destPos the starting index in destination
      * @param length the number of events to copy from src
      */
@@ -362,6 +363,12 @@ public class AEPacketRaw extends AEPacket {
 
         if (src == null || dest == null) {
             throw new NullPointerException("null src or dest");
+        }
+        if (srcPos >= src.getNumEvents()) {
+            return;
+        }
+        if(destPos>dest.getNumEvents()){
+            throw new IllegalArgumentException(String.format("destimation position %,d is past its current size %,d",destPos, dest.getNumEvents()));
         }
         dest.ensureCapacity(destPos + length);
         System.arraycopy(src.getAddresses(), srcPos, dest.getAddresses(), destPos, length);
