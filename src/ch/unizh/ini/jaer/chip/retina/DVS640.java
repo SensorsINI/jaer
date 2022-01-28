@@ -41,6 +41,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -72,8 +73,6 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS640 extends AETemporalConstastRetina implements Serializable {
 
-    protected JMenu dvs128Menu = null;
-    private JMenu ledMenu = null;
     private DavisRenderer dvsRenderer;
     private ChipRendererDisplayMethodRGBA dvsDisplayMethod = null;
 
@@ -81,13 +80,12 @@ public class DVS640 extends AETemporalConstastRetina implements Serializable {
      * Creates a new instance of DVS640. No biasgen is constructed.
      */
     public DVS640() {
-        setName("DVS128");
-        setDefaultPreferencesFile("biasgenSettings/DVS128/DVS128Slow.xml");
+        setName("DVS640");
         setSizeX(640);
         setSizeY(480);
         setNumCellTypes(2);
-        setPixelHeightUm(40);
-        setPixelWidthUm(40);
+        setPixelHeightUm(9);
+        setPixelWidthUm(9);
         setEventExtractor(new Extractor(this));
         setBiasgen(null); // only for viewing data
         //        ChipCanvas c = getCanvas();
@@ -137,19 +135,24 @@ public class DVS640 extends AETemporalConstastRetina implements Serializable {
      */
     public class Extractor extends RetinaExtractor {
 
-        final short XMASK = 0xfe, XSHIFT = 1, YMASK = 0x7f00, YSHIFT = 8;
+        final int XSHIFT = 1, XMASK = 0b11_1111_1111<<XSHIFT , YSHIFT = 11, YMASK = 0b11_1111_1111<<YSHIFT;
 
         public Extractor(DVS640 chip) {
             super(chip);
-            setXmask(0x03ff); // 10 bits for 640
-            setXshift((byte) 1);
-            setYmask( 0xffc00); // also 10 bits for 480
-            setYshift((byte) 8);
-            setTypemask( 1);
+            setXmask(XMASK); // 10 bits for 640
+            setXshift((byte) XSHIFT);
+            setYmask(YMASK); // also 10 bits for 480
+            setYshift((byte) YSHIFT);
+            setTypemask(1);
             setTypeshift((byte) 0);
-            setFlipx(true);
+            setFlipx(false);
             setFlipy(false);
-            setFliptype(true);
+            setFliptype(false);
+        }
+
+        @Override
+        public int reconstructRawAddressFromEvent(TypedEvent e) {
+            return reconstructDefaultRawAddressFromEvent(e);
         }
 
         /**
@@ -215,38 +218,21 @@ public class DVS640 extends AETemporalConstastRetina implements Serializable {
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
             for (int i = 0; i < n; i += skipBy) { // TODO bug here?
-                int addr = a[i]; // TODO handle special events from hardware correctly
+                int addr = a[i];
                 PolarityEvent e = (PolarityEvent) outItr.nextOutput();
                 e.address = addr;
                 e.timestamp = (timestamps[i]);
-
-                if ((addr & (CypressFX2DVS128HardwareInterface.SYNC_EVENT_BITMASK | BasicEvent.SPECIAL_EVENT_BIT_MASK)) != 0) { // msb is set
-                    e.setSpecial(true);
-                    e.x = -1;
-                    e.y = -1;
-                    e.type = -1;
-                    e.polarity = PolarityEvent.Polarity.On;
-                    if (printedSyncBitWarningCount > 0) {
-                        log.warning("BasicEvent.address=" + e.address + " , raw address=" + addr + " is >32767 (0xefff); either sync (external input event) or stereo bit is set");
-                        printedSyncBitWarningCount--;
-                        if (printedSyncBitWarningCount == 0) {
-                            log.warning("suppressing futher warnings about msb of raw address");
-                        }
-                    }
-                } else {
-                    e.setSpecial(false);
-                    e.type = (byte) ((1 - addr) & 1);
-                    e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-                    e.x = (short) (sxm - ((short) ((addr & XMASK) >>> XSHIFT)));
-                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
-                }
-
+                e.setSpecial(false);
+                e.type = (byte) (addr & 1);
+                e.polarity = e.type == 0 ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
+                e.x = (short) (sxm - (((addr & XMASK) >>> XSHIFT)));
+                e.y = (short) ((addr & YMASK) >>> YSHIFT);
             }
         }
     }
 
-    private class DvsRenderer extends DavisRenderer{
-        
+    private class DvsRenderer extends DavisRenderer {
+
         public DvsRenderer(AEChip chip) {
             super(chip);
         }
@@ -260,10 +246,7 @@ public class DVS640 extends AETemporalConstastRetina implements Serializable {
         public boolean isDisplayFrames() {
             return false;
         }
-        
-        
-        
+
     }
- 
- 
+
 }
