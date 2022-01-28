@@ -233,12 +233,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         sb.append("File type is detected as " + rosbagFileType);
         rosbagInfoString = sb.toString();
 
-        for (String s : STANARD_TOPICS) {
-            String topic = rosbagFileType.header + s;
-            topicList.add(topic);
-            topicFieldNames.add(topic.substring(topic.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
-        }
-
         log.info(rosbagInfoString);
         generateMessageIndexes(progressMonitor);
     }
