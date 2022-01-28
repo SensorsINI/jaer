@@ -100,7 +100,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private static final int MIN_SLICE_EVENT_COUNT_FULL_FRAME = 1000;
     private static final int MAX_SLICE_EVENT_COUNT_FULL_FRAME = 1000000;
 
-//    private int sx, sy;
+    //    private int sx, sy;
     private int currentSliceIdx = 0; // the slice we are currently filling with events
     /**
      * time slice 2d histograms of (maybe signed) event counts slices = new
@@ -147,7 +147,8 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     private int showSlicesScale = 0; // Display the bitmaps
     private float adapativeSliceDurationProportionalErrorGain = getFloat("adapativeSliceDurationProportionalErrorGain", 0.05f); // factor by which an error signal on match distance changes slice duration
     private boolean adapativeSliceDurationUseProportionalControl = getBoolean("adapativeSliceDurationUseProportionalControl", false);
-    private int processingTimeLimitMs = getInt("processingTimeLimitMs", 100); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
+    public static final int DEFAULT_PROCESSING_TIME_LIMIT_MS = 1000;
+    private int processingTimeLimitMs = getInt("processingTimeLimitMs", DEFAULT_PROCESSING_TIME_LIMIT_MS); // time limit for processing packet in ms to process OF events (events still accumulate). Overrides the system EventPacket timelimiter, which cannot be used here because we still need to accumulate and render the events.
     public static final int SLICE_MAX_VALUE_DEFAULT = 15;
     private int sliceMaxValue = getInt("sliceMaxValue", SLICE_MAX_VALUE_DEFAULT);
     private boolean rectifyPolarties = getBoolean("rectifyPolarties", false);
@@ -421,7 +422,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setPropertyTooltip(adaptTT, "sliceEventCountMaxLimit", "The maximum value of slice event count.");
         setPropertyTooltip(adaptTT, "adapativeSliceDurationProportionalErrorGain", "gain for proporportional change of duration or slice event number. typically 0.05f for bang-bang, and 0.5f for proportional control");
         setPropertyTooltip(adaptTT, "adapativeSliceDurationUseProportionalControl", "If true, then use proportional error control. If false, use bang-bang control with sign of match distance error");
-        setPropertyTooltip(adaptTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps). Limited to "+MAX_SKIP_COUNT+" events.");
+        setPropertyTooltip(adaptTT, "skipProcessingEventsCount", "skip this many events for processing (but not for accumulating to bitmaps). Limited to " + MAX_SKIP_COUNT + " events.");
         setPropertyTooltip(adaptTT, "adaptiveEventSkipping", "enables adaptive event skipping depending on free time left in AEViewer animation loop");
         setPropertyTooltip(adaptTT, "adaptiveSliceDuration", "<html>Enables adaptive slice duration using feedback control, <br> based on average match search distance compared with total search distance. <p>If the match distance is too small, increaes duration or event count, and if too far, decreases duration or event count.<p>If using <i>AreaEventNumber</i> slice rotation method, don't increase count if actual duration is already longer than <i>sliceDurationUs</i>");
         setPropertyTooltip(adaptTT, "nonGreedyFlowComputingEnabled", "<html>Enables fairer distribution of computing flow by areas; an area is only serviced after " + nonGreedyFractionToBeServiced + " fraction of areas have been serviced. <p> Areas are defined by the the area subsubsampling bit shift.<p>Enabling this option ignores event skipping, so use <i>processingTimeLimitMs</i> to ensure minimum frame rate");
@@ -471,6 +472,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (in == null) {
             return new EventPacket();
         }
+        if (in.isEmpty()) {
+            return in;
+        }
         setupFilter(in);
         checkArrays();
         if (processingTimeLimitMs > 0) {
@@ -513,10 +517,9 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //            updatePlaneFitValues(ein); // TODO fix to use brightness constancy equations
             if (measureAccuracy || discardOutliersForStatisticalMeasurementEnabled) {
                 if (imuFlowEstimator.calculateImuFlow(o)) {
-                    continue;
+                    continue; // if an IMU sample, don't process flow from it; it was just used for estimating GT flow. If GT comes from NPZ or matlab, we continue here.
                 }
             }
-            // block ENDS
             if (xyFilter()) { // TODO move inside extractEventInfo
                 continue;
             }
@@ -772,6 +775,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         setCornerCircleSelection(PatchMatchFlow.CornerCircleSelection.OuterCircle);
         setCornerThr(0.2F);
         setCoarseSliceSaturationFraction(PatchMatchFlow.COARSE_SLICE_SATURATION_DEFAULT);
+        setProcessingTimeLimitMs(DEFAULT_PROCESSING_TIME_LIMIT_MS);
     }
 
     /**
@@ -1034,107 +1038,110 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         if (displayResultHistogram && (resultHistogram != null)) {
             // draw histogram as shaded in 2d hist above color wheel
             // normalize hist
-            gl.glPushMatrix();
-            int rhDim = resultHistogram.length; // this.computeMaxSearchDistance();
-            final float scale = 30f / rhDim; // size same as the color wheel
-            gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);  // center above color wheel
-            gl.glScalef(scale, scale, 1);
-            gl.glColor3f(0, 0, 1);
-            gl.glLineWidth(2f);
-            gl.glBegin(GL.GL_LINE_LOOP);
-            gl.glVertex2f(0, 0);
-            gl.glVertex2f(rhDim, 0);
-            gl.glVertex2f(rhDim, rhDim);
-            gl.glVertex2f(0, rhDim);
-            gl.glEnd();
-            if (textRenderer == null) {
-                textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 64));
-            }
-            int max = 0;
-            for (int[] h : resultHistogram) {
-                for (int vv : h) {
-                    if (vv > max) {
-                        max = vv;
+            {
+                gl.glPushMatrix();
+                int rhDim = resultHistogram.length; // this.computeMaxSearchDistance();
+                final float scale = 30f / rhDim; // size same as the color wheel
+                gl.glTranslatef(-35, .65f * chip.getSizeY(), 0);  // center above color wheel
+                gl.glScalef(scale, scale, 1);
+                gl.glColor3f(0, 0, 1);
+                gl.glLineWidth(2f);
+                gl.glBegin(GL.GL_LINE_LOOP);
+                gl.glVertex2f(0, 0);
+                gl.glVertex2f(rhDim, 0);
+                gl.glVertex2f(rhDim, rhDim);
+                gl.glVertex2f(0, rhDim);
+                gl.glEnd();
+                if (textRenderer == null) {
+                    textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 64));
+                }
+                int max = 0;
+                for (int[] h : resultHistogram) {
+                    for (int vv : h) {
+                        if (vv > max) {
+                            max = vv;
+                        }
                     }
                 }
-            }
-            if (max == 0) {
-                gl.glPushMatrix();
-                gl.glTranslatef(0, rhDim / 2, 0); // translate to UL corner of histogram
-                textRenderer.begin3DRendering();
-                textRenderer.draw3D("No data", 0, 0, 0, .07f);
-                textRenderer.end3DRendering();
-                gl.glPopMatrix();
-            } else {
-                final float maxRecip = 2f / max;
-                gl.glPushMatrix();
-                // draw hist values
-                for (int xx = 0; xx < rhDim; xx++) {
-                    for (int yy = 0; yy < rhDim; yy++) {
-                        float g = maxRecip * resultHistogram[xx][yy];
-                        gl.glColor3f(g, g, g);
-                        gl.glBegin(GL2ES3.GL_QUADS);
-                        gl.glVertex2f(xx, yy);
-                        gl.glVertex2f(xx + 1, yy);
-                        gl.glVertex2f(xx + 1, yy + 1);
-                        gl.glVertex2f(xx, yy + 1);
-                        gl.glEnd();
+                if (max == 0) {
+                    gl.glPushMatrix();
+                    gl.glTranslatef(0, rhDim / 2, 0); // translate to UL corner of histogram
+                    textRenderer.begin3DRendering();
+                    textRenderer.draw3D("No data", 0, 0, 0, .07f);
+                    textRenderer.end3DRendering();
+                    gl.glPopMatrix();
+                } else {
+                    final float maxRecip = 2f / max;
+                    gl.glPushMatrix();
+                    // draw hist values
+                    for (int xx = 0; xx < rhDim; xx++) {
+                        for (int yy = 0; yy < rhDim; yy++) {
+                            float g = maxRecip * resultHistogram[xx][yy];
+                            gl.glColor3f(g, g, g);
+                            gl.glBegin(GL2ES3.GL_QUADS);
+                            gl.glVertex2f(xx, yy);
+                            gl.glVertex2f(xx + 1, yy);
+                            gl.glVertex2f(xx + 1, yy + 1);
+                            gl.glVertex2f(xx, yy + 1);
+                            gl.glEnd();
+                        }
+                    }
+                    gl.glPopMatrix();
+                    final int tsd = computeMaxSearchDistance();
+                    if (avgMatchDistance > 0) { // draw avg search result distance circle
+                        gl.glPushMatrix();
+                        gl.glColor4f(1f, 0, 0, .5f);
+                        gl.glLineWidth(5f);
+                        DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
+                        gl.glPopMatrix();
+                    }
+                    if (avgPossibleMatchDistance > 0) { // draw target search distance avg
+                        gl.glPushMatrix();
+                        gl.glColor4f(0, 1f, 0, .5f);
+                        gl.glLineWidth(5f);
+                        DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance, 16); // draw circle at target match distance
+                        gl.glPopMatrix();
                     }
                 }
-                gl.glPopMatrix();
-                final int tsd = computeMaxSearchDistance();
-                if (avgMatchDistance > 0) { // draw avg search result distance circle
+                {// a bunch of cryptic crap to draw a string the same width as the histogram...
                     gl.glPushMatrix();
-                    gl.glColor4f(1f, 0, 0, .5f);
-                    gl.glLineWidth(5f);
-                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgMatchDistance, 16);
-                    gl.glPopMatrix();
-                }
-                if (avgPossibleMatchDistance > 0) { // draw target search distance avg
-                    gl.glPushMatrix();
-                    gl.glColor4f(0, 1f, 0, .5f);
-                    gl.glLineWidth(5f);
-                    DrawGL.drawCircle(gl, tsd + .5f, tsd + .5f, avgPossibleMatchDistance, 16); // draw circle at target match distance
-                    gl.glPopMatrix();
-                }
-                gl.glPopMatrix(); // back to original chip coordinates after hist
-            }
-            // a bunch of cryptic crap to draw a string the same width as the histogram...
-            gl.glPushMatrix();
-            textRenderer.begin3DRendering();
-            String s = String.format("dt=%.1f ms, davg=%.1f", 1e-3f * sliceDeltaT, avgMatchDistance);
+                    textRenderer.begin3DRendering();
+                    String s = String.format("dt=%.1f ms, davg=%.1f", 1e-3f * sliceDeltaT, avgMatchDistance);
 //            final float sc = TextRendererScale.draw3dScale(textRenderer, s, chip.getCanvas().getScale(), chip.getWidth(), .1f);
-            // determine width of string in pixels and scale accordingly
-            FontRenderContext frc = textRenderer.getFontRenderContext();
-            Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
-            Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
+                    // determine width of string in pixels and scale accordingly
+                    FontRenderContext frc = textRenderer.getFontRenderContext();
+                    Rectangle2D r = textRenderer.getBounds(s); // bounds in java2d coordinates, downwards more positive
+                    Rectangle2D rt = frc.getTransform().createTransformedShape(r).getBounds2D(); // get bounds in textrenderer coordinates
 //            float ps = chip.getCanvas().getScale();
-            float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
-            float sc = subSizeX / w / 6; // scale to histogram width
-            gl.glTranslatef(0, .65f * subSizeY, 0); // translate to UL corner of histogram
-            textRenderer.draw3D(s, 0, 0, 0, sc);
-            String s2 = String.format("Skip: %d", skipProcessingEventsCount);
-            textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
-            String s3 = String.format("Slice events: %d", sliceEventCount);
-            textRenderer.draw3D(s3, 0, 2 * (float) (rt.getHeight()) * sc, 0, sc);
-            StringBuilder sb = new StringBuilder("Scale counts: ");
-            for (int c : scaleResultCounts) {
-                sb.append(String.format("%d ", c));
-            }
-            textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
-            if (timeLimiter.isTimedOut()) {
-                String s4 = String.format("Timed out: skipped %,d events", nSkipped);
-                textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
-            }
-            if (outlierRejectionEnabled) {
-                String s5 = String.format("Outliers: %%%.0f", 100 * (float) countOutliers / countIn);
-                textRenderer.draw3D(s5, 0, 5 * (float) (rt.getHeight()) * sc, 0, sc);
-            }
-            String s6 = String.format("SliceMethod: %s", sliceMethodDescription());
-            textRenderer.draw3D(s6, 0, 6 * (float) (rt.getHeight()) * sc, 0, sc);
+                    float w = (float) rt.getWidth(); // width of text in textrenderer, i.e. histogram cell coordinates (1 unit = 1 histogram cell)
+                    float sc = subSizeX / w / 6; // scale to histogram width
+                    gl.glTranslatef(0, .65f * subSizeY, 0); // translate to UL corner of histogram
+                    textRenderer.draw3D(s, 0, 0, 0, sc);
+                    String s2 = String.format("Skip: %d", skipProcessingEventsCount);
+                    textRenderer.draw3D(s2, 0, (float) (rt.getHeight()) * sc, 0, sc);
+                    String s3 = String.format("Slice events: %d", sliceEventCount);
+                    textRenderer.draw3D(s3, 0, 2 * (float) (rt.getHeight()) * sc, 0, sc);
+                    StringBuilder sb = new StringBuilder("Scale counts: ");
+                    for (int c : scaleResultCounts) {
+                        sb.append(String.format("%d ", c));
+                    }
+                    textRenderer.draw3D(sb.toString(), 0, (float) (3 * rt.getHeight()) * sc, 0, sc);
+                    if (timeLimiter.isTimedOut()) {
+                        String s4 = String.format("Timed out: skipped %,d events", nSkipped);
+                        textRenderer.draw3D(s4, 0, 4 * (float) (rt.getHeight()) * sc, 0, sc);
+                    }
+                    if (outlierRejectionEnabled) {
+                        String s5 = String.format("Outliers: %%%.0f", 100 * (float) countOutliers / countIn);
+                        textRenderer.draw3D(s5, 0, 5 * (float) (rt.getHeight()) * sc, 0, sc);
+                    }
+                    String s6 = String.format("SliceMethod: %s", sliceMethodDescription());
+                    textRenderer.draw3D(s6, 0, 6 * (float) (rt.getHeight()) * sc, 0, sc);
 
-            textRenderer.end3DRendering();
-            gl.glPopMatrix(); // back to original chip coordinates
+                    textRenderer.end3DRendering();
+                    gl.glPopMatrix();
+                } // after text
+                gl.glPopMatrix();
+            } // back to original chip coordinates
 //                log.info(String.format("processed %.1f%% (%d/%d)", 100 * (float) nProcessed / (nSkipped + nProcessed), nProcessed, (nProcessed + nSkipped)));
 
 //                // draw histogram of angles around center of image
@@ -1156,6 +1163,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 //                }
         }
         if (sliceMethod == SliceMethod.AreaEventNumber && showAreaCountAreasTemporarily) {
+            gl.glPushMatrix();
             int d = 1 << areaEventNumberSubsampling;
             gl.glLineWidth(2f);
             gl.glColor3f(1, 1, 1);
@@ -1169,6 +1177,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
                 gl.glVertex2f(subSizeX, y);
             }
             gl.glEnd();
+            gl.glPopMatrix();
         }
 
         if (sliceMethod == SliceMethod.ConstantIntegratedFlow && showAreaCountAreasTemporarily) {
@@ -1176,6 +1185,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
         }
 
         if (showBlockSizeAndSearchAreaTemporarily) {
+            gl.glPushMatrix();
             gl.glLineWidth(2f);
             gl.glColor3f(1, 0, 0);
             // show block size
@@ -1195,6 +1205,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
             gl.glVertex2f(xx + sd, yy + sd);
             gl.glVertex2f(xx - sd, yy + sd);
             gl.glEnd();
+            gl.glPopMatrix();
         }
 
     }
