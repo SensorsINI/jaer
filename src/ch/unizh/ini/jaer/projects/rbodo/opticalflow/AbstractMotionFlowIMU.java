@@ -398,7 +398,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      * @param scale set scale to scale all value (for flow vector scaling from
      * pix to px/s)
      * @param progressMonitor a progress monitor to show progress
-     * @return the final double[] times array
+     * @return the final double[] times array in epoch times in seconds
      */
     private double[] readNpyTsArray(String filePath, ProgressMonitor progressMonitor) {
         if (filePath == null) {
