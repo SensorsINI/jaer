@@ -178,6 +178,12 @@ public class ChipCanvas implements GLEventListener, Observer {
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
 
     /**
+     * Flag to disable annotation for methods such as data file preview in file
+     * choosers
+     */
+    protected boolean annotationEnabled = true;
+
+    /**
      * Creates a new instance of ChipCanvas
      */
     public ChipCanvas(final Chip2D chip) {
@@ -663,16 +669,16 @@ public class ChipCanvas implements GLEventListener, Observer {
     public Point getChipPixelFromMousePoint(final Point mp) {
         // May 2021, Tobi changed to use simpler clipArea object along with chip size.
         // Former method using all the matrices was just too cryptic to understand
-        int x = (int) ((mp.getX()/getScale())+clipArea.left);
-        int y = (int) (((getCanvas().getHeight()-mp.getY())/getScale())+clipArea.bottom);
+        int x = (int) ((mp.getX() / getScale()) + clipArea.left);
+        int y = (int) (((getCanvas().getHeight() - mp.getY()) / getScale()) + clipArea.bottom);
 //        
-        final Point p=new Point(x,y);
-            if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
+        final Point p = new Point(x, y);
+        if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
             mouseWasInsideChipBounds = false;
         } else {
             mouseWasInsideChipBounds = true;
         }
-       clipPoint(p);
+        clipPoint(p);
         return p;
 //        final double wcoord[] = new double[3];// wx, wy, wz;// returned xyz coords
 //        // this method depends on current GL context being the one that is used for rendering.
@@ -1185,7 +1191,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (size > (chip.getMinSize() / 3)) {
             size = chip.getMinSize() / 3;
         }
-        gl.glTranslatef(x+.5f, y+.5f, -1);
+        gl.glTranslatef(x + .5f, y + .5f, -1);
         selectedQuad = glu.gluNewQuadric();
         glu.gluQuadricDrawStyle(selectedQuad, GLU.GLU_FILL);
         glu.gluDisk(selectedQuad, size, size + 1, 16, 1);
@@ -1365,7 +1371,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 final Point mouseChipPixel = getMousePixel();
                 // find the relative fraction of clip area that the 
                 // mouse position is in chip pixels and zoom clip area aournd that point
-                if(mouseChipPixel==null){
+                if (mouseChipPixel == null) {
                     log.warning("null mouse point, will not zoom out");
                     return;
                 }
@@ -1496,6 +1502,10 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @param drawable the context
      */
     protected void annotate(final GLAutoDrawable drawable) {
+
+        if (!annotationEnabled) {
+            return;
+        }
         if (getDisplayMethod() == null) {
             return;
         }
@@ -1720,6 +1730,20 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         //...
         return hasRetinaDisplayTrue;
+    }
+
+    /**
+     * @return the annotationEnabled
+     */
+    public boolean isAnnotationEnabled() {
+        return annotationEnabled;
+    }
+
+    /**
+     * @param annotationEnabled the annotationEnabled to set
+     */
+    public void setAnnotationEnabled(boolean annotationEnabled) {
+        this.annotationEnabled = annotationEnabled;
     }
 
 }
