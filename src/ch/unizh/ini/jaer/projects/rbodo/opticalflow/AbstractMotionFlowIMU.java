@@ -771,10 +771,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 return false;
             } else if (importedGTfromNPZ) {
-                if (!(o instanceof ApsDvsEvent)) {
+                if (!(o instanceof BasicEvent)) {
                     return true; // continue processing this event outside
                 }
-                ApsDvsEvent e = (ApsDvsEvent) o;
+                BasicEvent e = (BasicEvent) o;
                 if (getChip().getAeViewer().getAePlayer().getAEInputStream() == null) {
                     return false;
                 }
@@ -1092,7 +1092,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 rx = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
                 ry = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
             }
-            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels / 2, 1);
+            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels*2 , 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {
@@ -1350,7 +1350,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (mouseVectorEvent != null && mouseVectorString != null) {
             gl.glPushMatrix();
             float[] c = drawMotionVector(gl, mouseVectorEvent);
-            DrawGL.drawString(gl, 10, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
+            DrawGL.drawString(gl, 14, (float) mouseVectorEvent.getX()+1, (float) mouseVectorEvent.getY()-1 + 3, .5f, Color.black, mouseVectorString);
+            DrawGL.drawString(gl, 14, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
             gl.glPopMatrix();
         }
 
@@ -2797,8 +2798,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             e.velocity.x = imuFlowEstimator.vx;
             e.velocity.y = imuFlowEstimator.vy;
             e.speed = (float) Math.sqrt(e.velocity.x * e.velocity.x + e.velocity.y * e.velocity.y);
-            mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f] for [x,y]=[%d,%d]", e.velocity.x, e.velocity.y, e.speed, e.x, e.y);
-            log.info(mouseVectorString);
+            mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f]", e.velocity.x, e.velocity.y, e.speed);
+//            log.info(mouseVectorString);
             mouseVectorEvent = e;
         } else {
             mouseVectorEvent = null;
