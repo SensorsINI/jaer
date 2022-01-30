@@ -70,6 +70,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     public ChipDataFilePreview(JFileChooser jfc, AEChip chip) {
         this.chip = chip;
         canvas = new ChipCanvas(chip);
+        canvas.setAnnotationEnabled(false); // some filters use OpenGL code that crashes the JVM
 //        if(chip.getCanvas().getDisplayMethod()==null){
 //            canvas.setDisplayMethod(new ChipRendererDisplayMethod(canvas)); // needs a default display method
 //        }else{
@@ -277,15 +278,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
             }
             if (ae != null) {
                 renderer.render(ae);
-                ArrayList<FrameAnnotater> annotators = canvas.getDisplayMethod().getAnnotators();
-//                if (chip.getFilterChain() != null) {
-//                    chip.getFilterChain().setFilteringEnabled(false);
-//                }
-                
-
-                canvas.getDisplayMethod().setAnnotators(null);
                 canvas.paintFrame();
-                canvas.getDisplayMethod().setAnnotators(annotators);
             }
         } else {
             if (hdf5FileEnabled) {
