@@ -145,7 +145,7 @@ public class DVS640 extends AETemporalConstastRetina implements Serializable {
             setYshift((byte) YSHIFT);
             setTypemask(1);
             setTypeshift((byte) 0);
-            setFlipx(false);
+            setFlipx(true); // flip x to match rosbags from ev-imo dataset (tobi)
             setFlipy(false);
             setFliptype(false);
         }
