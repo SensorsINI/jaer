@@ -182,6 +182,9 @@ public class MotionFlowStatistics {
             warmupCounter--;
             return;
         }
+        if(Float.isNaN(vxGT)||Float.isNaN(vyGT)||Float.isNaN(vGT)){
+            return;
+        }
         sampleCount++;
         angularError.update(vx, vy, v, vxGT, vyGT, vGT);
         endpointErrorAbs.update(vx, vy, v, vxGT, vyGT, vGT);
