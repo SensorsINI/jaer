@@ -36,6 +36,9 @@ public class Measurand extends DescriptiveStatistics {
         return new Point2D.Float((float) getPercentile(25), (float) getPercentile(75));
     }
 
+    public float getMedian(){
+        return (float) getPercentile(50);
+    }
     public String graphicsString(String header, String units) {
         Point2D.Float q = getQuartileErrors();
         return String.format("%s mean: %4.2f quartiles:[%.2f,%.2f] %s [N=%,d]", header, getMean(), q.x, q.y, units,getN());
