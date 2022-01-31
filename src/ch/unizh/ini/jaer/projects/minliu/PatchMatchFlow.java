@@ -661,7 +661,7 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
                 }
                 if (result == null || result.sadValue == Float.MAX_VALUE) {
-                    continue; // maybe some property change caused this
+                    continue; // skipping events or maybe some property change caused this
                 }
                 // reject values that are unreasonable
                 if (isNotSufficientlyAccurate(result)) {
