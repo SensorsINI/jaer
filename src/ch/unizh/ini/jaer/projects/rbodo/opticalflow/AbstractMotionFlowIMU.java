@@ -60,6 +60,7 @@ import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter3D;
 import net.sf.jaer.util.filter.LowpassFilter3D.Point3D;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.jetbrains.bio.npy.NpyArray;
 import org.jetbrains.bio.npy.NpyFile;
 
@@ -246,8 +247,13 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected SingleCameraCalibration cameraCalibration = null;
     int uidx;
     protected boolean useColorForMotionVectors = getBoolean("useColorForMotionVectors", true);
+
+    /**
+     * ********** NPZ input from MVSEC and EV-IMO ************************
+     */
     // NPZ ground truth data files from MVSEC
-    float MVSEC_FPS = 45; // of the MVSEC frames
+    private float gt_fps = 45; // of the MVSEC frames
+
     private double[] tsDataS; // timestamp of frames in MVSEC GT in seconds (to avoid roundoff problems in us
     private float[] xOFData;
     private float[] yOFData;
@@ -432,15 +438,19 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      *
      * @param filePath The file full path
      * @param scale set scale to scale all value (for flow vector scaling from
-     * pix to px/s)
+     * pix to px/s), typically this is the frame rate since displacements are
+     * per frame
+     * @param deltaTimes if non-null, these delta times will be used to scale
+     * each displacement as flow by dx/dt
      * @param progressMonitor a progress monitor to show progress
      * @return the final float[] array which is flattened for the flow u and v
      * matrices
      */
-    private float[] readNpyOFArray(String filePath, float scale, ProgressMonitor progressMonitor) {
+    private float[] readNpyOFArray(String filePath, float scale, double[] deltaTimes, ProgressMonitor progressMonitor) {
         if (filePath == null) {
             return null;
         }
+        // check sizes
         Path p = new File(filePath).toPath();
         long allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
         progressMonitor.setMaximum(3);
@@ -462,6 +472,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             showWarningDialogInSwingThread(err, "Wrong AEChip or wrong GT file?");
         }
         gtOFArrayShape = a.getShape(); // hack, save the shape of whatever the last flow data to look up values in float[] later.
+        int frameSize = sh[1] * sh[2];
+        int nFrames = gtOFArrayShape[0];
+        if (deltaTimes != null && deltaTimes.length != nFrames) {
+            throw new RuntimeException(String.format("The deltaTime array length of %,d is different than the number of frames %,d", deltaTimes.length, nFrames));
+        }
         progressMonitor.setProgress(2);
         double[] d = a.asDoubleArray();
         allocatedMemory = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
@@ -472,7 +487,12 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         progressMonitor.setMaximum(d.length);
         final int checkInterval = 10000;
         for (int i = 0; i < d.length; i++) {
-            f[i] = (float) (scale * (d[i]));
+            if (deltaTimes != null) {
+                int frame = i / frameSize; // get frame of this pixel by int divide of num pixels, really a hack...
+                f[i] = (float) (d[i] / deltaTimes[frame]);
+            } else {
+                f[i] = (float) (scale * (d[i]));
+            }
             if (i % checkInterval == 0) {
                 if (progressMonitor.isCanceled()) {
                     return null;
@@ -527,22 +547,48 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         if (comp != null) {
                             comp.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                         }
-                        tsDataS = readNpyTsArray(checkPaths("timestamps.npy", "ts.npy"), progressMonitor); // don't check size for timestamp array
+                        tsDataS = readNpyTsArray(checkPaths("timestamps.npy", "ts.npy"), progressMonitor); // don't check size for timestamp array, handle both names used by MVSEC
                         if (tsDataS == null) {
                             throw new IOException("could not read timestamps for flow data from " + npzFilePath);
                         }
                         gtInputStartTimeS = tsDataS[0];
                         offsetTimeThatGTStartsAfterRosbagS = ((gtInputStartTimeS - aeInputStartTimeS)); // pos if GT later than DVS
-                        MVSEC_FPS = (float) (1 / (tsDataS[1] - tsDataS[0]));
+
+                        double[] endTimestampsS = null, dtArray = null;
+                        endTimestampsS = readNpyTsArray(npzFilePath + File.separator + "end_timestamps.npy", progressMonitor); // don't check size for timestamp array, handle both names used by MVSEC
+                        if (endTimestampsS == null) {
+                            log.warning("no end_timestamps.npy file found, will use timestamp intervals to infer flow speed from displacement and median delta time");
+                            DescriptiveStatistics deltaTimes = new DescriptiveStatistics();
+                            double lastT = 0;
+                            for (int i = 0; i < tsDataS.length; i++) { // subtract first time from all others
+                                if (i == 0) {
+                                    lastT = tsDataS[i];
+                                } else {
+                                    deltaTimes.addValue(tsDataS[i] - lastT);
+                                    lastT = tsDataS[i];
+                                }
+                            }
+                            double medianDeltaTime = deltaTimes.getPercentile(50);
+
+                            gt_fps = (float) (1 / medianDeltaTime);
+
+                            log.info(String.format("NPZ Delta time statistics: mean=%.3fs median=%.3fs std=%.3fs min=%.3fs max=%.3fs", deltaTimes.getMean(), medianDeltaTime, deltaTimes.getStandardDeviation(), deltaTimes.getMin(), deltaTimes.getMax()));
+                        } else {
+                            dtArray = new double[tsDataS.length];
+                            for (int i = 0; i < dtArray.length; i++) {
+                                dtArray[i] = endTimestampsS[i] - tsDataS[i];
+                            }
+                        }
+
                         for (int i = 0; i < tsDataS.length; i++) { // subtract first time from all others
                             tsDataS[i] -= gtInputStartTimeS;
                         }
 
-                        xOFData = readNpyOFArray(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), MVSEC_FPS, progressMonitor); // check size for vx, vy arrays
+                        xOFData = readNpyOFArray(checkPaths("x_flow_dist.npy", "x_flow_tensor.npy"), gt_fps, dtArray, progressMonitor); // check size for vx, vy arrays
                         if (xOFData == null) {
                             throw new IOException("could not read vx flow data from " + npzFilePath);
                         }
-                        yOFData = readNpyOFArray(checkPaths("y_flow_dist.npy", "y_flow_tensor.npy"), MVSEC_FPS, progressMonitor);
+                        yOFData = readNpyOFArray(checkPaths("y_flow_dist.npy", "y_flow_tensor.npy"), gt_fps, dtArray, progressMonitor);
                         if (yOFData == null) {
                             throw new IOException("could not read vy flow data from " + npzFilePath);
                         }
@@ -555,10 +601,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         System.runFinalization();
                         progressMonitor.setProgress(2);
                         progressMonitor.close();
-                        String s = String.format("<html>Imported %,d frames spanning t=[%,g]s<br>from %s. <p>Frame rate is %.1fHz. <p>GT flow starts %.3fs later than rosbag",
+                        String s = String.format("<html>Imported %,d frames spanning t=[%,g]s<br>from %s. <p>Frame rate median %.1fHz. <p>GT flow starts %.3fs later than rosbag",
                                 tsDataS.length,
                                 (tsDataS[tsDataS.length - 1] - tsDataS[0]), npzFilePath,
-                                MVSEC_FPS,
+                                gt_fps,
                                 offsetTimeThatGTStartsAfterRosbagS);
                         log.info(s);
                         log.info(String.format("NPZ starts at epoch timestamp %,.3fs", tsDataS[0]));
@@ -584,6 +630,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
 
                 @Override
+
                 protected void done() {
                     progressMonitor.close();
                 }
@@ -672,6 +719,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPpsScale(0.1F);
         setDisplayGlobalMotion(true);
         setRefractoryPeriodUs(DEFAULT_REFRACTORY_PERIOD_US);
+
     }
 
     // <editor-fold defaultstate="collapsed" desc="ImuFlowEstimator Class">    
@@ -752,9 +800,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
          * loaded from file. If event is an IMU event, so enclosing loop can
          * continue to next event, skipping flow processing of this IMU event.
          *
-         * Return false if measureAccuracy is false, or if event is real event or no flow available. Return true
-         * if IMU event or calibration loaded that lables every time with GT
-         * flow for x,y address.
+         * Return false if measureAccuracy is false, or if event is real event
+         * or no flow available. Return true if IMU event or calibration loaded
+         * that lables every time with GT flow for x,y address.
          */
         public boolean calculateImuFlow(Object o) {
             if (!measureAccuracy) {
@@ -793,7 +841,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     return false;
                 }
 
-//                int frameIdx = (int) (ts / (MVSEC_FPS * 1000));    // MVSEC's OF is updated at 45 MVSEC_FPS
+//                int frameIdx = (int) (ts / (gt_fps * 1000));    // MVSEC's OF is updated at 45 gt_fps
                 int frameIdx = Math.abs(Arrays.binarySearch(tsDataS, tsRelativeToStartS - offsetTimeThatGTStartsAfterRosbagS)) - 2;
 
                 // minus 2 is because for timestamps less than the 2nd time (the first time is zero), 
@@ -955,7 +1003,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
 
     }
-    // </editor-fold>
+// </editor-fold>
 
     @Override
     public abstract EventPacket filterPacket(EventPacket in);
@@ -1059,13 +1107,17 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      * @return the float[] RGBA color used to draw the vector
      */
     protected float[] drawMotionVector(GL2 gl, int x, int y, float vx, float vy) {
-
         float[] rgba = null;
         if (useColorForMotionVectors) {
             rgba = motionColor(vx, vy, 1, 1);
         } else {
             rgba = new float[]{0, 0, 1, motionVectorTransparencyAlpha};
         }
+
+        return drawMotionVector(gl, x, y, vx, vy, rgba, getMotionVectorLineWidthPixels());
+    }
+
+    protected float[] drawMotionVector(GL2 gl, int x, int y, float vx, float vy, float[] rgba, float lineWidthPixels) {
         gl.glColor4fv(rgba, 0);
         float scale = ppsScale;
         if (ppsScaleDisplayRelativeOFLength && displayGlobalMotion) {
@@ -1073,7 +1125,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         }
         if (displayVectorsEnabled) {
             gl.glPushMatrix();
-            gl.glLineWidth(motionVectorLineWidthPixels);
+            gl.glLineWidth(lineWidthPixels);
             // start arrow from event
 //        DrawGL.drawVector(gl, e.getX() + .5f, e.getY() + .5f, e.getVelocity().x, e.getVelocity().y, motionVectorLineWidthPixels, ppsScale);
             // center arrow on location, rather that start from event location
@@ -1092,7 +1144,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 rx = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
                 ry = RANDOM_SCATTER_PIXELS * (random.nextFloat() - .5f);
             }
-            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels*2 , 1);
+            DrawGL.drawVector(gl, x0 + rx, y0 + ry, dx, dy, motionVectorLineWidthPixels * 2, 1);
             gl.glPopMatrix();
         }
         if (displayVectorsAsColorDots) {
@@ -1349,9 +1401,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         // draw the mouse vector GT flow event
         if (mouseVectorEvent != null && mouseVectorString != null) {
             gl.glPushMatrix();
-            float[] c = drawMotionVector(gl, mouseVectorEvent);
-            DrawGL.drawString(gl, 14, (float) mouseVectorEvent.getX()+1, (float) mouseVectorEvent.getY()-1 + 3, .5f, Color.black, mouseVectorString);
-            DrawGL.drawString(gl, 14, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
+            drawMotionVector(gl, mouseVectorEvent.getX() + 1, mouseVectorEvent.getY() - 1, mouseVectorEvent.getVelocity().x, mouseVectorEvent.getVelocity().y, new float[]{0, 0, 0, 1}, getMotionVectorLineWidthPixels() * 2);
+            float[] c = drawMotionVector(gl, mouseVectorEvent.getX(), mouseVectorEvent.getY(), mouseVectorEvent.getVelocity().x, mouseVectorEvent.getVelocity().y, motionColor(mouseVectorEvent), getMotionVectorLineWidthPixels() * 2);
+            DrawGL.drawString(gl, 16, (float) mouseVectorEvent.getX() + 1, (float) mouseVectorEvent.getY() - 1 + 3, .5f, Color.black, mouseVectorString);
+            DrawGL.drawString(gl, 16, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
             gl.glPopMatrix();
         }
 
@@ -1508,18 +1561,30 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                             sliceStartTimeUs[currentSliceIdx], sliceEndTimeUs[currentSliceIdx],
                             eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
                     motionVectorEventLogger.log(s);
+
                 } catch (NoSuchFieldException ex) {
-                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(AbstractMotionFlowIMU.class
+                            .getName()).log(Level.SEVERE, null, ex);
+
                 } catch (NoSuchMethodException ex) {
-                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(AbstractMotionFlowIMU.class
+                            .getName()).log(Level.SEVERE, null, ex);
+
                 } catch (SecurityException ex) {
-                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(AbstractMotionFlowIMU.class
+                            .getName()).log(Level.SEVERE, null, ex);
+
                 } catch (IllegalAccessException ex) {
-                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(AbstractMotionFlowIMU.class
+                            .getName()).log(Level.SEVERE, null, ex);
+
                 } catch (IllegalArgumentException ex) {
-                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(AbstractMotionFlowIMU.class
+                            .getName()).log(Level.SEVERE, null, ex);
+
                 } catch (InvocationTargetException ex) {
-                    Logger.getLogger(AbstractMotionFlowIMU.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(AbstractMotionFlowIMU.class
+                            .getName()).log(Level.SEVERE, null, ex);
                 }
             } else {
                 String s = String.format("%d %d %d %d %.3g %.3g %.3g %d", eout.timestamp, eout.x, eout.y, eout.type, eout.velocity.x, eout.velocity.y, eout.speed, eout.hasDirection ? 1 : 0);
@@ -2026,6 +2091,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         int d = Math.abs(a - b) % 360;
         int r = d > 180 ? 360 - d : d;
         return r;
+
     }
 
     /**
@@ -2798,7 +2864,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             e.velocity.x = imuFlowEstimator.vx;
             e.velocity.y = imuFlowEstimator.vy;
             e.speed = (float) Math.sqrt(e.velocity.x * e.velocity.x + e.velocity.y * e.velocity.y);
-            mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f]", e.velocity.x, e.velocity.y, e.speed);
+            mouseVectorString = String.format("GT: [vx,vy,v]=[%.1f,%.1f,%.1f] px/s", e.velocity.x, e.velocity.y, e.speed);
 //            log.info(mouseVectorString);
             mouseVectorEvent = e;
         } else {

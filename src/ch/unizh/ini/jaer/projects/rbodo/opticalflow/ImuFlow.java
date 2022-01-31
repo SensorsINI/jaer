@@ -97,6 +97,7 @@ public class ImuFlow extends AbstractMotionFlowIMU {
             if (in == null || in.isEmpty()) {
                 return in; //no timestamp available
             }            // fill the dirPacket with OF events at regular downsampled locations that show the GT flow; this packet gets drawn by annotate in AbstractMotionFlowIMU
+            ts=in.getLastTimestamp(); // so that we know what time it is for showing GT flow (tobi)
             int sx = chip.getSizeX(), sy = chip.getSizeY();
             int k = 1 << vectorFieldDownsampling;
             for (short x = 0; x < sx; x += k) {

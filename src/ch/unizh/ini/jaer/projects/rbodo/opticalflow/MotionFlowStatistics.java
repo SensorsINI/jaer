@@ -186,7 +186,7 @@ public class MotionFlowStatistics {
             return;
         }
         sampleCount++;
-        angularError.update(vx, vy, v, vxGT, vyGT, vGT);
+        angularError.update(vx, vy, v, vxGT, vyGT, vGT);   
         endpointErrorAbs.update(vx, vy, v, vxGT, vyGT, vGT);
         endpointErrorRel.update(vx, vy, v, vxGT, vyGT, vGT); // make sure this runs second for accurate outlier count
     }
@@ -664,7 +664,7 @@ public class MotionFlowStatistics {
         void update(float vx, float vy, float v, float vxGT, float vyGT, float vGT) {
             if (v == 0 || vGT == 0) {
                 return;
-            }
+            } 
             float tmp = (float) Math.sqrt((vx - vxGT) * (vx - vxGT) + (vy - vyGT) * (vy - vyGT));
 //            tmp = (float) (Math.abs(vx - vxGT) + Math.abs(vy - vyGT));
 //            if(getN()==0)System.out.println("EE pps: ");
