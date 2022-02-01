@@ -835,8 +835,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 if (tsRelativeToStartS - offsetTimeThatGTStartsAfterRosbagS < 0 || tsRelativeToStartS - offsetTimeThatGTStartsAfterRosbagS >= (tsDataS[tsDataS.length - 1] - tsDataS[0])) {
                     if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
-                        log.warning(String.format("Cannot find NPZ file flow for time relative to rosbag start of %.3fs in tsData from NPZ GT; data starts at offset %.3fs",
-                                tsRelativeToStartS, offsetTimeThatGTStartsAfterRosbagS));
+                        double endTimeS=offsetTimeThatGTStartsAfterRosbagS+tsDataS[tsDataS.length-1];
+                        double gtDurationS=tsDataS[tsDataS.length-1]-tsDataS[0];
+                        log.warning(String.format("Cannot find NPZ file flow for time relative to rosbag start of %.3fs in tsData from NPZ GT; data starts at offset %.3fs and ends at %.3fs with duration %.3fs",
+                                tsRelativeToStartS, offsetTimeThatGTStartsAfterRosbagS,endTimeS,gtDurationS));
                     }
                     return false;
                 }
@@ -1646,7 +1648,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     // <editor-fold defaultstate="collapsed" desc="Statistics logging trigger button">
     synchronized public void doPrintStatistics() {
-        if (motionFlowStatistics.getSampleCount() == 0) {
+        if (motionFlowStatistics==null || motionFlowStatistics.getSampleCount() == 0) {
             log.warning("No samples collected");
             return;
         }
