@@ -182,11 +182,11 @@ public class MotionFlowStatistics {
             warmupCounter--;
             return;
         }
-        if(Float.isNaN(vxGT)||Float.isNaN(vyGT)||Float.isNaN(vGT)){
+        if (Float.isNaN(vxGT) || Float.isNaN(vyGT) || Float.isNaN(vGT)) {
             return;
         }
         sampleCount++;
-        angularError.update(vx, vy, v, vxGT, vyGT, vGT);   
+        angularError.update(vx, vy, v, vxGT, vyGT, vGT);
         endpointErrorAbs.update(vx, vy, v, vxGT, vyGT, vGT);
         endpointErrorRel.update(vx, vy, v, vxGT, vyGT, vGT); // make sure this runs second for accurate outlier count
     }
@@ -323,7 +323,7 @@ public class MotionFlowStatistics {
         private final Measurand pitchDps;
         private final Measurand yawDps;
         public Frequency globalMotionAngleFrequency;
-        public float ANGLE_BIN_DEGREES = 10, ANGLE_HISTOGRAM_MAX_RADIUS_PIXELS=100;
+        public float ANGLE_BIN_DEGREES = 10, ANGLE_HISTOGRAM_MAX_RADIUS_PIXELS = 100;
 
         private int windowSize = Measurand.WINDOW_SIZE;
 
@@ -461,15 +461,17 @@ public class MotionFlowStatistics {
             while (it.hasNext()) {
                 Long k = (long) (it.next());
                 double radius = fullScalePixels * globalMotionAngleFrequency.getPct(k);
-                if(radius==0) continue;
+                if (radius == 0) {
+                    continue;
+                }
                 double angleRad = (Math.PI / 180) * ANGLE_BIN_DEGREES * k;
                 double x = (radius * Math.cos(angleRad));
                 double y = (radius * Math.sin(angleRad));
-                gl.glColor3f(0,0,0);
-                gl.glVertex2d(1,-1);
-                gl.glVertex2d(x+1, y-1);
-                gl.glColor3f(1,1,1);
-                gl.glVertex2d(0,0);
+                gl.glColor3f(0, 0, 0);
+                gl.glVertex2d(1, -1);
+                gl.glVertex2d(x + 1, y - 1);
+                gl.glColor3f(1, 1, 1);
+                gl.glVertex2d(0, 0);
                 gl.glVertex2d(x, y);
 
             }
@@ -664,8 +666,10 @@ public class MotionFlowStatistics {
         void update(float vx, float vy, float v, float vxGT, float vyGT, float vGT) {
             if (v == 0 || vGT == 0) {
                 return;
-            } 
-            float tmp = (float) Math.sqrt((vx - vxGT) * (vx - vxGT) + (vy - vyGT) * (vy - vyGT));
+            }
+            final float dx = vx - vxGT, dy = vy - vyGT;
+            float tmp = (float) Math.sqrt(dx * dx + dy * dy);
+//            System.out.println(String.format("vx=%8.1f vy=%8.1f vxGT=%8.1f vyGT=%8.1f dx=%8.1f dy=%8.1f diff=%.1f", vx, vy, vxGT, vyGT, dx, dy, tmp));
 //            tmp = (float) (Math.abs(vx - vxGT) + Math.abs(vy - vyGT));
 //            if(getN()==0)System.out.println("EE pps: ");
 //            System.out.print(String.format("%6.2f ",tmp));
