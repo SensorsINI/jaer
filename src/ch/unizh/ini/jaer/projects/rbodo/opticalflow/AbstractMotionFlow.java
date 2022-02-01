@@ -179,8 +179,10 @@ abstract public class AbstractMotionFlow extends AbstractMotionFlowIMU {
     }
 
     public void setMaxDtThreshold(final int maxDtThreshold) {
+        int old=this.maxDtThreshold;
         this.maxDtThreshold = maxDtThreshold;
         putInt("maxDtThreshold", maxDtThreshold);
+        getSupport().firePropertyChange("maxDtThreshold",old,maxDtThreshold);
     }
     // </editor-fold>
 
