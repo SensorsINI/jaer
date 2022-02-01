@@ -50,17 +50,20 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     private float th3 = getFloat("th3", DEFAULT_TH3);
     private static final float DEFAULT_TH3 = 3e-3f;
 
-    private static int DEFAULT_LOCAL_PLANES_REFRACTORY_PERIOD_US=50000;
-    
+    private static int DEFAULT_LOCAL_PLANES_REFRACTORY_PERIOD_US = 50000;
+
     private ArrayList<double[]> neighborhood;
     private final float[] planeParameters;
     private Matrix planeEstimate, planeEstimate_old, A;
 
     private float sx2, sy2, st2, sxy, sxt, syt, sxx, syy, stt;
     private int xx, yy;
-    
-    /** Default search distance according to EDFLOW paper and Aung HW FPGA flow paper (5x5 area) */
-    public static final int DEFAULT_LOCAL_PLANES_SEARCH_DISTANCE_PIXELS=2;
+
+    /**
+     * Default search distance according to EDFLOW paper and Aung HW FPGA flow
+     * paper (5x5 area)
+     */
+    public static final int DEFAULT_LOCAL_PLANES_SEARCH_DISTANCE_PIXELS = 2;
 
     public enum PlaneEstimator {
         OriginalLP, RobustLP, SingleFit, LinearSavitzkyGolay
@@ -104,13 +107,13 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         setPropertyTooltip(lpTip, "maxDtThreshold", "Max delta time (us) of timestamps from current event time that are considered. Also sets grayscale scaling of showTimestampMap display.");
         setPropertyTooltip(lpTip, "searchDistance", "search distance to each side (radius of square plane fit area)");
         // check reasonable parameters set for other parameters of this filter
-        if(!isPreferenceStored("maxDtThreshold")){
+        if (!isPreferenceStored("maxDtThreshold")) {
             setMaxDtThreshold(50000);
         }
-        if(!isPreferenceStored("refractoryPeriodUs")){
+        if (!isPreferenceStored("refractoryPeriodUs")) {
             setRefractoryPeriodUs(DEFAULT_LOCAL_PLANES_REFRACTORY_PERIOD_US);
         }
-        if(!isPreferenceStored("searchDistance")){
+        if (!isPreferenceStored("searchDistance")) {
             setSearchDistance(2);
         }
     }
@@ -130,8 +133,6 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
         setRefractoryPeriodUs(DEFAULT_LOCAL_PLANES_REFRACTORY_PERIOD_US);
         setSearchDistance(DEFAULT_LOCAL_PLANES_SEARCH_DISTANCE_PIXELS);
     }
-    
-    
 
     synchronized void initializeDataMatrix() {
         sx2 = 0;
@@ -306,7 +307,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (neighborhood.size() < 3) {
                 vx = 0;
                 vy = 0;
-                v=0;
+                v = 0;
                 return;
             }
             initializeDataMatrix();
@@ -314,7 +315,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (sx2 * sy2 * st2 + 2 * sxy * sxt * syt - sxt * sxt * sy2 - sx2 * syt * syt - sxy * sxy * st2 == 0) {
                 vx = 0;
                 vy = 0;
-                v=0;
+                v = 0;
                 return;
             }
             planeParameters[0] = sxx * (syt * syt - sy2 * st2) + syy * (sxy * st2 - sxt * syt) + stt * (sxt * sy2 - sxy * syt);
@@ -352,7 +353,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
             if (neighborhood.size() < 4) {
                 vx = 0;
                 vy = 0;
-                v=0;
+                v = 0;
                 return;
             }
 
@@ -402,7 +403,7 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
                 } else {
                     vx = 0;
                     vy = 0;
-                    v=0;
+                    v = 0;
                     return;
                 }
             }
@@ -524,8 +525,10 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
 
     public void setTh1(final float th1) {
+        float old = this.th1;
         this.th1 = th1;
         putFloat("th1", th1);
+        getSupport().firePropertyChange("th1", old, th1);
     }
     // </editor-fold>
 
@@ -535,8 +538,10 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
 
     public void setTh2(final float th2) {
+        float old = this.th2;
         this.th2 = th2;
         putFloat("th2", th2);
+        getSupport().firePropertyChange("th2", old, th2);
     }
     // </editor-fold>
 
@@ -546,8 +551,10 @@ public class LocalPlanesFlow extends AbstractMotionFlow {
     }
 
     public void setTh3(final float th3) {
+        float old = this.th3;
         this.th3 = th3;
         putFloat("th3", th3);
+        getSupport().firePropertyChange("th3", old, th3);
     }
     // </editor-fold>
 
