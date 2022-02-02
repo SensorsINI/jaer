@@ -725,6 +725,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     // <editor-fold defaultstate="collapsed" desc="ImuFlowEstimator Class">    
     public class ImuFlowEstimator {
 
+        private final float EXCESSIVE_TIME_GAP_S = 0.1f;
+        private double lastTime = Double.NaN;
+
         // Motion flow from IMU gyro values or GT file
         private float vx;
         private float vy;
@@ -827,6 +830,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     return false;
                 }
                 double tsRelativeToStartS = 1e-6 * ((e.timestamp - getChip().getAeViewer().getAePlayer().getAEInputStream().getFirstTimestamp()));
+
                 if (Double.isNaN(offsetTimeThatGTStartsAfterRosbagS)) {
                     if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
                         log.warning(String.format("Offset between starting times of GT flow and rosbag input not available"));
@@ -835,10 +839,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 }
                 if (tsRelativeToStartS - offsetTimeThatGTStartsAfterRosbagS < 0 || tsRelativeToStartS - offsetTimeThatGTStartsAfterRosbagS >= (tsDataS[tsDataS.length - 1] - tsDataS[0])) {
                     if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
-                        double endTimeS=offsetTimeThatGTStartsAfterRosbagS+tsDataS[tsDataS.length-1];
-                        double gtDurationS=tsDataS[tsDataS.length-1]-tsDataS[0];
+                        double endTimeS = offsetTimeThatGTStartsAfterRosbagS + tsDataS[tsDataS.length - 1];
+                        double gtDurationS = tsDataS[tsDataS.length - 1] - tsDataS[0];
                         log.warning(String.format("Cannot find NPZ file flow for time relative to rosbag start of %.3fs in tsData from NPZ GT; data starts at offset %.3fs and ends at %.3fs with duration %.3fs",
-                                tsRelativeToStartS, offsetTimeThatGTStartsAfterRosbagS,endTimeS,gtDurationS));
+                                tsRelativeToStartS, offsetTimeThatGTStartsAfterRosbagS, endTimeS, gtDurationS));
                     }
                     return false;
                 }
@@ -858,11 +862,23 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
                         log.warning(String.format("Cannot find GT flow for relative to start ts=%,.6fs in tsData from NPZ GT, resulting frameIdx=%,d is outside tsData times array bounds [%,.0f,%,.0f] s", tsRelativeToStartS, frameIdx, tsDataS[0], tsDataS[tsDataS.length - 1]));
                     }
-                    vx = 0;
-                    vy = 0;
-                    v = 0;
+                    vx = Float.NaN;
+                    vy = Float.NaN;
+                    v = Float.NaN;
                     return false;
                 }
+                double tsAtIdx = tsDataS[frameIdx];
+                double dt = tsRelativeToStartS - tsAtIdx;
+                if (dt > EXCESSIVE_TIME_GAP_S) {
+                    if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
+                        log.warning(String.format("excessive gap %.3fs which is >%.3fs between actual timestamp and last timestamp of GT frame deteced, ignoring GT", dt,EXCESSIVE_TIME_GAP_S));
+                    }
+                    vx = Float.NaN;
+                    vy = Float.NaN;
+                    v = Float.NaN;
+                    return false;
+                }
+                lastTime = tsAtIdx;
                 final int cpix = chip.getNumPixels();
                 final int cx = chip.getSizeX(), cy = chip.getSizeY();
                 final int sx = gtOFArrayShape[2], sy = gtOFArrayShape[1], npix = sx * sy; // the loaded GT or EV-Flownet shape is used to look up values
@@ -870,9 +886,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 // subtract from the event address half of the difference in width and height
                 final int ex = e.x - ((cx - sx) / 2), ey = e.y - ((cy - sy) / 2);
                 if (ex < 0 || ex >= sx || ey < 0 || ey >= sy) {
-                    vx = 0;
-                    vy = 0;
-                    v = 0;
+                    vx = Float.NaN;
+                    vy = Float.NaN;
+                    v = Float.NaN;
                     return false;
                 }
                 final int idx = (frameIdx * npix) + ((sy - 1 - ey) * sx) + ex;
@@ -1648,7 +1664,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 
     // <editor-fold defaultstate="collapsed" desc="Statistics logging trigger button">
     synchronized public void doPrintStatistics() {
-        if (motionFlowStatistics==null || motionFlowStatistics.getSampleCount() == 0) {
+        if (motionFlowStatistics == null || motionFlowStatistics.getSampleCount() == 0) {
             log.warning("No samples collected");
             return;
         }
