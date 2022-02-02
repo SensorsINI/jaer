@@ -28,6 +28,7 @@ import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
+import java.io.File;
 import java.io.Serializable;
 import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
@@ -158,6 +159,23 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
 
     protected PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
+    private static String defaultSeettingsFolder = System.getProperty("user.dir");
+
+    static {
+        try {
+            File f = new File(System.getProperty("user.dir") + File.separator + "filterSettings");
+            defaultSeettingsFolder = f.getPath();
+            log.info("default filter settings file path is " + defaultSeettingsFolder);
+        } catch (Exception e) {
+            log.warning("could not locate default folder for filter settings relative to starting folder, using startup folder");
+        }
+    }
+    
+    /** Returns path to default settings folder where .xml settings and other data such as networks can be stored */
+    protected String getDefaultSettingsFolder(){
+        return defaultSeettingsFolder;
+    }
+
     /**
      * Creates a new instance of AbstractEventFilter but does not enable it.
      *
@@ -244,22 +262,24 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         support.firePropertyChange("filterEnabled", wasEnabled, enabled);
     }
 
-    /** Set the controls visible for this filter
-     * 
+    /**
+     * Set the controls visible for this filter
+     *
      * @param yes true to show controls, false to collapse them
      */
     public void setControlsVisible(boolean yes) {
         FilterPanel p = getFilterPanel();
         if (p == null) {
-            log.warning("FilterPanel for "+this+" is null; cannot set visibilty");
+            log.warning("FilterPanel for " + this + " is null; cannot set visibilty");
             return;
         }
         p.setControlsVisible(yes);
     }
 
-    /** Checks if controls are visible (expanded).
-     * 
-     * @return true if expanded, false if null or collapsed. 
+    /**
+     * Checks if controls are visible (expanded).
+     *
+     * @return true if expanded, false if null or collapsed.
      */
     public boolean isControlsVisible() {
         FilterPanel p = getFilterPanel();
@@ -276,9 +296,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         return chip;
     }
 
-    /** Get the FilterPanel view for controlling this filter if available.
-     * 
-     * @return the FilterPanel or null if EventFilter does not have a view. 
+    /**
+     * Get the FilterPanel view for controlling this filter if available.
+     *
+     * @return the FilterPanel or null if EventFilter does not have a view.
      */
     public FilterPanel getFilterPanel() {
         if (chip == null || chip.getFilterFrame() == null || chip.getFilterFrame().getFilterPanelForFilter(this) == null) {
@@ -563,8 +584,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
-     * Use this method in initFilter to add the
-     * property change listeners if needed.
+     * Use this method in initFilter to add the property change listeners if
+     * needed.
      *
      * @param chip
      * @see #propertyChange(java.beans.PropertyChangeEvent)
@@ -585,9 +606,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * Handles PropertyChangeEvent sent to us from various sources.
      * <p>
-     * Unfortunately we need to lazy add ourselves as listeners for these property
-     * changes in the initFilter() method, or use maybeAddListeners in filterPacket to ensure
-     * PropertyChangeEvent are sent to us.
+     * Unfortunately we need to lazy add ourselves as listeners for these
+     * property changes in the initFilter() method, or use maybeAddListeners in
+     * filterPacket to ensure PropertyChangeEvent are sent to us.
      * <p>
      * The default implementation handles
      * <code>AEInputStreamEVENT_REWOUND</code> and
@@ -617,9 +638,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         }
     }
 
-    /** By default returns getClass().getSimpleName().Subclasses can override.
-     * 
-     * @return getClass().getSimpleName(), e.g. "BackgroundActivityFilter" 
+    /**
+     * By default returns getClass().getSimpleName().Subclasses can override.
+     *
+     * @return getClass().getSimpleName(), e.g. "BackgroundActivityFilter"
      */
     public String getShortName() {
         return getClass().getSimpleName();
