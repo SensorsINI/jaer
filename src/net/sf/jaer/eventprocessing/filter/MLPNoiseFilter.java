@@ -90,6 +90,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener, MouseMotionListener, MouseWheelListener {
 
+    public final String DEFAULT_MLPF_NETWORK_PB="MLPF_2xMSEO1H20_linear_7.pb";
     private final String KEY_NETWORK_FILENAME = "lastNetworkFilename";
     private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
     private TextRenderer textRenderer = null;
@@ -537,7 +538,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public void initFilter() {
         // if dnn was loaded before, load it now
         if (preferenceExists(KEY_NETWORK_FILENAME) && tfExecutionGraph == null) {
-            File f = new File(getString(KEY_NETWORK_FILENAME, ""));
+            File f = new File(getString(KEY_NETWORK_FILENAME, getDefaultSettingsFolder()));
             if (f.exists() && f.isFile()) {
                 try {
                     loadNetwork(f);
@@ -674,7 +675,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public void doLoadNetwork() {
         File file = null;
         file = openFileDialogAndGetFile("Choose a network, either tensorflow protobuf binary (pb),  or folder holding tensorflow SavedModelBundle",
-                KEY_NETWORK_FILENAME, "",
+                KEY_NETWORK_FILENAME, getDefaultSettingsFolder()+File.separator+DEFAULT_MLPF_NETWORK_PB,
                 "CNN file", "pb");
         if (file == null) {
             return;
