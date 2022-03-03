@@ -23,6 +23,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfac
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.LibUsb3HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
+import es.us.atc.jaer.hardwareinterface.OpalKellyFX3Factory;
 
 /**
  * This class builds a list of all available devices and lets you get one of them.
@@ -52,6 +53,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		UDPInterfaceFactory.class,
 		eDVS128_InterfaceFactory.class,
 		SpiNNaker_InterfaceFactory.class,
+                OpalKellyFX3Factory.class,
 	};
 	private static HardwareInterfaceFactory instance = new HardwareInterfaceFactory();
 
