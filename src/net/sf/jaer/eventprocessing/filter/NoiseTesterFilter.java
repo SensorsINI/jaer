@@ -1289,7 +1289,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return USAGE;
         } else {
             for (int i = 1; i < tok.length; i++) {
-                if (tok[i].equals("csvFileName")) {
+                if (tok[i].equals("csvFilename")) {
                     setCsvFilename(tok[i + 1]);
                 } else if (tok[i].equals("shotNoiseRateHz")) {
                     setShotNoiseRateHz(Float.parseFloat(tok[i + 1]));
