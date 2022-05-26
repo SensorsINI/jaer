@@ -18,8 +18,6 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import ch.unizh.ini.jaer.projects.humanpose.AbstractDavisCNNProcessor;
-import ch.unizh.ini.jaer.projects.humanpose.DavisClassifierCNNProcessor;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
@@ -543,7 +541,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 try {
                     loadNetwork(f);
                 } catch (Exception ex) {
-                    Logger.getLogger(AbstractDavisCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
+                    log.warning("Couldn't load network: Caught "+ex.toString());
                 }
             }
         }
@@ -687,7 +685,6 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             showPlainMessageDialogInSwingThread(status, "MLPF network");
 
         } catch (Exception ex) {
-            Logger.getLogger(DavisClassifierCNNProcessor.class.getName()).log(Level.SEVERE, null, ex);
             JOptionPane.showMessageDialog(chip.getAeViewer().getFilterFrame(), "Couldn't load net from this file, caught exception " + ex + ". See console for logging.", "Bad network file", JOptionPane.WARNING_MESSAGE);
         }
     }
