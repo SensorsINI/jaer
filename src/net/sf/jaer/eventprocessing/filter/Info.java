@@ -825,7 +825,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 engFmt.format(accumulatedDVSOffEventCount), engFmt.format(cDvsOff / t), engFmt.format(cDvsOff / t / n),
                 engFmt.format(accumulatedAPSSampleCount / 2), engFmt.format(cAps / 2 / t), // divide by two for reset/signal reads
                 engFmt.format(accumulatedIMUSampleCount), engFmt.format(cImu / t));
-        MultilineAnnotationTextRenderer.setScale(.2f);
+        MultilineAnnotationTextRenderer.setScale(.3f);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
 //        glut.glutBitmapString(font, s);
