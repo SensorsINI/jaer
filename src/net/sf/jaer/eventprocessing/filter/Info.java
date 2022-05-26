@@ -106,6 +106,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private long accumulateTimeUs = 0;
     private boolean resetTimeOnNextPacket = false;
     private String INFO_FIELDS = "updateTimeMs, eventRateHz,accumulateTimeUs,accumulatedDVSOnEventCount,accumulatedDVSOffEventCount,accumulatedDVSEventCount,accumulatedAPSSampleCount,accumulatedIMUSampleCount";
+    private int nPixels = 0; // to be either total pixels or set by XYTypeFilter ROI
 
     /**
      * computes the absolute time (since 1970) or relative time (in file) given
@@ -275,8 +276,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
         }
 
-        /** Draw a particular rate trace
-         * 
+        /**
+         * Draw a particular rate trace
+         *
          * @param drawable
          * @param sign -1 for OFf events, +1 for ON events
          */
@@ -541,6 +543,12 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             dataFileTimestampStartTimeUs = in.getFirstTimestamp();
         }
         in = getEnclosedFilterChain().filterPacket(in);
+        
+        if (xyTypeFilter.isFilterEnabled()) {
+            this.nPixels = xyTypeFilter.getNumPixelsSelected();
+        }else{
+            this.nPixels = getChip().getNumPixels();
+        }
 
         // if the reader generated a bigwrap, then it told us already, before we processed this packet.
         // This msg said that the *next* packet will be wrapped.
@@ -766,21 +774,20 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         gl.glColor3f(1, 1, 1);
         int font = GLUT.BITMAP_9_BY_15;
         GLUT glut = chip.getCanvas().getGlut();
-        int npix = getChip().getNumPixels();
-        if (xyTypeFilter.isFilterEnabled()) {
-            npix = xyTypeFilter.getNumPixelsSelected();
-        }
         int nbars = typedEventRateEstimator.isMeasureIndividualTypesEnabled() ? ntypes : 1;
         for (int i = 0; i < nbars; i++) {
             final float totalRate = typedEventRateEstimator.getFilteredEventRate(i);
-            final float perPixelRate = totalRate / npix;
+            final float perPixelRate = totalRate / this.nPixels;
             float bary = yorig - (ystep * i);
             gl.glRasterPos3f(xpos, bary, 0);
             String s = null;
             if (typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
-                s = String.format("Type %d: %8s Hz (%8s Hz/pixel)", i, engFmt.format(totalRate), engFmt.format(perPixelRate));
+                s = String.format("Type %d: %8s Hz (%8s Hz/pixel) N=%d px", i,
+                        engFmt.format(totalRate), engFmt.format(perPixelRate),
+                        this.nPixels);
             } else {
-                s = String.format("All %d types: %8s Hz (%8s Hz/pixel) ", ntypes, engFmt.format(totalRate), engFmt.format(perPixelRate));
+                s = String.format("All %d types: %8s Hz (%8s Hz/pixel) N=%d px ", ntypes,
+                        engFmt.format(totalRate), engFmt.format(perPixelRate), this.nPixels);
             }
             // get the string length in screen pixels , divide by chip array in screen pixels,
             // and multiply by number of pixels to get string length in screen pixels.
@@ -803,15 +810,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         final float yorig = .7f * sy, xpos = 0;
         GLUT glut = chip.getCanvas().getGlut();
         gl.glRasterPos3f(xpos, yorig, 0);
-        int n = chip.getNumPixels();
+        int n = this.nPixels;
         float cDvs = (float) accumulatedDVSEventCount;
         float cDvsOn = (float) accumulatedDVSOnEventCount;
         float cDvsOff = (float) accumulatedDVSOffEventCount;
         float cAps = (float) accumulatedAPSSampleCount;
         float cImu = (float) accumulatedIMUSampleCount;
         float t = 1e-6f * (float) accumulateTimeUs;
-        String s = String.format("In %ss:\n%s DVS events (%seps, %seps/pix)\n  %s DVS ON events (%seps, %seps/pix)\n  %s DVS OFF events (%seps, %seps/pix)\n%s APS samples (%ssps)\n%s IMU samples (%ssps)",
+        String s = String.format("In %ss for %d px:\n%s DVS events (%seps, %seps/pix)\n  %s DVS ON events (%seps, %seps/pix)\n  %s DVS OFF events (%seps, %seps/pix)\n%s APS samples (%ssps)\n%s IMU samples (%ssps)",
                 engFmt.format(t),
+                this.nPixels,
                 engFmt.format(accumulatedDVSEventCount), engFmt.format(cDvs / t), engFmt.format(cDvs / t / n),
                 engFmt.format(accumulatedDVSOnEventCount), engFmt.format(cDvsOn / t), engFmt.format(cDvsOn / t / n),
                 engFmt.format(accumulatedDVSOffEventCount), engFmt.format(cDvsOff / t), engFmt.format(cDvsOff / t / n),
@@ -835,7 +843,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         synchronized (this) {
             int i = 0;
             for (RateHistory r : rateHistories.values()) {
-                r.draw(drawable, typedEventRateEstimator.getNumCellTypes()>1?(int) Math.signum((i % 2) - .5f):1); // alternate -1, +1
+                r.draw(drawable, typedEventRateEstimator.getNumCellTypes() > 1 ? (int) Math.signum((i % 2) - .5f) : 1); // alternate -1, +1
                 i++;
             }
         }
