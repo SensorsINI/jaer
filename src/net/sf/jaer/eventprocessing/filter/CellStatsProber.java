@@ -1016,7 +1016,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                             s = engFmt.format(x) + "Hz";
                         }
                         renderer.begin3DRendering();
-                        renderer.setColor(SELECT_COLOR[0], SELECT_COLOR[1], SELECT_COLOR[2], SELECT_COLOR[3]);
+                        renderer.setColor(SELECT_COLOR[0], SELECT_COLOR[1], SELECT_COLOR[2], 1);
                         renderer.draw3D(s, currentMousePoint.x, -12, 0, scale);
                         renderer.end3DRendering();
                         gl.glLineWidth(3);
