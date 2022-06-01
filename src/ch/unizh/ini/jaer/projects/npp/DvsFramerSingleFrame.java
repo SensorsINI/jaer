@@ -20,12 +20,20 @@ package ch.unizh.ini.jaer.projects.npp;
 
 import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
 import java.awt.Rectangle;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /**
  *
@@ -40,7 +48,7 @@ import net.sf.jaer.event.PolarityEvent;
  *
  * @author Tobi
  */
-@Description("Makes single DVS frames from DVS events")
+@Description("Makes single DVS frames from DVS events, and optionally sends them or possible DAVIS APS frames as serialized Java objects over UDP")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsFramerSingleFrame extends DvsFramer {
 
@@ -54,6 +62,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
         dvsFrame.allocateMemory();
     }
 
+//    public 
     /**
      * Adds event from a source event location to the map by integer division to
      * the correct location in the subsampled DVS frame.
@@ -88,6 +97,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
         dvsFrame.addEvent(x, y, e.polarity, e.timestamp);
 
     }
+
 
     @Override
     public void clear() {
@@ -185,12 +195,11 @@ public class DvsFramerSingleFrame extends DvsFramer {
 
     @Override
     public void checkParameters() {
-        super.checkParameters(); 
-        if(dvsFrame.width * dvsFrame.height<=0){
+        super.checkParameters();
+        if (dvsFrame.width * dvsFrame.height <= 0) {
             throw new RuntimeException("check width and height of DvsFramerSingleFrame.outputImage, currently zero sized");
         }
     }
-    
-    
 
+  
 }

@@ -460,6 +460,13 @@ abstract public class DvsFramer extends EventFilter2D {
 
     }
 
+    /**
+     * Default empty method that subclasses can use to process the filled
+     * DvsFrame
+     */
+    protected void processDvsFrame(DvsFrame frame) {
+    }
+
 //    @Override
 //    public void annotate(GLAutoDrawable drawable) {
 //        GL2 gl = drawable.getGL().getGL2();
@@ -610,6 +617,7 @@ abstract public class DvsFramer extends EventFilter2D {
                     }
                 }
                 getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, this); // TODO check if duplicated event fired
+                processDvsFrame(this);
             }
         }
 
