@@ -29,27 +29,37 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
  *
  * @author Antonio Ríos, University of Seville, arios@us.es, 01/02/2021
  */
-public class OpalKellyFX3Factory implements HardwareInterfaceFactoryInterface, PnPNotifyInterface{
+public class OpalKellyFX3Factory implements HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 
+    static final Logger log = Logger.getLogger("USBIO");
     final static Logger LOG = Logger.getLogger("OpalKellyFX3Factory");
-    // TODO need to change this value
-    private final String GUID; 
+    private final String GUID="{c4caf39f-201c-46d2-813b-9f6542cc7686}";
+   /** classes can check this before trying to do things with UsbIo */
+    private static boolean libraryLoaded = false;
+
+    static {
+        try {
+            System.loadLibrary("okjFrontPanel");
+            libraryLoaded=true;
+        } catch (UnsatisfiedLinkError e) {
+            String s = e.getMessage() + ": OpalKelly DLL / library not loaded. \n It be that you are using a runtime configuration that sets the java.library.path to point to 64-bit DLLs but are using a 32-bit JVM, or vice versa.";
+            log.warning(s);
+        }
+    }
 
     public OpalKellyFX3Factory() {
-        System.loadLibrary("okjFrontPanel");
-        this.GUID = "{c4caf39f-201c-46d2-813b-9f6542cc7686}";
     }
-    
+
     @Override
     public int getNumInterfacesAvailable() {
+        if(!libraryLoaded) return 0;
         okFrontPanel opalkelly = new okFrontPanel();
         int numInterfacesAvaible = opalkelly.GetDeviceCount();
         opalkelly.delete();
         return numInterfacesAvaible;
     }
-    
-    public static OpalKellyFX3Factory instance()
-    {
+
+    public static OpalKellyFX3Factory instance() {
         return new OpalKellyFX3Factory();
     }
 
@@ -77,5 +87,5 @@ public class OpalKellyFX3Factory implements HardwareInterfaceFactoryInterface, P
     public void onRemove() {
         LOG.info("Opal Kelly FX3 device removed");
     }
-    
+
 }
