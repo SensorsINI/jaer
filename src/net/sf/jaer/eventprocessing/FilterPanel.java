@@ -601,6 +601,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         log.info("not constructing control for " + filter.getClass().getSimpleName() + " for hidden property " + p.getName());
                         continue;
                     }
+                    
+                    // don't show this getter/setter that is controlled by button
+                    if(p.getName().equals("controlsVisible")){
+                        continue;
+                    }
 
                     if ((c == Integer.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
 
