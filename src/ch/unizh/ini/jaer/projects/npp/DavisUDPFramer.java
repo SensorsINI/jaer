@@ -71,8 +71,7 @@ public class DavisUDPFramer extends EventFilter2D implements FrameAnnotater, Pro
     private DatagramSocket sendToSocket = null, listenOnSocket = null;
     private InetSocketAddress client = null;
     private String host = getString("hostname", "localhost");
-    public static final int DEFAULT_SENDTO_PORT = 14334;
-    public static final int DEFAULT_LISTENON_PORT = 14335;
+    public static final int DEFAULT_SENDTO_PORT = 12000;
     private int portSendTo = getInt("portSendTo", DEFAULT_SENDTO_PORT);
 
     private boolean processAPSFrames = getBoolean("processAPSFrames", true);
@@ -182,6 +181,7 @@ public class DavisUDPFramer extends EventFilter2D implements FrameAnnotater, Pro
         checkApsDvsFrame();
         apsDvsFrame.setChannel(0);
         apsDvsFrame.setTimestampNow();
+        apsDvsFrame.incrementCounter();
         int srcwidth = chip.getSizeX(), srcheight = chip.getSizeY(), targetwidth = getOutputImageWidth(), targetheight = getOutputImageHeight();
         float[] frame = frameExtractor.getNewFrame();
         for (int y = 0; y < targetheight; y++) {
@@ -198,6 +198,7 @@ public class DavisUDPFramer extends EventFilter2D implements FrameAnnotater, Pro
         checkApsDvsFrame();
         apsDvsFrame.setChannel(1);
         apsDvsFrame.setTimestampNow();
+        apsDvsFrame.incrementCounter();
         int targetwidth = getOutputImageWidth(), targetheight = getOutputImageHeight();
         for (int y = 0; y < targetheight; y++) {
             for (int x = 0; x < targetwidth; x++) {
@@ -219,6 +220,7 @@ public class DavisUDPFramer extends EventFilter2D implements FrameAnnotater, Pro
         final byte[][] values;
         private int channel=0;
         long timestampMsEpoch = 0;
+        int counter=0;
 
         public APSDVSFrame(int height, int width) {
             this.width = width;
@@ -259,6 +261,8 @@ public class DavisUDPFramer extends EventFilter2D implements FrameAnnotater, Pro
 
         private void reset() {
             Arrays.fill(values, 0);
+            counter=0;
+            timestampMsEpoch=0;
         }
 
         /**
@@ -277,6 +281,10 @@ public class DavisUDPFramer extends EventFilter2D implements FrameAnnotater, Pro
         
         public void setTimestampNow(){
             timestampMsEpoch=System.currentTimeMillis();
+        }
+        
+        public void incrementCounter(){
+            counter++;
         }
 
     }
