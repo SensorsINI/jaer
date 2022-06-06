@@ -134,6 +134,9 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     protected int lastTimestamp = 0;
 
+    public static final int MAX_EMPTY_PACKET_TIMESTAMP_WARNINGS = 10;
+    private static int timestampWarningCount = 0;
+
 //    /**
 //     * Resets the time limiter for input iteration. After the timer times out
 //     * (time determined by timeLimitMs) input iterators will not return any more
@@ -303,7 +306,13 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
 
         final int s = size;
         if (s == 0) {
-            log.warning("called getLastTimestamp on empty packet, returning previous getLastTimestamp() value");
+            if (timestampWarningCount++ >= MAX_EMPTY_PACKET_TIMESTAMP_WARNINGS) {
+                if (timestampWarningCount == MAX_EMPTY_PACKET_TIMESTAMP_WARNINGS) {
+                    log.warning("Supressing further warnings about empty packets");
+                }
+            } else {
+                log.warning("called getLastTimestamp on empty packet, returning previous getLastTimestamp() value");
+            }
             return lastTimestamp;
         }
         lastTimestamp = elementData[s - 1].timestamp;
@@ -337,7 +346,8 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     /**
      * Returns after initializing the iterator over input events of type <E>.
      *
-     * @return an iterator that can iterate over the events that are NOT filtered out.
+     * @return an iterator that can iterate over the events that are NOT
+     * filtered out.
      */
     public Iterator<E> inputIterator() {
         if (inputIterator == null || (inputIterator.getClass() != InItr.class)) {
@@ -487,7 +497,8 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * An iterator of type <E> over the input events. Skips events that are filteredOut.
+     * An iterator of type <E> over the input events. Skips events that are
+     * filteredOut.
      */
     public class InItr implements Iterator<E> {
 
@@ -860,8 +871,8 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * Initializes and returns an iterator over elements of type <E>.
-     * This iterator returns only events that are not filteredOut.
+     * Initializes and returns an iterator over elements of type <E>. This
+     * iterator returns only events that are not filteredOut.
      *
      * @return an Iterator.
      */

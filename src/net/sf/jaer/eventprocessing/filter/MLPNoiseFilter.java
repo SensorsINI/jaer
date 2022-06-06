@@ -394,7 +394,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         PolarityEvent pe = null;
         for (PolarityEvent e : p) {
             if (pe != null && (e.timestamp < pe.timestamp)) {
-                throw new Exception(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
+                int dt=e.timestamp - pe.timestamp;
+                throw new Exception(String.format("timestamp %,d is %,d us earlier than previous %,d", e.timestamp, dt, pe.timestamp));
             }
             l.add(e);
             pe = e;

@@ -24,6 +24,8 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
@@ -60,13 +62,21 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     private boolean noEventsReadYet = true; // set false when new file is opened
     private ApsDvsEventPacket outputPacket = null;
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
-    private boolean weWereNeverEnabled=true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
+    private boolean weWereNeverEnabled = true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
     // we set PlayMode to WAITING even if a file is currently playing back
+    private final int MAX_ERRORS = 10;
+    private int errorCount = 0;
+    protected boolean checkNonMonotonicTimestamps = getBoolean("checkNonMonotonicTimestamps", true);
+    private int previousTimestamp = 0;
+    private boolean openFileAndRecordAedat = false;
 
     public DavisTextInputReader(AEChip chip) {
         super(chip);
         setPropertyTooltip("openFile", "Opens the input file and starts reading from it. The text file is in format timestamp x y polarity, with polarity 0 for OFF and 1 for ON");
         setPropertyTooltip("closeFile", "Closes the input file if it is open.");
+        setPropertyTooltip("rewind", "Closes and reopens the file.");
+        setPropertyTooltip("checkNonMonotonicTimestamps", "Checks to ensure timestamps are read in monotonically increasing order.");
+        setPropertyTooltip("openFileAndRecordAedat", "Opens text file and re-records it as an AEDAT file with same name but .aedat2 extension.");
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -78,6 +88,9 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
      */
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        if (dvsReader == null) {
+            return in;
+        }
         out = readPacket(in);
         eventsProcessed += out.getSize();
         return out;
@@ -95,8 +108,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         super.setFilterEnabled(yes);
         if (yes) {
             getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.FILTER_INPUT); // TODO may not work
-            weWereNeverEnabled=false;
-        } else if(!weWereNeverEnabled ) {
+            weWereNeverEnabled = false;
+        } else if (!weWereNeverEnabled) {
             getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.WAITING); // TODO may not work
         }
     }
@@ -111,6 +124,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
      *
      */
     public BufferedReader openReader(File f) throws IOException {
+        resetFilter();
         BufferedReader reader = new BufferedReader(new FileReader(f));
         lastFile = f;
         setEventsProcessed(0);
@@ -122,13 +136,19 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         return reader;
     }
 
+    synchronized public void doOpenFileAndRecordAedat() {
+        getChip().getAeViewer().startLogging();
+        openFileAndRecordAedat = true;
+        doOpenFile();
+    }
+
     synchronized public void doOpenFile() {
         JFileChooser c = new JFileChooser(lastFileName);
         c.setFileFilter(new FileFilter() {
 
             @Override
             public boolean accept(File f) {
-                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt") || f.getName().toLowerCase().endsWith(".dat");
+                return f.isDirectory() || f.getName().toLowerCase().endsWith(".txt") || f.getName().toLowerCase().endsWith(".dat") || f.getName().toLowerCase().endsWith(".csv");
             }
 
             @Override
@@ -167,6 +187,17 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         }
     }
 
+    synchronized public void doRewind() {
+        doCloseFile();
+        if (lastFile != null) {
+            try {
+                dvsReader = openReader(lastFile);
+            } catch (IOException ex) {
+                Logger.getLogger(DavisTextInputReader.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
     /**
      * @return the useCSV
      */
@@ -187,6 +218,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         noEventsReadYet = true;
         lastPacketLastTimestamp = Integer.MIN_VALUE;
         lastTimestampRead = Integer.MIN_VALUE;
+        errorCount = 0;
+        previousTimestamp = Integer.MIN_VALUE;
     }
 
     @Override
@@ -213,16 +246,28 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 line = dvsReader.readLine();
                 if (line == null) {
                     log.info("reached end of file after " + lastLineNumber + " lines/events; rewinding");
-                    doCloseFile();
-                    dvsReader = openReader(lastFile);
-                    break;
+                    if (openFileAndRecordAedat) {
+                        getChip().getAeViewer().stopLogging(true);
+                        openFileAndRecordAedat = false;
+                        doCloseFile();
+                        break;
+                    } else {
+                        doCloseFile();
+                        dvsReader = openReader(lastFile);
+                        break;
+                    }
                 }
                 parseEvent(line, outItr);
                 noEventsInThisPacket = false;
             } catch (NumberFormatException nfe) {
-                log.warning(String.format("%s: Line #%d has a bad number format: \"%s\"", nfe.toString(), lastLineNumber, line));
+                log.warning(String.format("%s: Line #%d has a bad number format: \"%s\"; check options", nfe.toString(), lastLineNumber, line));
+                if (errorCount++ > MAX_ERRORS) {
+                    log.warning(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
+                    doCloseFile();
+                    return outputPacket;
+                }
             } catch (EOFException eof) {
-                log.info("EOF");
+                log.info("EOF (end of file)");
                 doCloseFile();
             } catch (IOException e) {
                 log.warning(e.toString());
@@ -244,10 +289,34 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             return;
         }
 
-        lastTimestampRead = useUsTimestamps ? Integer.parseInt(split[0]) : (int) (Float.parseFloat(split[0]) * 1000000);
-        short x = Short.parseShort(split[1]);
-        short y = Short.parseShort(split[2]);
-        byte pol = Byte.parseByte(split[3]);
+        int ix, iy, ip, it;
+        if (timestampLast) {
+            ix = 0;
+            iy = 1;
+            ip = 2;
+            it = 3;
+        } else {
+            ix = 1;
+            iy = 2;
+            ip = 3;
+            it = 0;
+        }
+        lastTimestampRead = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
+        int dt = lastTimestampRead - previousTimestamp;
+        if (checkNonMonotonicTimestamps && dt < 0) {
+
+            log.warning(String.format("timestamp %,d is %,d us earlier than previous %,d", lastTimestampRead, dt, previousTimestamp));
+            if (errorCount++ > MAX_ERRORS) {
+                log.warning(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
+                doCloseFile();
+                return;
+            }
+
+        }
+        previousTimestamp = lastTimestampRead;
+        short x = Short.parseShort(split[ix]);
+        short y = Short.parseShort(split[iy]);
+        byte pol = Byte.parseByte(split[ip]);
         if (x < 0 || x >= maxX || y < 0 || y >= maxY) {
             log.warning(String.format("address outside of AEChip allowed range: x=%d y=%d, ignoring. %s ", x, y, pol, lineinfo(line)));
             return;
@@ -277,6 +346,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         e.x = x;
         e.y = y;
         e.polarity = polType;
+        e.setDvsType();
         setEventsProcessed(getEventsProcessed() + 1);
         lastLineNumber++;
         noEventsReadYet = false;
@@ -284,6 +354,21 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
 
     private String lineinfo(String line) {
         return String.format("Line #%d: \"%s\"", lastLineNumber, line);
+    }
+
+    /**
+     * @return the checkNonMonotonicTimestamps
+     */
+    public boolean isCheckNonMonotonicTimestamps() {
+        return checkNonMonotonicTimestamps;
+    }
+
+    /**
+     * @param checkNonMonotonicTimestamps the checkNonMonotonicTimestamps to set
+     */
+    public void setCheckNonMonotonicTimestamps(boolean checkNonMonotonicTimestamps) {
+        this.checkNonMonotonicTimestamps = checkNonMonotonicTimestamps;
+        putBoolean("checkNonMonotonicTimestamps", checkNonMonotonicTimestamps);
     }
 
 }

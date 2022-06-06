@@ -91,6 +91,11 @@ public class ApsDvsEvent extends PolarityEvent {
 	public void setAdcSample(final int adcSample) {
 		this.adcSample = adcSample;
 	}
+        
+        /** Sets type of event to be DVS event */
+        public void setDvsType(){
+            readoutType = ReadoutType.DVS;
+        }
 
 	/**
 	 * The readout type (ResetRead,SignalRead,C)

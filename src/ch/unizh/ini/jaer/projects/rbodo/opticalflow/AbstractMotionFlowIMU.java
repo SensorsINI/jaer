@@ -871,7 +871,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 double dt = tsRelativeToStartS - tsAtIdx;
                 if (dt > EXCESSIVE_TIME_GAP_S) {
                     if (imuFlowGTWarnings++ % GT_Flow_WarningsPrintedInterval == 0) {
-                        log.warning(String.format("excessive gap %.3fs which is >%.3fs between actual timestamp and last timestamp of GT frame deteced, ignoring GT", dt,EXCESSIVE_TIME_GAP_S));
+                        log.warning(String.format("excessive gap %.3fs which is >%.3fs between actual timestamp and last timestamp of GT frame deteced, ignoring GT", dt, EXCESSIVE_TIME_GAP_S));
                     }
                     vx = Float.NaN;
                     vy = Float.NaN;
@@ -1046,7 +1046,9 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     @Override
     public synchronized void resetFilter() {
         if (measureAccuracy || measureProcessingTime && (motionFlowStatistics != null && motionFlowStatistics.getSampleCount() > 0)) {
-            doPrintStatistics();
+            if (isFilterEnabled()) {
+                doPrintStatistics();
+            }
         }
         resetMaps();
         prevTs = Integer.MIN_VALUE;

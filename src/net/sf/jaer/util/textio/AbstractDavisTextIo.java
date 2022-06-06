@@ -55,6 +55,7 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     protected boolean useCSV = getBoolean("useCSV", false);
     protected boolean useUsTimestamps = getBoolean("useUsTimestamps", false);
     protected boolean useSignedPolarity = getBoolean("useSignedPolarity", false);
+    protected boolean timestampLast=getBoolean("timestampLast", false);
 
     public AbstractDavisTextIo(AEChip chip) {
         super(chip);
@@ -62,6 +63,7 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
         setPropertyTooltip("useCSV", "use CSV (comma separated) format rather than space separated values");
         setPropertyTooltip("useUsTimestamps", "use us int timestamps rather than float time in seconds");
         setPropertyTooltip("useSignedPolarity", "use -1/+1 OFF/ON polarity rather than 0,1 OFF/ON polarity");
+        setPropertyTooltip("timestampLast", "use x,y,p,t rather than t,x,y,p ordering");
     }
 
     /**
@@ -113,6 +115,21 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     public void setUseSignedPolarity(boolean useSignedPolarity) {
         this.useSignedPolarity = useSignedPolarity;
         putBoolean("useSignedPolarity", useSignedPolarity);
+    }
+
+    /**
+     * @return the timestampLast
+     */
+    public boolean isTimestampLast() {
+        return timestampLast;
+    }
+
+    /**
+     * @param timestampLast the timestampLast to set
+     */
+    public void setTimestampLast(boolean timestampLast) {
+        this.timestampLast = timestampLast;
+        putBoolean("timestampLast", timestampLast);
     }
 
 }
