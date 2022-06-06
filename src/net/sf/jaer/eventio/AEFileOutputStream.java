@@ -228,6 +228,6 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
         super.close();
 
-        AEOutputStream.log.info("wrote " + eventCounter + " events");
+        AEOutputStream.log.info(String.format("wrote %,d events",eventCounter));
     }
 }

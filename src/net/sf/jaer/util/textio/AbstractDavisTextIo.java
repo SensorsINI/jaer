@@ -97,7 +97,7 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
         this.eventsProcessed = eventsProcessed;
         if (old != this.eventsProcessed && System.currentTimeMillis() > nextGuiUpdateTime) {
             nextGuiUpdateTime = System.currentTimeMillis() + LOG_EVERY_THIS_MANY_MS;
-            log.info(String.format("processed %d events", eventsProcessed));
+            log.info(String.format("processed %,d events", eventsProcessed));
             getSupport().firePropertyChange("eventsProcessed", null, eventsProcessed);
         }
     }

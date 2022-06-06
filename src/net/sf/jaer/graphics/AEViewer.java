@@ -201,10 +201,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * PropertyChangeEvent fired from this AEViewer to the PropertyChangeSupport
      * that is part of AEViewer. <b>This support is different than the Java AWT
      * property change support</b>.
-     * 
+     *
      * <p>
-     * <b>IMPORTANT:</b> it is a bug to getAeViewer().addPropertyChangeListener - this will add the listener to the AWT component!!
-     * Instead use getAeViewer()<b>.getSupport()</b>.addPropertyChangeListener
+     * <b>IMPORTANT:</b> it is a bug to getAeViewer().addPropertyChangeListener
+     * - this will add the listener to the AWT component!! Instead use
+     * getAeViewer()<b>.getSupport()</b>.addPropertyChangeListener
      *
      * @see #getSupport()
      */
@@ -1463,7 +1464,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 } catch (InterruptedException e) {
                 }
             }
-            while (stop == false/*&& !isInterrupted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
+            while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 setTitleAccordingToState();
                 fpsDelay(); // delay at start so all the below that breaks out of loop still has a delay to avoid CPU hog
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
@@ -4434,10 +4435,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("tried to log to null filename, aborting");
             return null;
         }
-        if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION) 
+        if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION)
                 && !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
-                && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
-                ) {
+                && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)) {
             // allow both extensions for  backward compatibility
             filename = filename + AEDataFile.DATA_FILE_EXTENSION;
             log.info("Appended extension " + AEDataFile.DATA_FILE_EXTENSION + " to make filename=" + filename);
@@ -5956,6 +5956,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final PlayMode oldMode = this.playMode;
         log.info("Changing PlayMode from " + this.playMode + " to " + playMode);
 
+        if (playMode == PlayMode.FILTER_INPUT) {
+            setPlaybackControlsEnabledState(true); // tobi added to enable faster/slower for DavisTextInputReader
+        }
         synchronized (viewLoop) {
             this.playMode = playMode;
             interruptViewloop();

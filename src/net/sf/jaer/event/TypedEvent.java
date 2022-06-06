@@ -35,6 +35,10 @@ public class TypedEvent extends BasicEvent implements TypedEventInterface {
 		return type;
 	}
 
+        /** Sets byte value of type of event, generally a small number representing the cell type.
+         * 
+         * @param t the value.
+         */
 	public void setType(final byte t) {
 		type = t;
 	}

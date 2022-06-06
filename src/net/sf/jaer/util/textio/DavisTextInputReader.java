@@ -39,6 +39,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
+import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.AEViewer;
 
@@ -69,6 +70,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     protected boolean checkNonMonotonicTimestamps = getBoolean("checkNonMonotonicTimestamps", true);
     private int previousTimestamp = 0;
     private boolean openFileAndRecordAedat = false;
+    protected boolean flipPolarity = getBoolean("flipPolarity", false);
 
     public DavisTextInputReader(AEChip chip) {
         super(chip);
@@ -77,6 +79,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         setPropertyTooltip("rewind", "Closes and reopens the file.");
         setPropertyTooltip("checkNonMonotonicTimestamps", "Checks to ensure timestamps are read in monotonically increasing order.");
         setPropertyTooltip("openFileAndRecordAedat", "Opens text file and re-records it as an AEDAT file with same name but .aedat2 extension.");
+        setPropertyTooltip("flipPolarity", "Reading polarity: Unselected ON:1 or +1, OFF, 0 or -1. Selected flips ON and OFF so that ON is 0 or -1, OFF is 1 or +1.");
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -92,7 +95,6 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             return in;
         }
         out = readPacket(in);
-        eventsProcessed += out.getSize();
         return out;
     }
 
@@ -107,11 +109,15 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if (yes) {
-            getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.FILTER_INPUT); // TODO may not work
-            weWereNeverEnabled = false;
+            setViewerToFilterInputViewMode();
         } else if (!weWereNeverEnabled) {
             getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.WAITING); // TODO may not work
         }
+    }
+
+    private void setViewerToFilterInputViewMode() {
+        getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.FILTER_INPUT); // TODO may not work
+         weWereNeverEnabled = false;
     }
 
     /**
@@ -133,6 +139,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         lastPacketLastTimestamp = Integer.MIN_VALUE;
         lastTimestampRead = Integer.MIN_VALUE;
         log.info("Opened text input file " + f.toString() + " with text format");
+        setViewerToFilterInputViewMode();
         return reader;
     }
 
@@ -178,6 +185,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         try {
             if (dvsReader != null) {
                 dvsReader.close();
+                dvsReader = null;
             }
             setEventsProcessed(0);
         } catch (IOException ex) {
@@ -241,11 +249,11 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         maxX = chip.getSizeX();
         maxY = chip.getSizeY();
         boolean noEventsInThisPacket = true;
-        while (noEventsReadYet || noEventsInThisPacket || lastTimestampRead < lastPacketLastTimestamp + durationUs) {
+        while (dvsReader != null && (noEventsReadYet || noEventsInThisPacket || lastTimestampRead < lastPacketLastTimestamp + durationUs)) {
             try {
                 line = dvsReader.readLine();
                 if (line == null) {
-                    log.info("reached end of file after " + lastLineNumber + " lines/events; rewinding");
+                    log.info(String.format("reached end of file after %,d lines and %,d events; rewinding", lastLineNumber, getEventsProcessed()));
                     if (openFileAndRecordAedat) {
                         getChip().getAeViewer().stopLogging(true);
                         openFileAndRecordAedat = false;
@@ -264,7 +272,6 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 if (errorCount++ > MAX_ERRORS) {
                     log.warning(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
                     doCloseFile();
-                    return outputPacket;
                 }
             } catch (EOFException eof) {
                 log.info("EOF (end of file)");
@@ -278,7 +285,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         return outputPacket;
     }
 
-    private void parseEvent(String line, OutputEventIterator outItr) {
+    private void parseEvent(String line, OutputEventIterator outItr) throws IOException {
+        lastLineNumber++;
         if (line.startsWith("#")) {
             log.info("Comment: " + line);
             return;
@@ -307,9 +315,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
 
             log.warning(String.format("timestamp %,d is %,d us earlier than previous %,d", lastTimestampRead, dt, previousTimestamp));
             if (errorCount++ > MAX_ERRORS) {
-                log.warning(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
-                doCloseFile();
-                return;
+                throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
             }
 
         }
@@ -343,12 +349,14 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         noEventsReadYet = false;
         e.setFilteredOut(false);
         e.setTimestamp(lastTimestampRead);
-        e.x = x;
-        e.y = y;
-        e.polarity = polType;
+        e.setX(x);
+        e.setY(y);
+        e.setPolarity(polType);
+        if (flipPolarity) {
+            e.flipPolarity();
+        }
         e.setDvsType();
-        setEventsProcessed(getEventsProcessed() + 1);
-        lastLineNumber++;
+        setEventsProcessed(this.eventsProcessed + 1);
         noEventsReadYet = false;
     }
 
@@ -369,6 +377,21 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     public void setCheckNonMonotonicTimestamps(boolean checkNonMonotonicTimestamps) {
         this.checkNonMonotonicTimestamps = checkNonMonotonicTimestamps;
         putBoolean("checkNonMonotonicTimestamps", checkNonMonotonicTimestamps);
+    }
+
+    /**
+     * @return the flipPolarity
+     */
+    public boolean isFlipPolarity() {
+        return flipPolarity;
+    }
+
+    /**
+     * @param flipPolarity the flipPolarity to set
+     */
+    public void setFlipPolarity(boolean flipPolarity) {
+        this.flipPolarity = flipPolarity;
+        putBoolean("flipPolarity", flipPolarity);
     }
 
 }

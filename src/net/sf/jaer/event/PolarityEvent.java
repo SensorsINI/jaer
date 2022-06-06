@@ -92,11 +92,20 @@ public class PolarityEvent extends TypedEvent implements PolarityEventInterface 
     }
 
     /**
-     * @param polarity the polarity to set
+     * @param polarity the polarity to set. Also sets type of event according to type returned.
+     * 
+     * @param polarity the event polarity.
+     * @see #getType() 
      */
     @Override
     public void setPolarity(final Polarity polarity) {
         this.polarity = polarity;
+        setType((byte)getType());
+    }
+    
+    /** Flips event polarity to opposite value. */
+    public void flipPolarity(){
+       setPolarity(this.polarity==Polarity.Off? Polarity.On:Polarity.Off);
     }
 
     /**
