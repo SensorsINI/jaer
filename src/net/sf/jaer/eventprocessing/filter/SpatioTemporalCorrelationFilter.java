@@ -3,9 +3,6 @@
  * Created on October 21, 2005, 12:33 PM */
 package net.sf.jaer.eventprocessing.filter;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.gl2.GLUT;
 import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
 import java.util.Random;
@@ -15,6 +12,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -34,6 +32,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     private int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
+    private boolean filterAlternativePolarityShotNoiseEnabled = getBoolean("filterAlternativePolarityShotNoiseEnabled", false);
 //    protected boolean favorLines = getBoolean("favorLines", false);
 
     private int sxm1; // size of chip minus 1
@@ -42,11 +41,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private int ssy;
 
     int[][] timestampImage; // timestamp image
+    byte[][] polImage; // -1 is OFF +1 is ON, last event polarities according to getPolaritySignum
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
         setPropertyTooltip(TT_FILT_CONTROL, "favorLines", "add condition that events in 8-NNb must lie along line crossing pixel to pass");
+        setPropertyTooltip(TT_FILT_CONTROL, "filterAlternativePolarityShotNoiseEnabled", "filter out events where ON follows OFF or vice versa within the time tau, which is true for pure thermal noise with short refractory period");
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
@@ -89,7 +90,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     continue;
                 }
                 if (timestampImage[x][y] == DEFAULT_TIMESTAMP) {
-                    timestampImage[x][y] = ts;
+                    storeTimestampPolarity(x, y, e);
                     if (letFirstEventThrough) {
                         filterIn(e);
                         continue;
@@ -97,6 +98,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                         filterOut(e);
                         continue;
                     }
+                }
+
+                if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                    filterOut(e);
+                    continue;
                 }
 
                 // finally the real denoising starts here
@@ -133,7 +139,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     filterOut(e);
                 } else {
 //                    if (!favorLines) { // Tobi: shown not effective in experiments with Driving dataset
-                        filterIn(e);
+                    filterIn(e);
 //                    } else {
 //                        // only pass events that have bits set that form line with current pixel, at 45 degrees on 8 NNbs
 //                        if ((nnb & 0x81) == 0x81 || (nnb & 0x18) == 0x18 || (nnb & 0x24) == 0x24 || (nnb & 0x42) == 0x42) {
@@ -141,7 +147,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 //                        }
 //                    }
                 }
-                timestampImage[x][y] = ts;
+                storeTimestampPolarity(x, y, e);
             } // event packet loop
         } else { // not keep stats
             for (BasicEvent e : in) {
@@ -159,7 +165,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     continue;
                 }
                 if (timestampImage[x][y] == DEFAULT_TIMESTAMP) {
-                    timestampImage[x][y] = ts;
+                    storeTimestampPolarity(x, y, e);
                     if (letFirstEventThrough) {
                         filterIn(e);
                         continue;
@@ -167,6 +173,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                         filterOut(e);
                         continue;
                     }
+                }
+
+                if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                    filterOut(e);
+                    continue;
                 }
 
                 // finally the real denoising starts here
@@ -195,11 +206,18 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 } else {
                     filterIn(e);
                 }
-                timestampImage[x][y] = ts;
+                storeTimestampPolarity(x, y, e);
             }
         }
         getNoiseFilterControl().maybePerformControl(in);
         return in;
+    }
+
+    private void storeTimestampPolarity(final int x, final int y, BasicEvent e) {
+        timestampImage[x][y] = e.timestamp;
+        if (e instanceof PolarityEvent) {
+            polImage[x][y] = (byte) ((PolarityEvent) e).getPolaritySignum();
+        }
     }
 
     @Override
@@ -228,6 +246,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (timestampImage == null || timestampImage.length != chip.getSizeX() >> subsampleBy)) {
             timestampImage = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
+            polImage = new byte[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
         }
     }
 
@@ -349,5 +368,40 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 //        this.favorLines = favorLines;
 //        putBoolean("favorLines", favorLines);
 //    }
+    private boolean testFilterOutShotNoiseOppositePolarity(int x, int y, BasicEvent e) {
+        if (!filterAlternativePolarityShotNoiseEnabled) {
+            return false;
+        }
+        if (!(e instanceof PolarityEvent)) {
+            return false;
+        }
+        PolarityEvent p = (PolarityEvent) e;
+        if (p.getPolaritySignum() == polImage[x][y]) {
+            return false; // if same polarity, don't filter out
+        }
+        int prevT = timestampImage[x][y];
+        if (prevT == DEFAULT_TIMESTAMP) {
+            return false;
+        }
+        int dt = timestampImage[x][y] - e.timestamp;
+        if (dt * 1e-6f > correlationTimeS) {
+            return false;
+        }
+        return true; // opposite polarity, filter out
+    }
 
+    /**
+     * @return the filterAlternativePolarityShotNoiseEnabled
+     */
+    public boolean isFilterAlternativePolarityShotNoiseEnabled() {
+        return filterAlternativePolarityShotNoiseEnabled;
+    }
+
+    /**
+     * @param filterAlternativePolarityShotNoiseEnabled the filterAlternativePolarityShotNoiseEnabled to set
+     */
+    public void setFilterAlternativePolarityShotNoiseEnabled(boolean filterAlternativePolarityShotNoiseEnabled) {
+        this.filterAlternativePolarityShotNoiseEnabled = filterAlternativePolarityShotNoiseEnabled;
+        putBoolean("filterAlternativePolarityShotNoiseEnabled",filterAlternativePolarityShotNoiseEnabled);
+    }
 }
