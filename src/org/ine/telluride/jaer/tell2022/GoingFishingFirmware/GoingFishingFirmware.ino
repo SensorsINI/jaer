@@ -4,15 +4,16 @@ Servo theta;
 Servo z;
 
 bool disabled = true;
+byte bytes[2];
 
 void setup() {
   Serial.begin(115200);
 }
 
 void loop() {
-  if (Serial.available()==2) {
-    int thetaDeg = Serial.read();
-    int zDeg = Serial.read();
+  if(Serial.readBytes(bytes,2)==2) {
+    int thetaDeg = bytes[0];
+    int zDeg = bytes[1];
     if (thetaDeg = 0 && zDeg == 0) {
       disabled = true;
       theta.detach();
