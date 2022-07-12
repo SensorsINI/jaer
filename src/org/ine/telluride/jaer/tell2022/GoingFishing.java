@@ -202,6 +202,11 @@ public class GoingFishing extends EventFilter2DMouseROI {
             }
         }
     }
+    
+    @Override
+    public void cleanup(){
+        disableServos();
+    }
 
     /**
      * @return the serialBaudRate
