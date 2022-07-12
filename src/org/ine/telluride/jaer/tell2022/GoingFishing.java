@@ -58,6 +58,8 @@ public class GoingFishing extends EventFilter2DMouseROI {
     private int serialBaudRate = getInt("serialBaudRate", 115200);
     private DataOutputStream serialPortOutputStream = null;
     private boolean disableServos = false;
+    private final int SERIAL_WARNING_INTERVAL = 100;
+    private int serialWarningCount = 0;
 
     public static final String EVENT_ROD_POSITION = "rodPosition", EVENT_ROD_SEQUENCE = "rodSequence";
 
@@ -86,6 +88,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
         setPropertyTooltip("disableServos", "turn off servos");
         try {
             rodSequence.load();
+            log.info("loaded " + rodSequence.toString());
         } catch (Exception e) {
             log.warning("Could not load fishing rod movement sequence: " + e.toString());
         }
@@ -137,17 +140,13 @@ public class GoingFishing extends EventFilter2DMouseROI {
         log.info(sb.toString());
         if (!availableSerialPorts.contains(serialPortName)) {
             final String warningString = serialPortName + " is not in avaiable " + sb.toString();
-            log.warning(warningString);
-            showWarningDialogInSwingThread(warningString, "Serial port not available");
-            return;
+            throw new IOException(warningString);
         }
 
         serialPort = new NRSerialPort(serialPortName, serialBaudRate);
         if (serialPort == null) {
             final String warningString = "null serial port returned when trying to open " + serialPortName + "; available " + sb.toString();
-            log.warning(warningString);
-//            showWarningDialogInSwingThread(warningString, "Serial port not available");
-            return;
+            throw new IOException(warningString);
         }
         serialPort.connect();
         serialPortOutputStream = new DataOutputStream(serialPort.getOutputStream());
@@ -175,7 +174,10 @@ public class GoingFishing extends EventFilter2DMouseROI {
             try {
                 openSerial();
             } catch (IOException ex) {
-                log.warning("couldn't open serial port "+serialPortName);
+                if (serialWarningCount++ == SERIAL_WARNING_INTERVAL) {
+                    log.warning("couldn't open serial port " + serialPortName);
+                    serialWarningCount = 0;
+                }
                 return false;
             }
         }
@@ -237,31 +239,18 @@ public class GoingFishing extends EventFilter2DMouseROI {
         }
     }
 
-    private void sendRodPosition(int theta, int z) {
-        if (disableServos) {
-            return;
-        }
+    private void sendRodPosition(boolean disable, int theta, int z) {
         if (checkSerialPort()) {
-            if (theta > 180) {
-                theta = 180;
-            } else if (theta < 0) {
-                theta = 0;
-            }
-            if (z > 180) {
-                z = 180;
-            } else if (z < 0) {
-                z = 0;
-            }
 
             z = (int) Math.floor(zMin + (((float) (zMax - zMin)) / 180) * z);
-
             try {
 
                 // write theta (pan) and z (tilt) of fishing pole as two unsigned byte servo angles and degrees
                 byte[] bytes = new byte[2];
-                bytes[0]=(byte)theta;
-                bytes[1]=(byte)z;
+                bytes[0] = (byte) (disable? 255:theta);
+                bytes[1] = (byte) (disable? 255:z);
                 serialPortOutputStream.write(bytes);
+                serialPortOutputStream.flush();
             } catch (IOException ex) {
                 log.warning(ex.toString());
             }
@@ -269,7 +258,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
     }
 
     private void disableServos() {
-        sendRodPosition(0, 0);
+        sendRodPosition(true, 0, 0);
         disableServos = true;
     }
 
@@ -307,7 +296,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
                 if (cancelled) {
                     break;
                 }
-                sendRodPosition(p.thetaDeg, p.zDeg);
+                sendRodPosition(false, p.thetaDeg, p.zDeg);
                 try {
                     sleep(p.timeMs);
                 } catch (InterruptedException e) {
@@ -375,7 +364,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
             case EVENT_ROD_POSITION:
                 RodPosition rodPosition = (RodPosition) evt.getNewValue();
                 log.info("rodPosition=" + rodPosition.toString());
-                sendRodPosition(rodPosition.thetaDeg, rodPosition.zDeg);
+                sendRodPosition(false, rodPosition.thetaDeg, rodPosition.zDeg);
                 break;
             case EVENT_ROD_SEQUENCE:
                 RodSequence newSequnce = (RodSequence) evt.getNewValue();

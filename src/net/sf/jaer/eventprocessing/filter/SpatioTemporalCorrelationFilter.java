@@ -349,7 +349,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public String infoString() {
-        String s = super.infoString() + " k=" + numMustBeCorrelated;
+        String s = super.infoString() + " k=" + numMustBeCorrelated+" filtOnOffShot="+filterAlternativePolarityShotNoiseEnabled;
         return s;
     }
 

@@ -28,7 +28,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
 
     static Logger log = Logger.getLogger("GoingFishing");
 
-    private long timeRodDequencStartedMs = 0;
+    private long lastTimeMs = 0;
     private boolean recording = false;
     RodSequence rodSequence = new RodSequence();
 
@@ -53,6 +53,11 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         helpText = new javax.swing.JTextField();
 
         setTitle("Going Fishing Rod Control");
+        addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                formKeyTyped(evt);
+            }
+        });
 
         recordToggleButton.setText("Record (r)");
         recordToggleButton.setToolTipText("Toggle recording of fishing rod movement");
@@ -80,11 +85,6 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         helpText.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         helpText.setText("Hold button 1 and drag to control rod");
         helpText.setFocusable(false);
-        helpText.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                helpTextActionPerformed(evt);
-            }
-        });
 
         javax.swing.GroupLayout rodControlPanelLayout = new javax.swing.GroupLayout(rodControlPanel);
         rodControlPanel.setLayout(rodControlPanelLayout);
@@ -125,12 +125,14 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
 
     private void rodControlPanelMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_rodControlPanelMouseDragged
         int thetaDeg = (int) (Math.floor(180f * (float) evt.getX() / rodControlPanel.getWidth()));
-        int zDeg = (int) (Math.floor(180f * (float) (rodControlPanel.getHeight()-evt.getY()) / rodControlPanel.getHeight()));
-        
-        RodPosition rodPosition = new RodPosition(System.currentTimeMillis() - timeRodDequencStartedMs, thetaDeg, zDeg);
+        int zDeg = (int) (Math.floor(180f * (float) (rodControlPanel.getHeight() - evt.getY()) / rodControlPanel.getHeight()));
+        final long currentTimeMillis = System.currentTimeMillis();
+
+        RodPosition rodPosition = new RodPosition(lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs, thetaDeg, zDeg);
         if (recording) {
             rodSequence.add(rodPosition);
         }
+        lastTimeMs = currentTimeMillis;
 //        log.info(rodPosition.toString());
         firePropertyChange(GoingFishing.EVENT_ROD_POSITION, null, rodPosition);
     }//GEN-LAST:event_rodControlPanelMouseDragged
@@ -146,14 +148,17 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         toggleRecording();
     }//GEN-LAST:event_recordToggleButtonActionPerformed
 
-    private void helpTextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_helpTextActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_helpTextActionPerformed
+    private void formKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyTyped
+        if (evt.getKeyChar() == 'r') {
+            recordToggleButton.setEnabled(!recordToggleButton.isEnabled());
+            toggleRecording();
+        }
+    }//GEN-LAST:event_formKeyTyped
 
     private void toggleRecording() {
         recording = !recording;
         if (recording) {
-            timeRodDequencStartedMs = System.currentTimeMillis();
+            lastTimeMs = 0;
             rodSequence.clear();
         } else {
             firePropertyChange(GoingFishing.EVENT_ROD_SEQUENCE, null, rodSequence);
