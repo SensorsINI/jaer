@@ -70,6 +70,9 @@ public class GoingFishing extends EventFilter2DMouseROI {
     // fishing move
     RodDipper rodDipper = null;
     RodSequence rodSequence = new RodSequence();
+    
+    private long lastManualRodControlTime=0;
+    private static final long HOLDOFF_AFTER_MANUAL_CONTROL_MS=1000;
 
     public GoingFishing(AEChip chip) {
         super(chip);
@@ -97,7 +100,8 @@ public class GoingFishing extends EventFilter2DMouseROI {
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         in = getEnclosedFilterChain().filterPacket(in);
-        if (roiRect != null) {
+        long currentTimeMs=System.currentTimeMillis();
+        if (roiRect != null && currentTimeMs-lastManualRodControlTime>HOLDOFF_AFTER_MANUAL_CONTROL_MS) {
             LinkedList<Cluster> clusterList = tracker.getVisibleClusters();
             for (Cluster c : clusterList) {
                 if (roiRect.contains(c.getLocation())) {
@@ -240,15 +244,19 @@ public class GoingFishing extends EventFilter2DMouseROI {
     }
 
     private void sendRodPosition(boolean disable, int theta, int z) {
+        if (disableServos) {
+            return;
+        }
         if (checkSerialPort()) {
 
             z = (int) Math.floor(zMin + (((float) (zMax - zMin)) / 180) * z);
             try {
 
                 // write theta (pan) and z (tilt) of fishing pole as two unsigned byte servo angles and degrees
-                byte[] bytes = new byte[2];
-                bytes[0] = (byte) (disable? 255:theta);
-                bytes[1] = (byte) (disable? 255:z);
+                byte[] bytes = new byte[3];
+                bytes[0]=disable?(byte)1:(byte)0;
+                bytes[1] = (byte) (theta);
+                bytes[2] = (byte) (z);
                 serialPortOutputStream.write(bytes);
                 serialPortOutputStream.flush();
             } catch (IOException ex) {
@@ -258,6 +266,9 @@ public class GoingFishing extends EventFilter2DMouseROI {
     }
 
     private void disableServos() {
+        if (rodDipper != null) {
+            rodDipper.abort();
+        }
         sendRodPosition(true, 0, 0);
         disableServos = true;
     }
@@ -278,31 +289,57 @@ public class GoingFishing extends EventFilter2DMouseROI {
     }
 
     private void dipRod() {
+        if(disableServos){
+            log.warning("servos disabled, will not run "+rodSequence);
+            return;
+        }
+        if(rodDipper!=null && rodDipper.isAlive()){
+            log.warning("already running rod dipper sequence");
+            return;
+        }
         rodDipper = new RodDipper(rodSequence);
+        log.info("running "+rodSequence);
         rodDipper.start();
     }
 
     private class RodDipper extends Thread {
 
         RodSequence rodSequence = null;
-        volatile boolean cancelled = false;
+        volatile boolean aborted = false;
 
         public RodDipper(RodSequence rodSequence) {
             this.rodSequence = rodSequence;
         }
 
         public void run() {
+            if(rodSequence==null || rodSequence.size()==0){
+                log.warning("no sequence to play to dip rod");
+                return;
+            }
             for (RodPosition p : rodSequence) {
-                if (cancelled) {
+                if (aborted) {
+                    log.info("aborting rod sequence");
+                    sendRodPosition(true, 0, 0);
                     break;
                 }
                 sendRodPosition(false, p.thetaDeg, p.zDeg);
                 try {
                     sleep(p.timeMs);
                 } catch (InterruptedException e) {
+                    log.info("interrupted");
                     break;
                 }
             }
+            if (!aborted) {
+                RodPosition startingPosition = rodSequence.get(0);
+                log.info("returning to starting position "+startingPosition);
+                sendRodPosition(false, startingPosition.thetaDeg, startingPosition.zDeg);
+            }
+        }
+
+        private void abort() {
+            aborted = true;
+            interrupt();
         }
 
     }
@@ -364,6 +401,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
             case EVENT_ROD_POSITION:
                 RodPosition rodPosition = (RodPosition) evt.getNewValue();
                 log.info("rodPosition=" + rodPosition.toString());
+                lastManualRodControlTime=System.currentTimeMillis();
                 sendRodPosition(false, rodPosition.thetaDeg, rodPosition.zDeg);
                 break;
             case EVENT_ROD_SEQUENCE:

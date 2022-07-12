@@ -131,6 +131,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         RodPosition rodPosition = new RodPosition(lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs, thetaDeg, zDeg);
         if (recording) {
             rodSequence.add(rodPosition);
+//            log.info("added "+rodPosition);
         }
         lastTimeMs = currentTimeMillis;
 //        log.info(rodPosition.toString());

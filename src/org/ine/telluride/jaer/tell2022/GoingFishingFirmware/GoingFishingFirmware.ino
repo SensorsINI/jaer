@@ -4,7 +4,7 @@ Servo theta;
 Servo z;
 
 bool disabled = true;
-byte bytes[2];
+byte bytes[3];
 
 void setup() {
   theta.attach(12);
@@ -18,10 +18,13 @@ void setup() {
 }
 
 void loop() {
-  if (Serial.readBytes(bytes, 2) == 2) {
-    int thetaDeg = bytes[0];
-    int zDeg = bytes[1];
-    if (thetaDeg = 0 && zDeg == 0) {
+  while (Serial.available() < 3)
+    return;
+  if (Serial.readBytes(bytes, 3) == 3) {
+    bool disable = bytes[0];
+    int thetaDeg = bytes[1];
+    int zDeg = bytes[2];
+    if (disable) {
       disabled = true;
       theta.detach();
       z.detach();
