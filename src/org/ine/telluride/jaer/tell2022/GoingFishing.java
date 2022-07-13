@@ -19,15 +19,11 @@
 package org.ine.telluride.jaer.tell2022;
 
 import gnu.io.NRSerialPort;
-import java.awt.Rectangle;
 import java.beans.PropertyChangeEvent;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -58,6 +54,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
     private int serialBaudRate = getInt("serialBaudRate", 115200);
     private DataOutputStream serialPortOutputStream = null;
     private boolean disableServos = false;
+    private boolean disableFishing = false;
     private final int SERIAL_WARNING_INTERVAL = 100;
     private int serialWarningCount = 0;
 
@@ -70,9 +67,9 @@ public class GoingFishing extends EventFilter2DMouseROI {
     // fishing move
     RodDipper rodDipper = null;
     RodSequence rodSequence = new RodSequence();
-    
-    private long lastManualRodControlTime=0;
-    private static final long HOLDOFF_AFTER_MANUAL_CONTROL_MS=1000;
+
+    private long lastManualRodControlTime = 0;
+    private static final long HOLDOFF_AFTER_MANUAL_CONTROL_MS = 1000;
 
     public GoingFishing(AEChip chip) {
         super(chip);
@@ -89,6 +86,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
         setPropertyTooltip("zMin", "min rod tilt angle in deg");
         setPropertyTooltip("zMax", "max rod tilt angle in deg");
         setPropertyTooltip("disableServos", "turn off servos");
+        setPropertyTooltip("disableFishing", "disable automatic fishing");
         try {
             rodSequence.load();
             log.info("loaded " + rodSequence.toString());
@@ -100,14 +98,17 @@ public class GoingFishing extends EventFilter2DMouseROI {
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         in = getEnclosedFilterChain().filterPacket(in);
-        long currentTimeMs=System.currentTimeMillis();
-        if (roiRect != null && currentTimeMs-lastManualRodControlTime>HOLDOFF_AFTER_MANUAL_CONTROL_MS) {
+        long currentTimeMs = System.currentTimeMillis();
+        if (roiRect != null && currentTimeMs - lastManualRodControlTime > HOLDOFF_AFTER_MANUAL_CONTROL_MS) {
             LinkedList<Cluster> clusterList = tracker.getVisibleClusters();
             for (Cluster c : clusterList) {
                 if (roiRect.contains(c.getLocation())) {
                     // the ROI we drew contains one of the fish clusters
                     if (rodDipper == null || !rodDipper.isAlive()) {
-                        dipRod();
+                        log.info(String.format("Detected fish from cluster at location %s becoming contained by ROI rectangle %s", c.getLocation(), roiRect));
+                        if (!disableFishing) {
+                            dipRod();
+                        }
                     }
                 }
             }
@@ -202,9 +203,9 @@ public class GoingFishing extends EventFilter2DMouseROI {
             }
         }
     }
-    
+
     @Override
-    public void cleanup(){
+    public void cleanup() {
         disableServos();
     }
 
@@ -259,7 +260,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
 
                 // write theta (pan) and z (tilt) of fishing pole as two unsigned byte servo angles and degrees
                 byte[] bytes = new byte[3];
-                bytes[0]=disable?(byte)1:(byte)0;
+                bytes[0] = disable ? (byte) 1 : (byte) 0;
                 bytes[1] = (byte) (theta);
                 bytes[2] = (byte) (z);
                 serialPortOutputStream.write(bytes);
@@ -294,16 +295,16 @@ public class GoingFishing extends EventFilter2DMouseROI {
     }
 
     private void dipRod() {
-        if(disableServos){
-            log.warning("servos disabled, will not run "+rodSequence);
+        if (disableServos) {
+            log.warning("servos disabled, will not run " + rodSequence);
             return;
         }
-        if(rodDipper!=null && rodDipper.isAlive()){
+        if (rodDipper != null && rodDipper.isAlive()) {
             log.warning("already running rod dipper sequence");
             return;
         }
         rodDipper = new RodDipper(rodSequence);
-        log.info("running "+rodSequence);
+        log.info("running " + rodSequence);
         rodDipper.start();
     }
 
@@ -317,7 +318,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
         }
 
         public void run() {
-            if(rodSequence==null || rodSequence.size()==0){
+            if (rodSequence == null || rodSequence.size() == 0) {
                 log.warning("no sequence to play to dip rod");
                 return;
             }
@@ -337,8 +338,10 @@ public class GoingFishing extends EventFilter2DMouseROI {
             }
             if (!aborted) {
                 RodPosition startingPosition = rodSequence.get(0);
-                log.info("returning to starting position "+startingPosition);
+                log.info("returning to starting position " + startingPosition);
                 sendRodPosition(false, startingPosition.thetaDeg, startingPosition.zDeg);
+            }else{
+                disableServos();
             }
         }
 
@@ -406,7 +409,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
             case EVENT_ROD_POSITION:
                 RodPosition rodPosition = (RodPosition) evt.getNewValue();
                 log.info("rodPosition=" + rodPosition.toString());
-                lastManualRodControlTime=System.currentTimeMillis();
+                lastManualRodControlTime = System.currentTimeMillis();
                 sendRodPosition(false, rodPosition.thetaDeg, rodPosition.zDeg);
                 break;
             case EVENT_ROD_SEQUENCE:
@@ -434,6 +437,20 @@ public class GoingFishing extends EventFilter2DMouseROI {
             disableServos();
         }
         this.disableServos = disableServos;
+    }
+
+    /**
+     * @return the disableFishing
+     */
+    public boolean isDisableFishing() {
+        return disableFishing;
+    }
+
+    /**
+     * @param disableFishing the disableFishing to set
+     */
+    public void setDisableFishing(boolean disableFishing) {
+        this.disableFishing = disableFishing;
     }
 
 }
