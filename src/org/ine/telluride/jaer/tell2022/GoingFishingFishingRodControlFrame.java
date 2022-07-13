@@ -31,13 +31,16 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
 
     private long lastTimeMs = 0;
     private boolean recording = false;
-    RodSequence rodSequence = new RodSequence();
+    RodSequence rodSequence = new RodSequence(0);
 
     /**
      * Creates new form GoingFishingFishingRodControlFrame
      */
     public GoingFishingFishingRodControlFrame() {
         initComponents();
+        buttonGroup1.add(fishingHoleButton0);
+        buttonGroup1.add(fishingHoleButton1);
+        fishingHoleButton1.setSelected(true);
     }
 
     /**
@@ -49,9 +52,13 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        buttonGroup1 = new javax.swing.ButtonGroup();
         recordToggleButton = new javax.swing.JToggleButton();
         rodControlPanel = new javax.swing.JPanel();
         helpText = new javax.swing.JTextField();
+        jPanel1 = new javax.swing.JPanel();
+        fishingHoleButton0 = new javax.swing.JRadioButton();
+        fishingHoleButton1 = new javax.swing.JRadioButton();
 
         setTitle("Going Fishing Rod Control");
         addKeyListener(new java.awt.event.KeyAdapter() {
@@ -97,14 +104,39 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             .addGroup(rodControlPanelLayout.createSequentialGroup()
                 .addGap(71, 71, 71)
                 .addComponent(helpText, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(95, Short.MAX_VALUE))
+                .addContainerGap(198, Short.MAX_VALUE))
         );
         rodControlPanelLayout.setVerticalGroup(
             rodControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(rodControlPanelLayout.createSequentialGroup()
                 .addGap(130, 130, 130)
                 .addComponent(helpText, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(132, Short.MAX_VALUE))
+                .addContainerGap(112, Short.MAX_VALUE))
+        );
+
+        fishingHoleButton0.setText("Fishing hole 0");
+
+        fishingHoleButton1.setText("Fishing hole 1");
+
+        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+        jPanel1.setLayout(jPanel1Layout);
+        jPanel1Layout.setHorizontalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(fishingHoleButton0)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(fishingHoleButton1)
+                .addContainerGap())
+        );
+        jPanel1Layout.setVerticalGroup(
+            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel1Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(fishingHoleButton0, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(fishingHoleButton1))
+                .addContainerGap())
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -113,15 +145,23 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addComponent(rodControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
             .addGroup(layout.createSequentialGroup()
-                .addGap(0, 0, Short.MAX_VALUE)
-                .addComponent(recordToggleButton))
+                .addGap(18, 18, 18)
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(recordToggleButton)
+                .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addComponent(rodControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(recordToggleButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(recordToggleButton))
+                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
 
         pack();
@@ -171,7 +211,9 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         recording = !recording;
         if (recording) {
             lastTimeMs = 0;
-            rodSequence.clear();
+            int seq=fishingHoleButton0.isSelected()?0:1;
+            RodSequence rodSequence=new RodSequence(seq);
+            log.info("recording sequence "+seq);
         } else {
             firePropertyChange(GoingFishing.EVENT_ROD_SEQUENCE, null, rodSequence);
         }
@@ -213,7 +255,11 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.ButtonGroup buttonGroup1;
+    private javax.swing.JRadioButton fishingHoleButton0;
+    private javax.swing.JRadioButton fishingHoleButton1;
     private javax.swing.JTextField helpText;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JToggleButton recordToggleButton;
     private javax.swing.JPanel rodControlPanel;
     // End of variables declaration//GEN-END:variables

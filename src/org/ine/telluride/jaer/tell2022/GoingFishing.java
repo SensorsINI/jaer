@@ -23,6 +23,7 @@ import java.beans.PropertyChangeEvent;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.Set;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
@@ -66,7 +67,11 @@ public class GoingFishing extends EventFilter2DMouseROI {
 
     // fishing move
     RodDipper rodDipper = null;
-    RodSequence rodSequence = new RodSequence();
+    RodSequence[] rodSequences = {new RodSequence(0), new RodSequence(1)};
+    private int currentRodsequence = 0;
+    private float fishingHoleSwitchProbability = getFloat("fishingHoleSwitchProbability", 0.1f);
+    private int fishingAttemptHoldoffMs = getInt("fishingAttemptHoldoffMs", 3000);
+    private long lastFishingAttemptTimeMs = 0;
 
     private long lastManualRodControlTime = 0;
     private static final long HOLDOFF_AFTER_MANUAL_CONTROL_MS = 1000;
@@ -87,9 +92,12 @@ public class GoingFishing extends EventFilter2DMouseROI {
         setPropertyTooltip("zMax", "max rod tilt angle in deg");
         setPropertyTooltip("disableServos", "turn off servos");
         setPropertyTooltip("disableFishing", "disable automatic fishing");
+        setPropertyTooltip("fishingHoleSwitchProbability", "chance of switching spots after each attempt");
         try {
-            rodSequence.load();
-            log.info("loaded " + rodSequence.toString());
+            for (int i = 0; i < 2; i++) {
+                rodSequences[i].load(i);
+                log.info("loaded " + rodSequences.toString());
+            }
         } catch (Exception e) {
             log.warning("Could not load fishing rod movement sequence: " + e.toString());
         }
@@ -107,7 +115,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
                     if (rodDipper == null || !rodDipper.isAlive()) {
                         log.info(String.format("Detected fish from cluster at location %s becoming contained by ROI rectangle %s", c.getLocation(), roiRect));
                         if (!disableFishing) {
-                            dipRod();
+                            dipRod(true);
                         }
                     }
                 }
@@ -126,7 +134,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
     }
 
     public void doDipRod() {
-        dipRod();
+        dipRod(false);
     }
 
     private void openSerial() throws IOException {
@@ -294,18 +302,27 @@ public class GoingFishing extends EventFilter2DMouseROI {
         fishingRodControlFrame.setVisible(true);
     }
 
-    private void dipRod() {
+    private void dipRod(boolean holdoff) {
         if (disableServos) {
-            log.warning("servos disabled, will not run " + rodSequence);
+            log.warning("servos disabled, will not run " + rodSequences);
             return;
         }
         if (rodDipper != null && rodDipper.isAlive()) {
             log.warning("already running rod dipper sequence");
             return;
         }
-        rodDipper = new RodDipper(rodSequence);
-        log.info("running " + rodSequence);
-        rodDipper.start();
+        if (holdoff && System.currentTimeMillis() - lastFishingAttemptTimeMs > fishingAttemptHoldoffMs) {
+            Random r = new Random();
+            int nextSeq=(currentRodsequence + 1) % 2;
+            if (rodSequences[nextSeq].size()>0 && r.nextFloat() <= fishingHoleSwitchProbability) {
+                currentRodsequence = nextSeq;
+                log.info("switched to " + rodSequences[currentRodsequence]);
+            }
+            rodDipper = new RodDipper(rodSequences[currentRodsequence]);
+            log.info("running " + rodSequences);
+            
+            rodDipper.start();
+        }
     }
 
     private class RodDipper extends Thread {
@@ -322,6 +339,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
                 log.warning("no sequence to play to dip rod");
                 return;
             }
+            lastFishingAttemptTimeMs=System.currentTimeMillis();
             for (RodPosition p : rodSequence) {
                 if (aborted) {
                     log.info("aborting rod sequence");
@@ -340,7 +358,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
                 RodPosition startingPosition = rodSequence.get(0);
                 log.info("returning to starting position " + startingPosition);
                 sendRodPosition(false, startingPosition.thetaDeg, startingPosition.zDeg);
-            }else{
+            } else {
                 disableServos();
             }
         }
@@ -415,8 +433,8 @@ public class GoingFishing extends EventFilter2DMouseROI {
             case EVENT_ROD_SEQUENCE:
                 RodSequence newSequnce = (RodSequence) evt.getNewValue();
                 newSequnce.save();
-                rodSequence = newSequnce;
-                log.info("got new " + rodSequence);
+                rodSequences[newSequnce.getIndex()] = newSequnce;
+                log.info("got new " + rodSequences);
                 break;
             default:
         }
@@ -451,6 +469,42 @@ public class GoingFishing extends EventFilter2DMouseROI {
      */
     public void setDisableFishing(boolean disableFishing) {
         this.disableFishing = disableFishing;
+    }
+
+    /**
+     * @return the fishingHoleSwitchProbability
+     */
+    public float getFishingHoleSwitchProbability() {
+        return fishingHoleSwitchProbability;
+    }
+
+    /**
+     * @param fishingHoleSwitchProbability the fishingHoleSwitchProbability to
+     * set
+     */
+    public void setFishingHoleSwitchProbability(float fishingHoleSwitchProbability) {
+        if (fishingHoleSwitchProbability > 1) {
+            fishingHoleSwitchProbability = 1;
+        } else if (fishingHoleSwitchProbability < 0) {
+            fishingHoleSwitchProbability = 0;
+        }
+        this.fishingHoleSwitchProbability = fishingHoleSwitchProbability;
+        putFloat("fishingHoleSwitchProbability", fishingHoleSwitchProbability);
+    }
+
+    /**
+     * @return the fishingAttemptHoldoffMs
+     */
+    public int getFishingAttemptHoldoffMs() {
+        return fishingAttemptHoldoffMs;
+    }
+
+    /**
+     * @param fishingAttemptHoldoffMs the fishingAttemptHoldoffMs to set
+     */
+    public void setFishingAttemptHoldoffMs(int fishingAttemptHoldoffMs) {
+        this.fishingAttemptHoldoffMs = fishingAttemptHoldoffMs;
+        putFloat("fishingAttemptHoldoffMs", fishingAttemptHoldoffMs);
     }
 
 }

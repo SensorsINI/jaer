@@ -14,7 +14,12 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     static Logger log = Logger.getLogger("GoingFishing");
     static String FILENAME = "GoingFishingRodSequence.ser";
 
+    private int index;
     public long durationMs=0;
+
+    public RodSequence(int index) {
+        this.index = index;
+    }
     
     public void save() {
         if(size()==0){
@@ -22,18 +27,19 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         }
         FileOutputStream fos = null;
         try {
-            fos = new FileOutputStream(FILENAME);
+            String fn=FILENAME+index;
+            fos = new FileOutputStream(fn);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(this);
             oos.close();
-            log.info("saved "+this+" to file "+FILENAME);
+            log.info("saved "+this+" to file "+fn);
         } catch (Exception ex) {
             log.warning("Could not save fishing rod sequence: " + ex.toString());
         }
     }
 
-    public void load() throws IOException, ClassNotFoundException{
-            FileInputStream fis = new FileInputStream(FILENAME);
+    public void load(int index) throws IOException, ClassNotFoundException{
+            FileInputStream fis = new FileInputStream(FILENAME+index);
             ObjectInputStream ois = new ObjectInputStream(fis);
             RodSequence rodSequence= (RodSequence) ois.readObject();
             ois.close();
@@ -41,7 +47,11 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
             for(RodPosition p:rodSequence){
                 add(p);
             }
+            this.index=rodSequence.index;
+            this.durationMs=rodSequence.durationMs;
     }
+    
+    
 
     @Override
     public void clear(){
@@ -57,7 +67,14 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     
     @Override
     public String toString(){
-        return String.format("Fishing rod sequence with %,d positions lasting total %,d ms",size(),durationMs);
+        return String.format("Fishing rod sequence #%d with %,d positions lasting total %,d ms",index, size(),durationMs);
+    }
+
+    /**
+     * @return the index
+     */
+    public int getIndex() {
+        return index;
     }
     
 }
