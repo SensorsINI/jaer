@@ -18,6 +18,7 @@
  */
 package org.ine.telluride.jaer.tell2022;
 
+import java.awt.event.KeyEvent;
 import java.util.logging.Logger;
 
 /**
@@ -75,6 +76,9 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             }
         });
         rodControlPanel.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                rodControlPanelKeyPressed(evt);
+            }
             public void keyTyped(java.awt.event.KeyEvent evt) {
                 rodControlPanelKeyTyped(evt);
             }
@@ -124,6 +128,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void rodControlPanelMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_rodControlPanelMouseDragged
+        requestFocusInWindow(); // to get key listeners to work
         int thetaDeg = (int) (Math.floor(180f * (float) evt.getX() / rodControlPanel.getWidth()));
         int zDeg = (int) (Math.floor(180f * (float) (rodControlPanel.getHeight() - evt.getY()) / rodControlPanel.getHeight()));
         final long currentTimeMillis = System.currentTimeMillis();
@@ -139,22 +144,28 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_rodControlPanelMouseDragged
 
     private void rodControlPanelKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_rodControlPanelKeyTyped
-        if (evt.getKeyChar() == 'r') {
-            recordToggleButton.setEnabled(!recordToggleButton.isEnabled());
-            toggleRecording();
-        }
+        toggleRecording(evt);
     }//GEN-LAST:event_rodControlPanelKeyTyped
+
 
     private void recordToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordToggleButtonActionPerformed
         toggleRecording();
     }//GEN-LAST:event_recordToggleButtonActionPerformed
 
     private void formKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyTyped
+        toggleRecording(evt);
+    }//GEN-LAST:event_formKeyTyped
+
+    private void rodControlPanelKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_rodControlPanelKeyPressed
+       toggleRecording(evt);
+    }//GEN-LAST:event_rodControlPanelKeyPressed
+
+    private void toggleRecording(KeyEvent evt) {
         if (evt.getKeyChar() == 'r') {
             recordToggleButton.setEnabled(!recordToggleButton.isEnabled());
             toggleRecording();
         }
-    }//GEN-LAST:event_formKeyTyped
+    }
 
     private void toggleRecording() {
         recording = !recording;
