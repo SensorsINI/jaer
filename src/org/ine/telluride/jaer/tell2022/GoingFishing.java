@@ -93,6 +93,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
         setPropertyTooltip("disableServos", "turn off servos");
         setPropertyTooltip("disableFishing", "disable automatic fishing");
         setPropertyTooltip("fishingHoleSwitchProbability", "chance of switching spots after each attempt");
+        setPropertyTooltip("fishingAttemptHoldoffMs", "holdoff time in ms between automatic fishing attempts");
         try {
             for (int i = 0; i < 2; i++) {
                 rodSequences[i].load(i);
