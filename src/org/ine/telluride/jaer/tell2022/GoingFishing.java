@@ -312,7 +312,8 @@ public class GoingFishing extends EventFilter2DMouseROI {
             log.warning("already running rod dipper sequence");
             return;
         }
-        if (holdoff && System.currentTimeMillis() - lastFishingAttemptTimeMs > fishingAttemptHoldoffMs) {
+       
+        if (!holdoff || (holdoff && System.currentTimeMillis() - lastFishingAttemptTimeMs > fishingAttemptHoldoffMs)) {
             Random r = new Random();
             int nextSeq=(currentRodsequence + 1) % 2;
             if (rodSequences[nextSeq].size()>0 && r.nextFloat() <= fishingHoleSwitchProbability) {
