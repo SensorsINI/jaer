@@ -19,6 +19,7 @@
 package org.ine.telluride.jaer.tell2022;
 
 import gnu.io.NRSerialPort;
+import java.awt.Toolkit;
 import java.beans.PropertyChangeEvent;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -59,7 +60,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
     private final int SERIAL_WARNING_INTERVAL = 100;
     private int serialWarningCount = 0;
 
-    public static final String EVENT_ROD_POSITION = "rodPosition", EVENT_ROD_SEQUENCE = "rodSequence";
+    public static final String EVENT_ROD_POSITION = "rodPosition", EVENT_ROD_SEQUENCE = "rodSequence", EVENT_CLEAR_SEQUENCES = "clearSequences";
 
     // rod control
     private int zMin = getInt("zMin", 80);
@@ -151,7 +152,6 @@ public class GoingFishing extends EventFilter2DMouseROI {
                 sb.append(s).append(" ");
             }
         }
-        log.info(sb.toString());
         if (!availableSerialPorts.contains(serialPortName)) {
             final String warningString = serialPortName + " is not in avaiable " + sb.toString();
             throw new IOException(warningString);
@@ -299,6 +299,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
             fishingRodControlFrame = new GoingFishingFishingRodControlFrame();
             fishingRodControlFrame.addPropertyChangeListener(EVENT_ROD_POSITION, this);
             fishingRodControlFrame.addPropertyChangeListener(EVENT_ROD_SEQUENCE, this);
+            fishingRodControlFrame.addPropertyChangeListener(EVENT_CLEAR_SEQUENCES, this);
         }
         fishingRodControlFrame.setVisible(true);
     }
@@ -312,17 +313,17 @@ public class GoingFishing extends EventFilter2DMouseROI {
             log.warning("already running rod dipper sequence");
             return;
         }
-       
+
         if (!holdoff || (holdoff && System.currentTimeMillis() - lastFishingAttemptTimeMs > fishingAttemptHoldoffMs)) {
             Random r = new Random();
-            int nextSeq=(currentRodsequence + 1) % 2;
-            if (rodSequences[nextSeq].size()>0 && r.nextFloat() <= fishingHoleSwitchProbability) {
+            int nextSeq = (currentRodsequence + 1) % 2;
+            if (rodSequences[nextSeq].size() > 0 && r.nextFloat() <= fishingHoleSwitchProbability) {
                 currentRodsequence = nextSeq;
                 log.info("switched to " + rodSequences[currentRodsequence]);
             }
             rodDipper = new RodDipper(rodSequences[currentRodsequence]);
-            log.info("running " + rodSequences);
-            
+            log.info("running " + rodSequences.toString());
+
             rodDipper.start();
         }
     }
@@ -341,7 +342,9 @@ public class GoingFishing extends EventFilter2DMouseROI {
                 log.warning("no sequence to play to dip rod");
                 return;
             }
-            lastFishingAttemptTimeMs=System.currentTimeMillis();
+            Toolkit.getDefaultToolkit().beep();
+
+            lastFishingAttemptTimeMs = System.currentTimeMillis();
             for (RodPosition p : rodSequence) {
                 if (aborted) {
                     log.info("aborting rod sequence");
@@ -437,6 +440,13 @@ public class GoingFishing extends EventFilter2DMouseROI {
                 newSequnce.save();
                 rodSequences[newSequnce.getIndex()] = newSequnce;
                 log.info("got new " + rodSequences);
+                break;
+            case EVENT_CLEAR_SEQUENCES:
+                for(RodSequence r:rodSequences){
+                    r.clear();
+                    r.save();
+                }
+                log.info("Sequnces cleared");
                 break;
             default:
         }

@@ -23,7 +23,7 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     
     public void save() {
         if(size()==0){
-            log.warning("saving sequence of zero length");
+            log.info("saving sequence of zero length");
         }
         FileOutputStream fos = null;
         try {
