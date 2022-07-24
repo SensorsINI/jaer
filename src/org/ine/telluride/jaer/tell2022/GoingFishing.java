@@ -351,13 +351,15 @@ public class GoingFishing extends EventFilter2DMouseROI {
                     sendRodPosition(true, 0, 0);
                     break;
                 }
-                sendRodPosition(false, p.thetaDeg, p.zDeg);
-                try {
-                    sleep(p.timeMs);
-                } catch (InterruptedException e) {
-                    log.info("interrupted");
-                    break;
+                if (p.delayMsToNext > 0) {
+                    try {
+                        sleep(p.delayMsToNext); // sleep before move, first sleep is zero ms
+                    } catch (InterruptedException e) {
+                        log.info("interrupted");
+                        break;
+                    }
                 }
+                sendRodPosition(false, p.thetaDeg, p.zDeg);
             }
             if (!aborted) {
                 RodPosition startingPosition = rodSequence.get(0);
@@ -442,7 +444,7 @@ public class GoingFishing extends EventFilter2DMouseROI {
                 log.info("got new " + rodSequences);
                 break;
             case EVENT_CLEAR_SEQUENCES:
-                for(RodSequence r:rodSequences){
+                for (RodSequence r : rodSequences) {
                     r.clear();
                     r.save();
                 }

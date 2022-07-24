@@ -61,7 +61,7 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     
     @Override
     public boolean add(RodPosition p){
-        durationMs+=p.timeMs;
+        durationMs+=p.delayMsToNext;
         return super.add(p);
     }
     

@@ -181,18 +181,19 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void rodControlPanelMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_rodControlPanelMouseDragged
+        // first drag movement of mouse starts the sequencq
         requestFocusInWindow(); // to get key listeners to work
         int thetaDeg = (int) (Math.floor(180f * (float) evt.getX() / rodControlPanel.getWidth()));
         int zDeg = (int) (Math.floor(180f * (float) (rodControlPanel.getHeight() - evt.getY()) / rodControlPanel.getHeight()));
         final long currentTimeMillis = System.currentTimeMillis();
+        final long delayToNextMs = lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs;
 
-        RodPosition rodPosition = new RodPosition(lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs, thetaDeg, zDeg);
+        // first step has zero delay
+        RodPosition rodPosition = new RodPosition(delayToNextMs, thetaDeg, zDeg);
         if (recording) {
             rodSequence.add(rodPosition);
-//            log.info("added "+rodPosition);
         }
         lastTimeMs = currentTimeMillis;
-//        log.info(rodPosition.toString());
         firePropertyChange(GoingFishing.EVENT_ROD_POSITION, null, rodPosition);
     }//GEN-LAST:event_rodControlPanelMouseDragged
 
