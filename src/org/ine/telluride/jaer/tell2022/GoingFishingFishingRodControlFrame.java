@@ -18,8 +18,13 @@
  */
 package org.ine.telluride.jaer.tell2022;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Graphics;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.util.logging.Logger;
+import javax.swing.JPanel;
 
 /**
  *
@@ -32,15 +37,58 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     private long lastTimeMs = 0;
     private boolean recording = false;
     RodSequence rodSequence = new RodSequence(0);
+    int lastX = -1, lastY = -1;
+    int startX = -1, startY = -1;
+    JPanel myPanel = null;
 
     /**
      * Creates new form GoingFishingFishingRodControlFrame
      */
     public GoingFishingFishingRodControlFrame() {
         initComponents();
+        myPanel = new JPanel() {
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (startX != -1 && startY != -1) {
+                    final int s = 8;
+                    g.setColor(Color.red);
+                    g.drawLine(startX - s, startY, startX + s, startY);
+                    g.drawLine(startX, startY - s, startX, startY + s);
+                }
+                if (lastY != -1 && lastX != -1) {
+                    final int s = 8;
+                    g.setColor(Color.blue);
+                    g.drawLine(lastX - s, lastY, lastX + s, lastY);
+                    g.drawLine(lastX, lastY - s, lastX, lastY + s);
+                }
+            }
+        };
+        myPanel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            public void mouseDragged(java.awt.event.MouseEvent evt) {
+                processMouseEvent(evt, false);
+            }
+        });
+        myPanel.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                toggleRecording(evt);
+            }
+
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                toggleRecording(evt);
+            }
+        });
+        myPanel.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                processMouseEvent(evt, false);
+            }
+        });
+        rodControlPanel.add(myPanel, BorderLayout.CENTER);
+
         buttonGroup1.add(fishingHoleButton0);
         buttonGroup1.add(fishingHoleButton1);
         fishingHoleButton0.setSelected(true);
+        pack();
+
     }
 
     /**
@@ -53,13 +101,14 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     private void initComponents() {
 
         buttonGroup1 = new javax.swing.ButtonGroup();
-        recordToggleButton = new javax.swing.JToggleButton();
+        jPanel2 = new javax.swing.JPanel();
         rodControlPanel = new javax.swing.JPanel();
-        helpText = new javax.swing.JTextField();
         jPanel1 = new javax.swing.JPanel();
         fishingHoleButton0 = new javax.swing.JRadioButton();
         fishingHoleButton1 = new javax.swing.JRadioButton();
         clearButton = new javax.swing.JButton();
+        recordToggleButton = new javax.swing.JToggleButton();
+        helpText = new javax.swing.JTextField();
 
         setTitle("Going Fishing Rod Control");
         addKeyListener(new java.awt.event.KeyAdapter() {
@@ -68,77 +117,21 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             }
         });
 
-        recordToggleButton.setText("Record (r)");
-        recordToggleButton.setToolTipText("Toggle recording of fishing rod movement");
-        recordToggleButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                recordToggleButtonActionPerformed(evt);
-            }
-        });
+        jPanel2.setLayout(new java.awt.BorderLayout());
 
         rodControlPanel.setBackground(new java.awt.Color(102, 204, 255));
         rodControlPanel.setBorder(new javax.swing.border.MatteBorder(null));
-        rodControlPanel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-            public void mouseDragged(java.awt.event.MouseEvent evt) {
-                rodControlPanelMouseDragged(evt);
-            }
-        });
-        rodControlPanel.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                rodControlPanelKeyPressed(evt);
-            }
-            public void keyTyped(java.awt.event.KeyEvent evt) {
-                rodControlPanelKeyTyped(evt);
-            }
-        });
+        rodControlPanel.setMinimumSize(new java.awt.Dimension(400, 400));
+        rodControlPanel.setLayout(new java.awt.BorderLayout());
+        jPanel2.add(rodControlPanel, java.awt.BorderLayout.CENTER);
 
-        helpText.setEditable(false);
-        helpText.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
-        helpText.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        helpText.setText("Press left mouse button and drag to control rod");
-        helpText.setFocusable(false);
-
-        javax.swing.GroupLayout rodControlPanelLayout = new javax.swing.GroupLayout(rodControlPanel);
-        rodControlPanel.setLayout(rodControlPanelLayout);
-        rodControlPanelLayout.setHorizontalGroup(
-            rodControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(rodControlPanelLayout.createSequentialGroup()
-                .addGap(71, 71, 71)
-                .addComponent(helpText, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(131, Short.MAX_VALUE))
-        );
-        rodControlPanelLayout.setVerticalGroup(
-            rodControlPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(rodControlPanelLayout.createSequentialGroup()
-                .addGap(130, 130, 130)
-                .addComponent(helpText, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(142, Short.MAX_VALUE))
-        );
+        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
 
         fishingHoleButton0.setText("Fishing hole 0");
+        jPanel1.add(fishingHoleButton0);
 
         fishingHoleButton1.setText("Fishing hole 1");
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(fishingHoleButton0)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(fishingHoleButton1)
-                .addContainerGap())
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(fishingHoleButton0, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(fishingHoleButton1))
-                .addContainerGap())
-        );
+        jPanel1.add(fishingHoleButton1);
 
         clearButton.setText("Clear all");
         clearButton.addActionListener(new java.awt.event.ActionListener() {
@@ -146,45 +139,43 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
                 clearButtonActionPerformed(evt);
             }
         });
+        jPanel1.add(clearButton);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(rodControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addGroup(layout.createSequentialGroup()
-                .addGap(18, 18, 18)
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(clearButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(recordToggleButton)
-                .addContainerGap())
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addComponent(rodControlPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(recordToggleButton)
-                            .addComponent(clearButton))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
-        );
+        recordToggleButton.setText("Record (r)");
+        recordToggleButton.setToolTipText("Toggle recording of fishing rod movement");
+        recordToggleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                recordToggleButtonActionPerformed(evt);
+            }
+        });
+        jPanel1.add(recordToggleButton);
+
+        helpText.setEditable(false);
+        helpText.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
+        helpText.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        helpText.setText("Press left mouse button and drag to control rod");
+        helpText.setFocusable(false);
+        jPanel1.add(helpText);
+
+        jPanel2.add(jPanel1, java.awt.BorderLayout.SOUTH);
+
+        getContentPane().add(jPanel2, java.awt.BorderLayout.CENTER);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void rodControlPanelMouseDragged(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_rodControlPanelMouseDragged
+    protected void processMouseEvent(MouseEvent evt, boolean start) {
         // first drag movement of mouse starts the sequencq
         requestFocusInWindow(); // to get key listeners to work
-        int thetaDeg = (int) (Math.floor(180f * (float) evt.getX() / rodControlPanel.getWidth()));
-        int zDeg = (int) (Math.floor(180f * (float) (rodControlPanel.getHeight() - evt.getY()) / rodControlPanel.getHeight()));
+        if (start) {
+            startX = evt.getX();
+            startY = evt.getY();
+        } else {
+            lastX = evt.getX();
+            lastY = evt.getY();
+        }
+        int thetaDeg = (int) (Math.floor(180f * (float) lastX / myPanel.getWidth()));
+        int zDeg = (int) (Math.floor(180f * (float) (myPanel.getHeight() - lastY) / myPanel.getHeight()));
         final long currentTimeMillis = System.currentTimeMillis();
         final long delayToNextMs = lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs;
 
@@ -195,11 +186,8 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         }
         lastTimeMs = currentTimeMillis;
         firePropertyChange(GoingFishing.EVENT_ROD_POSITION, null, rodPosition);
-    }//GEN-LAST:event_rodControlPanelMouseDragged
-
-    private void rodControlPanelKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_rodControlPanelKeyTyped
-        toggleRecording(evt);
-    }//GEN-LAST:event_rodControlPanelKeyTyped
+        repaint(30);
+    }
 
 
     private void recordToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_recordToggleButtonActionPerformed
@@ -209,10 +197,6 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     private void formKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyTyped
         toggleRecording(evt);
     }//GEN-LAST:event_formKeyTyped
-
-    private void rodControlPanelKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_rodControlPanelKeyPressed
-       toggleRecording(evt);
-    }//GEN-LAST:event_rodControlPanelKeyPressed
 
     private void clearButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearButtonActionPerformed
         firePropertyChange(GoingFishing.EVENT_CLEAR_SEQUENCES, null, null);
@@ -229,9 +213,9 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         recording = !recording;
         if (recording) {
             lastTimeMs = 0;
-            int seq=fishingHoleButton0.isSelected()?0:1;
-            RodSequence rodSequence=new RodSequence(seq);
-            log.info("recording sequence "+seq);
+            int seq = fishingHoleButton0.isSelected() ? 0 : 1;
+            RodSequence rodSequence = new RodSequence(seq);
+            log.info("recording sequence " + seq);
         } else {
             firePropertyChange(GoingFishing.EVENT_ROD_SEQUENCE, null, rodSequence);
         }
@@ -279,6 +263,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     private javax.swing.JRadioButton fishingHoleButton1;
     private javax.swing.JTextField helpText;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JToggleButton recordToggleButton;
     private javax.swing.JPanel rodControlPanel;
     // End of variables declaration//GEN-END:variables

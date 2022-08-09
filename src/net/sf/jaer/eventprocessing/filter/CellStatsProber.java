@@ -478,7 +478,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                 rateHist.reset();
                 return;
             }
-            nPixels = roiRect == null ? chip.getNumPixels() : (roiRect.width) * (roiRect.height);
+            nPixels = getNumRoiPixels();
             stats.eventCount = 0;
             for (BasicEvent e : in) {
                 if (showLatencyHistogramToExternalInputEvents && (e.address == externalInputEventAddress)) {
@@ -495,7 +495,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                     // by the EventPacket inputIterator()
                 }
                 // if event inside ROI, add it it its histgram, maybe
-                if (insideRoi(e)) {
+                if (isInsideAnyROI(e)) {
                     stats.eventCount++;
                     lastEventTimestamp = e.timestamp;
                     if ((isiHistEnabled || showRateDistribution) && individualISIsEnabled) {
@@ -1349,7 +1349,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                 }
 
                 if (e.isFilteredOut()
-                        || !insideRoi(e) || phase == Phase.Uninitalized) {
+                        || !isInsideAnyROI(e) || phase == Phase.Uninitalized) {
                     return;
                 }
                 switch (e.polarity) {
@@ -1372,7 +1372,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
 
             @Override
             public String toString() {
-                int n = roiRect == null ? chip.getNumPixels() : roiRect.height * roiRect.width;
+                int n = getNumRoiPixels();
                 if (numRisingEdges >= 2) {
                     onEventsPerRisingPhasePerPixel = (float) onRisingCount / n / (numRisingEdges - 1);
                     offEventsPerRisingPhasePerPixel = (float) offRisingCount / n / (numRisingEdges - 1);

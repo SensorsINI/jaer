@@ -162,7 +162,7 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
                 }
             }
             focusLast();
-            log.info("serial port initialization thread done");
+//            log.info("serial port initialization thread done");
         }
     }
     
@@ -731,9 +731,9 @@ public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements Har
         portCB.removeAllItems();
         // add available COM ports to menu
         CommPortIdentifier portId;
-        log.info("enumerating serial ports....");
+//        log.info("enumerating serial ports....");
         Enumeration<CommPortIdentifier> portList = CommPortIdentifier.getPortIdentifiers();
-        log.info("done enumerating serial ports");
+//        log.info("done enumerating serial ports");
 
         while (portList.hasMoreElements()) {
             portId = (CommPortIdentifier) portList.nextElement();

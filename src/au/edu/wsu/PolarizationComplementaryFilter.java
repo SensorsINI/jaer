@@ -16,6 +16,7 @@ import com.github.sh0nk.matplotlib4j.Plot;
 import com.github.sh0nk.matplotlib4j.PythonExecutionException;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,10 +82,10 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         tobiLogger.setColumnHeaderLine("lastTimestamp(s),ROINumPixels,f0,f45,f90,f135,AoP(deg),AoPStd(deg),DoLP,DoLPStd"); // CSV columns, not including the first column which is system time in ms since epoch
         tobiLogger.setFileCommentString(String.format("useEvents=%s useFrames=%s onThresshold=%f offThreshold=%f crossoverFrequencyHz=%f kappa=%f lambda=%f",
                 useEvents, useFrames, onThreshold, offThreshold, crossoverFrequencyHz, kappa, lambda));
-        String pol="Polarization";
-        setPropertyTooltip(pol,"writePolarizationCSV", "Write a CSV file with the the mean and std of polarization AoP and DoLP for the ROI");
-        setPropertyTooltip(pol,"plotAoPDoLP", "Plot accumulated results using pyplot");
-        setPropertyTooltip(pol,"statisticsLoggingIntervalMs", "Min interval between saved samples in ms when using writePolarizationCSV");
+        String pol = "Polarization";
+        setPropertyTooltip(pol, "writePolarizationCSV", "Write a CSV file with the the mean and std of polarization AoP and DoLP for the ROI");
+        setPropertyTooltip(pol, "plotAoPDoLP", "Plot accumulated results using pyplot");
+        setPropertyTooltip(pol, "statisticsLoggingIntervalMs", "Min interval between saved samples in ms when using writePolarizationCSV");
     }
 
     @Override
@@ -165,7 +166,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         // compute the AoP and DoLP in the ROI, using exp lambda function to linearize the estimated log intensity
         PolarizationUtils.computeAoPDoP(logFinalFrame, f0, f45, f90, f135, aop, dop, exp, indexf0, indexf45, indexf90, indexf135, height, width);
 
-        if (roiRect != null) {
+        if (roiRects != null) {
             // compute mean values
             int nb = 0, idx;
             f0stats.clear();
@@ -174,17 +175,19 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
             f135stats.clear();
             aopStats.clear();
             dopStats.clear();
-            for (int x = roiRect.x; x < roiRect.x + roiRect.width; x += 2) {
-                for (int y = roiRect.y; y < roiRect.y + roiRect.height; y += 2) {
-                    // compute idx into array, asssuming that AoP and DoP arrays are hold 2x2 macropixel values
-                    idx = PolarizationUtils.getIndex(x / 2, y / 2, width / 2);// (int) (x / 2 + y / 2 * width / 2);
-                    f0stats.addValue(f0[idx]);
-                    f45stats.addValue(f45[idx]);
-                    f90stats.addValue(f90[idx]);
-                    f135stats.addValue(f135[idx]);
-                    aopStats.addValue(aop[idx]);
-                    dopStats.addValue(dop[idx]);
-                    nb += 1;
+            for (Rectangle r : roiRects) {
+                for (int x = r.x; x < r.x + r.width; x += 2) {
+                    for (int y = r.y; y < r.y + r.height; y += 2) {
+                        // compute idx into array, asssuming that AoP and DoP arrays are hold 2x2 macropixel values
+                        idx = PolarizationUtils.getIndex(x / 2, y / 2, width / 2);// (int) (x / 2 + y / 2 * width / 2);
+                        f0stats.addValue(f0[idx]);
+                        f45stats.addValue(f45[idx]);
+                        f90stats.addValue(f90[idx]);
+                        f135stats.addValue(f135[idx]);
+                        aopStats.addValue(aop[idx]);
+                        dopStats.addValue(dop[idx]);
+                        nb += 1;
+                    }
                 }
             }
             meanf0 = (float) f0stats.getMean();  // compute the means to show in ellipse
@@ -239,7 +242,7 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         super.annotate(drawable); // draws the ROI selection rectangle
         GL2 gl = drawable.getGL().getGL2();
 
-        if (roiRect == null) {
+        if (roiRects == null || roiRects.isEmpty()) {
             return;
         }
         // draw the polarization ellipse
@@ -247,9 +250,11 @@ public class PolarizationComplementaryFilter extends DavisComplementaryFilter {
         gl.glLineWidth(3); // set the line width in screen pixels
         // draw the polarization ellipse
 
-        gl.glPushMatrix();
-        DrawGL.drawEllipse(gl, (float) roiRect.getCenterX(), (float) roiRect.getCenterY(), (float) (20), (float) (20 * (1 - meanDoP)), meanAoP * 2.0f, 32);
-        gl.glPopMatrix();
+        for (Rectangle r : roiRects) {
+            gl.glPushMatrix();
+            DrawGL.drawEllipse(gl, (float) r.getCenterX(), (float) r.getCenterY(), (float) (20), (float) (20 * (1 - meanDoP)), meanAoP * 2.0f, 32);
+            gl.glPopMatrix();
+        }
     }
 
     public void doToggleOnWritePolarizationCSV() {

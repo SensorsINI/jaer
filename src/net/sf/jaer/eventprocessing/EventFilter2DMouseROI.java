@@ -6,28 +6,24 @@ package net.sf.jaer.eventprocessing;
 
 import java.awt.Point;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.awt.GLCanvas;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
+import java.awt.Color;
 import java.awt.Rectangle;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
+import java.util.ArrayList;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.graphics.ChipCanvas;
-import net.sf.jaer.graphics.DisplayMethod2D;
-import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DrawGL;
 
 /**
- * Adds a mouse adaptor to enable ROI (region of interest) roiRect with mouse.
+ * Adds a mouse adaptor to enable ROI (region of interest) roiRects with mouse.
  *
  * @author Tobi
  */
@@ -48,8 +44,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
      * Flag that freezes ROI selection
      */
     protected boolean freezeRoi = getBoolean("freezeRoi", false);
+    private boolean multiROI = getBoolean("multiROI", false);
 
-    // roiRect stuff
+    // roiRects stuff
     /**
      * ROI start/end corner index
      */
@@ -59,15 +56,15 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
      */
     protected Point roiStartPoint = null, roiEndPoint = null, clickedPoint = null;
     /**
-     * ROI rectangle
+     * ROI rectangle(s)
      */
-    protected Rectangle roiRect = (Rectangle) getObject("roiRect", null);
+    protected ArrayList<Rectangle> roiRects = new ArrayList();
 
     /**
      * Boolean that indicates ROI is being selected currently
      */
     protected volatile boolean roiSelecting = false;
-    final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
+    final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f}, ROI_COLOR = {.5f, 0, 0, .5f};
 
     /**
      * The current mouse point in chip pixels, updated by mouseMoved
@@ -77,10 +74,16 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     public EventFilter2DMouseROI(AEChip chip) {
         super(chip);
         String roi = "Region of interest";
-        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI (region of interest) selection");
-        setPropertyTooltip(roi, "clearROI", "Clears ROI (region of interest)");
+        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI(s) (region of interest) selection");
+        setPropertyTooltip(roi, "clearROI", "Clears ROI(s) (region of interest)");
+        setPropertyTooltip(roi, "multiROI", "Enable multiple ROIs");
         if (chip.getCanvas() != null && chip.getCanvas().getCanvas() != null) {
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
+        }
+        try {
+            roiRects = (ArrayList<Rectangle>) getObject("roiRects", null);
+        } catch (Exception e) {
+            log.warning("cannot load existing ROIs: " + e.toString());
         }
     }
     float[] cursorColor = null;
@@ -116,26 +119,47 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
             return;
         }
         int sx = chip.getSizeX(), sy = chip.getSizeY();
-        Rectangle chipRect = new Rectangle(sx, sy);
-        if (roiRect != null && chipRect.intersects(roiRect)) {
-            drawRoi(gl, roiRect, SELECT_COLOR);
+        drawRois(gl, ROI_COLOR);
+
+        if (roiSelecting) {
+            gl.glPushMatrix();
+            gl.glColor3fv(SELECT_COLOR, 0);
+            gl.glLineWidth(3);
+//        gl.glTranslatef(-.5f, -.5f, 0);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(roiStartPoint.x, roiStartPoint.y);
+            gl.glVertex2f(roiStartPoint.x, currentMousePoint.y);
+            gl.glVertex2f(currentMousePoint.x, currentMousePoint.y);
+            gl.glVertex2f(currentMousePoint.x, roiStartPoint.y);
+            gl.glEnd();
+            gl.glPopMatrix();
         }
 
         chip.getCanvas().checkGLError(gl, glu, "in annotate");
 
     }
 
-    private void drawRoi(GL2 gl, Rectangle r, float[] c) {
+    private void drawRois(GL2 gl, float[] c) {
+        if (roiRects == null || roiRects.isEmpty()) {
+            return;
+        }
         gl.glPushMatrix();
-        gl.glColor3fv(c, 0);
-        gl.glLineWidth(3);
 //        gl.glTranslatef(-.5f, -.5f, 0);
-        gl.glBegin(GL.GL_LINE_LOOP);
-        gl.glVertex2f(roiRect.x, roiRect.y);
-        gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y);
-        gl.glVertex2f(roiRect.x + roiRect.width, roiRect.y + roiRect.height);
-        gl.glVertex2f(roiRect.x, roiRect.y + roiRect.height);
-        gl.glEnd();
+        int i = 0;
+        for (Rectangle r : roiRects) {
+            gl.glColor3fv(c, 0);
+            gl.glLineWidth(3);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            gl.glVertex2f(r.x, r.y);
+            gl.glVertex2f(r.x + r.width, r.y);
+            gl.glVertex2f(r.x + r.width, r.y + r.height);
+            gl.glVertex2f(r.x, r.y + r.height);
+            gl.glEnd();
+            gl.glPushAttrib(GL.GL_COLOR_BUFFER_BIT);
+            DrawGL.drawString(gl, 10, r.x, r.y, 0, Color.RED.darker(), Integer.toString(i));
+            gl.glPopAttrib();
+            i++;
+        }
         gl.glPopMatrix();
 
     }
@@ -148,7 +172,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     /**
-     * By default a cross hair roiRect cursor is drawn. This method prevent
+     * By default a cross hair roiRects cursor is drawn. This method prevent
      * drawing the cross hair.
      *
      * @param showCrossHairCursor the showCrossHairCursor to set
@@ -157,7 +181,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         this.showCrossHairCursor = showCrossHairCursor;
     }
 
-    // ROI roiRect stuff
+    // ROI roiRects stuff
     synchronized public void doClearROI() {
         if (freezeRoi) {
             showWarningDialogInSwingThread("Are you sure you want to clear ROI? Uncheck freezeROI if you want to clear the ROI.", "ROI frozen");
@@ -167,13 +191,13 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     private void clearSelection() {
-        roiRect = null;
+        roiRects.clear();
     }
 
     synchronized private void startRoiSelection(MouseEvent e) {
         Point p = getMousePixel(e);
         if (p == null) {
-            roiRect = null;
+            roiRects = null;
             return;
         }
         roiStartPoint = p;
@@ -184,7 +208,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     synchronized private void finishRoiSelection(MouseEvent e) {
         Point p = getMousePixel(e);
         if (p == null) {
-            roiRect = null;
+            roiRects = null;
             return;
         }
 
@@ -195,21 +219,94 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         roiEndy = max(roiStartPoint.y, roiEndPoint.y) + 1;
         int w = roiEndx - roiStartx;
         int h = roiEndy - roiStarty;
-        roiRect = new Rectangle(roiStartx, roiStarty, w, h);
-        putObject("roiRect", roiRect);
+        Rectangle newRoi = new Rectangle(roiStartx, roiStarty, w, h);
+        if (!isMultiROI() || roiRects == null) {
+            roiRects = new ArrayList<Rectangle>();
+        }
+        roiRects.add(newRoi);
+        putObject("roiRects", roiRects);
     }
 
     /**
-     * Returns true if the event is inside (or on border) of ROI
+     * Returns true if the event is inside (or on border) of any of the ROI(s)
      *
      * @param e an event
-     * @return true if on or inside ROI, false if no ROI or outside
+     * @return true if on or inside any ROI, false if no ROI or outside
      */
-    protected boolean insideRoi(BasicEvent e) {
-        if (roiRect == null || roiRect.isEmpty() || roiRect.contains(e.x, e.y)) {
+    protected boolean isInsideAnyROI(BasicEvent e) {
+        Point p = new Point(e.x, e.y);
+        return isInsideAnyROI(p);
+    }
+
+    /**
+     * Returns number of ROI (0 based) if the event is inside (or on border) of
+     * any of the ROI(s), otherwise returns -1. If no ROIs are defined, returns
+     * 0.
+     *
+     * @param e an event
+     * @return number of ROI if on or inside an ROI, -1 if no ROI or outside
+     */
+    protected int isInsideWhichROI(BasicEvent e) {
+        Point p = new Point(e.x, e.y);
+        return isInsideWhichROI(p);
+    }
+
+    /**
+     * Returns true if the Point is inside (or on border) of any of the ROI(s)
+     *
+     * @param p a Point
+     * @return true if on or inside any ROI, false if no ROI or outside
+     */
+    protected boolean isInsideAnyROI(Point p) {
+        if (roiRects == null || roiRects.isEmpty()) {
             return true;
         }
+        for (Rectangle r : roiRects) {
+            if (r.contains(p.x, p.y)) {
+                return true;
+            }
+        }
         return false;
+
+    }
+
+    /**
+     * Returns number of ROI (0 based) if the point is inside (or on border) of
+     * any of the ROI(s), otherwise returns -1. If no ROIs are defined, returns
+     * 0.
+     *
+     * @param p a Point
+     * @return number of ROI if on or inside an ROI, -1 if no ROI or outside
+     */
+    protected int isInsideWhichROI(Point p) {
+        if (roiRects == null || roiRects.isEmpty()) {
+            return 0;
+        }
+        int i = 0;
+        for (Rectangle r : roiRects) {
+            if (r.contains(p.x, p.y)) {
+                return i;
+            }
+            i++;
+        }
+        return -1;
+    }
+
+    /**
+     * Returns either size of chip array if there are no ROIs, or the sum of all
+     * the ROI rectangles
+     *
+     * @return number of pixels
+     */
+    protected int getNumRoiPixels() {
+        if (roiRects == null || roiRects.isEmpty()) {
+            return chip.getNumPixels();
+        }
+        int sum = 0;
+        for (Rectangle r : roiRects) {
+            sum += (r.width) * (r.height);
+        }
+        return sum;
     }
 
     private int min(int a, int b) {
@@ -235,9 +332,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         }
         finishRoiSelection(e);
         roiSelecting = false;
-        if (roiRect != null) {
-            log.info(String.format("ROI rect %s has %d pixels", roiRect, roiRect.height * roiRect.width));
-        }
+
     }
 
     @Override
@@ -263,7 +358,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
             log.warning("disable freezeRoi if you want to select a region of interest");
             return;
         }
-        finishRoiSelection(e);
+        currentMousePoint = getMousePixel(e);
     }
 
     @Override
@@ -285,6 +380,20 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     public void setFreezeRoi(boolean freezeRoi) {
         this.freezeRoi = freezeRoi;
         putBoolean("freezeRoi", freezeRoi);
+    }
+
+    /**
+     * @return the multiROI
+     */
+    public boolean isMultiROI() {
+        return multiROI;
+    }
+
+    /**
+     * @param multiROI the multiROI to set
+     */
+    public void setMultiROI(boolean multiROI) {
+        this.multiROI = multiROI;
     }
 
 }
