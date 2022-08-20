@@ -36,7 +36,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
 
     private long lastTimeMs = 0;
     private boolean recording = false;
-    RodSequence rodSequence = new RodSequence(0);
+    RodSequence rodSequence = null;
     int lastX = -1, lastY = -1;
     int startX = -1, startY = -1;
     JPanel myPanel = null;
@@ -214,7 +214,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         if (recording) {
             lastTimeMs = 0;
             int seq = fishingHoleButton0.isSelected() ? 0 : 1;
-            RodSequence rodSequence = new RodSequence(seq);
+            rodSequence = new RodSequence(seq);
             log.info("recording sequence " + seq);
         } else {
             firePropertyChange(GoingFishing.EVENT_ROD_SEQUENCE, null, rodSequence);
