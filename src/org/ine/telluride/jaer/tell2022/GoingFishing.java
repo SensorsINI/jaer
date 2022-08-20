@@ -24,6 +24,7 @@ import gnu.io.NRSerialPort;
 import java.awt.Color;
 import java.awt.Point;
 import java.awt.Toolkit;
+import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -70,6 +71,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private int serialBaudRate = getInt("serialBaudRate", 115200);
     private DataOutputStream serialPortOutputStream = null;
     private DataInputStream serialPortInputStream = null;
+    private AdcReader adcReader = null;
     private boolean disableServos = false;
     private boolean disableFishing = getBoolean("disableFishing", false);
     private final int SERIAL_WARNING_INTERVAL = 100;
@@ -89,17 +91,21 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     // fishing rod dips
     RodDipper rodDipper = null;
     RodSequence[] rodSequences = {new RodSequence(0), new RodSequence(1)};
-    private int currentRodsequence = 0;
+    private int currentRodsequenceIdx = 0;
     private float fishingHoleSwitchProbability = getFloat("fishingHoleSwitchProbability", 0.1f);
     private int fishingAttemptHoldoffMs = getInt("fishingAttemptHoldoffMs", 3000);
     private long lastFishingAttemptTimeMs = 0;
     private int rodReturnDurationMs = getInt("rodReturnDurationMs", 1000);
 
+    // marking rod tip
+    private boolean markRodTip = false;
+    private java.awt.Point rodTipLocation;
+
     // reinforcement learning
     private float rodThetaOffset = getFloat("rodThetaOffset", 0);
     private int rodDipDelayMs = getInt("rodDipDelayMs", 0);
     private float rodThetaSamplingSigmaDeg = getFloat("rodThetaSamplingSigmaDeg", 2);
-    private int rodDipDelaySamplingSigmaMs = getInt("rodDipDelaySamplingSigmaMs", 10);
+    private int rodDipDelaySamplingSigmaMs = getInt("rodDipDelaySamplingSigmaMs", 100);
     private int rodDipTotalCount = 0, rodDipSuccessCount = 0, rodDipFailureCount = 0;
 
     private long lastManualRodControlTime = 0;
@@ -122,6 +128,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(rod, "dipRod", "make a fishing movement");
         setPropertyTooltip(rod, "abortDip", "abort rod dipping if active");
         setPropertyTooltip(rod, "resetLearning", "reset learned theta and delay parameters");
+        setPropertyTooltip(rod, "markRopTipLocation", "Mark the location of rod tip and hook with next mouse click");
         setPropertyTooltip(rod, "zMin", "min rod tilt angle in deg");
         setPropertyTooltip(rod, "zMax", "max rod tilt angle in deg");
         setPropertyTooltip("disableServos", "turn off servos");
@@ -130,7 +137,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(rod, "fishingAttemptHoldoffMs", "holdoff time in ms between automatic fishing attempts");
         setPropertyTooltip(rod, "rodReturnDurationMs", "duration in ms of movement back to starting point of fishing rod sequence");
         setPropertyTooltip(ler, "caughtFishDetectorThreshold", "threshold ADC count from FSR to detect that we caught a fish");
-        setPropertyTooltip(ler, "rodDipDelaySamplingSigmaMs", "sigma in ms to sample new rod dip starting delays");
+        setPropertyTooltip(ler, "rodDipDelaySamplingSigmaMs", "spread of uniformly-sampled delay in ms to sample new rod dip starting delay");
         setPropertyTooltip(ler, "rodThetaSamplingSigmaDeg", "sigma in deg to sample new rod dip pan offsets");
         try {
             for (int i = 0; i < 2; i++) {
@@ -140,45 +147,53 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         } catch (Exception e) {
             log.warning("Could not load fishing rod movement sequence: " + e.toString());
         }
+        Object o = getObject("rodTipLocation", null);
+        if (o instanceof java.awt.Point) {
+            rodTipLocation = (java.awt.Point) o;
+        } else {
+            rodTipLocation = null;
+        }
     }
 
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         in = getEnclosedFilterChain().filterPacket(in);
+        checkForFishingAttempt();
+
+        return in;
+    }
+
+    private void checkForFishingAttempt() {
         long currentTimeMs = System.currentTimeMillis();
         if (roiRects != null && !roiRects.isEmpty() && currentTimeMs - lastManualRodControlTime > HOLDOFF_AFTER_MANUAL_CONTROL_MS) {
             LinkedList<Cluster> clusterList = tracker.getVisibleClusters();
             for (Cluster c : clusterList) {
                 Point p = new Point((int) c.getLocation().x, (int) c.getLocation().y);
                 int roi = isInsideWhichROI(p);
-                if (roi >= 0 && roi == currentRodsequence) {
-                    // The ROI entered is the current fishing rod sequence one
+                if (roi >= 0 && roi == currentRodsequenceIdx) {
+                    // The ROI entered matches the current fishing rod sequence ROI
                     // this ROI we drew contains a fish cluster
+                    float speed = c.getSpeedPPS();
+                    java.awt.geom.Point2D.Float loc = c.getLocation();
+                    float distClusterToRodTip = (float) rodTipLocation.distance(loc);
+                    int msForFishToReachRodTip = (int) (1000 * distClusterToRodTip / speed);
+                    final long timeToMinZMs = rodSequences[currentRodsequenceIdx].timeToMinZMs;
+                    if (msForFishToReachRodTip < timeToMinZMs) {
+                        log.warning(String.format("msForFishToReachRodTip=%,d ms is less than rod sequence timeToMinZMs=%,d ms", msForFishToReachRodTip, timeToMinZMs));
+                    } else {
+                        long delay = msForFishToReachRodTip - timeToMinZMs - rodDipDelaySamplingSigmaMs;
+                        rodSequences[currentRodsequenceIdx].setInitialDelayMs(delay);
+                    }
                     if (rodDipper == null || !rodDipper.isAlive()) {
 //                        log.info(String.format("Detected fish in ROI at location %s becoming contained by ROI rectangle %s", c.getLocation(), roiRects.get(roi)));
                         if (!disableFishing) {
+                            Toolkit.getDefaultToolkit().beep();
                             dipRod(true);
                         }
                     }
                 }
             }
         }
-        lastAdcValue = -1;
-        if (serialPortInputStream != null) {
-            try {
-                int navail = serialPortInputStream.available();
-                if (navail >= 2) {
-                    byte[] buf = new byte[navail];
-                    serialPortInputStream.readFully(buf);
-                    lastAdcValue = (int) ((buf[navail - 2] & 0xff) * 256 + (0xff & buf[navail - 1]));
-//                    System.out.println(String.format("ADC: available=%d val=%d", navail, lastAdcValue));
-                }
-            } catch (IOException ex) {
-                log.warning("serial port error while reading ADC value: " + ex.toString());
-                closeSerial();
-            }
-        }
-        return in;
     }
 
     /**
@@ -189,6 +204,12 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     public void annotate(GLAutoDrawable drawable) {
         super.annotate(drawable);
         GL2 gl = drawable.getGL().getGL2();
+        if (rodTipLocation != null) {
+            gl.glPushMatrix();
+            gl.glColor3f(1, 0, 0);
+            DrawGL.drawCross(gl, rodTipLocation.x, rodTipLocation.y, 6, 0);
+            gl.glPopMatrix();
+        }
         gl.glPushMatrix();
         final float adcY = chip.getSizeY() / 10;
         final float adcStartX = 2;
@@ -227,6 +248,10 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     public void doDipRod() {
         if (rodDipper != null) {
             rodDipper.abort();
+            try {
+                rodDipper.join(200);
+            } catch (InterruptedException e) {
+            }
         }
         dipRod(false);
     }
@@ -236,12 +261,26 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             rodDipper.abort();
         }
     }
-    
-    public void doResetLearning(){
-        rodDipDelayMs=0;
-        rodThetaOffset=0;
-        putInt("rodDipDelayMs",0);
-        putFloat("rodThetaOffset",0);
+
+    public void doResetLearning() {
+        rodDipDelayMs = 0;
+        rodThetaOffset = 0;
+        putInt("rodDipDelayMs", 0);
+        putFloat("rodThetaOffset", 0);
+    }
+
+    public void doMarkRopTipLocation() {
+        markRodTip = true;
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        super.mouseClicked(e);
+        if (markRodTip) {
+            markRodTip = false;
+            rodTipLocation = new java.awt.Point(clickedPoint);
+            putObject("rodTipLocation", rodTipLocation);
+        }
     }
 
     private void openSerial() throws IOException {
@@ -274,6 +313,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             while (serialPortInputStream.available() > 0) {
                 serialPortInputStream.read();
             }
+            adcReader = new AdcReader(serialPortInputStream);
+            adcReader.start();
             log.info("opened serial port " + serialPortName + " with baud rate=" + serialBaudRate);
         } else {
             log.warning("cannot connect serial port" + serialPortName);
@@ -290,13 +331,12 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             }
             serialPortOutputStream = null;
         }
-        if (serialPortInputStream != null) {
+        if (adcReader != null && adcReader.isAlive()) {
+            adcReader.shutdown();
             try {
-                serialPortInputStream.close();
-            } catch (IOException ex) {
-                log.warning(ex.toString());
+                adcReader.join(200);
+            } catch (InterruptedException e) {
             }
-            serialPortInputStream = null;
         }
 
         if ((serialPort != null) && serialPort.isConnected()) {
@@ -461,12 +501,12 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         final long dt = System.currentTimeMillis() - lastFishingAttemptTimeMs;
 
         if (!holdoff || (holdoff && (dt < 0 || dt > fishingAttemptHoldoffMs))) {
-            int nextSeq = (currentRodsequence + 1) % 2;
+            int nextSeq = (currentRodsequenceIdx + 1) % 2;
             if (rodSequences[nextSeq].size() > 0 && random.nextFloat() <= fishingHoleSwitchProbability) {
-                currentRodsequence = nextSeq;
-                log.info("switched to " + rodSequences[currentRodsequence]);
+                currentRodsequenceIdx = nextSeq;
+                log.info("switched to " + rodSequences[currentRodsequenceIdx]);
             }
-            rodDipper = new RodDipper(rodSequences[currentRodsequence]);
+            rodDipper = new RodDipper(rodSequences[currentRodsequenceIdx]);
 //            log.info("running " + rodSequences.toString());
 
             rodDipper.start();
@@ -475,6 +515,42 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
 
     private boolean isFishCaught() {
         return lastAdcValue > caughtFishDetectorThreshold;
+    }
+
+    private class AdcReader extends Thread {
+
+        DataInputStream stream;
+
+        public AdcReader(DataInputStream stream) {
+            this.stream = stream;
+        }
+
+        synchronized public void shutdown() {
+            try {
+                serialPortInputStream.close();
+            } catch (IOException e) {
+
+            }
+            serialPortInputStream = null;
+            return;
+
+        }
+
+        public void run() {
+            while (serialPortInputStream != null) {
+                try {
+                    byte[] buf = new byte[2];
+                    synchronized (this) {
+                        serialPortInputStream.readFully(buf);
+                    }
+                    lastAdcValue = (int) ((buf[0] & 0xff) * 256 + (0xff & buf[1]));
+//                    System.out.println(String.format("ADC: available=%d val=%d", navail, lastAdcValue));
+                } catch (IOException ex) {
+                    log.warning("serial port error while reading ADC value: " + ex.toString());
+                    closeSerial();
+                }
+            }
+        }
     }
 
     private class RodDipper extends Thread {
@@ -492,40 +568,53 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 log.warning("no sequence to play to dip rod");
                 return;
             }
-            Toolkit.getDefaultToolkit().beep();
+
             lastFishingAttemptTimeMs = System.currentTimeMillis();
 
+            if (rodSequence.getInitialDelayMs() > 0) {
+                try {
+                    sleep(rodSequence.getInitialDelayMs());
+                } catch (InterruptedException e) {
+                    log.info("Iitial delay intettupted");
+                    return;
+                }
+            }
+            // Samples an angle variation with normal dist sigma of rodThetaSamplingSigmaDeg
             final double thetaSample = rodThetaSamplingSigmaDeg * random.nextGaussian();
-            final double delaySamp = rodDipDelaySamplingSigmaMs * random.nextFloat();
+            // Samples a delay around 0 with uniform spread of rodDipDelaySamplingSigmaMs/2 around 0. 
+            // This delay reduces or increases time we wait to dip the rod after detecting fish and computing 
+            // the time it will take the fish to reach the rod tip location
+            final double delaySamp = rodDipDelaySamplingSigmaMs * (0.5 - random.nextFloat());
             float randomThetaOffsetDeg = (float) (rodThetaOffset + thetaSample);
             int randomDelayMs = (int) Math.round(rodDipDelayMs + delaySamp);
-            if (randomDelayMs < 0) {
-                randomDelayMs = 0;
-            }
             log.info(String.format("Theta offset learned+sample=%.1f + %.1f deg; Delay learned+sample=%d + %.0f",
                     rodThetaOffset, thetaSample,
                     rodDipDelayMs, delaySamp));
 
             rodDipTotalCount++;
 
-            try {
-                Thread.sleep(randomDelayMs);
-            } catch (InterruptedException e) {
-                log.info("Interrupted rod sequence during initial delay");
-                return;
+            if (randomDelayMs > 0) {
+                try {
+                    Thread.sleep(randomDelayMs);
+                } catch (InterruptedException e) {
+                    log.info("Interrupted rod sequence during initial delay");
+                    return;
+                }
+            } else {
+                log.warning(String.format("negative delay of %,d ms required", randomDelayMs));
             }
 
+            Toolkit.getDefaultToolkit().beep();
             for (RodPosition p : rodSequence) {
                 if (aborted) {
-                    log.info("rod sequence aborted,  disabling servos");
-                    sendRodPosition(true, 0, 0);
+                    log.info("rod sequence aborted");
                     break;
                 }
                 if (p.delayMsToNext > 0) {
                     try {
                         sleep(p.delayMsToNext); // sleep before move, first sleep is zero ms
                     } catch (InterruptedException e) {
-                        log.info("interrupted");
+                        log.info("rod sequence interrupted");
                         break;
                     }
                 }
@@ -541,8 +630,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 putInt("rodDipDelayMs", randomDelayMs);
                 sendRodPosition(false, lastRodTheta, 180);
                 try {
-                    log.info("raising rod for 5s");
-                    Thread.sleep(5000);
+                    log.info("raising rod for 10s");
+                    Thread.sleep(10000);
                 } catch (InterruptedException ex) {
                     return;
                 }
@@ -550,34 +639,33 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 rodDipFailureCount++;
             }
 
-            if (!aborted) {
-                // move smoothly with minimum jerk back to starting position
-                final RodPosition startingPosition = rodSequence.get(rodSequence.size() - 1);
-                final RodPosition endingPosition = rodSequence.get(0);
-                final Point2D start = new Point2D(startingPosition.thetaDeg, startingPosition.zDeg);
-                final Point2D end = new Point2D(endingPosition.thetaDeg, endingPosition.zDeg);
-                final double sampleRateHz = 100;
-                final double dtS = 1 / sampleRateHz;
-                final int dtMs = (int) Math.floor(dtS * 1000);
-                final int dtRemNs = (int) (1e9 * (dtS - dtMs / 1000.));
-                final ArrayList<Point2D> traj = minimumJerkTrajectory(start, end, sampleRateHz, rodReturnDurationMs);
-//                log.info(String.format("returning to starting position in %,d ms with minimum jerk trajectory of %d points", rodReturnDurationMs, traj.size()));
-                for (Point2D p : traj) {
-                    int theta = (int) p.getX();
-                    int z = (int) p.getY();
-                    sendRodPosition(false, theta, z);
-                    try {
-                        Thread.sleep(dtMs, dtRemNs);
-                    } catch (InterruptedException ex) {
-                        break;
-                    }
-                }
-                sendRodPosition(false, endingPosition.thetaDeg, endingPosition.zDeg);
-//                log.info("done returning");
-                lastFishingAttemptTimeMs = System.currentTimeMillis();
-            } else {
-                disableServos();
+            if (aborted) {
+                return;
             }
+            // move smoothly with minimum jerk back to starting position
+            final RodPosition startingPosition = rodSequence.get(rodSequence.size() - 1);
+            final RodPosition endingPosition = rodSequence.get(0);
+            final Point2D start = new Point2D(startingPosition.thetaDeg, startingPosition.zDeg);
+            final Point2D end = new Point2D(endingPosition.thetaDeg, endingPosition.zDeg);
+            final double sampleRateHz = 100;
+            final double dtS = 1 / sampleRateHz;
+            final int dtMs = (int) Math.floor(dtS * 1000);
+            final int dtRemNs = (int) (1e9 * (dtS - dtMs / 1000.));
+            final ArrayList<Point2D> traj = minimumJerkTrajectory(start, end, sampleRateHz, rodReturnDurationMs);
+//                log.info(String.format("returning to starting position in %,d ms with minimum jerk trajectory of %d points", rodReturnDurationMs, traj.size()));
+            for (Point2D p : traj) {
+                int theta = (int) p.getX();
+                int z = (int) p.getY();
+                sendRodPosition(false, theta, z);
+                try {
+                    Thread.sleep(dtMs, dtRemNs);
+                } catch (InterruptedException ex) {
+                    break;
+                }
+            }
+            sendRodPosition(false, endingPosition.thetaDeg, endingPosition.zDeg);
+//                log.info("done returning");
+            lastFishingAttemptTimeMs = System.currentTimeMillis();
         }
 
         private void abort() {
@@ -680,6 +768,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 newSequnce.save();
                 rodSequences[newSequnce.getIndex()] = newSequnce;
                 log.info("got new " + rodSequences);
+                showPlainMessageDialogInSwingThread(newSequnce.toString(), "New rod sequence");
                 break;
             case EVENT_CLEAR_SEQUENCES:
                 for (RodSequence r : rodSequences) {
