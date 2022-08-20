@@ -143,7 +143,7 @@ public final class DrawGL {
      * @param centerX the cross origin location x
      * @param centerY the cross origin location x
      * @param length The x length of cross
-     * @param angle the angle relative to E
+     * @param angle the angle relative to E in radians
      */
     public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length, final float angle) {
 
