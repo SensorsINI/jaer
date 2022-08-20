@@ -170,9 +170,12 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             log.warning("could not locate default folder for filter settings relative to starting folder, using startup folder");
         }
     }
-    
-    /** Returns path to default settings folder where .xml settings and other data such as networks can be stored */
-    protected String getDefaultSettingsFolder(){
+
+    /**
+     * Returns path to default settings folder where .xml settings and other
+     * data such as networks can be stored
+     */
+    protected String getDefaultSettingsFolder() {
         return defaultSeettingsFolder;
     }
 
@@ -553,7 +556,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Shows a information-type message dialog in Swing thread; safe to call
      * from event filter processing thread.
      *
-     * @param msg the string, can use HTML format for multiline or accenting
+     * @param msg the string, can use HTML format for multiline or accenting. If string contains newline(s), these are automatically  converted to <br> in HTML format.
      * @param title the dialog title, should be short
      */
     protected void showPlainMessageDialogInSwingThread(final String msg, final String title) {
@@ -561,7 +564,13 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             // outside swing thread, must do this
             @Override
             public void run() {
-                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
+                if (msg.contains("\n")) {
+                    String m = "<html>" + msg;
+                    String m2 = m.replaceAll("\n", "<br>");
+                    JOptionPane.showMessageDialog(chip.getFilterFrame(), m2, title, JOptionPane.PLAIN_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.PLAIN_MESSAGE);
+                }
             }
         });
     }
