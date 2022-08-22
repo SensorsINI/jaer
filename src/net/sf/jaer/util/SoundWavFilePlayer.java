@@ -69,7 +69,7 @@ public class SoundWavFilePlayer {
      * Creates new SlotcarSoundEffects labeled number i, using sampled sound
      * stored as preference for this number.
      *
-     * @param soundNumber an index, used to look up the preferred sound file.
+     * @param filename path to the sound WAV file.
      * @throws IOException
      * @throws LineUnavailableException
      * @throws UnsupportedAudioFileException
