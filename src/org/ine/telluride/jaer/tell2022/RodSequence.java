@@ -17,7 +17,6 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     private int index;
     public long durationMs = 0, timeToMinZMs = 0;
     private int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE, minTheta = Integer.MAX_VALUE, maxTheta = Integer.MIN_VALUE;
-    private long initialDelayMs=0;
 
     public RodSequence(int index) {
         this.index = index;
@@ -27,6 +26,7 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         if (size() == 0) {
             log.info("saving sequence of zero length");
         }
+        durationMs=0;
         for (RodPosition p : this) {
             durationMs += p.delayMsToNext;
             if (p.zDeg < minZ) {
@@ -72,7 +72,6 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         this.maxZ = rodSequence.maxZ;
         this.minZ = rodSequence.minZ;
         this.timeToMinZMs = rodSequence.timeToMinZMs;
-        this.initialDelayMs=rodSequence.initialDelayMs;
     }
 
     @Override
@@ -103,20 +102,6 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
      */
     public int getIndex() {
         return index;
-    }
-
-    /**
-     * @return the initialDelayMs
-     */
-    public long getInitialDelayMs() {
-        return initialDelayMs;
-    }
-
-    /**
-     * @param initialDelayMs the initialDelayMs to set
-     */
-    public void setInitialDelayMs(long initialDelayMs) {
-        this.initialDelayMs = initialDelayMs;
     }
 
 }
