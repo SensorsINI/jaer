@@ -52,7 +52,9 @@ import net.sf.jaer.util.SoundWavFilePlayer;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 /**
- * Going fishing game from Under the sea Lets go Fishing from Pressman
+ * Going fishing game from Under the sea Lets go Fishing from Pressman. It uses an Arduino Nano to generate the PWM servo output for the rod pan tilt and to read the ADC connected to the current senss samplifier reading the FSR conductance that senses the fish hanging on the hook. 
+ * 
+ * See https://youtu.be/AgESLgcEE7o for video of Gone Fishing robot.
  *
  * @author tobid, Julie Hasler (juliehsler)
  */
