@@ -98,6 +98,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private long lastFishingAttemptTimeMs = 0;
     private int rodReturnDurationMs = getInt("rodReturnDurationMs", 1000);
     private boolean treatSigmasAsOffsets = getBoolean("treatSigmasAsOffsets", false);
+    private float rodDipSpeedUpFactor=getFloat("rodDipSpeedUpFactor",1f);
 
     // marking rod tip
     private boolean markRodTip = false;
@@ -144,6 +145,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(rod, "abortDip", "abort rod dipping if active");
         setPropertyTooltip("runPond", "Turn on the pond motor via 1.5V regulator");
         setPropertyTooltip(rod, "resetLearning", "reset learned theta and delay parameters");
+        setPropertyTooltip(rod, "rodDipSpeedUpFactor", "factor by which to speed up rod dip sequence over recorded speed");
         setPropertyTooltip(rod, "markRodTipLocation", "Mark the location of rod tip and hook with next left mouse click");
         setPropertyTooltip(rod, "markFishingPoolCenter", "Mark the location of center of fishing pool with next left mouse click");
         setPropertyTooltip(rod, "zMin", "min rod tilt angle in deg");
@@ -244,7 +246,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                         final double angleDegFishToTip = rodTipRay.angle(clusterRay);
                         final double angularSpeedDegPerS = (180 / Math.PI) * (fishSpeedPps / radius);
                         final int msForFishToReachRodTip = (int) (1000 * angleDegFishToTip / angularSpeedDegPerS);
-                        final long timeToMinZMs = rodSequences[currentRodsequenceIdx].timeToMinZMs;
+                        final long timeToMinZMs = Math.round(rodSequences[currentRodsequenceIdx].timeToMinZMs/rodDipSpeedUpFactor);
                         if (msForFishToReachRodTip < timeToMinZMs) {
                             log.warning(String.format("msForFishToReachRodTip=%,d ms is less than rod sequence timeToMinZMs=%,d ms;\n"
                                     + "Speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
@@ -762,7 +764,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 }
                 if (p.delayMsToNext > 0) {
                     try {
-                        sleep(p.delayMsToNext); // sleep before move, first sleep is zero ms
+                        long delMs=Math.round(p.delayMsToNext/rodDipSpeedUpFactor);
+                        sleep(delMs); // sleep before move, first sleep is zero ms
                     } catch (InterruptedException e) {
                         log.info("rod sequence interrupted");
                         break;
@@ -1092,6 +1095,21 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
      */
     public void setTreatSigmasAsOffsets(boolean treatSigmasAsOffsets) {
         this.treatSigmasAsOffsets = treatSigmasAsOffsets;
+    }
+
+    /**
+     * @return the rodDipSpeedUpFactor
+     */
+    public float getRodDipSpeedUpFactor() {
+        return rodDipSpeedUpFactor;
+    }
+
+    /**
+     * @param rodDipSpeedUpFactor the rodDipSpeedUpFactor to set
+     */
+    public void setRodDipSpeedUpFactor(float rodDipSpeedUpFactor) {
+        this.rodDipSpeedUpFactor = rodDipSpeedUpFactor;
+        putFloat("rodDipSpeedUpFactor",rodDipSpeedUpFactor);
     }
 
 }
