@@ -47,6 +47,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     public GoingFishingFishingRodControlFrame() {
         initComponents();
         myPanel = new JPanel() {
+            @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 if (startX != -1 && startY != -1) {
@@ -64,22 +65,33 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             }
         };
         myPanel.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
             public void mouseDragged(java.awt.event.MouseEvent evt) {
-                processMouseEvent(evt, false);
+                processMouseEvent(evt, false, false);
             }
         });
         myPanel.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
             public void keyPressed(java.awt.event.KeyEvent evt) {
                 toggleRecording(evt);
             }
 
+            @Override
             public void keyTyped(java.awt.event.KeyEvent evt) {
                 toggleRecording(evt);
             }
         });
         myPanel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
             public void mousePressed(java.awt.event.MouseEvent evt) {
-                processMouseEvent(evt, false);
+                processMouseEvent(evt, false, false);
+            }
+        });
+        rodControlPanel.add(myPanel, BorderLayout.CENTER);
+        myPanel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                processMouseEvent(evt, false, true);
             }
         });
         rodControlPanel.add(myPanel, BorderLayout.CENTER);
@@ -153,7 +165,8 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         helpText.setEditable(false);
         helpText.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         helpText.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        helpText.setText("Press left mouse button and drag to control rod");
+        helpText.setText("Press left mouse button and drag to control rod.");
+        helpText.setToolTipText("Use clicks for zero delay.");
         helpText.setFocusable(false);
         jPanel1.add(helpText);
 
@@ -164,7 +177,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    protected void processMouseEvent(MouseEvent evt, boolean start) {
+    protected void processMouseEvent(MouseEvent evt, boolean start, boolean click) {
         // first drag movement of mouse starts the sequencq
         requestFocusInWindow(); // to get key listeners to work
         if (start) {
@@ -177,7 +190,10 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         int thetaDeg = (int) (Math.floor(180f * (float) lastX / myPanel.getWidth()));
         int zDeg = (int) (Math.floor(180f * (float) (myPanel.getHeight() - lastY) / myPanel.getHeight()));
         final long currentTimeMillis = System.currentTimeMillis();
-        final long delayToNextMs = lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs;
+        long delayToNextMs = lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs;
+        if (click) {
+            delayToNextMs = 0;
+        }
 
         // first step has zero delay
         RodPosition rodPosition = new RodPosition(delayToNextMs, thetaDeg, zDeg);

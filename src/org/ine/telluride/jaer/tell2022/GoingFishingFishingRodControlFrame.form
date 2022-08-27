@@ -104,7 +104,8 @@
                   <Font name="Tahoma" size="18" style="0"/>
                 </Property>
                 <Property name="horizontalAlignment" type="int" value="0"/>
-                <Property name="text" type="java.lang.String" value="Press left mouse button and drag to control rod"/>
+                <Property name="text" type="java.lang.String" value="Press left mouse button and drag to control rod."/>
+                <Property name="toolTipText" type="java.lang.String" value="Use clicks for zero delay."/>
                 <Property name="focusable" type="boolean" value="false"/>
               </Properties>
             </Component>
