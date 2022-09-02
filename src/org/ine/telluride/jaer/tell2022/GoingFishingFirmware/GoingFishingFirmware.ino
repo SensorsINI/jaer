@@ -6,8 +6,8 @@ Servo z;
 //union Adc adc;
 const int FISHING_POND_MOTOR_NOT_SHUTDOWN = 11; // goes to not shutdown pin on LP38841T-1.5 regulator
 const byte CMD_SET_SERVOS = 0, CMD_DISABLE_SERVOS = 1, CMD_RUN_POND = 2, CMD_STOP_POND = 3;
-
-int adcVal;
+const int ADC_CHANGE_THRESHOLD = 1;
+int lastAdcVal;
 
 bool disabled = true;
 byte bytes[3];
@@ -31,19 +31,21 @@ void setup() {
 
 void loop() {
   if (Serial.availableForWrite() >= 2) {
-    adcVal = analogRead(3);
-    byte msb = adcVal / 256;
-    Serial.write(msb);
-    byte lsb = adcVal % 256;
-    Serial.write(lsb);
+    int adcVal = analogRead(3);
+    int change = adcVal - lastAdcVal;
+    if (change >= ADC_CHANGE_THRESHOLD || change <= -ADC_CHANGE_THRESHOLD) {
+      byte msb = adcVal / 256;
+      Serial.write(msb);
+      byte lsb = adcVal % 256;
+      Serial.write(lsb);
+      lastAdcVal=adcVal;
+    }
   }
-  delay(5); // delay to limit sample rate of ADC and transmission of data to PC
 
   if (Serial.available() < 3) {
     return;
   }
-  if (Serial.readBytes(bytes, 3) < 3)
-    return;
+  Serial.readBytes(bytes, 3);
   byte cmd = bytes[0];
   bool disable = false;
   switch (cmd) {

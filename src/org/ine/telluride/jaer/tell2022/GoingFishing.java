@@ -18,7 +18,6 @@
  */
 package org.ine.telluride.jaer.tell2022;
 
-import com.github.sh0nk.matplotlib4j.Plot;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import gnu.io.NRSerialPort;
@@ -28,11 +27,14 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.geometry.Point2D;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
@@ -85,13 +87,17 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private boolean enableFishing = getBoolean("enableFishing", false);
     private final int SERIAL_WARNING_INTERVAL = 100;
     private int serialWarningCount = 0;
+    private boolean runPond=false;
 
     // ADC for FSR that might detect caught fish
     private int lastAdcValue = -1;
     private int caughtFishDetectorThreshold = getInt("caughtFishDetectorThreshold", 550);
 
     // PropertyChange events
-    public static final String EVENT_ROD_POSITION = "rodPosition", EVENT_ROD_SEQUENCE = "rodSequence", EVENT_CLEAR_SEQUENCES = "clearSequences";
+    public static final String EVENT_ROD_POSITION = "rodPosition",
+            EVENT_ROD_SEQUENCE = "rodSequence",
+            EVENT_CLEAR_SEQUENCES = "clearSequences",
+            EVENT_DIP_ROD = "dipRod";
 
     // rod control
     private int zMin = getInt("zMin", 80);
@@ -133,81 +139,6 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private int missingRoiWarningCounter = 0;
     private int missingMarkedLocationsWarningCounter = 0;
 
-    // results of fishing attempt
-    private class FishingResult {
-
-        boolean succeeded;
-        float thetaOffsetDeg;
-        long delayMs;
-
-        public FishingResult(boolean succeeded, float thetaOffsetDeg, long delayMs) {
-            this.succeeded = succeeded;
-            this.thetaOffsetDeg = thetaOffsetDeg;
-            this.delayMs = delayMs;
-        }
-
-    }
-
-    // collected results
-    private class FishingResults {
-
-        private int rodDipTotalCount = 0, rodDipSuccessCount = 0, rodDipFailureCount = 0;
-
-        private ArrayList<FishingResult> fishingResultsList = new ArrayList();
-        private ArrayList<Float> sucTheta = new ArrayList(), failTheta = new ArrayList(), sucDelay = new ArrayList(), failDelay = new ArrayList();
-
-        void clear() {
-            rodDipTotalCount = 0;
-            rodDipSuccessCount = 0;
-            rodDipFailureCount = 0;
-            fishingResultsList.clear();
-            sucTheta.clear();
-            failTheta.clear();
-            sucDelay.clear();
-            failDelay.clear();
-        }
-
-        /**
-         * add fishing result
-         *
-         * @param b true for success, false for failure
-         * @param randomThetaOffsetDeg
-         * @param randomDelayMs
-         */
-        private void add(boolean b, float randomThetaOffsetDeg, int randomDelayMs) {
-            rodDipTotalCount++;
-            fishingResultsList.add(new FishingResult(b, randomThetaOffsetDeg, randomDelayMs));
-            if (b) {
-                rodDipSuccessCount++;
-                sucTheta.add(randomThetaOffsetDeg);
-                sucDelay.add((float) randomDelayMs);
-            } else {
-                rodDipFailureCount++;
-                failTheta.add(randomThetaOffsetDeg);
-                failDelay.add((float) randomDelayMs);
-            }
-        }
-
-        private void plot() {
-
-            Plot plt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
-            plt.subplot(1, 1, 1);
-            plt.title("Fishing results");
-            plt.xlabel("delay (ms)");
-            plt.ylabel("angle (deg)");
-            plt.plot().add(sucDelay, sucTheta, "go").linewidth(1).linestyle("None");
-            plt.plot().add(failDelay, failTheta, "rx").linewidth(1).linestyle("None");
-            plt.legend();
-
-            try {
-                plt.show();
-            } catch (Exception ex) {
-                log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
-                showWarningDialogInSwingThread("<html>Cannot show the plot with pyplot - did you install python and matplotlib on path? <p>" + ex.toString(), "Cannot plot");
-            }
-        }
-    }
-
     private FishingResults fishingResults = new FishingResults();
 
     // sounds
@@ -233,9 +164,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(rod, "markFishingPoolCenter", "Mark the location of center of fishing pool with next left mouse click");
         setPropertyTooltip(rod, "zMin", "min rod tilt angle in deg");
         setPropertyTooltip(rod, "zMax", "max rod tilt angle in deg");
-        setPropertyTooltip(enb, "runPond", "Turn on the pond motor via 1.5V regulator");
         setPropertyTooltip(rod, "fishingAttemptHoldoffMs", "holdoff time in ms between automatic fishing attempts");
         setPropertyTooltip(rod, "rodReturnDurationMs", "duration in ms of minimum-jerk movement back to starting point of fishing rod sequence");
+        setPropertyTooltip(enb, "runPond", "Turn on the pond motor via 1.5V regulator");
         setPropertyTooltip(enb, "disableServos", "disable servos");
         setPropertyTooltip(enb, "enableFishing", "enable automatic fishing");
         setPropertyTooltip(ler, "fishingHoleSwitchProbability", "chance of switching spots after each attempt");
@@ -244,6 +175,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(ler, "rodThetaSamplingSigmaDeg", "sigma in deg to sample new rod dip pan offsets");
         setPropertyTooltip(ler, "treatSigmasAsOffsets", "Use the sigma values for theta and delay as fixed offsets to manually tune the fishing");
         setPropertyTooltip(ler, "plotFishingResults", "(needs python and matplotlib installed) Plot the fishing results as scatter plot.");
+        setPropertyTooltip(ler, "loadFishingResults", "Loads previous results from " + FISHING_RESULTS_FILENAME);
+        setPropertyTooltip(ler, "saveFishingResults", "Saves fishing results to " + FISHING_RESULTS_FILENAME);
         try {
             for (int i = 0; i < 2; i++) {
                 rodSequences[i].load(i);
@@ -345,7 +278,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                     }
                     if (rodDipper == null || !rodDipper.isAlive()) {
 //                        log.info(String.format("Detected fish in ROI at location %s becoming contained by ROI rectangle %s", c.getLocation(), roiRects.get(roi)));
-                        if (!enableFishing) {
+                        if (!disableServos && enableFishing) {
                             dipRodWithHoldoffAndDelay(delay);
                             break;
                         }
@@ -425,23 +358,49 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     }
 
     public void doToggleOnRunPond() {
-        enablePond(true);
+        setRunPond(true);
     }
 
     public void doToggleOffRunPond() {
-        enablePond(false);
+        setRunPond(false);
     }
 
     public void doToggleOnEnableFishing() {
-        setEnableFishing(false);
-    }
-
-    public void doToggleOffEnableFishing() {
         setEnableFishing(true);
     }
 
+    public void doToggleOffEnableFishing() {
+        setEnableFishing(false);
+    }
+
     public void doPlotFishingResults() {
-        fishingResults.plot();
+        try {
+            fishingResults.plot();
+        } catch (Exception ex) {
+            log.warning("cannot show the plot with pyplot - did you install python and matplotlib on path? " + ex.toString());
+            showWarningDialogInSwingThread("<html>Cannot show the plot with pyplot - did you install python and matplotlib on path? <p>" + ex.toString(), "Cannot plot");
+        }
+    }
+
+    private final String FISHING_RESULTS_FILENAME = "FishingResults.ser";
+
+    synchronized public void doSaveFishingResults() {
+        try {
+            FishingResults.save(fishingResults, new File(FISHING_RESULTS_FILENAME));
+        } catch (IOException ex) {
+            showWarningDialogInSwingThread(ex.toString(), "Error saving results");
+        }
+    }
+
+    synchronized public void doLoadFishingResults() {
+        try {
+            FishingResults results = FishingResults.load(new File(FISHING_RESULTS_FILENAME));
+            this.fishingResults = results;
+        } catch (IOException ex) {
+            showWarningDialogInSwingThread(ex.toString(), "Error loading results");
+        } catch (ClassNotFoundException ex) {
+            showWarningDialogInSwingThread(ex.toString(), "Error loading results");
+        }
     }
 
     private void enablePond(boolean enable) {
@@ -593,6 +552,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     @Override
     public void cleanup() {
         disableServos();
+        doToggleOffRunPond();
     }
 
     /**
@@ -692,6 +652,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             fishingRodControlFrame.addPropertyChangeListener(EVENT_ROD_POSITION, this);
             fishingRodControlFrame.addPropertyChangeListener(EVENT_ROD_SEQUENCE, this);
             fishingRodControlFrame.addPropertyChangeListener(EVENT_CLEAR_SEQUENCES, this);
+            fishingRodControlFrame.addPropertyChangeListener(EVENT_DIP_ROD, this);
         }
         fishingRodControlFrame.setVisible(true);
     }
@@ -707,8 +668,10 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
 
         final long dt = System.currentTimeMillis() - lastFishingAttemptTimeMs;
 
-        if (dt < 0 || dt > fishingAttemptHoldoffMs) {
-            beepFishDetectedPlayer.play();
+        if (dt > fishingAttemptHoldoffMs) {
+            if (!beepFishDetectedPlayer.isPlaying()) {
+                beepFishDetectedPlayer.play();
+            }
             dipRodNow(delayMs);
         }
     }
@@ -814,8 +777,6 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 return;
             }
 
-            lastFishingAttemptTimeMs = System.currentTimeMillis();
-
             if (initialDelayMs > 0) {
                 try {
                     log.info("initial delay of " + initialDelayMs + " ms");
@@ -880,7 +841,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 rodDipDelayMs = randomDelayMs;
                 putFloat("rodThetaOffset", randomThetaOffsetDeg);
                 putInt("rodDipDelayMs", randomDelayMs);
-                setEnableFishing(true);
+                setEnableFishing(false);
                 beepSucessPlayer.play();
                 return;
             } else {
@@ -1031,6 +992,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 }
                 log.info("Sequnces cleared");
                 break;
+            case EVENT_DIP_ROD:
+                dipRodNow(0);
             default:
         }
     }
@@ -1072,7 +1035,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         this.enableFishing = enableFishing;
         putBoolean("enableFishing", enableFishing);
         getSupport().firePropertyChange("enableFishing", old, this.enableFishing);
-        if (!enableFishing) {
+        if (enableFishing) {
             RodSequence seq = rodSequences[currentRodsequenceIdx];
             rodDipper = new RodDipper(seq, 0, true);
             log.info("moving rod to current sequence starting position");
@@ -1203,6 +1166,23 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     public void setRodDipSpeedUpFactor(float rodDipSpeedUpFactor) {
         this.rodDipSpeedUpFactor = rodDipSpeedUpFactor;
         putFloat("rodDipSpeedUpFactor", rodDipSpeedUpFactor);
+    }
+
+    /**
+     * @return the runPond
+     */
+    public boolean isRunPond() {
+        return runPond;
+    }
+
+    /**
+     * @param runPond the runPond to set
+     */
+    public void setRunPond(boolean runPond) {
+        boolean old=this.runPond;
+        this.runPond = runPond;
+        enablePond(runPond);
+        getSupport().firePropertyChange("runPond",old,runPond);
     }
 
 }

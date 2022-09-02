@@ -120,6 +120,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         fishingHoleButton1 = new javax.swing.JRadioButton();
         clearButton = new javax.swing.JButton();
         recordToggleButton = new javax.swing.JToggleButton();
+        dipRodButton = new javax.swing.JButton();
         helpText = new javax.swing.JTextField();
 
         setTitle("Going Fishing Rod Control");
@@ -162,6 +163,15 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         });
         jPanel1.add(recordToggleButton);
 
+        dipRodButton.setText("Dip");
+        dipRodButton.setToolTipText("Try the rod dip");
+        dipRodButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                dipRodButtonActionPerformed(evt);
+            }
+        });
+        jPanel1.add(dipRodButton);
+
         helpText.setEditable(false);
         helpText.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         helpText.setHorizontalAlignment(javax.swing.JTextField.CENTER);
@@ -199,6 +209,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         RodPosition rodPosition = new RodPosition(delayToNextMs, thetaDeg, zDeg);
         if (recording) {
             rodSequence.add(rodPosition);
+            log.info("added " + rodPosition.toString());
         }
         lastTimeMs = currentTimeMillis;
         firePropertyChange(GoingFishing.EVENT_ROD_POSITION, null, rodPosition);
@@ -217,6 +228,10 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     private void clearButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearButtonActionPerformed
         firePropertyChange(GoingFishing.EVENT_CLEAR_SEQUENCES, null, null);
     }//GEN-LAST:event_clearButtonActionPerformed
+
+    private void dipRodButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dipRodButtonActionPerformed
+        firePropertyChange(GoingFishing.EVENT_DIP_ROD, null, null);
+    }//GEN-LAST:event_dipRodButtonActionPerformed
 
     private void toggleRecording(KeyEvent evt) {
         if (evt.getKeyChar() == 'r') {
@@ -275,6 +290,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.ButtonGroup buttonGroup1;
     private javax.swing.JButton clearButton;
+    private javax.swing.JButton dipRodButton;
     private javax.swing.JRadioButton fishingHoleButton0;
     private javax.swing.JRadioButton fishingHoleButton1;
     private javax.swing.JTextField helpText;
