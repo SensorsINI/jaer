@@ -601,9 +601,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         log.info("not constructing control for " + filter.getClass().getSimpleName() + " for hidden property " + p.getName());
                         continue;
                     }
-                    
+
                     // don't show this getter/setter that is controlled by button
-                    if(p.getName().equals("controlsVisible")){
+                    if (p.getName().equals("controlsVisible")) {
                         continue;
                     }
 
@@ -870,10 +870,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             checkBox = new JCheckBox(name);
             checkBox.setAlignmentX(LEFT_ALIGNMENT);
-            checkBox.setFont(checkBox.getFont().deriveFont(fontSize));
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
             addTip(f, checkBox);
             add(checkBox);
+            checkBox.setFont(checkBox.getFont().deriveFont(fontSize));
+
 //            add(Box.createVerticalStrut(0));
             try {
                 Boolean x = (Boolean) r.invoke(filter);
@@ -909,6 +910,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             if (o instanceof Boolean) {
                 Boolean b = (Boolean) o;
                 checkBox.setSelected(b);
+                // check if we need to set toggle button for boolean control
+                for(AbstractButton but:doButList){
+                    if(but.getText().toLowerCase().equals(checkBox.getText().toLowerCase())){
+                        but.setSelected(b);
+                    }
+                    
+                }
             }
         }
     }
@@ -1578,7 +1586,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             } else if (propertyChangeEvent.getPropertyName().startsWith("doToggleOff")) {
                 // handle toggle off property changes to disable buttons that may have started logging, for example
                 for (AbstractButton b : doButList) {
-                    if((b instanceof JToggleButton) && b.getText().equals(propertyChangeEvent.getPropertyName().substring(11))){
+                    if ((b instanceof JToggleButton) && b.getText().equals(propertyChangeEvent.getPropertyName().substring(11))) {
                         b.setSelected(false);
                     }
                 }
