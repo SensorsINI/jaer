@@ -28,10 +28,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import static org.ine.telluride.jaer.tell2022.RodSequence.log;
 
 // collected results
-class FishingResults implements Serializable{
+class FishingResults implements Serializable {
 
     int rodDipTotalCount = 0;
     public int rodDipSuccessCount = 0;
@@ -41,8 +42,23 @@ class FishingResults implements Serializable{
     public ArrayList<Float> failTheta = new ArrayList();
     public ArrayList<Float> sucDelay = new ArrayList();
     public ArrayList<Float> failDelay = new ArrayList();
+    public ArrayList<Integer> attemptSucesses = new ArrayList();
+    public ArrayList<Integer> attemptFailures = new ArrayList();
+    public ArrayList<Integer> tryNumberSuccesses = new ArrayList();
+    public ArrayList<Integer> tryNumberFailures = new ArrayList();
+    private static final int WINDOW = 100;
+    DescriptiveStatistics sucThetaStats = new DescriptiveStatistics(WINDOW), sucDelayStats = new DescriptiveStatistics(WINDOW);
+    public float rodThetaOffset = 0;
+    public int rodDipDelayMs = 0;
 
     FishingResults() {
+    }
+
+    @Override
+    public String toString() {
+        return String.format("FishingResults: %d tries, %d successes (%.1f%%). Learned theta=%.1f deg delay=%d ms",
+                rodDipTotalCount, rodDipSuccessCount, 100f * rodDipSuccessCount / rodDipTotalCount,
+                rodThetaOffset, rodDipDelayMs);
     }
 
     void clear() {
@@ -54,6 +70,14 @@ class FishingResults implements Serializable{
         failTheta.clear();
         sucDelay.clear();
         failDelay.clear();
+        attemptSucesses.clear();
+        attemptFailures.clear();
+        tryNumberSuccesses.clear();
+        tryNumberFailures.clear();
+        sucThetaStats.clear();
+        sucDelayStats.clear();
+        rodThetaOffset = 0;
+        rodDipDelayMs = 0;
     }
 
     /**
@@ -70,21 +94,36 @@ class FishingResults implements Serializable{
             rodDipSuccessCount++;
             sucTheta.add(randomThetaOffsetDeg);
             sucDelay.add((float) randomDelayMs);
+            attemptSucesses.add(1);
+            tryNumberSuccesses.add(rodDipTotalCount);
+            sucThetaStats.addValue(randomThetaOffsetDeg);
+            sucDelayStats.addValue(randomDelayMs);
+            rodThetaOffset = (float) sucThetaStats.getPercentile(50);
+            rodDipDelayMs = (int) (sucDelayStats.getPercentile(50));
         } else {
             rodDipFailureCount++;
             failTheta.add(randomThetaOffsetDeg);
             failDelay.add((float) randomDelayMs);
+            attemptFailures.add(0);
+            tryNumberFailures.add(rodDipTotalCount);
         }
     }
 
     void plot() throws Exception {
         Plot plt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
-        plt.subplot(1, 1, 1);
-        plt.title("Fishing results");
+        plt.subplot(2, 1, 1);
         plt.xlabel("delay (ms)");
         plt.ylabel("angle (deg)");
         plt.plot().add(sucDelay, sucTheta, "go").linewidth(1).linestyle("None");
         plt.plot().add(failDelay, failTheta, "rx").linewidth(1).linestyle("None");
+        plt.legend();
+
+        plt.subplot(2, 1, 2);
+        plt.xlabel("Fishing Attempt #");
+        plt.ylabel("Sucess(0) Failure(X)");
+
+        plt.plot().add(tryNumberSuccesses, attemptSucesses, "go").linewidth(1).linestyle("None");
+        plt.plot().add(tryNumberFailures, attemptFailures, "rx").linewidth(1).linestyle("None");
         plt.legend();
         plt.show();
     }
@@ -103,7 +142,7 @@ class FishingResults implements Serializable{
         ObjectInputStream ois = new ObjectInputStream(fis);
         FishingResults fishingResults = (FishingResults) ois.readObject();
         ois.close();
-        log.info("loaded "+fishingResults);
+        log.info("loaded " + fishingResults);
         return fishingResults;
     }
 

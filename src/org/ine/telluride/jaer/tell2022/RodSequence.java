@@ -1,5 +1,7 @@
 package org.ine.telluride.jaer.tell2022;
 
+import com.github.sh0nk.matplotlib4j.Plot;
+import com.github.sh0nk.matplotlib4j.PythonExecutionException;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -95,6 +97,26 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         return String.format("Fishing rod sequence #%d with %,d positions\n total duration %,d ms; timeToMinZMs=%,d ms\n"
                 + "minZ=%d, maxZ=%d, minTheta=%d, maxTheta=%d", 
                 index, size(), durationMs, timeToMinZMs,minZ,maxZ,minTheta,maxTheta);
+    }
+    
+    public void plot() throws IOException, PythonExecutionException{
+        ArrayList<Integer> times=new ArrayList(), zs=new ArrayList(), thetas=new ArrayList();
+        int t=0;
+        for(RodPosition p:this){
+            t+=(int)p.delayMsToNext;
+            times.add(t);
+            zs.add(p.zDeg);
+            thetas.add(p.thetaDeg);
+        }
+            Plot plt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
+        plt.subplot(1, 1, 1);
+        plt.title("Rod Z vs Time");
+        plt.xlabel("Time (ms)");
+        plt.ylabel("Tilt Angle (deg)");
+        plt.plot().add(times,zs, "ro").linewidth(1).linestyle("-").label("Tilt");
+        plt.plot().add(times, thetas, "gx").linewidth(1).linestyle("-").label("Pan");
+        plt.legend();
+        plt.show(); // stops here
     }
 
     /**
