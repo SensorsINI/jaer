@@ -211,7 +211,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * Clean up that should run when before filter is finalized, e.g. dispose of
      * Components. Subclasses can override this method which does nothing by
-     * default.
+     * default, to perform some action on shutdown and exit.
      */
     synchronized public void cleanup() {
         if (getEnclosedFilter() != null) {
