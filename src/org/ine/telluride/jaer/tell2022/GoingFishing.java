@@ -52,6 +52,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker.Cluster;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.SoundWavFilePlayer;
+import net.sf.jaer.util.TobiLogger;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 /**
@@ -142,7 +143,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private int missingRoiWarningCounter = 0;
     private int missingMarkedLocationsWarningCounter = 0;
 
+    // fishing results statistics
     private FishingResults fishingResults = new FishingResults();
+    private TobiLogger fishingLogger = new TobiLogger("GoingFishing.csv", "GoingFishing detailed log of fishing attempts");
     private boolean fishWasCaught = false; // for graphics output for most recent fishing attempt
 
     // sounds
@@ -316,7 +319,17 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             DrawGL.drawStrinDropShadow(gl, 12, 0, 0, 0, Color.red, "Center");
             gl.glPopMatrix();
         }
-        gl.glPushMatrix();
+        if (!isDisableServos()) { // draw rod pan/tilt
+            gl.glLineWidth(2);
+            gl.glColor3f(1, 1, 1);
+            float len = 50;
+            gl.glPushMatrix();
+            DrawGL.drawLine(gl, 300, 220, -len, (float) (len * Math.sin((lastRodZ - 90) * Math.PI / 180f)), 1);
+            gl.glPopMatrix();
+            gl.glPushMatrix();
+            DrawGL.drawLine(gl, 300, 200, -len, (float) (len * Math.sin((lastRodTheta - 90) * Math.PI / 180f)), 1);
+            gl.glPopMatrix();
+        }
         final float adcY = chip.getSizeY() / 10;
         final float adcStartX = 2;
         if (lastAdcValue != -1) {
@@ -646,7 +659,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             if (disableServos) {
                 enableServos();
             }
-            lastFishingRodMovementTime=System.currentTimeMillis();
+            lastFishingRodMovementTime = System.currentTimeMillis();
 
             int zSent = (int) Math.floor(zMin + (((float) (zMax - zMin)) / 180) * z);
             try {
@@ -675,13 +688,13 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private void enableServos() {
         setDisableServos(false);
     }
-    
-    private void checkForTurningOffServosAndPond(){
-        long inactiveTimeS=(System.currentTimeMillis()-lastFishingRodMovementTime)/1000;
-        if((isRunPond() || !isDisableServos()) && inactiveTimeS>=TURNOFF_TIMEOUT_S){
+
+    private void checkForTurningOffServosAndPond() {
+        long inactiveTimeS = (System.currentTimeMillis() - lastFishingRodMovementTime) / 1000;
+        if ((isRunPond() || !isDisableServos()) && inactiveTimeS >= TURNOFF_TIMEOUT_S) {
             disableServos();
             setRunPond(false);
-            log.info(String.format("Turned off servos and pond after %d s of inactivity",inactiveTimeS));
+            log.info(String.format("Turned off servos and pond after %d s of inactivity", inactiveTimeS));
         }
     }
 
@@ -772,6 +785,17 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         }
 
         public void run() {
+            if (serialPortInputStream == null) {
+                return;
+            }
+            byte[] tmp = new byte[256];
+            try {
+                int n = serialPortInputStream.read(tmp);
+                log.info(String.format("Cleared %d bytes from serial input buffer before reading ADC starts",n));
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+                return;
+            }
             while (serialPortInputStream != null) {
                 try {
                     byte[] buf = new byte[2];
