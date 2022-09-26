@@ -19,6 +19,7 @@
 package org.ine.telluride.jaer.tell2022;
 
 import com.github.sh0nk.matplotlib4j.Plot;
+import java.awt.Desktop;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -28,6 +29,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Date;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import static org.ine.telluride.jaer.tell2022.RodSequence.log;
 
@@ -126,6 +128,19 @@ class FishingResults implements Serializable {
         plt.plot().add(tryNumberFailures, attemptFailures, "rx").linewidth(1).linestyle("None");
         plt.legend();
         plt.show();
+        try{
+        Date date= new Date();
+            String fname=String.format("GoingFishing results plot-%s.pdf",date.toString());
+            File file=new File(fname);
+            plt.savefig(fname);
+            log.info("Saved results plot as "+file.getAbsolutePath().toString());
+            if(Desktop.isDesktopSupported()){
+                Desktop desktop=Desktop.getDesktop();
+                desktop.open(file.getParentFile());
+            }
+        }catch(Exception e){
+            log.warning("Couldn't save figure: "+e.toString());
+        }
     }
 
     public static void save(FishingResults r, File file) throws FileNotFoundException, IOException {

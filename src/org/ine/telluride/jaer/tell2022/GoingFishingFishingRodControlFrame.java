@@ -40,6 +40,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     int lastX = -1, lastY = -1;
     int startX = -1, startY = -1;
     JPanel myPanel = null;
+    private boolean shiftPressed = false;
 
     /**
      * Creates new form GoingFishingFishingRodControlFrame
@@ -73,7 +74,20 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         myPanel.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyPressed(java.awt.event.KeyEvent evt) {
-                toggleRecording(evt);
+                if (evt.getKeyCode() == KeyEvent.VK_SHIFT) {
+                    shiftPressed = true;
+                    log.info("shift pressed");
+                } else {
+                    toggleRecording(evt);
+                }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent evt) {
+                if (evt.getKeyCode() == KeyEvent.VK_SHIFT) {
+                    shiftPressed = false;
+                    log.info("shift released");
+                }
             }
 
             @Override
@@ -127,6 +141,12 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyTyped(java.awt.event.KeyEvent evt) {
                 formKeyTyped(evt);
+            }
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                formKeyPressed(evt);
+            }
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                formKeyReleased(evt);
             }
         });
 
@@ -194,7 +214,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             startX = evt.getX();
             startY = evt.getY();
         } else {
-            lastX = evt.getX();
+            lastX = shiftPressed? lastX: evt.getX();  // if shift held down, keep x fixed to constrain vertical rod movement
             lastY = evt.getY();
         }
         int thetaDeg = (int) (Math.floor(180f * (float) lastX / myPanel.getWidth()));
@@ -232,6 +252,20 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     private void dipRodButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dipRodButtonActionPerformed
         firePropertyChange(GoingFishing.EVENT_DIP_ROD, null, null);
     }//GEN-LAST:event_dipRodButtonActionPerformed
+
+    private void formKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyPressed
+        if (evt.getKeyCode() == KeyEvent.VK_SHIFT) {
+            shiftPressed = true;
+            log.info("form shift pressed");
+        }
+    }//GEN-LAST:event_formKeyPressed
+
+    private void formKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyReleased
+        if (evt.getKeyCode() == KeyEvent.VK_SHIFT) {
+            shiftPressed = false;
+            log.info("form shift released");
+        }
+    }//GEN-LAST:event_formKeyReleased
 
     private void toggleRecording(KeyEvent evt) {
         if (evt.getKeyChar() == 'r') {
