@@ -21,7 +21,7 @@ import java.util.logging.Logger;
 import net.sf.jaer.eventio.AEDataFile;
 
 /**
- * Eases writing log files for any purpose. To use it, construct a new instance,
+ * Eases writing CSV log files for any purpose. To use it, construct a new instance,
  * then enable it to open the file and enable the subsequent logging calls to
  * write. Enabling logging automatically opens the file. The logging files are
  * created users home folder, i.e. System.properties.user.home. 
