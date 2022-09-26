@@ -57,7 +57,7 @@ public final class DrawGL {
     }
 
     /**
-     * Draws an arrow vector using current open gl color
+     * Draws an arrow vector using current open gl color. After the call, the origin of the current coordinate has been translated to the origin of the vector.
      *
      * @param gl the opengl context
      * @param origX the arrow origin location x
