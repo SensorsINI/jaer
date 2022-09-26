@@ -28,6 +28,10 @@ import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.NumberFormat;
@@ -911,11 +915,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 Boolean b = (Boolean) o;
                 checkBox.setSelected(b);
                 // check if we need to set toggle button for boolean control
-                for(AbstractButton but:doButList){
-                    if(but.getText().toLowerCase().equals(checkBox.getText().toLowerCase())){
+                for (AbstractButton but : doButList) {
+                    if (but.getText().toLowerCase().equals(checkBox.getText().toLowerCase())) {
                         but.setSelected(b);
                     }
-                    
+
                 }
             }
         }
@@ -1087,7 +1091,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         int initValue = 0, nval;
         final JTextField tf;
         String PROPERTY_VALUE = "value";
-
+        boolean signed=false;
+        
         @Override
         public void set(Object o) {
             if (o instanceof Integer) {
@@ -1103,6 +1108,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             filter = f;
             write = w;
             read = r;
+            signed=isSigned(w);
+            
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
@@ -1189,6 +1196,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = Math.round(initValue * KEY_FACTOR);
                                 }
+                                
                                 w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
                                 fixIntValue(tf, r);
@@ -1200,11 +1208,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         } else if (code == KeyEvent.VK_DOWN) {
                             try {
                                 nval = initValue;
-                                if (nval == 0) {
+                                if ( nval == 0) {
                                     nval = 0;
                                 } else {
                                     nval = Math.round(initValue / KEY_FACTOR);
                                 }
+                                
                                 w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
                                 fixIntValue(tf, r);
@@ -1240,7 +1249,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             }
                         }
                     }
-                    if (evt.getKeyCode() == KeyEvent.VK_TAB) {
+                    if (evt.getKeyCode() == KeyEvent.VK_TAB) {// set this value, go to next component
                         try {
                             NumberFormat format = NumberFormat.getNumberInstance();
                             int y = format.parse(tf.getText()).intValue();
@@ -1278,10 +1287,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         e.printStackTrace();
                     }
                     int code = evt.getWheelRotation();
+                    
                     int mod = evt.getModifiers();
                     boolean shift = evt.isShiftDown();
                     if (!shift) {
-                        if (code < 0) {
+                        if (code < 0) { // wheel up, increase value
                             try {
                                 nval = initValue;
                                 if (Math.round(initValue * WHEEL_FACTOR) == initValue) {
@@ -1297,16 +1307,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             } catch (IllegalAccessException iae) {
                                 iae.printStackTrace();
                             }
-                        } else if (code > 0) {
+                        } else if (code > 0) { // wheel down, decrease value
                             try {
                                 nval = initValue;
                                 if (Math.round(initValue / WHEEL_FACTOR) == initValue) {
                                     nval--;
                                 } else {
                                     nval = Math.round(initValue / WHEEL_FACTOR);
-                                }
-                                if (nval < 0) {
-                                    nval = 0;
                                 }
                                 w.invoke(filter, newValue = new Integer(nval));
                                 tf.setText(new Integer(nval).toString());
@@ -1356,6 +1363,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     }
 
+
+    /** Annotation to indicate some number property is signed
+     * 
+     * @param m a method
+     * @return true if annotated as signed
+     */
+    boolean isSigned(Method m) {
+        if (m.isAnnotationPresent(SignedNumber.class)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     class FloatControl extends MyControl implements HasSetter {
 
         EngineeringFormat engFmt = new EngineeringFormat();
@@ -1365,6 +1386,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         EventFilter filter;
         float initValue = 0, nval;
         final JTextField tf;
+        boolean signed=false;
 
         @Override
         public void set(Object o) {
@@ -1383,6 +1405,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             filter = f;
             write = w;
             read = r;
+            signed=isSigned(w);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
@@ -1409,7 +1432,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 e.printStackTrace();
             }
             add(tf);
-            tf.addActionListener(new ActionListener() {
+            tf.addActionListener(new ActionListener() {  // on enter
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
@@ -1420,8 +1443,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                         nval = x.floatValue();
                         tf.setText(engFmt.format(nval));
+                        tf.setBackground(Color.white);
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
+                        tf.setBackground(Color.red);
                     } catch (InvocationTargetException ite) {
                         ite.printStackTrace();
                     } catch (IllegalAccessException iae) {
@@ -1430,9 +1455,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             });
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
-
-                {
-                }
 
                 @Override
                 public void keyPressed(java.awt.event.KeyEvent evt) {
@@ -1486,6 +1508,19 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         } catch (IllegalAccessException iae) {
                             iae.printStackTrace();
                         }
+                    } else if (code == KeyEvent.VK_MINUS) { // negate the number
+//                        try {
+//                            nval = initValue;
+//                            w.invoke(filter, new Float(-initValue));
+//                            Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
+//                            nval = x.floatValue();
+//                            tf.setText(engFmt.format(nval));
+//                        } catch (InvocationTargetException ite) {
+//                            ite.printStackTrace();
+//                        } catch (IllegalAccessException iae) {
+//                            iae.printStackTrace();
+//                        }
+
                     }
                 }
             });
