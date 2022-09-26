@@ -308,6 +308,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 		 */
 		private float disparity = 0;
 		private float disparityVelocity = 0; // rate of change of disparity in pixels/second
+                private int lastStereoClusterUpdateTimestamp=0;
 		/** location of cluster in 3d space as computed from pixel location and disparity, given chip's StereoGeometry.
         Coordinate frame is centered on bridge of viewers nose and z increases with distance. Units are meters.
         x increases from 0 rightwards from midline in image coordinates (larger to right in image) and y increases upwards in the same way
@@ -356,6 +357,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 			disparityVelocity = older.disparityVelocity;  // don't forget the other fields!!!
 			velocityPPS=older.velocityPPS;
 			velocityPPT=older.velocityPPT;
+                        lastStereoClusterUpdateTimestamp=older.lastStereoClusterUpdateTimestamp;
 
 		}
 
@@ -365,6 +367,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 		@Override
 		public void addEvent (BasicEvent event){
 			addEvent ((BinocularEvent)event);
+                        lastStereoClusterUpdateTimestamp=event.timestamp;
 		}
 
 
@@ -374,10 +377,10 @@ public class StereoClusterTracker extends RectangularClusterTracker{
         @param event the event to appendCopy
 		 */
 		public void addEvent (BinocularEvent event){
-			super.addEvent(event);
+			super.addEvent(event); // sets lastEventTimestamp to current event
 
 			float oldDisparity = updateDisparity(event);
-			float dt = TICK_SECONDS * ( event.timestamp - lastEventTimestamp );
+			float dt = TICK_SECONDS * ( event.timestamp - lastStereoClusterUpdateTimestamp );
 			if(dt>0){
 				float dv = ( disparity - oldDisparity ) / dt;
 				disparityVelocity = ((1-disparityMixingFactor) * disparityVelocity) + (disparityMixingFactor * dv);

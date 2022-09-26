@@ -88,7 +88,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener, MouseMotionListener, MouseWheelListener {
 
-    public final String DEFAULT_MLPF_NETWORK_PB="MLPF_2xMSEO1H20_linear_7.pb";
+    public final String DEFAULT_MLPF_NETWORK_PB = "MLPF_2xMSEO1H20_linear_7.pb";
     private final String KEY_NETWORK_FILENAME = "lastNetworkFilename";
     private String lastManuallyLoadedNetwork = getString("lastManuallyLoadedNetwork", ""); // stores filename and path to last successfully loaded network that user loaded via doLoadNetwork
     private TextRenderer textRenderer = null;
@@ -394,7 +394,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         PolarityEvent pe = null;
         for (PolarityEvent e : p) {
             if (pe != null && (e.timestamp < pe.timestamp)) {
-                int dt=e.timestamp - pe.timestamp;
+                int dt = e.timestamp - pe.timestamp;
                 throw new Exception(String.format("timestamp %,d is %,d us earlier than previous %,d", e.timestamp, dt, pe.timestamp));
             }
             l.add(e);
@@ -526,7 +526,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         s = s.replaceAll("[a-z]", "");
         s = s + String.format(": tau=%ss s_MLPF=%dx%dpx T_MLPF=%.2f subSamp=%d",
                 eng.format(timeWindowS),
-                patchWidthAndHeightPixels,patchWidthAndHeightPixels,
+                patchWidthAndHeightPixels, patchWidthAndHeightPixels,
                 getSignalClassifierThreshold(),
                 getSubsampleBy()
         );
@@ -542,7 +542,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 try {
                     loadNetwork(f);
                 } catch (Exception ex) {
-                    log.warning("Couldn't load network: Caught "+ex.toString());
+                    log.warning("Couldn't load network: Caught " + ex.toString());
                 }
             }
         }
@@ -674,7 +674,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public void doLoadNetwork() {
         File file = null;
         file = openFileDialogAndGetFile("Choose a network, either tensorflow protobuf binary (pb),  or folder holding tensorflow SavedModelBundle",
-                KEY_NETWORK_FILENAME, getDefaultSettingsFolder()+File.separator+DEFAULT_MLPF_NETWORK_PB,
+                KEY_NETWORK_FILENAME, getDefaultSettingsFolder() + File.separator + DEFAULT_MLPF_NETWORK_PB,
                 "CNN file", "pb");
         if (file == null) {
             return;
@@ -1010,8 +1010,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * @param dtS time in seconds
      */
     public void setTimeWindowS(float dtS) {
-        this.timeWindowS=dtS;
-        putFloat("timeWindowS",this.timeWindowS);
+        this.timeWindowS = dtS;
+        putFloat("timeWindowS", this.timeWindowS);
     }
 
     public float getTimeWindowS() {

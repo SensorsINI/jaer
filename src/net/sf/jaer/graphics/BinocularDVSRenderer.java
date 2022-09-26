@@ -9,6 +9,7 @@
  */
 package net.sf.jaer.graphics;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.orientation.BinocularDisparityEvent;
 import net.sf.jaer.event.BinocularEvent;
 import net.sf.jaer.event.EventPacket;
@@ -51,7 +52,7 @@ public class BinocularDVSRenderer extends DavisRenderer{
     }
 
     @Override
-    public synchronized void render (EventPacket packet){
+    public synchronized void render (final EventPacket packet){
         if ( packet == null ){
             return;
         }
@@ -96,8 +97,8 @@ public class BinocularDVSRenderer extends DavisRenderer{
                             resetFrame(0f);
                         }
                     }
-                    for ( int i = 0 ; i < packet.getSize() ; i += skipBy ){
-                        BinocularEvent e = (BinocularEvent)packet.getEvent(i);
+                    for ( Object o:packet ){
+                        BinocularEvent e = (BinocularEvent)o;
                         if ( e.eye == BinocularEvent.Eye.RIGHT ){
                             rgbChan = 0;
                         } else{
@@ -125,8 +126,8 @@ public class BinocularDVSRenderer extends DavisRenderer{
                 case Disparity:
                     // disparity event rendering mode: blue is far, red is near
                     resetFrame(0f);
-                    for ( int i = 0 ; i < n ; i += skipBy ){
-                        BinocularDisparityEvent e = (BinocularDisparityEvent)packet.getEvent(i);
+                    for ( Object o:packet ){
+                        BinocularDisparityEvent e = (BinocularDisparityEvent)o;
                         if ( (e.x == xsel) && (e.y == ysel) ){
                             playSpike(e.getType());
                         }
@@ -164,8 +165,8 @@ public class BinocularDVSRenderer extends DavisRenderer{
                     if ( !accumulateEnabled ){
                             resetFrame(0f);
                     }
-                    for ( int i = 0 ; i < packet.getSize() ; i += skipBy ){
-                        BinocularEvent e = (BinocularEvent)packet.getEvent(i);
+                    for ( Object o:packet ){
+                        BinocularEvent e = (BinocularEvent)o;
                         if ( e.eye == BinocularEvent.Eye.RIGHT ){
                             rgbChan = 0;
                         } else{
@@ -208,6 +209,7 @@ public class BinocularDVSRenderer extends DavisRenderer{
     /**@param stereoColorMode the rendering method, e.g. gray, red/green opponency, time encoded.
      */
     public synchronized void setColorMode (StereoColorMode stereoColorMode){
+        super.setColorMode(ColorMode.RedGreen);
         this.stereoColorMode = stereoColorMode;
         prefs.put("BinocularRenderer.stereoColorMode",stereoColorMode.toString());
         log.info("set stereoColorMode=" + stereoColorMode);

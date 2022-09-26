@@ -195,9 +195,9 @@ public class DavisRenderer extends AEChipRenderer {
                         grayBuffer.put(1);
                         grayBuffer.put(.5f);
                     } else {
-                        grayBuffer.put(grayValue);
-                        grayBuffer.put(grayValue);
-                        grayBuffer.put(grayValue);
+                        grayBuffer.put(value);
+                        grayBuffer.put(value);
+                        grayBuffer.put(value);
                         grayBuffer.put(0);
                     }
                 }
