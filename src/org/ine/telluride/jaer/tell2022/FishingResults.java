@@ -19,6 +19,7 @@
 package org.ine.telluride.jaer.tell2022;
 
 import com.github.sh0nk.matplotlib4j.Plot;
+import com.google.common.primitives.Floats;
 import java.awt.Desktop;
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,10 +29,14 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Date;
+import net.sf.jaer.eventio.AEDataFile;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import static org.ine.telluride.jaer.tell2022.RodSequence.log;
+import org.jetbrains.bio.npy.NpzFile;
 
 // collected results
 class FishingResults implements Serializable {
@@ -128,36 +133,65 @@ class FishingResults implements Serializable {
         plt.plot().add(tryNumberFailures, attemptFailures, "rx").linewidth(1).linestyle("None");
         plt.legend();
         plt.show();
-        try{
-        Date date= new Date();
-            String fname=String.format("GoingFishing results plot-%s.pdf",date.toString());
-            File file=new File(fname);
+        try {
+            Date date = new Date();
+            String dateString = AEDataFile.DATE_FORMAT.format(date);
+            String fname = String.format("GoingFishing results plot %s.pdf", dateString);
+            File file = new File(fname);
             plt.savefig(fname);
-            log.info("Saved results plot as "+file.getAbsolutePath().toString());
-            if(Desktop.isDesktopSupported()){
-                Desktop desktop=Desktop.getDesktop();
-                desktop.open(file.getParentFile());
-            }
-        }catch(Exception e){
-            log.warning("Couldn't save figure: "+e.toString());
+            log.info("Saved results plot as " + file.getAbsolutePath().toString());
+//            if (Desktop.isDesktopSupported()) {
+//                Desktop desktop = Desktop.getDesktop();
+//                desktop.open(FileSystems.getDefault().getPath(fname).getParent().toFile());
+//            }
+        } catch (Exception e) {
+            log.warning("Couldn't save figure: " + e.toString());
         }
     }
 
-    public static void save(FishingResults r, File file) throws FileNotFoundException, IOException {
+    public static final String SERIALIZED_SUFFIX = ".ser", NPZ_SUFFIX = ".npz";
+
+    public static void save(FishingResults r, String baseFileName) throws FileNotFoundException, IOException {
         FileOutputStream fos = null;
-        fos = new FileOutputStream(file);
+        fos = new FileOutputStream(baseFileName + SERIALIZED_SUFFIX);
         ObjectOutputStream oos = new ObjectOutputStream(fos);
         oos.writeObject(r);
         oos.close();
-        log.info("saved " + r + " to file " + file);
+        log.info("serialized " + r + " to file " + baseFileName);
+
+        float[] fa = null;
+        int[] ia = null;
+        File npyFile=new File(baseFileName+NPZ_SUFFIX);
+        Path npyPath =npyFile.toPath();
+        try (NpzFile.Writer writer = NpzFile.write(npyPath, true)) {
+//   public ArrayList<Float> sucTheta = new ArrayList();
+//    public ArrayList<Float> failTheta = new ArrayList();
+            writer.write("sucTheta", Floats.toArray(r.sucTheta));
+            writer.write("failTheta", Floats.toArray(r.failTheta));
+//    public ArrayList<Float> sucDelay = new ArrayList();
+            writer.write("sucDelay", Floats.toArray(r.sucDelay));
+//    public ArrayList<Float> failDelay = new ArrayList();
+            writer.write("failDelay", Floats.toArray(r.failDelay));
+//    public ArrayList<Integer> attemptSucesses = new ArrayList();
+            writer.write("attemptSucesses", Floats.toArray(r.attemptSucesses));
+//    public ArrayList<Integer> attemptFailures = new ArrayList();
+            writer.write("attemptFailures", Floats.toArray(r.attemptFailures));
+//    public ArrayList<Integer> tryNumberSuccesses = new ArrayList();
+            writer.write("tryNumberSuccesses", Floats.toArray(r.tryNumberSuccesses));
+//    public ArrayList<Integer> tryNumberFailures = new ArrayList();
+            writer.write("tryNumberFailures", Floats.toArray(r.tryNumberFailures));
+            log.info("Save npy fishing results to " + npyPath.toString());
+        } catch (Exception e) {
+            log.warning("Could not write npz data file: " + e.toString());
+        }
     }
 
-    public static FishingResults load(File file) throws IOException, ClassNotFoundException {
-        FileInputStream fis = new FileInputStream(file);
+    public static FishingResults load(String filename) throws IOException, ClassNotFoundException {
+        FileInputStream fis = new FileInputStream(new File(filename));
         ObjectInputStream ois = new ObjectInputStream(fis);
         FishingResults fishingResults = (FishingResults) ois.readObject();
         ois.close();
-        log.info("loaded " + fishingResults);
+        log.info("loaded the serialized" + fishingResults);
         return fishingResults;
     }
 
