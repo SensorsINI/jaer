@@ -41,6 +41,10 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
     protected float negativeKernelDimMultiple = getFloat("negativeKernelDimMultiple", 2);
     private float negativeWeight = 0;
     private int negativeKernelRadius = 0;
+    private int radius = getInt("radius", 3);
+    private int width = getInt("width", 1);
+    private float tauMs = getFloat("tauMs", 10f);
+    private float threshold = getFloat("threshold", 1f);
 
     /**
      * the number of cell output types
@@ -56,10 +60,16 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         resetFilter();
         setFilterEnabled(false);
         setPropertyTooltip("useBalancedKernel", "balances kernel to zero sum with positive and negative weights");
+        setPropertyTooltip("radius", "radius in pixels of kernal");
+        setPropertyTooltip("width", "width in pixels of kernel (for radius > 2)");
+        setPropertyTooltip("tauMs", "time constant in ms of integrator neuron potential decay");
+        setPropertyTooltip("threshold", "threahold on ms for firing output event from integrating neuron");
+        setPropertyTooltip("negativeKernelDimMultiple", "multiple of radius*2 is the field of negative splatts to counterbalance the positive circular kernel");
+
     }
 
     @Override
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    final synchronized public EventPacket filterPacket(EventPacket in) {
         checkOutputPacketEventType(in);
         int sx = chip.getSizeX() - 1;
         int sy = chip.getSizeY() - 1;
@@ -80,17 +90,17 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             y = e.y;
             ts = e.timestamp;
 
-            for (Splatt s : splatts) {
-                int xoff = x + s.x;
+            for (final Splatt s : splatts) {
+                final int xoff = x + s.x;
                 if ((xoff < 0) || (xoff > sx)) {
                     continue; //precheck array access
                 }
-                int yoff = y + s.y;
+                final int yoff = y + s.y;
                 if ((yoff < 0) || (yoff > sy)) {
                     continue;
                 }
 
-                float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
+                final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
                 if (dtMs < 0) {
                     convolutionLastEventTime[xoff][yoff] = ts;
                     continue; // ignore negative dt
@@ -102,11 +112,11 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 
                 } else {
                     vmold = (float) (vmold * (Math.exp(-dtMs / tauMs)));
-                    float vm = vmold + s.weight;
+                    final float vm = vmold + s.weight;
                     convolutionVm[xoff][yoff] = vm;
                     convolutionLastEventTime[xoff][yoff] = ts;
                     if (vm > threshold) {
-                        PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+                        final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
                         oe.copyFrom(e);
                         oe.x = (short) xoff;
                         oe.y = (short) yoff;
@@ -262,24 +272,30 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                 default:
             }
         } else {
-            for (int i = 0; i < n; i++) {
-                double theta = (2 * Math.PI * i) / circum;
-                double xoff = Math.cos(theta) * radius;
-                double yoff = Math.sin(theta) * radius;
-                double xround = Math.round(xoff);
-                double yround = Math.round(yoff);
-                if ((xlast != xround) || (ylast != yround)) { // dont make multiple copies of the same splatt around the circle
-                    Splatt s = new Splatt();
-                    s.x = (int) xround;
-                    s.y = (int) yround;
-                    s.weight = 1; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
-                    xlast = s.x;
-                    ylast = s.y;
-                    list.add(s);
+            for (int r = radius-width+1; r <= radius; r++) {
+                circum = 2 * Math.PI * r; // num pixels
+                xlast = -1;
+                ylast = -1;
+                n = (int) Math.ceil(circum);
+
+                for (int i = 0; i < n; i++) {
+                    double theta = (2 * Math.PI * i) / circum;
+                    double xoff = Math.cos(theta) * r;
+                    double yoff = Math.sin(theta) * r;
+                    double xround = Math.round(xoff);
+                    double yround = Math.round(yoff);
+                    if ((xlast != xround) || (ylast != yround)) { // dont make multiple copies of the same splatt around the circle
+                        Splatt s = new Splatt();
+                        s.x = (int) xround;
+                        s.y = (int) yround;
+                        s.weight = 1; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
+                        xlast = s.x;
+                        ylast = s.y;
+                        list.add(s);
+                    }
                 }
             }
         }
-        //        log.info("splatt has "+list.size()+" +1 elements");
 //		if(radius>2 && isUseBalancedKernel()){
 //			// make negative outside ring, 1/2 weight
 //			xlast=-1; ylast=-1;
@@ -376,10 +392,32 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         initFilter();
     }
 
-    private int radius = getInt("radius", 3);
+    public float getTauMs() {
+        return tauMs;
+    }
 
-    {
-        setPropertyTooltip("radius", "radius in pixels of kernal");
+    synchronized public void setTauMs(float tauMs) {
+        if (tauMs < 0) {
+            tauMs = 0;
+        } else if (tauMs > 10000) {
+            tauMs = 10000f;
+        }
+        this.tauMs = tauMs;
+        getPrefs().putFloat("CircularConvolutionFilter.tauMs", tauMs);
+    }
+
+    public float getThreshold() {
+        return threshold;
+    }
+
+    synchronized public void setThreshold(float threshold) {
+        if (threshold < 0) {
+            threshold = 0;
+        } else if (threshold > 100) {
+            threshold = 100;
+        }
+        this.threshold = threshold;
+        putFloat("threshold", threshold);
     }
 
     public int getRadius() {
@@ -395,48 +433,38 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         if (radius != this.radius) {
             this.radius = radius;
             putInt("radius", radius);
+            setWidth(getWidth()); // constrain width
             resetFilter();
         }
     }
 
-    private float tauMs = getFloat("tauMs", 10f);
-
-    {
-        setPropertyTooltip("tauMs", "time constant in ms of integrator neuron potential decay");
+    /**
+     * @return the width
+     */
+    public int getWidth() {
+        return width;
     }
 
-    public float getTauMs() {
-        return tauMs;
-    }
-
-    synchronized public void setTauMs(float tauMs) {
-        if (tauMs < 0) {
-            tauMs = 0;
-        } else if (tauMs > 10000) {
-            tauMs = 10000f;
+    /**
+     * @param width the width to set
+     */
+    public void setWidth(int width) {
+        if (width < 1) {
+            width = 1;
         }
-        this.tauMs = tauMs;
-        getPrefs().putFloat("CircularConvolutionFilter.tauMs", tauMs);
-    }
-
-    private float threshold = getFloat("threshold", 1f);
-
-    {
-        setPropertyTooltip("threshold", "threahold on ms for firing output event from integrating neuron");
-    }
-
-    public float getThreshold() {
-        return threshold;
-    }
-
-    synchronized public void setThreshold(float threshold) {
-        if (threshold < 0) {
-            threshold = 0;
-        } else if (threshold > 100) {
-            threshold = 100;
+        if (radius < 3) {
+            width = 1;
         }
-        this.threshold = threshold;
-        putFloat("threshold", threshold);
+        if (width > radius) {
+            width = radius - 1;
+        }
+        if (width != this.width) {
+            int old = this.width;
+            this.width = width;
+            putInt("width", width);
+            getSupport().firePropertyChange("width", old, width);
+            resetFilter();
+        }
     }
 
 }
