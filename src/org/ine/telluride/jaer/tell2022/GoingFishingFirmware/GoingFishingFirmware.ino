@@ -1,3 +1,6 @@
+// firmware for Arduino Nano used for Gone Fishing Robot
+// Tobi Delbruck, Aug/Sept 2023 tobi@ini.uzh.ch
+
 #include <Servo.h>
 
 Servo theta;
@@ -10,7 +13,8 @@ const int ADC_CHANGE_THRESHOLD = 1;
 int lastAdcVal;
 
 bool disabled = true;
-byte bytes[3];
+byte bytes[4];
+bool led = 0;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -38,14 +42,18 @@ void loop() {
       Serial.write(msb);
       byte lsb = adcVal % 256;
       Serial.write(lsb);
-      lastAdcVal=adcVal;
+      lastAdcVal = adcVal;
     }
   }
 
-  if (Serial.available() < 3) {
+  if (Serial.available() < 4) {
     return;
   }
-  Serial.readBytes(bytes, 3);
+  // bytes sent
+  // 0: cmd
+  // 1-2: msb,lsb of theta pan servo in us from 1000-2000
+  // 3: angle in deg of z servo (rod dip)
+  Serial.readBytes(bytes, 4);
   byte cmd = bytes[0];
   bool disable = false;
   switch (cmd) {
@@ -56,9 +64,10 @@ void loop() {
           theta.attach(12);
           z.attach(9);
         }
-        int thetaDeg = bytes[1];
-        int zDeg = bytes[2];
-        theta.write(thetaDeg);
+        int thetaUs = (bytes[1] * 256) + (bytes[2]);
+        theta.writeMicroseconds(thetaUs);
+
+        int zDeg = bytes[3];
         z.write(zDeg);
       }
       break;
@@ -71,13 +80,14 @@ void loop() {
       break;
     case CMD_RUN_POND: {
         digitalWrite(FISHING_POND_MOTOR_NOT_SHUTDOWN, HIGH);
-        digitalWrite(LED_BUILTIN, HIGH);
       }
       break;
     case CMD_STOP_POND: {
         digitalWrite(FISHING_POND_MOTOR_NOT_SHUTDOWN, LOW);
-        digitalWrite(LED_BUILTIN, LOW);
       }
       break;
   }
+  led = !led;
+  digitalWrite(LED_BUILTIN, led);
+
 }
