@@ -30,28 +30,23 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javafx.geometry.Point2D;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEDataFile;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.SignedNumber;
+import net.sf.jaer.eventprocessing.filter.CircularConvolutionFilter;
 import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
@@ -84,7 +79,6 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
 
     FilterChain chain = null;
     RectangularClusterTracker tracker = null;
-    EventRateEstimator rateEstimator=null;
     Random random = new Random();
 
     // serial port stuff
@@ -172,9 +166,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         super(chip);
         chain = new FilterChain(chip);
         tracker = new RectangularClusterTracker(chip);
-        rateEstimator=new EventRateEstimator(chip);
         chain.add(new XYTypeFilter(chip));
         chain.add(new SpatioTemporalCorrelationFilter(chip));
+        chain.add(new CircularConvolutionFilter(chip));
         chain.add(tracker);
         setEnclosedFilterChain(chain);
         String ser = "Serial port", rod = "Rod control", ler = "Learning", enb = "Enable/Disable";
@@ -201,7 +195,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(ler, "fishingHoleSwitchProbability", "chance of switching spots after each attempt");
         setPropertyTooltip(ler, "caughtFishDetectorThreshold", "threshold ADC count from FSR to detect that we caught a fish");
         setPropertyTooltip(ler, "rodDipDelaySamplingSigmaMs", "sigma of Gaussian-sampled delay in ms to sample new rod dip starting delay; 100ms is about 1cm for outer fish.");
-        setPropertyTooltip(ler, "rodThetaSamplingSigmaDeg", "sigma in deg to sample new rod dip pan offsets");
+        setPropertyTooltip(ler, "rodThetaSamplingSigmaDeg", "sigma in deg to sample new rod dip pan offsets; each deg is about 2.6mm and the fish mouth is about 20mm");
         setPropertyTooltip(ler, "zeroSamplingNoise", "Zero the sampling noise to see nominal behavior");
         setPropertyTooltip(ler, "zeroOffsets", "Zero the offsets to see nominal behavior");
         setPropertyTooltip(ler, "plotFishingResults", "(needs python and matplotlib installed) Plot the fishing results as scatter plot.");
@@ -247,7 +241,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             log.warning("Could not load beep sound: " + e.toString());
 
         }
-        fishSpeedStats = new DescriptiveStatistics(30);
+        fishSpeedStats = new DescriptiveStatistics(100);
     }
 
     @Override
@@ -300,13 +294,13 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                         final long timeToMinZMs = Math.round(rodSequences[currentRodsequenceIdx].timeToMinZMs / rodDipSpeedUpFactor);
                         if (msForFishToReachRodTip < timeToMinZMs) {
                             log.warning(String.format("msForFishToReachRodTip=%,d ms is less than rod sequence timeToMinZMs=%,d ms;\n"
-                                    + "Speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
+                                    + "median speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
                                     fishSpeedPps, radius, angularSpeedDegPerS, angleDegFishToTip));
                         } else {
                             delay = msForFishToReachRodTip - timeToMinZMs;
-//                            log.info(String.format("msForFishToReachRodTip=%,d ms is more than rod sequence timeToMinZMs=%,d ms;\n"
-//                                    + "Speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
-//                                    fishSpeedPps, radius, angularSpeedDegPerS, angleDegFishToTip));
+                            log.info(String.format("msForFishToReachRodTip=%,d ms is OK; less than rod sequence timeToMinZMs=%,d ms;\n"
+                                    + "median speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
+                                    fishSpeedPps, radius, angularSpeedDegPerS, angleDegFishToTip));
                         }
                     }
                     if (rodDipper == null || !rodDipper.isAlive()) {
@@ -585,7 +579,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             throw new IOException(warningString);
         }
         if (serialPort.connect()) {
-            if(serialPort.getOutputStream()==null){
+            if (serialPort.getOutputStream() == null) {
                 log.warning("Serial port connected, but getOutputStream() still returned null");
                 throw new IOException("no output stream");
             }
@@ -647,7 +641,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
 
     @Override
     public void setFilterEnabled(boolean yes) {
-        boolean old=this.filterEnabled;
+        boolean old = this.filterEnabled;
         super.setFilterEnabled(yes);
         if (!yes && old) { // only turn off serial port if it was previously on
             disableServos();
@@ -850,10 +844,12 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         }
 
         synchronized public void shutdown() {
-            try {
-                serialPortInputStream.close();
-            } catch (IOException e) {
+            if (serialPortInputStream != null) {
+                try {
+                    serialPortInputStream.close();
+                } catch (IOException e) {
 
+                }
             }
             serialPortInputStream = null;
             return;

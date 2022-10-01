@@ -217,7 +217,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             lastX = shiftPressed? lastX: evt.getX();  // if shift held down, keep x fixed to constrain vertical rod movement
             lastY = evt.getY();
         }
-        int thetaDeg = (int) (Math.floor(180f * (float) lastX / myPanel.getWidth()));
+        float thetaDeg = (180f * (float) lastX / myPanel.getWidth());
         int zDeg = (int) (Math.floor(180f * (float) (myPanel.getHeight() - lastY) / myPanel.getHeight()));
         final long currentTimeMillis = System.currentTimeMillis();
         long delayToNextMs = lastTimeMs == 0 ? 0 : currentTimeMillis - lastTimeMs;

@@ -4,10 +4,11 @@ import java.io.Serializable;
 
 public class RodPosition implements Serializable {
 
-    int thetaDeg, zDeg;
+    float thetaDeg;
+    int zDeg;
     long delayMsToNext; // this is delay after we move to the position, first delay should be zero to immediately start the move
 
-    public RodPosition(long delayMsToNext, int thetaDeg, int zDeg) {
+    public RodPosition(long delayMsToNext, float thetaDeg, int zDeg) {
         if (thetaDeg > 180) {
             thetaDeg = 180;
         } else if (thetaDeg < 0) {
@@ -25,6 +26,6 @@ public class RodPosition implements Serializable {
 
     @Override
     public String toString() {
-        return String.format("theta=%d deg, z=%d deg, delayToNext=%,d ms", thetaDeg, zDeg, delayMsToNext);
+        return String.format("theta=%.1f deg, z=%d deg, delayToNext=%,d ms", thetaDeg, zDeg, delayMsToNext);
     }
 }

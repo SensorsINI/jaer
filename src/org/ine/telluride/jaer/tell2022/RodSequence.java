@@ -18,7 +18,9 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
 
     private int index;
     public long durationMs = 0, timeToMinZMs = 0;
-    private int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE, minTheta = Integer.MAX_VALUE, maxTheta = Integer.MIN_VALUE;
+    private int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+    private float minTheta = Float.POSITIVE_INFINITY, maxTheta = Float.NEGATIVE_INFINITY;
+    private String ROD_SEQ_PLOT_FILENAME="RodDipSequence.pdf";
 
     public RodSequence(int index) {
         this.index = index;
@@ -95,12 +97,13 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     @Override
     public String toString() {
         return String.format("Fishing rod sequence #%d with %,d positions\n total duration %,d ms; timeToMinZMs=%,d ms\n"
-                + "minZ=%d, maxZ=%d, minTheta=%d, maxTheta=%d", 
+                + "minZ=%d, maxZ=%d, minTheta=%.1f, maxTheta=%.1f", 
                 index, size(), durationMs, timeToMinZMs,minZ,maxZ,minTheta,maxTheta);
     }
     
     public void plot() throws IOException, PythonExecutionException{
-        ArrayList<Integer> times=new ArrayList(), zs=new ArrayList(), thetas=new ArrayList();
+        ArrayList<Integer> times=new ArrayList(), zs=new ArrayList();
+        ArrayList<Float> thetas=new ArrayList();
         int t=0;
         for(RodPosition p:this){
             t+=(int)p.delayMsToNext;
@@ -117,6 +120,8 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         plt.plot().add(times, thetas, "gx").linewidth(1).linestyle("-").label("Pan");
         plt.legend();
         plt.show(); // stops here
+        plt.savefig(ROD_SEQ_PLOT_FILENAME);
+        log.info("saved rod sequence plot as "+ROD_SEQ_PLOT_FILENAME);
     }
 
     /**
