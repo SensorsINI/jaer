@@ -130,7 +130,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         // send DVS timeslice to convnet
         super.filterPacket(in);
         if (frameExtractor != null) {
-            frameExtractor.filterPacket(in); // process frame extractor, target labeler and dvsframer
+            frameExtractor.filterPacket(in); // process frame extractor, target labeler and dvsframer, should generate property change events that make us write APS frames
         }
         if (targetLabeler != null) {
             targetLabeler.filterPacket(in);
@@ -138,7 +138,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         dvsFrame.checkParameters();
         if (aviOutputImage == null || aviOutputImage.getWidth() != getOutputImageWidth() || aviOutputImage.getHeight() != getOutputImageHeight()) {
             aviOutputImage = new BufferedImage(getOutputImageWidth(),
-                    dvsFrame.getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
+                    getOutputImageHeight(), BufferedImage.TYPE_INT_BGR);
         }
 
         checkSubsampler();
@@ -456,9 +456,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
                 if (!rg) {
                     bd[idx] = (b << 16) | (g << 8) | r | 0xFF000000;
-                }else{
+                } else {
                     bd[idx] &= ~0xFF; // clear red channel
-                    bd[idx] |=  r | 0xFF000000;
+                    bd[idx] |= r | 0xFF000000;
                 }
             }
         }
@@ -546,7 +546,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if ((evt.getPropertyName() == ApsFrameExtractor.EVENT_NEW_FRAME)) {
             endOfFrameTimestamp = frameExtractor.getLastFrameTimestamp();
             newApsFrameAvailable = true;
-            if (isWriteApsFrames() && isRecordingActive() 
+            if (isWriteApsFrames() && isRecordingActive()
                     && ((chip.getAeViewer() == null) || !chip.getAeViewer().isPaused())) {
                 BufferedImage bufferedImage = toImage(frameExtractor);
                 writeFrame(bufferedImage, endOfFrameTimestamp);
@@ -866,11 +866,16 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         System.out.print(String.format("Frames written: \n"));
 
         FilterChain filterChain = chip.getFilterChain();
+        filterChain.add(writer);
+
+        filterChain.initFilters();
+
         if (filterChain != null && enableFilters) {
             for (EventFilter f : filterChain) {
                 f.setPreferredEnabledState();
             }
         }
+        writer.setFilterEnabled(true);
 
         // need an object here to register as propertychange listener for the rewind event
         // generated when reading the file and getting to the end,
@@ -892,8 +897,9 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 EventPacket cooked = extractor.extractPacket(aeRaw);
                 if (enableFilters && filterChain != null) {
                     cooked = chip.getFilterChain().filterPacket(cooked);
+                } else {
+                    writer.filterPacket(cooked); // make sure writer is run this way at least
                 }
-                writer.filterPacket(cooked);
                 int numFramesWritten = writer.getFramesWritten();
                 if (numFramesWritten >= (lastNumFramesWritten + 500)) {
                     lastNumFramesWritten = numFramesWritten;
@@ -910,6 +916,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                         ais.close();
                     }
                     if (writer != null) {
+                        System.out.println("Closing output file " + outfile);
                         writer.doFinishRecording();
                     }
                     System.exit(1);
