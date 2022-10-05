@@ -35,6 +35,7 @@ import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
 import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
 import eu.seebetter.ini.chips.DavisChip;
+import java.io.EOFException;
 import ml.options.Options;
 import ml.options.Options.Multiplicity;
 import ml.options.Options.Separator;
@@ -901,13 +902,27 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     writer.filterPacket(cooked); // make sure writer is run this way at least
                 }
                 int numFramesWritten = writer.getFramesWritten();
-                if (numFramesWritten >= (lastNumFramesWritten + 500)) {
+                if (numFramesWritten >= (lastNumFramesWritten + 20)) {
                     lastNumFramesWritten = numFramesWritten;
                     System.out.print(String.format("%d frames            \r", numFramesWritten));
                 }
                 if ((writer.getMaxFrames() > 0) && (writer.getFramesWritten() >= writer.getMaxFrames())) {
                     break;
                 }
+            } catch (EOFException e) {
+                System.out.println("End of file: " + e);
+                if (ais != null) {
+                    try {
+                        ais.close();
+                    } catch (IOException ex) {
+                        System.err.println("Exception closing input stream: "+ex.toString());
+                    }
+                }
+                if (writer != null) {
+                    writer.doFinishRecording();
+                    System.out.println("Closed output file " + outfile + " after wriring " + writer.getFramesWritten() + " frames");
+                }
+                System.exit(0);
             } catch (IOException e) {
                 e.printStackTrace();
                 try {
@@ -916,11 +931,10 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                         ais.close();
                     }
                     if (writer != null) {
-                        System.out.println("Closing output file " + outfile);
                         writer.doFinishRecording();
+                        System.out.println("Closed output file " + outfile + " after wriring " + writer.getFramesWritten() + " frames");
                     }
                     System.exit(1);
-
                 } catch (Exception e3) {
                     System.err.println("Exception closing file: " + e3.getMessage());
                     System.exit(1);
