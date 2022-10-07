@@ -39,8 +39,10 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     RodSequence rodSequence = null;
     int lastX = -1, lastY = -1;
     int startX = -1, startY = -1;
+    int collectorX=-1, collectorY=-1;
     JPanel myPanel = null;
     private boolean shiftPressed = false;
+    private RodPosition lastRodPosition=null;
 
     /**
      * Creates new form GoingFishingFishingRodControlFrame
@@ -112,6 +114,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
 
         buttonGroup1.add(fishingHoleButton0);
         buttonGroup1.add(fishingHoleButton1);
+        buttonGroup1.add(fishRemoverButton);
         fishingHoleButton0.setSelected(true);
         pack();
 
@@ -132,6 +135,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         jPanel1 = new javax.swing.JPanel();
         fishingHoleButton0 = new javax.swing.JRadioButton();
         fishingHoleButton1 = new javax.swing.JRadioButton();
+        fishRemoverButton = new javax.swing.JRadioButton();
         clearButton = new javax.swing.JButton();
         recordToggleButton = new javax.swing.JToggleButton();
         dipRodButton = new javax.swing.JButton();
@@ -161,10 +165,16 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
 
         fishingHoleButton0.setText("Fishing hole 0");
+        fishingHoleButton0.setToolTipText("Record hole 0 sequence");
         jPanel1.add(fishingHoleButton0);
 
         fishingHoleButton1.setText("Fishing hole 1");
+        fishingHoleButton1.setToolTipText("Record fishing hole 1 sequence");
         jPanel1.add(fishingHoleButton1);
+
+        fishRemoverButton.setText("Fish remover");
+        fishRemoverButton.setToolTipText("Record seqeunce to shake off fish");
+        jPanel1.add(fishRemoverButton);
 
         clearButton.setText("Clear all");
         clearButton.addActionListener(new java.awt.event.ActionListener() {
@@ -232,6 +242,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             log.info("added " + rodPosition.toString());
         }
         lastTimeMs = currentTimeMillis;
+        lastRodPosition=rodPosition;
         firePropertyChange(GoingFishing.EVENT_ROD_POSITION, null, rodPosition);
         repaint(30);
     }
@@ -278,9 +289,18 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         recording = !recording;
         if (recording) {
             lastTimeMs = 0;
-            int seq = fishingHoleButton0.isSelected() ? 0 : 1;
-            rodSequence = new RodSequence(seq);
-            log.info("recording sequence " + seq);
+            String name = "";
+            if(fishingHoleButton0.isSelected())
+                name=GoingFishing.HOLE_0_NAME;
+            else if(fishingHoleButton1.isSelected())
+                name=GoingFishing.HOLE_1_NAME;
+            else if(fishRemoverButton.isSelected())
+                name=GoingFishing.FISH_REMOVER_NAME;
+            else
+                throw new RuntimeException("no sequence selected to record, should not occur");
+            
+            rodSequence = new RodSequence(name);
+            log.info("recording sequence " + name);
         } else {
             firePropertyChange(GoingFishing.EVENT_ROD_SEQUENCE, null, rodSequence);
         }
@@ -325,6 +345,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     private javax.swing.ButtonGroup buttonGroup1;
     private javax.swing.JButton clearButton;
     private javax.swing.JButton dipRodButton;
+    private javax.swing.JRadioButton fishRemoverButton;
     private javax.swing.JRadioButton fishingHoleButton0;
     private javax.swing.JRadioButton fishingHoleButton1;
     private javax.swing.JTextField helpText;

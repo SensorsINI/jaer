@@ -30,6 +30,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Set;
@@ -47,7 +48,6 @@ import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.SignedNumber;
 import net.sf.jaer.eventprocessing.filter.CircularConvolutionFilter;
-import net.sf.jaer.eventprocessing.filter.EventRateEstimator;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
@@ -102,7 +102,12 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     public static final String EVENT_ROD_POSITION = "rodPosition",
             EVENT_ROD_SEQUENCE = "rodSequence",
             EVENT_CLEAR_SEQUENCES = "clearSequences",
-            EVENT_DIP_ROD = "dipRod";
+            EVENT_DIP_ROD = "dipRod",
+            EVENT_MARK_COLLECTOR_LOCATION = "markCollector",
+            EVENT_FISH_REMOVER_SHAKE_SEQUENCE = "fishRemoverSequence";
+
+    public static final String HOLE_0_NAME = "hole0", HOLE_1_NAME = "hole1", FISH_REMOVER_NAME = "fishRemover";
+    private final String[] sequenceNames = {HOLE_0_NAME, HOLE_1_NAME, FISH_REMOVER_NAME};
 
     // rod control
     private int zMin = getInt("zMin", 80);
@@ -110,7 +115,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
 
     // fishing rod dips
     RodDipper rodDipper = null;
-    RodSequence[] rodSequences = {new RodSequence(0), new RodSequence(1)};
+    HashMap<String, RodSequence> rodSequences = null;
     private int currentRodsequenceIdx = 0;
     private float fishingHoleSwitchProbability = getFloat("fishingHoleSwitchProbability", 0.1f);
     private int fishingAttemptHoldoffMs = getInt("fishingAttemptHoldoffMs", 3000);
@@ -118,6 +123,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private int rodReturnDurationMs = getInt("rodReturnDurationMs", 3000);
     private int rodRaiseDurationMs = getInt("rodRaiseDurationMs", 500);
     private float rodDipSpeedUpFactor = getFloat("rodDipSpeedUpFactor", 1f);
+    // fish remover
+    private RodSequence fishRemoverSequence = null;
 
     // marking rod tip
     private boolean markRodTip = false;
@@ -150,7 +157,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
 
     // warnings
     private final int WARNING_INTERVAL = 100;
-    private int missingRoiWarningCounter = 0;
+    private int missingInfoWarningCounter = 0;
     private int missingMarkedLocationsWarningCounter = 0;
     volatile private boolean fishingResultsNotSaved = false; // flag set when we get a new FishingResult, to warn to save
 
@@ -203,14 +210,17 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(ler, "loadFishingResults", "Loads previous results from " + FISHING_RESULTS_FILENAME_BASE);
         setPropertyTooltip(ler, "rodDipDelayFixedOffset", "Apply a fixed offset in ms to the dip (- for lead, + for lag); 100ms is about 1cm for outer fish.");
         setPropertyTooltip(ler, "rodThetaFixedOffsetDeg", "Apply a fixed offset in deg to the dip (- for inwards, + for outwards)");
-        try {
-            for (int i = 0; i < 2; i++) {
-                rodSequences[i].load(i);
-                log.info("loaded " + rodSequences.toString());
+        rodSequences = new HashMap();
+        for (String name : sequenceNames) {
+            try {
+                RodSequence seq = new RodSequence(name);
+                seq.load(name);
+                rodSequences.put(name, seq);
+            } catch (Exception e) {
+                log.warning("Could not load fishing rod movement sequence " + name + ": Caught " + e.toString());
             }
-        } catch (Exception e) {
-            log.warning("Could not load fishing rod movement sequence: " + e.toString());
         }
+        log.info("loaded " + rodSequences.toString());
         Object o = null;
         o = getObject("rodTipLocation", null);
         if (o instanceof java.awt.Point) {
@@ -256,15 +266,23 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private void checkForFishingAttempt() {
         long currentTimeMs = System.currentTimeMillis();
         if (roiRects == null || roiRects.isEmpty()) {
-            if (missingRoiWarningCounter % WARNING_INTERVAL == 0) {
-                log.warning("draw at least 1 or at most 2 ROIs for detecting fish before it comes to rod tip");
+            if (missingInfoWarningCounter % WARNING_INTERVAL == 0) {
+                log.warning("draw ROI for detecting fish before it comes to rod tip");
             }
-            missingRoiWarningCounter++;
+            missingInfoWarningCounter++;
+            return;
+        }
+        if (rodSequences.get(HOLE_0_NAME) == null) {
+            if (missingInfoWarningCounter % WARNING_INTERVAL == 0) {
+                log.warning("record a fishing rod dip sequence to try fishing with");
+            }
+            missingInfoWarningCounter++;
             return;
         }
         if (rodDipper != null && rodDipper.isAlive()) {
             return;
         }
+        RodSequence dipSeq = rodSequences.get(HOLE_0_NAME);
         if (currentTimeMs - lastManualRodControlTime > HOLDOFF_AFTER_MANUAL_CONTROL_MS) {
             LinkedList<Cluster> clusterList = tracker.getVisibleClusters();
             for (Cluster c : clusterList) {
@@ -272,7 +290,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 int roi = isInsideWhichROI(p);
                 long delay = 0;
 
-                if (roi >= 0 && roi == currentRodsequenceIdx) {
+                if (roi == 0) {
                     // The ROI entered matches the current fishing rod sequence ROI
                     // this ROI we drew contains a fish cluster
                     if (rodTipLocation == null || fishingPoolCenterLocation == null) {
@@ -291,7 +309,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                         final double angleDegFishToTip = rodTipRay.angle(clusterRay);
                         final double angularSpeedDegPerS = (180 / Math.PI) * (fishSpeedPps / radius);
                         final int msForFishToReachRodTip = (int) (1000 * angleDegFishToTip / angularSpeedDegPerS);
-                        final long timeToMinZMs = Math.round(rodSequences[currentRodsequenceIdx].timeToMinZMs / rodDipSpeedUpFactor);
+                        final long timeToMinZMs = Math.round(dipSeq.timeToMinZMs / rodDipSpeedUpFactor);
                         if (msForFishToReachRodTip < timeToMinZMs) {
                             log.warning(String.format("msForFishToReachRodTip=%,d ms is less than rod sequence timeToMinZMs=%,d ms;\n"
                                     + "median speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
@@ -776,10 +794,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private void showFishingRodControPanel() {
         if (fishingRodControlFrame == null) {
             fishingRodControlFrame = new GoingFishingFishingRodControlFrame();
-            fishingRodControlFrame.addPropertyChangeListener(EVENT_ROD_POSITION, this);
-            fishingRodControlFrame.addPropertyChangeListener(EVENT_ROD_SEQUENCE, this);
-            fishingRodControlFrame.addPropertyChangeListener(EVENT_CLEAR_SEQUENCES, this);
-            fishingRodControlFrame.addPropertyChangeListener(EVENT_DIP_ROD, this);
+            fishingRodControlFrame.addPropertyChangeListener(this);
         }
         fishingRodControlFrame.setVisible(true);
     }
@@ -818,12 +833,17 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             } catch (InterruptedException e) {
             }
         }
-        int nextSeq = (currentRodsequenceIdx + 1) % 2;
-        if (rodSequences[nextSeq].size() > 0 && random.nextFloat() <= fishingHoleSwitchProbability) {
-            currentRodsequenceIdx = nextSeq;
-            log.info("switched to " + rodSequences[currentRodsequenceIdx]);
+//        int nextSeq = (currentRodsequenceIdx + 1) % 2;
+//        if (rodSequences[nextSeq].size() > 0 && random.nextFloat() <= fishingHoleSwitchProbability) {
+//            currentRodsequenceIdx = nextSeq;
+//            log.info("switched to " + rodSequences[currentRodsequenceIdx]);
+//        }
+//        RodSequence seq = rodSequences[currentRodsequenceIdx];
+        RodSequence seq = rodSequences.get(HOLE_0_NAME);
+        if (seq == null) {
+            log.warning("No sequence recorded, please record one to fish for a fish at this fishing hole");
+            return;
         }
-        RodSequence seq = rodSequences[currentRodsequenceIdx];
         rodDipper = new RodDipper(seq, delayMs, false);
 //            log.info("running " + rodSequences.toString());
 
@@ -998,8 +1018,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 learnedRodDipLeadLagMs = fishingResults.rodDipDelayMs;
                 putFloat("learnedRodThetaOffsetDeg", angleOffsetDeg);
                 putInt("learnedRodDipLeadLagMs", randomDelayMs);
-                raiseRod();
                 setEnableFishing(false);
+                raiseRod();
+                shakeOffFish();
                 return;
             } else {
                 fishWasCaught = false;
@@ -1047,11 +1068,47 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             moveSmoothly(positionNow, nextStartingPosition, rodReturnDurationMs);
         }
 
+        private void shakeOffFish() {
+            if (rodSequences.get(FISH_REMOVER_NAME) == null) {
+                log.warning("Cannot shake off the fish until there is a fish remover sequence");
+                return;
+            }
+            RodSequence rodSequence = rodSequences.get(FISH_REMOVER_NAME);
+            final RodPosition curPos = new RodPosition(0, lastRodThetaDeg, lastRodZDeg);
+            moveSmoothly(curPos, rodSequence.get(0), rodReturnDurationMs);
+            // now shake rod (play shake sequence), then check ADC if fish gone, repeat a few times unti we give up
+            int triesLeft = 3;
+            while (triesLeft-- > 0 && isFishCaught()) {
+                log.info("shaking off fish, " + triesLeft + " tries left");
+                for (RodPosition p : rodSequence) {
+                    if (aborted) {
+                        log.info("rod sequence aborted");
+                        break;
+                    }
+                    if (p.delayMsToNext > 0) {
+                        try {
+                            long delMs = Math.round(p.delayMsToNext / rodDipSpeedUpFactor);
+                            sleep(delMs); // sleep before move, first sleep is zero ms
+                        } catch (InterruptedException e) {
+                            log.info("rod sequence interrupted");
+                            break;
+                        }
+                    }
+                    sendRodPosition(false, (int) Math.round(p.thetaDeg), p.zDeg);
+                }
+            }
+            if (isFishCaught()) {
+                log.warning("Could not shake off fish, please remove it for me");
+            } else {
+                log.info("*** Sucessfully shook off the caught fish!!!");
+            }
+        }
+
         private void raiseRod() {
-            final RodPosition startingPosition = new RodPosition(0, lastRodThetaDeg, lastRodZDeg);
+            final RodPosition curPos = new RodPosition(0, lastRodThetaDeg, lastRodZDeg);
             final RodPosition endingPosition = new RodPosition(0, lastRodThetaDeg, 180);
 
-            moveSmoothly(startingPosition, endingPosition, rodRaiseDurationMs);
+            moveSmoothly(curPos, endingPosition, rodRaiseDurationMs);
         }
 
         private void abort() {
@@ -1150,26 +1207,24 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 sendRodPosition(false, rodPosition.thetaDeg, rodPosition.zDeg);
                 break;
             case EVENT_ROD_SEQUENCE:
-                RodSequence newSequnce = (RodSequence) evt.getNewValue();
-                newSequnce.save();
-                rodSequences[newSequnce.getIndex()] = newSequnce;
+                RodSequence newSeq = (RodSequence) evt.getNewValue();
+                newSeq.save();
+                rodSequences.put(newSeq.getName(), newSeq);
                 log.info("got new " + rodSequences);
-                showPlainMessageDialogInSwingThread(newSequnce.toString(), "New rod sequence");
+                showPlainMessageDialogInSwingThread(newSeq.toString(), "New rod sequence");
                 try {
-                    newSequnce.plot();
+                    newSeq.plot();
                 } catch (Exception e) {
                     log.warning("Cannot plot the sequence: " + e.toString());
                 }
                 break;
             case EVENT_CLEAR_SEQUENCES:
-                for (RodSequence r : rodSequences) {
-                    r.clear();
-                    r.save();
-                }
-                log.info("Sequnces cleared");
+                rodSequences.clear();
+                log.info("Sequences cleared");
                 break;
             case EVENT_DIP_ROD:
                 dipRodNow(0);
+                break;
             default:
         }
     }
@@ -1211,8 +1266,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         this.enableFishing = enableFishing;
         putBoolean("enableFishing", enableFishing);
         getSupport().firePropertyChange("enableFishing", old, this.enableFishing);
-        if (enableFishing) {
-            RodSequence seq = rodSequences[currentRodsequenceIdx];
+        if (enableFishing && rodSequences.get(HOLE_0_NAME) != null) {
+            RodSequence seq = rodSequences.get(HOLE_0_NAME);
             rodDipper = new RodDipper(seq, 0, true);
             log.info("moving rod to current sequence starting position");
             rodDipper.start();

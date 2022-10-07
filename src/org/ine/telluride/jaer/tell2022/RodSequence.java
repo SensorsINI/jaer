@@ -16,16 +16,20 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     static Logger log = Logger.getLogger("GoingFishing");
     static String FILENAME = "GoingFishingRodSequence.ser";
 
-    private int index;
+    private String name;
     public long durationMs = 0, timeToMinZMs = 0;
     private int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
     private float minTheta = Float.POSITIVE_INFINITY, maxTheta = Float.NEGATIVE_INFINITY;
     private String ROD_SEQ_PLOT_FILENAME="RodDipSequence.pdf";
 
-    public RodSequence(int index) {
-        this.index = index;
+    public RodSequence(String name) {
+        this.name = this.name;
     }
 
+    static private String getFilename(String name){
+        return FILENAME + "="+name;
+    }
+    
     public void save() {
         if (size() == 0) {
             log.info("saving sequence of zero length");
@@ -49,7 +53,7 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         }
         FileOutputStream fos = null;
         try {
-            String fn = FILENAME + index;
+            String fn = getFilename(name);
             fos = new FileOutputStream(fn);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(this);
@@ -60,22 +64,12 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         }
     }
 
-    public void load(int index) throws IOException, ClassNotFoundException {
-        FileInputStream fis = new FileInputStream(FILENAME + index);
+    static public RodSequence load(String name) throws IOException, ClassNotFoundException {
+        FileInputStream fis = new FileInputStream(getFilename(name));
         ObjectInputStream ois = new ObjectInputStream(fis);
         RodSequence rodSequence = (RodSequence) ois.readObject();
         ois.close();
-        clear();
-        for (RodPosition p : rodSequence) {
-            add(p);
-        }
-        this.index = rodSequence.index;
-        this.durationMs = rodSequence.durationMs;
-        this.maxTheta = rodSequence.maxTheta;
-        this.minTheta = rodSequence.minTheta;
-        this.maxZ = rodSequence.maxZ;
-        this.minZ = rodSequence.minZ;
-        this.timeToMinZMs = rodSequence.timeToMinZMs;
+        return rodSequence;
     }
 
     @Override
@@ -98,7 +92,7 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     public String toString() {
         return String.format("Fishing rod sequence #%d with %,d positions\n total duration %,d ms; timeToMinZMs=%,d ms\n"
                 + "minZ=%d, maxZ=%d, minTheta=%.1f, maxTheta=%.1f", 
-                index, size(), durationMs, timeToMinZMs,minZ,maxZ,minTheta,maxTheta);
+                name, size(), durationMs, timeToMinZMs,minZ,maxZ,minTheta,maxTheta);
     }
     
     public void plot() throws IOException, PythonExecutionException{
@@ -125,10 +119,10 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     }
 
     /**
-     * @return the index
+     * @return the name
      */
-    public int getIndex() {
-        return index;
+    public String getName() {
+        return name;
     }
 
 }
