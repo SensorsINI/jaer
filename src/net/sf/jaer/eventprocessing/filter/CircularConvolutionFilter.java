@@ -37,7 +37,8 @@ import net.sf.jaer.graphics.FrameAnnotater;
 public final class CircularConvolutionFilter extends EventFilter2D implements Observer, FrameAnnotater {
 
     static final int NUM_INPUT_CELL_TYPES = 1;
-    protected boolean useBalancedKernel = getBoolean("useBalancedKernel", true);
+    protected boolean useBalancedKernel = getBoolean("useBalancedKernel", false);
+    protected boolean ignorePolarity = getBoolean("ignorePolarity", false);
     protected float negativeKernelDimMultiple = getFloat("negativeKernelDimMultiple", 2);
     private float negativeWeight = 0;
     private int negativeKernelRadius = 0;
@@ -65,6 +66,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         setPropertyTooltip("tauMs", "time constant in ms of integrator neuron potential decay");
         setPropertyTooltip("threshold", "threahold on ms for firing output event from integrating neuron");
         setPropertyTooltip("negativeKernelDimMultiple", "multiple of radius*2 is the field of negative splatts to counterbalance the positive circular kernel");
+        setPropertyTooltip("ignorePolarity", "treat all input events as ON events (maybe better for detecting moving circular shapes)");
 
     }
 
@@ -89,7 +91,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             x = e.x;
             y = e.y;
             ts = e.timestamp;
-
+            int pol=ignorePolarity?1:e.getPolaritySignum();
             for (final Splatt s : splatts) {
                 final int xoff = x + s.x;
                 if ((xoff < 0) || (xoff > sx)) {
@@ -112,7 +114,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 
                 } else {
                     vmold = (float) (vmold * (Math.exp(-dtMs / tauMs)));
-                    final float vm = vmold + s.weight;
+                    final float vm = vmold + s.weight*pol;
                     convolutionVm[xoff][yoff] = vm;
                     convolutionLastEventTime[xoff][yoff] = ts;
                     if (vm > threshold) {
@@ -120,6 +122,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                         oe.copyFrom(e);
                         oe.x = (short) xoff;
                         oe.y = (short) yoff;
+                        oe.polarity=PolarityEvent.Polarity.On;
                         convolutionVm[xoff][yoff] = 0;
                     }
                 }
@@ -272,7 +275,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                 default:
             }
         } else {
-            for (int r = radius-width+1; r <= radius; r++) {
+            for (float r = radius-0.5f*width; r <= radius+.5f*width; r++) {
                 circum = 2 * Math.PI * r; // num pixels
                 xlast = -1;
                 ylast = -1;
@@ -465,6 +468,21 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             getSupport().firePropertyChange("width", old, width);
             resetFilter();
         }
+    }
+
+    /**
+     * @return the ignorePolarity
+     */
+    public boolean isIgnorePolarity() {
+        return ignorePolarity;
+    }
+
+    /**
+     * @param ignorePolarity the ignorePolarity to set
+     */
+    public void setIgnorePolarity(boolean ignorePolarity) {
+        this.ignorePolarity = ignorePolarity;
+        putBoolean("ignorePolarity",ignorePolarity);
     }
 
 }
