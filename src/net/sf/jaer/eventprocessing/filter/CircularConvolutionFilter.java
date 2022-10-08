@@ -88,47 +88,51 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                 oe.copyFrom(e);
                 continue;
             }
-            x = e.x;
-            y = e.y;
-            ts = e.timestamp;
-            int pol=ignorePolarity?1:e.getPolaritySignum();
-            for (final Splatt s : splatts) {
-                final int xoff = x + s.x;
-                if ((xoff < 0) || (xoff > sx)) {
-                    continue; //precheck array access
-                }
-                final int yoff = y + s.y;
-                if ((yoff < 0) || (yoff > sy)) {
-                    continue;
-                }
+            splatt(e, sx, sy, oi);
+        }
+        return out;
+    }
 
-                final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
-                if (dtMs < 0) {
-                    convolutionLastEventTime[xoff][yoff] = ts;
-                    continue; // ignore negative dt
-                }
-                float vmold = convolutionVm[xoff][yoff];
-                if (s.weight < 0) {
-                    float vm = vmold + s.weight;
-                    convolutionVm[xoff][yoff] = vm;
-
-                } else {
-                    vmold = (float) (vmold * (Math.exp(-dtMs / tauMs)));
-                    final float vm = vmold + s.weight*pol;
-                    convolutionVm[xoff][yoff] = vm;
-                    convolutionLastEventTime[xoff][yoff] = ts;
-                    if (vm > threshold) {
-                        final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
-                        oe.copyFrom(e);
-                        oe.x = (short) xoff;
-                        oe.y = (short) yoff;
-                        oe.polarity=PolarityEvent.Polarity.On;
-                        convolutionVm[xoff][yoff] = 0;
-                    }
+    private void splatt(PolarityEvent e, int sx, int sy, OutputEventIterator oi) {
+        final int x = e.x;
+        final int y = e.y;
+        final int ts = e.timestamp;
+        final int pol=ignorePolarity?1:e.getPolaritySignum();
+        for (final Splatt s : splatts) {
+            final int xoff = x + s.x;
+            if ((xoff < 0) || (xoff > sx)) {
+                continue; //precheck array access
+            }
+            final int yoff = y + s.y;
+            if ((yoff < 0) || (yoff > sy)) {
+                continue;
+            }
+            
+            final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
+            if (dtMs < 0) {
+                convolutionLastEventTime[xoff][yoff] = ts;
+                continue; // ignore negative dt
+            }
+            float vmold = convolutionVm[xoff][yoff];
+            if (s.weight < 0) {
+                float vm = vmold + s.weight;
+                convolutionVm[xoff][yoff] = vm;
+                
+            } else {
+                vmold = (float) (vmold * (Math.exp(-dtMs / tauMs)));
+                final float vm = vmold + s.weight*pol;
+                convolutionVm[xoff][yoff] = vm;
+                convolutionLastEventTime[xoff][yoff] = ts;
+                if (vm > threshold) {
+                    final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+                    oe.copyFrom(e);
+                    oe.x = (short) xoff;
+                    oe.y = (short) yoff;
+                    oe.polarity=PolarityEvent.Polarity.On;
+                    convolutionVm[xoff][yoff] = 0;
                 }
             }
         }
-        return out;
     }
 
     @Override
@@ -200,24 +204,19 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 
     final class Splatt {
 
-        int x, y;
-        float weight = 1;
-
-        Splatt() {
-            x = 0;
-            y = 0;
-            weight = 1;
-        }
+        final int x, y;
+        float weight;
 
         Splatt(int x, int y) {
             this.x = x;
             this.y = y;
+            this.weight = 1;
         }
 
         Splatt(int x, int y, float w) {
             this.x = x;
             this.y = y;
-            weight = w;
+            this.weight = w;
         }
 
         @Override
@@ -243,7 +242,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 
             switch (radius) {
                 case 0: // identity
-                    list.add(new Splatt());
+                    list.add(new Splatt(0,0,1));
                     break;
                 case 1:
                     list.add(new Splatt(1, 0, .25f));
@@ -288,9 +287,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                     double xround = Math.round(xoff);
                     double yround = Math.round(yoff);
                     if ((xlast != xround) || (ylast != yround)) { // dont make multiple copies of the same splatt around the circle
-                        Splatt s = new Splatt();
-                        s.x = (int) xround;
-                        s.y = (int) yround;
+                        Splatt s = new Splatt((int) xround, (int) yround);
                         s.weight = 1; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
                         xlast = s.x;
                         ylast = s.y;
@@ -299,48 +296,11 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                 }
             }
         }
-//		if(radius>2 && isUseBalancedKernel()){
-//			// make negative outside ring, 1/2 weight
-//			xlast=-1; ylast=-1;
-//			for(int i=0;i<n;i++){
-//				double theta=(2*Math.PI*i)/circum;
-//				double off=(Math.cos(theta)*radius)+1;
-//				double yoff=(Math.sin(theta)*radius)+1;
-//				double xround=Math.round(off);
-//				double yround=Math.round(yoff);
-//				if((xlast!=xround) || (ylast!=yround)){ // dont make multiple copies of the same splatt around the circle
-//					Splatt s=new Splatt();
-//					s.x=(int)xround;
-//					s.y=(int)yround;
-//					s.weight= -0.5f; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
-//					xlast=s.x; ylast=s.y;
-//					list.appendCopy(s);
-//				}
-//			}
-//			xlast=-1; ylast=-1;
-//			for(int i=0;i<n;i++){
-//				double theta=(2*Math.PI*i)/circum;
-//				double xoff=(Math.cos(theta)*radius)+-1;
-//				double yoff=(Math.sin(theta)*radius)-1;
-//				double xround=Math.round(xoff);
-//				double yround=Math.round(yoff);
-//				if((xlast!=xround) || (ylast!=yround)){ // dont make multiple copies of the same splatt around the circle
-//					Splatt s=new Splatt();
-//					s.x=(int)xround;
-//					s.y=(int)yround;
-//					s.weight= -0.5f; //(float)(1-Math.sqrt((x-xround)*(x-xround)+(y-yround)*(y-yround)));
-//					xlast=s.x; ylast=s.y;
-//					list.appendCopy(s);
-//				}
-//			}
-//		}
-        //        log.info("splatt has "+list.size()+" total elements");
 
         float sum = 0;
         for (Splatt s : list) {
             sum += s.weight;
         }
-        log.info("splatt total positive weight = " + sum + " num weights=" + list.size());
         if (isUseBalancedKernel()) {
             negativeKernelRadius = (int) Math.round(radius * negativeKernelDimMultiple);
             final int numNegWeights = (2 * negativeKernelRadius + 1) * (2 * negativeKernelRadius + 1);
@@ -358,13 +318,13 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             splatts[i] = (Splatt) oa[i];
             sum += splatts[i].weight;
         }
-        log.info("splatt final total weight = " + sum + " num weights=" + splatts.length);
+        log.info("splatt total positive weight = " + sum + " final total weight = " + sum+ " num weights=" + list.size());
 
     }
 
-    int PADDING = 0, P = 0;
-    float[][] convolutionVm;
-    int[][] convolutionLastEventTime;
+    private float[][] convolutionVm;
+    
+    private int[][] convolutionLastEventTime;
 
     private void allocateMap() {
         if ((chip.getSizeX() == 0) || (chip.getSizeY() == 0)) {
@@ -378,9 +338,6 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         computeSplattLookup();
     }
 
-    private short x, y;
-    private byte type;
-    private int ts;
 
     @Override
     public void initFilter() {
