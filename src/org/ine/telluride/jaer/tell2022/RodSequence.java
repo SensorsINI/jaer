@@ -14,20 +14,20 @@ import java.util.logging.Logger;
 public class RodSequence extends ArrayList<RodPosition> implements Serializable {
 
     static Logger log = Logger.getLogger("GoingFishing");
-    static String FILENAME = "GoingFishingRodSequence.ser";
+    static String FILENAME = "GoingFishingRodSequence", FILENAME_SUF=".ser";
 
     private String name;
     public long durationMs = 0, timeToMinZMs = 0;
     private int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
     private float minTheta = Float.POSITIVE_INFINITY, maxTheta = Float.NEGATIVE_INFINITY;
-    private String ROD_SEQ_PLOT_FILENAME="RodDipSequence.pdf";
+    private String ROD_SEQ_PLOT_FILENAME="RodDipSequencePlot", ROD_SEQ_PLOT_FILENAME_SUF=".pdf";
 
     public RodSequence(String name) {
-        this.name = this.name;
+        this.name = name;
     }
 
     static private String getFilename(String name){
-        return FILENAME + "="+name;
+        return FILENAME + "-"+name+FILENAME_SUF;
     }
     
     public void save() {
@@ -65,10 +65,12 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
     }
 
     static public RodSequence load(String name) throws IOException, ClassNotFoundException {
-        FileInputStream fis = new FileInputStream(getFilename(name));
+        final String filename = getFilename(name);
+        FileInputStream fis = new FileInputStream(filename);
         ObjectInputStream ois = new ObjectInputStream(fis);
         RodSequence rodSequence = (RodSequence) ois.readObject();
         ois.close();
+        log.info("loaded fishing rod sequence from "+filename);
         return rodSequence;
     }
 
@@ -90,7 +92,7 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
 
     @Override
     public String toString() {
-        return String.format("Fishing rod sequence #%d with %,d positions\n total duration %,d ms; timeToMinZMs=%,d ms\n"
+        return String.format("Fishing rod sequence \"%s\" with %,d positions\n total duration %,d ms; timeToMinZMs=%,d ms\n"
                 + "minZ=%d, maxZ=%d, minTheta=%.1f, maxTheta=%.1f", 
                 name, size(), durationMs, timeToMinZMs,minZ,maxZ,minTheta,maxTheta);
     }
@@ -114,8 +116,9 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         plt.plot().add(times, thetas, "gx").linewidth(1).linestyle("-").label("Pan");
         plt.legend();
         plt.show(); // stops here
-        plt.savefig(ROD_SEQ_PLOT_FILENAME);
-        log.info("saved rod sequence plot as "+ROD_SEQ_PLOT_FILENAME);
+        String filename=ROD_SEQ_PLOT_FILENAME+"-"+name+ROD_SEQ_PLOT_FILENAME_SUF;
+        plt.savefig(filename);
+        log.info("saved rod sequence plot as "+filename);
     }
 
     /**

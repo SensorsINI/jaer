@@ -291,11 +291,11 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             lastTimeMs = 0;
             String name = "";
             if(fishingHoleButton0.isSelected())
-                name=GoingFishing.HOLE_0_NAME;
+                name=GoingFishing.SEQ_HOLE_0;
             else if(fishingHoleButton1.isSelected())
-                name=GoingFishing.HOLE_1_NAME;
+                name=GoingFishing.SEQ_HOLE_1;
             else if(fishRemoverButton.isSelected())
-                name=GoingFishing.FISH_REMOVER_NAME;
+                name=GoingFishing.SEQ_FISH_REMOVER;
             else
                 throw new RuntimeException("no sequence selected to record, should not occur");
             
