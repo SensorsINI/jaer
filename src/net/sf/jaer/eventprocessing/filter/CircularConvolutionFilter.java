@@ -38,7 +38,6 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 
     static final int NUM_INPUT_CELL_TYPES = 1;
     protected boolean useBalancedKernel = getBoolean("useBalancedKernel", false);
-    protected boolean ignorePolarity = getBoolean("ignorePolarity", false);
     protected float negativeKernelDimMultiple = getFloat("negativeKernelDimMultiple", 2);
     private float negativeWeight = 0;
     private int negativeKernelRadius = 0;
@@ -46,6 +45,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
     private int width = getInt("width", 1);
     private float tauMs = getFloat("tauMs", 10f);
     private float threshold = getFloat("threshold", 1f);
+    protected boolean partialReset = getBoolean("partialReset", false);
 
     /**
      * the number of cell output types
@@ -67,6 +67,8 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         setPropertyTooltip("threshold", "threahold on ms for firing output event from integrating neuron");
         setPropertyTooltip("negativeKernelDimMultiple", "multiple of radius*2 is the field of negative splatts to counterbalance the positive circular kernel");
         setPropertyTooltip("ignorePolarity", "treat all input events as ON events (maybe better for detecting moving circular shapes)");
+        setPropertyTooltip("partialReset", "if input results in superthreshold membrane potential Vm, emit quantized number of events and reset Vm by -nspikes*threshold. If disabled, emit at most 1 event and reset membrane to zero (faster)");
+//        buildexptable(-10, 0, .01f);// interpolation for exp approximation, up to 3 time tauMs
 
     }
 
@@ -93,11 +95,11 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         return out;
     }
 
+    // splatt out all effects from this event to neighbors
     private void splatt(PolarityEvent e, int sx, int sy, OutputEventIterator oi) {
         final int x = e.x;
         final int y = e.y;
         final int ts = e.timestamp;
-        final int pol=ignorePolarity?1:e.getPolaritySignum();
         for (final Splatt s : splatts) {
             final int xoff = x + s.x;
             if ((xoff < 0) || (xoff > sx)) {
@@ -107,34 +109,82 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             if ((yoff < 0) || (yoff > sy)) {
                 continue;
             }
-            
-            final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
-            if (dtMs < 0) {
-                convolutionLastEventTime[xoff][yoff] = ts;
-                continue; // ignore negative dt
-            }
-            float vmold = convolutionVm[xoff][yoff];
+
             if (s.weight < 0) {
-                float vm = vmold + s.weight;
-                convolutionVm[xoff][yoff] = vm;
-                
-            } else {
-                vmold = (float) (vmold * (Math.exp(-dtMs / tauMs)));
-                final float vm = vmold + s.weight*pol;
+                // negative weight can only inhibit
+                final float vmnew = convolutionVm[xoff][yoff] - s.weight;
+                convolutionVm[xoff][yoff] = vmnew;
+            } else { // positive weight, first decay Vm, then add event, then check for spikes
+                final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
+                if (dtMs < 0) { // nonmonotonic, update time and ignore
+                    convolutionLastEventTime[xoff][yoff] = ts;
+                    continue; // ignore negative dt
+                }
+                float vmold = convolutionVm[xoff][yoff];
+//                float v = 1-fastexp((float) - dtMs / tauMs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+//                vmold = (float) (vmold * v); // (1 - dtMs / tauMs)); // (Math.exp(-dtMs / tauMs)));
+                if (dtMs > tauMs) {
+                    vmold = 0;
+                } else {
+                    vmold = (float) (vmold * (1 - dtMs / tauMs)); // (Math.exp(-dtMs / tauMs)));
+                }
+                final float vm = vmold + s.weight;
                 convolutionVm[xoff][yoff] = vm;
                 convolutionLastEventTime[xoff][yoff] = ts;
                 if (vm > threshold) {
-                    final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
-                    oe.copyFrom(e);
-                    oe.x = (short) xoff;
-                    oe.y = (short) yoff;
-                    oe.polarity=PolarityEvent.Polarity.On;
-                    convolutionVm[xoff][yoff] = 0;
+                    if (partialReset) {
+                        int nspikes = (int) Math.floor(vm / threshold);
+                        convolutionVm[xoff][yoff] = vm - nspikes * threshold;
+                        for (int i = 0; i < nspikes; i++) {
+                            final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+                            oe.copyFrom(e);
+                            oe.x = (short) xoff;
+                            oe.y = (short) yoff;
+                            oe.polarity = PolarityEvent.Polarity.On;
+                        }
+                    } else {
+                        convolutionVm[xoff][yoff] = 0;
+                        final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+                        oe.copyFrom(e);
+                        oe.x = (short) xoff;
+                        oe.y = (short) yoff;
+                        oe.polarity = PolarityEvent.Polarity.On;
+
+                    }
                 }
             }
         }
     }
 
+//    // https://gist.github.com/Alrecenk/55be1682fe46cdd89663
+//    public static float fastexp(float x) {
+//        final int temp = (int) (12102203 * x + 1065353216);
+//        return Float.intBitsToFloat(temp) * expadjust[(temp >> 15) & 0xff];
+//    }
+//
+//    static float expadjust[];
+//
+//    /**
+//     * build correction table to improve result in region of interest. If region
+//     * of interest is large enough then improves result everywhere
+//     */
+//    public static void buildexptable(double min, double max, double step) {
+//        expadjust = new float[256];
+//        int amount[] = new int[256];
+//        //calculate what adjustments should have been for values in region
+//        for (double x = min; x < max; x += step) {
+//            double exp = Math.exp(x);
+//            int temp = (int) (12102203 * x + 1065353216);
+//            int index = (temp >> 15) & 0xff;
+//            double fexp = Float.intBitsToFloat(temp);
+//            expadjust[index] += exp / fexp;
+//            amount[index]++;
+//        }
+//        //average them out to get adjustment table
+//        for (int k = 0; k < amount.length; k++) {
+//            expadjust[k] /= amount[k];
+//        }
+//    }
     @Override
     synchronized public void resetFilter() {
         allocateMap();
@@ -242,7 +292,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 
             switch (radius) {
                 case 0: // identity
-                    list.add(new Splatt(0,0,1));
+                    list.add(new Splatt(0, 0, 1));
                     break;
                 case 1:
                     list.add(new Splatt(1, 0, .25f));
@@ -274,7 +324,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                 default:
             }
         } else {
-            for (float r = radius-0.5f*width; r <= radius+.5f*width; r++) {
+            for (float r = radius - 0.5f * width; r <= radius + .5f * width; r++) {
                 circum = 2 * Math.PI * r; // num pixels
                 xlast = -1;
                 ylast = -1;
@@ -318,12 +368,12 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             splatts[i] = (Splatt) oa[i];
             sum += splatts[i].weight;
         }
-        log.info("splatt total positive weight = " + sum + " final total weight = " + sum+ " num weights=" + list.size());
+        log.info("splatt total positive weight = " + sum + " final total weight = " + sum + " num weights=" + list.size());
 
     }
 
     private float[][] convolutionVm;
-    
+
     private int[][] convolutionLastEventTime;
 
     private void allocateMap() {
@@ -337,7 +387,6 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         convolutionLastEventTime = new int[chip.getSizeX()][chip.getSizeY()];
         computeSplattLookup();
     }
-
 
     @Override
     public void initFilter() {
@@ -428,18 +477,18 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
     }
 
     /**
-     * @return the ignorePolarity
+     * @return the partialReset
      */
-    public boolean isIgnorePolarity() {
-        return ignorePolarity;
+    public boolean isPartialReset() {
+        return partialReset;
     }
 
     /**
-     * @param ignorePolarity the ignorePolarity to set
+     * @param partialReset the partialReset to set
      */
-    public void setIgnorePolarity(boolean ignorePolarity) {
-        this.ignorePolarity = ignorePolarity;
-        putBoolean("ignorePolarity",ignorePolarity);
+    public void setPartialReset(boolean partialReset) {
+        this.partialReset = partialReset;
+        putBoolean("partialReset", partialReset);
     }
 
 }
