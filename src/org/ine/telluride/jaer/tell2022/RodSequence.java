@@ -115,10 +115,10 @@ public class RodSequence extends ArrayList<RodPosition> implements Serializable 
         plt.plot().add(times,zs, "ro").linewidth(1).linestyle("-").label("Tilt");
         plt.plot().add(times, thetas, "gx").linewidth(1).linestyle("-").label("Pan");
         plt.legend();
-        plt.show(); // stops here
         String filename=ROD_SEQ_PLOT_FILENAME+"-"+name+ROD_SEQ_PLOT_FILENAME_SUF;
         plt.savefig(filename);
         log.info("saved rod sequence plot as "+filename);
+        plt.show(); // stops here
     }
 
     /**
