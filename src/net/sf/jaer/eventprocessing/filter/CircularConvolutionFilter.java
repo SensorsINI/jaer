@@ -95,7 +95,6 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         return out;
     }
 
- 
     @Override
     synchronized public void resetFilter() {
         allocateMap();
@@ -187,8 +186,8 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
     }
 
     private Splatt[] splatts;
-    
-       // splatt out all effects from this event to neighbors
+
+    // splatt out all effects from this event to neighbors
     private void splatt(PolarityEvent e, int sx, int sy, OutputEventIterator oi) {
         final int x = e.x;
         final int y = e.y;
@@ -278,7 +277,6 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
 //            expadjust[k] /= amount[k];
 //        }
 //    }
-
     // computes the indices to splatt to from a source event
     // these are octagonal around a point to the neighboring pixels at a certain radius
     // eg, radius=0, impulse kernal=identity kernel
@@ -349,29 +347,42 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             }
         }
 
-        float sum = 0;
+        float posSum = 0;
         for (Splatt s : list) {
-            sum += s.weight;
+            posSum += s.weight;
         }
         if (isUseBalancedKernel()) {
             negativeKernelRadius = (int) Math.round(radius * negativeKernelDimMultiple);
-            final int numNegWeights = (2 * negativeKernelRadius + 1) * (2 * negativeKernelRadius + 1);
-            negativeWeight = -sum / numNegWeights;
+            ArrayList<Splatt> negSplatts = new ArrayList();
             for (int x = -negativeKernelRadius; x <= negativeKernelRadius; x++) {
                 for (int y = -negativeKernelRadius; y <= negativeKernelRadius; y++) {
-                    list.add(new Splatt(x, y, negativeWeight));
+                    if (!containsSplatt(list, x, y)) {
+                        negSplatts.add(new Splatt(x, y));
+                    }
                 }
             }
+            negativeWeight = -posSum / negSplatts.size();
+            for(Splatt s:negSplatts)s.weight=negativeWeight;
+            list.addAll(negSplatts);
         }
         Object[] oa = list.toArray();
         splatts = new Splatt[oa.length];
-        sum = 0;
+        float totSum = 0;
         for (int i = 0; i < oa.length; i++) {
             splatts[i] = (Splatt) oa[i];
-            sum += splatts[i].weight;
+            totSum += splatts[i].weight;
         }
-        log.info("splatt total positive weight = " + sum + " final total weight = " + sum + " num weights=" + list.size());
+        log.info("splatt total positive weight = " + posSum + " final total weight = " + totSum + " num weights=" + list.size());
 
+    }
+
+    private boolean containsSplatt(ArrayList<Splatt> list, int x, int y) {
+        for (Splatt s : list) {
+            if (s.x == x && s.y == y) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private float[][] convolutionVm;
