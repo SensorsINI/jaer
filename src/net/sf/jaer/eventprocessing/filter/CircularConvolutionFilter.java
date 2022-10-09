@@ -95,96 +95,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         return out;
     }
 
-    // splatt out all effects from this event to neighbors
-    private void splatt(PolarityEvent e, int sx, int sy, OutputEventIterator oi) {
-        final int x = e.x;
-        final int y = e.y;
-        final int ts = e.timestamp;
-        for (final Splatt s : splatts) {
-            final int xoff = x + s.x;
-            if ((xoff < 0) || (xoff > sx)) {
-                continue; //precheck array access
-            }
-            final int yoff = y + s.y;
-            if ((yoff < 0) || (yoff > sy)) {
-                continue;
-            }
-
-            if (s.weight < 0) {
-                // negative weight can only inhibit
-                final float vmnew = convolutionVm[xoff][yoff] - s.weight;
-                convolutionVm[xoff][yoff] = vmnew;
-            } else { // positive weight, first decay Vm, then add event, then check for spikes
-                final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
-                if (dtMs < 0) { // nonmonotonic, update time and ignore
-                    convolutionLastEventTime[xoff][yoff] = ts;
-                    continue; // ignore negative dt
-                }
-                float vmold = convolutionVm[xoff][yoff];
-//                float v = 1-fastexp((float) - dtMs / tauMs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
-//                vmold = (float) (vmold * v); // (1 - dtMs / tauMs)); // (Math.exp(-dtMs / tauMs)));
-                if (dtMs > tauMs) {
-                    vmold = 0;
-                } else {
-                    vmold = (float) (vmold * (1 - dtMs / tauMs)); // (Math.exp(-dtMs / tauMs)));
-                }
-                final float vm = vmold + s.weight;
-                convolutionVm[xoff][yoff] = vm;
-                convolutionLastEventTime[xoff][yoff] = ts;
-                if (vm > threshold) {
-                    if (partialReset) {
-                        int nspikes = (int) Math.floor(vm / threshold);
-                        convolutionVm[xoff][yoff] = vm - nspikes * threshold;
-                        for (int i = 0; i < nspikes; i++) {
-                            final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
-                            oe.copyFrom(e);
-                            oe.x = (short) xoff;
-                            oe.y = (short) yoff;
-                            oe.polarity = PolarityEvent.Polarity.On;
-                        }
-                    } else {
-                        convolutionVm[xoff][yoff] = 0;
-                        final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
-                        oe.copyFrom(e);
-                        oe.x = (short) xoff;
-                        oe.y = (short) yoff;
-                        oe.polarity = PolarityEvent.Polarity.On;
-
-                    }
-                }
-            }
-        }
-    }
-
-//    // https://gist.github.com/Alrecenk/55be1682fe46cdd89663
-//    public static float fastexp(float x) {
-//        final int temp = (int) (12102203 * x + 1065353216);
-//        return Float.intBitsToFloat(temp) * expadjust[(temp >> 15) & 0xff];
-//    }
-//
-//    static float expadjust[];
-//
-//    /**
-//     * build correction table to improve result in region of interest. If region
-//     * of interest is large enough then improves result everywhere
-//     */
-//    public static void buildexptable(double min, double max, double step) {
-//        expadjust = new float[256];
-//        int amount[] = new int[256];
-//        //calculate what adjustments should have been for values in region
-//        for (double x = min; x < max; x += step) {
-//            double exp = Math.exp(x);
-//            int temp = (int) (12102203 * x + 1065353216);
-//            int index = (temp >> 15) & 0xff;
-//            double fexp = Float.intBitsToFloat(temp);
-//            expadjust[index] += exp / fexp;
-//            amount[index]++;
-//        }
-//        //average them out to get adjustment table
-//        for (int k = 0; k < amount.length; k++) {
-//            expadjust[k] /= amount[k];
-//        }
-//    }
+ 
     @Override
     synchronized public void resetFilter() {
         allocateMap();
@@ -276,6 +187,97 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
     }
 
     private Splatt[] splatts;
+    
+       // splatt out all effects from this event to neighbors
+    private void splatt(PolarityEvent e, int sx, int sy, OutputEventIterator oi) {
+        final int x = e.x;
+        final int y = e.y;
+        final int ts = e.timestamp;
+        for (final Splatt s : splatts) {
+            final int xoff = x + s.x;
+            if ((xoff < 0) || (xoff > sx)) {
+                continue; //precheck array access
+            }
+            final int yoff = y + s.y;
+            if ((yoff < 0) || (yoff > sy)) {
+                continue;
+            }
+
+            if (s.weight < 0) {
+                // negative weight can only inhibit
+                final float vmnew = convolutionVm[xoff][yoff] - s.weight;
+                convolutionVm[xoff][yoff] = vmnew;
+            } else { // positive weight, first decay Vm, then add event, then check for spikes
+                final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
+                if (dtMs < 0) { // nonmonotonic, update time and ignore
+                    convolutionLastEventTime[xoff][yoff] = ts;
+                    continue; // ignore negative dt
+                }
+                float vmold = convolutionVm[xoff][yoff];
+//                float v = 1-fastexp((float) - dtMs / tauMs);  // Compute exp(-dt/tau) that decays to zero for very old events in NNb
+//                vmold = (float) (vmold * v); // (1 - dtMs / tauMs)); // (Math.exp(-dtMs / tauMs)));
+                if (dtMs > tauMs) {
+                    vmold = 0;
+                } else {
+                    vmold = (float) (vmold * (1 - dtMs / tauMs)); // (Math.exp(-dtMs / tauMs)));
+                }
+                final float vm = vmold + s.weight;
+                convolutionVm[xoff][yoff] = vm;
+                convolutionLastEventTime[xoff][yoff] = ts;
+                if (vm > threshold) {
+                    if (partialReset) {
+                        int nspikes = (int) Math.floor(vm / threshold);
+                        convolutionVm[xoff][yoff] = vm - nspikes * threshold;
+                        for (int i = 0; i < nspikes; i++) {
+                            final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+                            oe.copyFrom(e);
+                            oe.x = (short) xoff;
+                            oe.y = (short) yoff;
+                            oe.polarity = PolarityEvent.Polarity.On;
+                        }
+                    } else {
+                        convolutionVm[xoff][yoff] = 0;
+                        final PolarityEvent oe = (PolarityEvent) oi.nextOutput();
+                        oe.copyFrom(e);
+                        oe.x = (short) xoff;
+                        oe.y = (short) yoff;
+                        oe.polarity = PolarityEvent.Polarity.On;
+
+                    }
+                }
+            }
+        }
+    }
+
+//    // https://gist.github.com/Alrecenk/55be1682fe46cdd89663
+//    public static float fastexp(float x) {
+//        final int temp = (int) (12102203 * x + 1065353216);
+//        return Float.intBitsToFloat(temp) * expadjust[(temp >> 15) & 0xff];
+//    }
+//
+//    static float expadjust[];
+//
+//    /**
+//     * build correction table to improve result in region of interest. If region
+//     * of interest is large enough then improves result everywhere
+//     */
+//    public static void buildexptable(double min, double max, double step) {
+//        expadjust = new float[256];
+//        int amount[] = new int[256];
+//        //calculate what adjustments should have been for values in region
+//        for (double x = min; x < max; x += step) {
+//            double exp = Math.exp(x);
+//            int temp = (int) (12102203 * x + 1065353216);
+//            int index = (temp >> 15) & 0xff;
+//            double fexp = Float.intBitsToFloat(temp);
+//            expadjust[index] += exp / fexp;
+//            amount[index]++;
+//        }
+//        //average them out to get adjustment table
+//        for (int k = 0; k < amount.length; k++) {
+//            expadjust[k] /= amount[k];
+//        }
+//    }
 
     // computes the indices to splatt to from a source event
     // these are octagonal around a point to the neighboring pixels at a certain radius
