@@ -132,7 +132,6 @@ class FishingResults implements Serializable {
         plt.plot().add(tryNumberSuccesses, attemptSucesses, "go").linewidth(1).linestyle("None");
         plt.plot().add(tryNumberFailures, attemptFailures, "rx").linewidth(1).linestyle("None");
         plt.legend();
-        plt.show();
         try {
             Date date = new Date();
             String dateString = AEDataFile.DATE_FORMAT.format(date);
@@ -147,6 +146,7 @@ class FishingResults implements Serializable {
         } catch (Exception e) {
             log.warning("Couldn't save figure: " + e.toString());
         }
+        plt.show();
     }
 
     public static final String SERIALIZED_SUFFIX = ".ser", NPZ_SUFFIX = ".npz";
