@@ -365,12 +365,10 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
             for(Splatt s:negSplatts)s.weight=negativeWeight;
             list.addAll(negSplatts);
         }
-        Object[] oa = list.toArray();
-        splatts = new Splatt[oa.length];
+        splatts = (Splatt[])(list.toArray(new Splatt[list.size()]));
         float totSum = 0;
-        for (int i = 0; i < oa.length; i++) {
-            splatts[i] = (Splatt) oa[i];
-            totSum += splatts[i].weight;
+        for (Splatt s:splatts) {
+            totSum += s.weight;
         }
         log.info("splatt total positive weight = " + posSum + " final total weight = " + totSum + " num weights=" + list.size());
 
