@@ -101,12 +101,12 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
      */
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        if (!chipPropertyChangeListenerAdded) {
-            if (chip.getAeViewer() != null) {
-                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-                chipPropertyChangeListenerAdded = true;
-            }
-        }
+//        if (!chipPropertyChangeListenerAdded) {
+//            if (chip.getAeViewer() != null) {
+//                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+//                chipPropertyChangeListenerAdded = true;
+//            }
+//        }
         if (!isWriteEnabled() || (!dvsEvents && !imuSamples /*&& !apsFrames*/)) {
             return in;
         }
@@ -442,13 +442,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                 doCloseFiles();
             }
             ignoreRewinwdEventFlag = false;
-        } else if (evt.getPropertyName() == AEViewer.EVENT_FILEOPEN) {
-            if (getChip().getAeInputStream() == null) {
-                log.warning("getChip().getAeInputStream()==null; cannot add property change listener for rewind events");
-                return;
-            }
-            getChip().getAeInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-        }
+        } 
     }
 
     /**
