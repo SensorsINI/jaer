@@ -4213,19 +4213,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setStatusMessage(null);
         } else if (evt.getSource() instanceof AEFileInputStreamInterface) { // Tobi 4.1.21 changed to AEFileInputStreamInterface from AEFileInputStream to handle RosbagFileInputStream too
             switch (evt.getPropertyName()) {
-                case AEInputStream.EVENT_REWOUND:
-                    log.info("rewind");
-//                    for(PropertyChangeListener p:getSupport().getPropertyChangeListeners()){
-//                        log.info("Listener: "+p);
-//                    }
-
-                    getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
-                    break;
                 case AEInputStream.EVENT_POSITION:
                     // don't pass on position on every packet since this consumes a lot of processing time in each filter
                     break;
                 default:
-                    getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());
+                    getSupport().firePropertyChange(evt); // forward the event, e.g. for fileopen, etc
             }
         } else if (evt.getSource() instanceof AEPlayer) {
             getSupport().firePropertyChange(evt.getPropertyName(), evt.getOldValue(), evt.getNewValue());  // forward/refire events from AEFileInputStream to listeners on AEViewer
