@@ -13,6 +13,7 @@ import java.util.Observer;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -207,8 +208,9 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                 final float vmnew = convolutionVm[xoff][yoff] - s.weight;
                 convolutionVm[xoff][yoff] = vmnew;
             } else { // positive weight, first decay Vm, then add event, then check for spikes
-                final float dtMs = (ts - convolutionLastEventTime[xoff][yoff]) * 1e-3f;
-                if (dtMs < 0) { // nonmonotonic, update time and ignore
+                int lastTs=convolutionLastEventTime[xoff][yoff];
+                final float dtMs = (ts - lastTs) * 1e-3f;
+                if (lastTs==0 || dtMs < 0) { // nonmonotonic, update time and ignore
                     convolutionLastEventTime[xoff][yoff] = ts;
                     continue; // ignore negative dt
                 }
@@ -395,7 +397,13 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
         //        PADDING=2*radius;
         //        P=radius;
         convolutionVm = new float[chip.getSizeX()][chip.getSizeY()];
-        convolutionLastEventTime = new int[chip.getSizeX()][chip.getSizeY()];
+        Random r=new Random();
+        for(float [] f:convolutionVm){
+            for(int i=0;i<f.length;i++){
+                f[i]=-threshold*r.nextFloat(); // initialize membrane voltages to random value below threshold
+            }
+        }
+        convolutionLastEventTime = new int[chip.getSizeX()][chip.getSizeY()]; // init last times to zero, will check this on first use
         computeSplattLookup();
     }
 
@@ -433,8 +441,8 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
     synchronized public void setThreshold(float threshold) {
         if (threshold < 0) {
             threshold = 0;
-        } else if (threshold > 100) {
-            threshold = 100;
+        } else if (threshold > 1000) {
+            threshold = 1000;
         }
         this.threshold = threshold;
         putFloat("threshold", threshold);
