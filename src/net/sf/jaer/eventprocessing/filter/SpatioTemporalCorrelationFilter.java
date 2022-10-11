@@ -175,11 +175,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     }
                 }
 
-                if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
-                    filterOut(e);
-                    continue;
-                }
-
                 // finally the real denoising starts here
                 int ncorrelated = 0;
                 nnbRange.compute(x, y, ssx, ssy);
@@ -204,7 +199,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 if (ncorrelated < numMustBeCorrelated) {
                     filterOut(e);
                 } else {
-                    filterIn(e);
+                    if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                        filterOut(e);
+                    } else {
+                        filterIn(e);
+                    }
                 }
                 storeTimestampPolarity(x, y, e);
             }
@@ -349,7 +348,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public String infoString() {
-        String s = super.infoString() + " k=" + numMustBeCorrelated+" filtOnOffShot="+filterAlternativePolarityShotNoiseEnabled;
+        String s = super.infoString() + " k=" + numMustBeCorrelated + " filtOnOffShot=" + filterAlternativePolarityShotNoiseEnabled;
         return s;
     }
 
@@ -398,10 +397,11 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     }
 
     /**
-     * @param filterAlternativePolarityShotNoiseEnabled the filterAlternativePolarityShotNoiseEnabled to set
+     * @param filterAlternativePolarityShotNoiseEnabled the
+     * filterAlternativePolarityShotNoiseEnabled to set
      */
     public void setFilterAlternativePolarityShotNoiseEnabled(boolean filterAlternativePolarityShotNoiseEnabled) {
         this.filterAlternativePolarityShotNoiseEnabled = filterAlternativePolarityShotNoiseEnabled;
-        putBoolean("filterAlternativePolarityShotNoiseEnabled",filterAlternativePolarityShotNoiseEnabled);
+        putBoolean("filterAlternativePolarityShotNoiseEnabled", filterAlternativePolarityShotNoiseEnabled);
     }
 }
