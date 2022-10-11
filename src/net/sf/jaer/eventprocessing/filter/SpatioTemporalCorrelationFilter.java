@@ -100,11 +100,6 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     }
                 }
 
-                if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
-                    filterOut(e);
-                    continue;
-                }
-
                 // finally the real denoising starts here
                 int ncorrelated = 0;
                 byte nnb = 0;
@@ -138,14 +133,12 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 if (ncorrelated < numMustBeCorrelated) {
                     filterOut(e);
                 } else {
-//                    if (!favorLines) { // Tobi: shown not effective in experiments with Driving dataset
-                    filterIn(e);
-//                    } else {
-//                        // only pass events that have bits set that form line with current pixel, at 45 degrees on 8 NNbs
-//                        if ((nnb & 0x81) == 0x81 || (nnb & 0x18) == 0x18 || (nnb & 0x24) == 0x24 || (nnb & 0x42) == 0x42) {
-//                            filterInWithNNb(e, nnb);
-//                        }
-//                    }
+                    // correlated, but might be shot noise event with opposite polarity to recent event from this same pixel
+                    if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                        filterOut(e);
+                    } else {
+                        filterIn(e);
+                    }
                 }
                 storeTimestampPolarity(x, y, e);
             } // event packet loop
@@ -352,21 +345,16 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         return s;
     }
 
-    // Tobi removed, lines are not effective since NNb is too small
-//    /**
-//     * @return the favorLines
-//     */
-//    public boolean isFavorLines() {
-//        return favorLines;
-//    }
-//
-//    /**
-//     * @param favorLines the favorLines to set
-//     */
-//    public void setFavorLines(boolean favorLines) {
-//        this.favorLines = favorLines;
-//        putBoolean("favorLines", favorLines);
-//    }
+    /**
+     * Tests if event is perhaps a shot noise event that is very recently after
+     * a previous event from this pixel and is the opposite polarity.
+     *
+     * @param x x address of event
+     * @param y y address of event
+     * @param e event
+     *
+     * @return true if noise event, false if signal
+     */
     private boolean testFilterOutShotNoiseOppositePolarity(int x, int y, BasicEvent e) {
         if (!filterAlternativePolarityShotNoiseEnabled) {
             return false;
