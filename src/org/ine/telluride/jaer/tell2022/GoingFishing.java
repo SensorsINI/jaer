@@ -919,6 +919,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             this.command = command;
             this.initialDelayMs = initialDelayMs;
             this.returnToStart = returnToStart;
+            setPriority(Thread.MAX_PRIORITY-1);
         }
 
         // Samples an angle variation with normal dist sigma of rodThetaSamplingSigmaDeg centeted on learnedRodThetaOffsetDeg

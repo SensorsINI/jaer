@@ -1,7 +1,9 @@
 // firmware for Arduino Nano used for Gone Fishing Robot
 // Tobi Delbruck, Aug/Sept 2023 tobi@ini.uzh.ch
 
-#include <Servo.h>
+#include "Servo.h" // use our custom servo with higher pulse frequency
+// to use this library, in Sketch use Sketch/Include Library/Add Zip library after zipping up the Servo folder
+
 
 Servo theta;
 Servo z;
@@ -11,6 +13,7 @@ const int FISHING_POND_MOTOR_NOT_SHUTDOWN = 11; // goes to not shutdown pin on L
 const byte CMD_SET_SERVOS = 0, CMD_DISABLE_SERVOS = 1, CMD_RUN_POND = 2, CMD_STOP_POND = 3;
 const int ADC_CHANGE_THRESHOLD = 1;
 int lastAdcVal;
+const int THETA_PIN=12, Z_PIN=9;
 
 bool disabled = true;
 byte bytes[4];
@@ -22,15 +25,18 @@ void setup() {
   digitalWrite(FISHING_POND_MOTOR_NOT_SHUTDOWN, LOW); // turn off pond when starting
   //  pinMode(3, INPUT);
   Serial.begin(115200);
-  theta.attach(12);
-  z.attach(9);
+//  pinMode(THETA_PIN,OUTPUT);
+//  pinMode(Z_PIN, OUTPUT);
+  theta.attach(THETA_PIN);
+  z.attach(Z_PIN);
   digitalWrite(LED_BUILTIN, HIGH);
-  theta.write(90);
-  z.write(90);
-  delay(300);
-  theta.detach();
-  z.detach();
-  digitalWrite(LED_BUILTIN, LOW);
+  
+//  theta.write(90);
+//  z.write(90);
+//  delay(300);
+//  theta.detach();
+//  z.detach();
+//  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
@@ -61,8 +67,8 @@ void loop() {
       {
         if (disabled) {
           disabled = false;
-          theta.attach(12);
-          z.attach(9);
+          theta.attach(THETA_PIN);
+          z.attach(Z_PIN);
         }
         int thetaUs = (bytes[1] * 256) + (bytes[2]);
         theta.writeMicroseconds(thetaUs);
