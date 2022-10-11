@@ -104,6 +104,8 @@ public class RectangularClusterTracker extends EventFilter2D
      */
     protected float mixingFactor = getFloat("mixingFactor", 0.05f);
     private boolean useEllipticalClusters = getBoolean("useEllipticalClusters", false);
+    private boolean updateClustersOnlyFromEventsNearEdge = getBoolean("updateClustersOnlyFromEventsNearEdge", false);
+    private float ellipticalClusterEdgeThickness = getFloat("ellipticalClusterEdgeThickness", .2f);
     private float surround = getFloat("surround", 2f);
     private boolean dynamicSizeEnabled = getBoolean("dynamicSizeEnabled", false);
     private boolean dynamicAspectRatioEnabled = getBoolean("dynamicAspectRatioEnabled", false);
@@ -274,11 +276,13 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(sizing, "selectVanishingPoint",
                 "Select using a mouse click a particular location in the scene as the vanishing point on the horizon");
         setPropertyTooltip(sizing, "vanishingPoint", "The particular location in the scene as the vanishing point on the horizon");
+        setPropertyTooltip(sizing, "useEllipticalClusters", "true uses elliptical rather than rectangular clusters - distance based on elliptical distance including cluster angle");
+        setPropertyTooltip(sizing, "updateClustersOnlyFromEventsNearEdge", "true only update circular clusters from events near cluster radius");
+        setPropertyTooltip(sizing, "ellipticalClusterEdgeThickness", "thickness of elliptical cluster edge for updating it");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(disp, "colorClustersDifferentlyEnabled",
                 "each cluster gets assigned a random color, otherwise color indicates ages");
-        setPropertyTooltip(disp, "useEllipticalClusters",
-                "true uses elliptical rather than rectangular clusters - distance based on elliptical distance including cluster angle");
+        setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
@@ -984,10 +988,18 @@ public class RectangularClusterTracker extends EventFilter2D
                 rX *= surround;
                 rY *= surround; // the event is captured even when it is in "invisible surround"
             }
-            float dx, dy;// TODO use cluster angle here
-            if (((dx = c.distanceToX(event)) < rX) && ((dy = c.distanceToY(event)) < rY)) { // TODO needs
-                // instantaneousAngle metric
-                currentDistance = dx + dy;
+            float dx, dy;// TODO use cluster angle here, consider eliptical or at least circular clusters... not correct now with Manhattan distance
+            dx = c.distanceToX(event);
+            dy = c.distanceToY(event);
+            float dist = useEllipticalClusters ? (float) sqrt(dx * dx + dy * dy) : dx + dy;
+            boolean withinRadius;
+            if (!useEllipticalClusters) {
+                withinRadius = (dx <= rX) && (dy <= rY);
+            } else {
+                withinRadius = dist <= c.radius;
+            }
+            if (withinRadius) {
+                currentDistance = dist;
                 if (currentDistance < minDistance) {
                     closest = c;
                     minDistance = currentDistance;
@@ -1178,7 +1190,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * is updated when cluster becomes visible.
          * <code>lastEventTimestamp</code> is the last time the cluster was
          * touched either by an event or by some other timestamped update, e.g.
-         * null null null null null null null null         {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
+         * null null null null null null null null null null null null null         {@link #updateClusterList(net.sf.jaer.event.EventPacket, int)
 		 * }.
          *
          * @see #isVisible()
@@ -1704,9 +1716,17 @@ public class RectangularClusterTracker extends EventFilter2D
                 gl.glLineWidth(.5f);
             }
 
-            // draw cluster rectangle
-            if (isUseEllipticalClusters()) {
-                DrawGL.drawEllipse(gl, 0, 0, radiusX, radiusY, angle, 15);
+            // draw cluster
+            if (useEllipticalClusters) {
+                DrawGL.drawCircle(gl, 0, 0, radiusX, 15);
+                if (updateClustersOnlyFromEventsNearEdge) {
+                    gl.glPushAttrib(GL2.GL_CURRENT_BIT);
+                    float lw=radius*ellipticalClusterEdgeThickness;
+                    rgb[3]=.5f;
+                    gl.glColor4fv(rgb, 0);
+                    DrawGL.drawCircle(gl, 0, 0, radius-lw,  15);
+                    gl.glPopAttrib();
+                }
             } else {
                 DrawGL.drawBox(gl, 0, 0, (int) radiusX * 2, (int) radiusY * 2, angle); // Radius*2 because we need width and height # tobi casted to int to reduce making gl draw lists in DrawBox
             }
@@ -1890,6 +1910,12 @@ public class RectangularClusterTracker extends EventFilter2D
                 newY = event.y;
             }
             if (!smoothMove) {
+                if (useEllipticalClusters && updateClustersOnlyFromEventsNearEdge) {
+                    float dist = distanceTo(event);
+                    if (dist>radius || dist < radius * (1-ellipticalClusterEdgeThickness)) {
+                        return;
+                    }
+                }
                 location.x = ((m1 * location.x) + (m * newX));
                 location.y = ((m1 * location.y) + (m * newY));
             } else {
@@ -2003,7 +2029,11 @@ public class RectangularClusterTracker extends EventFilter2D
          * @return abs(dx)+abs(dy)
          */
         public float distanceMetric(float dx, float dy) {
-            return ((dx > 0) ? dx : -dx) + ((dy > 0) ? dy : -dy);
+            if (useEllipticalClusters) {
+                return (float) sqrt(dx * dx + dy * dy);
+            } else {
+                return ((dx > 0) ? dx : -dx) + ((dy > 0) ? dy : -dy);
+            }
         }
 
         /**
@@ -2016,9 +2046,14 @@ public class RectangularClusterTracker extends EventFilter2D
          */
         protected float distanceToX(BasicEvent event) {
             int dt = event.timestamp - lastUpdateTime;
-            float distance = Math.abs((((event.x - location.x) + (velocityPPT.x * (dt))) * cosAngle)
-                    + (((event.y - location.y) + (velocityPPT.y * (dt))) * sinAngle));
-            // float distance = Math.abs (event.x - location.x);
+            float distance;
+            float dx = (((event.x - location.x) + (velocityPPT.x * (dt))) * cosAngle);
+            float dy = (((event.y - location.y) + (velocityPPT.y * (dt))) * sinAngle);
+            if (useEllipticalClusters) {
+                distance = (float) sqrt(dx * dx + dy * dy);
+            } else {
+                distance = Math.abs(dx) + Math.abs(dy);
+            }
             return distance;
         }
 
@@ -2079,7 +2114,7 @@ public class RectangularClusterTracker extends EventFilter2D
         public float getDistanceFromBirth() {
             double dx = location.x - birthLocation.x;
             double dy = location.y - birthLocation.y;
-            return (float) Math.sqrt((dx * dx) + (dy * dy));
+            return (float) sqrt((dx * dx) + (dy * dy));
         }
 
         /**
@@ -2173,7 +2208,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 ret = false;
             }
             if (useVelocity) {
-                double speed = (Math.sqrt((velocityPPT.x * velocityPPT.x) + (velocityPPT.y * velocityPPT.y)) * 1e6)
+                double speed = (sqrt((velocityPPT.x * velocityPPT.x) + (velocityPPT.y * velocityPPT.y)) * 1e6)
                         / AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
                 if (speed < thresholdVelocityForVisibleCluster) {
                     ret = false;
@@ -2351,7 +2386,7 @@ public class RectangularClusterTracker extends EventFilter2D
          */
         @Override
         public float getSpeedPPS() {
-            return (float) Math.sqrt((velocityPPS.x * velocityPPS.x) + (velocityPPS.y * velocityPPS.y));
+            return (float) sqrt((velocityPPS.x * velocityPPS.x) + (velocityPPS.y * velocityPPS.y));
         }
 
         /**
@@ -2360,7 +2395,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * @return speed in pixels per timestamp tick.
          */
         public float getSpeedPPT() {
-            return (float) Math.sqrt((velocityPPT.x * velocityPPT.x) + (velocityPPT.y * velocityPPT.y));
+            return (float) sqrt((velocityPPT.x * velocityPPT.x) + (velocityPPT.y * velocityPPT.y));
         }
 
         public float getMeasuredAspectRatio() {
@@ -2372,7 +2407,7 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         public float getMeasuredRadius() {
-            return (float) Math.sqrt((averageEventYDistance * averageEventYDistance) + (averageEventXDistance * averageEventXDistance));
+            return (float) sqrt((averageEventYDistance * averageEventYDistance) + (averageEventXDistance * averageEventXDistance));
         }
 
         public float getMeasuredAverageEventRate() {
@@ -4135,5 +4170,49 @@ public class RectangularClusterTracker extends EventFilter2D
      */
     public void setDefaultClusterRadius(float defaultClusterRadius) {
         this.defaultClusterRadius = defaultClusterRadius;
+    }
+
+    /**
+     * @return the updateClustersOnlyFromEventsNearEdge
+     */
+    public boolean isUpdateClustersOnlyFromEventsNearEdge() {
+        return updateClustersOnlyFromEventsNearEdge;
+    }
+
+    /**
+     * @param updateClustersOnlyFromEventsNearEdge the
+     * updateClustersOnlyFromEventsNearEdge to set
+     */
+    public void setUpdateClustersOnlyFromEventsNearEdge(boolean updateClustersOnlyFromEventsNearEdge) {
+        this.updateClustersOnlyFromEventsNearEdge = updateClustersOnlyFromEventsNearEdge;
+        putBoolean("updateClustersOnlyFromEventsNearEdge", updateClustersOnlyFromEventsNearEdge);
+    }
+
+    /**
+     * @return the ellipticalClusterEdgeThickness
+     */
+    public float getEllipticalClusterEdgeThickness() {
+        return ellipticalClusterEdgeThickness;
+    }
+
+    /**
+     * @param ellipticalClusterEdgeThickness the ellipticalClusterEdgeThickness to set
+     */
+    public void setEllipticalClusterEdgeThickness(float ellipticalClusterEdgeThickness) {
+        this.ellipticalClusterEdgeThickness = ellipticalClusterEdgeThickness;
+        putFloat("ellipticalClusterEdgeThickness",ellipticalClusterEdgeThickness);
+    }
+    
+    /** faster sqrt, from https://stackoverflow.com/questions/13263948/fast-sqrt-in-java-at-the-expense-of-accuracy
+     * 
+     * @param d
+     * @return approx sqrt(d) 
+     */
+    private double sqrt(double d){
+//        double realsqrt=Math.sqrt(d);
+        double sqrt = Double.longBitsToDouble( ( ( Double.doubleToLongBits( d )-(1l<<52) )>>1 ) + ( 1l<<61 ) );
+//        double actOverReal=sqrt/realsqrt;
+        return sqrt;
+
     }
 }
