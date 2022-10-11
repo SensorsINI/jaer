@@ -175,9 +175,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         super(chip);
         chain = new FilterChain(chip);
         chain.add(new XYTypeFilter(chip));
-        chain.add(new RefractoryFilter(chip));
+//        chain.add(new RefractoryFilter(chip));
         chain.add(new SpatioTemporalCorrelationFilter(chip));
-        chain.add(new CircularConvolutionFilter(chip));
+//        chain.add(new CircularConvolutionFilter(chip));
         tracker = new RectangularClusterTracker(chip);
         chain.add(tracker);
         setEnclosedFilterChain(chain);
@@ -305,6 +305,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                         Point2D clusterRay = clusterLoc.subtract(fishingPoolCenterLocation);
                         final double angleDegFishToTip = rodTipRay.angle(clusterRay);
                         final double angularSpeedDegPerS = (180 / Math.PI) * (fishSpeedPps / radius);
+                        final double rotationPeriodS=360./angularSpeedDegPerS;
                         final int msForFishToReachRodTip = (int) (1000 * angleDegFishToTip / angularSpeedDegPerS);
                         final long timeToMinZMs = Math.round(dipSeq.timeToMinZMs / rodDipSpeedUpFactor);
                         if (msForFishToReachRodTip < timeToMinZMs) {
@@ -313,9 +314,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                                     fishSpeedPps, radius, angularSpeedDegPerS, angleDegFishToTip));
                         } else {
                             delay = msForFishToReachRodTip - timeToMinZMs;
-////                            log.info(String.format("msForFishToReachRodTip=%,d ms is OK; less than rod sequence timeToMinZMs=%,d ms;\n"
-//                                    + "median speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
-//                                    fishSpeedPps, radius, angularSpeedDegPerS, angleDegFishToTip));
+                            log.info(String.format("msForFishToReachRodTip=%,d ms is OK; less than rod sequence timeToMinZMs=%,d ms;\n"
+                                    + "median speed=%.1f px/s, radius=%.1f px, angularSpeed=%.1f deg/s (rotationPeriodS=%.1fs) angleDegFishToTip=%.1f deg", msForFishToReachRodTip, timeToMinZMs,
+                                    fishSpeedPps, radius, angularSpeedDegPerS, rotationPeriodS, angleDegFishToTip));
                         }
                     }
                     if (rodDipper == null || !rodDipper.isAlive()) {
