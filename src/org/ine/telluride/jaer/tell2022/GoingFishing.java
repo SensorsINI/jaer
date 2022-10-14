@@ -59,6 +59,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.SoundWavFilePlayer;
 import net.sf.jaer.util.TobiLogger;
+import net.sf.jaer.util.filter.LowpassFilter;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
@@ -159,6 +160,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private int lastRodZDeg = -1;
     private long lastFishingRodMovementTime = 0; // for disabling servos automatically after some inactivity time
     private static final long TURNOFF_TIMEOUT_S = 120;
+    
+    // adc
+    private float adcLowpassFilterTimeConstantMs=getFloat("adcLowpassFilterTimeConstantMs",50);
 
     // warnings
     private final int WARNING_INTERVAL = 100;
@@ -184,7 +188,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         tracker = new RectangularClusterTracker(chip);
         chain.add(tracker);
         setEnclosedFilterChain(chain);
-        String ser = "Serial port", rod = "Rod control", ler = "Learning", enb = "Enable/Disable";
+        String ser = "Serial port", rod = "Rod control", ler = "Learning", enb = "Enable/Disable", adc="ADC";
         setPropertyTooltip(ser, "serialPortName", "Name of serial port to send robot commands to");
         setPropertyTooltip(ser, "serialBaudRate", "Baud rate (default 115200), upper limit 12000000");
 
@@ -219,6 +223,8 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
         setPropertyTooltip(ler, "loadFishingResults", "Loads previous results from " + FISHING_RESULTS_FILENAME_BASE);
         setPropertyTooltip(ler, "rodDipDelayFixedOffset", "Apply a fixed offset in ms to the dip (- for lead, + for lag); 100ms is about 1cm for outer fish.");
         setPropertyTooltip(ler, "rodThetaFixedOffsetDeg", "Apply a fixed offset in deg to the dip (- for inwards, + for outwards)");
+        
+        setPropertyTooltip(adc, "adcLowpassFilterTimeConstantMs", "time constant in ms to lowpass filter the FSR ADC reading");
         rodSequences = new HashMap();
         for (String name : sequenceNames) {
             try {
@@ -886,6 +892,7 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
     private class AdcReader extends Thread {
 
         DataInputStream stream;
+        LowpassFilter lpFilter=new LowpassFilter(10);
 
         public AdcReader(DataInputStream stream) {
             this.stream = stream;
@@ -920,7 +927,9 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 try {
                     byte[] buf = new byte[2];
                     serialPortInputStream.readFully(buf);
-                    lastAdcValue = (int) ((buf[0] & 0xff) * 256 + (0xff & buf[1]));
+                    int adcReading = (int) ((buf[0] & 0xff) * 256 + (0xff & buf[1]));
+                    lpFilter.setTauMs(getAdcLowpassFilterTimeConstantMs());
+                    lastAdcValue=(int)lpFilter.filter(adcReading, (int)(System.nanoTime()/1000));
 //                    System.out.println(String.format("ADC: available=%d val=%d", navail, lastAdcValue));
                 } catch (IOException ex) {
                     log.warning("serial port error while reading ADC value: " + ex.toString());
@@ -1554,6 +1563,20 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
      */
     public void setZeroOffsets(boolean zeroOffsets) {
         this.zeroOffsets = zeroOffsets;
+    }
+
+    /**
+     * @return the adcLowpassFilterTimeConstantMs
+     */
+    public float getAdcLowpassFilterTimeConstantMs() {
+        return adcLowpassFilterTimeConstantMs;
+    }
+
+    /**
+     * @param adcLowpassFilterTimeConstantMs the adcLowpassFilterTimeConstantMs to set
+     */
+    public void setAdcLowpassFilterTimeConstantMs(float adcLowpassFilterTimeConstantMs) {
+        this.adcLowpassFilterTimeConstantMs = adcLowpassFilterTimeConstantMs;
     }
 
 }
