@@ -31,11 +31,6 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
 
     final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
     /**
-     * the time in timestamp ticks (1us at present) that a spike needs to be
-     * supported by a prior event in the neighborhood by to pass through
-     */
-    protected int refractoryPeriodUs = getPrefs().getInt("RefractoryFilter.refractoryPeriodUs", 1000);
-    /**
      * the amount to subsample x and y event location by in bit shifts when
      * writing to past event times map. This effectively increases the range of
      * support. E.g. setting subSamplingShift to 1 quadruples range because both
@@ -50,7 +45,7 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
         super(chip);
         initFilter();
         resetFilter();
-        setPropertyTooltip("refractoryPeriodUs", "Events with less than this delta time in us are blocked");
+        setPropertyTooltip("correlationTimeS", "the time in seconds that a spike needs to be supported by a prior event in the neighborhood by to pass through");
         setPropertyTooltip("subsampleBy", "Past event addresses are subsampled by this many bits in x and y");
         setPropertyTooltip("passShortISIsEnabled", "<html>Inverts filtering so that only events with short ISIs are passed through.<br>If refractoryPeriodUs==0, then you can block all events with idential timestamp from the same pixel.");
     }
@@ -95,7 +90,7 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             int lastt = lastTimestamps[x][y];
             int deltat = (ts - lastt);
-            boolean longISI = lastt == DEFAULT_TIMESTAMP || deltat > refractoryPeriodUs; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
+            boolean longISI = lastt == DEFAULT_TIMESTAMP || deltat > correlationTimeS*1e-6f; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
             if ((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)) {
 //                BasicEvent o = (BasicEvent) outItr.nextOutput();
 //                o.copyFrom(i);
@@ -109,29 +104,8 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
         return in;
     }
 
-    /**
-     * gets the refractory period
-     *
-     * @return delay allowed for spike since last in neighborhood to pass (us)
-     */
-    public int getRefractoryPeriodUs() {
-        return this.refractoryPeriodUs;
-    }
-
-    /**
-     * sets the refractory delay in us
-     * <p>
-     * Fires a PropertyChangeEvent "refractoryPeriodUs"
-     *
-     * @param refractoryPeriodUs the address is refractory for this long in us
-     * after an event
-     */
-    public void setRefractoryPeriodUs(final int refractoryPeriodUs) {
-        this.refractoryPeriodUs = refractoryPeriodUs;
-        getPrefs().putInt("RefractoryFilter.refractoryPeriodUs", refractoryPeriodUs);
-        getSupport().firePropertyChange("refractoryPeriodUs", null, refractoryPeriodUs);
-    }
-
+ 
+  
     public Object getFilterState() {
         return lastTimestamps;
     }
