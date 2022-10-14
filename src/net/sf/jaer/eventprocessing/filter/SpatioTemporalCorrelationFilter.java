@@ -23,17 +23,18 @@ import net.sf.jaer.util.RemoteControlCommand;
  * {@link #setDt dt} in the immediate spatial neighborhood, defined by a
  * subsampling bit shift.
  *
- * @author tobi, with discussion with Moritz Milde, Dave Karpul, Elisabetta
- * Chicca, Chiara Bartolozzi Telluride 2017
+ * @author Tobi Delbruck and Shasha Guo, with discussion with Moritz Milde, Dave
+ * Karpul, Elisabetta Chicca, Chiara Bartolozzi Telluride 2017
  */
-@Description("Filters out uncorrelated noise events based on work at Telluride 2017 with discussion with Moritz Milde, Dave Karpul, Elisabetta\n"
-        + " * Chicca, and Chiara Bartolozzi ")
+@Description("Denoises uncorrelated noise events based on work with Shasha Guo, from earlier Telluride 2017  discussions with Moritz Milde, Dave Karpul, Elisabetta\n"
+        + " * Chicca, and Chiara Bartolozzi, later with Rui Graca, Brian McReynolds")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     private int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
     private boolean filterAlternativePolarityShotNoiseEnabled = getBoolean("filterAlternativePolarityShotNoiseEnabled", false);
 //    protected boolean favorLines = getBoolean("favorLines", false);
+    protected float shotNoiseCorrelationTimeS = getFloat("shotNoiseCorrelationTimeS", 1e-3f);
 
     private int sxm1; // size of chip minus 1
     private int sym1;
@@ -47,7 +48,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         super(chip);
         setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
         setPropertyTooltip(TT_FILT_CONTROL, "favorLines", "add condition that events in 8-NNb must lie along line crossing pixel to pass");
-        setPropertyTooltip(TT_FILT_CONTROL, "filterAlternativePolarityShotNoiseEnabled", "filter out events where ON follows OFF or vice versa within the time tau, which is true for pure thermal noise with short refractory period");
+        setPropertyTooltip(TT_FILT_CONTROL, "filterAlternativePolarityShotNoiseEnabled", "filter out events where ON follows OFF or vice versa within the time shotNoiseCorrelationTimeS, which is true for pure thermal noise with short refractory period. This test is applied after the correlation test.");
+        setPropertyTooltip(TT_FILT_CONTROL, "shotNoiseCorrelationTimeS", "The correlation time in seconds for shot noise test");
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
@@ -368,13 +370,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         }
         int prevT = timestampImage[x][y];
         if (prevT == DEFAULT_TIMESTAMP) {
-            return false;
+            return false; // if there is no previous event, treat as signal event
         }
-        int dt = timestampImage[x][y] - e.timestamp;
-        if (dt * 1e-6f > correlationTimeS) {
-            return false;
+        float dt = 1e-6f * (e.timestamp - timestampImage[x][y]);
+        if (dt > shotNoiseCorrelationTimeS) {
+            return false; // if the previous event was too far in past, treat as signal event
         }
-        return true; // opposite polarity, filter out
+        return true; // opposite polarity and follows closely after previous event, filter out
     }
 
     /**
@@ -392,4 +394,19 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         this.filterAlternativePolarityShotNoiseEnabled = filterAlternativePolarityShotNoiseEnabled;
         putBoolean("filterAlternativePolarityShotNoiseEnabled", filterAlternativePolarityShotNoiseEnabled);
     }
+
+    /**
+     * @return the shotNoiseCorrelationTimeS
+     */
+    public float getShotNoiseCorrelationTimeS() {
+        return shotNoiseCorrelationTimeS;
+    }
+
+    /**
+     * @param shotNoiseCorrelationTimeS the shotNoiseCorrelationTimeS to set
+     */
+    public void setShotNoiseCorrelationTimeS(float shotNoiseCorrelationTimeS) {
+        this.shotNoiseCorrelationTimeS = shotNoiseCorrelationTimeS;
+    }
+
 }
