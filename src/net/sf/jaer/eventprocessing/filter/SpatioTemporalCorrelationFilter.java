@@ -35,6 +35,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private boolean filterAlternativePolarityShotNoiseEnabled = getBoolean("filterAlternativePolarityShotNoiseEnabled", false);
 //    protected boolean favorLines = getBoolean("favorLines", false);
     protected float shotNoiseCorrelationTimeS = getFloat("shotNoiseCorrelationTimeS", 1e-3f);
+    private int numShotNoiseTests=0,numAlternatingPolarityShotNoiseEventsFilteredOut = 0;
 
     private int sxm1; // size of chip minus 1
     private int sym1;
@@ -225,6 +226,12 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
+        resetShotNoiseTestStats();
+    }
+
+    private void resetShotNoiseTestStats() {
+        numShotNoiseTests=0;
+        numAlternatingPolarityShotNoiseEventsFilteredOut = 0;
     }
 
     @Override
@@ -343,7 +350,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public String infoString() {
-        String s = super.infoString() + " k=" + numMustBeCorrelated + " filtOnOffShot=" + filterAlternativePolarityShotNoiseEnabled;
+        final float shotFilteredOut = 100 * (float) numAlternatingPolarityShotNoiseEventsFilteredOut / numShotNoiseTests;
+        String s = super.infoString() + String.format(" k=%d filtOnOffShot=%s onOffShot filtered out=%6.1f", numMustBeCorrelated, filterAlternativePolarityShotNoiseEnabled, shotFilteredOut);
         return s;
     }
 
@@ -364,6 +372,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         if (!(e instanceof PolarityEvent)) {
             return false;
         }
+        numShotNoiseTests++;
         PolarityEvent p = (PolarityEvent) e;
         if (p.getPolaritySignum() == polImage[x][y]) {
             return false; // if same polarity, don't filter out
@@ -376,6 +385,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         if (dt > shotNoiseCorrelationTimeS) {
             return false; // if the previous event was too far in past, treat as signal event
         }
+        numAlternatingPolarityShotNoiseEventsFilteredOut++;
         return true; // opposite polarity and follows closely after previous event, filter out
     }
 
@@ -393,6 +403,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     public void setFilterAlternativePolarityShotNoiseEnabled(boolean filterAlternativePolarityShotNoiseEnabled) {
         this.filterAlternativePolarityShotNoiseEnabled = filterAlternativePolarityShotNoiseEnabled;
         putBoolean("filterAlternativePolarityShotNoiseEnabled", filterAlternativePolarityShotNoiseEnabled);
+        resetShotNoiseTestStats();
     }
 
     /**
@@ -407,6 +418,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      */
     public void setShotNoiseCorrelationTimeS(float shotNoiseCorrelationTimeS) {
         this.shotNoiseCorrelationTimeS = shotNoiseCorrelationTimeS;
+        putFloat("shotNoiseCorrelationTimeS",shotNoiseCorrelationTimeS);
+        resetShotNoiseTestStats();
     }
 
 }
