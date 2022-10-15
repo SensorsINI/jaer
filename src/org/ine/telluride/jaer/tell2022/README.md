@@ -1,6 +1,7 @@
 # The Gone Fishing Robot
 Source code for the robot described in [The Gone Fishing Robot](https://docs.google.com/document/d/166z0sSwXT1iVAvEv8F_OlqergrwELB6Hduzkro6m2eI/edit).
 
+Check out the YouTube video
 
 [![Gone Fishing video](https://img.youtube.com/vi/lqrAT5GC2QI/0.jpg)](https://www.youtube.com/watch?v=lqrAT5GC2QI)
 
