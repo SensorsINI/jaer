@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 public class RodSequence extends ArrayList<RodPosition> implements Serializable {
 
     static Logger log = Logger.getLogger("GoingFishing");
-    static String FILENAME = "GoingFishingRodSequence", FILENAME_SUF=".ser";
+    static String FILENAME = "filterSettings/GoingFishingRodSequence", FILENAME_SUF=".ser";
 
     private String name;
     public long durationMs = 0, timeToMinZMs = 0;
