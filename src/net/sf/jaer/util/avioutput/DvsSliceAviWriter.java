@@ -36,6 +36,8 @@ import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
 import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
 import eu.seebetter.ini.chips.DavisChip;
 import java.io.EOFException;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Formatter;
 import ml.options.Options;
 import ml.options.Options.Multiplicity;
 import ml.options.Options.Separator;
@@ -54,6 +56,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.LoggingAnsiColorConsoleFormatter;
 import net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat;
 import net.sf.jaer.util.filter.LowpassFilter;
 
@@ -153,7 +156,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
             try {
                 writeEvent(p);
             } catch (IOException ex) {
-                Logger.getLogger(DvsSliceAviWriter.class.getName()).log(Level.SEVERE, null, ex);
+                log.warning("Could not write output event: " + ex.toString());
                 doFinishRecording();
             }
             if ((writeDvsSliceImageOnApsFrame && newApsFrameAvailable && (e.timestamp >= endOfFrameTimestamp))
@@ -551,12 +554,24 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                     && ((chip.getAeViewer() == null) || !chip.getAeViewer().isPaused())) {
                 BufferedImage bufferedImage = toImage(frameExtractor);
                 writeFrame(bufferedImage, endOfFrameTimestamp);
-                try {
-                    writeTargetLocation(endOfFrameTimestamp, framesWritten);
-                } catch (IOException ex) {
-                    log.warning(ex.toString());
-                    ex.printStackTrace();
-                    setFilterEnabled(false);
+                if (isWriteTimecodeFile()) {
+                    try {
+                        writeTimecode(endOfFrameTimestamp);
+                    } catch (IOException ex) {
+                        log.warning(ex.toString());
+                        ex.printStackTrace();
+                        setFilterEnabled(false);
+                    }
+                }
+
+                if (isWriteTargetLocations()) {
+                    try {
+                        writeTargetLocation(endOfFrameTimestamp, framesWritten);
+                    } catch (IOException ex) {
+                        log.warning(ex.toString());
+                        ex.printStackTrace();
+                        setFilterEnabled(false);
+                    }
                 }
             }
         }
@@ -577,397 +592,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         this.frameRateEstimatorTimeConstantMs = frameRateEstimatorTimeConstantMs;
         lowpassFilter.setTauMs(frameRateEstimatorTimeConstantMs);
         putFloat("frameRateEstimatorTimeConstantMs", frameRateEstimatorTimeConstantMs);
-    }
-
-    public static final String USAGE = "java DvsSliceAviWriter \n"
-            + "     [-aechip=aechipclassname (either shortcut dvs128, davis240c or davis346mini, or fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] \n"
-            + "     [-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] \n"
-            + "     [-writedvssliceonapsframe=false] \n"
-            + "     [-writetimecodefile=true] \n"
-            + "     [-writeapsframes=false] \n"
-            + "     [-writedvsframes=true] \n"
-            + "     [-writeapstorgchannel=true] \n"
-            + "     [-writedvseventstotextfile=false] \n"
-            + "     [-writetargetlocations=false] \n"
-            + "     [-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
-            + "     [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] \n "
-            + "     [-enablefilters=false] \n"
-            + "         inputFile.aedat [outputfile.avi]"
-            + "\n"
-            + "numevents and framedurationus are exclusively possible\n"
-            + "Arguments values are assigned with =, not space\n"
-            + "If outputfile is not provided its name is generated from the input file with appended .avi";
-
-    public static final HashMap<String, String> chipClassesMap = new HashMap();
-
-    public static void main(String[] args) {
-        // make hashmap of common chip classes
-        boolean enableFilters = false;
-        chipClassesMap.put("dvs128", "ch.unizh.ini.jaer.chip.retina.DVS128");
-        chipClassesMap.put("davis240c", "eu.seebetter.ini.chips.davis.DAVIS240C");
-        chipClassesMap.put("davis346blue", "eu.seebetter.ini.chips.davis.Davis346blue");
-        chipClassesMap.put("davis346red", "eu.seebetter.ini.chips.davis.Davis346red");
-
-        // command line
-        // uses last settings of everything
-        // java DvsSliceAviWriter inputFile.aedat outputfile.avi
-        Options opt = new Options(args, 1, 2);
-        opt.getSet().addOption("enablefilters", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("aechip", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("width", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("height", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("quality", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("format", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("framerate", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("grayscale", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("writedvssliceonapsframe", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("writedvsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("writeapsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("writeapstorgchannel", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("writedvseventstotextfile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("writetimecodefile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("numevents", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("framedurationus", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("timeslicemethod", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("rectify", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("normalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("nullhopnormalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("showoutput", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("maxframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        opt.getSet().addOption("writetargetlocations", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
-        if (!opt.check()) {
-            System.err.println(opt.getCheckErrors());
-            System.err.println(USAGE);
-            System.exit(1);
-        }
-        if (opt.getSet().getData().isEmpty()) {
-            System.err.println("no output file specified");
-            System.exit(1);
-        }
-        if (opt.getSet().getData().size() > 2) {
-            System.err.println("too many input/output file arguments (only one or two allowed)");
-            System.exit(1);
-        }
-
-        String inpfilename = opt.getSet().getData().get(0);
-        if (!(inpfilename.toLowerCase().endsWith("aedat"))) {
-            System.err.println("Warning: Input filename does not end with aedat: " + inpfilename);
-        }
-        String outfilename = null;
-        if (opt.getSet().getData().size() == 2) {
-            outfilename = opt.getSet().getData().get(1);
-        } else {
-            outfilename = inpfilename.substring(0, inpfilename.lastIndexOf(".")) + ".avi";
-            System.out.println("Writing to output file " + outfilename);
-        }
-
-        AEChip chip = null;
-        String chipname = null;
-        if (opt.getSet().isSet("aechip")) {
-            chipname = opt.getSet().getOption("aechip").getResultValue(0);
-        } else {
-            chipname = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
-        }
-        try {
-            String className = chipClassesMap.get(chipname.toLowerCase());
-            if (className == null) {
-                className = chipname;
-            } else {
-                System.out.println("from " + chipname + " found fully qualified class name " + className);
-            }
-            System.out.println("constructing AEChip " + className);
-            Class chipClass = Class.forName(className);
-            Constructor<AEChip> constructor = chipClass.getConstructor();
-            chip = constructor.newInstance((java.lang.Object[]) null);
-        } catch (Exception ex) {
-            System.err.println("Could not construct instance of aechip=" + chipname + ": " + ex.toString());
-            System.exit(1);
-        }
-
-        AEFileInputStream ais = null;
-        File inpfile = new File(inpfilename);
-        File outfile = new File(outfilename);
-        AEPacketRaw aeRaw = null;
-
-        final DvsSliceAviWriter writer = new DvsSliceAviWriter(chip);
-
-        boolean oldCloseOnRewind = writer.isCloseOnRewind();
-        writer.setCloseOnRewind(false);
-        writer.getSupport().addPropertyChangeListener(writer);
-        // handle options
-        if (opt.getSet().isSet("width")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("width").getResultValue(0));
-                writer.getDvsFrame().setOutputImageWidth(n);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad width argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-
-        if (opt.getSet().isSet("height")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("height").getResultValue(0));
-                writer.getDvsFrame().setOutputImageHeight(n);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad height argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-
-        if (opt.getSet().isSet("quality")) {
-            try {
-                float f = Float.parseFloat(opt.getSet().getOption("quality").getResultValue(0));
-                writer.setCompressionQuality(f);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad quality argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-
-        if (opt.getSet().isSet("format")) {
-            try {
-                String type = (opt.getSet().getOption("format").getResultValue(0));
-                VideoFormat format = VideoFormat.valueOf(type.toUpperCase());
-                writer.setFormat(format);
-            } catch (IllegalArgumentException e) {
-                System.err.println("Bad format argument: " + e.toString() + "; use PNG, JPG, RAW, or RLE");
-            }
-        }
-
-        if (opt.getSet().isSet("framerate")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("framerate").getResultValue(0));
-                writer.setFrameRate(n);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad framerate argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-
-        if (opt.getSet().isSet("grayscale")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("grayscale").getResultValue(0));
-                writer.getDvsFrame().setDvsGrayScale(n);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad grayscale argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-
-        if (opt.getSet().isSet("writedvssliceonapsframe")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvssliceonapsframe").getResultValue(0));
-            writer.setWriteDvsSliceImageOnApsFrame(b);
-        }
-
-        if (opt.getSet().isSet("writetimecodefile")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetimecodefile").getResultValue(0));
-            writer.setWriteDvsSliceImageOnApsFrame(b);
-        }
-
-        if (opt.getSet().isSet("writedvsframes")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvsframes").getResultValue(0));
-            writer.setWriteDvsFrames(b);
-        }
-
-        if (opt.getSet().isSet("writeapsframes")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writeapsframes").getResultValue(0));
-            writer.setWriteApsFrames(b);
-        }
-
-        if (opt.getSet().isSet("writetargetlocations")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetargetlocations").getResultValue(0));
-            writer.setWriteTargetLocations(b);
-        }
-
-        if (opt.getSet().isSet("numevents")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("numevents").getResultValue(0));
-                writer.getDvsFrame().setDvsEventsPerFrame(n);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad numevents argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-        if (opt.getSet().isSet("framedurationus")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("framedurationus").getResultValue(0));
-                writer.getDvsFrame().setTimeDurationUsPerFrame(n);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad numevents argument: " + e.toString());
-                System.exit(1);
-            }
-        }
-        if (opt.getSet().isSet("timeslicemethod")) {
-            try {
-                String methodName = opt.getSet().getOption("timeslicemethod").getResultValue(0);
-                TimeSliceMethod method = TimeSliceMethod.valueOf(methodName);
-                writer.getDvsFrame().setTimeSliceMethod(method);
-            } catch (Exception e) {
-                System.err.println("Bad timeslicemethod argument: " + e.toString() + "; use EventCount or TimeIntervalUs");
-                System.exit(1);
-            }
-        }
-
-        if (opt.getSet().isSet("rectify")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("rectify").getResultValue(0));
-            writer.getDvsFrame().setRectifyPolarities(b);
-        }
-
-        if (opt.getSet().isSet("writeapstorgchannel")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writeapstorgchannel").getResultValue(0));
-            writer.setWriteAPSDVSToRGChannels(b);
-        }
-
-        if (opt.getSet().isSet("normalize")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("normalize").getResultValue(0));
-            writer.getDvsFrame().setNormalizeFrame(b);
-        }
-
-        if (opt.getSet().isSet("nullhopnormalize")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("nullhopnormalize").getResultValue(0));
-            writer.getDvsFrame().setNormalizeDVSForZsNullhop(b);
-        }
-
-        if (opt.getSet().isSet("showoutput")) {
-            boolean b = Boolean.parseBoolean(opt.getSet().getOption("showoutput").getResultValue(0));
-            writer.setShowOutput(b);
-        }
-
-        if (opt.getSet().isSet("enablefilters")) {
-            enableFilters = Boolean.parseBoolean(opt.getSet().getOption("enablefilters").getResultValue(0));
-        } else {
-            writer.setMaxFrames(0);
-        }
-
-        if (opt.getSet().isSet("maxframes")) {
-            try {
-                int n = Integer.parseInt(opt.getSet().getOption("maxframes").getResultValue(0));
-                writer.setMaxFrames(n);
-            } catch (NumberFormatException e) {
-                System.err.println("Bad maxframes argument: " + e.toString());
-                System.exit(1);
-            }
-        } else {
-            writer.setMaxFrames(0);
-        }
-
-        writer.openVideoOutputStream(outfile, args);
-        int lastNumFramesWritten = 0, numPrinted = 0;
-
-        try {
-            ais = new AEFileInputStream(inpfile, chip);
-            ais.getSupport().addPropertyChangeListener(writer); // get informed about rewind events
-        } catch (IOException ex) {
-            System.err.println("Couldn't open file " + inpfile + " from working directory " + System.getProperty("user.dir") + " : " + ex.toString());
-            System.exit(1);
-        }
-
-        EventExtractor2D extractor = chip.getEventExtractor();
-        System.out.print(String.format("Frames written: \n"));
-
-        FilterChain filterChain = chip.getFilterChain();
-        filterChain.add(writer);
-
-        filterChain.initFilters();
-
-        if (filterChain != null && enableFilters) {
-            for (EventFilter f : filterChain) {
-                f.setPreferredEnabledState();
-            }
-        }
-        writer.setFilterEnabled(true);
-
-        // need an object here to register as propertychange listener for the rewind event
-        // generated when reading the file and getting to the end,
-        // since the AEFileInputStream will not generate end of file exceptions
-        final WriterControl writerControl = new WriterControl();
-        PropertyChangeListener rewindListener = new PropertyChangeListener() {
-            @Override
-            public void propertyChange(PropertyChangeEvent pce) {
-                if (pce.getPropertyName() == AEInputStream.EVENT_EOF) {
-                    writerControl.end();
-                }
-            }
-        };
-        ais.getSupport().addPropertyChangeListener(rewindListener);
-        ais.setNonMonotonicTimeExceptionsChecked(false); // to avoid wrap and big wrap exceptions, possibly, in long recordings
-        while (writerControl.writing) {
-            try {
-                aeRaw = ais.readPacketByNumber(writer.getDvsFrame().getDvsEventsPerFrame()); // read at most this many events to avoid writing duplicate frames at end of movie from start of file, which would happen automatically by
-                EventPacket cooked = extractor.extractPacket(aeRaw);
-                if (enableFilters && filterChain != null) {
-                    cooked = chip.getFilterChain().filterPacket(cooked);
-                } else {
-                    writer.filterPacket(cooked); // make sure writer is run this way at least
-                }
-                int numFramesWritten = writer.getFramesWritten();
-                if (numFramesWritten >= (lastNumFramesWritten + 20)) {
-                    lastNumFramesWritten = numFramesWritten;
-                    System.out.print(String.format("%d frames            \r", numFramesWritten));
-                }
-                if ((writer.getMaxFrames() > 0) && (writer.getFramesWritten() >= writer.getMaxFrames())) {
-                    break;
-                }
-            } catch (EOFException e) {
-                System.out.println("End of file: " + e);
-                if (ais != null) {
-                    try {
-                        ais.close();
-                    } catch (IOException ex) {
-                        System.err.println("Exception closing input stream: "+ex.toString());
-                    }
-                }
-                if (writer != null) {
-                    writer.doFinishRecording();
-                    System.out.println("Closed output file " + outfile + " after wriring " + writer.getFramesWritten() + " frames");
-                }
-                System.exit(0);
-            } catch (IOException e) {
-                e.printStackTrace();
-                try {
-                    System.err.println("IOException: " + e.getMessage());
-                    if (ais != null) {
-                        ais.close();
-                    }
-                    if (writer != null) {
-                        writer.doFinishRecording();
-                        System.out.println("Closed output file " + outfile + " after wriring " + writer.getFramesWritten() + " frames");
-                    }
-                    System.exit(1);
-                } catch (Exception e3) {
-                    System.err.println("Exception closing file: " + e3.getMessage());
-                    System.exit(1);
-                }
-            }
-        } // end of loop to read and write file
-
-        try {
-            ais.close();
-        } catch (IOException ex) {
-            System.err.println("exception closing file: " + ex.toString());
-        }
-        writer.setShowOutput(false);
-        writer.setCloseOnRewind(oldCloseOnRewind);
-        writer.doFinishRecording();
-        System.out.println(String.format("\nSettings: aechip=%s\nwidth=%d height=%d quality=%f format=%s framerate=%d grayscale=%d\n"
-                + "writeapsframes=%s writedvsframes=%s\n"
-                + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
-                + "timeslicemethod=%s numevents=%d framedurationus=%d\n"
-                + " rectify=%s normalize=%s nullhopnormalize=%s showoutput=%s maxframes=%d",
-                chipname, writer.getDvsFrame().getOutputImageWidth(), writer.getDvsFrame().getOutputImageHeight(),
-                writer.getCompressionQuality(), writer.getFormat().toString(),
-                writer.getFrameRate(), writer.getDvsFrame().getDvsGrayScale(),
-                writer.isWriteApsFrames(), writer.isWriteDvsFrames(),
-                writer.isWriteDvsSliceImageOnApsFrame(),
-                writer.isWriteTimecodeFile(), writer.getDvsFrame().getTimeSliceMethod().toString(),
-                writer.getDvsFrame().getDvsEventsPerFrame(), writer.getDvsFrame().getTimeDurationUsPerFrame(),
-                writer.getDvsFrame().isRectifyPolarities(),
-                writer.getDvsFrame().isNormalizeFrame(),
-                writer.getDvsFrame().isNormalizeDVSForZsNullhop(),
-                writer.isShowOutput(), writer.getMaxFrames()));
-        System.out.println("Successfully wrote file " + outfile + " with " + writer.getFramesWritten() + " frames");
-        System.exit(0);
     }
 
     public boolean isShowStatistics() {
@@ -1114,6 +738,417 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     public void setWriteTargetLocations(boolean writeTargetLocations) {
         this.writeTargetLocations = writeTargetLocations;
         putBoolean("writeTargetLocations", writeTargetLocations);
+    }
+
+    /**
+     * main and static method stuff below
+     * **************************************************************************************************************************
+     */
+    public static final String USAGE = "java DvsSliceAviWriter \n"
+            + "     [-aechip=aechipclassname (either shortcut dvs128, davis240c or davis346mini, or fully qualified class name, e.g. eu.seebetter.ini.chips.davis.DAVIS240C)] \n"
+            + "     [-width=36] [-height=36] [-quality=.9] [-format=PNG|JPG|RLE|RAW] [-framerate=30] [-grayscale=200] \n"
+            + "     [-writedvssliceonapsframe=false] \n"
+            + "     [-writetimecodefile=true] \n"
+            + "     [-writeapsframes=false] \n"
+            + "     [-writedvsframes=true] \n"
+            + "     [-writeapstorgchannel=true] \n"
+            + "     [-writedvseventstotextfile=false] \n"
+            + "     [-writetargetlocations=false] \n"
+            + "     [-timeslicemethod=EventCount|TimeIntervalUs] [-numevents=2000] [-framedurationus=10000]\n"
+            + "     [-rectify=false] [-normalize=true] [-showoutput=true]  [-maxframes=0] \n "
+            + "     [-enablefilters=false] \n"
+            + "         inputFile.aedat [outputfile.avi]"
+            + "\n"
+            + "numevents and framedurationus are exclusively possible\n"
+            + "Arguments values are assigned with =, not space\n"
+            + "If outputfile is not provided its name is generated from the input file with appended .avi";
+
+    public static final HashMap<String, String> chipClassesMap = new HashMap();
+
+    public static void main(String[] args) {
+
+        // setup logging to console
+        ConsoleHandler handler = new ConsoleHandler();
+        Formatter formatter = new LoggingAnsiColorConsoleFormatter();
+        handler.setFormatter(formatter);
+        log.addHandler(handler);
+        log.setLevel(Level.WARNING); // default only warnings, -verbose adds info logging
+
+        // make hashmap of common chip classes
+        boolean enableFilters = false;
+        chipClassesMap.put("dvs128", "ch.unizh.ini.jaer.chip.retina.DVS128");
+        chipClassesMap.put("davis240c", "eu.seebetter.ini.chips.davis.DAVIS240C");
+        chipClassesMap.put("davis346blue", "eu.seebetter.ini.chips.davis.Davis346blue");
+        chipClassesMap.put("davis346red", "eu.seebetter.ini.chips.davis.Davis346red");
+
+        // command line
+        // uses last settings of everything
+        // java DvsSliceAviWriter inputFile.aedat outputfile.avi
+        Options opt = new Options(args, 1, 2);
+        opt.getSet().addOption("enablefilters", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("aechip", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("width", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("height", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("quality", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("format", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("framerate", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("grayscale", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writedvssliceonapsframe", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writedvsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writeapsframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writeapstorgchannel", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writedvseventstotextfile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writetimecodefile", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("numevents", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("framedurationus", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("timeslicemethod", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("rectify", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("normalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("nullhopnormalize", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("showoutput", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("maxframes", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("writetargetlocations", Separator.EQUALS, Multiplicity.ZERO_OR_ONE);
+        opt.getSet().addOption("verbose", Multiplicity.ZERO_OR_ONE);
+        if (!opt.check()) {
+            log.warning(opt.getCheckErrors());
+            log.info(USAGE);
+            System.exit(1);
+        }
+        if (opt.getSet().getData().isEmpty()) {
+            log.warning("no output file specified");
+            System.exit(1);
+        }
+        if (opt.getSet().getData().size() > 2) {
+            log.warning("too many input/output file arguments (only one or two allowed)");
+            System.exit(1);
+        }
+
+        String inpfilename = opt.getSet().getData().get(0);
+        if (!(inpfilename.toLowerCase().endsWith("aedat"))) {
+            log.warning("Warning: Input filename does not end with aedat: " + inpfilename);
+        }
+        String outfilename = null;
+        if (opt.getSet().getData().size() == 2) {
+            outfilename = opt.getSet().getData().get(1);
+        } else {
+            outfilename = inpfilename.substring(0, inpfilename.lastIndexOf(".")) + ".avi";
+            log.info("Writing to output file " + outfilename);
+        }
+
+        AEChip chip = null;
+        String chipname = null;
+        if (opt.getSet().isSet("aechip")) {
+            chipname = opt.getSet().getOption("aechip").getResultValue(0);
+        } else {
+            chipname = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+        }
+        try {
+            String className = chipClassesMap.get(chipname.toLowerCase());
+            if (className == null) {
+                className = chipname;
+            } else {
+                log.info("from " + chipname + " found fully qualified class name " + className);
+            }
+            log.info("constructing AEChip " + className);
+            Class chipClass = Class.forName(className);
+            Constructor<AEChip> constructor = chipClass.getConstructor();
+            chip = constructor.newInstance((java.lang.Object[]) null);
+        } catch (Exception ex) {
+            log.warning("Could not construct instance of aechip=" + chipname + ": " + ex.toString());
+            System.exit(1);
+        }
+
+        AEFileInputStream ais = null;
+        File inpfile = new File(inpfilename);
+        File outfile = new File(outfilename);
+        AEPacketRaw aeRaw = null;
+
+        final DvsSliceAviWriter writer = new DvsSliceAviWriter(chip);
+
+        boolean oldCloseOnRewind = writer.isCloseOnRewind();
+        writer.setCloseOnRewind(false);
+        writer.getSupport().addPropertyChangeListener(writer);
+        // handle options
+        if (opt.getSet().isSet("verbose")) {
+            writer.log.setLevel(Level.INFO);
+            log.info("Turned on verbose logging");
+        }
+        if (opt.getSet().isSet("width")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("width").getResultValue(0));
+                writer.getDvsFrame().setOutputImageWidth(n);
+            } catch (NumberFormatException e) {
+                log.warning("Bad width argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+
+        if (opt.getSet().isSet("height")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("height").getResultValue(0));
+                writer.getDvsFrame().setOutputImageHeight(n);
+            } catch (NumberFormatException e) {
+                log.warning("Bad height argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+
+        if (opt.getSet().isSet("quality")) {
+            try {
+                float f = Float.parseFloat(opt.getSet().getOption("quality").getResultValue(0));
+                writer.setCompressionQuality(f);
+            } catch (NumberFormatException e) {
+                log.warning("Bad quality argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+
+        if (opt.getSet().isSet("format")) {
+            try {
+                String type = (opt.getSet().getOption("format").getResultValue(0));
+                VideoFormat format = VideoFormat.valueOf(type.toUpperCase());
+                writer.setFormat(format);
+            } catch (IllegalArgumentException e) {
+                log.warning("Bad format argument: " + e.toString() + "; use PNG, JPG, RAW, or RLE");
+            }
+        }
+
+        if (opt.getSet().isSet("framerate")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("framerate").getResultValue(0));
+                writer.setFrameRate(n);
+            } catch (NumberFormatException e) {
+                log.warning("Bad framerate argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+
+        if (opt.getSet().isSet("grayscale")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("grayscale").getResultValue(0));
+                writer.getDvsFrame().setDvsGrayScale(n);
+            } catch (NumberFormatException e) {
+                log.warning("Bad grayscale argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+
+        if (opt.getSet().isSet("writedvssliceonapsframe")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvssliceonapsframe").getResultValue(0));
+            writer.setWriteDvsSliceImageOnApsFrame(b);
+        }
+
+        if (opt.getSet().isSet("writetimecodefile")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetimecodefile").getResultValue(0));
+            writer.setWriteTimecodeFile(b);
+        }
+
+        if (opt.getSet().isSet("writedvsframes")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writedvsframes").getResultValue(0));
+            writer.setWriteDvsFrames(b);
+        }
+
+        if (opt.getSet().isSet("writeapsframes")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writeapsframes").getResultValue(0));
+            writer.setWriteApsFrames(b);
+        }
+
+        if (opt.getSet().isSet("writetargetlocations")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writetargetlocations").getResultValue(0));
+            writer.setWriteTargetLocations(b);
+        }
+
+        if (opt.getSet().isSet("numevents")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("numevents").getResultValue(0));
+                writer.getDvsFrame().setDvsEventsPerFrame(n);
+            } catch (NumberFormatException e) {
+                log.warning("Bad numevents argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+        if (opt.getSet().isSet("framedurationus")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("framedurationus").getResultValue(0));
+                writer.getDvsFrame().setTimeDurationUsPerFrame(n);
+            } catch (NumberFormatException e) {
+                log.warning("Bad numevents argument: " + e.toString());
+                System.exit(1);
+            }
+        }
+        if (opt.getSet().isSet("timeslicemethod")) {
+            try {
+                String methodName = opt.getSet().getOption("timeslicemethod").getResultValue(0);
+                TimeSliceMethod method = TimeSliceMethod.valueOf(methodName);
+                writer.getDvsFrame().setTimeSliceMethod(method);
+            } catch (Exception e) {
+                log.warning("Bad timeslicemethod argument: " + e.toString() + "; use EventCount or TimeIntervalUs");
+                System.exit(1);
+            }
+        }
+
+        if (opt.getSet().isSet("rectify")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("rectify").getResultValue(0));
+            writer.getDvsFrame().setRectifyPolarities(b);
+        }
+
+        if (opt.getSet().isSet("writeapstorgchannel")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("writeapstorgchannel").getResultValue(0));
+            writer.setWriteAPSDVSToRGChannels(b);
+        }
+
+        if (opt.getSet().isSet("normalize")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("normalize").getResultValue(0));
+            writer.getDvsFrame().setNormalizeFrame(b);
+        }
+
+        if (opt.getSet().isSet("nullhopnormalize")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("nullhopnormalize").getResultValue(0));
+            writer.getDvsFrame().setNormalizeDVSForZsNullhop(b);
+        }
+
+        if (opt.getSet().isSet("showoutput")) {
+            boolean b = Boolean.parseBoolean(opt.getSet().getOption("showoutput").getResultValue(0));
+            writer.setShowOutput(b);
+        }
+
+        if (opt.getSet().isSet("enablefilters")) {
+            enableFilters = Boolean.parseBoolean(opt.getSet().getOption("enablefilters").getResultValue(0));
+        } else {
+            writer.setMaxFrames(0);
+        }
+
+        if (opt.getSet().isSet("maxframes")) {
+            try {
+                int n = Integer.parseInt(opt.getSet().getOption("maxframes").getResultValue(0));
+                writer.setMaxFrames(n);
+            } catch (NumberFormatException e) {
+                log.warning("Bad maxframes argument: " + e.toString());
+                System.exit(1);
+            }
+        } else {
+            writer.setMaxFrames(0);
+        }
+
+        writer.openVideoOutputStream(outfile, args);
+        int lastNumFramesWritten = 0, numPrinted = 0;
+
+        try {
+            ais = new AEFileInputStream(inpfile, chip);
+            ais.getSupport().addPropertyChangeListener(writer); // get informed about rewind events
+        } catch (IOException ex) {
+            log.warning("Couldn't open file " + inpfile + " from working directory " + System.getProperty("user.dir") + " : " + ex.toString());
+            System.exit(1);
+        }
+
+        EventExtractor2D extractor = chip.getEventExtractor();
+        System.out.print(String.format("Frames written: \n"));
+
+        FilterChain filterChain = chip.getFilterChain();
+        filterChain.add(writer);
+
+        filterChain.initFilters();
+
+        if (filterChain != null && enableFilters) {
+            for (EventFilter f : filterChain) {
+                f.setPreferredEnabledState();
+            }
+        }
+        writer.setFilterEnabled(true);
+
+        // need an object here to register as propertychange listener for the rewind event
+        // generated when reading the file and getting to the end,
+        // since the AEFileInputStream will not generate end of file exceptions
+        final WriterControl writerControl = new WriterControl();
+        PropertyChangeListener rewindListener = new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent pce) {
+                if (pce.getPropertyName() == AEInputStream.EVENT_EOF) {
+                    writerControl.end();
+                }
+            }
+        };
+        ais.getSupport().addPropertyChangeListener(rewindListener);
+        ais.setNonMonotonicTimeExceptionsChecked(false); // to avoid wrap and big wrap exceptions, possibly, in long recordings
+        while (writerControl.writing) {
+            try {
+                aeRaw = ais.readPacketByNumber(writer.getDvsFrame().getDvsEventsPerFrame()); // read at most this many events to avoid writing duplicate frames at end of movie from start of file, which would happen automatically by
+                EventPacket cooked = extractor.extractPacket(aeRaw);
+                if (enableFilters && filterChain != null) {
+                    cooked = chip.getFilterChain().filterPacket(cooked);
+                } else {
+                    writer.filterPacket(cooked); // make sure writer is run this way at least
+                }
+                int numFramesWritten = writer.getFramesWritten();
+                if (numFramesWritten >= (lastNumFramesWritten + 20)) {
+                    lastNumFramesWritten = numFramesWritten;
+                    System.out.print(String.format("%d frames            \r", numFramesWritten));
+                }
+                if ((writer.getMaxFrames() > 0) && (writer.getFramesWritten() >= writer.getMaxFrames())) {
+                    break;
+                }
+            } catch (EOFException e) {
+                log.info("End of file: " + e);
+                if (ais != null) {
+                    try {
+                        ais.close();
+                    } catch (IOException ex) {
+                        log.warning("Exception closing input stream: " + ex.toString());
+                    }
+                }
+                if (writer != null) {
+                    writer.doFinishRecording();
+                    log.setLevel(Level.INFO);
+                    log.info("Closed output file " + outfile.getAbsolutePath() + " after wriring " + writer.getFramesWritten() + " frames");
+                }
+                System.exit(0);
+            } catch (IOException e) {
+                e.printStackTrace();
+                try {
+                    log.warning("IOException: " + e.getMessage());
+                    if (ais != null) {
+                        ais.close();
+                    }
+                    if (writer != null) {
+                        writer.doFinishRecording();
+                        log.setLevel(Level.INFO);
+                        log.info("Closed output file " + outfile.getAbsolutePath() + " after wriring " + writer.getFramesWritten() + " frames");
+                    }
+                    System.exit(1);
+                } catch (Exception e3) {
+                    log.warning("Exception closing file: " + e3.getMessage());
+                    System.exit(1);
+                }
+            }
+        } // end of loop to read and write file
+
+        try {
+            ais.close();
+        } catch (IOException ex) {
+            log.warning("exception closing file: " + ex.toString());
+        }
+        writer.setShowOutput(false);
+        writer.setCloseOnRewind(oldCloseOnRewind);
+        writer.doFinishRecording();
+        log.setLevel(Level.INFO);
+        log.info(String.format("\nSettings: aechip=%s\nwidth=%d height=%d quality=%f format=%s framerate=%d grayscale=%d\n"
+                + "writeapsframes=%s writedvsframes=%s\n"
+                + "writedvssliceonapsframe=%s writetimecodefile=%s\n"
+                + "timeslicemethod=%s numevents=%d framedurationus=%d\n"
+                + " rectify=%s normalize=%s nullhopnormalize=%s showoutput=%s maxframes=%d",
+                chipname, writer.getDvsFrame().getOutputImageWidth(), writer.getDvsFrame().getOutputImageHeight(),
+                writer.getCompressionQuality(), writer.getFormat().toString(),
+                writer.getFrameRate(), writer.getDvsFrame().getDvsGrayScale(),
+                writer.isWriteApsFrames(), writer.isWriteDvsFrames(),
+                writer.isWriteDvsSliceImageOnApsFrame(),
+                writer.isWriteTimecodeFile(), writer.getDvsFrame().getTimeSliceMethod().toString(),
+                writer.getDvsFrame().getDvsEventsPerFrame(), writer.getDvsFrame().getTimeDurationUsPerFrame(),
+                writer.getDvsFrame().isRectifyPolarities(),
+                writer.getDvsFrame().isNormalizeFrame(),
+                writer.getDvsFrame().isNormalizeDVSForZsNullhop(),
+                writer.isShowOutput(), writer.getMaxFrames()));
+        log.info("Successfully wrote file " + outfile.getAbsolutePath() + " with " + writer.getFramesWritten() + " frames");
+        System.exit(0);
     }
 
 }
