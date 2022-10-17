@@ -387,7 +387,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             return null;
         }
         try {
-            if (writeTimecodeFile) {
+            if (isWriteTimecodeFile()) {
                 String s = f.toString().subSequence(0, f.toString().lastIndexOf(".")).toString() + TIMECODE_SUFFIX;
                 timecodeFile = new File(s);
                 timecodeWriter = new FileWriter(timecodeFile);
@@ -404,7 +404,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                         timecodeWriter.write(st);
                     }
                 }
-                timecodeWriter.write(String.format("# frameNumber timestamp\n"));
+                timecodeWriter.write(String.format("# frameNumber timestamp(us)\n"));
                 log.info("Opened timecode file " + timecodeFile.toString());
             }
         } catch (IOException e) {
