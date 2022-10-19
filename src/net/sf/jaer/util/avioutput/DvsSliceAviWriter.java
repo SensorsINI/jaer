@@ -207,6 +207,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (!isShowStatistics()) {
             return;
         }
+        dvsFrame.setShowFrames(isWriteDvsFrames());
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.setScale(.3f);
         float avgFrameRate = avgDvsFrameIntervalMs == 0 ? Float.NaN : 1000 / avgDvsFrameIntervalMs;
@@ -472,10 +473,11 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
     }
 
     synchronized public void maybeShowOutput(DvsFramerSingleFrame dvsFramer) {
-        if (!showOutput) {
+        if (!isShowOutput()) {
             return;
         }
-        if (frame == null) {
+        frameExtractor.setShowAPSFrameDisplay(isWriteApsFrames());
+        if (isWriteDvsFrames() && frame == null) {
             String windowName = "DVS slice";
             frame = new JFrame(windowName);
             frame.setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
@@ -497,18 +499,20 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
                 }
             });
         }
-        if (!frame.isVisible()) {
-            frame.setVisible(true);
-        }
-        if ((display.getWidth() != dvsFrame.getOutputImageWidth()) || (display.getHeight() != dvsFrame.getOutputImageHeight())) {
-            display.setImageSize(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight());
-        }
-        for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
-            for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
-                display.setPixmapGray(x, y, dvsFramer.getValueAtPixel(x, y));
+        if (isWriteDvsFrames()) {
+            if (!frame.isVisible()) {
+                frame.setVisible(true);
             }
+            if ((display.getWidth() != dvsFrame.getOutputImageWidth()) || (display.getHeight() != dvsFrame.getOutputImageHeight())) {
+                display.setImageSize(dvsFrame.getOutputImageWidth(), dvsFrame.getOutputImageHeight());
+            }
+            for (int x = 0; x < dvsFrame.getOutputImageWidth(); x++) {
+                for (int y = 0; y < dvsFrame.getOutputImageHeight(); y++) {
+                    display.setPixmapGray(x, y, dvsFramer.getValueAtPixel(x, y));
+                }
+            }
+            display.repaint();
         }
-        display.repaint();
     }
 
     /**
