@@ -39,10 +39,10 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     RodSequence rodSequence = null;
     int lastX = -1, lastY = -1;
     int startX = -1, startY = -1;
-    int collectorX=-1, collectorY=-1;
+    int collectorX = -1, collectorY = -1;
     JPanel myPanel = null;
     private boolean shiftPressed = false;
-    private RodPosition lastRodPosition=null;
+    private RodPosition lastRodPosition = null;
 
     /**
      * Creates new form GoingFishingFishingRodControlFrame
@@ -206,7 +206,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
         helpText.setFont(new java.awt.Font("Tahoma", 0, 18)); // NOI18N
         helpText.setHorizontalAlignment(javax.swing.JTextField.CENTER);
         helpText.setText("Press left mouse button and drag to control rod.");
-        helpText.setToolTipText("Use clicks for zero delay.");
+        helpText.setToolTipText("\"r\" toggles recording. Use clicks for zero delay. Hold Shift to constrain vertically. ESC aborts recording.");
         helpText.setFocusable(false);
         jPanel1.add(helpText);
 
@@ -224,7 +224,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             startX = evt.getX();
             startY = evt.getY();
         } else {
-            lastX = shiftPressed? lastX: evt.getX();  // if shift held down, keep x fixed to constrain vertical rod movement
+            lastX = shiftPressed ? lastX : evt.getX();  // if shift held down, keep x fixed to constrain vertical rod movement
             lastY = evt.getY();
         }
         float thetaDeg = (180f * (float) lastX / myPanel.getWidth());
@@ -242,7 +242,7 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
             log.info("added " + rodPosition.toString());
         }
         lastTimeMs = currentTimeMillis;
-        lastRodPosition=rodPosition;
+        lastRodPosition = rodPosition;
         firePropertyChange(GoingFishing.EVENT_ROD_POSITION, null, rodPosition);
         repaint(30);
     }
@@ -265,40 +265,60 @@ public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_dipRodButtonActionPerformed
 
     private void formKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyPressed
-        if (evt.getKeyCode() == KeyEvent.VK_SHIFT) {
-            shiftPressed = true;
-            log.info("form shift pressed");
+        switch (evt.getKeyCode()) {
+            case KeyEvent.VK_SHIFT:
+                shiftPressed = true;
+                log.info("form shift pressed");
+                break;
         }
     }//GEN-LAST:event_formKeyPressed
 
     private void formKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_formKeyReleased
-        if (evt.getKeyCode() == KeyEvent.VK_SHIFT) {
-            shiftPressed = false;
-            log.info("form shift released");
+        switch (evt.getKeyCode()) {
+            case KeyEvent.VK_SHIFT:
+                shiftPressed = false;
+                log.info("form shift released");
+                break;
+            case KeyEvent.VK_ESCAPE:
+                abortRecording();
+                break;
         }
     }//GEN-LAST:event_formKeyReleased
 
     private void toggleRecording(KeyEvent evt) {
-        if (evt.getKeyChar() == 'r') {
-            recordToggleButton.setEnabled(!recordToggleButton.isEnabled());
-            toggleRecording();
+        switch (evt.getKeyChar()) {
+            case 'r':
+                recordToggleButton.setEnabled(!recordToggleButton.isEnabled());
+                toggleRecording();
+                break;
         }
     }
 
-    private void toggleRecording() {
+    synchronized private void abortRecording() {
+        if (recording) {
+            recording=false;
+            if(rodSequence!=null){
+                rodSequence.clear();
+            }
+            log.info("aborted recording");
+        }
+    }
+
+    synchronized private void toggleRecording() {
         recording = !recording;
         if (recording) {
             lastTimeMs = 0;
             String name = "";
-            if(fishingHoleButton0.isSelected())
-                name=GoingFishing.SEQ_HOLE_0;
-            else if(fishingHoleButton1.isSelected())
-                name=GoingFishing.SEQ_HOLE_1;
-            else if(fishRemoverButton.isSelected())
-                name=GoingFishing.SEQ_FISH_REMOVER;
-            else
+            if (fishingHoleButton0.isSelected()) {
+                name = GoingFishing.SEQ_HOLE_0;
+            } else if (fishingHoleButton1.isSelected()) {
+                name = GoingFishing.SEQ_HOLE_1;
+            } else if (fishRemoverButton.isSelected()) {
+                name = GoingFishing.SEQ_FISH_REMOVER;
+            } else {
                 throw new RuntimeException("no sequence selected to record, should not occur");
-            
+            }
+
             rodSequence = new RodSequence(name);
             log.info("recording sequence " + name);
         } else {
