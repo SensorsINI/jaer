@@ -387,7 +387,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                     lastTimestampWritten, be.timestamp, (be.timestamp - lastTimestampWritten)));
         }
         lastTimestampWritten = be.timestamp;
-        setEventsProcessed(getEventsProcessed()+1); // also updates gui and writes out log message
+        setEventsProcessed(getEventsProcessed() + 1); // also updates gui and writes out log message
         if (maxEvents > 0 && eventsProcessed >= maxEvents && isFilesOpen()) {
             log.info("wrote maxEvents=" + maxEvents + " events; closing files");
             doCloseFiles();
@@ -437,12 +437,21 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            if (!ignoreRewinwdEventFlag && closeOnRewind && isFilesOpen()) {
-                doCloseFiles();
+        switch (evt.getPropertyName()) {
+            case AEInputStream.EVENT_REWOUND: {
+                log.info("rewound event " + evt.toString());
+                if (!ignoreRewinwdEventFlag && closeOnRewind && isFilesOpen()) {
+                    doCloseFiles();
+                }
+                ignoreRewinwdEventFlag = false;
             }
-            ignoreRewinwdEventFlag = false;
-        } 
+            break;
+            case AEViewer.EVENT_FILEOPEN:
+                log.info("file opened event " + evt.toString());
+                doCloseFiles();
+                resetFilter();
+                break;
+        }
     }
 
     /**
@@ -515,6 +524,8 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
         if (getChip().getAeViewer() == null) {
             return;
         }
+//        getChip().getAeViewer().getSupport().addPropertyChangeListener(this);
+        getChip().getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         getChip().getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_FILEOPEN, this);
     }
 
