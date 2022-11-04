@@ -419,7 +419,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void setEnclosedFilterChain(FilterChain enclosedFilterChain) {
         if (this.enclosedFilterChain != null) {
-            log.warning("replacing existing enclosedFilterChain= " + this.enclosedFilterChain + " with new enclosedFilterChain= " + enclosedFilterChain);
+            log.info("replacing existing enclosedFilterChain\n\t" + this.enclosedFilterChain + "\n with new enclosedFilterChain=\n\t " + enclosedFilterChain);
         }
         if (enclosedFilterChain.isEmpty()) {
             log.warning("empty filter chain in " + this + " - you should set the filter chain after all filters have been added to it so that enclosed filters can be processed");
@@ -921,7 +921,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             }
             return o;
         } catch (IOException ex) {
-            log.warning(String.format("Could not load preference for %s; got %s", key, ex));
+            log.fine(String.format("%s has no stored preference for %s", getShortName(), key));
         } catch (BackingStoreException ex) {
             log.warning(String.format("Could not load preference for %s; got %s", key, ex));
         } catch (ClassNotFoundException ex) {
