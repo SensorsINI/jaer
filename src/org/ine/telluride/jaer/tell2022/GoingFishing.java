@@ -28,6 +28,7 @@ import java.beans.PropertyChangeEvent;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -230,8 +231,10 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             try {
                 RodSequence seq = RodSequence.load(name);
                 rodSequences.put(name, seq);
+            } catch (FileNotFoundException e) {
+                log.info("Could not find fishing rod movement sequence " + name);
             } catch (Exception e) {
-                log.warning("Could not load fishing rod movement sequence " + name + ": Caught " + e.toString());
+                log.info("Could not load fishing rod movement sequence " + name + ": Caught " + e.toString());
             }
         }
         log.info("loaded " + rodSequences.toString());
