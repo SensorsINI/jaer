@@ -39,6 +39,7 @@ import com.jogamp.opengl.util.texture.Texture;
 import com.jogamp.opengl.util.texture.TextureIO;
 
 import gnu.io.NRSerialPort;
+import java.awt.Color;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.InputStream;
@@ -408,6 +409,11 @@ public class RoShamBoCNN extends DavisClassifierCNNProcessor {
                 log.warning("caught exception enabling serial port when filter was enabled: " + ex.toString());
             }
         }
+    }
+
+    @Override
+    protected void drawActivationsAsBarChart(GL2 gl) {
+        AbstractDavisCNN.drawHistogram(gl, statistics.lowpassFilteredOutputUnits, chip.getSizeX(), chip.getSizeY(), 3, Color.RED);
     }
 
     @Override

@@ -670,10 +670,7 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             }
         }
         if (showOutputAsBarChart) {
-            final float lineWidth = 2;
-            if (apsDvsNet != null && apsDvsNet.getOutputLayer() != null) {
-                apsDvsNet.getOutputLayer().drawHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.RED);
-            }
+            drawActivationsAsBarChart(gl);
         }
 
         if (apsDvsNet != null && (showTop1Label || showTop5Labels) && apsDvsNet.getLabels() != null
@@ -681,6 +678,13 @@ public abstract class AbstractDavisCNNProcessor extends EventFilter2D implements
             if (showTop1Label) {
                 drawDecisionOutput(drawable, apsDvsNet);
             }
+        }
+    }
+
+    protected void drawActivationsAsBarChart(GL2 gl) {
+        final float lineWidth = 2;
+        if (apsDvsNet != null && apsDvsNet.getOutputLayer() != null) {
+            apsDvsNet.getOutputLayer().drawHistogram(gl, chip.getSizeX(), chip.getSizeY(), lineWidth, Color.RED);
         }
     }
 
