@@ -179,7 +179,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
     @Override
     public void initFilter() {
         if (DavisChip.class.isAssignableFrom(chip.getClass())) {
-            getApsDisplay().checkPixmapAllocation();
+//            getApsDisplay().checkPixmapAllocation();  // cannot check, size of chip not set yet usually
             apsChip = (DavisChip) chip;
             maxADC = apsChip.getMaxADC();
             newFrameAvailable = false;
