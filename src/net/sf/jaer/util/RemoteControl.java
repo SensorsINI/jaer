@@ -143,7 +143,7 @@ public class RemoteControl /* implements RemoteControlled */{
         if ( cmdMap.containsKey(cmdKey) && (warningCount++<MAX_WARNINGS)){
             log.warning("remote control commands already contains command " + cmdKey + ", replacing existing command with " + cmd + ": " + description);
             if(warningCount==MAX_WARNINGS) {
-				log.warning("suppressing further warnings about replacing commands");
+				log.info("suppressing further warnings about replacing commands");
 			}
         }
         cmdMap.put(cmdKey,command);
