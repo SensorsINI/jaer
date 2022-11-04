@@ -121,9 +121,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
         if (apsDvsNet != null && apsDvsNet.getInputLayer() != null) {
             setOutputImageWidth(apsDvsNet.getInputLayer().getWidth());
             setOutputImageHeight(apsDvsNet.getInputLayer().getHeight());
-        } else {
-            log.warning("null network, cannot set dvsFrame size");
-        }
+        } 
     }
 
     @Override
@@ -131,9 +129,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
         if (apsDvsNet != null && apsDvsNet.inputLayer != null) {
             setOutputImageWidth(apsDvsNet.inputLayer.dimx);
             setOutputImageHeight(apsDvsNet.inputLayer.dimy);
-        } else {
-            log.warning("null network, cannot set dvsFrame size");
-        }
+        } 
     }
 
     @Override
