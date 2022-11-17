@@ -148,17 +148,22 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             gl.glVertex2f(getEndPoint().x, getEndPoint().y);
             gl.glEnd();
 
-            String s = String.format("Speed: %s pps (%.0fpix/%ss), dx/dy=%d/%d", engFmt.format(speedPps), distance, engFmt.format(1e-6f * deltaTimestamp), (int) Math.abs(endPoint.x - startPoint.x), (int) Math.abs(endPoint.y - startPoint.y));
+            String s = String.format("Speedometer: Speed: %s pps (%.0fpix/%ss), dx/dy=%d/%d", engFmt.format(speedPps), distance, engFmt.format(1e-6f * deltaTimestamp), (int) Math.abs(endPoint.x - startPoint.x), (int) Math.abs(endPoint.y - startPoint.y));
             drawString(drawable, s);
             gl.glPopMatrix(); // must push pop since drawCursor translates?
         } else if (getStartPoint() != null) {
-            String s = String.format("Left click for end point. Time from IN mark: %ss", engFmt.format(1e-6f * (currentTimestamp - getStartPoint().t)));
+            String s = String.format("Speedometer: Left click for end point. Time from IN mark: %ss", engFmt.format(1e-6f * (currentTimestamp - getStartPoint().t)));
             gl.glPushMatrix();
             drawString(drawable, s);
             gl.glPopMatrix(); // must push pop since drawCursor translates?
 
+        } else if (isControlsVisible()) {
+            String s = "Speedometer: Left click for start point";
+            gl.glPushMatrix();
+            drawString(drawable, s);
+            gl.glPopMatrix(); // must push pop since drawCursor translates?
         } else {
-            String s = "Left click for start point";
+            String s = "Speedometer: Select Controls button to enable mouse selection of start and end points ";
             gl.glPushMatrix();
             drawString(drawable, s);
             gl.glPopMatrix(); // must push pop since drawCursor translates?
