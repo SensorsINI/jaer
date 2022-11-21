@@ -355,7 +355,7 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
 
-        if (colorMode == ColorMode.FadingActivity) {
+        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer()!=null && !chip.getAeViewer().isPaused()) {
             checkPixmapAllocation();
             float fadeby = 1 - 1f / (colorScale + 1);
             float[] f = dvsEventsMap.array();
@@ -424,7 +424,7 @@ public class DavisRenderer extends AEChipRenderer {
                 resetAnnotationFrame(0.0f);
             }
         }
-        if (colorMode == ColorMode.FadingActivity) {
+        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer()!=null && !chip.getAeViewer().isPaused()) {
             checkPixmapAllocation();
             float fadeby = 1 - 1f / (colorScale + 1);
             float[] f = dvsEventsMap.array();
@@ -595,9 +595,9 @@ public class DavisRenderer extends AEChipRenderer {
                 case FadingActivity: {
                     //fade later on
                     map[index + 3] = 1;  // use full alpha, just scale each color change by scale 
-                    map[index] += colorContrastAdditiveValue;
-                    map[index + 1] += colorContrastAdditiveValue;
-                    map[index + 2] += colorContrastAdditiveValue; // gray level
+                    map[index] = 1; // colorContrastAdditiveValue;
+                    map[index + 1] = 1; //colorContrastAdditiveValue;
+                    map[index + 2] = 1; // colorContrastAdditiveValue; // gray level
                 }
                 break;
                 case ColorTime: {
