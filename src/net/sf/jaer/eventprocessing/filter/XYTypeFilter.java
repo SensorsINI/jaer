@@ -55,16 +55,16 @@ import net.sf.jaer.util.DrawGL;
 public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener {
 
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
-    private int startX = getPrefs().getInt("XYTypeFilter.startX", 0);
-    private int endX = getPrefs().getInt("XYTypeFilter.endX", 0);
-    private boolean xEnabled = getPrefs().getBoolean("XYTypeFilter.xEnabled", false);
-    private int startY = getPrefs().getInt("XYTypeFilter.startY", 0);
-    private int endY = getPrefs().getInt("XYTypeFilter.endY", 0);
-    private boolean yEnabled = getPrefs().getBoolean("XYTypeFilter.yEnabled", false);
-    private int startType = getPrefs().getInt("XYTypeFilter.startType", 0);
-    private int endType = getPrefs().getInt("XYTypeFilter.endType", 0);
-    private boolean typeEnabled = getPrefs().getBoolean("XYTypeFilter.typeEnabled", false);
-    private boolean invertSelection = getPrefs().getBoolean("XYTypeFilter.invertSelection", false);
+    private int startX = getInt("startX", 0);
+    private int endX = getInt("endX", 0);
+    private boolean xEnabled = getBoolean("xEnabled", false);
+    private int startY = getInt("startY", 0);
+    private int endY = getInt("endY", 0);
+    private boolean yEnabled = getBoolean("yEnabled", false);
+    private int startType = getInt("startType", 0);
+    private int endType = getInt("endType", 0);
+    private boolean typeEnabled = getBoolean("typeEnabled", false);
+    private boolean invertSelection = getBoolean("invertSelection", false);
     public short x = 0, y = 0;
     public byte type = 0;
     private short xAnd;
@@ -74,16 +74,11 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
     private Point startPoint = null, endPoint = null, clickedPoint = null;
-    private Point currentMousePoint = null;
-    private int maxEvents = 0;
     private int index = 0;
-    private short xspike, yspike;
-    private byte typespike;
-    private int ts, repMeasure, i;
     private volatile boolean selecting = false;
     private static float lineWidth = 1f;
     private int startx, starty, endx, endy;
-    private boolean multiSelectionEnabled = prefs().getBoolean("XYTypeFilter.multiSelectionEnabled", false);
+    private boolean multiSelectionEnabled = prefs().getBoolean("multiSelectionEnabled", false);
     private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
     protected boolean showTypeFilteringText = getBoolean("showTypeFilteringText", true);
 
@@ -281,7 +276,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.startX;
         startX = clip(startX, chip.getSizeX());
         this.startX = startX;
-        getPrefs().putInt("XYTypeFilter.startX", startX);
+        putInt("startX", startX);
         getSupport().firePropertyChange("startX", old, startX);
         setXEnabled(true);
 
@@ -295,7 +290,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.endX;
         endX = clip(endX, chip.getSizeX());
         this.endX = endX;
-        getPrefs().putInt("XYTypeFilter.endX", endX);
+        putInt("endX", endX);
         getSupport().firePropertyChange("endX", old, endX);
         setXEnabled(true);
 
@@ -308,7 +303,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void setXEnabled(boolean xEnabled) {
         boolean old = this.xEnabled;
         this.xEnabled = xEnabled;
-        getPrefs().putBoolean("XYTypeFilter.xEnabled", xEnabled);
+        putBoolean("xEnabled", xEnabled);
         getSupport().firePropertyChange("XEnabled", old, xEnabled);
 
     }
@@ -321,7 +316,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.starty;
         startY = clip(startY, chip.getSizeY());
         this.startY = startY;
-        getPrefs().putInt("XYTypeFilter.startY", startY);
+        putInt("startY", startY);
         getSupport().firePropertyChange("startY", old, startY);
 
         setYEnabled(true);
@@ -335,7 +330,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.endY;
         endY = clip(endY, chip.getSizeY());
         this.endY = endY;
-        getPrefs().putInt("XYTypeFilter.endY", endY);
+        putInt("endY", endY);
         getSupport().firePropertyChange("endY", old, endY);
         setYEnabled(true);
 
@@ -348,7 +343,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void setYEnabled(boolean yEnabled) {
         boolean old = this.yEnabled;
         this.yEnabled = yEnabled;
-        getPrefs().putBoolean("XYTypeFilter.yEnabled", yEnabled);
+        putBoolean("yEnabled", yEnabled);
         getSupport().firePropertyChange("YEnabled", old, yEnabled);
 
     }
@@ -361,7 +356,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.startType;
         startType = clip(startType, chip.getNumCellTypes());
         this.startType = startType;
-        getPrefs().putInt("XYTypeFilter.startType", startType);
+        putInt("startType", startType);
         getSupport().firePropertyChange("startType", old, startType);
         setTypeEnabled(true);
 
@@ -375,7 +370,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.endType;
         endType = clip(endType, chip.getNumCellTypes());
         this.endType = endType;
-        getPrefs().putInt("XYTypeFilter.endType", endType);
+        putInt("endType", endType);
         getSupport().firePropertyChange("endType", old, endType);
         setTypeEnabled(true);
 
@@ -388,7 +383,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void setTypeEnabled(boolean typeEnabled) {
         boolean old = this.typeEnabled;
         this.typeEnabled = typeEnabled;
-        getPrefs().putBoolean("XYTypeFilter.typeEnabled", typeEnabled);
+        putBoolean("typeEnabled", typeEnabled);
         getSupport().firePropertyChange("typeEnabled", old, typeEnabled);
 
     }
@@ -470,7 +465,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     public void setInvertSelection(boolean invertSelection) {
         this.invertSelection = invertSelection;
-        getPrefs().putBoolean("XYTypeFilter.invertSelection", invertSelection);
+        putBoolean("invertSelection", invertSelection);
 
     }
 
@@ -500,7 +495,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        currentMousePoint = canvas.getPixelFromMouseEvent(e);
     }
 
     @Override
@@ -602,7 +596,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
      */
     public void setMultiSelectionEnabled(boolean multiSelectionEnabled) {
         this.multiSelectionEnabled = multiSelectionEnabled;
-        prefs().putBoolean("XYTypeFilter.multiSelectionEnabled", multiSelectionEnabled);
+        prefs().putBoolean("multiSelectionEnabled", multiSelectionEnabled);
 
     }
 
