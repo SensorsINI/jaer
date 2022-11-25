@@ -124,6 +124,7 @@ public class SpikeSound{
 //            System.out.println("line format="+line.getFormat());
 //            System.out.println("line info="+line.getLineInfo());
             line.start();
+            log.info(String.format("Opened line %s with audioFormat=%s for playing spike sounds",line.toString(),audioFormat.toString()));
         } catch ( LineUnavailableException e ){
             log.warning("Could not open sound output for playing spike sounds: " + e.toString());
             line = null;
