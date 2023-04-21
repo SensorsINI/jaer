@@ -75,6 +75,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
     protected ArrayList<String> additionalComments = new ArrayList();
     protected volatile boolean writeEnabled = false;
     private int lastTimestampWritten = 0; // DEBUG nonmonotonic
+    private boolean rewindPending=false; // flag to not record after rewind until we really get a packet from start of recording (to avoid nonmonotonic timestamps in recording)
 
     public DavisTextOutputWriter(AEChip chip) {
         super(chip);
@@ -162,6 +163,8 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
     }
 
     private void writeDvsEvent(PolarityEvent ae) {
+        if(rewindPending)
+            return;
         // One event per line (timestamp x y polarity) as in RPG events.txt
         if (useCSV) {
             if (useUsTimestamps) {
@@ -331,6 +334,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
         if (rewindBeforeRecording) {
             ignoreRewinwdEventFlag = true;
             chip.getAeViewer().getAePlayer().rewind();
+            rewindPending=true;
         }
         setWriteEnabled(true);
     }
@@ -444,6 +448,7 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                     doCloseFiles();
                 }
                 ignoreRewinwdEventFlag = false;
+                rewindPending=false;
             }
             break;
             case AEViewer.EVENT_FILEOPEN:
