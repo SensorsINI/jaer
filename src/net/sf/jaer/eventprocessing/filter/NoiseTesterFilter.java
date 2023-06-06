@@ -525,6 +525,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             signalAndNoiseList = createEventList((EventPacket<PolarityEvent>) signalAndNoisePacket);
 
             if (outputTrainingData && csvWriter != null) {
+                
                 for (PolarityEvent event : signalAndNoiseList) {
                     try {
                         int ts = event.timestamp;
@@ -536,8 +537,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             continue;
                         }
 
-                        String absTstring = "";
-                        String polString = "";
+                        StringBuilder absTstring = new StringBuilder();
+                        StringBuilder polString = new StringBuilder();
                         for (int indx = -radius; indx <= radius; indx++) {
                             for (int indy = -radius; indy <= radius; indy++) {
                                 int absTs = 0;
@@ -546,8 +547,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                                     absTs = timestampImage[x + indx][y + indy];
                                     pol = lastPolMap[x + indx][y + indy];
                                 }
-                                absTstring = absTstring + absTs + "" + ",";
-                                polString = polString + pol + "" + ",";
+                                absTstring.append(absTs + ",");
+                                polString.append(pol + ",");
 
                             }
                         }
@@ -1215,7 +1216,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 log.info("file did not exist, so writing header");
                 if(outputTrainingData){
                     log.info("writing header for MLPF training file");
-                    csvWriter.write(String.format("#MLPF training data\n# type, event.x, event.y, event.timestamp,signal/noise(1/0), nnbTimestamp(25*25), polString, packetFirstEventTimestamp\n"));
+                    csvWriter.write(String.format("#MLPF training data\n# type, event.x, event.y, event.timestamp,signal/noise(1/0), nnbTimestamp(25*25), nnbPolarity(25*25), packetFirstEventTimestamp\n"));
                 }else if(outputFilterStatistic){
                     log.info("writing header for filter accuracy statistics file");
                     csvWriter.write(String.format("TP,TN,FP,FN,TPR,TNR,BR,firstE.timestamp,"
