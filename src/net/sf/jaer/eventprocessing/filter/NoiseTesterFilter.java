@@ -26,6 +26,7 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.io.BufferedWriter;
@@ -66,6 +67,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
+import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
@@ -87,6 +89,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private FilterChain chain;
 
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
+    protected boolean photoreceptorNoiseSimulation = getBoolean("photoreceptorNoiseSimulation", true);
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
     private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
     private float leakJitterFraction = getFloat("leakJitterFraction", 0.1f); // fraction of interval to jitter leak events
@@ -107,8 +110,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
     private File csvFile = null;
     private BufferedWriter csvWriter = null;
+    private int csvNumEventsWritten=0;
     private int[][] timestampImage = null; // image of last event timestamps
     private int[][] lastPolMap;
+    private float[][] photoreceptorNoiseArray; // see https://github.com/SensorsINI/v2e/blob/565f6991daabbe0ad79d68b50d084d5dc82d6426/v2ecore/emulator_utils.py#L177
 
     /**
      * Chip dimensions in pixels MINUS ONE, set in initFilter()
@@ -142,13 +147,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     final float[] NOISE_COLOR = {1f, 0, 0, 1}, SIG_COLOR = {0, 1f, 0, 1};
     final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
 
-    private boolean outputTrainingData = false;
+    private boolean outputTrainingData = getBoolean("outputTrainingData",false);
     private boolean recordPureNoise = false;
     private boolean outputFilterStatistic = false;
 
     private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
-
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
             fnList = new ArrayList(LIST_LENGTH),
@@ -187,14 +191,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String out = "5. Output";
         String noise = "0. Noise";
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
+        setPropertyTooltip(noise, "photoreceptorNoiseSimulation", "<html>Generate shot noise from simulated bandlimited photoreceptor noise.<p>The <i>shotNoiseRateHz</i> will only be a guide to the actual generated noise rate. ");
         setPropertyTooltip(noise, "noiseRateCoVDecades", "Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array");
         setPropertyTooltip(noise, "leakJitterFraction", "Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution");
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
-        setPropertyTooltip(out, "closeCsvFile", "Closes the output spreadsheet data file.");
-        setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see " + out + " section).");
-        setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists)");
+        setPropertyTooltip(out, "closeCsvFile", "Closes the output CSV spreadsheet data file.");
+        setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
+        setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists). Information written determined by Output switches.");
         setPropertyTooltip(out, "outputTrainingData", "Output data for training MLP.");
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
         setPropertyTooltip(out, "outputFilterStatistic", "Output analyzable data of a filter.");
@@ -565,7 +570,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         }
                         timestampImage[x][y] = ts;
                         lastPolMap[x][y] = type;
-
+                        csvNumEventsWritten++;
                     } catch (IOException e) {
                         doCloseCsvFile();
                     }
@@ -1047,7 +1052,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         shotOffThresholdProb = (float) (0.5f * (poissonDtUs * 1e-6f * npix) * shotNoiseRateHz); // bounds for sampling Poisson noise, factor 0.5 so total rate is shotNoiseRateHz
         shotOnThresholdProb = (float) (1 - shotOffThresholdProb); // for shot noise sample both sides, for leak events just generate ON events
-        leakOnThresholdProb = (float) ((poissonDtUs * 1e-6f * npix) * leakNoiseRateHz); // bounds for samppling Poisson noise
+        leakOnThresholdProb = (float) ((poissonDtUs * 1e-6f * npix) * leakNoiseRateHz); // bounds for sampling Poisson noise
     }
 
     @Override
@@ -1080,6 +1085,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         timestampImage = new int[chip.getSizeX()][chip.getSizeY()];
         lastPolMap = new int[chip.getSizeX()][chip.getSizeY()];
+        photoreceptorNoiseArray = new float[chip.getSizeX()][chip.getSizeY()];
 
         timestampImage = new int[sx + 1][sy + 1];
         leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
@@ -1162,30 +1168,59 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         doOpenCsvFile();
     }
 
-    public void doCloseCsvFile() {
+    synchronized public void doCloseCsvFile() {
         if (csvFile != null) {
             try {
-                log.info("closing statistics output file" + csvFile);
+                log.fine("closing CSV output file" + csvFile);
                 csvWriter.close();
+                String m=String.format("closed CSV output file %s with %,d events", csvFile,csvNumEventsWritten);
+                showPlainMessageDialogInSwingThread(m, "CSV file closed");
+                showFolderInDesktop(csvFile);
+                log.info(m);
             } catch (IOException e) {
-                log.warning("could not close " + csvFile + ": caught " + e.toString());
+                log.warning("could not close CSV output file " + csvFile + ": caught " + e.toString());
             } finally {
                 csvFile = null;
                 csvWriter = null;
             }
         }
     }
+    
+    private void showFolderInDesktop(File file) {
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("Sorry, desktop operations are not supported");
+            return;
+        }
+        try {
+            Desktop desktop = Desktop.getDesktop();
+            if (file != null && file.exists()) {
+                desktop.open(file.getAbsoluteFile().getParentFile());
+            } else {
+                log.warning(String.format("File %s does not exist, cannot show folder for it",file));
+            }
+        } catch (Exception e) {
+            log.warning(e.toString());
+        }
+    }
 
-    public void doOpenCsvFile() {
+    synchronized public void doOpenCsvFile() {
+        csvNumEventsWritten=0;
         String fn = csvFileName + ".csv";
         csvFile = new File(fn);
+        boolean exists=csvFile.exists();
         log.info(String.format("opening %s for output", fn));
         try {
             csvWriter = new BufferedWriter(new FileWriter(csvFile, true));
-            if (!csvFile.exists()) { // write header
+            if (!exists) { // write header
                 log.info("file did not exist, so writing header");
-                csvWriter.write(String.format("TP,TN,FP,FN,TPR,TNR,BR,firstE.timestamp,"
+                if(outputTrainingData){
+                    log.info("writing header for MLPF training file");
+                    csvWriter.write(String.format("#MLPF training data\n# type, event.x, event.y, event.timestamp,signal/noise(1/0), nnbTimestamp(25*25), polString, packetFirstEventTimestamp\n"));
+                }else if(outputFilterStatistic){
+                    log.info("writing header for filter accuracy statistics file");
+                    csvWriter.write(String.format("TP,TN,FP,FN,TPR,TNR,BR,firstE.timestamp,"
                         + "inSignalRateHz,inNoiseRateHz,outSignalRateHz,outNoiseRateHz\n"));
+                }
             }
         } catch (IOException ex) {
             log.warning(String.format("could not open %s for output; caught %s", fn, ex.toString()));
@@ -1204,6 +1239,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public void setOutputTrainingData(boolean outputTrainingData) {
         this.outputTrainingData = outputTrainingData;
+        putBoolean("outputTrainingData", outputTrainingData);
     }
 
     /**
@@ -1981,10 +2017,85 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         for (final int[] arrayRow : lastPolMap) {
             for (int i = 0; i < arrayRow.length; i++) {
-                final boolean b=random.nextBoolean();
-                arrayRow[i] = b?1:-1;
+                final boolean b = random.nextBoolean();
+                arrayRow[i] = b ? 1 : -1;
             }
         }
+    }
+
+    /**
+     * @return the photoreceptorNoiseSimulation
+     */
+    public boolean isPhotoreceptorNoiseSimulation() {
+        return photoreceptorNoiseSimulation;
+    }
+
+    /**
+     * @param photoreceptorNoiseSimulation the photoreceptorNoiseSimulation to
+     * set
+     */
+    public void setPhotoreceptorNoiseSimulation(boolean photoreceptorNoiseSimulation) {
+        this.photoreceptorNoiseSimulation = photoreceptorNoiseSimulation;
+        putBoolean("photoreceptorNoiseSimulation", photoreceptorNoiseSimulation);
+    }
+
+    private float compute_vn_from_log_rate_per_hz(float thr, float x) {
+//        # y = log10(thr/Vn)
+//        # x = log10(Rn/f3db)
+//        # see the plot Fig. 3 from Graca, Rui, and Tobi Delbruck. 2021. “Unraveling the Paradox of Intensity-Dependent DVS Pixel Noise.” arXiv [eess.SY]. arXiv. http://arxiv.org/abs/2109.08640.
+//        # the fit is computed in media/noise_event_rate_simulation.xlsx spreadsheet
+        float y = (float) (-0.0026f * Math.pow(x, 3) - 0.036f * x * x - 0.1949f * x + 0.321f);//
+        float thr_per_vn = (float) Math.pow(y, 10);//  # to get thr/vn;
+        float vn = thr / thr_per_vn;//  # compute necessary vn to give us this noise rate per pixel at this pixel bandwidth
+        return vn;
+    }
+
+    private float compute_photoreceptor_noise_voltage(float shot_noise_rate_hz, float f3db, float sample_rate_hz, float pos_thr, float neg_thr, float sigma_thr) {
+//    """
+//     Computes the necessary photoreceptor noise voltage to result in observed shot noise rate at low light intensity.
+//     This computation relies on the known f3dB photoreceptor lowpass filter cutoff frequency and the known (nominal) event threshold.
+//     emulator.py injects Gaussian distributed noise to the photoreceptor that should in principle generate the desired shot noise events.
+//
+//     See the file media/noise_event_rate_simulation.xlsx for the simulation data and curve fit.
+//
+//    Parameters
+//    -----------
+//     shot_noise_rate_hz: float
+//        the desired pixel shot noise rate in hz
+//     f3db: float
+//        the 1st-order IIR RC lowpass filter cutoff frequency in Hz
+//     sample_rate_hz: float
+//        the sample rate (up-sampled frame rate) before IIR lowpassing the noise
+//     pos_thr:float
+//        on threshold in ln units
+//     neg_thr:float
+//        off threshold in ln units. The on and off thresholds are averaged to obtain a single threshold.
+//     sigma_thr: float
+//        the std deviations of the thresholds
+//
+//    Returns
+//    -----------
+//    float
+//         Noise signal Gaussian RMS value in log_e units, to be added as Gaussian source directly to log photoreceptor output signal
+//    """
+
+        Random r = new Random();
+
+        float rate_per_bw = (shot_noise_rate_hz / f3db) / 2; // simulation data are on ON event rates, divide by 2 here to end up with correct total rate
+        if (rate_per_bw > 0.5) {
+//        logger.warning(f'shot noise rate per hz of bandwidth is larger than 0.1 (rate_hz={shot_noise_rate_hz} Hz, 3dB bandwidth={f3db} Hz)');
+        }
+        float x = (float) Math.log10(rate_per_bw);
+        if (x < -5.0) {
+            log.warning("desired noise rate of  is too low to accurately compute a threshold value");
+        } else if (x > 0.0) {
+            log.warning("desired noise rate of  is too large to accurately compute a threshold value");
+        }
+
+        float thr = (pos_thr + neg_thr) / 2;
+        float vn = compute_vn_from_log_rate_per_hz(thr, x);
+
+        return vn;
     }
 
 }
