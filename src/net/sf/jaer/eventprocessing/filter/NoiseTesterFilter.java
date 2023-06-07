@@ -572,6 +572,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         timestampImage[x][y] = ts;
                         lastPolMap[x][y] = type;
                         csvNumEventsWritten++;
+                        if(csvNumEventsWritten%100000==0){
+                            log.info(String.format("Wrote %,d events to %s",csvNumEventsWritten,csvFileName));
+                        }
                     } catch (IOException e) {
                         doCloseCsvFile();
                     }
