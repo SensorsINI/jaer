@@ -110,7 +110,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
     private File csvFile = null;
     private BufferedWriter csvWriter = null;
-    private int csvNumEventsWritten=0;
+    private int csvNumEventsWritten=0, csvSignalCount=0, csvNoiseCount=0;
     private int[][] timestampImage = null; // image of last event timestamps
     private int[][] lastPolMap;
     private float[][] photoreceptorNoiseArray; // see https://github.com/SensorsINI/v2e/blob/565f6991daabbe0ad79d68b50d084d5dc82d6426/v2ecore/emulator_utils.py#L177
@@ -559,19 +559,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             } else {
                                 csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
                                         type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 0 means noise
+                                csvNoiseCount++;
+                                csvNumEventsWritten++;
                             }
                         } else {
                             if (signalList.contains(event)) {
                                 csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
                                         type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 1 means signal
-                            } else {
+                                csvSignalCount++;
+                                csvNumEventsWritten++;
+                          } else {
                                 csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
                                         type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 0 means noise
-                            }
+                                csvNoiseCount++;
+                                csvNumEventsWritten++;
+                           }
                         }
                         timestampImage[x][y] = ts;
                         lastPolMap[x][y] = type;
-                        csvNumEventsWritten++;
                         if(csvNumEventsWritten%100000==0){
                             log.info(String.format("Wrote %,d events to %s",csvNumEventsWritten,csvFileName));
                         }
@@ -1177,7 +1182,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             try {
                 log.fine("closing CSV output file" + csvFile);
                 csvWriter.close();
-                String m=String.format("closed CSV output file %s with %,d events", csvFile,csvNumEventsWritten);
+                float snr=(float)csvSignalCount/(float)csvNoiseCount;
+                String m=String.format("closed CSV output file %s with %,d events (%,d signal events, %,d noise events, SNR=%.3g", csvFile,csvNumEventsWritten, csvSignalCount, csvNoiseCount, snr);
                 showPlainMessageDialogInSwingThread(m, "CSV file closed");
                 showFolderInDesktop(csvFile);
                 log.info(m);
@@ -1209,6 +1215,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     synchronized public void doOpenCsvFile() {
         csvNumEventsWritten=0;
+        csvSignalCount=0; csvNoiseCount=0;
         String fn = csvFileName + ".csv";
         csvFile = new File(fn);
         boolean exists=csvFile.exists();
