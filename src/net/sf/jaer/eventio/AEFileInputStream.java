@@ -1243,8 +1243,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
         @Override
         public String toString() {
-            return "NonMonotonicTimeException: position=" + position + " timestamp=" + timestamp + " lastTimestamp=" + lastTimestamp
-                    + " jumps backwards by " + (timestamp - lastTimestamp);
+            return String.format("NonMonotonicTimeException: position=%,d timestamp=%,d lastTimestamp=%,d jumps backwards by %,d",
+                    position, timestamp, lastTimestamp, (timestamp - lastTimestamp));
         }
     }
 

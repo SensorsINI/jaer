@@ -389,8 +389,7 @@ public class DavisRenderer extends AEChipRenderer {
 
             if (e.isSpecial()) {
                 incrementSpecialCount(1);
-                continue;
-
+//                continue; # don't skip them, render them to array with x and y address, maybe it is zero for external input events but maybe not in case of labeling events like noise
             }
 
             final int type = e.getType();
@@ -448,7 +447,7 @@ public class DavisRenderer extends AEChipRenderer {
 
             if (e.isSpecial()) {
                 incrementSpecialCount(1);
-                continue;
+//                continue; // don't skip rendering them
             }
 
             final int type = e.getType();

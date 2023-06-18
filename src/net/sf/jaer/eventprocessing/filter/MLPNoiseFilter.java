@@ -247,9 +247,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             if (e == null) {
                 continue;
             }
-            if (e.isSpecial()) {
-                continue;
-            }
+//            if (e.isSpecial()) {   // special events are labeled as noise events by v2e
+//                continue;
+//            }
             totalEventCount++;
             final int ts = e.timestamp;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
@@ -433,7 +433,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * Classifies events in the assembled batch
      *
      */
-    private void classifyEvents() {
+    synchronized private void classifyEvents() {
         // Create input tensor with channel first. Each event's input TI patch is a vector arranged according to for loop order above,
         // i.e. y last order, with y index changing fastest.
         tfInputFloatBuffer.flip();
@@ -706,16 +706,16 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         try {
             if (f.isDirectory()) {
                 log.info("loading \"serve\" graph from tensorflow SavedModelBundle folder " + f);
-                tfSavedModelBundle = SavedModelBundle.load(f.getCanonicalPath(), "serve");
-                tfExecutionGraph = tfSavedModelBundle.graph();
+                this.tfSavedModelBundle = SavedModelBundle.load(f.getCanonicalPath(), "serve");
+                this.tfExecutionGraph = tfSavedModelBundle.graph();
             } else {
                 log.info("loading network from file " + f);
                 byte[] graphDef = Files.readAllBytes(Paths.get(f.getAbsolutePath())); // "tensorflow_inception_graph.pb"
-                tfExecutionGraph = new Graph();
-                tfExecutionGraph.importGraphDef(graphDef);
+                this.tfExecutionGraph = new Graph();
+                this.tfExecutionGraph.importGraphDef(graphDef);
             }
 
-            Iterator<Operation> itr = tfExecutionGraph.operations();
+            Iterator<Operation> itr = this.tfExecutionGraph.operations();
             StringBuilder b = new StringBuilder("TensorFlow Graph: \n");
             int opnum = 0;
             ioLayers.clear();

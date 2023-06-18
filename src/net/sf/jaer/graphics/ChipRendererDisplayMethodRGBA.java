@@ -15,8 +15,6 @@ import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.nio.FloatBuffer;
 
-import org.bytedeco.javacpp.opencv_core.Mat;
-
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GL2ES1;
@@ -249,13 +247,14 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         // show special event count on left of array as white bar
         if (renderSpecialEvents && (renderer instanceof AEChipRenderer)) {
             final AEChipRenderer r = (AEChipRenderer) renderer;
-            final int n = r.getSpecialCount();
+            float n= (float)r.getSpecialCount(); // In June 2023 tobi add capability of v2e to label noise events as "special events"
             if (n > 0) {
+                n= (float)Math.sqrt(n); // a bit of comprression for high counts
                 gl.glColor3f(1, 1, 1);
                 gl.glLineWidth(SPECIAL_BAR_LINE_WIDTH);
                 gl.glBegin(GL.GL_LINE_STRIP);
                 gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y);
-                gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y + n);
+                gl.glVertex2f(SPECIAL_BAR_LOCATION_X, (float)SPECIAL_BAR_LOCATION_Y + n);
                 gl.glEnd();
                 getChipCanvas().checkGLError(gl, glu, "after rendering special events");
             }
@@ -270,7 +269,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             getChipCanvas().checkGLError(gl, glu, "after transforms and possibily allocating text renderer rendering special event count");
             textRenderer.begin3DRendering();
             textRenderer.setColor(1, 1, 1, 1);
-            final String s = String.format("%d special events", n);
+            final String s = String.format("%,d special events", r.getSpecialCount());
             final float textScale = TextRendererScale.draw3dScale(textRenderer, s, getChipCanvas().getScale(), chip.getSizeY(), .2f);
 
             textRenderer.draw3D(s, 0, 0, 0, textScale); // x,y,z, scale factor

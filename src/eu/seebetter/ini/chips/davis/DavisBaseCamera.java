@@ -447,12 +447,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             for (int i = 0; i < n; i++) { // TODO implement skipBy/subsampling, but without missing the frame start/end
                 // events and still delivering frames
                 final int data = datas[i];
-                
+
                 // IMU samples are handled using ApsDvsEvents by having a field in each ApsDvsEvent that holds a possible ImuSample.
                 // The ImuSample is newed for each new sample. This is not super efficient but only occurs at max 1kHz.
                 // It does mean that the IMUSamples will build up in the ApsDvsEvent objects (which are reused), so the IMUSample
                 // field is set to null when the event is not an ImuSample
-
                 if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {
                     if (IMUSample.extractSampleTypeCode(data) == 0) { // / only start getting an IMUSample at code 0,
                         // the first sample type
@@ -492,13 +491,17 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     final ApsDvsEvent e = nextApsDvsEvent(outItr); // imu sample possibly contained here set to null by this method
                     e.setReadoutType(ReadoutType.DVS);
                     e.setImuSample(null);
-                    if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
-//                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
-                        e.setSpecial(true);
-
-                        e.address = data;
-                        e.timestamp = (timestamps[i]);
-                    } else {
+//                    if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
+////                    if ((data & DavisChip.EVENT_TYPE_MASK) == DavisChip.EXTERNAL_INPUT_EVENT_ADDR) {
+//                        e.setSpecial(true);
+//
+//                        e.address = data;
+//                        e.timestamp = (timestamps[i]);
+//                    } else {
+                        if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
+                            e.setSpecial(true); // if special bit for DVS address (bit 10) is set, then mark this as spscial event (e.g. signal event for denoising labeling)
+                            // In June 2023 tobi add capability of v2e to label noise events as "special events"
+                        }
                         e.address = data;
                         e.timestamp = (timestamps[i]);
                         e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
@@ -507,7 +510,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
                         // autoshot triggering
                         autoshotEventsSinceLastShot++; // number DVS events captured here
-                    }
+//                    }
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_APS) {
                     // APS event
                     // We first calculate the positions, so we can put events such as StartOfFrame at their
@@ -539,7 +542,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         default:
                             if ((warningCount < WARNING_COUNT_MAX) || ((warningCount % DavisEventExtractor.WARNING_COUNT_DIVIDER) == 0)) {
                                 Chip.log.warning(
-                                        "Event with unknown readout cycle "+readout_type+" was read. You might be reading a file that had the deprecated type 2 C readout mode enabled. See https://inivation.github.io/inivation-docs/Software%20user%20guides/AEDAT_file_formats.html#dvs-or-aps");
+                                        "Event with unknown readout cycle " + readout_type + " was read. You might be reading a file that had the deprecated type 2 C readout mode enabled. See https://inivation.github.io/inivation-docs/Software%20user%20guides/AEDAT_file_formats.html#dvs-or-aps");
                             }
                             warningCount++;
                             break;
@@ -1058,7 +1061,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         private static final int FONTSIZE = 24;
         private static final int FRAME_COUNTER_BAR_LENGTH_FRAMES = 10;
-        private boolean checkedCameraPresent=false; // flag to check if camera present at least once
+        private boolean checkedCameraPresent = false; // flag to check if camera present at least once
 
 //        private TextRenderer exposureRenderer = null; // memory hog
         public DavisDisplayMethod(final DavisBaseCamera chip) {
@@ -1086,7 +1089,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     exposureTextRenderer.end3DRendering();
                 }
             }
-            checkedCameraPresent=true; // tobi: only check once
+            checkedCameraPresent = true; // tobi: only check once
 
             if ((getDavisConfig().getVideoControl() != null) && getDavisConfig().getVideoControl().isDisplayFrames()) {
                 final GL2 gl = drawable.getGL().getGL2();
@@ -1177,9 +1180,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glColor3f(1f, 0, 1);
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, 0);
-            final float gyroVectorScale=5;
-            x = ((gyroVectorScale*vectorScale * imuSampleRender.getGyroYawY() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
-            y = ((gyroVectorScale*vectorScale * imuSampleRender.getGyroTiltX() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
+            final float gyroVectorScale = 5;
+            x = ((gyroVectorScale * vectorScale * imuSampleRender.getGyroYawY() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
+            y = ((gyroVectorScale * vectorScale * imuSampleRender.getGyroTiltX() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
             gl.glVertex2f(x, y);
             gl.glEnd();
 
@@ -1190,7 +1193,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             imuTextRenderer.end3DRendering();
 
             // gyro roll
-            x = ((gyroVectorScale*vectorScale * imuSampleRender.getGyroRollZ() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
+            x = ((gyroVectorScale * vectorScale * imuSampleRender.getGyroRollZ() * getMinSize()) / 2) / IMUSample.getFullScaleGyroDegPerSec();
             y = chip.getSizeY() * .25f;
             gl.glBegin(GL.GL_LINES);
             gl.glVertex2f(0, y);
@@ -1568,8 +1571,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
-    
-        final public class IncreaseAPSExposure extends DavisMenuAction {
+
+    final public class IncreaseAPSExposure extends DavisMenuAction {
 
         public IncreaseAPSExposure() {
             super("Increase APS exposure",
@@ -1596,26 +1599,25 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
     }
 
-
     final public class IncreaseImageContrast extends DavisMenuAction {
 
         public IncreaseImageContrast() {
             super("Increase Image Contrast",
                     "<html>Increases APS image constrast",
                     "IncreaseImageContrast");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_MASK+ java.awt.event.InputEvent.CTRL_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_MASK + java.awt.event.InputEvent.CTRL_MASK));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
                 getDavisConfig().setUseAutoContrast(false);
-                float constrastNow=( getDavisConfig().getContrast());
-                float contrastNew = (exposureChangeFactor*constrastNow);
+                float constrastNow = (getDavisConfig().getContrast());
+                float contrastNew = (exposureChangeFactor * constrastNow);
                 getDavisConfig().setContrast(contrastNew);
             } catch (IllegalArgumentException ex) {
             }
-            EngineeringFormat engFmt=new EngineeringFormat();
+            EngineeringFormat engFmt = new EngineeringFormat();
 
             final String s = "Increased constrast to " + engFmt.format(getDavisConfig().getContrast());
             log.info(s);
@@ -1623,26 +1625,26 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
-    
-        final public class DecreaseImageContrast extends DavisMenuAction {
+
+    final public class DecreaseImageContrast extends DavisMenuAction {
 
         public DecreaseImageContrast() {
             super("Decrease Image Contrast",
                     "<html>Decreases APS image constrast",
                     "DecreaseImageContrast");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_MASK+ java.awt.event.InputEvent.CTRL_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_MASK + java.awt.event.InputEvent.CTRL_MASK));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             try {
                 getDavisConfig().setUseAutoContrast(false);
-                float constrastNow=( getDavisConfig().getContrast());
-                float contrastNew = (constrastNow/exposureChangeFactor);
+                float constrastNow = (getDavisConfig().getContrast());
+                float contrastNew = (constrastNow / exposureChangeFactor);
                 getDavisConfig().setContrast(contrastNew);
             } catch (IllegalArgumentException ex) {
             }
-            EngineeringFormat engFmt=new EngineeringFormat();
+            EngineeringFormat engFmt = new EngineeringFormat();
 
             final String s = "Decreased constrast to " + engFmt.format(getDavisConfig().getContrast());
             log.info(s);
@@ -1650,7 +1652,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             putValue(Action.SELECTED_KEY, true);
         }
     }
-
 
     /**
      * Adds event capture/display option

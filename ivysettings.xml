@@ -18,7 +18,7 @@
 -->
 <ivysettings>
     <settings defaultResolver="default"/>
-    <credentials host="SERVER" realm="Artifactory Realm" username="USER" passwd="PASSWORD" />
+    <!--<credentials host="SERVER" realm="Artifactory Realm" username="USER" passwd="PASSWORD" />-->
     <include url="${ivy.default.settings.dir}/ivysettings-public.xml"/>
     <include url="${ivy.default.settings.dir}/ivysettings-shared.xml"/>
     <include url="${ivy.default.settings.dir}/ivysettings-local.xml"/>
