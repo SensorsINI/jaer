@@ -78,7 +78,11 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "VgMfb", 0, 0,
 			"Gate voltage of the photoreceptor feedback transistor."));
+<<<<<<< HEAD
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "VCascPr", 1, 0,
+=======
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "VgCascPr", 1, 0,
+>>>>>>> 1f8fdb3aa (started scidvs)
 			"Gate voltage of Photoreceptor feedback amplifier cascode transistor."));
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 0, "on-chip column-parallel APS ADC upper conversion limit"));
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 0, "on-chip column-parallel APS ADC ADC lower limit"));
@@ -101,9 +105,15 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 		SciDVSConfig.addAIPot(ipots, this, "ColSelLowBn,20,n,normal,Column arbiter request pull-down");
 		SciDVSConfig.addAIPot(ipots, this, "DACBufBp,21,p,normal,Row request pull up");
 		SciDVSConfig.addAIPot(ipots, this, "ReadoutBufBP,22,p,normal,APS readout OTA follower bias");
+<<<<<<< HEAD
 		SciDVSConfig.addAIPot(ipots, this, "AEPuYBp,23,p,normal,AER column pullup");
 		SciDVSConfig.addAIPot(ipots, this, "AEPdYBn,24,n,normal,Request encoder pulldown static current");
 		SciDVSConfig.addAIPot(ipots, this, "AEPuXBp,25,p,normal,AER row pullup");
+=======
+		SciDVSConfig.addAIPot(ipots, this, "AEPdBn,23,n,normal,Request encoder pulldown static current");
+		SciDVSConfig.addAIPot(ipots, this, "AEPuXBp,24,p,normal,AER column pullup");
+		SciDVSConfig.addAIPot(ipots, this, "AEPuYBp,25,p,normal,AER row pullup");
+>>>>>>> 1f8fdb3aa (started scidvs)
 
 
         pr = SciDVSConfig.addAIPot(ipots, this, "PrBp,30,p,normal,Photoreceptor bias current");
@@ -115,8 +125,13 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         setPotArray(ipots);
 
         // shifted sources
+<<<<<<< HEAD
         ssp.setAddress(35);
         ssn.setAddress(36);
+=======
+        ssp.setAddress(36);
+        ssn.setAddress(35);
+>>>>>>> 1f8fdb3aa (started scidvs)
 
         ssBiases[0] = ssp;
         ssBiases[1] = ssn;
@@ -141,7 +156,11 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         chipControl.add(new SPIConfigBit("Chip.UseAOut", "Turn the pads for the analog MUX outputs on.", CypressFX3.FPGA_CHIPBIAS, (short) 141, false, this));
         chipControl.add(new SPIConfigBit("Chip.ResetShorted", "Keep all pixels in a group of 2x2 in reset state but one.", CypressFX3.FPGA_CHIPBIAS, (short) 142, false, this));
         chipControl.add(new SPIConfigBit("Chip.nDisableMirr", "Activate pre-amplifier.", CypressFX3.FPGA_CHIPBIAS, (short) 143, false, this));
+<<<<<<< HEAD
         chipControl.add(new SPIConfigBit("Chip.ShortGroup", "Short-circuit pxels in groups of 2x2.", CypressFX3.FPGA_CHIPBIAS, (short) 144, true, this));
+=======
+        chipControl.add(new SPIConfigBit("Chip.nShortGroup", "Short-circuit pixels in groups of 2x2.", CypressFX3.FPGA_CHIPBIAS, (short) 144, true, this));
+>>>>>>> 1f8fdb3aa (started scidvs)
 		chipControl.add(new SPIConfigBit("Chip.SelectGrayCounter", "Select internal gray counter, if disabled, external gray code is used.", CypressFX3.FPGA_CHIPBIAS, (short) 145, true, this));
 		chipControl.add(new SPIConfigBit("Chip.TestADC", "Pass ADC Test Voltage to internal ADC instead of pixel voltage.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
 
