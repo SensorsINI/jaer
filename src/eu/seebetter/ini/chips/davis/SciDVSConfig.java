@@ -126,12 +126,17 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 
         // shifted sources
 <<<<<<< HEAD
+<<<<<<< HEAD
         ssp.setAddress(35);
         ssn.setAddress(36);
 =======
         ssp.setAddress(36);
         ssn.setAddress(35);
 >>>>>>> 1f8fdb3aa (started scidvs)
+=======
+        ssp.setAddress(35);
+        ssn.setAddress(36);
+>>>>>>> c62848e98 (changed Chip.nShortGroup to Chip.ShortGroup)
 
         ssBiases[0] = ssp;
         ssBiases[1] = ssn;
@@ -157,10 +162,14 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         chipControl.add(new SPIConfigBit("Chip.ResetShorted", "Keep all pixels in a group of 2x2 in reset state but one.", CypressFX3.FPGA_CHIPBIAS, (short) 142, false, this));
         chipControl.add(new SPIConfigBit("Chip.nDisableMirr", "Activate pre-amplifier.", CypressFX3.FPGA_CHIPBIAS, (short) 143, false, this));
 <<<<<<< HEAD
+<<<<<<< HEAD
         chipControl.add(new SPIConfigBit("Chip.ShortGroup", "Short-circuit pxels in groups of 2x2.", CypressFX3.FPGA_CHIPBIAS, (short) 144, true, this));
 =======
         chipControl.add(new SPIConfigBit("Chip.nShortGroup", "Short-circuit pixels in groups of 2x2.", CypressFX3.FPGA_CHIPBIAS, (short) 144, true, this));
 >>>>>>> 1f8fdb3aa (started scidvs)
+=======
+        chipControl.add(new SPIConfigBit("Chip.ShortGroup", "Short-circuit pxels in groups of 2x2.", CypressFX3.FPGA_CHIPBIAS, (short) 144, true, this));
+>>>>>>> c62848e98 (changed Chip.nShortGroup to Chip.ShortGroup)
 		chipControl.add(new SPIConfigBit("Chip.SelectGrayCounter", "Select internal gray counter, if disabled, external gray code is used.", CypressFX3.FPGA_CHIPBIAS, (short) 145, true, this));
 		chipControl.add(new SPIConfigBit("Chip.TestADC", "Pass ADC Test Voltage to internal ADC instead of pixel voltage.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
 
