@@ -204,7 +204,7 @@
                 <entry key="SciDVS.Chip.TypeNCalibNeuron" value="true"/>
                 <entry key="SciDVS.Chip.UseAOut" value="true"/>
                 <entry key="SciDVS.Chip.nDisableMirr" value="false"/>
-                <entry key="SciDVS.Chip.nShortGroup" value="true"/>
+                <entry key="SciDVS.Chip.ShortGroup" value="false"/>
                 <entry key="SciDVS.DVS.AckDelayColumn" value="0"/>
                 <entry key="SciDVS.DVS.AckDelayRow" value="4"/>
                 <entry key="SciDVS.DVS.AckExtensionColumn" value="0"/>
