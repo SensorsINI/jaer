@@ -85,6 +85,7 @@ import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
+import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
@@ -311,7 +312,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         DAVIS240B.class.getName(),
         DAVIS240C.class.getName(),
         CochleaAMS1c.class.getName(),
-        Davis640.class.getName(),};
+        Davis640.class.getName(),
+        DVXplorer.class.getName()
+    };
     /**
      * The class name of the aeChipClass
      */
@@ -346,7 +349,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask", 0);
     private AePlayerAdvancedControlsPanel playerControls;
     private static boolean showedSkippedPacketsRenderingWarning = false;
-
+    
     /**
      * Constructs a new AEViewer using a default AEChip.
      *
@@ -1791,6 +1794,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         return emptyRawPacket;
                     }
                     openAEMonitor();
+                    
                     if ((aemon == null) || !aemon.isOpen()) {
                         statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
 
