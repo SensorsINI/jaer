@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 haoxiang.
+ * Copyright (C) 2023 Pei Haoxiang.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,7 +23,6 @@ import java.beans.PropertyChangeListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
-import java.util.Arrays;
 import org.usb4java.Device;
 import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
@@ -31,13 +30,18 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
- * Adds functionality of DVXplorer sensors to based CypressFX3 class. The
- * key method is translateEvents that parses
+ * Adds functionality of DVXplorer sensors to based CypressFX3 class. 
+ * The key method is translateEvents that parses
  * the data from the sensor to construct jAER raw events.
  * 
- * @author haoxiang
+ * @author Pei Haoxiang
  */
 public class DVXplorerFX3HardwareInterface extends CypressFX3 {
+    
+    /** The USB product ID of this device */
+    static public final short PID_FX3 = (short) 0x8419;
+    static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 8;
+    static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
 
     protected DVXplorerFX3HardwareInterface(final Device device) {
         super(device);
@@ -49,20 +53,35 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
         
         // Configurate DVXplorer chip
         if (getChip() != null) {
-            DVXplorer chip = (DVXplorer)getChip();
+            DVXplorer chip = (DVXplorer) getChip();
 			chip.dvxConfig();
 		}
 	}
-
-    /** The USB product ID of this device */
-    static public final short PID_DVXPLORER_FX3 = (short) 0x8419;
-    static public final int REQUIRED_FIRMWARE_VERSION_DVXPLORER_FX3 = 8;
-    static public final int REQUIRED_LOGIC_REVISION_DVXPLORER_FX3 = 18;
     
-    private boolean updatedRealClockValues = false;
-    public float logicClockFreq = 90.0f;
-    public float adcClockFreq = 30.0f;
-    public float usbClockFreq = 30.0f;
+    @Override
+    synchronized protected void enableINEndpoint() throws HardwareInterfaceException {
+        if (deviceHandle == null) {
+			CypressFX3.log.warning("CypressFX3.enableINEndpoint(): null USBIO device");
+			return;
+		}
+        
+        if (getChip() != null) {
+            DVXplorer chip = (DVXplorer) getChip();
+			chip.dvxDataStart();
+		}
+        
+        inEndpointEnabled = true;
+    }
+    
+    @Override
+    synchronized protected void disableINEndpoint() {
+        if (getChip() != null) {
+            DVXplorer chip = (DVXplorer) getChip();
+            chip.dvxDataStop();
+        }
+
+		inEndpointEnabled = false;
+    }
 
     /**
      * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -78,68 +97,12 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
         HardwareInterfaceException.clearException();
     }
 
-    private void getRealClockValues() {
-        try {
-            final int logicFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 3);
-            final int adcFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 4);
-            final int usbFreq = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 5);
-            final int clockDeviation = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 6);
-
-            logicClockFreq = (float) (logicFreq * (clockDeviation / 1000.0));
-            adcClockFreq = (float) (adcFreq * (clockDeviation / 1000.0));
-            usbClockFreq = (float) (usbFreq * (clockDeviation / 1000.0));
-        }
-        catch (final HardwareInterfaceException e) {
-            // No clock update on failure.
-        }
-
-        CypressFX3.log
-            .info(String.format("Device clock frequencies - Logic: %f, ADC: %f, USB: %f.", logicClockFreq, adcClockFreq, usbClockFreq));
-    }
-
-    @Override
-    protected int adjustHWParam(final short moduleAddr, final short paramAddr, final int param) {
-        if (!updatedRealClockValues) {
-            getRealClockValues();
-            updatedRealClockValues = true;
-        }
-
-        if ((moduleAddr == CypressFX3.FPGA_APS) && (paramAddr == 12)) {
-            // Exposure multiplied by clock.
-            return (int) (param * adcClockFreq);
-        }
-
-        if ((moduleAddr == CypressFX3.FPGA_APS) && (paramAddr == 13)) {
-            // FrameInterval multiplied by clock.
-            return (int) (param * adcClockFreq);
-        }
-
-        if ((moduleAddr == CypressFX3.FPGA_USB) && (paramAddr == 1)) {
-            // Early packet delay is 125µs slices on host, but in cycles
-            // @ USB_CLOCK_FREQ on FPGA, so we must multiply here.
-            return (int) (param * (125.0f * usbClockFreq));
-        }
-
-        // No change by default.
-        return (param);
-    }
-
     /**
      * This reader understands the format of raw USB data and translates to the
      * AEPacketRaw
      */
     public class RetinaAEReader extends CypressFX3.AEReader implements PropertyChangeListener {
         private final int chipID;
-
-        // aedat4 format
-        public static final int VALID_MARK_SHIFT = 0;
-        public static final int VALID_MARK_MASK = 0x00000001;
-        public static final int POLARITY_SHIFT = 1;
-        public static final int POLARITY_MASK = 0x00000001;
-        public static final int POLARITY_Y_ADDR_SHIFT = 2;
-        public static final int POLARITY_Y_ADDR_MASK = 0x00007FFF;
-        public static final int POLARITY_X_ADDR_SHIFT = 17;
-        public static final int POLARITY_X_ADDR_MASK = 0x00007FFF;
 
         // aedat2 format
         public static final int AEDAT2_Y_ADDR_MASK = 0x000001FF;
@@ -167,20 +130,6 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
         private final boolean dvsFlipX = true;
         private final boolean dvsFlipY = false;
 
-        private static final int APS_READOUT_TYPES_NUM = 2;
-        private static final int APS_READOUT_RESET = 0;
-        private static final int APS_READOUT_SIGNAL = 1;
-        private int apsCurrentReadoutType;
-        private int apsRGBPixelOffset;
-        private boolean apsRGBPixelOffsetDirection;
-        private final short[] apsCountX;
-        private final short[] apsCountY;
-        private final boolean apsInvertXY;
-        private final boolean apsFlipX;
-        private final boolean apsFlipY;
-        private final int apsSizeX;
-        private final int apsSizeY;
-
         private static final int IMU_DATA_LENGTH = 7;
         private static final int IMU_TYPE_TEMP = 0x01;
         private static final int IMU_TYPE_GYRO = 0x02;
@@ -204,40 +153,15 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
 
-            if (getPID() == PID_DVXPLORER_FX3) {
-                checkFirmwareLogic(REQUIRED_FIRMWARE_VERSION_DVXPLORER_FX3,
-                    REQUIRED_LOGIC_REVISION_DVXPLORER_FX3);
-            }
-            else if (getPID() == DAViSFX3HardwareInterface.PID_FX2) {
-                // FX2 firmware now emulates the same interface as FX3 firmware, so we support it here too.
-                checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX2,
-                    DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX2);
-            }
-            else {
-                checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX3,
-                    DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX3);
-            }
-
-            apsCountX = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
-            apsCountY = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
-
-            initFrame();
+            checkFirmwareLogic(REQUIRED_FIRMWARE_VERSION_FX3, REQUIRED_LOGIC_REVISION_FX3);
 
             imuEvents = new short[RetinaAEReader.IMU_DATA_LENGTH];
 
             chipID = spiConfigReceive(CypressFX3.FPGA_SYSINFO, (short) 1);
-
-            apsSizeX = spiConfigReceive(CypressFX3.FPGA_APS, (short) 0);
-            apsSizeY = spiConfigReceive(CypressFX3.FPGA_APS, (short) 1);
-
-            final int chipAPSStreamStart = spiConfigReceive(CypressFX3.FPGA_APS, (short) 2);
-            apsInvertXY = (chipAPSStreamStart & 0x04) != 0;
-            apsFlipX = (chipAPSStreamStart & 0x02) != 0;
-            apsFlipY = (chipAPSStreamStart & 0x01) != 0;
-
+            
             dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
             dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
-
+            
             dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
 
             final int imuOrientation = spiConfigReceive(CypressFX3.FPGA_IMU, (short) 1);
@@ -250,15 +174,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 
         private void checkMonotonicTimestamp() {
             if (currentTimestamp <= lastTimestamp) {
-                CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp=" + lastTimestamp
-                        + ", currentTimestamp=" + currentTimestamp + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
+                CypressFX3.log.severe(String.format("%s: non strictly-monotonic timestamp detected: lastTimestamp=%d, currentTimestamp=%d, difference=%d.",
+                    toString(), lastTimestamp, currentTimestamp, (lastTimestamp - currentTimestamp)));
             }
-        }
-
-        private void initFrame() {
-            apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
-            Arrays.fill(apsCountX, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
-            Arrays.fill(apsCountY, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
         }
 
         private boolean ensureCapacity(final AEPacketRaw buffer, final int capacity) {
@@ -281,7 +199,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 
                 // Truncate off any extra partial event.
                 if ((b.limit() & 0x01) != 0) {
-                    CypressFX3.log.severe(b.limit() + " bytes received via USB, which is not a multiple of two.");
+                    CypressFX3.log.severe(String.format("%d bytes received via USB, which is not a multiple of two.", b.limit()));
                     b.limit(b.limit() & ~0x01);
                 }
 
@@ -299,7 +217,8 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
                         currentTimestamp = wrapAdd + (event & 0x7FFF);
 
                         // Check monotonicity of timestamps.
-                        checkMonotonicTimestamp();
+                        // There are some bugs here. Temporarily, I comment it to avoid its impact on performance, but these bugs need to be fixed.
+                        // checkMonotonicTimestamp();
                     }
                     else {
                         // Look at the code, to determine event and data type
@@ -321,8 +240,9 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 
                                         updateTimestampMasterStatus();
 
-                                        CypressFX3.log.info(String.format("Timestamp reset event received on %s at System.currentTimeMillis() = %d", super.toString(),
-                                            System.currentTimeMillis()));
+                                        CypressFX3.log.info(String.format("Timestamp reset event received on %s at System.currentTimeMillis() = %d",
+                                            super.toString(), System.currentTimeMillis()));
+                                        
                                         break;
 
                                     case 5: // IMU Start (6 axes)
@@ -407,13 +327,6 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 
                                     buffer.getTimestamps()[eventCounter] = currentTimestamp;
 
-                                    // aedat4 format
-//                                    final int valid_bits = ((1 & VALID_MARK_MASK) << VALID_MARK_SHIFT);
-//                                    final int polarity_bits = ((polarity & POLARITY_MASK) << POLARITY_SHIFT);
-//                                    final int y_addr_bits = ((yAddr & POLARITY_Y_ADDR_MASK) << POLARITY_Y_ADDR_SHIFT);
-//                                    final int x_addr_bits = ((xAddr & POLARITY_X_ADDR_MASK) << POLARITY_X_ADDR_SHIFT);
-//                                    final int bits32 = valid_bits | polarity_bits | y_addr_bits | x_addr_bits;
-
                                     // aedat2 format
                                     final int y_addr_bits = ((yAddr & AEDAT2_Y_ADDR_MASK) << AEDAT2_Y_ADDR_SHIFT);
                                     final int x_addr_bits = ((xAddr & AEDAT2_X_ADDR_MASK) << AEDAT2_X_ADDR_SHIFT);
@@ -437,11 +350,11 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 
                                 // Check range conformity.
                                 if (group1Address >= dvsSizeY) {
-                                    CypressFX3.log.severe("DVS: Group1 Y address out of range (0-" + (dvsSizeY - 1) + "): " + group1Address + ".");
+                                    CypressFX3.log.severe(String.format("DVS: Group1 Y address out of range (0-%d): %d.", (dvsSizeY - 1), group1Address));
                                     break;  // Skip invalid G1 Y address (don't update lastYs).
                                 }
                                 if (group2Address >= dvsSizeY) {
-                                    CypressFX3.log.severe("DVS: Group2 Y address out of range (0-" + (dvsSizeY - 1) + "): " + group2Address + ".");
+                                    CypressFX3.log.severe(String.format("DVS: Group2 Y address out of range (0-%d): %d.", (dvsSizeY - 1), group2Address));
                                     break;  // Skip invalid G2 Y address (don't update lastYs).
                                 }
 
@@ -614,7 +527,7 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 
                                 // handleTimestampWrapNewLogic
                                 final long TS_WRAP_ADD = 0x8000;
-                                long wrapJump = (TS_WRAP_ADD * (long)data);
+                                long wrapJump = TS_WRAP_ADD * (long)data;
                                 long wrapSum = (long)wrapAdd + wrapJump;
 
                                 if (wrapSum > (long)Integer.MAX_VALUE) {

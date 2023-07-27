@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 haoxiang.
+ * Copyright (C) 2023 Pei Haoxiang.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -52,8 +52,9 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.util.TextRendererScale;
 
 /**
- * Describes DVXplorer and its event extractor and configuration.
- * @author haoxiang
+ * Describe DVXplorer and its event extractor and configuration.
+ * 
+ * @author Pei Haoxiang
  */
 @Description("DVXplorer")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
@@ -85,7 +86,7 @@ public class DVXplorer extends AETemporalConstastRetina {
     public short imuFlipZ = 0;
     
     /**
-     * Creates a new instance of DVXplorer. 
+     * Create a new instance of DVXplorer.
      */
     public DVXplorer() {
         setName("DVXplorer");
@@ -236,28 +237,32 @@ public class DVXplorer extends AETemporalConstastRetina {
      * Configurate DVXplorer.
      */
     public void dvxConfig() {
-        cypressfx3 = (CypressFX3)this.getHardwareInterface();
+        cypressfx3 = (CypressFX3) this.getHardwareInterface();
         
+        // Refer to libcaer for details.
         dvxReceiveInitParams(cypressfx3);
         dvxSendOpeningConfig(cypressfx3);
         dvxSendDefaultConfig(cypressfx3);
-        dvxDataStart(cypressfx3);
     }
     
+    /**
+     * Refer to libcaer dvxplorer.c dvXplorerOpen() for details.
+     * 
+     * @param cypressfx3 CypressFX3 interface
+     */
     public void dvxReceiveInitParams(CypressFX3 cypressfx3) {
-        final int logicVersion = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_VERSION);
-        final int chipId = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_CHIP_IDENTIFIER);
-        final int deviceIsMaster = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_DEVICE_IS_MASTER);
-
         final int logicClock = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_CLOCK);
         final int usbClock = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_USB_CLOCK);
         final int clockDeviationFactor = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_CLOCK_DEVIATION);
-
         logicClockActual = (double)logicClock * (double)clockDeviationFactor / 1000.0;
         usbClockActual = (double)usbClock * (double)clockDeviationFactor / 1000.0;
+        DVXplorer.log.info(String.format("Device clock frequencies - Logic: %f, USB: %f.", logicClockActual, usbClockActual));
 
         sizeX = (short)spiConfigReceive(cypressfx3, DVX_DVS, DVX_DVS_SIZE_COLUMNS);
         sizeY = (short)spiConfigReceive(cypressfx3, DVX_DVS, DVX_DVS_SIZE_ROWS);
+        setSizeX(sizeX);
+        setSizeY(sizeY);
+        
         final int dvsOrientation = spiConfigReceive(cypressfx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
         dvsInvertXY = (short)(dvsOrientation & 0x04);
         dvsFlipX = (short)(dvsOrientation & 0x02);
@@ -269,6 +274,11 @@ public class DVXplorer extends AETemporalConstastRetina {
         imuFlipZ = (short)(imuOrientation & 0x01);
     }
     
+    /**
+     * Refer to libcaer dvxplorer.c dvXplorerOpen() for details.
+     * 
+     * @param cypressfx3 CypressFX3 interface
+     */
     public void dvxSendOpeningConfig(CypressFX3 cypressfx3) {
         if (!isMipiCX3Device) {
             // Initialize Samsung DVS chip.
@@ -276,7 +286,7 @@ public class DVXplorer extends AETemporalConstastRetina {
 
             // Wait 10ms for DVS to start.
             try {
-                Thread.currentThread().sleep(10);
+                Thread.sleep(10);
             }
             catch (InterruptedException e) {
                 DVXplorer.log.warning("DVXplorer didn't wait for DVS to start.");
@@ -323,6 +333,11 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
     }
     
+    /**
+     * Refer to libcaer dvxplorer.c dvXplorerSendDefaultConfig() for details.
+     * 
+     * @param cypressfx3 CypressFX3 interface
+     */
     public void dvxSendDefaultConfig(CypressFX3 cypressfx3) {
         if (!isMipiCX3Device) {
             // If not MipiCX3 device, set DVX_MUX
@@ -344,16 +359,16 @@ public class DVXplorer extends AETemporalConstastRetina {
             spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_FALLING_EDGES, 0);
             spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSES, 1);
             spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSE_POLARITY, 1);
-            int timeCC = (int)(10 * logicClockActual);
-            spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSE_LENGTH, U32T(timeCC));
+            double timeCC = 10 * logicClockActual;
+            spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSE_LENGTH, (int)timeCC);
 
             if (extInputHasGenerator) {
                 // If not MipiCX3 device and external input has generator, disable generator by default
                 spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_GENERATOR, 0);
             }
 
-            int delayCC = (int)(8 * 125.0 * usbClockActual);
-            spiConfigSendAndCheck(cypressfx3, DVX_USB, DVX_USB_EARLY_PACKET_DELAY, U32T(delayCC));
+            double delayCC = 8 * 125.0F * usbClockActual;
+            spiConfigSendAndCheck(cypressfx3, DVX_USB, DVX_USB_EARLY_PACKET_DELAY, (int)delayCC);
         }
             
         // DVX_DVS_CHIP_BIAS_SIMPLE_DEFAULT
@@ -495,7 +510,14 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_RESTART, 2);
     }
     
-    public void dvxDataStart(CypressFX3 cypressfx3) {
+    /**
+     * Refer to libcaer dvxplorer.c dvXplorerDataStart() for details.
+     * 
+     * @param cypressfx3 CypressFX3 interface
+     */
+    public void dvxDataStart() {
+        cypressfx3 = (CypressFX3) this.getHardwareInterface();
+        
         // Ensure no data is left over from previous runs, if the camera
         // wasn't shut-down properly. First ensure it is shut down completely.
         spiConfigSendAndCheck(cypressfx3, DVX_DVS, DVX_DVS_RUN, 0);
@@ -512,7 +534,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         
         // Then wait 10ms for FPGA device side buffers to clear.
         try {
-            Thread.currentThread().sleep(10);
+            Thread.sleep(10);
         }
         catch (InterruptedException e) {
             DVXplorer.log.warning("DVXplorer didn't wait for FPGA device side buffers to clear.");
@@ -526,7 +548,7 @@ public class DVXplorer extends AETemporalConstastRetina {
 
             // Wait 50 ms for data transfer to be ready.
             try {
-                Thread.currentThread().sleep(50);
+                Thread.sleep(50);
             }
             catch (InterruptedException e) {
                 DVXplorer.log.warning("DVXplorer didn't wait for data transfer to be ready.");
@@ -541,9 +563,36 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 1);
 
         // Enable streaming from DVS chip.
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_RESET, 0x01);
+        spiConfigSend(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_RESET, 0x01);
         spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_RESET, 0x00);
         spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(2));
+    }
+    
+    /**
+     * Refer to libcaer dvxplorer.c dvXplorerDataStop() and dvXplorerClose() for details.
+     */
+    public void dvxDataStop() {
+        cypressfx3 = (CypressFX3) this.getHardwareInterface();
+        
+        // Disable streaming from DVS chip.
+		spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(0));
+        
+        // Disable data transfer on USB end-point 2. Reverse order of enabling.
+        spiConfigSendAndCheck(cypressfx3, DVX_DVS, DVX_DVS_RUN, 0);
+        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 0);
+        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 0);
+        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
+        spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 0);
+        
+        if (!isMipiCX3Device) {
+            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_RUN, 0);
+            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 0);
+            spiConfigSendAndCheck(cypressfx3, DVX_USB, DVX_USB_RUN, 0);
+        }
+        
+        if (!isMipiCX3Device) {
+            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_RUN_CHIP, 0); // Put DVS in reset.
+        }
     }
     
     public void dvxConfigSet(CypressFX3 cypressfx3, final short moduleAddr, final short paramAddr, int param) {
@@ -569,13 +618,19 @@ public class DVXplorer extends AETemporalConstastRetina {
                     case DVX_DVS_CHIP_AREA_BLOCKING_16:
                     case DVX_DVS_CHIP_AREA_BLOCKING_17:
                     case DVX_DVS_CHIP_AREA_BLOCKING_18:
-                    case DVX_DVS_CHIP_AREA_BLOCKING_19: {
+                    case DVX_DVS_CHIP_AREA_BLOCKING_19:
                         final int regAddr = REGISTER_DIGITAL_AREA_BLOCK + (int)(2 * (paramAddr - DVX_DVS_CHIP_AREA_BLOCKING_0));
                         spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(regAddr), U8T(param >>> 8));
                         spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(regAddr + 1), U8T(param));
                         break;
-                    }
-                }           
+                    default:
+                        DVXplorer.log.severe(String.format("DVXplorer dvxConfigSet unsupported param: moduleAddr = %x, paramAddr = %x", moduleAddr, paramAddr));
+                        break;
+                }
+                break;
+            default:
+                DVXplorer.log.severe(String.format("DVXplorer dvxConfigSet unsupported module: moduleAddr = %x", moduleAddr));
+                break;
         }
     }
     
@@ -602,19 +657,21 @@ public class DVXplorer extends AETemporalConstastRetina {
                     case DVX_DVS_CHIP_AREA_BLOCKING_16:
                     case DVX_DVS_CHIP_AREA_BLOCKING_17:
                     case DVX_DVS_CHIP_AREA_BLOCKING_18:
-                    case DVX_DVS_CHIP_AREA_BLOCKING_19: {
+                    case DVX_DVS_CHIP_AREA_BLOCKING_19:
                         final int regAddr = REGISTER_DIGITAL_AREA_BLOCK + (int)(2 * (paramAddr - DVX_DVS_CHIP_AREA_BLOCKING_0));
-                        int currVal = 0;
-                        int retVal = 0;
-                        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, U16T(regAddr));
-                        retVal = U32T(currVal << 8);
+                        int currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, U16T(regAddr));
+                        int retVal = currVal << 8;
                         currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, U16T(regAddr + 1));
                         retVal |= currVal;
                         return retVal;
-                    }
-                }           
+                    default:
+                        DVXplorer.log.severe(String.format("DVXplorer dvxConfigGet unsupported param: moduleAddr = %x, paramAddr = %x", moduleAddr, paramAddr));
+                        return -1;
+                }
+            default:
+                DVXplorer.log.severe(String.format("DVXplorer dvxConfigGet unsupported module: moduleAddr = %x", moduleAddr));
+                return -1;
         }
-        return -1;
     }
     
     public int spiConfigReceive(CypressFX3 cypressfx3, final short moduleAddr, final short paramAddr) {
@@ -643,23 +700,30 @@ public class DVXplorer extends AETemporalConstastRetina {
         spiConfigSend(cypressfx3, moduleAddr, paramAddr, param);
         final int ret = spiConfigReceive(cypressfx3, moduleAddr, paramAddr);
         if (ret != param) {
-            DVXplorer.log.severe(String.format("DVXplorer spi config wrong: moduleAddr = %x, paramAddr = %x, param = %x, ret = %x", moduleAddr, paramAddr, param, ret));
+            DVXplorer.log.severe(String.format("DVXplorer spi config checking error: moduleAddr = %x, paramAddr = %x, param = %x, ret = %x", moduleAddr, paramAddr, param, ret));
             return false;
         }
         return true;
     }
-  
-    public int U32T(int x) {
-        return (int)((long)x & 0x00000000FFFFFFFF);
-    }
     
-   
+    /**
+     * Convert int to unsigned 16 bits number. For parameter address conversion.
+     * 
+     * @param x input int number
+     * @return output short number
+     */
     public short U16T(int x) {
         return (short)(x & 0x0000FFFF);
     }
     
-    public short U8T(int x) {
-        return (short)(x & 0x000000FF);
+    /**
+     * Convert int to unsigned 8 bits number. For parameter conversion.
+     * 
+     * @param x input int number
+     * @return output int number (only 8 bits are valid, the other bits are 0)
+     */
+    public int U8T(int x) {
+        return x & 0x00FF;
     }
     
     @Override
@@ -677,27 +741,11 @@ public class DVXplorer extends AETemporalConstastRetina {
         getAeViewer().addMenu(dvxMenu);
     }
     
-    @Override
-    public void onDeregistration() {
-        super.onDeregistration();
-        if (getAeViewer() == null) {
-            return;
-        }
-    }
-    
     /**
-     * the event extractor for DVXplorer.
+     * The event extractor for DVXplorer.
      */
     public class DVXExtractor extends RetinaExtractor {
 
-        // aedat4 format
-//        final int POLARITY_SHIFT = 1;
-//        final int POLARITY_MASK = 0x00000001 << POLARITY_SHIFT;
-//        final int YSHIFT = 2;
-//        final int YMASK = 0x00007FFF << YSHIFT;
-//        final int XSHIFT = 17;
-//        final int XMASK = 0x00007FFF << XSHIFT;
-        
         // aedat2 format
         final int POLARITY_SHIFT = 11;
         final int POLARITY_MASK = 0x01 << POLARITY_SHIFT;
@@ -717,18 +765,18 @@ public class DVXplorer extends AETemporalConstastRetina {
         public DVXExtractor(DVXplorer chip) {
             super(chip);
             
-            setXmask(XMASK); // 10 bits for 640
+            setXmask(XMASK);
             setXshift((byte) XSHIFT);
-            setYmask(YMASK); // also 10 bits for 480
+            setYmask(YMASK);
             setYshift((byte) YSHIFT);
             setTypemask(1);
             setTypeshift((byte) 0);
             
-            boolean isFlipX = (boolean)(dvsFlipX > 0); // should be true
-            boolean isFlipY = (boolean)(dvsFlipY > 0); // should be false
+            boolean isFlipX = (boolean)(dvsFlipX > 0);
+            boolean isFlipY = (boolean)(dvsFlipY > 0);
             setFlipx(isFlipX);
             setFlipy(isFlipY);
-            setFliptype(false); // true or false? (haoxiang)
+            setFliptype(false);
         }
 
         /**
@@ -752,8 +800,6 @@ public class DVXplorer extends AETemporalConstastRetina {
             return out;
         }
         
-        private int printedSyncBitWarningCount = 3;
-
         /**
          * Extracts the meaning of the raw events. This form is used to supply
          * an output packet. This method is used for real time event filtering
@@ -791,11 +837,11 @@ public class DVXplorer extends AETemporalConstastRetina {
                 }
             }
             
-            int sxm = sizeX - 1;
+            int sym = (sizeY - 1);
             int[] a = in.getAddresses();
             int[] timestamps = in.getTimestamps();
             OutputEventIterator outItr = out.outputIterator();
-            for (int i = 0; i < n; i += skipBy) { // TODO bug here?
+            for (int i = 0; i < n; i += skipBy) {
                 int addr = a[i];
                 
                 // aedat2 format specific
@@ -811,7 +857,6 @@ public class DVXplorer extends AETemporalConstastRetina {
                             imuEvent.setTimestamp(imuSample.getTimestampUs());
                             imuEvent.setImuSample(imuSample);
                             outItr.writeToNextOutput(imuEvent); // also write the event out to the next output event
-                            continue;
                         } catch (final IMUSample.IncompleteIMUSampleException ex) {
                             incompleteIMUSampleException = ex;
                             if ((missedImuSampleCounter++ % IMU_WARNING_INTERVAL) == 0) {
@@ -836,10 +881,8 @@ public class DVXplorer extends AETemporalConstastRetina {
                     e.timestamp = (timestamps[i]);
                     e.setSpecial(false);
                     e.polarity = ((addr & POLARITY_MASK) == 0)? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
-                    e.x = (short) (sxm - (((addr & XMASK) >>> XSHIFT)));
-                    e.y = (short) ((addr & YMASK) >>> YSHIFT);
-
-                    int debug_placeholder = 0;
+                    e.x = (short) (((addr & XMASK) >>> XSHIFT));
+                    e.y = (short) (sym - ((addr & YMASK) >>> YSHIFT));
                 }
             }
         }
