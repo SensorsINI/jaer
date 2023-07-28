@@ -47,7 +47,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.util.TextRendererScale;
 
@@ -64,7 +64,7 @@ public class DVXplorer extends AETemporalConstastRetina {
     private DVXRenderer dvxRenderer;
     private DVXDisplayMethod dvxDisplayMethod;
    
-    private CypressFX3 cypressfx3;
+    private DVXplorerFX3HardwareInterface fx3;
     private JMenu dvxMenu = null;
     private ToggleIMU toggleIMU;
     
@@ -237,38 +237,38 @@ public class DVXplorer extends AETemporalConstastRetina {
      * Configurate DVXplorer.
      */
     public void dvxConfig() {
-        cypressfx3 = (CypressFX3) this.getHardwareInterface();
+        fx3 = (DVXplorerFX3HardwareInterface) this.getHardwareInterface();
         
         // Refer to libcaer for details.
-        dvxReceiveInitParams(cypressfx3);
-        dvxSendOpeningConfig(cypressfx3);
-        dvxSendDefaultConfig(cypressfx3);
+        dvxReceiveInitParams(fx3);
+        dvxSendOpeningConfig(fx3);
+        dvxSendDefaultConfig(fx3);
     }
     
     /**
      * Refer to libcaer dvxplorer.c dvXplorerOpen() for details.
      * 
-     * @param cypressfx3 CypressFX3 interface
+     * @param fx3 CypressFX3 interface
      */
-    public void dvxReceiveInitParams(CypressFX3 cypressfx3) {
-        final int logicClock = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_CLOCK);
-        final int usbClock = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_USB_CLOCK);
-        final int clockDeviationFactor = spiConfigReceive(cypressfx3, DVX_SYSINFO, DVX_SYSINFO_CLOCK_DEVIATION);
+    public void dvxReceiveInitParams(DVXplorerFX3HardwareInterface fx3) {
+        final int logicClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_LOGIC_CLOCK);
+        final int usbClock = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_USB_CLOCK);
+        final int clockDeviationFactor = spiConfigReceive(fx3, DVX_SYSINFO, DVX_SYSINFO_CLOCK_DEVIATION);
         logicClockActual = (double)logicClock * (double)clockDeviationFactor / 1000.0;
         usbClockActual = (double)usbClock * (double)clockDeviationFactor / 1000.0;
         DVXplorer.log.info(String.format("Device clock frequencies - Logic: %f, USB: %f.", logicClockActual, usbClockActual));
 
-        sizeX = (short)spiConfigReceive(cypressfx3, DVX_DVS, DVX_DVS_SIZE_COLUMNS);
-        sizeY = (short)spiConfigReceive(cypressfx3, DVX_DVS, DVX_DVS_SIZE_ROWS);
+        sizeX = (short)spiConfigReceive(fx3, DVX_DVS, DVX_DVS_SIZE_COLUMNS);
+        sizeY = (short)spiConfigReceive(fx3, DVX_DVS, DVX_DVS_SIZE_ROWS);
         setSizeX(sizeX);
         setSizeY(sizeY);
         
-        final int dvsOrientation = spiConfigReceive(cypressfx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
+        final int dvsOrientation = spiConfigReceive(fx3, DVX_DVS, DVX_DVS_ORIENTATION_INFO);
         dvsInvertXY = (short)(dvsOrientation & 0x04);
         dvsFlipX = (short)(dvsOrientation & 0x02);
         dvsFlipY = (short)(dvsOrientation & 0x01);
 
-        final int imuOrientation = spiConfigReceive(cypressfx3, DVX_IMU, DVX_IMU_ORIENTATION_INFO);
+        final int imuOrientation = spiConfigReceive(fx3, DVX_IMU, DVX_IMU_ORIENTATION_INFO);
         imuFlipX = (short)(imuOrientation & 0x04);
         imuFlipY = (short)(imuOrientation & 0x02);
         imuFlipZ = (short)(imuOrientation & 0x01);
@@ -277,12 +277,12 @@ public class DVXplorer extends AETemporalConstastRetina {
     /**
      * Refer to libcaer dvxplorer.c dvXplorerOpen() for details.
      * 
-     * @param cypressfx3 CypressFX3 interface
+     * @param fx3 CypressFX3 interface
      */
-    public void dvxSendOpeningConfig(CypressFX3 cypressfx3) {
+    public void dvxSendOpeningConfig(DVXplorerFX3HardwareInterface fx3) {
         if (!isMipiCX3Device) {
             // Initialize Samsung DVS chip.
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_RUN_CHIP, 1);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN_CHIP, 1);
 
             // Wait 10ms for DVS to start.
             try {
@@ -293,243 +293,243 @@ public class DVXplorer extends AETemporalConstastRetina {
             }
 
             // Bias reset.
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_OTP_TRIM, 0x24);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_OTP_TRIM, 0x24);
 
             // Bias enable.
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_PINS_DBGP, 0x07);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_PINS_DBGN, 0xFF);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_PINS_BUFP, 0x03);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_PINS_BUFN, 0x7F);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_PINS_DOB, 0x00);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_PINS_DBGP, 0x07);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_PINS_DBGN, 0xFF);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_PINS_BUFP, 0x03);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_PINS_BUFN, 0x7F);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_PINS_DOB, 0x00);
 
             // DVX_DVS_CHIP_BIAS_SIMPLE_DEFAULT
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_RANGE_SELECT_LOGSFONREST, 0x06);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_LEVEL_SFOFF, 0x7D);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_ON, 0x00);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_OFF, 0x08);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_RANGE_SELECT_LOGSFONREST, 0x06);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_LEVEL_SFOFF, 0x7D);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_ON, 0x00);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_OFF, 0x08);
 
             // System settings.
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_CLOCK_DIVIDER_SYS, 0xA0);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PARALLEL_OUT_CONTROL, 0x00);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PARALLEL_OUT_ENABLE, 0x01);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, 0x80);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_CLOCK_DIVIDER_SYS, 0xA0);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_PARALLEL_OUT_CONTROL, 0x00);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_PARALLEL_OUT_ENABLE, 0x01);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, 0x80);
 
             // Digital settings.
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL, 0x0C);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_BOOT_SEQUENCE, 0x08);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL, 0x0C);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_BOOT_SEQUENCE, 0x08);
 
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_REFUNIT, 0x03);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_DIGITAL_TIMESTAMP_REFUNIT + 1), 0xE7);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_REFUNIT, 0x03);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_DIGITAL_TIMESTAMP_REFUNIT + 1), 0xE7);
 
             // Fine clock counts based on clock frequency.
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_SUBUNIT, 49);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_DTAG_REFERENCE, 50);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_GH_COUNT_FINE, 50);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_GRS_COUNT_FINE, 50);
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_GRS_END_FINE, 50);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_SUBUNIT, 49);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_DTAG_REFERENCE, 50);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_GH_COUNT_FINE, 50);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_GRS_COUNT_FINE, 50);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_GRS_END_FINE, 50);
 
             // Disable histogram, not currently used/mapped.
-            spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_SPATIAL_HISTOGRAM_OFF, 0x01);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_SPATIAL_HISTOGRAM_OFF, 0x01);
         }
     }
     
     /**
      * Refer to libcaer dvxplorer.c dvXplorerSendDefaultConfig() for details.
      * 
-     * @param cypressfx3 CypressFX3 interface
+     * @param fx3 CypressFX3 interface
      */
-    public void dvxSendDefaultConfig(CypressFX3 cypressfx3) {
+    public void dvxSendDefaultConfig(DVXplorerFX3HardwareInterface fx3) {
         if (!isMipiCX3Device) {
             // If not MipiCX3 device, set DVX_MUX
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_DROP_EXTINPUT_ON_TRANSFER_STALL, 1);
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_DROP_DVS_ON_TRANSFER_STALL, 0);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_DROP_EXTINPUT_ON_TRANSFER_STALL, 1);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_DROP_DVS_ON_TRANSFER_STALL, 0);
         }
 
         // DVX_IMU
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 6);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_ACCEL_FILTER, 2);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_ACCEL_RANGE, 1);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_GYRO_DATA_RATE, 5);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_GYRO_FILTER, 2);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_DATA_RATE, 6);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_FILTER, 2);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_ACCEL_RANGE, 1);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_DATA_RATE, 5);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_FILTER, 2);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_GYRO_RANGE, 2);
             
         if (!isMipiCX3Device) {               
             // If not MipiCX3 device, set DVX_EXTINPUT
-            spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_RISING_EDGES, 0);
-            spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_FALLING_EDGES, 0);
-            spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSES, 1);
-            spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSE_POLARITY, 1);
+            spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_RISING_EDGES, 0);
+            spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_FALLING_EDGES, 0);
+            spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSES, 1);
+            spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSE_POLARITY, 1);
             double timeCC = 10 * logicClockActual;
-            spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSE_LENGTH, (int)timeCC);
+            spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_DETECT_PULSE_LENGTH, (int)timeCC);
 
             if (extInputHasGenerator) {
                 // If not MipiCX3 device and external input has generator, disable generator by default
-                spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_GENERATOR, 0);
+                spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_GENERATOR, 0);
             }
 
             double delayCC = 8 * 125.0F * usbClockActual;
-            spiConfigSendAndCheck(cypressfx3, DVX_USB, DVX_USB_EARLY_PACKET_DELAY, (int)delayCC);
+            spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_EARLY_PACKET_DELAY, (int)delayCC);
         }
             
         // DVX_DVS_CHIP_BIAS_SIMPLE_DEFAULT
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_RANGE_SELECT_LOGSFONREST, 0x06);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_LEVEL_SFOFF, 0x7D);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_ON, 0x00);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_OFF, 0x08);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_RANGE_SELECT_LOGSFONREST, 0x06);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_LEVEL_SFOFF, 0x7D);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_ON, 0x00);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_OFF, 0x08);
             
         // DVX_DVS_CHIP_EXTERNAL_TRIGGER_MODE_TIMESTAMP_RESET
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_EXTERNAL_TRIGGER, 0);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_EXTERNAL_TRIGGER, 0);
             
         // DVX_DVS_CHIP_GLOBAL_HOLD_ENABLE
-        int currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL, U8T(currVal | 0x01));
+        int currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL, U8T(currVal | 0x01));
 
         // DVX_DVS_CHIP_GLOBAL_RESET_ENABLE
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL, U8T(U8T(currVal) & ~0x02));
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_MODE_CONTROL, U8T(U8T(currVal) & ~0x02));
 
         // DVX_DVS_CHIP_GLOBAL_RESET_DURING_READOUT
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_GLOBAL_RESET_READOUT, 0x00);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_GLOBAL_RESET_READOUT, 0x00);
 
         // DVX_DVS_CHIP_FIXED_READ_TIME_ENABLE
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_FIXED_READ_TIME, 0x00);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_FIXED_READ_TIME, 0x00);
 
         // DVX_DVS_CHIP_EVENT_FLATTEN
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, U8T(U8T(currVal) & ~0x40));
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, U8T(U8T(currVal) & ~0x40));
 
         // DVX_DVS_CHIP_EVENT_ON_ONLY
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, U8T(U8T(currVal) & ~0x20));
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, U8T(U8T(currVal) & ~0x20));
 
         // DVX_DVS_CHIP_EVENT_OFF_ONLY
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, U8T(U8T(currVal) & ~0x10));
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_PACKET_FORMAT, U8T(U8T(currVal) & ~0x10));
 
         // DVX_DVS_CHIP_SUBSAMPLE_ENABLE
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE, U8T(currVal | 0x04));
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE, U8T(currVal | 0x04));
 
         // DVX_DVS_CHIP_AREA_BLOCKING_ENABLE
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE, U8T(currVal | 0x02));
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_ENABLE, U8T(currVal | 0x02));
             
         // DVX_DVS_CHIP_DUAL_BINNING_ENABLE
         dvsDualBinning = (0x00 > 0);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_DUAL_BINNING, 0x00);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_DUAL_BINNING, 0x00);
             
         // DVX_DVS_CHIP_SUBSAMPLE_VERTICAL
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO);
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO);
         currVal = U8T(U8T(currVal) & ~0x38) | U8T(0 << 3);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO, currVal);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO, currVal);
             
         // DVX_DVS_CHIP_SUBSAMPLE_HORIZONTAL
-        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO);
+        currVal = spiConfigReceive(fx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO);
         currVal = U8T(U8T(currVal) & ~0x07) | U8T(0);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO, currVal);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_SUBSAMPLE_RATIO, currVal);
 
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_0, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_1, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_2, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_3, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_4, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_5, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_6, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_7, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_8, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_9, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_10, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_11, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_12, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_13, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_14, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_15, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_16, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_17, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_18, 0x7FFF);
-        dvxConfigSet(cypressfx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_19, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_0, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_1, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_2, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_3, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_4, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_5, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_6, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_7, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_8, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_9, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_10, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_11, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_12, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_13, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_14, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_15, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_16, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_17, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_18, 0x7FFF);
+        dvxConfigSet(fx3, DVX_DVS_CHIP, DVX_DVS_CHIP_AREA_BLOCKING_19, 0x7FFF);
             
         // DVX_DVS_CHIP_TIMING_ED
         int msec = 2 / 1000;
         int usec = 2 % 1000;
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_GH_COUNT, U8T(msec));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_GH_COUNT + 1), U8T(usec >>> 8));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_GH_COUNT + 2), U8T(usec));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_GH_COUNT, U8T(msec));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_GH_COUNT + 1), U8T(usec >>> 8));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_GH_COUNT + 2), U8T(usec));
             
         // DVX_DVS_CHIP_TIMING_GH2GRS
         msec = 0 / 1000;
         usec = 0 % 1000;
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_GRS_COUNT, U8T(msec));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_COUNT + 1), U8T(usec >>> 8));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_COUNT + 2), U8T(usec));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_GRS_COUNT, U8T(msec));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_COUNT + 1), U8T(usec >>> 8));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_COUNT + 2), U8T(usec));
 
         // DVX_DVS_CHIP_TIMING_GRS
         msec = 1 / 1000;
         usec = 1 % 1000;
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_GRS_END, U8T(msec));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_END + 1), U8T(usec >>> 8));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_END + 2), U8T(usec));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_GRS_END, U8T(msec));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_END + 1), U8T(usec >>> 8));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_GRS_END + 2), U8T(usec));
 
         // DVX_DVS_CHIP_TIMING_GH2SEL
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_FIRST_SELX_START, U8T(4));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_FIRST_SELX_START, U8T(4));
 
         // DVX_DVS_CHIP_TIMING_SELW
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_SELX_WIDTH, U8T(6));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_SELX_WIDTH, U8T(6));
 
         // DVX_DVS_CHIP_TIMING_SEL2AY_R
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_AY_START, U8T(4));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_AY_START, U8T(4));
 
         // DVX_DVS_CHIP_TIMING_SEL2AY_F
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_AY_END, U8T(6));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_AY_END, U8T(6));
 
         // DVX_DVS_CHIP_TIMING_SEL2R_R
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_R_START, U8T(8));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_R_START, U8T(8));
 
         // DVX_DVS_CHIP_TIMING_SEL2R_F
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_R_END, U8T(10));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_R_END, U8T(10));
 
         // DVX_DVS_CHIP_TIMING_NEXT_SEL
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_NEXT_SELX_START, U8T(15 >>> 8));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_NEXT_SELX_START + 1), U8T(15));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_MAX_EVENT_NUM, U8T(10));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_NEXT_SELX_START, U8T(15 >>> 8));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_NEXT_SELX_START + 1), U8T(15));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_MAX_EVENT_NUM, U8T(10));
 
         // DVX_DVS_CHIP_TIMING_NEXT_GH
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_NEXT_GH_CNT, U8T(4));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_NEXT_GH_CNT, U8T(4));
             
         // DVX_DVS_CHIP_TIMING_READ_FIXED
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_TIMING_READ_TIME_INTERVAL, U8T(45000 >>> 8));
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(REGISTER_TIMING_READ_TIME_INTERVAL + 1), U8T(45000));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_TIMING_READ_TIME_INTERVAL, U8T(45000 >>> 8));
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(REGISTER_TIMING_READ_TIME_INTERVAL + 1), U8T(45000));
 
         // DVX_DVS_CHIP_CROPPER_ENABLE
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CROPPER_BYPASS, 0x01);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CROPPER_BYPASS, 0x01);
 
         // DVX_DVS_CHIP_ACTIVITY_DECISION_ENABLE
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_ACTIVITY_DECISION_BYPASS, 0x01);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_ACTIVITY_DECISION_BYPASS, 0x01);
 
         // DTAG restart after config.
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_RESTART, 2);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_RESTART, 2);
     }
     
     /**
      * Refer to libcaer dvxplorer.c dvXplorerDataStart() for details.
      * 
-     * @param cypressfx3 CypressFX3 interface
+     * @param fx3 CypressFX3 interface
      */
     public void dvxDataStart() {
-        cypressfx3 = (CypressFX3) this.getHardwareInterface();
+        fx3 = (DVXplorerFX3HardwareInterface) this.getHardwareInterface();
         
         // Ensure no data is left over from previous runs, if the camera
         // wasn't shut-down properly. First ensure it is shut down completely.
-        spiConfigSendAndCheck(cypressfx3, DVX_DVS, DVX_DVS_RUN, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 0);
+        spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, 0);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 0);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 0);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
+        spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 0);
 
         if (!isMipiCX3Device) {
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_RUN, 0);
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 0);
-            spiConfigSendAndCheck(cypressfx3, DVX_USB, DVX_USB_RUN, 0);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN, 0);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 0);
+            spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_RUN, 0);
         }
         
         // Then wait 10ms for FPGA device side buffers to clear.
@@ -540,11 +540,12 @@ public class DVXplorer extends AETemporalConstastRetina {
             DVXplorer.log.warning("DVXplorer didn't wait for FPGA device side buffers to clear.");
         }
         
+        
         if (!isMipiCX3Device) {
             // Enable data transfer on USB end-point 2.
-            spiConfigSendAndCheck(cypressfx3, DVX_USB, DVX_USB_RUN, 1);
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 1);
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_RUN, 1);
+            spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_RUN, 1);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 1);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN, 1);
 
             // Wait 50 ms for data transfer to be ready.
             try {
@@ -554,48 +555,48 @@ public class DVXplorer extends AETemporalConstastRetina {
                 DVXplorer.log.warning("DVXplorer didn't wait for data transfer to be ready.");
             }
 
-            spiConfigSendAndCheck(cypressfx3, DVX_DVS, DVX_DVS_RUN, 1);
+            spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, 1);
         }
 
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 1);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 1);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 1);
-        spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 1);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 1);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 1);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 1);
+        spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 1);
 
         // Enable streaming from DVS chip.
-        spiConfigSend(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_RESET, 0x01);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_RESET, 0x00);
-        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(2));
+        spiConfigSend(fx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_RESET, 0x01);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_DIGITAL_TIMESTAMP_RESET, 0x00);
+        spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(2));
     }
     
     /**
      * Refer to libcaer dvxplorer.c dvXplorerDataStop() and dvXplorerClose() for details.
      */
     public void dvxDataStop() {
-        cypressfx3 = (CypressFX3) this.getHardwareInterface();
+        fx3 = (DVXplorerFX3HardwareInterface) this.getHardwareInterface();
         
         // Disable streaming from DVS chip.
-		spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(0));
+		spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_CONTROL_MODE, U8T(0));
         
         // Disable data transfer on USB end-point 2. Reverse order of enabling.
-        spiConfigSendAndCheck(cypressfx3, DVX_DVS, DVX_DVS_RUN, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
-        spiConfigSendAndCheck(cypressfx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 0);
+        spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, 0);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, 0);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, 0);
+        spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, 0);
+        spiConfigSendAndCheck(fx3, DVX_EXTINPUT, DVX_EXTINPUT_RUN_DETECTOR, 0);
         
         if (!isMipiCX3Device) {
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_RUN, 0);
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 0);
-            spiConfigSendAndCheck(cypressfx3, DVX_USB, DVX_USB_RUN, 0);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN, 0);
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_TIMESTAMP_RUN, 0);
+            spiConfigSendAndCheck(fx3, DVX_USB, DVX_USB_RUN, 0);
         }
         
         if (!isMipiCX3Device) {
-            spiConfigSendAndCheck(cypressfx3, DVX_MUX, DVX_MUX_RUN_CHIP, 0); // Put DVS in reset.
+            spiConfigSendAndCheck(fx3, DVX_MUX, DVX_MUX_RUN_CHIP, 0); // Put DVS in reset.
         }
     }
     
-    public void dvxConfigSet(CypressFX3 cypressfx3, final short moduleAddr, final short paramAddr, int param) {
+    public void dvxConfigSet(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
         switch (moduleAddr) {  
             case DVX_DVS_CHIP:
                 switch (paramAddr) {
@@ -620,8 +621,8 @@ public class DVXplorer extends AETemporalConstastRetina {
                     case DVX_DVS_CHIP_AREA_BLOCKING_18:
                     case DVX_DVS_CHIP_AREA_BLOCKING_19:
                         final int regAddr = REGISTER_DIGITAL_AREA_BLOCK + (int)(2 * (paramAddr - DVX_DVS_CHIP_AREA_BLOCKING_0));
-                        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(regAddr), U8T(param >>> 8));
-                        spiConfigSendAndCheck(cypressfx3, DEVICE_DVS, U16T(regAddr + 1), U8T(param));
+                        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(regAddr), U8T(param >>> 8));
+                        spiConfigSendAndCheck(fx3, DEVICE_DVS, U16T(regAddr + 1), U8T(param));
                         break;
                     default:
                         DVXplorer.log.severe(String.format("DVXplorer dvxConfigSet unsupported param: moduleAddr = %x, paramAddr = %x", moduleAddr, paramAddr));
@@ -634,7 +635,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
     }
     
-    public int dvxConfigGet(CypressFX3 cypressfx3, final short moduleAddr, final short paramAddr) {
+    public int dvxConfigGet(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr) {
         switch (moduleAddr) {  
             case DVX_DVS_CHIP:
                 switch (paramAddr) {
@@ -659,9 +660,9 @@ public class DVXplorer extends AETemporalConstastRetina {
                     case DVX_DVS_CHIP_AREA_BLOCKING_18:
                     case DVX_DVS_CHIP_AREA_BLOCKING_19:
                         final int regAddr = REGISTER_DIGITAL_AREA_BLOCK + (int)(2 * (paramAddr - DVX_DVS_CHIP_AREA_BLOCKING_0));
-                        int currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, U16T(regAddr));
+                        int currVal = spiConfigReceive(fx3, DEVICE_DVS, U16T(regAddr));
                         int retVal = currVal << 8;
-                        currVal = spiConfigReceive(cypressfx3, DEVICE_DVS, U16T(regAddr + 1));
+                        currVal = spiConfigReceive(fx3, DEVICE_DVS, U16T(regAddr + 1));
                         retVal |= currVal;
                         return retVal;
                     default:
@@ -674,9 +675,9 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
     }
     
-    public int spiConfigReceive(CypressFX3 cypressfx3, final short moduleAddr, final short paramAddr) {
+    public int spiConfigReceive(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr) {
         try {
-            final int ret = cypressfx3.spiConfigReceive(moduleAddr, paramAddr);
+            final int ret = fx3.spiConfigReceive(moduleAddr, paramAddr);
             return ret;
         }
         catch (final HardwareInterfaceException e) {
@@ -685,9 +686,9 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
     }
     
-    public boolean spiConfigSend(CypressFX3 cypressfx3, final short moduleAddr, final short paramAddr, int param) {
+    public boolean spiConfigSend(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
         try {
-            cypressfx3.spiConfigSend(moduleAddr, paramAddr, param);
+            fx3.spiConfigSend(moduleAddr, paramAddr, param);
             return true;
         }
         catch (final HardwareInterfaceException e) {
@@ -696,9 +697,9 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
     }
     
-    public boolean spiConfigSendAndCheck(CypressFX3 cypressfx3, final short moduleAddr, final short paramAddr, int param) {
-        spiConfigSend(cypressfx3, moduleAddr, paramAddr, param);
-        final int ret = spiConfigReceive(cypressfx3, moduleAddr, paramAddr);
+    public boolean spiConfigSendAndCheck(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
+        spiConfigSend(fx3, moduleAddr, paramAddr, param);
+        final int ret = spiConfigReceive(fx3, moduleAddr, paramAddr);
         if (ret != param) {
             DVXplorer.log.severe(String.format("DVXplorer spi config checking error: moduleAddr = %x, paramAddr = %x, param = %x, ret = %x", moduleAddr, paramAddr, param, ret));
             return false;
@@ -928,9 +929,9 @@ public class DVXplorer extends AETemporalConstastRetina {
         
         public void setImuEnabled(boolean yes) {
             int param = yes? 1: 0;
-            spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, param);
-            spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, param);
-            spiConfigSendAndCheck(cypressfx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, param);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, param);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, param);
+            spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_TEMPERATURE, param);
         }
     }
     
@@ -955,7 +956,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         
         public void setCaptureEvents(boolean yes) {
             int param = yes? 1: 0;
-            spiConfigSendAndCheck(cypressfx3, DVX_DVS, DVX_DVS_RUN, param);
+            spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, param);
         }
         
         public void setDisplayEvents(boolean yes) {

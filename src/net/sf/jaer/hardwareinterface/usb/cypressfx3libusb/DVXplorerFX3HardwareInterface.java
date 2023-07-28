@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
 import org.usb4java.Device;
+import org.usb4java.LibUsb;
 import ch.unizh.ini.jaer.chip.retina.DVXplorer;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -82,6 +83,13 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 
 		inEndpointEnabled = false;
     }
+    
+    /**
+     * Reset data endpoint of the USB side.
+     */
+    final public void usbControlResetDataEndpoint() {
+        LibUsb.clearHalt(deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS);
+    }
 
     /**
      * Starts reader buffer pool thread and enables in endpoints for AEs. This
@@ -93,6 +101,10 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
         setAeReader(new RetinaAEReader(this));
         allocateAEBuffers();
 
+        
+        // Clear halt endpoint's data to gurantee clean transfer
+        usbControlResetDataEndpoint();
+        
         getAeReader().startThread(); // arg is number of errors before giving up
         HardwareInterfaceException.clearException();
     }
