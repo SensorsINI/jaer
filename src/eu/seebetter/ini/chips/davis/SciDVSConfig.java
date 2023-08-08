@@ -106,6 +106,7 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 		SciDVSConfig.addAIPot(ipots, this, "DACBufBp,21,p,normal,Row request pull up");
 		SciDVSConfig.addAIPot(ipots, this, "ReadoutBufBP,22,p,normal,APS readout OTA follower bias");
 <<<<<<< HEAD
+<<<<<<< HEAD
 		SciDVSConfig.addAIPot(ipots, this, "AEPuYBp,23,p,normal,AER column pullup");
 		SciDVSConfig.addAIPot(ipots, this, "AEPdYBn,24,n,normal,Request encoder pulldown static current");
 		SciDVSConfig.addAIPot(ipots, this, "AEPuXBp,25,p,normal,AER row pullup");
@@ -114,6 +115,11 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 		SciDVSConfig.addAIPot(ipots, this, "AEPuXBp,24,p,normal,AER column pullup");
 		SciDVSConfig.addAIPot(ipots, this, "AEPuYBp,25,p,normal,AER row pullup");
 >>>>>>> 1f8fdb3aa (started scidvs)
+=======
+		SciDVSConfig.addAIPot(ipots, this, "AEPuYBp,23,p,normal,AER column pullup");
+		SciDVSConfig.addAIPot(ipots, this, "AEPdYBn,24,n,normal,Request encoder pulldown static current");
+		SciDVSConfig.addAIPot(ipots, this, "AEPuXBp,25,p,normal,AER row pullup");
+>>>>>>> fea6471a8 (SciDVS GAER mostly working)
 
 
         pr = SciDVSConfig.addAIPot(ipots, this, "PrBp,30,p,normal,Photoreceptor bias current");
