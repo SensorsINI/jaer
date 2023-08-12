@@ -21,11 +21,13 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
- * DAViSFX3HardwareInterface adapted for SciDVS
+ * Adds functionality of apsDVS sensors to based CypressFX3Biasgen class. The
+ * key method is translateEvents that parses
+ * the data from the sensor to construct jAER raw events.
  *
- * @author Rui
+ * @author Christian/Tobi
  */
-public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
+public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 	protected DAViSFX3HardwareInterface(final Device device) {
 		super(device);
@@ -202,10 +204,10 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 			apsFlipX = (chipAPSStreamStart & 0x02) != 0;
 			apsFlipY = (chipAPSStreamStart & 0x01) != 0;
 
-			//dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
-			//dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
-			dvsSizeY = 128;
-			dvsSizeX = 126;
+			dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
+			dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+			//dvsSizeY = 128;
+			//dvsSizeX = 126;/
 
 			dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
 
@@ -301,6 +303,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 3: // External input (rising edge)
 									case 4: // External input (pulse)
 										CypressFX3.log.fine("External input event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an external input event");
 
 										// Check that the buffer has space for this event. Enlarge if needed.
 										if (ensureCapacity(buffer, eventCounter + 1)) {
@@ -312,6 +315,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 5: // IMU Start (6 axes)
 										CypressFX3.log.fine("IMU6 Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an IMU start");
 
 										imuCount = 0;
 										imuType = 0;
@@ -320,6 +324,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 7: // IMU End
 										CypressFX3.log.fine("IMU End event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an IMU end");
 
 										if (imuCount == (2 * RetinaAEReader.IMU_DATA_LENGTH)) {
 											if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
@@ -335,6 +340,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 8: // APS Global Shutter Frame Start
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS GS Frame Start");
 										CypressFX3.log.fine("APS GS Frame Start event received.");
 
 										initFrame();
@@ -343,6 +349,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 9: // APS Rolling Shutter Frame Start
 										CypressFX3.log.fine("APS RS Frame Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS RS Frame Start");
 
 										initFrame();
 
@@ -350,10 +357,11 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 10: // APS Frame End
 										CypressFX3.log.fine("APS Frame End event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Frame end");
 
 										for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
 											if (apsCountX[j] != apsSizeX) {
-												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j]
+												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j] + "/" + apsSizeX
 													+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 											}
 										}
@@ -362,6 +370,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 11: // APS Reset Column Start
 										CypressFX3.log.fine("APS Reset Column Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Reset Column Start");
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
 										apsCountY[apsCurrentReadoutType] = 0;
@@ -373,6 +382,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 12: // APS Signal Column Start
 										CypressFX3.log.fine("APS Signal Column Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Signal Column Start");
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_SIGNAL;
 										apsCountY[apsCurrentReadoutType] = 0;
@@ -384,10 +394,11 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 13: // APS Column End
 										CypressFX3.log.fine("APS Column End event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Column End");
 
 										if (apsCountY[apsCurrentReadoutType] != apsSizeY) {
 											CypressFX3.log.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
-												+ apsCountY[apsCurrentReadoutType]
+												+ apsCountY[apsCurrentReadoutType] + "/" + apsSizeY
 												+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 										}
 
@@ -396,23 +407,27 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 14: // APS Exposure Start
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Exposure Start");
 										// Ignore, exposure is calculated from frame timings.
 										break;
 
 									case 15: // APS Exposure End
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Exposure End");
 										// Ignore, exposure is calculated from frame timings.
 										break;
 
 									case 16: // External generator (falling edge)
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an External Generator falling edge");
 										// Ignore, not supported.
 										break;
 
 									case 17: // External generator (rising edge)
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an External Generator rising edge");
 										// Ignore, not supported.
 										break;
 
 									default:
-										CypressFX3.log.severe("Caught special event that can't be handled.");
+										CypressFX3.log.severe("Caught special event that can't be handled: " + data);
 										break;
 								}
 								break;
@@ -498,6 +513,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 								break;
 
 							case 4: // APS ADC sample
+				                if (DEBUGUSB) CypressFX3.log.info("it's an APS ADC Sample");
 								// Let's check that apsCountY is not above the maximum. This could happen
 								// if start/end of column events are discarded (no wait on transfer stall).
 								if ((apsCountY[apsCurrentReadoutType] >= apsSizeY) || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) {
@@ -540,6 +556,8 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 								apsCountY[apsCurrentReadoutType]++;
 
+				                if (DEBUGUSB) CypressFX3.log.info("yPos: "  + yPos + " xPos: " + xPos + " yCount: " + apsCountY[apsCurrentReadoutType] + " xCount: " + apsCountX[apsCurrentReadoutType] + " data: " + data);
+
 								// RGB support: first 320 pixels are even, then odd.
 								if (!apsRGBPixelOffsetDirection) { // Increasing
 									apsRGBPixelOffset++;
@@ -565,6 +583,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 								break;
 
 							case 5: // Misc 8bit data.
+				                if (DEBUGUSB) CypressFX3.log.info("it's a Misc 8bit data");
 								final byte misc8Code = (byte) ((data & 0x0F00) >>> 8);
 								final byte misc8Data = (byte) (data & 0x00FF);
 
@@ -690,6 +709,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 
 							case 6:  // Misc 11bit data.
 								final byte misc11Code = (byte) ((data & 0x0800) >> 11);
+				                if (DEBUGUSB) CypressFX3.log.info("it's a Misc 11bit data. code: " + misc11Code);
 
                                                         switch (misc11Code) {
                                                                     	case 0:	                         
@@ -718,12 +738,13 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 								// to multiply it with the wrap counter,
 								// which is located in the data part of this
 								// event.
+				                if (DEBUGUSB) CypressFX3.log.info("it's a timestamp wrap");
 								wrapAdd += (0x8000L * data);
 
 								lastTimestamp = currentTimestamp;
 								currentTimestamp = wrapAdd;
 
-								// Check monotonikity of timestamps.
+								// Check monotonicity of timestamps.
 								checkMonotonicTimestamp();
 
 								CypressFX3.log.fine(
@@ -731,7 +752,7 @@ public class SciDVSFX3HardwareInterface extends CypressFX3Biasgen {
 								break;
 
 							default:
-								CypressFX3.log.severe("Caught event that can't be handled.");
+								CypressFX3.log.severe("Caught event that can't be handled. code: " + code);
 								break;
 						}
 					}
