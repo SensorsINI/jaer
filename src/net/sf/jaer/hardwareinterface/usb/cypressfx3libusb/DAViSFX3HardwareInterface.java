@@ -45,8 +45,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	static public final short PID_FX2 = (short) 0x841B;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 6;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 4;
-	//static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
-	static public final int REQUIRED_LOGIC_REVISION_FX3 = 9912;
+	static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
+	//static public final int REQUIRED_LOGIC_REVISION_FX3 = 9912;
 	static public final int REQUIRED_LOGIC_REVISION_FX2 = 18;
 
 	static public final int GAER_GROUPADDR_WIDTH = 5;
@@ -207,7 +207,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 			dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
 			dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
 			//dvsSizeY = 128;
-			//dvsSizeX = 126;/
+			//dvsSizeX = 126;
 
 			dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
 
@@ -425,6 +425,34 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 				                        if (DEBUGUSB) CypressFX3.log.info("it's an External Generator rising edge");
 										// Ignore, not supported.
 										break;
+                                    case 32:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI0 is ON");
+										break;
+                                    case 33:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI1 is ON");
+										break;
+                                    case 34:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI2 is ON");
+										break;
+                                    case 35:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI3 is ON");
+										break;
+                                    case 48:	                         
+                                        // APS Exposure Information, ignore for now.
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an Info Exposure");
+										break;
+                                    case 49:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI0 is OFF");
+										break;
+                                    case 50:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI1 is OFF");
+										break;
+                                    case 51:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI2 is OFF");
+										break;
+                                    case 52:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI3 is OFF");
+										break;
 
 									default:
 										CypressFX3.log.severe("Caught special event that can't be handled: " + data);
@@ -439,7 +467,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									break; // Skip invalid Y address (don't update lastY).
 								}
 
-								dvsLastY = data;
+								dvsLastY = dvsSizeY-1-data;
 				                if (DEBUGUSB) CypressFX3.log.info("it's a GAER Y address: 0x" + Integer.toHexString(data) + " (dec: " + data + ")");
 
 								break;
