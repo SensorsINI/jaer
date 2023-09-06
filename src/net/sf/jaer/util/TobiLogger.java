@@ -44,6 +44,7 @@ public class TobiLogger {
     private String columnHeaderLine;
     private String fileCommentString;
     private String fileNameBase;
+    private String fileNameExtension="txt";
     private String fileNameActual = null;
     /** Default field separator */
     public static final String DEFAULT_FIELD_SEP_STRING=",";
@@ -84,13 +85,38 @@ public class TobiLogger {
         this.columnHeaderLine = columnHeaderLine;
     }
 
+        /**
+     * Creates a new instance of TobiLogger.
+     *
+     * @param filename the filename. Date/Timestamp string us appended to the
+     * filename and ".txt" is appended if it is not already the suffix, e.g.
+     * "PencilBalancer-2008-10-12T10-23-58+0200.txt". The file is created in the
+     * users home folder.
+     * @param columnHeaderLine a comment usually specifying the contents and
+     * data fields, a {@value #DEFAULT_COMMENT} is prepended automatically. A second header line is also
+     * written automatically with the file creation date, e.g. "# created Sat
+     * Oct 11 13:04:34 CEST 2008"
+     * @param extension the filename extension, e.g. "csv". Default extension is "txt".
+     * @see #setFileCommentString(java.lang.String) 
+     * @see #setColumnHeaderLine(java.lang.String) 
+     * @see #setCommentChar(java.lang.String) 
+     */
+    public TobiLogger(String filename, String columnHeaderLine, String extension) {
+        this.fileNameExtension=extension;
+        if (!filename.endsWith("."+extension)) {
+            filename = filename + "."+extension;
+        }
+        this.fileNameBase = filename;
+        this.columnHeaderLine = columnHeaderLine;
+    }
+
     private String getTimestampedFilename() {
         String base = getFileNameBase();
-        if (getFileNameBase().endsWith(".txt")) {
+        if (getFileNameBase().endsWith("."+this.fileNameExtension)) {
             base = getFileNameBase().substring(0, getFileNameBase().lastIndexOf('.'));
         }
         Date d = new Date();
-        String fn = base + '-' + AEDataFile.DATE_FORMAT.format(d) + ".txt";
+        String fn = base + '-' + AEDataFile.DATE_FORMAT.format(d) + "."+this.fileNameExtension;
         return fn;
     }
 
