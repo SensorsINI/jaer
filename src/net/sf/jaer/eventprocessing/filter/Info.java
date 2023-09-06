@@ -81,6 +81,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private long absoluteStartTimeMs = 0;
     volatile private long clockTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
     volatile private long updateTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
+    volatile private long lastUpdateTimeMs=0; // DEBUG to look for nonmonotonic update times
 //    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
     private boolean eventRate = getBoolean("eventRate", true);
@@ -156,7 +157,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 s = s + "\neventRateFilterTauMs=" + typedEventRateEstimator.getEventRateTauMs();
 
                 if (tobiLogger == null) {
-                    tobiLogger = new TobiLogger("Info", s);
+                    tobiLogger = new TobiLogger("Info", s,"csv");
                     tobiLogger.setFileCommentString(s);
                     tobiLogger.setColumnHeaderLine(INFO_FIELDS);
                 }
@@ -457,6 +458,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 // for large files, the relativeTimeInFileMs wraps around after 2G us and then every 4G us
                 long relativeTimeInFileMs = (msg.timestamp - dataFileTimestampStartTimeUs) / 1000;
                 updateTimeMs = computeDisplayTime(relativeTimeInFileMs);
+                if(updateTimeMs<lastUpdateTimeMs){
+                    log.warning("nonmonotonic update time");
+                }
+                lastUpdateTimeMs=updateTimeMs;
 //                long dt = (updateTimeMs - lastUpdateTime);
                 //        if (dt > eventRateFilter.getEventRateTauMs() * 2) {  // TODO hack to get around problem that sometimes the wrap preceeds the actual data
                 //            log.warning("not adding this RateHistory point because dt is too big, indicating a big wrap came too soon");
