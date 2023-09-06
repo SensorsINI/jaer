@@ -57,11 +57,12 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     private XYTypeFilter onEventFilter = null;
     private FilterChain enclosedFilterChain = null;
 
-    private int statisticsStartTimestamp = Integer.MIN_VALUE, statisticsCurrentTimestamp = Integer.MIN_VALUE;
+    private int statisticsStartTimestamp = Integer.MIN_VALUE, statisticsCurrentTimestamp = Integer.MIN_VALUE, lastDropletTimeMs=Integer.MIN_VALUE;
     private boolean initialized = false;
-    private DescriptiveStatistics stats; // from Apache, useful class to measure statistics
+    private DescriptiveStatistics diameterPxStats,intervalMsStats; // from Apache, useful class to measure statistics
     private int totalNumberDroplets = 0;
     private float dropRateHz;  // average rate of raindrops
+    private float avgIntervalMs, stdIntervalMs;
     private float totalVolumeLiters = 0; // integrated from droplet size 
     private float totalInches = 0;
     private float totalMm = 0;
@@ -125,7 +126,8 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
 
         // statistics
 //        raindropHistogram = new SimpleHistogram(0, 1, 10, 0);
-        stats = new DescriptiveStatistics(1000000); // limit to this many drops in dataset for now, to bound memory leak
+        diameterPxStats = new DescriptiveStatistics(1000000); // limit to this many drops in dataset for now, to bound memory leak
+        intervalMsStats = new DescriptiveStatistics(1000000); // limit to this many drops in dataset for now, to bound memory leak
 
     }
 
@@ -146,10 +148,12 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     @Override
     public void resetFilter() {
         enclosedFilterChain.reset();
-        stats.clear();
+        diameterPxStats.clear();
+        intervalMsStats.clear();
         initialized = false;
         statisticsStartTimestamp = Integer.MIN_VALUE;
         statisticsCurrentTimestamp = Integer.MIN_VALUE;
+        lastDropletTimeMs = Integer.MIN_VALUE;
         totalNumberDroplets = 0;
         totalVolumeLiters = 0;
         totalRainRateLiterPerSqMPerS = 0;
@@ -158,6 +162,8 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         totalMm = 0;
         inchesPerHour = 0;
         mmPerHour = 0;
+        avgIntervalMs=0;
+        stdIntervalMs=0;
     }
 
     @Override
@@ -215,8 +221,11 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         int deltaTimestamp = statisticsCurrentTimestamp - statisticsStartTimestamp;
         if(deltaTimestamp<=0) return;
         float measurementTimeS = deltaTimestamp * 1e-6f;
-        totalNumberDroplets = (int) stats.getN();
+        totalNumberDroplets = (int) diameterPxStats.getN();
         dropRateHz = totalNumberDroplets / measurementTimeS;
+        avgIntervalMs=(float)intervalMsStats.getMean();
+        stdIntervalMs=(float)intervalMsStats.getStandardDeviation();
+        
 
         // already computed totalVolumeLiters in RaindropCluster.onPruning()
         totalRainRateLiterPerSqMPerS = totalVolumeLiters / collectionAreaM2 / measurementTimeS;
@@ -230,13 +239,14 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
 
     private String generateSummaryStatisticsString() {
         engFmt.setPrecision(2);
-        String s = String.format("%d drops\n%.2f+/-%.2f pixels mean width\n%.2fHz rate\n%s total liters\n%s liters/m^2/s"
+        String s = String.format("%d drops\n%.2f+/-%.2f pixels mean diameter\n%.2fHz rate\n%s +- %s ms interval\n%s total liters\n%s liters/m^2/s"
                 + "\n%s mm total (%s mm/h)"
                 + "\n%s inches total (%s inches/h)",
                 totalNumberDroplets,
-                stats.getMean(),
-                stats.getStandardDeviation(),
+                diameterPxStats.getMean(),
+                diameterPxStats.getStandardDeviation(),
                 dropRateHz,
+                engFmt.format(avgIntervalMs),engFmt.format(stdIntervalMs),
                 engFmt.format(totalVolumeLiters),
                 engFmt.format(totalRainRateLiterPerSqMPerS),
                 engFmt.format(totalMm),
@@ -372,7 +382,7 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
              *
              */
             @Override
-            protected void onPruning() {
+            protected void onBecomingVisible() {
                 // called when cluster finally pruned away
                 if (isWasEverVisible()) {
 //                    log.info("logging droplet "+this);
@@ -380,14 +390,21 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
                         log.warning("radius is NaN or Infinite, not adding this droplet");
                         return;
                     }
-                    stats.addValue(maxRadiusPixels);
+                    diameterPxStats.addValue(maxRadiusPixels*2);
                     totalVolumeLiters += computeVolumeLiters();
                     if (!initialized) {
                         statisticsStartTimestamp = tracker.lastTimestamp;
                         statisticsCurrentTimestamp = tracker.lastTimestamp;
+                        lastDropletTimeMs=tracker.lastTimestamp/1000;
                         initialized = true;
                     } else {
                         statisticsCurrentTimestamp = tracker.lastTimestamp;
+                        int thisDropletTimeMs=tracker.lastTimestamp/1000;
+                        int dropletIntervalMs=thisDropletTimeMs-lastDropletTimeMs;
+                        intervalMsStats.addValue(dropletIntervalMs);
+                        log.info(String.format("Droplet interval %,d ms", dropletIntervalMs));
+                        lastDropletTimeMs=thisDropletTimeMs;
+                        
                     }
                 }
             }
