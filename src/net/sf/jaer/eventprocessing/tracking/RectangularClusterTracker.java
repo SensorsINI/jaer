@@ -2219,6 +2219,9 @@ public class RectangularClusterTracker extends EventFilter2D
                 birthLocation.y = location.y; // reset location of birth to presumably less noisy current location.
             }
             hasObtainedSupport = (hasObtainedSupport || ret);
+            if(ret && !visibilityFlag){
+                onBecomingVisible();
+            }
             visibilityFlag = ret;
             return ret;
         }
@@ -2484,6 +2487,14 @@ public class RectangularClusterTracker extends EventFilter2D
         protected void onPruning() {
         }
 
+        /**
+         * onBecomingVisible is called when the cluster has first become visible.
+         * By default no special action is taken. Subclasses
+         * can override this method to take a special action on pruning.
+         */
+        protected void onBecomingVisible() {
+        }
+        
         /**
          * Determines if this cluster overlaps the center of another cluster.
          *
