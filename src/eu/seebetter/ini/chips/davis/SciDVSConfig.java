@@ -79,10 +79,14 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "VgMfb", 0, 0,
 			"Gate voltage of the photoreceptor feedback transistor."));
 <<<<<<< HEAD
+<<<<<<< HEAD
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "VCascPr", 1, 0,
 =======
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "VgCascPr", 1, 0,
 >>>>>>> 1f8fdb3aa (started scidvs)
+=======
+		ipots.addPot(new TowerOnChip6BitVDAC(this, "VCascPr", 1, 0,
+>>>>>>> 081508329 (fixed VCascPr pot name)
 			"Gate voltage of Photoreceptor feedback amplifier cascode transistor."));
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 0, "on-chip column-parallel APS ADC upper conversion limit"));
 		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 0, "on-chip column-parallel APS ADC ADC lower limit"));
