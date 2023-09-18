@@ -34,6 +34,8 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 	private LibUsb3HardwareInterfaceFactory() {
 		// Build a mapping of VID/PID pairs and corresponding
 		// HardwareInterfaces.
+        addDeviceToMap(CypressFX3.VID, DVXplorerFX3HardwareInterface.PID_FX3, DVXplorerFX3HardwareInterface.class);
+                
 		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX3, DAViSFX3HardwareInterface.class);
 
 		addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
