@@ -12,6 +12,7 @@ import net.sf.jaer.biasgen.AddressedIPot;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.Pot;
 import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
+import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * A 6-bit R2R VDAC with 3-bit buffer current control.
@@ -21,6 +22,8 @@ import net.sf.jaer.biasgen.coarsefine.AddressedIPotCF;
 public class TowerOnChip6BitVDAC extends AddressedIPot {
 
 	public static final float VDD_VOLTAGE = 3.3f;
+
+    protected final String SETVDAC = "setvdac_", SETVDAC_BIT = "setvdacbit_", SETBUF = "setbuf_";
 
 	protected int vdacBitMask = 0x003F; // 6 bits for level of shifted source
 	/**
@@ -75,6 +78,11 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 		this.tooltipString = tooltipString;
 		this.address = address;
 		loadPreferences(); // do this after name is set
+        if (chip.getRemoteControl() != null) {
+            chip.getRemoteControl().addCommandListener(this, String.format(SETBUF + "%s <bitvalue>", getName()), "Set the bitValue of buffer current " + getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETVDAC + "%s <value>", getName()), "Set the voltage value of VDAC" + getName());
+            chip.getRemoteControl().addCommandListener(this, String.format(SETVDAC_BIT + "%s <bitValue>", getName()), "Set the bitValue of VDAC" + getName());
+        }
 
 		// System.out.println(this);
 	}
@@ -327,7 +335,7 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 * @return actual float value of voltage after resolution clipping.
 	 */
 	public float setVdacVoltage(final float voltage) {
-		setVdacBitValue((int) Math.floor((voltage / TowerOnChip6BitVDAC.VDD_VOLTAGE) * maxVdacBitValue));
+		setVdacBitValue((int) Math.round((voltage / TowerOnChip6BitVDAC.VDD_VOLTAGE) * maxVdacBitValue));
 		return getVdacVoltage();
 	}
 
@@ -391,5 +399,32 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 		}
 		return true;
 	}
+
+    @Override
+    public String processRemoteControlCommand(RemoteControlCommand command, String input) {
+
+        String[] t = input.split("\\s");
+        if (t.length < 2) {
+            return "? " + this + "\n";
+        } else {
+            try {
+                String s = t[0], a = t[1];
+                if (s.startsWith(SETVDAC)) {
+                    setVdacVoltage(Float.parseFloat(a));
+                } else if (s.startsWith(SETVDAC_BIT)) {
+                    setVdacBitValue(Integer.parseInt(a));
+                } else if (s.startsWith(SETBUF)) {
+                    setBufferBitValue(Integer.parseInt(a));
+                }
+                return this + "\n";
+            } catch (NumberFormatException e) {
+                log.warning("Bad number format: " + input + " caused " + e);
+                return e.toString() + "\n";
+            } catch (IllegalArgumentException iae) {
+                log.warning("Bad command: " + input + " caused " + iae);
+                return iae.toString() + "\n";
+            }
+        }
+    }
 
 }
