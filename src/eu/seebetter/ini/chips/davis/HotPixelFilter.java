@@ -96,7 +96,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
         }
     }
 
-    private class HotPixelSet extends HashSet<HotPixel> {
+    private static class HotPixelSet extends HashSet<HotPixel> {
 
         /**
          *
@@ -107,41 +107,29 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
             return contains(new HotPixel(e));
         }
 
-        void storePrefs() {
+        void storePrefs(HotPixelFilter f) {
             try {
                 // Serialize to a byte array
-                final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                final ObjectOutput oos = new ObjectOutputStream(bos);
-                final Object[] hps = this.toArray();
-                oos.writeObject(hps);
-                oos.close();
-                // Get the bytes of the serialized object
-                final byte[] buf = bos.toByteArray();
-                getPrefs().putByteArray("HotPixelFilter.HotPixelSet", buf);
+                f.putObject("HotPixelFilter.HotPixelSet", this);
             } catch (final Exception e) {
                 e.printStackTrace();
             }
 
         }
 
-        void loadPrefs() {
+        void loadPrefs(HotPixelFilter f) {
             try {
-                final byte[] bytes = getPrefs().getByteArray("HotPixelFilter.HotPixelSet", null);
-                if (bytes != null) {
-                    final ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                    final Object obj = in.readObject();
-                    final Object[] array = (Object[]) obj;
-                    clear();
-                    for (final Object o : array) {
-                        add((HotPixel) o);
+                HotPixelSet hotPixelSet=(HotPixelSet)f.getObject("HotPixelFilter.HotPixelSet", new HotPixelSet());
+                if(hotPixelSet.isEmpty()) {
+                    f.log.info("no hot pixels loaded");
+                }else{
+                     clear();
+                    for (final HotPixel hotPixel : hotPixelSet) {
+                        add( hotPixel);
                     }
-                    in.close();
-                    EventFilter.log.info("loaded existing hot pixel array with " + size() + " hot pixels");
-                } else {
-                    EventFilter.log.info("no hot pixels to load");
                 }
             } catch (final Throwable err) {
-                EventFilter.log.warning("while loading old HotPixel set, caught Exception or Error; ignoring old hot pixel set");
+                f.log.warning("while loading old HotPixel set, caught Exception or Error; ignoring old hot pixel set");
                 // err.printStackTrace();
             }
         }
@@ -211,7 +199,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                         }
                     }
                     collectedAddresses = null; // free memory
-                    hotPixelSet.storePrefs();
+                    hotPixelSet.storePrefs(this);
                     if (use2DBooleanArray) {
                         hotPixelArray = new boolean[chip.getSizeX()][chip.getSizeY()];
                         final Object[] hpa = hotPixelSet.toArray();
@@ -271,7 +259,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
     @Override
     public void initFilter() {
-        hotPixelSet.loadPrefs();
+        hotPixelSet.loadPrefs(this);
      }
 
     /**
