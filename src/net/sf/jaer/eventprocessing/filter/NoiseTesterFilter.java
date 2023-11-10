@@ -202,7 +202,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(out, "closeCsvFile", "Closes the output CSV spreadsheet data file.");
         setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists). Information written determined by Output switches.");
-        setPropertyTooltip(out, "outputTrainingData", "Output data for training MLP.");
+        setPropertyTooltip(out, "outputTrainingData", "<html>Output data for training MLP. <p>Outputs CSV file that has a single row with most recent event information (timestamp and polarity) for 25x25 neighborhood of each event. <p>Each row thus has about 1000 columns.");
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
         setPropertyTooltip(out, "outputFilterStatistic", "Output analyzable data of a filter.");
         setPropertyTooltip(TT_FILT_CONTROL, "selectedNoiseFilterEnum", "Choose a noise filter to test");
