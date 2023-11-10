@@ -71,6 +71,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     private int previousTimestamp = 0;
     private boolean openFileAndRecordAedat = false;
     protected boolean flipPolarity = getBoolean("flipPolarity", false);
+    final int SPECIAL_COL=4; // location of special flag (0 normal, 1 special) 
 
     public DavisTextInputReader(AEChip chip) {
         super(chip);
@@ -292,10 +293,11 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             return;
         }
         String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
-        if (split == null || split.length < 4) {
-            log.warning(String.format("Line #%d does not have 4 tokens: \"%s\"", lastLineNumber, line));
+        if (split == null || (!isSpecialEvents() && split.length != 4) || (!isSpecialEvents() && split.length!=5)) {
+            log.warning(String.format("Line #%d does not have enough tokens, needs 4 without and 5 with specialEvents:\n\"%s\"", lastLineNumber, line));
             return;
         }
+        
 
         int ix, iy, ip, it;
         if (timestampLast) {
@@ -356,6 +358,20 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             e.flipPolarity();
         }
         e.setDvsType();
+        if(isSpecialEvents()){
+            int specialFlag=Integer.parseInt(split[SPECIAL_COL]);
+            if(specialFlag==0){
+                e.setSpecial(false);
+            }else if(specialFlag==1){
+                e.setSpecial(true);
+            }else{
+                log.warning(String.format("Line #%d has Unknown type of special event, must be 0 (normal) or 1 (special):\n\"%s\"", lastLineNumber, line));
+                errorCount++;
+                if (errorCount++ > MAX_ERRORS) {
+                    throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
+                }
+            }
+        }
         setEventsProcessed(this.eventsProcessed + 1);
         noEventsReadYet = false;
     }
