@@ -161,25 +161,31 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
             return p == Polarity.Off ? 0 : 1;
         }
     }
+    
+    private String formatEvent(PolarityEvent ae){
+        char sep=useCSV?',':' ';
+        String tsString=useUsTimestamps?Integer.toString(ae.timestamp): Float.toString(1e-6f * ae.timestamp);
+        StringBuilder sb=new StringBuilder();
+        sb.append(tsString);
+        sb.append(sep);
+        sb.append(Integer.toString(ae.x));
+        sb.append(sep);
+        sb.append(Integer.toString(ae.y));
+        sb.append(sep);
+        sb.append(Integer.toString(polValue(ae.polarity)));
+        if(isSpecialEvents()){
+            sb.append(sep);
+            sb.append(ae.isSpecial()?"1":"0");
+        }
+        return sb.toString();
+    }
 
     private void writeDvsEvent(PolarityEvent ae) {
         if(rewindPending)
             return;
         // One event per line (timestamp x y polarity) as in RPG events.txt
-        if (useCSV) {
-            if (useUsTimestamps) {
-                dvsWriter.println(String.format("%d,%d,%d,%d", ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
-
-            } else {
-                dvsWriter.println(String.format("%f,%d,%d,%d", 1e-6f * ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
-            }
-        } else {
-            if (useUsTimestamps) {
-                dvsWriter.println(String.format("%d %d %d %d", ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
-            } else {
-                dvsWriter.println(String.format("%f %d %d %d", 1e-6f * ae.timestamp, ae.x, ae.y, polValue(ae.polarity)));
-            }
-        }
+        // except we now add a column for special events (e.g. noise events from v2e)
+        dvsWriter.println(formatEvent(ae));
         incrementCountAndMaybeCloseOutput(ae);
         lastTimestampWritten = ae.timestamp;
     }
@@ -316,7 +322,12 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
                     dvsWriter = openWriter(new File(fn));
                     String tsStr = useUsTimestamps ? "timestamp(int32 us)" : "timestamp(float s)";
                     String polStr = useSignedPolarity ? "polarity(off/on=-1/+1)" : "polarity(off/on=0/1)";
-                    dvsWriter.println(String.format("# dvs-events: One event per line:  %s x y %s", tsStr, polStr));
+                    if(!isSpecialEvents()){
+                        dvsWriter.println(String.format("# dvs-events: One event per line:  %s x y %s", tsStr, polStr));
+                    }else{
+                        String specStr = "Special event (1=special, 0=normal)";
+                        dvsWriter.println(String.format("# dvs-events: One event per line:  %s x y %s, %s", tsStr, polStr, specStr));
+                    }
                 }
             }
             if (imuSamples) {

@@ -56,6 +56,7 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     protected boolean useUsTimestamps = getBoolean("useUsTimestamps", false);
     protected boolean useSignedPolarity = getBoolean("useSignedPolarity", false);
     protected boolean timestampLast=getBoolean("timestampLast", false);
+    private boolean specialEvents=getBoolean("specialEvents", false);
 
     public AbstractDavisTextIo(AEChip chip) {
         super(chip);
@@ -64,6 +65,8 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
         setPropertyTooltip("useUsTimestamps", "use us int timestamps rather than float time in seconds");
         setPropertyTooltip("useSignedPolarity", "use -1/+1 OFF/ON polarity rather than 0,1 OFF/ON polarity");
         setPropertyTooltip("timestampLast", "use x,y,p,t rather than t,x,y,p ordering");
+        setPropertyTooltip("specialEvents", "<HTML>Include extra 5th column that labels events as special (1) or normal DVS events (0). "
+                + "<p>For NoiseTesterFilter, events that are special are treated as labeled noisee events..");
     }
 
     /**
@@ -130,6 +133,21 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     public void setTimestampLast(boolean timestampLast) {
         this.timestampLast = timestampLast;
         putBoolean("timestampLast", timestampLast);
+    }
+
+    /**
+     * @return the specialEvents
+     */
+    public boolean isSpecialEvents() {
+        return specialEvents;
+    }
+
+    /**
+     * @param specialEvents the specialEvents to set
+     */
+    public void setSpecialEvents(boolean specialEvents) {
+        this.specialEvents = specialEvents;
+        putBoolean("specialEvents", specialEvents);
     }
 
 }
