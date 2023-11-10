@@ -90,6 +90,9 @@ public class EventRateEstimator extends EventFilter2D {
         numEventsSinceLastUpdate++;
         if (dt >= 1000*eventRateTauMs / UPDATE_RATE_TAU_DIVIDER) {
 //                System.out.println("            rate update dt="+dt/1000+" ms");
+            if(e.timestamp<lastComputeTimestamp){
+                log.warning("nonmonotonic update time");
+            }
             lastComputeTimestamp = e.timestamp;
             instantaneousRate = 1e6f * (float) numEventsSinceLastUpdate / (dt * AEConstants.TICK_DEFAULT_US);
             numEventsSinceLastUpdate = 0;
