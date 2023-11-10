@@ -127,7 +127,7 @@ public class DVS640 extends AETemporalConstastRetina implements Serializable {
     }
 
     /**
-     * the event extractor for DVS128. DVS128 has two polarities 0 and 1. Here
+     * the event extractor for DVS640. DVS640 has two polarities 0 and 1. Here
      * the polarity is flipped by the extractor so that the raw polarity 0
      * becomes 1 in the extracted event. The ON events have raw polarity 0. 1 is
      * an ON event after event extraction, which flips the type. Raw polarity 1
