@@ -373,6 +373,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         if (flipPolarity) {
             e.flipPolarity();
         }
+        e.setType(polType==Polarity.Off? (byte)0:(byte)1);
         e.setDvsType();
         if(isSpecialEvents()){
             int specialFlag=Integer.parseInt(split[SPECIAL_COL]);
