@@ -293,8 +293,13 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             return;
         }
         String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
-        if (split == null || (!isSpecialEvents() && split.length != 4) || (!isSpecialEvents() && split.length!=5)) {
+        if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length!=5)) {
             log.warning(String.format("Line #%d does not have enough tokens, needs 4 without and 5 with specialEvents:\n\"%s\"", lastLineNumber, line));
+            errorCount++;
+            if(errorCount>MAX_ERRORS){
+                log.warning(String.format("Gave up after %d errors, closing file",errorCount));
+                doCloseFile();
+            }
             return;
         }
         
