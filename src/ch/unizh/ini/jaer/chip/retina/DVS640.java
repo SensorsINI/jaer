@@ -56,20 +56,11 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
- * Describes DVS128 retina and its event extractor and bias generator. This
- * camera is the Tmpdiff128 chip with certain biases tied to the rails to
- * enhance AE bus bandwidth and it achieves about 2 Meps, as opposed to the
- * approx 500 keps using the on-chip Tmpdiff128 biases.
- * <p>
- * Two constructors ara available, the vanilla constructor is used for event
- * playback and the one with a HardwareInterface parameter is useful for live
- * capture. {@link #setHardwareInterface} is used when the hardware interface is
- * constructed after the retina object. The constructor that takes a hardware
- * interface also constructs the biasgen interface.
+ * Generic 640x480 DVS chip
  *
  * @author tobi
  */
-@Description("DVS128 Dynamic Vision Sensor")
+@Description("Generic DVS 640x480 Dynamic Vision Sensor for visualizing data")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS640 extends AETemporalConstastRetina implements Serializable {
 
@@ -88,7 +79,6 @@ public class DVS640 extends AETemporalConstastRetina implements Serializable {
         setPixelWidthUm(9);
         setEventExtractor(new Extractor(this));
         setBiasgen(null); // only for viewing data
-        //        ChipCanvas c = getCanvas();
 
         dvsRenderer = new DVS640.DvsRenderer(this);
         setRenderer(dvsRenderer);
