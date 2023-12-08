@@ -65,7 +65,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
     private boolean weWereNeverEnabled = true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
     // we set PlayMode to WAITING even if a file is currently playing back
-    private final int MAX_ERRORS = 10;
+    private final int MAX_ERRORS = 100;
     private int errorCount = 0;
     protected boolean checkNonMonotonicTimestamps = getBoolean("checkNonMonotonicTimestamps", true);
     private int previousTimestamp = 0;
@@ -295,8 +295,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
         if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length!=5)) {
             log.warning(String.format("Line #%d does not have enough tokens, needs 4 without and 5 with specialEvents:\n\"%s\"", lastLineNumber, line));
-            errorCount++;
-            if(errorCount>MAX_ERRORS){
+            if(errorCount++>MAX_ERRORS){
                 log.warning(String.format("Gave up after %d errors, closing file",errorCount));
                 doCloseFile();
             }
@@ -332,7 +331,9 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         byte pol = Byte.parseByte(split[ip]);
         if (x < 0 || x >= maxX || y < 0 || y >= maxY) {
             log.warning(String.format("address outside of AEChip allowed range: x=%d y=%d, ignoring. %s ", x, y, pol, lineinfo(line)));
-            return;
+             if (errorCount++ > MAX_ERRORS) {
+                throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
+            }
         }
         Polarity polType = PolarityEvent.Polarity.Off;
         if (useSignedPolarity) {
@@ -346,8 +347,10 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         } else {
             if (pol < 0 || pol > 1) {
                 log.warning(String.format("polarity %d is not valid (check useSignedPolarity flag), ignoring. %s", pol, lineinfo(line)));
-                return;
-            } else if (pol == 1) {
+             if (errorCount++ > MAX_ERRORS) {
+                throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
+            }
+           } else if (pol == 1) {
                 polType = Polarity.On;
             }
         }
