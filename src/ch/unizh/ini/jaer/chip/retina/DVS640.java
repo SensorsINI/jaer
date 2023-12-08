@@ -1,11 +1,5 @@
 /*
- * DVS128.java
- *
- * Created on October 5, 2005, 11:36 AM
- *
- * To change this template, choose Tools | Options and locate the template under
- * the Source Creation and Management node. Right-click the template and choose
- * Open. You can then make changes to the template in the Source Editor.
+ * DVS104
  */
 package ch.unizh.ini.jaer.chip.retina;
 
@@ -56,11 +50,11 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
- * Generic 640x480 DVS chip
+ * Generic 640x480 VGA DVS chip
  *
  * @author tobi
  */
-@Description("Generic DVS 640x480 Dynamic Vision Sensor for visualizing data")
+@Description("Generic 640x480 VGA DVS for visualizing data")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS640 extends AETemporalConstastRetina implements Serializable {
 
