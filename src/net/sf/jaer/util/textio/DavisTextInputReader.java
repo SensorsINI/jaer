@@ -52,7 +52,8 @@ import net.sf.jaer.graphics.AEViewer;
  */
 @Description("<html>Reads in text format files with DVS data from DAVIS and DVS cameras."
         + "<p>Input format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>"
-        + "i.e. one DVS event per line,  <i>(timestamp x y polarity)</i>, timestamp is float seconds, x, y, polarity are ints. polarity is 0 for off, 1 for on")
+        + "i.e. one DVS event per line,  <i>(timestamp x y polarity)</i>, timestamp is float seconds, x, y, polarity are ints. polarity is 0 for off, 1 for on"
+        + "<p> DavisTextInputReader uses the current time slice duration or event count depending on FlexTime setting in View/Flextime enabled menu")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DavisTextInputReader extends AbstractDavisTextIo implements PropertyChangeListener {
 
@@ -61,6 +62,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     private BufferedReader dvsReader = null;
     private int lastTimestampRead = Integer.MIN_VALUE, lastPacketLastTimestamp = Integer.MIN_VALUE;
     private boolean noEventsReadYet = true; // set false when new file is opened
+    private int numEventsThisPacket=0;
     private ApsDvsEventPacket outputPacket = null;
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
     private boolean weWereNeverEnabled = true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
@@ -243,14 +245,19 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         if (dvsReader == null) {
             return outputPacket;
         }
+        boolean flextime = getChip().getAeViewer().getAePlayer().isFlexTimeEnabled();
         int durationUs = getChip().getAeViewer().getAePlayer().getTimesliceUs(); // TODO handle flex time (constant count)
+        int eventCount = getChip().getAeViewer().getAePlayer().getPacketSizeEvents();
         OutputEventIterator outItr = outputPacket.outputIterator();
         lastTimestampRead = lastPacketLastTimestamp;
         String line = null;
         maxX = chip.getSizeX();
         maxY = chip.getSizeY();
         boolean noEventsInThisPacket = true;
-        while (dvsReader != null && (noEventsReadYet || noEventsInThisPacket || lastTimestampRead < lastPacketLastTimestamp + durationUs)) {
+        numEventsThisPacket = 0;
+        while (dvsReader != null && (noEventsReadYet || noEventsInThisPacket)
+                || (!flextime && lastTimestampRead < lastPacketLastTimestamp + durationUs)
+                || (flextime && numEventsThisPacket < eventCount)) {
             try {
                 line = dvsReader.readLine();
                 if (line == null) {
@@ -268,6 +275,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 }
                 parseEvent(line, outItr);
                 noEventsInThisPacket = false;
+                numEventsThisPacket++;
             } catch (NumberFormatException nfe) {
                 log.warning(String.format("%s: Line #%d has a bad number format: \"%s\"; check options", nfe.toString(), lastLineNumber, line));
                 if (errorCount++ > MAX_ERRORS) {
