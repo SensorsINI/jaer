@@ -392,6 +392,7 @@ public abstract class AbstractAEPlayer {
         setPlaybackDirection(PlaybackDirection.Backward);
     }
 
+    /** Return the flextime packet size in events */
     public int getPacketSizeEvents() {
         return packetSizeEvents;
     }
