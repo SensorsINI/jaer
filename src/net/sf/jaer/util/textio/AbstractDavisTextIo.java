@@ -44,7 +44,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  */
 public abstract class AbstractDavisTextIo extends EventFilter2D {
 
-    protected int LOG_EVERY_THIS_MANY_MS = 500;
+    protected int LOG_EVERY_THIS_MANY_MS = 2000;
     protected long nextGuiUpdateTime = System.currentTimeMillis();
     protected static String DEFAULT_FILENAME = "JAEERDavisTextIO.txt";
     protected final int LOG_EVERY_THIS_MANY_DVS_EVENTS = 10000; // for logging concole messages
