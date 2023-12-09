@@ -18,14 +18,21 @@
  */
 package net.sf.jaer.util.textio;
 
+import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.gl2.GLUT;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
@@ -39,9 +46,9 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
-import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.graphics.FrameAnnotater;
 
 /**
  * "Writes out text format files with DVS and IMU data from DAVIS and DVS
@@ -55,14 +62,14 @@ import net.sf.jaer.graphics.AEViewer;
         + "i.e. one DVS event per line,  <i>(timestamp x y polarity)</i>, timestamp is float seconds, x, y, polarity are ints. polarity is 0 for off, 1 for on"
         + "<p> DavisTextInputReader uses the current time slice duration or event count depending on FlexTime setting in View/Flextime enabled menu")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class DavisTextInputReader extends AbstractDavisTextIo implements PropertyChangeListener {
+public class DavisTextInputReader extends AbstractDavisTextIo implements PropertyChangeListener, FrameAnnotater {
 
 // for logging concole messages
     // for logging concole messages
     private BufferedReader dvsReader = null;
     private int lastTimestampRead = Integer.MIN_VALUE, lastPacketLastTimestamp = Integer.MIN_VALUE;
     private boolean noEventsReadYet = true; // set false when new file is opened
-    private int numEventsThisPacket=0;
+    private int numEventsThisPacket=0, numEventsInFile=0;
     private ApsDvsEventPacket outputPacket = null;
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
     private boolean weWereNeverEnabled = true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
@@ -134,7 +141,17 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
      */
     public BufferedReader openReader(File f) throws IOException {
         resetFilter();
+        long lineCount;
+//        https://stackoverflow.com/questions/1277880/how-can-i-get-the-count-of-line-in-a-file-in-an-efficient-way
         BufferedReader reader = new BufferedReader(new FileReader(f));
+        log.info("counting events in file....");
+        numEventsInFile = 0;
+        while (reader.readLine() != null) {
+            numEventsInFile++;
+        }
+        reader.close();
+        log.info(String.format("%s has %,d events",f,numEventsInFile));
+        reader = new BufferedReader(new FileReader(f));
         lastFile = f;
         setEventsProcessed(0);
         noEventsReadYet = true;
@@ -144,6 +161,21 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         log.info("Opened text input file " + f.toString() + " with text format");
         setViewerToFilterInputViewMode();
         return reader;
+    }
+
+        @Override
+    public void annotate(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glPushMatrix();
+        final GLUT glut = new GLUT();
+        gl.glColor3f(.8f, .8f, .8f); // must set color before raster position (raster position is like glVertex)
+        gl.glRasterPos3f(0, 30, 0);
+        final float filePercent = 100 * (float) eventsProcessed / numEventsInFile;
+        String s = null;
+        s = String.format("File: %%%6.1f",
+                filePercent);
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+        gl.glPopMatrix();
     }
 
     synchronized public void doOpenFileAndRecordAedat() {
