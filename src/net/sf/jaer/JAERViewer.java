@@ -644,7 +644,7 @@ public class JAERViewer {
         }
 
         log.info("jAERViewer starting up");
-        log.info("java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
+        log.info("java.vm.version=" + System.getProperty("java.version") + "  java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
         log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."
                 + " \nThe current value of java.util.logging.config.file is " + System.getProperty("java.util.logging.config.file")
                 + "\nEdit this file to configure logging." + "\nThe value of java.io.tmpdir is " + System.getProperty("java.io.tmpdir"));
