@@ -170,12 +170,18 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         final GLUT glut = new GLUT();
         gl.glColor3f(.8f, .8f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, 30, 0);
-        final float filePercent = 100 * (float) eventsProcessed / numEventsInFile;
+        float filePercent = getFilePercent();
         String s = null;
         s = String.format("File: %%%6.1f",
                 filePercent);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
+        getChip().getAeViewer().getAePlayer().setFractionalPosition(filePercent/100);
+    }
+
+    private float getFilePercent() {
+        final float filePercent = 100 * (float) eventsProcessed / numEventsInFile;
+        return filePercent;
     }
 
     synchronized public void doOpenFileAndRecordAedat() {
