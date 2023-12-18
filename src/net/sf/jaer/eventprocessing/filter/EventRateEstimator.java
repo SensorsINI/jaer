@@ -65,7 +65,7 @@ public class EventRateEstimator extends EventFilter2D {
             final long timeSinceBiasChangeMs = System.currentTimeMillis() - biasChangedTimeMs;
             if (timeSinceBiasChangeMs < 1000 * this.biasChangePauseS) {
                 lastComputeTimestamp = in.getLastTimestamp();
-                System.out.println(String.format("timeSinceBiasChangeMs=%d < %.0f",timeSinceBiasChangeMs,1000*this.biasChangePauseS));
+//                System.out.println(String.format("timeSinceBiasChangeMs=%d < %.0f",timeSinceBiasChangeMs,1000*this.biasChangePauseS));
                 return in;
             } else {
                 biasChanged = false;
@@ -224,6 +224,6 @@ public class EventRateEstimator extends EventFilter2D {
     synchronized public void setBiasChangePauseS(float biasChangePauseS) {
         this.biasChangePauseS = biasChangePauseS;
         putFloat("biasChangePauseS",biasChangePauseS);
-        log.info(String.format("Set biasChangePauseS=%.3fs",this.biasChangePauseS));
+//        log.info(String.format("Set biasChangePauseS=%.3fs",this.biasChangePauseS));
     }
 }
