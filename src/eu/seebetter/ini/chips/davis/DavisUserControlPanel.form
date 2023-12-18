@@ -204,7 +204,7 @@
                   <SubComponents>
                     <Component class="net.sf.jaer.biasgen.PotTweaker" name="bandwidthTweaker">
                       <Properties>
-                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjust the photoreceptor and source follower bandwidth by changing Pr and PRSf bias currents&#xa;&lt;p&gt;Limited to changing fine current value. For more control, adjust these currents directly."/>
+                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjust the source follower bandwidth by changing PRSf bias current.&#xa;&lt;p&gt;&#xa;For minimum shot noise under low illumination, the photoreceptor bias should be large and the bandwidth should be limited&#xa;by the source follower buffer. See &lt;a href=&quot;https://arxiv.org/abs/2304.04019&quot;&gt;Optimal biasing and physical limits of DVS event noise&lt;/a&gt;. "/>
                         <Property name="lessDescription" type="java.lang.String" value="Slower"/>
                         <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                           <Dimension value="[80, 30]"/>
@@ -257,7 +257,7 @@
                           <Properties>
                             <Property name="editable" type="boolean" value="false"/>
                             <Property name="columns" type="int" value="12"/>
-                            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent."/>
+                            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&#xa;&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent.&#xa;&lt;p&gt; Assumes source follower runs in subthreshold, so will only be valid for bias curreents below the specific current"/>
                           </Properties>
                           <Events>
                             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="bwEstTFActionPerformed"/>

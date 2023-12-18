@@ -653,7 +653,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         // log.info("tweak bandwidth by " + val);
         bandwidth = val;
         final float MAX = 30;
-        pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+//        pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
         sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
         getChip().getSupport().firePropertyChange(DVSTweaks.BANDWIDTH, old, val);
     }
