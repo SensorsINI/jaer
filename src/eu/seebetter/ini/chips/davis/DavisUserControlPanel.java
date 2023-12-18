@@ -483,7 +483,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         bwPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
-        bandwidthTweaker.setToolTipText("<html>Adjust the photoreceptor and source follower bandwidth by changing Pr and PRSf bias currents\n<p>Limited to changing fine current value. For more control, adjust these currents directly.");
+        bandwidthTweaker.setToolTipText("<html>Adjust the source follower bandwidth by changing PRSf bias current.\n<p>\nFor minimum shot noise under low illumination, the photoreceptor bias should be large and the bandwidth should be limited\nby the source follower buffer. See <a href=\"https://arxiv.org/abs/2304.04019\">Optimal biasing and physical limits of DVS event noise</a>. ");
         bandwidthTweaker.setLessDescription("Slower");
         bandwidthTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
         bandwidthTweaker.setMoreDescription("Faster");
@@ -501,7 +501,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         bwEstTF.setEditable(false);
         bwEstTF.setColumns(12);
-        bwEstTF.setToolTipText("<html> Estimated DVS cutoff frequency based solely on source follower bias current.<p> Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent.");
+        bwEstTF.setToolTipText("<html> Estimated DVS cutoff frequency based solely on source follower bias current.\n<p> Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent.\n<p> Assumes source follower runs in subthreshold, so will only be valid for bias curreents below the specific current");
         bwEstTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 bwEstTFActionPerformed(evt);

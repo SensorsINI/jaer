@@ -513,7 +513,7 @@ public class DVS128andCochleaAMS1b extends AETemporalConstastRetina implements S
 
         public void setBandwidthTweak(float val) {
             final float MAX = 300;
-            pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+//            pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
         }
 
