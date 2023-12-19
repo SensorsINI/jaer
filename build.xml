@@ -145,6 +145,7 @@
        <ivy:resolve/>
         <ivy:retrieve/>
          <echo message="*************************************** ivy.default.settings.dir=${ivy.default.settings.dir}"/>
+         <echo message="If you get dialog Artifactory Domain asking for user/pass hit Cancal button"/>
 
         <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
             <path>
