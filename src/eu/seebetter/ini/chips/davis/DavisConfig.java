@@ -29,6 +29,7 @@ import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import eu.seebetter.ini.chips.davis.imu.ImuAccelScale;
 import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
+import javax.swing.UIManager;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -83,7 +84,9 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     // subclasses for controlling aspects of camera
     protected DavisConfig.VideoControl videoControl;
     protected ImuControl imuControlGUI;
-    EngineeringFormat eng=new EngineeringFormat();
+    EngineeringFormat eng = new EngineeringFormat();
+
+    private boolean dualUserFriendlyAndBiasCurrentsViewEnabled = false;
 
     public DavisConfig(final Chip chip) {
         super(chip);
@@ -405,9 +408,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     }
 
     private ParameterControlPanel videoParameterControlPanel;
-    private JPanel userFriendlyControls;
+    private JPanel userFriendlyControls, combinedBiasShiftedSourcePanel;
     private JPanel configPanel;
     private JTabbedPane configTabbedPane;
+    private JPanel dualViewPanel;
 
     // threshold for triggering a new frame snapshot automatically
     private int autoShotThreshold;
@@ -432,12 +436,44 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         configPanel = new JPanel();
         configPanel.setLayout(new BorderLayout());
 
+        makeConfigTabbedPane();
+
+        // only select panel after all added
+        configPanel.add(configTabbedPane, BorderLayout.CENTER);
+
+        setBatchEditOccurring(false);
+        return configPanel;
+    }
+
+    /**
+     * Sets dual view of user friendly and bias currents
+     */
+    void setDualView(boolean selected) {
+        if (selected) {
+            makeDualViewPanel();
+            configPanel.removeAll();
+            configPanel.add(dualViewPanel, BorderLayout.CENTER);
+        } else {
+            makeConfigTabbedPane();
+            configPanel.removeAll();
+            configPanel.add(configTabbedPane, BorderLayout.CENTER);
+        }
+        configPanel.validate();
+    }
+
+    private void makeDualViewPanel() {
+        dualViewPanel = new JPanel();
+        dualViewPanel.setLayout(new BorderLayout());
+        dualViewPanel.add(userFriendlyControls, BorderLayout.WEST); // removes it from configTabbedPane
+        dualViewPanel.add(combinedBiasShiftedSourcePanel, BorderLayout.EAST); // removes it from configTabbedPane
+    }
+
+    private void makeConfigTabbedPane() {
         configTabbedPane = new JTabbedPane();
         userFriendlyControls = new DavisUserControlPanel(getChip());
         configTabbedPane.addTab("<html><strong><font color=\"red\">User-Friendly Controls", userFriendlyControls);
-
         // biasgen
-        final JPanel combinedBiasShiftedSourcePanel = new JPanel();
+        combinedBiasShiftedSourcePanel = new JPanel();
         combinedBiasShiftedSourcePanel
                 .add(new JLabel("<html>Low-level control of on-chip bias currents and voltages. <p>These are only for experts!"));
         combinedBiasShiftedSourcePanel.setLayout(new BoxLayout(combinedBiasShiftedSourcePanel, BoxLayout.Y_AXIS));
@@ -445,44 +481,37 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
         configTabbedPane.addTab("Bias Current Config", combinedBiasShiftedSourcePanel);
-
         // Multiplexer
         final JPanel muxPanel = new JPanel();
         muxPanel.setLayout(new BoxLayout(muxPanel, BoxLayout.Y_AXIS));
         configTabbedPane.addTab("Multiplexer Config", muxPanel);
         SPIConfigValue.addGUIControls(muxPanel, muxControl);
-
         // DVS
         final JPanel dvsPanel = new JPanel();
         dvsPanel.setLayout(new BoxLayout(dvsPanel, BoxLayout.Y_AXIS));
         configTabbedPane.addTab("DVS Config", dvsPanel);
         SPIConfigValue.addGUIControls(dvsPanel, dvsControl);
-
         // APS
         final JPanel apsPanel = new JPanel();
         apsPanel.setLayout(new BoxLayout(apsPanel, BoxLayout.Y_AXIS));
         configTabbedPane.addTab("APS Config", apsPanel);
         SPIConfigValue.addGUIControls(apsPanel, apsControl);
-
         // IMU
         final JPanel imuControlPanel = new JPanel();
         imuControlPanel.add(new JLabel("<html>Low-level control of integrated inertial measurement unit."));
         imuControlPanel.setLayout(new BoxLayout(imuControlPanel, BoxLayout.Y_AXIS));
         imuControlPanel.add(new ImuControlPanel(this));
         configTabbedPane.addTab("IMU Config", imuControlPanel);
-
         // External Input
         final JPanel extPanel = new JPanel();
         extPanel.setLayout(new BoxLayout(extPanel, BoxLayout.Y_AXIS));
         configTabbedPane.addTab("External Input Config", extPanel);
         SPIConfigValue.addGUIControls(extPanel, extInControl);
-
         // Chip config
         final JPanel chipPanel = new JPanel();
         chipPanel.setLayout(new BoxLayout(chipPanel, BoxLayout.Y_AXIS));
         configTabbedPane.addTab("Chip Config", chipPanel);
         SPIConfigValue.addGUIControls(chipPanel, chipControl);
-
         // Autoexposure
         if (getChip() instanceof DavisBaseCamera) {
             final JPanel autoExposurePanel = new JPanel();
@@ -492,7 +521,6 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             autoExposurePanel.add(new ParameterControlPanel(((DavisBaseCamera) getChip()).getAutoExposureController()));
             configTabbedPane.addTab("APS Autoexposure Control", autoExposurePanel);
         }
-
         // Video Control
         final JPanel videoControlPanel = new JPanel();
         videoControlPanel.add(new JLabel("<html>Controls display of APS video frame data"));
@@ -500,19 +528,15 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         videoParameterControlPanel = new ParameterControlPanel(getVideoControl());
         videoControlPanel.add(videoParameterControlPanel);
         configTabbedPane.addTab("Video Control", videoControlPanel);
-
         getVideoControl().addObserver(videoParameterControlPanel);
         getVideoControl().getContrastContoller().addObserver(videoParameterControlPanel);
 
-        // only select panel after all added
-        configPanel.add(configTabbedPane, BorderLayout.CENTER);
-
+        // make special dual view panel for seeing effect of userFriendlyControls on bias currents
         try {
             configTabbedPane.setSelectedIndex(getChip().getPrefs().getInt("DavisBaseCamera.bgTabbedPaneSelectedIndex", 0));
         } catch (final IndexOutOfBoundsException e) {
             configTabbedPane.setSelectedIndex(0);
         }
-
         // add listener to store last selected tab
         configTabbedPane.addMouseListener(new MouseAdapter() {
             @Override
@@ -520,9 +544,6 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                 tabbedPaneMouseClicked(evt);
             }
         });
-
-        setBatchEditOccurring(false);
-        return configPanel;
     }
 
     @Override
@@ -957,7 +978,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         // computed based on Davis240/346 C1=132fF and estimated SF bias current
         float iSf = sf.getCurrent(), iPr = pr.getCurrent();
         if (iSf > iPr * .5) {
-            log.info(String.format("Source follower bias current (%sA) is larger than half of Photoreceptor bias current (%sA); cannot estimate cutoff frequency from SF current alone",eng.format(iSf),eng.format(iPr)));
+            log.info(String.format("Source follower bias current (%sA) is larger than half of Photoreceptor bias current (%sA); cannot estimate cutoff frequency from SF current alone", eng.format(iSf), eng.format(iPr)));
             return Float.NaN;
         }
         // TODO note from IMU we have temperature, could account for it in thermal voltage
@@ -1290,5 +1311,20 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         }
 
         return null;
+    }
+
+    /**
+     * @return the dualUserFriendlyAndBiasCurrentsViewEnabled
+     */
+    public boolean isDualUserFriendlyAndBiasCurrentsViewEnabled() {
+        return dualUserFriendlyAndBiasCurrentsViewEnabled;
+    }
+
+    /**
+     * @param dualUserFriendlyAndBiasCurrentsViewEnabled the
+     * dualUserFriendlyAndBiasCurrentsViewEnabled to set
+     */
+    public void setDualUserFriendlyAndBiasCurrentsViewEnabled(boolean dualUserFriendlyAndBiasCurrentsViewEnabled) {
+        this.dualUserFriendlyAndBiasCurrentsViewEnabled = dualUserFriendlyAndBiasCurrentsViewEnabled;
     }
 }
