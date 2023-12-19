@@ -31,6 +31,10 @@
             <ibiblio name="spring_lib_m" root="https://repo.spring.io/libs-release/" m2compatible="true" />            
             <ibiblio name="rosjava_mvn_repo" m2compatible="true" 
                                   root="https://github.com/rosjava/rosjava_mvn_repo" />
+            <!--see https://jogamp.org/wiki/index.php/Maven
+               Added this resolver to get latest jogl version that are ony pushed to this test repo, not the main maven repo 
+             -->
+            <ibiblio name="jogamp test mirror" m2compatible="true" root="https://www.jogamp.org/deployment/maven/" />
         </chain>
     </resolvers>
 </ivysettings>
