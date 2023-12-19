@@ -26,12 +26,6 @@ public interface DVSTweaks {
 
     /**
      * Tweaks front end bandwidth, larger is higher bandwidth.
-     * 
-     * Adjust the source follower bandwidth by changing PRSf bias current. 
-     * 
-     * <p> For minimum shot noise under low illumination, the photoreceptor bias should be large and 
-     * the bandwidth should be limited by the source follower buffer. 
-     * See <a href="https://arxiv.org/abs/2304.04019">Optimal biasing and physical limits of DVS event noise</a>. 
      *
      * @param val -1 to 1 range
      */

@@ -734,7 +734,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             }
             bandwidth = val;
             final float MAX = 300;
-//            pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+            pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             getSupport().firePropertyChange(DVSTweaks.BANDWIDTH, old, val);
         }

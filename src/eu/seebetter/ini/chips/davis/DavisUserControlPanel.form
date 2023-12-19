@@ -32,14 +32,20 @@
     <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
   </AuxValues>
 
-  <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
+  <Layout>
+    <DimensionLayout dim="0">
+      <Group type="103" groupAlignment="0" attributes="0">
+          <Component id="jScrollPane1" pref="835" max="32767" attributes="0"/>
+      </Group>
+    </DimensionLayout>
+    <DimensionLayout dim="1">
+      <Group type="103" groupAlignment="0" attributes="0">
+          <Component id="jScrollPane1" pref="735" max="32767" attributes="0"/>
+      </Group>
+    </DimensionLayout>
+  </Layout>
   <SubComponents>
     <Container class="javax.swing.JScrollPane" name="jScrollPane1">
-      <Constraints>
-        <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
-          <BorderConstraints direction="Center"/>
-        </Constraint>
-      </Constraints>
 
       <Layout class="org.netbeans.modules.form.compat2.layouts.support.JScrollPaneSupportLayout"/>
       <SubComponents>
@@ -51,17 +57,14 @@
                   <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="dvsPanel" min="-2" pref="569" max="-2" attributes="0"/>
+                          <Component id="dvsPanel" min="-2" pref="789" max="-2" attributes="0"/>
                           <Group type="102" attributes="0">
                               <Component id="apsPanel" min="-2" max="-2" attributes="0"/>
                               <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="imuPanel" min="-2" max="-2" attributes="0"/>
-                                  <Component id="toggleDualViewJB" min="-2" max="-2" attributes="0"/>
-                              </Group>
+                              <Component id="imuPanel" min="-2" max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace pref="2379" max="32767" attributes="0"/>
+                      <EmptySpace pref="2159" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -71,13 +74,9 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="apsPanel" min="-2" max="-2" attributes="0"/>
-                          <Group type="102" attributes="0">
-                              <Component id="toggleDualViewJB" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                              <Component id="imuPanel" min="-2" max="-2" attributes="0"/>
-                          </Group>
+                          <Component id="imuPanel" alignment="0" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Component id="dvsPanel" min="-2" pref="532" max="-2" attributes="0"/>
                       <EmptySpace pref="158" max="32767" attributes="0"/>
                   </Group>
@@ -89,7 +88,7 @@
               <Properties>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                    <TitledBorder title="DVS Events">
+                    <TitledBorder title="DVS">
                       <Font PropertyName="font" name="Tahoma" size="11" style="1"/>
                     </TitledBorder>
                   </Border>
@@ -166,48 +165,72 @@
                         <LineBorder/>
                       </Border>
                     </Property>
-                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                      <Dimension value="[500, 139]"/>
-                    </Property>
                   </Properties>
 
                   <Layout>
                     <DimensionLayout dim="0">
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
                               <EmptySpace max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="bwEstimatePanel" min="-2" pref="481" max="-2" attributes="0"/>
-                                  <Component id="bandwidthTweaker" alignment="0" min="-2" pref="481" max="-2" attributes="0"/>
-                              </Group>
+                              <Component id="bwEstimatePanel" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="32767" attributes="0"/>
+                          </Group>
+                          <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
+                              <Group type="102" attributes="0">
+                                  <EmptySpace max="-2" attributes="0"/>
+                                  <Component id="bandwidthTweaker" max="32767" attributes="0"/>
+                                  <EmptySpace max="-2" attributes="0"/>
+                              </Group>
                           </Group>
                       </Group>
                     </DimensionLayout>
                     <DimensionLayout dim="1">
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Group type="102" alignment="1" attributes="0">
-                              <EmptySpace pref="16" max="32767" attributes="0"/>
-                              <Component id="bandwidthTweaker" min="-2" pref="73" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
+                              <EmptySpace pref="80" max="32767" attributes="0"/>
                               <Component id="bwEstimatePanel" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
+                              <Group type="102" alignment="0" attributes="0">
+                                  <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
+                                  <Component id="bandwidthTweaker" min="-2" pref="60" max="-2" attributes="0"/>
+                                  <EmptySpace pref="42" max="32767" attributes="0"/>
+                              </Group>
                           </Group>
                       </Group>
                     </DimensionLayout>
                   </Layout>
                   <SubComponents>
+                    <Component class="net.sf.jaer.biasgen.PotTweaker" name="bandwidthTweaker">
+                      <Properties>
+                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjust the photoreceptor and source follower bandwidth by changing Pr and PRSf bias currents&#xa;&lt;p&gt;Limited to changing fine current value. For more control, adjust these currents directly."/>
+                        <Property name="lessDescription" type="java.lang.String" value="Slower"/>
+                        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                          <Dimension value="[80, 30]"/>
+                        </Property>
+                        <Property name="moreDescription" type="java.lang.String" value="Faster"/>
+                        <Property name="name" type="java.lang.String" value="Adjusts pixel bandwidth" noResource="true"/>
+                        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                          <Dimension value="[250, 47]"/>
+                        </Property>
+                        <Property name="tweakDescription" type="java.lang.String" value=""/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="bandwidthTweakerStateChanged"/>
+                      </Events>
+                    </Component>
                     <Container class="javax.swing.JPanel" name="bwEstimatePanel">
 
                       <Layout>
                         <DimensionLayout dim="0">
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace max="32767" attributes="0"/>
+                                  <EmptySpace pref="147" max="32767" attributes="0"/>
                                   <Component id="bwEstLabel" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="bwEstTF" min="-2" pref="276" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" pref="182" max="-2" attributes="0"/>
+                                  <Component id="bwEstTF" min="-2" pref="354" max="-2" attributes="0"/>
+                                  <EmptySpace min="-2" pref="104" max="-2" attributes="0"/>
                               </Group>
                           </Group>
                         </DimensionLayout>
@@ -234,29 +257,14 @@
                           <Properties>
                             <Property name="editable" type="boolean" value="false"/>
                             <Property name="columns" type="int" value="12"/>
-                            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&#xa;&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent.&#xa;&lt;p&gt; Assumes source follower runs in subthreshold, so will only be valid for bias curreents below the specific current"/>
+                            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent."/>
                           </Properties>
+                          <Events>
+                            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="bwEstTFActionPerformed"/>
+                          </Events>
                         </Component>
                       </SubComponents>
                     </Container>
-                    <Component class="net.sf.jaer.biasgen.PotTweaker" name="bandwidthTweaker">
-                      <Properties>
-                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjust the source follower bandwidth by changing PRSf bias current.&#xa;&lt;p&gt;&#xa;For minimum shot noise under low illumination, the photoreceptor bias should be large and the bandwidth should be limited&#xa;by the source follower buffer. See &lt;a href=&quot;https://arxiv.org/abs/2304.04019&quot;&gt;Optimal biasing and physical limits of DVS event noise&lt;/a&gt;. "/>
-                        <Property name="lessDescription" type="java.lang.String" value="Slower"/>
-                        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[80, 30]"/>
-                        </Property>
-                        <Property name="moreDescription" type="java.lang.String" value="Faster"/>
-                        <Property name="name" type="java.lang.String" value="Adjusts maximum photoreceptor bandwidth" noResource="true"/>
-                        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[250, 47]"/>
-                        </Property>
-                        <Property name="tweakDescription" type="java.lang.String" value=""/>
-                      </Properties>
-                      <Events>
-                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="bandwidthTweakerStateChanged"/>
-                      </Events>
-                    </Component>
                   </SubComponents>
                 </Container>
                 <Container class="javax.swing.JPanel" name="thrPanel">
@@ -266,30 +274,22 @@
                         <LineBorder/>
                       </Border>
                     </Property>
-                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                      <Dimension value="[500, 202]"/>
-                    </Property>
                   </Properties>
 
                   <Layout>
                     <DimensionLayout dim="0">
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" alignment="1" attributes="0">
+                          <Group type="102" attributes="0">
                               <EmptySpace max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="1" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="thresholdTweaker" max="32767" attributes="0"/>
+                                  <Component id="onOffBalanceTweaker" alignment="0" max="32767" attributes="0"/>
                                   <Group type="102" alignment="1" attributes="0">
                                       <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
-                                      <Component id="jPanel4" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                                  <Group type="102" alignment="0" attributes="0">
-                                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                                          <Component id="onOffBalanceTweaker" alignment="0" pref="472" max="32767" attributes="0"/>
-                                          <Component id="thresholdTweaker" alignment="0" max="32767" attributes="0"/>
-                                      </Group>
-                                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                                      <Component id="jPanel4" min="-2" pref="731" max="-2" attributes="0"/>
                                   </Group>
                               </Group>
-                              <EmptySpace min="-2" pref="231" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
                           </Group>
                       </Group>
                     </DimensionLayout>
@@ -352,7 +352,7 @@
                       <SubComponents>
                         <Component class="javax.swing.JLabel" name="jLabel9">
                           <Properties>
-                            <Property name="text" type="java.lang.String" value="Est. DVS thresholds:"/>
+                            <Property name="text" type="java.lang.String" value="Estimated DVS thresholds:"/>
                             <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Displays computed values of DVS event temporal contrast thresholds&lt;br&gt; &#xa;based on paper&#xa;&lt;a href=&quot;https://ieeexplore.ieee.org/document/7962235&quot;&gt;Temperature and&#xa; Parasitic Photocurrent &lt;br&gt; Effects in Dynamic Vision Sensors, &lt;br&gt;Y Nozaki, T&#xa;Delbruck. &lt;br&gt;IEEE Trans. on Electron Devices, 2018&lt;/a&gt;"/>
                           </Properties>
                         </Component>
@@ -406,9 +406,6 @@
                         <LineBorder/>
                       </Border>
                     </Property>
-                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                      <Dimension value="[500, 118]"/>
-                    </Property>
                   </Properties>
 
                   <Layout>
@@ -416,11 +413,11 @@
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Group type="102" alignment="0" attributes="0">
                               <EmptySpace min="-2" pref="0" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                  <Component id="refrEstimatePanel" pref="481" max="32767" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
                                   <Component id="maxFiringRateTweaker" max="32767" attributes="0"/>
+                                  <Component id="refrEstimatePanel" max="32767" attributes="0"/>
                               </Group>
-                              <EmptySpace pref="17" max="32767" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
                           </Group>
                       </Group>
                     </DimensionLayout>
@@ -461,7 +458,7 @@
                         <DimensionLayout dim="0">
                           <Group type="103" groupAlignment="0" attributes="0">
                               <Group type="102" attributes="0">
-                                  <EmptySpace max="32767" attributes="0"/>
+                                  <EmptySpace min="229" pref="229" max="-2" attributes="0"/>
                                   <Component id="refrPerLabel" min="-2" max="-2" attributes="0"/>
                                   <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
                                   <Component id="refrPerTF" min="-2" pref="348" max="-2" attributes="0"/>
@@ -508,7 +505,7 @@
               <Properties>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
                   <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                    <TitledBorder title="Frames">
+                    <TitledBorder title="Image Sensor">
                       <Font PropertyName="font" name="Tahoma" size="11" style="1"/>
                     </TitledBorder>
                   </Border>
@@ -517,9 +514,6 @@
                   <Font name="Tahoma" size="11" style="1"/>
                 </Property>
               </Properties>
-              <AccessibilityProperties>
-                <Property name="AccessibleContext.accessibleName" type="java.lang.String" value="Frames"/>
-              </AccessibilityProperties>
 
               <Layout>
                 <DimensionLayout dim="0">
@@ -859,16 +853,6 @@
                 </Component>
               </SubComponents>
             </Container>
-            <Component class="javax.swing.JToggleButton" name="toggleDualViewJB">
-              <Properties>
-                <Property name="mnemonic" type="int" value="68"/>
-                <Property name="text" type="java.lang.String" value="Dual view"/>
-                <Property name="toolTipText" type="java.lang.String" value="Toggles dual view of user-friendly and low level bias currents (to learn effects)"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="toggleDualViewJBActionPerformed"/>
-              </Events>
-            </Component>
           </SubComponents>
         </Container>
       </SubComponents>
