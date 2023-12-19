@@ -373,10 +373,10 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         dvsContSp = new javax.swing.JSpinner();
         captureEventsCB = new javax.swing.JCheckBox();
         bwPanel = new javax.swing.JPanel();
-        bandwidthTweaker = new net.sf.jaer.biasgen.PotTweaker();
         bwEstimatePanel = new javax.swing.JPanel();
         bwEstLabel = new javax.swing.JLabel();
         bwEstTF = new javax.swing.JTextField();
+        bandwidthTweaker = new net.sf.jaer.biasgen.PotTweaker();
         thrPanel = new javax.swing.JPanel();
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
         onOffBalanceTweaker = new net.sf.jaer.biasgen.PotTweaker();
@@ -416,6 +416,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         imuPanel = new javax.swing.JPanel();
         imuVisibleCB = new javax.swing.JCheckBox();
         imuEnabledCB = new javax.swing.JCheckBox();
+        toggleDualViewJB = new javax.swing.JToggleButton();
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -428,7 +429,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             .addGap(0, 100, Short.MAX_VALUE)
         );
 
-        dvsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "DVS", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
+        setLayout(new java.awt.BorderLayout());
+
+        dvsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "DVS Events", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
         dvsPanel.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
 
         displayEventsCheckBox.setText("Display events");
@@ -482,19 +485,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         dvsPanel.add(captureEventsCB);
 
         bwPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
-
-        bandwidthTweaker.setToolTipText("<html>Adjust the source follower bandwidth by changing PRSf bias current.\n<p>\nFor minimum shot noise under low illumination, the photoreceptor bias should be large and the bandwidth should be limited\nby the source follower buffer. See <a href=\"https://arxiv.org/abs/2304.04019\">Optimal biasing and physical limits of DVS event noise</a>. ");
-        bandwidthTweaker.setLessDescription("Slower");
-        bandwidthTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
-        bandwidthTweaker.setMoreDescription("Faster");
-        bandwidthTweaker.setName("Adjusts pixel bandwidth"); // NOI18N
-        bandwidthTweaker.setPreferredSize(new java.awt.Dimension(250, 47));
-        bandwidthTweaker.setTweakDescription("");
-        bandwidthTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                bandwidthTweakerStateChanged(evt);
-            }
-        });
+        bwPanel.setPreferredSize(new java.awt.Dimension(500, 139));
 
         bwEstLabel.setText("Estimated maximum pixel bandwidth");
         bwEstLabel.setToolTipText("<html> Estimated DVS cutoff frequency based solely on source follower bias current.<p> Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent.");
@@ -502,22 +493,17 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         bwEstTF.setEditable(false);
         bwEstTF.setColumns(12);
         bwEstTF.setToolTipText("<html> Estimated DVS cutoff frequency based solely on source follower bias current.\n<p> Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent.\n<p> Assumes source follower runs in subthreshold, so will only be valid for bias curreents below the specific current");
-        bwEstTF.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                bwEstTFActionPerformed(evt);
-            }
-        });
 
         javax.swing.GroupLayout bwEstimatePanelLayout = new javax.swing.GroupLayout(bwEstimatePanel);
         bwEstimatePanel.setLayout(bwEstimatePanelLayout);
         bwEstimatePanelLayout.setHorizontalGroup(
             bwEstimatePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(bwEstimatePanelLayout.createSequentialGroup()
-                .addContainerGap(147, Short.MAX_VALUE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(bwEstLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(bwEstTF, javax.swing.GroupLayout.PREFERRED_SIZE, 354, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(104, 104, 104))
+                .addComponent(bwEstTF, javax.swing.GroupLayout.PREFERRED_SIZE, 276, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(182, 182, 182))
         );
         bwEstimatePanelLayout.setVerticalGroup(
             bwEstimatePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -528,36 +514,44 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 .addContainerGap())
         );
 
+        bandwidthTweaker.setToolTipText("<html>Adjust the source follower bandwidth by changing PRSf bias current.\n<p>\nFor minimum shot noise under low illumination, the photoreceptor bias should be large and the bandwidth should be limited\nby the source follower buffer. See <a href=\"https://arxiv.org/abs/2304.04019\">Optimal biasing and physical limits of DVS event noise</a>. ");
+        bandwidthTweaker.setLessDescription("Slower");
+        bandwidthTweaker.setMinimumSize(new java.awt.Dimension(80, 30));
+        bandwidthTweaker.setMoreDescription("Faster");
+        bandwidthTweaker.setName("Adjusts maximum photoreceptor bandwidth"); // NOI18N
+        bandwidthTweaker.setPreferredSize(new java.awt.Dimension(250, 47));
+        bandwidthTweaker.setTweakDescription("");
+        bandwidthTweaker.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                bandwidthTweakerStateChanged(evt);
+            }
+        });
+
         javax.swing.GroupLayout bwPanelLayout = new javax.swing.GroupLayout(bwPanel);
         bwPanel.setLayout(bwPanelLayout);
         bwPanelLayout.setHorizontalGroup(
             bwPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(bwPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(bwEstimatePanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(bwPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(bwEstimatePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 481, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(bandwidthTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 481, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addGroup(bwPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(bwPanelLayout.createSequentialGroup()
-                    .addContainerGap()
-                    .addComponent(bandwidthTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addContainerGap()))
         );
         bwPanelLayout.setVerticalGroup(
             bwPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, bwPanelLayout.createSequentialGroup()
-                .addContainerGap(80, Short.MAX_VALUE)
+                .addContainerGap(16, Short.MAX_VALUE)
+                .addComponent(bandwidthTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(bwEstimatePanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
-            .addGroup(bwPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(bwPanelLayout.createSequentialGroup()
-                    .addGap(20, 20, 20)
-                    .addComponent(bandwidthTweaker, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addContainerGap(42, Short.MAX_VALUE)))
         );
 
         dvsPanel.add(bwPanel);
 
         thrPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        thrPanel.setPreferredSize(new java.awt.Dimension(500, 202));
 
         thresholdTweaker.setToolTipText("<html>Adjusts DVS event temporal contrast thresholds magnitude <br>\nby changing current ratios diffOn/diff and diffOff/diff. \n<p>Limited to only adjusting fine current value; <br>\nwhen this limit is reached, user must manually change the coarse current value.");
         thresholdTweaker.setLessDescription("Lower & More events");
@@ -587,7 +581,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         jPanel4.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
 
-        jLabel9.setText("Estimated DVS thresholds:");
+        jLabel9.setText("Est. DVS thresholds:");
         jLabel9.setToolTipText("<html>Displays computed values of DVS event temporal contrast thresholds<br> \nbased on paper\n<a href=\"https://ieeexplore.ieee.org/document/7962235\">Temperature and\n Parasitic Photocurrent <br> Effects in Dynamic Vision Sensors, <br>Y Nozaki, T\nDelbruck. <br>IEEE Trans. on Electron Devices, 2018</a>");
         jPanel4.add(jLabel9);
 
@@ -624,15 +618,18 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         thrPanel.setLayout(thrPanelLayout);
         thrPanelLayout.setHorizontalGroup(
             thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(thrPanelLayout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, thrPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(thresholdTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, thrPanelLayout.createSequentialGroup()
+                .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(thrPanelLayout.createSequentialGroup()
                         .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, 731, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap())
+                        .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, thrPanelLayout.createSequentialGroup()
+                        .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                            .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 472, Short.MAX_VALUE)
+                            .addComponent(thresholdTweaker, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(0, 0, Short.MAX_VALUE)))
+                .addGap(231, 231, 231))
         );
         thrPanelLayout.setVerticalGroup(
             thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -649,6 +646,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         dvsPanel.add(thrPanel);
 
         refrPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+        refrPanel.setPreferredSize(new java.awt.Dimension(500, 118));
 
         maxFiringRateTweaker.setToolTipText("<html>Adjusts the refractory period after each event by changing Refr bias.\n<p>This current sets the rate at which the reset switch voltage is recharged.\n<p>Limited to changing fine current value. For more control, adjust these currents directly.");
         maxFiringRateTweaker.setLessDescription("Slower");
@@ -679,7 +677,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         refrEstimatePanelLayout.setHorizontalGroup(
             refrEstimatePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(refrEstimatePanelLayout.createSequentialGroup()
-                .addGap(229, 229, 229)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(refrPerLabel)
                 .addGap(5, 5, 5)
                 .addComponent(refrPerTF, javax.swing.GroupLayout.PREFERRED_SIZE, 348, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -701,10 +699,10 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             refrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(refrPanelLayout.createSequentialGroup()
                 .addGap(0, 0, 0)
-                .addGroup(refrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(refrEstimatePanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap())
+                .addGroup(refrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(refrEstimatePanel, javax.swing.GroupLayout.PREFERRED_SIZE, 481, Short.MAX_VALUE)
+                    .addComponent(maxFiringRateTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(17, Short.MAX_VALUE))
         );
         refrPanelLayout.setVerticalGroup(
             refrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -718,7 +716,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
         dvsPanel.add(refrPanel);
 
-        apsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Image Sensor", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
+        apsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "Frames", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
         apsPanel.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
 
         jLabel1.setText("Target Frame rate (Hz)");
@@ -974,6 +972,15 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 .addComponent(imuVisibleCB, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE))
         );
 
+        toggleDualViewJB.setMnemonic('D');
+        toggleDualViewJB.setText("Dual view");
+        toggleDualViewJB.setToolTipText("Toggles dual view of user-friendly and low level bias currents (to learn effects)");
+        toggleDualViewJB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                toggleDualViewJBActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -981,12 +988,14 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 789, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 569, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(2159, Short.MAX_VALUE))
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(toggleDualViewJB))))
+                .addContainerGap(2379, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -994,24 +1003,20 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                    .addGroup(jPanel2Layout.createSequentialGroup()
+                        .addComponent(toggleDualViewJB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGap(27, 27, 27)
                 .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 532, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(158, Short.MAX_VALUE))
         );
 
+        apsPanel.getAccessibleContext().setAccessibleName("Frames");
+
         jScrollPane1.setViewportView(jPanel2);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-        this.setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 835, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 735, Short.MAX_VALUE)
-        );
+        add(jScrollPane1, java.awt.BorderLayout.CENTER);
     }// </editor-fold>//GEN-END:initComponents
 
     private void offThrTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offThrTFActionPerformed
@@ -1022,9 +1027,17 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         // TODO add your handling code here:
     }//GEN-LAST:event_refrPerTFActionPerformed
 
-    private void bwEstTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_bwEstTFActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_bwEstTFActionPerformed
+    private void toggleDualViewJBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_toggleDualViewJBActionPerformed
+        boolean oldState=!toggleDualViewJB.isSelected();
+        // fire a propoerty change that the biasgen (DavisConfig) can respond to by toggling the dual view
+        getConfig().setDualView(toggleDualViewJB.isSelected());
+    }//GEN-LAST:event_toggleDualViewJBActionPerformed
+
+    private void bandwidthTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bandwidthTweakerStateChanged
+        getDvsTweaks().setBandwidthTweak(bandwidthTweaker.getValue());
+        setEstimatedBandwidth();
+        setFileModified();
+    }//GEN-LAST:event_bandwidthTweakerStateChanged
 
     private void glShutterCBActionPerformed(final java.awt.event.ActionEvent evt) {// GEN-FIRST:event_glShutterCBActionPerformed
         ((DavisBaseCamera) chip).getDavisConfig().setGlobalShutter(glShutterCB.isSelected());
@@ -1048,11 +1061,6 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         contrastController.setUseAutoContrast(autoContrastCB.isSelected());
     }// GEN-LAST:event_autoContrastCBActionPerformed
 
-    private void bandwidthTweakerStateChanged(final javax.swing.event.ChangeEvent evt) {// GEN-FIRST:event_bandwidthTweakerStateChanged
-        getDvsTweaks().setBandwidthTweak(bandwidthTweaker.getValue());
-        setEstimatedBandwidth();
-        setFileModified();
-    }// GEN-LAST:event_bandwidthTweakerStateChanged
 
     private void setEstimatedThresholdValues() {
         final float onThresholdLogE = apsDvsTweaks.getOnThresholdLogE();
@@ -1232,6 +1240,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     private javax.swing.JButton snapshotButton;
     private javax.swing.JPanel thrPanel;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
+    private javax.swing.JToggleButton toggleDualViewJB;
     // End of variables declaration//GEN-END:variables
 
     /**
