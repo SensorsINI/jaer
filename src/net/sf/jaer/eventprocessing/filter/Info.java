@@ -85,7 +85,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
     private boolean eventRate = getBoolean("eventRate", true);
-    private boolean eventRatePerPixel = getBoolean("eventRatePerPixel", false);
     private volatile boolean resetTimeEnabled = false;  // user for doResetTime
     private boolean resetTimeOnRewind = getBoolean("resetTimeOnRewind", false);
 
@@ -392,7 +391,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
         setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
         setPropertyTooltip("eventRate", "shows average event rate");
-        setPropertyTooltip("eventRatePerPixel", "shows average event rate per pixel (selected) or total (unselected). Set eventRateScaleMax to scale bars.");
         setPropertyTooltip("eventRateSigned", "uses signed event rate for ON positive and OFF negative");
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
@@ -800,8 +798,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             // and multiply by number of pixels to get string length in screen pixels.
             float sw = (glut.glutBitmapLength(font, s) / w) * sx;
             glut.glutBitmapString(font, s);
-            float rate=isEventRatePerPixel()? perPixelRate:totalRate;
-            gl.glRectf(xpos + sw, bary + barh, xpos + sw + ((rate * sx) / getEventRateScaleMax()), bary);
+            gl.glRectf(xpos + sw, bary + barh, xpos + sw + ((totalRate * sx) / getEventRateScaleMax()), bary);
         }
         gl.glPopMatrix();
 
@@ -1060,21 +1057,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setMeasureSparsity(boolean measureSparsity) {
         this.measureSparsity = measureSparsity;
         putBoolean("measureSparsity", measureSparsity);
-    }
-
-    /**
-     * @return the eventRatePerPixel
-     */
-    public boolean isEventRatePerPixel() {
-        return eventRatePerPixel;
-    }
-
-    /**
-     * @param eventRatePerPixel the eventRatePerPixel to set
-     */
-    public void setEventRatePerPixel(boolean eventRatePerPixel) {
-        this.eventRatePerPixel = eventRatePerPixel;
-        putBoolean("eventRatePerPixel", eventRatePerPixel);
     }
 
 }

@@ -4,7 +4,6 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.beans.PropertyChangeEvent;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
@@ -12,7 +11,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.AEViewer;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Estimates event rate from the input stream.
@@ -40,36 +39,22 @@ public class EventRateEstimator extends EventFilter2D {
     private float maxRate = getFloat("maxRate", 10e6f);
     private float filteredRate = 0, instantaneousRate = 0;
     private float eventRateTauMs = getFloat("eventRateTauMs", 100);
-    private float biasChangePauseS = getFloat("biasChangePauseS", .5f);
     /* Event rate estimates are sent to observers this many times per tau */
     protected int UPDATE_RATE_TAU_DIVIDER = 1;
     private int numEventsSinceLastUpdate = 0;
     private int numEventsInLastPacket = 0;
-    private boolean biasChanged=false;
-    private long biasChangedTimeMs=0;
 
     public EventRateEstimator(AEChip chip) {
         super(chip);
 //        filter.setTauMs(eventRateTauMs);
         setPropertyTooltip("eventRateTauMs", "lowpass filter time constant in ms for measuring event rate");
         setPropertyTooltip("maxRate", "maximum estimated rate, which is used for zero ISIs between packets");
-        setPropertyTooltip("biasChangePauseS", "time in seconds to pause measurement after detected change of any bias (0 to disable)");
     }
 
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         if (in == null || in.getSize() == 0) {
             return in; // if there are no events, don't touch values since we don't have a new update time
-        }
-        if (biasChanged && this.biasChangePauseS>0) {
-            final long timeSinceBiasChangeMs = System.currentTimeMillis() - biasChangedTimeMs;
-            if (timeSinceBiasChangeMs < 1000 * this.biasChangePauseS) {
-                lastComputeTimestamp = in.getLastTimestamp();
-//                System.out.println(String.format("timeSinceBiasChangeMs=%d < %.0f",timeSinceBiasChangeMs,1000*this.biasChangePauseS));
-                return in;
-            } else {
-                biasChanged = false;
-            }
         }
         numEventsInLastPacket = 0;
         for (BasicEvent e : in) {
@@ -130,23 +115,11 @@ public class EventRateEstimator extends EventFilter2D {
     @Override
     public void initFilter() {
         resetFilter();
-        if (chip.getAeViewer() != null) {
-            chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
-            chip.getBiasgen().getSupport().addPropertyChangeListener(this);
-        }
     }
 
     @Override
     public String toString() {
         return super.toString() + " rate=" + filteredRate;
-    }
-
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getSource() instanceof AEChip) {
-            biasChanged = true;
-            biasChangedTimeMs=System.currentTimeMillis();
-        }
     }
 
     public float getEventRateTauMs() {
@@ -209,21 +182,5 @@ public class EventRateEstimator extends EventFilter2D {
      */
     public int getNumEventsInLastPacket() {
         return numEventsInLastPacket;
-    }
-
-    /**
-     * @return the biasChangePauseS
-     */
-    public float getBiasChangePauseS() {
-        return biasChangePauseS;
-    }
-
-    /**
-     * @param biasChangePauseS the biasChangePauseS to set
-     */
-    synchronized public void setBiasChangePauseS(float biasChangePauseS) {
-        this.biasChangePauseS = biasChangePauseS;
-        putFloat("biasChangePauseS",biasChangePauseS);
-//        log.info(String.format("Set biasChangePauseS=%.3fs",this.biasChangePauseS));
     }
 }
