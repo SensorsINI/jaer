@@ -142,11 +142,12 @@
 
     <target name="download-deps" depends="-load-ivy-tasks"
             description="Download dependent libraries.">
+       <echo message="******** ivy.default.settings.dir=${ivy.default.settings.dir}"/>
+       <echo message="****** If you get dialog Artifactory Domain asking for user/pass hit Cancel button"/>
        <ivy:resolve/>
-        <ivy:retrieve/>
-         <echo message="*************************************** ivy.default.settings.dir=${ivy.default.settings.dir}"/>
-         <echo message="If you get dialog Artifactory Domain asking for user/pass hit Cancal button"/>
 
+        <ivy:retrieve/>
+         
         <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
             <path>
                 <fileset dir="${ivy.lib}" includes="*.jar"/>

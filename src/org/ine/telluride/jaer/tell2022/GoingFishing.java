@@ -50,7 +50,6 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.SignedNumber;
-import net.sf.jaer.eventprocessing.filter.CircularConvolutionFilter;
 import net.sf.jaer.eventprocessing.filter.RefractoryFilter;
 import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.eventprocessing.filter.XYTypeFilter;

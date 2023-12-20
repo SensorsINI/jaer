@@ -132,13 +132,13 @@ public class JAERViewer {
 
         // GLProfile and GLCapabilities should be equal across all shared GL drawable/context.
         // tobi implemented this from user guide for JOGL that suggests a shared drawable context for all uses of JOGL
-        GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
-        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault());
-        final GLProfile glp = GLProfile.getMaximum(true);// FixedFunc(true);
-//        final GLProfile glp = caps.getGLProfile();
-        final boolean createNewDevice = true; // use 'own' display device!
-        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
-        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
+//        GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
+//        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault());
+//        final GLProfile glp = GLProfile.getMaximum(true);// FixedFunc(true);
+////        final GLProfile glp = caps.getGLProfile();
+//        final boolean createNewDevice = true; // use 'own' display device!
+//        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
+//        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
         log.info("JOGL version information: " + JoglVersion.getInstance().toString());
 
         windowSaver = new WindowSaver(this, prefs);

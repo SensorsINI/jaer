@@ -233,7 +233,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private class RateHistory {
 
         private LinkedList<RateSamples> rateSamples = new LinkedList();
-        private TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.BOLD, 24));
         private long lastTimeAdded = Long.MIN_VALUE;
         // make following global to cover all histories for common scale for plots
         private long startTimeMs = Long.MAX_VALUE, endTimeMs = Long.MIN_VALUE;
