@@ -1,38 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<exe4j version="6.0" transformSequenceNumber="2">
+<exe4j version="9.0" transformSequenceNumber="3">
   <directoryPresets config="H:/Dropbox (Personal)/GitHub/SensorsINI/jaer/images" />
-  <application name="jaer1.6_win_x64" distributionSourceDir=".">
-    <languages>
-      <principalLanguage id="en" customLocalizationFile="" />
-    </languages>
-  </application>
-  <executable name="jAERViewer_win64" type="1" iconSet="true" iconFile="jaer.ico" executableDir="." redirectStderr="false" stderrFile="error.log" stderrMode="overwrite" redirectStdout="false" stdoutFile="output.log" stdoutMode="overwrite" failOnStderrOutput="true" executableMode="1" changeWorkingDirectory="false" workingDirectory="." singleInstance="false" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker" checkConsoleParameter="false" globalSingleInstance="false" singleInstanceActivate="true" dpiAware="false" amd64="true">
-    <messageSet />
-    <versionInfo include="true" fileVersion="" fileDescription="Launcher for AEViewer for jAER" legalCopyright="jAER Team, 2018" internalName="jAERViewer" productName="" companyName="University of Zurich, inilabs.com, inivation.com" productVersion="1.7.6" />
+  <application name="jaer" distributionSourceDir="." />
+  <executable name="jAERViewer_win64" iconSet="true" iconFile="jaer.ico" executableDir="." redirectStderr="false" executableMode="gui" changeWorkingDirectory="false" dpiAware="false">
+    <versionInfo include="true" fileDescription="Launcher for AEViewer for jAER" legalCopyright="jAER Team, 2018" internalName="jAERViewer" companyName="University of Zurich, inilabs.com, inivation.com" productVersion="1.7.6" />
   </executable>
   <splashScreen show="true" width="527" height="314" bitmapFile="images/SplashScreen.png" textOverlay="true">
     <text>
-      <statusLine x="413" y="259" text="" fontSize="14" fontColor="255,0,0" bold="false" />
-      <versionLine x="416" y="285" text="version %VERSION%" fontSize="14" fontColor="255,51,51" bold="false" />
+      <statusLine x="413" y="259" fontSize="14" fontColor="255,0,0" />
+      <versionLine x="416" y="285" text="version %VERSION%" fontSize="14" fontColor="255,51,51" />
     </text>
   </splashScreen>
-  <java mainClass="net.sf.jaer.JAERViewer" mainMode="1" vmParameters="-Djava.util.logging.config.file=conf/Logging.properties -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -Djogl.disable.opengles=false -Djogl.disable.openglcore" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true" minVersion="1.8" maxVersion="1.8" allowBetaVM="true" jdkOnly="false">
-    <searchSequence>
-      <registry />
-      <envVar name="JAVA_HOME" />
-      <envVar name="JDK_HOME" />
-    </searchSequence>
+  <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED" minVersion="9" maxVersion="21" allowBetaVM="true">
     <classPath>
       <archive location="./dist/jAER.jar" failOnError="false" />
       <scanDirectory location="./jars" failOnError="false" />
       <scanDirectory location="./lib" failOnError="false" />
     </classPath>
-    <modulePath />
     <nativeLibraryDirectories>
       <directory name="./jars/win64" />
     </nativeLibraryDirectories>
-    <vmOptions />
   </java>
-  <includedFiles />
-  <unextractableFiles />
 </exe4j>
