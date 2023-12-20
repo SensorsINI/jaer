@@ -31,9 +31,9 @@ MA 02110-1301  USA
         <!--see http://search.maven.org to find libraries -->
         <!--following does not work, since the latest jogl doesn't have com.jogamp.opengl--> 
         <!--<dependency org="org.jogamp.gluegen" name="gluegen-rt" rev="2.5.0" />-->
-        <!--        <dependency org="org.jogamp.gluegen" name="gluegen-rt-main" rev="2.5.0" />
-
-        <dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.5.0" /> -->
+        <!--<dependency org="org.jogamp.gluegen" name="gluegen-rt-main" rev="2.5.0" />-->
+        <!--jogl 2.5.0 is currently statically included as a fat jar in the jars folder.-->
+        <!--<dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.5.0" />--> 
  
         <dependency org="org.swinglabs" name="swing-layout" rev="1.0.3" />
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
@@ -48,8 +48,6 @@ MA 02110-1301  USA
         <dependency org="org.apache.directory.studio" name="org.apache.commons.io" rev="2.4" />
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
         <dependency org="org.apache.commons" name="commons-text" rev="1.8"/>
-        <!--javafx was moved out from java 11-->
-        <dependency org="org.openjfx" name="javafx" rev="17.0.9"/>
             
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
         
