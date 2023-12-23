@@ -2821,13 +2821,12 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
     /**
      * Draws the block matching bitmap
      *
-     * @param x
-     * @param y
-     * @param dx
-     * @param dy
-     * @param refBlock
-     * @param searchBlock
-     * @param subSampleBy
+     * @param result the SADResult to show
+     * @param ein the event to show for
+     * @param slices the 4d array of slices
+     * @param sadVals the SAD results
+     * @param dxInitVals 
+     * @param dyInitVals 
      */
     synchronized private void drawMatching(SADResult result, PolarityEvent ein, byte[][][][] slices, float[] sadVals, int[] dxInitVals, int[] dyInitVals) {
 //    synchronized private void drawMatching(int x, int y, int dx, int dy, byte[][] refBlock, byte[][] searchBlock, int subSampleBy) {
@@ -2840,6 +2839,10 @@ public class PatchMatchFlow extends AbstractMotionFlow implements FrameAnnotater
 
             final int refRadius = (blockDimension / 2) << (numScales - 1 - dispIdx);
             int dimNew = refRadius * 2 + 1 + (2 * (searchDistance));
+            if(dispIdx>=blockMatchingFrame.length){
+                log.warning(String.format("Cannot display blockMatchingFrame[%d] because it does not exist; there are only %d scales available",dispIdx,blockMatchingFrame.length));
+                continue;
+            }
             if (blockMatchingFrame[dispIdx] == null) {
                 String windowName = "Ref Block " + dispIdx;
                 blockMatchingFrame[dispIdx] = new JFrame(windowName);

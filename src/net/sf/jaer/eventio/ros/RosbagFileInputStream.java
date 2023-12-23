@@ -147,7 +147,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int MAX_RAW_EVENTS_BUFFER_SIZE = 1000000;
 
     private static final String TOPIC_EVENTS = "events", TOPIC_IMAGE_RAW = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
-    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE_RAW/*, TOPIC_IMU, TOPIC_EXPOSURE*/}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
+//    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE_RAW/*, TOPIC_IMU, TOPIC_EXPOSURE*/}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
+    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE_RAW, TOPIC_IMU, TOPIC_EXPOSURE}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
 
     private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER = "/davis/left/", EV_IMO_TOPIC_HEADER = "/samsung/camera/"; // TODO arbitrarily choose left camera for MVSEC for now
 
@@ -230,7 +231,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         sb.append("Duration: " + bagFile.getDurationS() + "s\n");
         sb.append("Chunks: " + bagFile.getChunks().size() + "\n");
         sb.append("Num messages: " + bagFile.getMessageCount() + "\n");
-        sb.append("File type is detected as " + rosbagFileType);
+        sb.append("RosBag File type is detected as " + rosbagFileType);
         rosbagInfoString = sb.toString();
 
         log.info(rosbagInfoString);

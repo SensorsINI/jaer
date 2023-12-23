@@ -231,6 +231,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL3bc); // getMaxProgrammable(true);// FixedFunc(true);
             final GLProfile glp = GLProfile.getDefault();
+//            final GLProfile glp = GLProfile.get(GLProfile.GL2ES2);
             final GLCapabilities caps = new GLCapabilities(glp);
             drawable = new GLCanvas(caps);
 //            if (SystemUtils.IS_OS_WINDOWS) {

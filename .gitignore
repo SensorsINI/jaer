@@ -5,4 +5,5 @@
 /ivy
 /jars unused/**
 /dist/
-hs_err*
+hs_err*.log
+build-native.xml~
