@@ -194,6 +194,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         prefs.getInt("borderSpacePixels", 20);
+        
 
         // GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
         // GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that
@@ -230,6 +231,10 @@ public class ChipCanvas implements GLEventListener, Observer {
 //            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL3bc); // getMaxProgrammable(true);// FixedFunc(true);
+                log.info("Getting GLProfile with GLProfile.getDefault()\n If this throws access violotion outside the JVM, and in atio6axx.dll driver"
+                        + ", then it may be your AMD graphics driver."
+                        + "\n If you are running dual display on laptop, try starting with only main laptop display."
+                        + "\n Try to enable use of discrete Nvidia GPU.");
             final GLProfile glp = GLProfile.getDefault();
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2ES2);
             final GLCapabilities caps = new GLCapabilities(glp);
