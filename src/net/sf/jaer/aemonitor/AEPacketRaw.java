@@ -11,7 +11,7 @@ package net.sf.jaer.aemonitor;
 
 import java.util.Collection;
 import net.sf.jaer.aemonitor.EventRaw.EventType;
-import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 
 /**
  * A structure containing a packer of AEs: addresses, timestamps. The AE packet
@@ -364,22 +364,42 @@ public class AEPacketRaw extends AEPacket {
         if (src == null || dest == null) {
             throw new NullPointerException("null src or dest");
         }
-        if (srcPos >= src.getNumEvents()) {
+        if (src.isEmpty()) {
             return;
         }
-        if(destPos>dest.getNumEvents()){
-            throw new IllegalArgumentException(String.format("destimation position %,d is past its current size %,d",destPos, dest.getNumEvents()));
+        AEPacketRaw.timestampCheck(src);
+        if (srcPos+length > src.getNumEvents()) {
+            throw new IllegalArgumentException(String.format("srcPos (%,d)+length (%,d) (total %,d) goes past its end (%,d)", srcPos,length,srcPos+length, src.getNumEvents()));
+        }
+
+        if (destPos > dest.getNumEvents()) {
+            throw new IllegalArgumentException(String.format("destPos %,d starts past its current size %,d", destPos, dest.getNumEvents()));
+        }
+        if (!dest.isEmpty()) {
+            int t1 = dest.getEvent(destPos).timestamp, t0 = src.getEvent(srcPos + length).timestamp;
+            if (t0 > t1) {
+                throw new RuntimeException(String.format("Last src packet event timestamp (%,d) is older than first dest packet event (%,d)", t0, t1));
+            }
+            AEPacketRaw.timestampCheck(dest);
         }
         dest.ensureCapacity(destPos + length);
         System.arraycopy(src.getAddresses(), srcPos, dest.getAddresses(), destPos, length);
         System.arraycopy(src.getTimestamps(), srcPos, dest.getTimestamps(), destPos, length);
         dest.setNumEvents(destPos + length);
-        timestampCheck(dest);
+        AEPacketRaw.timestampCheck(dest);
     }
 
-    private static void timestampCheck(AEPacketRaw dest) {
-        if (!dest.isEmpty() && dest.getFirstTimestamp() > dest.getLastTimestamp()) {
-            throw new RuntimeException(String.format("First timestamp later than last timestamp for %s", dest));
+    /** Tests the packet to see if the timestamps are monotonic.  Mainly for debugging.
+     * 
+     * @param dest the packet 
+     */
+    private static void timestampCheck(AEPacketRaw dest) throws IllegalArgumentException {
+        if (dest.isEmpty()) {
+            return;
+        }
+        int t0 = dest.getFirstTimestamp(), t1 = dest.getLastTimestamp();
+        if (t0 > t1) {
+            throw new RuntimeException(String.format("First timestamp (%,d) later by dt=%,d us than last timestamp (%,d) for packet %s", t0, t1 - t0, t1, dest.toString()));
         }
     }
 

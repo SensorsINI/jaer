@@ -241,5 +241,57 @@ public abstract class AEPacket {
         setNumEvents(0);
 
     }
+    
+       
+     /**
+     * Class used to signal that the packet has a nonmonotic timestamp order
+     */
+    public class NonMonotonicTimeException extends Exception {
+
+        protected int timestamp, lastTimestamp;
+
+        public NonMonotonicTimeException() {
+            super();
+        }
+
+        public NonMonotonicTimeException(String s) {
+            super(s);
+        }
+
+        /** Construct the exception with a particular timestamp
+         * 
+         * @param ts the nonmononotic timestamp
+         */
+        public NonMonotonicTimeException(int ts) {
+            this.timestamp = ts;
+        }
+
+        /**
+         * Constructs a new NonMonotonicTimeException
+         *
+         * @param readTs the timestamp just read, likely the nonmonotonic one
+         * @param lastTs the previous timestamp
+         */
+        public NonMonotonicTimeException(int readTs, int lastTs) {
+            this.timestamp = readTs;
+            this.lastTimestamp = lastTs;
+        }
+
+
+        public int getCurrentTimestamp() {
+            return timestamp;
+        }
+
+        public int getPreviousTimestamp() {
+            return lastTimestamp;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("NonMonotonicTimeException: timestamp=%,d lastTimestamp=%,d jumps backwards by %,d",
+                    timestamp, lastTimestamp, (timestamp - lastTimestamp));
+        }
+    }
+
 
 }

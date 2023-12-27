@@ -36,7 +36,6 @@ import java.util.prefs.Preferences;
 
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
-import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
@@ -45,18 +44,11 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
-import net.sf.jaer.hardwareinterface.HardwareInterface;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.LoggingThreadGroup;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.GLCapabilities;
-import com.jogamp.opengl.GLDrawableFactory;
-import com.jogamp.opengl.GLProfile;
 import com.jogamp.opengl.JoglVersion;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.FileHandler;
 import java.util.logging.Handler;
 
 /**
@@ -656,13 +648,14 @@ public class JAERViewer {
         }
         log.info("logging configuration read from java.util.logging.config.file=" + System.getProperty("java.util.logging.config.file"));
         for (Handler h : root.getHandlers()) {
-            if (h instanceof ConsoleHandler) {
-                log.info("debug logging to console with Level=" + ((ConsoleHandler) h).getLevel());
-            } else if (h instanceof FileHandler) {
-                log.info("debug logging to file with Level=" + ((FileHandler) h).getLevel() + " to file (see config file for location)");
-            } else {
-                log.info("debug logging to handler that is not ConsoleHandler or FileHandler using " + h);
-            }
+            log.info(String.format("Handler %s logging with Level=%s",h,h.getLevel()));
+//            if (h instanceof ConsoleHandler) {
+//                log.info("debug logging to console with Level=" + ((ConsoleHandler) h).getLevel());
+//            } else if (h instanceof FileHandler) {
+//                log.info("debug logging to file with Level=" + ((FileHandler) h).getLevel() + " to file (see config file for location)");
+//            } else {
+//                log.info("debug logging to handler that is not ConsoleHandler or FileHandler using " + h);
+//            }
         }
 
         if (args.length > 0) {
