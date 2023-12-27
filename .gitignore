@@ -6,4 +6,4 @@
 /jars unused/**
 /dist/
 hs_err*.log
-build-native.xml~
+nbproject/build-native.xml~
