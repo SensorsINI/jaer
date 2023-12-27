@@ -86,8 +86,8 @@ public class LoggingAnsiColorConsoleFormatter extends Formatter {
                 return String.format(FORMAT, ANSI_RED_BACKGROUND + ANSI_WHITE, date, source, record.getLoggerName(),
                         record.getLevel().getLocalizedName(), message + ANSI_RESET, throwable);
             default:
-                return String.format(FORMAT, date, source, record.getLoggerName(),
-                        record.getLevel().getLocalizedName(), message, throwable);
+                return String.format(FORMAT, ANSI_WHITE_BACKGROUND + ANSI_BLUE, date, source, record.getLoggerName(),
+                        record.getLevel().getLocalizedName(), message + ANSI_RESET, throwable);
         }
     }
 }
