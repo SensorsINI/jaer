@@ -32,7 +32,6 @@ import com.github.swrirobotics.bags.reader.messages.serialization.Int32Type;
 import com.github.swrirobotics.bags.reader.messages.serialization.MessageType;
 import com.github.swrirobotics.bags.reader.messages.serialization.TimeType;
 import com.github.swrirobotics.bags.reader.messages.serialization.UInt16Type;
-import com.github.swrirobotics.bags.reader.messages.serialization.UInt32Type;
 import com.google.common.collect.HashMultimap;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
@@ -56,6 +55,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
@@ -65,7 +65,6 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
-import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -125,7 +124,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
 //    private static final String[] TOPICS = {"/dvs/events"};\
 //    private static String[] TOPICS = {TOPIC_HEADER + TOPIC_EVENTS, TOPIC_HEADER + TOPIC_IMAGE};
-    private ArrayList<String> topicList = new ArrayList();
+    private HashSet<String> topicSet = new HashSet();
     private ArrayList<String> topicFieldNames = new ArrayList();
     private boolean wasIndexed = false;
     private List<BagFile.MessageIndex> msgIndexes = new ArrayList();
@@ -140,15 +139,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     // FIFOs to buffer data so that we only let out data from any stream if there is definitely later data from both other streams
     private MutableBoolean hasDvs = new MutableBoolean(false), hasAps = new MutableBoolean(false), hasImu = new MutableBoolean(false); // flags to say what data is in this stream
-    private long lastDvsTimestamp = 0, lastApsTimestamp = 0, lastImuTimestamp = 0; // used to check monotonicity
-    private AEFifo dvsFifo = new AEFifo(), apsFifo = new AEFifo(), imuFifo = new AEFifo();
+    private int lastDvsTimestamp = 0, lastApsTimestamp = 0, lastImuTimestamp = 0; // used to check monotonicity
+    private AEFifo dvsFifo = new AEFifo("DVS"), apsFifo = new AEFifo("APS"), imuFifo = new AEFifo("IMU");
     private MutableBoolean[] hasDvsApsImu = {hasDvs, hasAps, hasImu};
     private AEFifo[] aeFifos = {dvsFifo, apsFifo, imuFifo};
     private int MAX_RAW_EVENTS_BUFFER_SIZE = 1000000;
 
     private static final String TOPIC_EVENTS = "events", TOPIC_IMAGE_RAW = "image_raw", TOPIC_IMU = "imu", TOPIC_EXPOSURE = "exposure";
 //    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE_RAW/*, TOPIC_IMU, TOPIC_EXPOSURE*/}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
-    private static String[] STANARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE_RAW, TOPIC_IMU, TOPIC_EXPOSURE}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
+    private static String[] STANDARD_TOPICS = {TOPIC_EVENTS, TOPIC_IMAGE_RAW, TOPIC_IMU, TOPIC_EXPOSURE}; // tobi 4.1.21 commented out the IMU and EXPOSURE (never seen) topics since they cause problems with nonmonotonic timestamps in the MVSEC recrordings. Cause unknown. TODO fix IMU reading.
 
     private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER = "/davis/left/", EV_IMO_TOPIC_HEADER = "/samsung/camera/"; // TODO arbitrarily choose left camera for MVSEC for now
 
@@ -158,6 +157,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
         private RosbagFileType(String header) {
             this.header = header;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("RosbagFileType: %s with topic header \"%s\"", super.toString(), header);
         }
 
     }
@@ -170,7 +174,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     /**
      * Interval for logging warnings about nonmonotonic timestamps.
      */
-    public static final int NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL = 1000000;
+    public static final int NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL = 10000;
     private int nonmonotonicTimestampCounter = 0;
 
     private int lastExposureUs; // holds last exposure value (in us?) to use for creating SOE and EOE events for frames
@@ -195,6 +199,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         this.eventPacket = new ApsDvsEventPacket<>(ApsDvsEvent.class);
         setFile(f);
         this.chip = chip;
+        log.setLevel(Level.FINE);
 
         log.info("reading rosbag file " + f + " for chip " + chip);
         bagFile = BagReader.readFile(file);
@@ -207,24 +212,24 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             if (topic.getName().contains(RosbagFileType.MVSEC.header)) {
                 rosbagFileType = RosbagFileType.MVSEC;
                 log.warning("MVSEC bag: Arbitarily using camera input " + MVSEC_TOPIC_HEADER);
-                for (String s : STANARD_TOPICS) {
+                for (String s : STANDARD_TOPICS) {
                     String t = rosbagFileType.header + s;
-                    topicList.add(t);
+                    topicSet.add(t);
                     topicFieldNames.add(t.substring(t.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
                 }
             } else if (topic.getName().contains(RosbagFileType.RPG.header)) {
                 rosbagFileType = RosbagFileType.RPG;
                 log.warning("RPG dataset bag: Arbitarily using camera input " + RPG_TOPIC_HEADER);
-                for (String s : STANARD_TOPICS) {
+                for (String s : STANDARD_TOPICS) {
                     String t = rosbagFileType.header + s;
-                    topicList.add(t);
+                    topicSet.add(t);
                     topicFieldNames.add(t.substring(t.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
                 }
             } else if (topic.getName().contains(RosbagFileType.EV_IMO.header)) {
                 rosbagFileType = RosbagFileType.EV_IMO;
                 log.warning("EV_IMO bag: Arbitarily using camera input " + EV_IMO_TOPIC_HEADER);
                 String t = rosbagFileType.header + TOPIC_EVENTS;
-                topicList.add(t);
+                topicSet.add(t);
                 topicFieldNames.add(t.substring(t.lastIndexOf("/") + 1)); // strip off header to get to field name for the ArrayType
             }
         }
@@ -236,6 +241,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
         log.info(rosbagInfoString);
         generateMessageIndexes(progressMonitor);
+        try {
+            firstTimestampUsAbsolute = determineEarliestTimestamp();
+            firstTimestampWasRead = true;
+        } catch (UninitializedFieldException ex) {
+            log.log(Level.WARNING, "could not determine earliest timestamp, caught {0}", ex.toString());
+        }
     }
 
     @Override
@@ -296,6 +307,14 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     }
 
+    /**
+     * Return a particular message with its index in the file
+     *
+     * @param msgIndex the index of the message
+     * @return the MessageWithIndex
+     * @throws BagReaderException
+     * @throws EOFException
+     */
     synchronized private MessageWithIndex getMsg(int msgIndex) throws BagReaderException, EOFException {
         MessageType msg = null;
         try {
@@ -331,12 +350,113 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return rtn;
     }
 
+    private long determineEarliestTimestamp() throws UninitializedFieldException {
+        final int NUM_MESSAGES_TO_READ = 100;
+        log.info(String.format("Determining earliest timestamp by scanning first %d messages", NUM_MESSAGES_TO_READ));
+        long earliest = Long.MAX_VALUE;
+        boolean gotDvs = false, gotImu = false, gotAps = false;
+        for (int i = 0; i < NUM_MESSAGES_TO_READ; i++) {
+            try {
+                MessageWithIndex m = getMsg(i);
+                switch (m.messageType.getType()) {
+                    case "EventArray":
+                        gotDvs = true;
+                        break;
+                    case "Imu":
+                        gotImu = true;
+                        break;
+                    case "Image":
+                        gotAps = true;
+                        break;
+                    default:
+                        log.info("got unexpected type " + m);
+                }
+                long tsUs = getMessageTimestamp(m);
+                if (tsUs < earliest) {
+                    earliest = tsUs;
+                    log.info(String.format("earlist timestamp updated to %,d us", earliest));
+                }
+                if (gotDvs && gotImu && gotAps) {
+                    log.info("breaking out because we got Dvs,Imu,Aps messages already");
+                    break; // stop now because we got all types of possible things with timestamps
+                }
+            } catch (BagReaderException | EOFException ex) {
+                break;
+            }
+        }
+        return earliest;
+    }
+
+    /**
+     * Get timestamp of message in absolute time in us since 1970
+     *
+     * @param message
+     * @return us timestamp since 1970
+     */
+    private long getMessageTimestamp(MessageWithIndex message) throws UninitializedFieldException {
+        String pkg = message.messageType.getPackage();
+        String type = message.messageType.getType();
+        Timestamp timestamp = null;
+        switch (pkg) {
+            case "sensor_msgs": // for RPG and MVSEC
+                switch (type) {
+                    case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
+                        // Make sure the image is from APS, otherwise some other image topic will be also processed here.
+                        MessageType header = message.messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
+                        timestamp = header.<TimeType>getField("stamp").getValue();
+
+                    }
+                    break;
+                    case "Imu": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
+                        MessageType messageType = message.messageType;
+                        MessageType header = messageType.getField("header"); // http://docs.ros.org/api/std_msgs/html/msg/Header.html
+                        timestamp = header.<TimeType>getField("stamp").getValue();
+
+                    }
+                    break;
+                }
+                break;
+            case "dvs_msgs":
+            case "samsung_event_msgs": // for EV_IMO
+                switch (type) {
+                    case "EventArray":
+                        MessageType messageType = message.messageType;
+                        ArrayType data = messageType.<ArrayType>getField("events");
+                        if (data == null) {
+                            log.warning("got null data for field events in message " + message);
+                            break;
+                        }
+                        List<Field> eventFields = data.getFields();
+                        for (Field eventField : eventFields) {
+                            MessageType eventMsg = (MessageType) eventField;
+                            timestamp = (Timestamp) eventMsg.<TimeType>getField("ts").getValue();
+                            break; // just get first timestamp
+                        }
+                        break;
+                }
+                break;
+        }
+        if (timestamp == null) {
+            log.warning("message has null timestamp: " + message);
+            return 0;
+        }
+        long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
+        // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
+        long tsMs = timestamp.getTime(); // the time in ms including ns, i.e. time(s)*1000+ns/1000000. 
+        long timestampUsAbsolute = (1000000L * (tsMs / 1000)) + tsNs / 1000L; // truncate ms back to s, then turn back to us, then append fractional part of s in us
+
+        log.info(String.format("Message %s timestampUsAbsolute=%,d",
+                message, timestampUsAbsolute));
+        return timestampUsAbsolute;
+    }
+
     /**
      * Given ROS Timestamp, this method computes the us timestamp relative to
      * the first timestamp in the recording
      *
      * @param timestamp a ROS Timestamp from a Message, either header or DVS
-     * event
+     * event. Not the same as
+     * {@link com.github.swrirobotics.bags.reader.BagFile#getStartTime()}
      * @param updateLargestTimestamp true if we want to update the largest
      * timestamp with this value, false if we leave it unchanged
      * @param checkNonmonotonic checks if timestamp is earlier that last one
@@ -349,7 +469,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
         long tsMs = timestamp.getTime(); // the time in ms including ns, i.e. time(s)*1000+ns/1000000. 
-        long timestampUsAbsolute = (1000000 * (tsMs / 1000)) + tsNs / 1000; // truncate ms back to s, then turn back to us, then appendCopy fractional part of s in us
+        long timestampUsAbsolute = (1000000L * (tsMs / 1000)) + tsNs / 1000L; // truncate ms back to s, then turn back to us, then append fractional part of s in us
         if (!firstTimestampWasRead) {
             firstTimestampUsAbsolute = timestampUsAbsolute;
             firstTimestampWasRead = true;
@@ -364,7 +484,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         final int dt = ts - mostRecentTimestamp;
         if (checkNonmonotonic && dt < 0 && nonMonotonicTimestampExceptionsChecked) {
             if (nonmonotonicTimestampCounter % NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL == 0) {
-                log.warning("Nonmonotonic timestamp=" + timestamp + " with dt=" + dt + "; replacing with largest timestamp=" + largestTimestampReadSinceRewind + "; skipping next " + NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL + " warnings");
+                log.warning(String.format("Nonmonotonic timestamp=%s with dt=%,d us; skipping next %,d warnings", timestamp, dt, NONMONOTONIC_TIMESTAMP_WARNING_INTERVAL));
             }
             nonmonotonicTimestampCounter++;
 //            ts = largestTimestampReadSinceRewind; // replace actual timestamp with largest one so far
@@ -413,6 +533,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             boolean gotEventsOrFrame = false;
             while (!gotEventsOrFrame) {
                 MessageWithIndex message = forwards ? getNextMsg() : getPrevMsg();
+//                log.fine(String.format("Message is %s",message.toString()));
                 // send to listeners if topic is one we have subscribers for
                 String topic = message.messageIndex.topic;
                 Set<PropertyChangeListener> listeners = msgListeners.get(topic);
@@ -439,7 +560,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
                     }
                     break;
-                    case "sensor_msgs": // for RPG and MVSEC
+                    case "sensor_msgs": // for RPG and MVSEC that come from DAVIS camera with frames and IMU samples
                         switch (type) {
                             case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
                                 // Make sure the image is from APS, otherwise some other image topic will be also processed here.
@@ -565,9 +686,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                    System.out.println("linaccfields field: "+s);
 //                                }
                                 // units m/s^2 http://docs.ros.org/api/sensor_msgs/html/msg/Imu.html
-                                float xacc = (float) (angular_velocity.<Float64Type>getField("x").getValue().doubleValue());
-                                float yacc = (float) (angular_velocity.<Float64Type>getField("y").getValue().doubleValue());
-                                float zacc = (float) (angular_velocity.<Float64Type>getField("z").getValue().doubleValue());
+                                float xacc = (float) (linear_acceleration.<Float64Type>getField("x").getValue().doubleValue());
+                                float yacc = (float) (linear_acceleration.<Float64Type>getField("y").getValue().doubleValue());
+                                float zacc = (float) (linear_acceleration.<Float64Type>getField("z").getValue().doubleValue());
                                 short[] buf = new short[7];
 
                                 buf[IMUSampleType.ax.code] = (short) (G_PER_MPS2 * xacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
@@ -587,8 +708,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                             break;
                         }
                         break;
-                    case "dvs_msgs":
-                    case "samsung_event_msgs": // for EV_IMO
+                    case "dvs_msgs": // for RPG and MVSEC that also has DVS events
+                    case "samsung_event_msgs": // for EV_IMO that uses Samsung inivation camera with only DVS events
                         hasDvs.setTrue();
                         switch (type) {
                             case "EventArray":
@@ -603,8 +724,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
                                 int sizeY = chip.getSizeY();
                                 int eventIdxThisPacket = 0;
-                                //            int nEvents = eventFields.size();
+//                                int nEvents = eventFields.size();
+//                                System.out.println(String.format("%,d events: idx:dt, ... ",nEvents));
                                 for (Field eventField : eventFields) {
+//                                    if(eventIdxThisPacket==0){
+//                                        eventIdxThisPacket++;
+//                                        continue;
+//                                    }
                                     MessageType eventMsg = (MessageType) eventField;
                                     // https://github.com/uzh-rpg/rpg_dvs_ros/tree/master/dvs_msgs/msg]
                                     int x = eventMsg.<UInt16Type>getField("x").getValue();
@@ -615,6 +741,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                    ApsDvsEvent e = outItr.nextOutput();
                                     e.setReadoutType(ApsDvsEvent.ReadoutType.DVS);
                                     e.timestamp = ts;
+                                    int dt = (ts - lastDvsTimestamp);
+                                    if (dt < 0) {
+                                        log.warning(String.format("nonmonotonic #%,d: dt=%,d", eventIdxThisPacket, dt));
+                                    }
+//                                    else if(eventIdxThisPacket<30 || eventIdxThisPacket>nEvents-40){
+//                                        System.out.print(String.format("%,d: %,d, ",eventIdxThisPacket,dt));
+//                                        if(eventIdxThisPacket%10==1){
+//                                            System.out.println("");
+//                                        }
+//                                    }
+                                    lastDvsTimestamp = ts;
                                     e.x = (short) x;
                                     e.y = (short) (sizeY - y - 1);
                                     e.polarity = pol ? PolarityEvent.Polarity.Off : PolarityEvent.Polarity.On;
@@ -622,6 +759,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     maybePushEvent(e, dvsFifo, outItr, forwards);
                                     eventIdxThisPacket++;
                                 }
+//                                System.out.println("done");
+                                break;
+                            default:
+                                log.warning(String.format("Unknown message type %s for DVS message %s", type, message));
+                                break;
+
                         }
                         break;
                 }
@@ -666,8 +809,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     /**
-     * returns the oldest event (earliest in time) from all of the fifos if
-     * there are younger events in all other fifos
+     * Returns the oldest event (earliest in time) from all of the AEFifo's
+     * (DVS, APS, IMU) but only if there is at least one younger or equalyy old
+     * event in some other AEFifo. That way, we can be sure to keep all
+     * timestamps monotonic.
      *
      * @return oldest valid event (and first one pushed to any one particular
      * sub-fifo for identical timestamps) or null if there is none
@@ -675,39 +820,50 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private ApsDvsEvent popOldestEvent() {
         // find oldest event over all fifos
         ApsDvsEvent ev = null;
-        int ts = Integer.MAX_VALUE;
         int fifoIdx = -1;
         int numStreamsWithData = 0;
+        // from all aeFifos with data, find the index and timestamp of the one with the oldest event
+        int ts = Integer.MAX_VALUE;
         for (int i = 0; i < 3; i++) {
-            boolean hasData = hasDvsApsImu[i].isTrue();
+            boolean hasData = hasDvsApsImu[i].isTrue();  // set True if during input we get any of this data type
             if (hasData) {
                 numStreamsWithData++;
-            }
-            int t;
-            if (hasData && !aeFifos[i].isEmpty() && (t = aeFifos[i].peekNextTimestamp()) <= /* check <= */ ts) {
-                fifoIdx = i;
-                ts = t;
+                int t;
+                if (!aeFifos[i].isEmpty() && (t = aeFifos[i].peekNextTimestamp()) <= /* check <= */ ts) {
+                    // if it has data and its next timestamp is younger than other aeFifo then save it
+                    fifoIdx = i;
+                    ts = t;
+                }
             }
         }
+        // fifoIdx is the index and ts is the timestmp of the earliest (oldest) event available from any stream
         if (fifoIdx < 0) {
             return null; // no fifo has event
         }
         // if only one stream has data then just return it
         if (numStreamsWithData == 1) {
             ev = aeFifos[fifoIdx].popEvent();
-        } else {// if any of the other fifos for which we actually have sensor data don't have younger event then return null
+        } else {
+            // if none of the other fifos for which we actually have sensor data don't have younger event then return null.
+            // We can't return this oldest event until we know there is younger event in some other stream
+            boolean someOtherSteamHasYoungerEvent = false;
             for (int i = 0; i < 3; i++) {
-                if (i == fifoIdx) { // don't compare with ourselves
+                if (i == fifoIdx) { // don't compare with ourselves because we need to be sure that some other stream has younger data
                     continue;
                 }
-                if (hasDvsApsImu[i].isTrue()
-                        && (!aeFifos[i].isEmpty()) // if other stream ever has had data but none is available now
-                        && aeFifos[i].getLastTimestamp() <= ts // or if last event in other stream data is still older than we are
+                if (hasDvsApsImu[i].isTrue() // if there is data at all from this stream
+                        && (!aeFifos[i].isEmpty()) // AND if other stream has data now
+                        && aeFifos[i].peekNextTimestamp() >= ts // AND that stream has younger data
                         ) {
-                    return null;
+                    someOtherSteamHasYoungerEvent = true;
+                    break;
                 }
             }
-            ev = aeFifos[fifoIdx].popEvent();
+            if (someOtherSteamHasYoungerEvent) {
+                ev = aeFifos[fifoIdx].popEvent();
+            } else {
+                ev = null;
+            }
         }
         return ev;
     }
@@ -731,9 +887,13 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             return emptyPacket;
         }
         aePacketRawOutput.setNumEvents(0);
-        while (aePacketRawBuffered.getNumEvents() < numEventsToRead && aePacketRawBuffered.getNumEvents() < AEPacketRaw.MAX_PACKET_SIZE_EVENTS) {
+        while (aePacketRawBuffered.isEmpty() || aePacketRawBuffered.getNumEvents() < numEventsToRead && aePacketRawBuffered.getNumEvents() < AEPacketRaw.MAX_PACKET_SIZE_EVENTS) {
             try {
-                aePacketRawBuffered.append(getNextRawPacket(numEventsToRead > 0));
+                AEPacketRaw p = getNextRawPacket(numEventsToRead >= 0);
+                if (p.isEmpty()) {
+                    continue;
+                }
+                aePacketRawBuffered.append(p); // reaching EOF here will throw EOFException
             } catch (BagReaderException ex) {
                 throw new IOException(ex);
             }
@@ -1072,23 +1232,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     synchronized public void setCurrentStartTimestamp(int currentStartTimestamp) {
         this.currentStartTimestamp = currentStartTimestamp;
-        nextMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs());
+        nextMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs()); // TODO only very approximate
         aePacketRawBuffered.clear();
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        close();
     }
 
     private void generateMessageIndexes(ProgressMonitor progressMonitor) throws BagReaderException, InterruptedException {
         if (wasIndexed) {
             return;
         }
-        log.info("creating or loading cached index for all topics");
+        log.info(String.format("creating or loading cached index for all topics in topicList=%s", topicSet));
         if (!maybeLoadCachedMsgIndexes(progressMonitor)) {
-            msgIndexes = bagFile.generateIndexesForTopicList(topicList, progressMonitor);
+            msgIndexes = bagFile.generateIndexesForTopicList(new ArrayList(topicSet), progressMonitor);
             cacheMsgIndexes();
         }
         numMessages = msgIndexes.size();
@@ -1247,6 +1401,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return System.getProperty("java.io.tmpdir") + File.separator + getFile().getName() + ".rosbagidx";
     }
 
+    private int lastAeFifoTimestampPopped = Integer.MIN_VALUE; // to check for nonmonotonic in popping events
+
     /**
      * A FIFO for ApsDvsEvent events.
      */
@@ -1255,9 +1411,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         private final int MAX_EVENTS = 1 << 20;
         int nextToPopIndex = 0;
         private boolean full = false;
+        private int lastTimestampPushed = Integer.MIN_VALUE;
+        private String name;
 
-        public AEFifo() {
+        public AEFifo(String name) {
             super(ApsDvsEvent.class);
+            this.name = name;
         }
 
         /**
@@ -1269,15 +1428,26 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             if (full) {
                 return;
             }
-            if (size > 0 && event.timestamp < getLastTimestamp()) {
-                log.warning(String.format("tried to push event %n%s%nthat is younger than last event in packet %n%s", event, getLastEvent()));
+            if (!isEmpty()) {
+                int dt = event.timestamp - lastTimestampPushed;
+                if (size > 0 && dt < 0) {
+//                    log.warning(String.format("clearing %,d events from AeFifo for event %n%s%nthat is younger by dt=%,d us than last event %n%s", getSize(), event, dt, getLastEvent()));
+                    log.warning(String.format("pushing event %n%s%nthat is younger by dt=%,d us than last event %n%s", event, dt, getLastEvent()));
+//                    clear();
+                }
             }
-            if (size == MAX_EVENTS) {
+            if (size == 10*MAX_EVENTS) {
                 full = true;
                 log.warning(String.format("FIFO has reached capacity RosbagFileInputStream.MAX_EVENTS=%,d events: %s", MAX_EVENTS, toString()));
+                for (AEFifo f : aeFifos) {
+                    if (!f.isEmpty()) {
+                        System.out.println(f.toString());
+                    }
+                }
                 return;
             }
             appendCopy(event);
+            lastTimestampPushed = event.timestamp;
         }
 
         @Override
@@ -1289,6 +1459,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         public void clear() {
             super.clear();
             nextToPopIndex = 0;
+            lastTimestampPushed = Integer.MIN_VALUE;
             full = false;
         }
 
@@ -1304,6 +1475,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
             if (isEmpty()) {
                 clear();
             }
+            int ts = event.timestamp;
+            int dt = ts - lastAeFifoTimestampPopped;
+            if (ts < lastAeFifoTimestampPopped) {
+                log.warning(String.format("Nonmonotonic timestamp popped: This ts (%,d) is earlier than last one (%,d) by dt=%,d us", ts, lastAeFifoTimestampPopped, dt));
+            }
+            lastAeFifoTimestampPopped = ts;
             return event;
         }
 
@@ -1313,7 +1490,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
         @Override
         final public String toString() {
-            return "AEFifo with capacity " + MAX_EVENTS + " nextToPopIndex=" + nextToPopIndex + " holding " + super.toString();
+            return String.format("AEFifo %s with next timestamp %,d, size=%,d and capacity=%,d nextToPopIndex=%,d for packet %s", name, peekNextTimestamp(), getSize(), MAX_EVENTS, nextToPopIndex, super.toString());
         }
 
     }
@@ -1336,6 +1513,65 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      */
     public Timestamp getStartAbsoluteTimestamp() {
         return startAbsoluteTimestamp;
+    }
+
+    /**
+     * class used to signal a backwards read from input stream
+     */
+    public class NonMonotonicTimeException extends Exception {
+
+        protected int timestamp, lastTimestamp;
+        protected long position;
+
+        public NonMonotonicTimeException() {
+            super();
+        }
+
+        public NonMonotonicTimeException(String s) {
+            super(s);
+        }
+
+        public NonMonotonicTimeException(int ts) {
+            this.timestamp = ts;
+        }
+
+        /**
+         * Constructs a new NonMonotonicTimeException
+         *
+         * @param readTs the timestamp just read
+         * @param lastTs the previous timestamp
+         */
+        public NonMonotonicTimeException(int readTs, int lastTs) {
+            this.timestamp = readTs;
+            this.lastTimestamp = lastTs;
+        }
+
+        /**
+         * Constructs a new NonMonotonicTimeException
+         *
+         * @param readTs the timestamp just read
+         * @param lastTs the previous timestamp
+         * @param position the current position in the stream
+         */
+        public NonMonotonicTimeException(int readTs, int lastTs, long position) {
+            this.timestamp = readTs;
+            this.lastTimestamp = lastTs;
+            this.position = position;
+        }
+
+        public int getCurrentTimestamp() {
+            return timestamp;
+        }
+
+        public int getPreviousTimestamp() {
+            return lastTimestamp;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("NonMonotonicTimeException: position=%,d timestamp=%,d lastTimestamp=%,d jumps backwards by %,d",
+                    position, timestamp, lastTimestamp, (timestamp - lastTimestamp));
+        }
     }
 
 }
