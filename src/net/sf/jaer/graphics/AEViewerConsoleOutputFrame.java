@@ -14,6 +14,7 @@ import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeSupport;
 import java.util.Date;
 import java.util.logging.Level;
@@ -71,7 +72,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 				if (offset > 0) {
 					findTF.setForeground(Color.black);
 					try {
-						pane.scrollRectToVisible(pane.modelToView(offset));
+						pane.scrollRectToVisible(pane.modelToView2D(offset).getBounds());
 					}
 					catch (BadLocationException e) {
 					}
@@ -90,7 +91,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 				if (offset > 0) {
 					findTF.setForeground(Color.black);
 					try {
-						pane.scrollRectToVisible(pane.modelToView(offset));
+						pane.scrollRectToVisible(pane.modelToView2D(offset).getBounds());
 					}
 					catch (BadLocationException e) {
 					}
@@ -143,7 +144,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 						int offset = searcher.search(word);
 						if (offset != -1) {
 							try {
-								pane.scrollRectToVisible(pane.modelToView(offset));
+								pane.scrollRectToVisible(pane.modelToView2D(offset).getBounds());
 							}
 							catch (BadLocationException e) {
 							}
