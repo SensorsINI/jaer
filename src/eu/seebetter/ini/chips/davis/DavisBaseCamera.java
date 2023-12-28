@@ -1427,7 +1427,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public ToggleFrameCaptureDisplayAction() {
             super("ToggleFrames", "Toggle DAVIS frame capture and display", "ToggleFrames");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1448,7 +1448,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public ToggleEventsAction() {
             super("ToggleEvents", "Toggle DAVIS event capture and display", "ToggleEvents");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_E, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1469,7 +1469,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public ToggleHistogram() {
             super("Toggle APS Histogram Display", "Toggles whether the histogram of APS levels is display", "ToggleHistogram");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_H, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_H, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1490,7 +1490,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     "<html>Toggles whether automatic display contrast control is enabled<p>See <i>Auto contrast</i>  and <i>Constrat</i> controls in the <i>User-Friendly Controls</i> tab in HW Configuration panel for full control."
                     + "<p>Note that this control is only for displayed image rendering.",
                     "ToggleAutoContrast");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_C, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_C, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1512,7 +1512,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Toggle Global/Rolling shutter mode",
                     "<html>Toggles global vs. rolling shutter mode. See <i>User Friendly Controls</i> or <i>APS Config</i> tab in HW configuration panel for full control",
                     "ToggleGlobalRollingShutter");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_G, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_G, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1533,7 +1533,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Toggle APS Autoexposure",
                     "<html>Toggles whether autoexposure control is enabled<p>See <i>APS AutoExposure Control</i> tab in HW configuration panel for full control",
                     "ToggleAutoExposure");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_A, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1556,7 +1556,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Decrease APS exposure",
                     "<html>Decreases APS exposure<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
                     "DecreaseExposure");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1578,7 +1578,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Increase APS exposure",
                     "<html>Increases APS exposure<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
                     "IncreaseExposure");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1605,7 +1605,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Increase Image Contrast",
                     "<html>Increases APS image constrast",
                     "IncreaseImageContrast");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_MASK + java.awt.event.InputEvent.CTRL_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_UP, java.awt.event.InputEvent.SHIFT_DOWN_MASK + java.awt.event.InputEvent.CTRL_DOWN_MASK));
         }
 
         @Override
@@ -1632,7 +1632,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Decrease Image Contrast",
                     "<html>Decreases APS image constrast",
                     "DecreaseImageContrast");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_MASK + java.awt.event.InputEvent.CTRL_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, java.awt.event.InputEvent.SHIFT_DOWN_MASK + java.awt.event.InputEvent.CTRL_DOWN_MASK));
         }
 
         @Override
@@ -1662,7 +1662,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Decrease APS frame rate",
                     "<html>Decreases APS rate by increasing frame interval<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
                     "DecreaseFrameRate");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1692,7 +1692,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Increase APS frame rate",
                     "<html>Increases APS rate by decreasing frame interval<p>See <i>User-Friendly Controls</i> tab in HW configuration panel for more control",
                     "IncreaseFrameRate");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
@@ -1719,7 +1719,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             super("Toggle IMU",
                     "<html>Toggles IMU (inertial measurement unit) capture and display<p>See <i>IMU Config</i> tab in HW configuration panel for more control",
                     "ToggleIMU");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_I, java.awt.event.InputEvent.SHIFT_MASK));
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_I, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         }
 
         @Override
