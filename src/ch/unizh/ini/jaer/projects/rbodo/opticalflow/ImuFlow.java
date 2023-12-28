@@ -10,10 +10,9 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.orientation.ApsDvsMotionOrientationEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import org.bytedeco.javacpp.opencv_core.Mat;
+import org.opencv.core.Mat;
 
 /**
  * Draws individual optical flow vectors and computes global motion, rotation
@@ -118,18 +117,18 @@ public class ImuFlow extends AbstractMotionFlowIMU {
         }
     }
 
-    private String printMatF(Mat M) {
-        StringBuilder sb = new StringBuilder();
-        int c = 0;
-        for (int i = 0; i < M.rows(); i++) {
-            for (int j = 0; j < M.cols(); j++) {
-                sb.append(String.format("%10.5f\t", M.getFloatBuffer().get(c)));
-                c++;
-            }
-            sb.append("\n");
-        }
-        return sb.toString();
-    }
+//    private String printMatF(Mat M) {
+//        StringBuilder sb = new StringBuilder();
+//        int c = 0;
+//        for (int i = 0; i < M.rows(); i++) {
+//            for (int j = 0; j < M.cols(); j++) {
+//                sb.append(String.format("%10.5f\t", M.get().get(c)));
+//                c++;
+//            }
+//            sb.append("\n");
+//        }
+//        return sb.toString();
+//    }
 
     /**
      * @return the showCompleteVectorField
