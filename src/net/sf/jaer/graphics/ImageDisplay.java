@@ -70,17 +70,17 @@ import org.apache.commons.io.FilenameUtils;
  *
  *     public static void main(String[] args) {
  *
- * final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
- * JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
- * frame.setPreferredSize(new Dimension(400, 400));  // set the window size
- * frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
- * int size = 200;  // used later to define image size
+        * final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+        * JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
+        * frame.setPreferredSize(new Dimension(400, 400));  // set the window size
+        * frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
+        * int size = 200;  // used later to define image size
  *
- * disp.setSize(size,size); // set dimensions of image
+ *      disp.setSize(size,size); // set dimensions of image
  *
- * disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
+ *      disp.addKeyListener(new KeyAdapter() { // add some key listeners to the ImageDisplay
  *
- * public void keyReleased(KeyEvent e) {
+ *      public void keyReleased(KeyEvent e) {
  * System.out.println(e.toString());
  * int k = e.getKeyCode();
  * if (k == KeyEvent.VK_ESCAPE || k == KeyEvent.VK_X) {
@@ -821,7 +821,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Returns the horizontal dimension of image.
+     * Returns the horizontal dimension of image; note this is source image size, not screen pixels which can be much larger.
      *
      * @return the sizeX
      */
@@ -830,7 +830,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Sets the image horizontal dimension.
+     * Sets the image horizontal dimension; note this is source image size, not screen pixels which can be much larger..
      *
      * @param sizeX the sizeX to set
      */
@@ -847,8 +847,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     /**
      * Sets both horizontal and vertical dimensions of image in source pixels.
      *
-     * @param sizeX rows
-     * @param sizeY columns
+     * @param sizeX columns
+     * @param sizeY rows
      */
     synchronized public void setImageSize(int sizeX, int sizeY) {
         if ((sizeX != this.sizeX) || (sizeY != this.sizeY)) {
@@ -863,7 +863,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Returns the image height.
+     * Returns the image height; note this is source image size, not screen pixels which can be much larger.
      *
      * @return the sizeY
      */
@@ -872,7 +872,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Sets the image height.
+     * Sets the image height; note this is source image size, not screen pixels which can be much larger.
      *
      * @param sizeY the sizeY to set
      */
