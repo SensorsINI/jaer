@@ -16,17 +16,13 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
 
-import org.bytedeco.javacpp.opencv_core;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -47,6 +43,13 @@ import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
+import com.esotericsoftware.yamlbeans.YamlException;
+import java.awt.Dimension;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Random;
+import javax.swing.BoxLayout;
+import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -57,10 +60,11 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
-import net.sf.jaer.util.YamlMatLoader;
-import nu.pattern.OpenCV;
+import net.sf.jaer.util.YamlMatFileStorage;
+import static org.opencv.core.Core.countNonZero;
 
 /**
  * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
@@ -69,7 +73,7 @@ import nu.pattern.OpenCV;
  */
 @Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater, Observer /* observes this to get informed about our size */ {
+public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater /* observes this to get informed about our size */ {
 
     static {
         String jvmVersion = System.getProperty("sun.arch.data.model");
@@ -77,12 +81,12 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         try {
             log.info("Loading openpnp OpenCV native libraries");
             nu.pattern.OpenCV.loadShared(); // see https://github.com/openpnp/opencv?tab=readme-ov-file
-            
+
 //            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 //            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
             // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will appendCopy it automatically.
         } catch (UnsatisfiedLinkError e) {
-            log.warning("Native OpenCV library failed to load.\n" + e +"\n See https://github.com/openpnp/opencv?tab=readme-ov-file to debug");
+            log.warning("Native OpenCV library failed to load.\n" + e + "\n See https://github.com/openpnp/opencv?tab=readme-ov-file to debug");
             // System.exit(1);
         }
     }
@@ -148,11 +152,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private boolean saved = false;
     private boolean textRendererScaleSet = false;
     private float textRendererScale = 0.3f;
-    private int noPatternFoundwarningSkipInterval = 30, noPatternFoundWarningCount = 0;
+    private int noPatternFoundwarningSkipInterval = 50, noPatternFoundWarningCount = 0;
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
-        chip.addObserver(this);
         frameExtractor = new ApsFrameExtractor(chip);
         filterChain = new FilterChain(chip);
         filterChain.add(frameExtractor);
@@ -168,6 +171,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
         setPropertyTooltip("depthViewer", "shows the depth or color image viewer if a Kinect device is connected via NI2 interface");
+        setPropertyTooltip("displayCalibrationImage", "shows the calibration image that you can aim the camera at");
         setPropertyTooltip("setPath", "sets the folder and basename of saved images");
         setPropertyTooltip("saveCalibration", "saves calibration files to a selected folder");
         setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
@@ -233,7 +237,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                     }
                 } else {
                     if (--noPatternFoundWarningCount < 0) {
-                        log.warning("no pattern found; check pattern height and width numbers");
+                        log.warning(String.format("no pattern found; check pattern height and width numbers (skipping next %d warnings)", noPatternFoundwarningSkipInterval));
 //                        getChip().getCanvas().getDisplayMethod().showStatusChangeText("No pattern found; check pattern height/width?");
                         noPatternFoundWarningCount = noPatternFoundwarningSkipInterval;
                     }
@@ -318,6 +322,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         return outFrame;
     }
 
+    /**
+     * Finds current corners of calibration image.
+     *
+     * @param drawAndSave true to draw the corners, false to just check if there
+     * are corners.
+     * @return true if corners found, false if not
+     */
     public boolean findCurrentCorners(boolean drawAndSave) {
         Size patternSize = new Size(patternWidth, patternHeight);
         corners = new MatOfPoint2f();
@@ -332,7 +343,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         //opencv_highgui.waitKey(1);
         boolean locPatternFound;
         try {
+//            log.info("finding corners...");
             locPatternFound = Calib3d.findChessboardCorners(imgIn, patternSize, corners);
+//            log.info(String.format("Found corners: %s", locPatternFound));
         } catch (RuntimeException e) {
             log.warning(e.toString());
             return false;
@@ -356,7 +369,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
                 String fullFilePath = dirPath + File.separator + filename;
                 Imgcodecs.imwrite(fullFilePath, imgSave);
-                log.info("wrote " + fullFilePath);
+                log.info("saved image " + fullFilePath);
                 //save depth sensor image if enabled
                 if (depthViewerThread != null) {
                     if (depthViewerThread.isFrameCaptureRunning()) {
@@ -554,6 +567,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public final void initFilter() {
         sx = chip.getSizeX();
         sy = chip.getSizeY();
+        cameraMatrix = new Mat();
+        distortionCoefs = new Mat();
         if (!calibrated) {
             loadCalibration();
         }
@@ -627,6 +642,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         ArrayList<Mat> rotationVecs;
         ArrayList<Mat> translationVecs;
         cameraMtx = new Mat();
+        countNonZero(cameraMtx);
         distCoefs = new Mat();
         rotationVecs = new ArrayList<Mat>();
         translationVecs = new ArrayList<Mat>();
@@ -636,24 +652,24 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         try {
             setCursor(new Cursor(Cursor.WAIT_CURSOR));
             Calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMtx, distCoefs, rotationVecs, translationVecs);
+            synchronized (this) {
+                calibrated = true;
+                this.cameraMatrix = cameraMtx;
+                this.distortionCoefs = distCoefs;
+                this.rotationVectors = rotationVecs;
+                this.translationVectors = translationVecs;
+            }
             generateCalibrationString();
             log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
                     + "\nCamera matrix: " + cameraMtx.toString() + "\n" + printMatD(cameraMtx)
                     + "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distCoefs.toString() + "\n" + printMatD(distCoefs)
                     + calibrationString);
+            getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
         } catch (RuntimeException e) {
             log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
-        synchronized (this) {
-            calibrated = true;
-            this.cameraMatrix = cameraMtx;
-            this.distortionCoefs = distCoefs;
-            this.rotationVectors = rotationVecs;
-            this.translationVectors = translationVecs;
-        }
-        getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
     }
 
     /**
@@ -706,7 +722,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     private void generateCalibrationString() {
-        if ((cameraMatrix == null) || cameraMatrix.empty()) {
+        if ((cameraMatrix == null) || countNonZero(cameraMatrix) == 0) {
             calibrationString = SINGLE_CAMERA_CALIBRATION_UNCALIBRATED;
             calibrated = false;
             return;
@@ -766,9 +782,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
         dirPath = j.getSelectedFile().getPath();
         putString("dirPath", dirPath);
-        serializeMat(dirPath, "cameraMatrix", cameraMatrix);
-        serializeMat(dirPath, "distortionCoefs", distortionCoefs);
-        saved = true;
+        try {
+            serializeMat(dirPath, "cameraMatrix", cameraMatrix);
+            serializeMat(dirPath, "distortionCoefs", distortionCoefs);
+            saved = true;
+        } catch (IOException ex) {
+            log.warning(String.format("Could not save cameraMatrix and distortionCoefs calibration to %s: got %s", dirPath, ex.toString()));
+        }
         generateCalibrationString();
     }
 
@@ -794,7 +814,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         final JFileChooser j = new JFileChooser();
         j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select folder");
-        j.setDialogTitle("Select a folder that has XML files storing calibration");
+        j.setDialogTitle("Select a folder that has cameraMatrix.yml and distortionCoefs.yml files storing calibration");
         j.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY); // let user specify a base filename
         j.setApproveButtonText("Select folder");
         j.setApproveButtonToolTipText("Only enabled for a folder that has cameraMatrix.xml and distortionCoefs.xml");
@@ -816,10 +836,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     private boolean calibrationExists(String dirPath) {
-        String fn = dirPath + File.separator + "cameraMatrix" + ".xml";
+        String fn = dirPath + File.separator + "cameraMatrix.yml";
         File f = new File(fn);
         boolean cameraMatrixExists = f.exists();
-        fn = dirPath + File.separator + "distortionCoefs" + ".xml";
+        fn = dirPath + File.separator + "distortionCoefs.yml";
         f = new File(fn);
         boolean distortionCoefsExists = f.exists();
         if (distortionCoefsExists && cameraMatrixExists) {
@@ -834,12 +854,18 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         calibrationString = SINGLE_CAMERA_CALIBRATION_UNCALIBRATED;
         undistortedAddressLUT = null;
         isUndistortedAddressLUTgenerated = false;
+        cameraMatrix = new Mat();
+        distortionCoefs = new Mat();
     }
 
     synchronized public void doClearImages() {
         imageCounter = 0;
-        allImagePoints.clear();
-        allObjectPoints.clear();
+        if (allImagePoints != null) {
+            allImagePoints.clear();
+        }
+        if (allObjectPoints != null) {
+            allObjectPoints.clear();
+        }
         generateCalibrationString();
     }
 
@@ -860,36 +886,51 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     /**
-     * Writes an XML file for the matrix X called path/X.xml
+     * Writes a YAML XML file for the matrix X called path/X.xml
      *
      * @param dir path to folder
      * @param name base name of file
-     * @param sMat the Mat to write
+     * @param m the Mat to write
+     * @throws java.io.IOException
      */
-    public void serializeMat(final String dir, final String name, final Mat sMat) {
-        try {
-            String fn = dir + File.separator + name + ".xml";
+    public void serializeMat(final String dir, final String name, final Mat m) throws IOException {
+        String fn = dir + File.separator + name + ".yml";
+        YamlMatFileStorage yamlFileStorage = new YamlMatFileStorage();
+        yamlFileStorage.writeMatYml(fn, m);
 
-            // convert org.opencv.core.Mat to opencv_core.Mat to use FileStorage class; see https://github.com/bytedeco/javacpp/issues/38
-            opencv_core.Mat bdMat = new opencv_core.Mat() {
-                {
-                    address = sMat.getNativeObjAddr();
-                }
-            };
-            opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-            storage.writeObj(name, bdMat);
-            storage.release();
-
-            log.info("saved calibration as yaml in " + fn);
-        } catch (Exception ex) {
-            Logger.getLogger(SingleCameraCalibration.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//            // convert org.opencv.core.Mat to opencv_core.Mat to use FileStorage class; see https://github.com/bytedeco/javacpp/issues/38
+//            Mat bdMat = new Mat() {
+//                {
+//                    address = sMat.getNativeObjAddr();
+//                }
+//            };
+//            opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
+//            storage.writeObj(name, bdMat);
+//            storage.release();
     }
 
-    public Mat deserializeMat(String dir, String name) {
-        String fn = dirPath + File.separator + name + ".xml";
-        YamlMatLoader yamlMatLoader=new YamlMatLoader();
-        Mat mat=yamlMatLoader.getMatYml(name);
+    /**
+     *
+     * @param dir
+     * @param name
+     * @return
+     * @throws IOException
+     * @throws YamlException
+     */
+    public Mat deserializeMat(String dir, String name) throws IOException, YamlException {
+        String fn = dirPath + File.separator + name + ".yml";
+        YamlMatFileStorage y = new YamlMatFileStorage();
+        Mat mat;
+        try {
+            mat = y.readMatYml(fn);
+            return mat;
+        } catch (FileNotFoundException ex) {
+            log.info(String.format("No calibration loaded: %s", ex.toString()));
+            return null;
+        } catch (YamlException yex) {
+            log.warning(String.format("Calibration file format incorrect: %s", yex.toString()));
+            return null;
+        }
 //        opencv_core.Mat bdMat = new opencv_core.Mat();
 //
 //        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
@@ -900,7 +941,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 //        }
 //        // convert to org.opencv.core.Mat to return; see https://github.com/bytedeco/javacpp/issues/38
 //        org.opencv.core.Mat mat = new org.opencv.core.Mat(bdMat.address());
-        return mat;
+    }
+
+    synchronized public void doDisplayCalibrationImage() {
+        displayCalibrationImage();
     }
 
     synchronized public void doCaptureSingleFrame() {
@@ -1185,10 +1229,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         this.undistortDVSevents = undistortDVSevents;
     }
 
-    @Override
-    public void update(Observable o, Object o1) {
-    }
-
     /**
      * @return the hideStatisticsAndStatus
      */
@@ -1234,4 +1274,70 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         this.numAutoCaptureFrames = numAutoCaptureFrames;
         putInt("numAutoCaptureFrames", numAutoCaptureFrames);
     }
+
+    /**
+     * Displays a JFrame with the calibration image.
+     */
+    private void displayCalibrationImage() {
+
+        Thread t = new Thread() {
+
+            @Override
+            public void run() {
+                JFrame frame = new JFrame("CalibrationImage");  // make a JFrame to hold it
+                frame.setPreferredSize(new Dimension(800, 600));  // set the window size
+                frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
+
+                final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+                int s = 0;
+                disp.setPreferredSize(new Dimension(s, s));
+
+                frame.getContentPane().add(disp); // add the GLCanvas to the center of the window
+                frame.pack(); // otherwise it wont fill up the display
+
+//                final Point2D.Float mousePoint = new Point2D.Float();
+                frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE); // closing the frame exits
+                frame.setVisible(true); // make the frame visible
+                int sizex = getPatternWidth() + 1, sizey = getPatternHeight() + 1;  // used later to define image size
+                disp.setImageSize(sizex, sizey); // set dimensions of image		disp.setxLabel("x label"); // add xaxis label and some tick markers
+                disp.addXTick(0, "0");
+                disp.addXTick(sizex, Integer.toString(sizex));
+//                disp.addXTick(sizey / 2, Integer.toString(sizey / 2));
+
+//                disp.setyLabel("y label"); // same for y axis
+                disp.addYTick(0, "0");
+                disp.addYTick(sizey, Integer.toString(sizey));
+//                disp.addYTick(sizey / 2, Integer.toString(sizey / 2));
+
+//                int n;
+//                float[] f; // get reference to pixmap array so we can set pixel values
+                int sx, sy; // , xx, yy;
+                disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
+//                n = sizex * sizey;
+//                f = disp.getPixmapArray(); // get reference to pixmap array so we can set pixel values
+                sx = disp.getSizeX();
+                sy = disp.getSizeY();
+                // clear frame to black
+//                disp.resetFrame(0);
+                disp.setGrayValue(.5f);
+                disp.clearImage();
+                Random r = new Random();  // will use to fill display with noise
+
+                // draw all pixels
+                for (int x = 0; x < sx; x++) {
+//                    int oddCol=x%2;
+                    for (int y = 0; y < sy; y++) {
+//                        int ind = disp.getPixMapIndex(x, y);
+                        disp.setPixmapGray(x, y, (x + y) % 2);
+                    }
+                }
+
+                // ask for a repaint
+                disp.repaint();
+            }
+        };
+        t.start();
+
+    }
+
 }
