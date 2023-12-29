@@ -258,7 +258,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         s = String.format("%s: filtered out %%%6.1f",
                 infoString(),
                 filteredOutPercent);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, s);
         gl.glPopMatrix();
 
         noiseFilterControl.annotate(drawable);
