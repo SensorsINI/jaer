@@ -41,11 +41,13 @@ To update the existing *jAERViewer_win64.exe* during the ant build, download exe
 Unzip it and put the entire exe4j9 folder in the *exe4j-launcher* folder.
 The *exe4j* license key is in [exe4j-launcher/exe4j-license.txt](exe4j-launcher/exe4j-license.txt)
 
+
+For more details about building and developing in jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing).
 ## Support
 
 Please use our GitHub bug tracker to report issues and bugs, or our Google Groups mailing list forum to ask questions.
 
-* **USER GUIDE:** [jAER User Guide gdoc]( https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing), or embedded as https://inivation.com/support/software/jaer/
+* **USER GUIDE:** [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing), or embedded as https://inivation.com/support/software/jaer/
 * **VIDEO TUTORIALS:** https://www.youtube.com/playlist?list=PLVtZ8f-q0U5hD9KOM4OZ1lixhwupj9uOm
 * **BUG TRACKER:** https://github.com/SensorsINI/jaer/issues/
 * **USER FORUM:** https://groups.google.com/d/forum/jaer-users/
