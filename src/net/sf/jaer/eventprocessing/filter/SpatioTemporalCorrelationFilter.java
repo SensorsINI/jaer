@@ -350,9 +350,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Override
     public String infoString() {
-        final float shotFilteredOut = 100 * (float) numAlternatingPolarityShotNoiseEventsFilteredOut / numShotNoiseTests;
-        String s = super.infoString() + String.format(" k=%d filtOnOffShot=%s onOffShot filtered out=%6.1f", numMustBeCorrelated, filterAlternativePolarityShotNoiseEnabled, shotFilteredOut);
-        return s;
+        if (filterAlternativePolarityShotNoiseEnabled) {
+            final float shotFilteredOut = 100 * (float) numAlternatingPolarityShotNoiseEventsFilteredOut / numShotNoiseTests;
+            String s = super.infoString() + String.format(" k=%d onOffShot=%s onOffFilt=%6.1f", numMustBeCorrelated, filterAlternativePolarityShotNoiseEnabled, shotFilteredOut);
+            return s;
+        } else {
+            return super.infoString()+ String.format(" k=%d",numMustBeCorrelated);
+        }
     }
 
     /**
