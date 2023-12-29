@@ -7,3 +7,4 @@
 /dist/
 hs_err*.log
 nbproject/build-native.xml~
+/exe4j-launcher/exe4j9/
