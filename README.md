@@ -27,10 +27,6 @@ To build yourself, see the user guide for IDE setup. Or you can use [ant](https:
 
     ant
 
-On Linux, installing ant should be very easy. On Windows it is still a pain since you will need to download zip, extract it, put it somewhere, and then set some enviroment variables. But once set up, updating can be done from the Help/Update jAER... menu.
-
-NOTE: jAER is not working with java > 1.8 now. Do not bother with java 9,10,11, etc. yet.  You need Oracle JDK1.8. See User Guide for more information.
-
 Converting release into working git folder: Once you convert your release, you can use IDE or ant to rebuild jAER.
 
     cd jaer-dist
@@ -38,6 +34,12 @@ Converting release into working git folder: Once you convert your release, you c
     git remote add origin https://github.com/SensorsINI/jaer.git
     git fetch --depth=1
     git checkout -t origin/master -f
+
+### Building Windows launcher with exe4j
+
+To update the existing *jAERViewer_win64.exe* during the ant build, download exe4j from https://www.ej-technologies.com/download/exe4j/files. 
+Unzip it and put the entire exe4j9 folder in the *exe4j-launcher* folder.
+The *exe4j* license key is in [exe4j-launcher/exe4j-license.txt](exe4j-launcher/exe4j-license.txt)
 
 ## Support
 
