@@ -24,7 +24,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.util.StatusPrinter;
 import com.install4j.api.context.UserCanceledException;
-import com.install4j.api.launcher.Variables;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.event.ActionEvent;
@@ -70,6 +69,7 @@ import org.eclipse.jgit.lib.BatchingProgressMonitor;
 import org.eclipse.jgit.transport.FetchResult;
 import com.install4j.api.update.*;
 import com.install4j.api.launcher.Variables;
+import net.sf.jaer.util.MessageWithLink;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
@@ -118,7 +118,11 @@ public class JaerUpdater {
                 // TODO an update is available, execute update downloader
                 UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
                 String updateVersion = updateDescriptorEntry.getNewVersion();
-                JOptionPane.showMessageDialog(parent, "<html>Update " + updateVersion + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "Releases update check", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(parent, 
+                        new MessageWithLink("<html>Current version: "+currentVersion+"<p> Update " + updateVersion + 
+                                " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>"), 
+                                "Update available", JOptionPane.INFORMATION_MESSAGE);
+//                JOptionPane.showMessageDialog(parent, "<html>Update " + updateVersion + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "Releases update check", JOptionPane.INFORMATION_MESSAGE);
             } else {
                 JOptionPane.showMessageDialog(parent, "<html>No update available; you are running current release " + currentVersion+"<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "No update available", JOptionPane.INFORMATION_MESSAGE);
             }
