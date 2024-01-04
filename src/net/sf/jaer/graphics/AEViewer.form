@@ -938,12 +938,22 @@
           <SubComponents>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator7">
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="updateMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="checkForUpdatesMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Update jAER...."/>
+                <Property name="text" type="java.lang.String" value="Check for release updates..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Checks if there is a newer release of jAER installer on github"/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="updateMenuItemActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="checkForUpdatesMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="gitUpdateMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Git Update jAER...."/>
+                <Property name="toolTipText" type="java.lang.String" value="Shows dialog to check for git updates to jAER"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="gitUpdateMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator6">

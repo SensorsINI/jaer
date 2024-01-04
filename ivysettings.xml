@@ -35,6 +35,7 @@
                Added this resolver to get latest jogl version that are ony pushed to this test repo, not the main maven repo 
              -->
             <ibiblio name="jogamp test mirror" m2compatible="true" root="https://www.jogamp.org/deployment/maven/" />
+            <ibiblio name="install4j" m2compatible="true" root="https://maven.ej-technologies.com/repository/" />
         </chain>
     </resolvers>
 </ivysettings>

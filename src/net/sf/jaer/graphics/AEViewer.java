@@ -86,6 +86,7 @@ import org.apache.commons.io.FileUtils;
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import ch.unizh.ini.jaer.chip.retina.DVXplorer;
+import com.install4j.api.context.UserCanceledException;
 import eu.seebetter.ini.chips.davis.DAVIS240B;
 import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
@@ -93,6 +94,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.JaerUpdater;
 import net.sf.jaer.JaerUpdaterFrame;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -349,7 +351,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask", 0);
     private AePlayerAdvancedControlsPanel playerControls;
     private static boolean showedSkippedPacketsRenderingWarning = false;
-    
+
     /**
      * Constructs a new AEViewer using a default AEChip.
      *
@@ -1134,7 +1136,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // then appendCopy a menu item to select this interface.
                 String menuText = String.format("%s (#%d)", hw.toString(), i);
                 interfaceButton = new JRadioButtonMenuItem(menuText);
-                interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, new Integer(i));
+                interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, i);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, hw);
                 interfaceMenu.add(interfaceButton);
                 bg.add(interfaceButton);
@@ -1794,7 +1796,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         return emptyRawPacket;
                     }
                     openAEMonitor();
-                    
+
                     if ((aemon == null) || !aemon.isOpen()) {
                         statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
 
@@ -2651,7 +2653,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqOpMode1 = new javax.swing.JRadioButtonMenuItem();
         helpMenu = new javax.swing.JMenu();
         jSeparator7 = new javax.swing.JSeparator();
-        updateMenuItem = new javax.swing.JMenuItem();
+        checkForUpdatesMenuItem = new javax.swing.JMenuItem();
+        gitUpdateMenuItem = new javax.swing.JMenuItem();
         jSeparator6 = new javax.swing.JPopupMenu.Separator();
         aboutMenuItem = new javax.swing.JMenuItem();
 
@@ -2782,7 +2785,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
 
-        newViewerMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_N, java.awt.event.InputEvent.CTRL_MASK));
+        newViewerMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_N, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         newViewerMenuItem.setMnemonic('N');
         newViewerMenuItem.setText("New viewer");
         newViewerMenuItem.setToolTipText("Opens a new viewer");
@@ -2804,7 +2807,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         fileMenu.add(openMenuItem);
 
-        closeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_W, java.awt.event.InputEvent.CTRL_MASK));
+        closeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_W, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         closeMenuItem.setMnemonic('C');
         closeMenuItem.setText("Close");
         closeMenuItem.setToolTipText("Closes this viewer or the playing data file");
@@ -2992,7 +2995,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.setMnemonic('v');
         viewMenu.setText("View");
 
-        viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_MASK));
+        viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         viewBiasesMenuItem.setMnemonic('b');
         viewBiasesMenuItem.setText("Biases/HW Configuration");
         viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
@@ -3006,7 +3009,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         filtersSubMenu.setMnemonic('f');
         filtersSubMenu.setText("Event Filtering");
 
-        viewFiltersMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_MASK));
+        viewFiltersMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         viewFiltersMenuItem.setMnemonic('f');
         viewFiltersMenuItem.setText("Filters");
         viewFiltersMenuItem.setToolTipText("Shows filter controls");
@@ -3141,7 +3144,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(acccumulateImageEnabledCheckBoxMenuItem);
 
-        resetAccumulationMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.SHIFT_MASK));
+        resetAccumulationMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         resetAccumulationMenuItem.setText("Reset accumulation");
         resetAccumulationMenuItem.setToolTipText("Resets the accumulation (and enables accumulation if not enabled)");
         resetAccumulationMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3181,7 +3184,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(decreaseFrameRateMenuItem);
 
-        setFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
+        setFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         setFrameRateMenuItem.setText("Set rendering rate...");
         setFrameRateMenuItem.setToolTipText("Opens dialog to set the rendering (animation) target rate in frames/sec (fps)");
         setFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3283,7 +3286,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(togglePlaybackDirectionMenuItem);
         viewMenu.add(jSeparator23);
 
-        jogForwardMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+        jogForwardMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jogForwardMI.setText("Jog Forward N packets");
         jogForwardMI.setToolTipText("Or use SHIFT+mouse wheel");
         jogForwardMI.setActionCommand("Jog forward N packets");
@@ -3294,7 +3297,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(jogForwardMI);
 
-        jogBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+        jogBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
         jogBackwardsMI.setText("Jog back N packets");
         jogBackwardsMI.setToolTipText("Or use SHIFT+mouse wheel");
         jogBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
@@ -3345,7 +3348,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(clearMarksMI);
         viewMenu.add(jSeparator10);
 
-        zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.CTRL_MASK));
+        zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         zoomInMenuItem.setText("Zoom in");
         zoomInMenuItem.setToolTipText("Zooms in around mouse point. Also Ctl+mouse wheel");
         zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3355,7 +3358,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(zoomInMenuItem);
 
-        zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_MINUS, java.awt.event.InputEvent.CTRL_MASK));
+        zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_MINUS, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         zoomOutMenuItem.setText("Zoom out");
         zoomOutMenuItem.setToolTipText("Zooms out around mouse point. Also Ctl+mouse wheel");
         zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3375,7 +3378,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(zoomCenterMenuItem);
 
-        unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, java.awt.event.InputEvent.CTRL_MASK));
+        unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         unzoomMenuItem.setText("Unzoom");
         unzoomMenuItem.setToolTipText("Goes to default display zooming");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3571,13 +3574,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         helpMenu.setText("Help");
         helpMenu.add(jSeparator7);
 
-        updateMenuItem.setText("Update jAER....");
-        updateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        checkForUpdatesMenuItem.setText("Check for release updates...");
+        checkForUpdatesMenuItem.setToolTipText("Checks if there is a newer release of jAER installer on github");
+        checkForUpdatesMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                updateMenuItemActionPerformed(evt);
+                checkForUpdatesMenuItemActionPerformed(evt);
             }
         });
-        helpMenu.add(updateMenuItem);
+        helpMenu.add(checkForUpdatesMenuItem);
+
+        gitUpdateMenuItem.setText("Git Update jAER....");
+        gitUpdateMenuItem.setToolTipText("Shows dialog to check for git updates to jAER");
+        gitUpdateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                gitUpdateMenuItemActionPerformed(evt);
+            }
+        });
+        helpMenu.add(gitUpdateMenuItem);
         helpMenu.add(jSeparator6);
 
         aboutMenuItem.setText("About");
@@ -3950,9 +3963,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_biasesToggleButtonActionPerformed
 
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
-            boolean control = ((evt.getModifiers() & InputEvent.CTRL_MASK) == InputEvent.CTRL_MASK);
-            boolean alt = ((evt.getModifiers() & InputEvent.ALT_MASK) == InputEvent.ALT_MASK);;
-            boolean shift = ((evt.getModifiers() & InputEvent.SHIFT_MASK) == InputEvent.SHIFT_MASK);;
+            boolean control = ((evt.getModifiersEx()& InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK);
+            boolean alt = ((evt.getModifiersEx() & InputEvent.ALT_DOWN_MASK) == InputEvent.ALT_DOWN_MASK);;
+            boolean shift = ((evt.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == InputEvent.SHIFT_DOWN_MASK);;
             int rotation = evt.getWheelRotation();
             ActionEvent ae = new ActionEvent(evt.getSource(), evt.getID(), evt.paramString());
 
@@ -4758,10 +4771,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public JComponent addHelpItem(JComponent menuItem) {
         int n = helpMenu.getItemCount();
-        if (n <= 4) {
+        if (n <= 5) {
             n = 0;
         } else {
-            n = n - 4;
+            n = n - 5;
         }
         helpMenu.add(menuItem, n);
         return menuItem;
@@ -5680,11 +5693,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_jogForwardMIActionPerformed
 
-    private void updateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updateMenuItemActionPerformed
+    private void gitUpdateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_gitUpdateMenuItemActionPerformed
         JaerUpdaterFrame frame = new JaerUpdaterFrame();
         frame.setLocationRelativeTo(this);
         frame.setVisible(true);
-    }//GEN-LAST:event_updateMenuItemActionPerformed
+    }//GEN-LAST:event_gitUpdateMenuItemActionPerformed
 
     private void viewStepBackwardsMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewStepBackwardsMIActionPerformed
         getAePlayer().stepBackwardAction.actionPerformed(evt);
@@ -5699,6 +5712,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             showActionText("Accumulate events=" + getRenderer().isAccumulateEnabled());
         }
     }//GEN-LAST:event_resetAccumulationMenuItemActionPerformed
+
+    private void checkForUpdatesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkForUpdatesMenuItemActionPerformed
+        JaerUpdater.checkForInstall4jReleaseUpdate(this);
+    }//GEN-LAST:event_checkForUpdatesMenuItemActionPerformed
 
     private KeyEvent lastKeyEvent = null;
 
@@ -6131,6 +6148,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPanel buttonsPanel;
     private javax.swing.JMenuItem calibrationStartStop;
     private javax.swing.JMenuItem changeAEBufferSizeMenuItem;
+    private javax.swing.JMenuItem checkForUpdatesMenuItem;
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem clearMarksMI;
     private javax.swing.JMenuItem closeMenuItem;
@@ -6154,6 +6172,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu filtersSubMenu;
     private javax.swing.JToggleButton filtersToggleButton;
     private javax.swing.JCheckBoxMenuItem flextimePlaybackEnabledCheckBoxMenuItem;
+    private javax.swing.JMenuItem gitUpdateMenuItem;
     private javax.swing.JMenu graphicsSubMenu;
     private javax.swing.JMenu helpMenu;
     private javax.swing.JPanel imagePanel;
@@ -6241,7 +6260,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem togglePlaybackDirectionMenuItem;
     private javax.swing.JCheckBoxMenuItem unicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem unzoomMenuItem;
-    private javax.swing.JMenuItem updateMenuItem;
     private javax.swing.JCheckBoxMenuItem viewActiveRenderingEnabledMenuItem;
     private javax.swing.JMenuItem viewBiasesMenuItem;
     private javax.swing.JMenuItem viewFiltersMenuItem;
