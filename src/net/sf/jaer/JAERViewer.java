@@ -271,7 +271,7 @@ public class JAERViewer {
             g.setColor(Color.white);
             g.fillRect(x - (textheight / 2), (starty - 10) + cursor, (int) d.getWidth(), textheight);
             g.setPaintMode();
-            g.setColor(Color.white);
+            g.setColor(Color.blue);
             g.drawString(s, x, starty + cursor);
             cursor += ystep;
             if ((starty + cursor) > (d.height - textheight)) {
