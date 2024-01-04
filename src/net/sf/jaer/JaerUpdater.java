@@ -107,7 +107,7 @@ public class JaerUpdater {
             currentVersion = Variables.getCompilerVariable("sys.version");
         } catch (IOException e) {
             // TODO not running in installation
-            JOptionPane.showMessageDialog(parent, "<html> Could not determine current version. <p> Are you running from git compiled development environment?: <p>" + e.toString(), "Version check error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(parent, "<html> Could not determine current version. <p>To check for udpates, you need to install jAER with an install4j installer. <p>(Probably are you running from git compiled development environment): <p>" + e.toString(), "Version check error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -124,7 +124,7 @@ public class JaerUpdater {
                                 "Update available", JOptionPane.INFORMATION_MESSAGE);
 //                JOptionPane.showMessageDialog(parent, "<html>Update " + updateVersion + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "Releases update check", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(parent, "<html>No update available; you are running current release " + currentVersion+"<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "No update available", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(parent, new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion+"<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>"), "No update available", JOptionPane.INFORMATION_MESSAGE);
             }
         } catch (IOException | UserCanceledException e) {
             JOptionPane.showMessageDialog(parent, "Could not check for release update: " + e.toString(), "Update check error", JOptionPane.ERROR_MESSAGE);
