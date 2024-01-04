@@ -89,13 +89,14 @@ public class JaerUpdater {
     public static void throwIoExceptionIfNoGit() throws IOException {
         File f = new File(".git");
         if (!f.exists()) {
-            log.warning("folder .git not found");
+            log.warning("folder .git does not exist at " + f.getAbsolutePath());
             throw new IOException("folder .git does not exist at " + f.getAbsolutePath());
         }
         try (Git git = Git.open(new File("."))) {
             log.info("successfully opened Git " + git.toString());
-            git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
+//            git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
         } catch (Exception e) {
+            log.warning("could not open Git repository " + f.getAbsolutePath()+": caught "+e.toString());
             throw new IOException(e.toString());
         }
     }
