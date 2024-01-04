@@ -23,9 +23,10 @@ import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.util.StatusPrinter;
+import com.install4j.api.context.UserCanceledException;
+import com.install4j.api.launcher.Variables;
 import java.awt.Component;
 import java.awt.Cursor;
-import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
@@ -35,7 +36,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -46,16 +46,12 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.UIManager;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.text.WordUtils;
 import org.apache.tools.ant.BuildEvent;
@@ -72,6 +68,8 @@ import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.BatchingProgressMonitor;
 import org.eclipse.jgit.transport.FetchResult;
+import com.install4j.api.update.*;
+import com.install4j.api.launcher.Variables;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
@@ -85,6 +83,7 @@ public class JaerUpdater {
     public static final boolean DEBUG = false; // false for production version,  true to clone here to tmp folders that do not overwrite our own .git
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
+    public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
 
     public static void throwIoExceptionIfNoGit() throws IOException {
         File f = new File(".git");
@@ -96,8 +95,35 @@ public class JaerUpdater {
             log.info("successfully opened Git " + git.toString());
 //            git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
         } catch (Exception e) {
-            log.warning("could not open Git repository " + f.getAbsolutePath()+": caught "+e.toString());
+            log.warning("could not open Git repository " + f.getAbsolutePath() + ": caught " + e.toString());
             throw new IOException(e.toString());
+        }
+    }
+
+    public static void checkForInstall4jReleaseUpdate(Component parent) {
+        // check if rujning from installed version of jaer (fails if running from git compiled jaer)
+        String currentVersion="unknown";
+        try {
+            currentVersion = Variables.getCompilerVariable("sys.version");
+        } catch (IOException e) {
+            // TODO not running in installation
+            JOptionPane.showMessageDialog(parent, "<html> Could not determine current version. <p> Are you running from git compiled development environment?: <p>" + e.toString(), "Version check error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String updateUrl = INSTALL4J_UPDATES_URL;
+        try {
+            UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(updateUrl, ApplicationDisplayMode.GUI);
+            if (updateDescriptor.getPossibleUpdateEntry() != null) {
+                // TODO an update is available, execute update downloader
+                UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
+                String updateVersion = updateDescriptorEntry.getNewVersion();
+                JOptionPane.showMessageDialog(parent, "<html>Update " + updateVersion + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "Releases update check", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(parent, "<html>No update available; you are running current release " + currentVersion+"<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "No update available", JOptionPane.INFORMATION_MESSAGE);
+            }
+        } catch (IOException | UserCanceledException e) {
+            JOptionPane.showMessageDialog(parent, "Could not check for release update: " + e.toString(), "Update check error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -187,9 +213,9 @@ public class JaerUpdater {
 
                     pm.setNote("Build finished");
                     pm.close();
-                    JOptionPane.showMessageDialog(parent, "<html>Build finished. <p> <b>Restart jAER to see changes.</b>", "Buld result", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(parent, "<html>Build finished. <p> <b>Restart jAER to see changes.</b>", "Build result", JOptionPane.INFORMATION_MESSAGE);
                 } catch (BuildException e) {
-                    JOptionPane.showMessageDialog(parent, "<html>Build error: <p> " + e.toString(), "Buld failed", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(parent, "<html>Build error: <p> " + e.toString(), "Build failed", JOptionPane.ERROR_MESSAGE);
                 }
             }).start();
         };
@@ -390,8 +416,8 @@ public class JaerUpdater {
                 float gb = (float) freebytes / (1 << 30);
                 if (gb < 2) {
                     int ret = JOptionPane.showConfirmDialog(parent,
-                            String.format( "<html>There is only %.1fGB of free disk space. Cloning will require at least 1GB free space."
-                            + "<p><p>Do you want to proceed?",(gb)),
+                            String.format("<html>There is only %.1fGB of free disk space. Cloning will require at least 1GB free space."
+                                    + "<p><p>Do you want to proceed?", (gb)),
                             "Confirm git initialization operation",
                             JOptionPane.YES_NO_OPTION);
                     if (ret != JOptionPane.YES_OPTION) {
@@ -407,7 +433,7 @@ public class JaerUpdater {
                         + "<br>like bias or filter settings."
                         + "<p>You will be asked about overwriting files that have been modified<br>"
                         + "after you installed the release.<p>"
-                                + "<p> <b>Note:</b> If you installed jAER to a system folder, you might need to run jAER with adminstrator/root privaleges"
+                        + "<p> <b>Note:</b> If you installed jAER to a system folder, you might need to run jAER with adminstrator/root privaleges"
                         + "<p>Do you want to proceed?</p>",
                         "<p> Confirm git initialization operation</p>",
                         JOptionPane.YES_NO_OPTION);

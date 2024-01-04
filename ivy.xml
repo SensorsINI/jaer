@@ -150,6 +150,8 @@ MA 02110-1301  USA
             <artifact name="joda-time" type="jar" />
         </dependency>
         
+        <dependency org="com.install4j" name="install4j-runtime" rev="10.0.6" />
+        
     </dependencies>
 </ivy-module>
 
