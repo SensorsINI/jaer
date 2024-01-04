@@ -402,13 +402,14 @@ public class JaerUpdater {
                 // confirm operation
                 int ret = JOptionPane.showConfirmDialog(parent,
                         "<html>This operation will clone jaer to a new temporary folder"
-                        + "<br>and then copy the clone to your jAER working folder."
+                        + "<br>and then copy the clone to your jAER working folder.</p>"
                         + "<p>It can potentially overwrite files that you may have modified,"
                         + "<br>like bias or filter settings."
                         + "<p>You will be asked about overwriting files that have been modified<br>"
-                        + "after you installed release."
-                        + "<p><p>Do you want to proceed?",
-                        "Confirm git initialization operation",
+                        + "after you installed the release.<p>"
+                                + "<p> <b>Note:</b> If you installed jAER to a system folder, you might need to run jAER with adminstrator/root privaleges"
+                        + "<p>Do you want to proceed?</p>",
+                        "<p> Confirm git initialization operation</p>",
                         JOptionPane.YES_NO_OPTION);
                 if (ret != JOptionPane.YES_OPTION) {
                     JOptionPane.showMessageDialog(parent, "Git initialization operation cancelled");
