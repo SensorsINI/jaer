@@ -83,7 +83,7 @@ public class SubclassFinder {
 //            exclusionList.add("org.uncommons.*");
 //            exclusionList.add("org.bytedeco.*");
 //
-//    } // already handled in ListClasses
+//    } // already handled in ListJaerClasses
 
     /**
      * Creates a new instance of SubclassFinder
@@ -217,7 +217,7 @@ public class SubclassFinder {
             }
             log.info("No cache found for " + superClassName + "; now scanning entire classpath to build list of subclasses of " + superClassName);
             Class superClass = FastClassFinder.forName(superClassName);
-            List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
+            List<String> allClasses = ListJaerClasses.listClasses();  // expensive, must search all classpath and make big string array list
             int n = ".class".length();
             Class c = null;
             if (allClasses.isEmpty()) {
@@ -351,7 +351,7 @@ public class SubclassFinder {
             progressMonitor.setNote("Building class list");
         }
         Class superClass = FastClassFinder.forName(superClassName);
-        List<String> allClasses = ListClasses.listClasses();  // expensive, must search all classpath and make big string array list
+        List<String> allClasses = ListJaerClasses.listClasses();  // expensive, must search all classpath and make big string array list
         int n = ".class".length();
         Class c = null;
         if (allClasses.isEmpty()) {
