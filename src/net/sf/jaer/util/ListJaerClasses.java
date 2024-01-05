@@ -22,37 +22,36 @@ import java.util.logging.Logger;
 import java.util.zip.ZipException;
 
 /**
- * Provides a static method that returns a List<String> of all classes on
- * java.class.path starting with root of package name, e.g. "org/netbeans/.."
- * and ending with ".class". Classes that are on IGNORED_CLASSPATH are not
+ * Provides a static method that returns a List<String> of all jAER classes on
+ * java.class.path  Classes that are on IGNORED_CLASSPATH are not
  * scanned.
  * <p>
  * From http://forums.java.net/jive/thread.jspa?messageID=212405&tstart=0
  */
-public class ListClasses {
+public class ListJaerClasses {
 
     /** only these jars are included in class listing */
     public static final String INCLUDED_JAR = "jAER.jar";
 
     /**
-     * ListClasses doesn't iterate over classpath classes starting with these
-     * strings; this is hack to avoid iterating over standard java classes to
-     * avoid running into missing DLLs with JOGL.
+     * ListJaerClasses doesn't iterate over classpath classes starting with these
+ strings; this is hack to avoid iterating over standard java classes to
+ avoid running into missing DLLs with JOGL.
      */
     public static final String[] IGNORED_CLASSPATH = {
-        "java", "javax",
-        "com/sun", "com/oracle", "org/w3c", "org.omg", "org/xml", "sun", "oracle",
-        "gnu/io", // added because we don't bother with the native code for I2C, parallel ports, etc
+        "java/",
+        "com/sun/", "com/oracle/", "org/w3c/", "org.omg/", "org/xml/", "sun/", "oracle/",
+        "gnu/io/", // added because we don't bother with the native code for I2C, parallel ports, etc
         "build/classes", // added to ignore classes not in jaer.jar and only temporarily built
         //Below list is to speed up the search as well as the subclassFinder
         // by excluding items from the list that will never contain jAER code.
         // This also helps eliminating 'UnsatisfiedLinkError' on some systems.
-        "com/googlecode", "org/jfree", "org/jblas", "flanagan", "org/apache",
-        "org/jdesktop", "de/thesycon", "com/kitfox", "org/uncommons",
-        "de/ailis", "org/netbeans",
-        "com/kitfox", "org/bytedeco", "org/usb4java", "org/openni",
-        "jogamp", "org/jogamp", "com/jogamp", "gluegen", "newt", "ncsa.hdf.hdf5lib", "ncsa.hdf",
-        "lib", "org/tensorflow", "org/ros", "com/fasterxml", "ch/qos", "groovy/lang", "com/google", "groovy", "ch/systemsx"
+        "com/googlecode/", "org/jfree/", "org/jblas/", "flanagan/", "org/apache/",
+        "org/jdesktop/", "de/thesycon/", "com/kitfox/", "org/uncommons/",
+        "de/ailis/", "org/netbean/s",
+        "com/kitfox/", "org/bytedeco/", "org/usb4jav/a", "org/openni/",
+        "jogamp/", "org/jogamp/", "com/jogamp/", "gluegen/", "newt/", "ncsa.hdf.hdf5li/b", "ncsa.hdf/",
+        "lib/", "org/tensorflow/", "org/ros/", "com/fasterxml/", "ch/qos/", "groovy/lang/", "com/google/", "groovy/", "ch/systemsx/"
     };
 
     static final Logger log = Logger.getLogger("net.sf.jaer.util");
@@ -90,11 +89,14 @@ public class ListClasses {
 
             while (st.hasMoreTokens()) {
                 String token = st.nextToken();
-                if (debug) {
-                    log.log(Level.INFO, "classpath token = {0}", token);
-                }
                 File classpathElement = new File(token);
-                if(classpathElement.isFile() && !token.endsWith(INCLUDED_JAR)) continue; // skip all files that are not jAER.jar
+                if(classpathElement.isFile() && !token.endsWith(INCLUDED_JAR)) {
+                    log.info(String.format("Skipping scanning %s",token));
+                    continue;
+                } // skip all files that are not jAER.jar
+                if (debug) {
+                    log.log(Level.INFO, "scanning token = {0}", token);
+                }
                 classNames.addAll(classpathElement.isDirectory()
                         //?loadClassesFromDir(classpathElement.list(new CLASSFilter()))
                         ? loadClassesFromDir(null, classpathElement, classpathElement)
@@ -114,7 +116,7 @@ public class ListClasses {
         try {
             if (jarFile.getName().endsWith(".jar")) {
                 if (debug) {
-                    log.log(Level.INFO, "{0} is being scanned", jarFile);
+                    log.log(Level.INFO, "Jar archive {0} is being scanned", jarFile);
                 }
                 Enumeration<JarEntry> fileNames = null;
                 try {
@@ -127,16 +129,17 @@ public class ListClasses {
                 while (fileNames.hasMoreElements()) {
                     entry = fileNames.nextElement();
                     boolean skipThis = false;
-                    skipThis = isIgnored(entry.getName(), skipThis);
+//                    skipThis = isIgnored(entry.getName(), skipThis);
+                    skipThis=false;  // add all classes, since we are scannning jAER.jar which should all be included.
                     if (!skipThis && entry.getName().endsWith(".class")) {
                         files.add(entry.getName());
                     }
-                    if (skipThis) {
-                        if (debug) {
-                            log.log(Level.INFO, "ignoring rest of classes in jar file {0}", jarFile.getName());
-                        }
-                        break;
-                    }
+//                    if (skipThis) {
+//                        if (debug) {
+//                            log.log(Level.INFO, String.format("Because %s isIgnored, ignoring rest of classes in jar file %s}", entry.getName(), jarFile.getName()));
+//                        }
+//                        break;
+//                    }
                 }
             }
         } catch (IOException e) {
