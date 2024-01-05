@@ -20,6 +20,7 @@ You can find the latest releases at <https://github.com/SensorsINI/jaer/releases
 
 Starting with jAER 2.0, binary installers are now available thanks to the 
 multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html). 
+
 Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers.
 
 
