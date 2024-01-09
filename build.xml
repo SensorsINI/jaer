@@ -248,18 +248,24 @@
         </zip>
     </target>
 
+
     <!-- builds a runtime archive for end users who don't want to develop -->
     <target name="jaer-runtime-archive" depends="jar">
         <tstamp/>
-        <delete file="../jaer-runtime-*.zip" />
-        <property name="runtimeZipFileName" value="../jaer-runtime-${DSTAMP}.zip"/>
+        <exec executable="git" outputproperty="git.tag">
+            <arg value="describe"/>
+            <arg value="--tags"/>
+            <arg value="--abbrev=0"/>
+        </exec>
+        <echo message="Git tag is ${git.tag}"/>
+        <echo message="Building jaer-runtime-${git-tag}.zip"/>
+        <!--<delete file="../jaer-runtime-\*.zip" failonerror="false"/>-->
+        <property name="runtimeZipFileName" value="../jaer-runtime-${git-tag}.zip"/>
         <zip destfile="${runtimeZipFileName}" level="9"
-             comment="jAER runtime release ${DSTAMP}- see https://jaerproject.org">
+             comment="jAER runtime release ${git-tag} - see https://jaerproject.org">
             <zipfileset prefix="jAER-runtime"
                         dir="."
-                        excludes="**/*.zip,
-                         ivy/**,
-                        **/*.private, **/*.hprof, **/*.log, **/*.ncb"
+                        excludes="**/*.zip, ivy/**, **/*.private, **/*.hprof, **/*.log, **/*.ncb, installers"
                         defaultexcludes="false"
             />
         </zip>
@@ -289,6 +295,7 @@
             <filelist dir="${basedir}" files="${buildversion.outputfile}"/>
         </concat>
     </target>
+    
 
 
     <target name="jaer-sign-jar" depends="jar">

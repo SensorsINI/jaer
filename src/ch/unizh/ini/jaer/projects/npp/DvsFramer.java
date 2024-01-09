@@ -18,9 +18,6 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
-import com.jogamp.opengl.GL2;
-import com.jogamp.opengl.GLAutoDrawable;
-import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
 import java.awt.Dimension;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -30,8 +27,6 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import net.sf.jaer.Description;
-import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -39,7 +34,6 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.filter.LowpassFilter;
 
@@ -203,12 +197,6 @@ abstract public class DvsFramer extends EventFilter2D {
      */
     abstract public void setFromNetwork(AbstractDavisCNN apsDvsNet);
 
-    /**
-     * Sets parameters from a CNN that processes to produce a heat map
-     *
-     * @param apsDvsNet
-     */
-    abstract public void setFromNetwork(DeepLearnCnnNetwork_HJ apsDvsNet);
 
     /**
      * @return the dvsGrayScale
@@ -868,11 +856,6 @@ abstract public class DvsFramer extends EventFilter2D {
             height = apsDvsNet.getInputLayer().getHeight();
         }
 
-        // legacy support
-        public void setFromNetwork(DeepLearnCnnNetwork_HJ apsDvsNet) {
-            width = apsDvsNet.inputLayer.dimx;
-            height = apsDvsNet.inputLayer.dimy;
-        }
 
         /**
          * @return the width

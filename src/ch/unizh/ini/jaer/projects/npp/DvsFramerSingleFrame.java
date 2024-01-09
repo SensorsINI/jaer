@@ -18,7 +18,6 @@
  */
 package ch.unizh.ini.jaer.projects.npp;
 
-import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
 import java.awt.Rectangle;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -124,13 +123,6 @@ public class DvsFramerSingleFrame extends DvsFramer {
         } 
     }
 
-    @Override
-    synchronized public void setFromNetwork(DeepLearnCnnNetwork_HJ apsDvsNet) {
-        if (apsDvsNet != null && apsDvsNet.inputLayer != null) {
-            setOutputImageWidth(apsDvsNet.inputLayer.dimx);
-            setOutputImageHeight(apsDvsNet.inputLayer.dimy);
-        } 
-    }
 
     @Override
     synchronized public boolean allocateMemory() {
