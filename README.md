@@ -30,8 +30,8 @@ You will get the best experience running from lastest bug fixes.
 
 ## Quick start sample data
 
-Download [some DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and a
-drop them onto the jAER window to play them with the DVS128 AEChip.
+Download [some DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and
+drop them onto the jAER window to play them with the *DVS128* *AEChip* (the default AEChip).
 
 ## Developing with jAER
 
