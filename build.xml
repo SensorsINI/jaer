@@ -265,7 +265,7 @@
              comment="jAER runtime release - see https://jaerproject.org">
             <zipfileset prefix="jAER-runtime"
                         dir="."
-                        excludes="**/*.zip, ivy/**, **/*.private, **/*.hprof, **/*.log, **/*.ncb, installers"
+                        excludes="**/*.zip, ivy/**, **/*.private, **/*.hprof, **/*.log, **/*.ncb, installers/**, .git/**, exe4j*/**"
                         defaultexcludes="false"
             />
         </zip>
