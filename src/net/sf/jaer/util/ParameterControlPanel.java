@@ -684,7 +684,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 @Override
                 public void stateChanged(ChangeEvent e) {
                     try {
-                        w.invoke(clazz, new Integer(slider.getValue())); // write int value
+                        w.invoke(clazz, slider.getValue()); // write int value
                         ic.set(slider.getValue());
 //                        tf.setText(Integer.toString(slider.getValue()));
                     } catch (InvocationTargetException ite) {
@@ -730,7 +730,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     return;
                 }
                 currentValue = x.floatValue();
-                set(new Float(currentValue));
+                set(currentValue);
             } catch (Exception e) {
                 log.warning("cannot access the field, is the class or method not public?");
                 e.printStackTrace();
@@ -768,8 +768,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     try {
                         int v = slider.getValue();
                         currentValue = minValue + (maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum()));
-                        w.invoke(clazz, new Float(currentValue)); // write int value
-                        fc.set(new Float(currentValue));
+                        w.invoke(clazz, currentValue); // write int value
+                        fc.set(currentValue);
 
 //                        tf.setText(engFmt.format(currentValue));
                     } catch (InvocationTargetException ite) {
@@ -881,8 +881,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 } else {
                                     nval = (int) Math.round(initValue * factor);
                                 }
-                                w.invoke(clazz, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(clazz, nval);
+                                tf.setText(Integer.valueOf(nval).toString());
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -897,8 +897,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 } else {
                                     nval = (int) Math.round(initValue / factor);
                                 }
-                                w.invoke(clazz, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(clazz, nval);
+                                tf.setText(Integer.valueOf(nval).toString());
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -911,8 +911,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                         if (code == KeyEvent.VK_UP) {
                             try {
                                 nval = initValue + 1;
-                                w.invoke(clazz, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(clazz, nval);
+                                tf.setText(Integer.valueOf(nval).toString());
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
