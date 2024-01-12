@@ -22,7 +22,7 @@ Starting with jAER 2.0, binary installers are now available thanks to the
 multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html). 
 
 Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers. 
-**Windows:** Click *Install anyways* for unsigned app.
+**Windows:** Click *More info*, *Run anyway* and *Install anyway* for unsigned app.
 **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac).
 **Linux:** Run *jaer* from the installation directory.
 
