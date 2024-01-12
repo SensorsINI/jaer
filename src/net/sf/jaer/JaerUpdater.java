@@ -69,11 +69,16 @@ import org.eclipse.jgit.lib.BatchingProgressMonitor;
 import org.eclipse.jgit.transport.FetchResult;
 import com.install4j.api.update.*;
 import com.install4j.api.launcher.Variables;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.logging.Level;
 import net.sf.jaer.util.MessageWithLink;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
  * JGit and ant.
+ *
+ * Also handles version check for install4j installed version of jAER.
  *
  * @author Tobi Delbruck (tobi@ini.uzh.ch)
  *
@@ -102,7 +107,7 @@ public class JaerUpdater {
 
     public static void checkForInstall4jReleaseUpdate(Component parent) {
         // check if rujning from installed version of jaer (fails if running from git compiled jaer)
-        String currentVersion="unknown";
+        String currentVersion = "unknown";
         try {
             currentVersion = Variables.getCompilerVariable("sys.version");
         } catch (IOException e) {
@@ -118,13 +123,13 @@ public class JaerUpdater {
                 // TODO an update is available, execute update downloader
                 UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
                 String updateVersion = updateDescriptorEntry.getNewVersion();
-                JOptionPane.showMessageDialog(parent, 
-                        new MessageWithLink("<html>Current version: "+currentVersion+"<p> Update " + updateVersion + 
-                                " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>"), 
-                                "Update available", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(parent,
+                        new MessageWithLink("<html>Current version: " + currentVersion + "<p> Update " + updateVersion
+                                + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>"),
+                        "Update available", JOptionPane.INFORMATION_MESSAGE);
 //                JOptionPane.showMessageDialog(parent, "<html>Update " + updateVersion + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "Releases update check", JOptionPane.INFORMATION_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(parent, new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion+"<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>"), "No update available", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(parent, new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion + "<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>"), "No update available", JOptionPane.INFORMATION_MESSAGE);
             }
         } catch (IOException | UserCanceledException e) {
             JOptionPane.showMessageDialog(parent, "Could not check for release update: " + e.toString(), "Update check error", JOptionPane.ERROR_MESSAGE);
@@ -157,6 +162,7 @@ public class JaerUpdater {
                     @Override
                     public void buildStarted(BuildEvent be) {
                         String s = String.format("Build of %s started", be.getProject().getName());
+                        log.info(s);
                         pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc());
                     }
@@ -164,6 +170,7 @@ public class JaerUpdater {
                     @Override
                     public void buildFinished(BuildEvent be) {
                         String s = String.format("Build of %s finished", be.getProject().getName());
+                        log.info(s);
                         pm.setNote(wrap(s));
                         progressCounter.saveProgress();
                         pm.close();
@@ -171,28 +178,32 @@ public class JaerUpdater {
 
                     @Override
                     public void targetStarted(BuildEvent be) {
-                        String s = String.format("Target %s started: description ", be.getTarget().getName(), be.getTarget().getDescription());
+                        String s = String.format("Target %s started: description %s, source %s", be.getTarget().getName(), be.getTarget().getDescription(), be.getSource());
                         pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(100));
                     }
 
                     @Override
                     public void targetFinished(BuildEvent be) {
-                        String s = String.format("Target %s finished: description ", be.getTarget().getName(), be.getTarget().getDescription());
+                        String s = String.format("Target %s finished: description %s, source %s", be.getTarget().getName(), be.getTarget().getDescription(), be.getSource());
+                        log.info(s);
                         pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(100));
                     }
 
                     @Override
                     public void taskStarted(BuildEvent be) {
-                        String s = String.format("Task %s started, type %s", be.getTask().getTaskName(), be.getTask().getTaskType());
+                        String s = String.format("Task %s started, type %s, source %s", be.getTask().getTaskName(), be.getTask().getTaskType(), be.getSource());
+                        log.info(s);
                         pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(10));
                     }
 
                     @Override
                     public void taskFinished(BuildEvent be) {
-                        String s = String.format("Task %s finished, type %s", be.getTask().getTaskName(), be.getTask().getTaskType());
+                        log.info(be.getMessage());
+                        String s = String.format("Task %s finished, type %s, source %s", be.getTask().getTaskName(), be.getTask().getTaskType(), be.getSource());
+                        log.info(s);
                         pm.setNote(wrap(s));
                         pm.setProgress(progressCounter.inc(10));
                     }
@@ -200,11 +211,15 @@ public class JaerUpdater {
                     @Override
                     public void messageLogged(BuildEvent be) {
 //                        pm.setNote(be.getMessage());
+                        log.info(be.getMessage());
                         pm.setProgress(progressCounter.inc());
                     }
+
                 });
-                try {
-                    log.info("Build file is " + buildFile.getAbsolutePath());
+                     CustomOutputStream errStream=new CustomOutputStream(log, Level.SEVERE);
+                    CustomOutputStream stdStream=new CustomOutputStream(log, Level.INFO);
+               try {
+                    log.log(Level.INFO, "Build file is {0}", buildFile.getAbsolutePath());
                     p.setUserProperty("ant.file", buildFile.getAbsolutePath());
 
                     p.init();
@@ -213,17 +228,83 @@ public class JaerUpdater {
                     p.addReference("ant.projectHelper", helper);
                     helper.parse(p, buildFile);
                     pm.setNote("Building jAER");
+                    // http://blog.adeel.io/2017/05/06/redirecting-all-stdout-and-stderr-to-logger-in-java/
+                    System.setErr(
+                            new PrintStream(
+                                    errStream //Or whatever logger level you want
+                            )
+                    );
+                    System.setOut(
+                            new PrintStream(
+                                    stdStream //Or whatever logger level you
+                            )
+                    );
                     p.executeTarget(p.getDefaultTarget());
 
                     pm.setNote("Build finished");
                     pm.close();
                     JOptionPane.showMessageDialog(parent, "<html>Build finished. <p> <b>Restart jAER to see changes.</b>", "Build result", JOptionPane.INFORMATION_MESSAGE);
                 } catch (BuildException e) {
-                    JOptionPane.showMessageDialog(parent, "<html>Build error: <p> " + e.toString(), "Build failed", JOptionPane.ERROR_MESSAGE);
+                    log.severe(e.toString());
+                    String errString=String.format("<html>Build error: <p> %s <p> Compiler Error:<br>%s </html>",e.toString(), errStream.accumulatedStringBuilder.toString());
+                    errString=errString.replaceAll("\n", "<br>");
+                    JOptionPane.showMessageDialog(parent, errString, "Build failed", JOptionPane.ERROR_MESSAGE);
+                    pm.close();
                 }
             }).start();
         };
 
+    }
+    
+    private static class StringBuilderStream extends OutputStream {
+        StringBuilder stringBuilder;
+
+        public StringBuilderStream() {
+            stringBuilder = new StringBuilder();
+        }
+
+        @Override
+        public final void write(int i) throws IOException {
+            char c = (char) i;
+            if (c == '\r' || c == '\n') {
+                if (stringBuilder.length() > 0) {
+                    stringBuilder = new StringBuilder();
+                }
+            } else {
+                stringBuilder.append(c);
+            }
+        }
+     
+    }
+
+    // http://blog.adeel.io/2017/05/06/redirecting-all-stdout-and-stderr-to-logger-in-java/
+    private static class CustomOutputStream extends OutputStream {
+
+        Logger logger;
+        Level level;
+        StringBuilder stringBuilder, accumulatedStringBuilder;
+        
+
+        public CustomOutputStream(Logger logger, Level level) {
+            this.logger = logger;
+            this.level = level;
+            stringBuilder = new StringBuilder();
+            accumulatedStringBuilder = new StringBuilder();
+        }
+
+        @Override
+        public final void write(int i) throws IOException {
+            char c = (char) i;
+            if (c == '\r' || c == '\n') {
+                if (stringBuilder.length() > 0) {
+                    logger.log(level, stringBuilder.toString());
+                    stringBuilder = new StringBuilder();
+                }
+            } else {
+                stringBuilder.append(c);
+                accumulatedStringBuilder.append(c);
+            }
+        }
     }
 
     private static String wrap(String s) {
