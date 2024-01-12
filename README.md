@@ -21,7 +21,10 @@ You can find the latest releases at <https://github.com/SensorsINI/jaer/releases
 Starting with jAER 2.0, binary installers are now available thanks to the 
 multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html). 
 
-Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers.
+Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers. 
+**Windows:** Click *Install anyways* for unsigned app.
+**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac).
+**Linux:** Run *jaer* from the installation directory.
 
 Releases do NOT include git information, but using the new self-update feature introduced in jAER-1.8.1, 
 you can initialize the release to a git working copy and pull+build within jAER. 
