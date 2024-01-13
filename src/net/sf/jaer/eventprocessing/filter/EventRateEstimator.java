@@ -45,8 +45,8 @@ public class EventRateEstimator extends EventFilter2D {
     protected int UPDATE_RATE_TAU_DIVIDER = 1;
     private int numEventsSinceLastUpdate = 0;
     private int numEventsInLastPacket = 0;
-    private boolean biasChanged=false;
-    private long biasChangedTimeMs=0;
+    private boolean biasChanged = false;
+    private long biasChangedTimeMs = 0;
 
     public EventRateEstimator(AEChip chip) {
         super(chip);
@@ -61,7 +61,7 @@ public class EventRateEstimator extends EventFilter2D {
         if (in == null || in.getSize() == 0) {
             return in; // if there are no events, don't touch values since we don't have a new update time
         }
-        if (biasChanged && this.biasChangePauseS>0) {
+        if (biasChanged && this.biasChangePauseS > 0) {
             final long timeSinceBiasChangeMs = System.currentTimeMillis() - biasChangedTimeMs;
             if (timeSinceBiasChangeMs < 1000 * this.biasChangePauseS) {
                 lastComputeTimestamp = in.getLastTimestamp();
@@ -103,9 +103,9 @@ public class EventRateEstimator extends EventFilter2D {
             return false; // just ignore this event entirely
         }
         numEventsSinceLastUpdate++;
-        if (dt >= 1000*eventRateTauMs / UPDATE_RATE_TAU_DIVIDER) {
+        if (dt >= 1000 * eventRateTauMs / UPDATE_RATE_TAU_DIVIDER) {
 //                System.out.println("            rate update dt="+dt/1000+" ms");
-            if(e.timestamp<lastComputeTimestamp){
+            if (e.timestamp < lastComputeTimestamp) {
                 log.warning("nonmonotonic update time");
             }
             lastComputeTimestamp = e.timestamp;
@@ -122,9 +122,9 @@ public class EventRateEstimator extends EventFilter2D {
     @Override
     public void resetFilter() {
 //        filter.reset();
-        initialized=false;
-        filteredRate=Float.NaN;
-        instantaneousRate=Float.NaN;
+        initialized = false;
+        filteredRate = Float.NaN;
+        instantaneousRate = Float.NaN;
     }
 
     @Override
@@ -132,8 +132,10 @@ public class EventRateEstimator extends EventFilter2D {
         resetFilter();
         if (chip.getAeViewer() != null) {
             chip.getAeViewer().getSupport().addPropertyChangeListener(AEViewer.EVENT_CHIP, this);
-            chip.getBiasgen().getSupport().addPropertyChangeListener(this);
-    }
+            if (chip.getBiasgen() != null) {
+                chip.getBiasgen().getSupport().addPropertyChangeListener(this);
+            }
+        }
     }
 
     @Override
@@ -145,7 +147,7 @@ public class EventRateEstimator extends EventFilter2D {
     public void propertyChange(PropertyChangeEvent evt) {
         if (evt.getSource() instanceof AEChip) {
             biasChanged = true;
-            biasChangedTimeMs=System.currentTimeMillis();
+            biasChangedTimeMs = System.currentTimeMillis();
         }
     }
 
@@ -157,7 +159,7 @@ public class EventRateEstimator extends EventFilter2D {
      * Time constant of event rate lowpass filter in ms
      */
     public void setEventRateTauMs(float eventRateTauMs) {
-        float old=this.eventRateTauMs;
+        float old = this.eventRateTauMs;
         if (eventRateTauMs < 0) {
             eventRateTauMs = 0;
         }
@@ -223,7 +225,7 @@ public class EventRateEstimator extends EventFilter2D {
      */
     synchronized public void setBiasChangePauseS(float biasChangePauseS) {
         this.biasChangePauseS = biasChangePauseS;
-        putFloat("biasChangePauseS",biasChangePauseS);
+        putFloat("biasChangePauseS", biasChangePauseS);
 //        log.info(String.format("Set biasChangePauseS=%.3fs",this.biasChangePauseS));
     }
 }
