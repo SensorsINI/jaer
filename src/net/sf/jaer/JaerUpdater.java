@@ -434,6 +434,7 @@ public class JaerUpdater {
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(parent, e.toString(), "Pull failed", JOptionPane.ERROR_MESSAGE);
+                    pm.close();
                 }
             }).start();
         };
