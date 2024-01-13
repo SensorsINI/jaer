@@ -587,7 +587,7 @@ public class JaerUpdater {
                         } catch (Exception e) {
                             log.warning(e.toString());
                             JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
-
+                            pm.close();
                         }
                         return null;
                     }
