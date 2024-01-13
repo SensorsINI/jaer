@@ -431,6 +431,7 @@ public class JaerUpdater {
                     String s = WordUtils.wrap(result.toString(), 40);
                     JOptionPane.showMessageDialog(parent, s.toString(), "Pull result", JOptionPane.INFORMATION_MESSAGE);
                     git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
+                    pm.close();
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(parent, e.toString(), "Pull failed", JOptionPane.ERROR_MESSAGE);
