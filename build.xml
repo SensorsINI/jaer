@@ -14,44 +14,9 @@
         https://ant.apache.org/ivy/ 
         http://wiki.netbeans.org/FaqIvy 
         see ivy.xml 
-        <target name="retrieve-dependencies"
-                description="Retrieve dependencies with Apache IVY">
-            <ivy:retrieve type="jar" />
-        </target>
-        
-        <path id="ivy.lib.path">
-            <fileset dir="jars" includes="ivy-2.4.0.jar"/>
-        </path>
-        <taskdef resource="org/apache/ivy/ant/antlib.xml"
-                 uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
-        
-        <target name="-ivy-cleancache">
-            <ivy:cleancache />
-        </target>
-        
-    <target name="-ivy-retrieve">
-        <ivy:retrieve/>  Load dependencies to the project 
-        <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
-            <path>
-                <fileset dir="lib" includes="*.jar"/>
-            </path>
-            <map from="${basedir}${file.separator}" to=""/>
-        </pathconvert>
-        <propertyfile file="nbproject/project.properties">
-            <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
-        </propertyfile>
-    </target>-->
-    
-    
-    <!--    <target name="-pre-compile" depends="-ivy-retrieve"/>-->
-   
-    
-    
-    <!--    <target name="-post-clean">
-        <delete dir="lib"/>
-    </target>-->
-    
-    <!--ivy download and configure, from https://gist.github.com/snipsnipsnip/3284453 -->
+     
+    ivy download and configure adapated from https://gist.github.com/snipsnipsnip/3284453 
+    -->
     <property name="ivy.install.version" value="2.5.2" />
     <property name="ivy.jar.dir" value="${basedir}/ivy" />
     <property name="ivy.cache.dir" value="${basedir}/ivy" />
@@ -124,15 +89,15 @@
         </propertyfile>
     </target>
 
-    <target name="-use-ivy-junit" depends="download-deps" unless="netbeans.home">
+<!--    <target name="-use-ivy-junit" depends="download-deps" unless="netbeans.home">
         <property name="libs.junit_4.classpath" value="${ivy.lib}/junit-4.10.jar"/>
-    </target>
+    </target>-->
     
     <target name="-pre-compile" depends="download-deps"/>
 
     <target name="-pre-compile-single" depends="download-deps"/>
 
-    <target name="-pre-init" depends="-use-ivy-junit">
+    <target name="-pre-init">
         <tstamp/>
     </target>
 
@@ -198,14 +163,14 @@
     </target>
 
     <!-- builds a zip of all the javadoc -->
-    <target name="jaer-archive-javadoc" depends="javadoc">
+<!--    <target name="jaer-archive-javadoc" depends="javadoc">
         <tstamp/>
         <delete file="../jaer-javadoc-*.zip" />
         <property name="javadocZipFileName" value="../jaer-javadoc-${DSTAMP}.zip" />
         <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see https://jaerproject.org">
             <zipfileset prefix="jAER-javadoc" dir="${dist.javadoc.dir}" />
         </zip>
-    </target>
+    </target>-->
 
 
     <!-- builds a runtime archive for end users who don't want to develop -->
