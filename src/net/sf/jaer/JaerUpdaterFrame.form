@@ -303,7 +303,8 @@
         </Component>
         <Component class="javax.swing.JButton" name="gitPullButton">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Pull git changes"/>
+            <Property name="text" type="java.lang.String" value="Git fetch and checkout latest master branch"/>
+            <Property name="toolTipText" type="java.lang.String" value="Does &quot;git fetch&quot; from master branch, then checks out master to a new branch"/>
           </Properties>
         </Component>
         <Container class="javax.swing.JScrollPane" name="jScrollPane5">
