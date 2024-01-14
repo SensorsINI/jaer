@@ -52,7 +52,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 	 * this it is cleared. This should prevent OutOfMemory errors during long
 	 * runs.
 	 */
-	public final int MAX_CHARS = 80 * 80 * 100; // lines*lines/page*pages
+	public final int MAX_CHARS = 80 * 80 * 400; // lines*lines/page*pages
 
 	/**
 	 * Creates new form AEViewerConsoleOutputFrame
