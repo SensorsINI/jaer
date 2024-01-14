@@ -38,17 +38,20 @@ MA 02110-1301  USA
         <dependency org="org.swinglabs" name="swing-layout" rev="1.0.3" />
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
         
+        <dependency org="org.webjars.npm" name="semver" rev="5.4.1" />
+        
         <!--bag-reader-java-1.9.0 is here to obtain all of its dependencies, but we are using the fork at https://github.com/tobidelbruck/bag-reader-java currently-->
         <!--since our fixes were pulled, we can now use bag-reader-java 1.10.x-->
         <dependency org="com.github.swri-robotics" name="bag-reader-java" rev="1.10.0" />
-        <dependency org="org.apache.commons" name="commons-lang3" rev="3.10" />
-        <dependency org="org.apache.commons" name="commons-math3" rev="3.6.1" />
-        <dependency org="org.webjars.npm" name="semver" rev="5.4.1" />
-        <dependency org="commons-net" name="commons-net" rev="3.6" />
-        <dependency org="org.apache.directory.studio" name="org.apache.commons.io" rev="2.4" />
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
-        <dependency org="org.apache.commons" name="commons-text" rev="1.8"/>
-            
+        
+        <!--<dependency org="org.apache.commons" name="commons-lang3" rev="3.14.0"/>-->
+        <dependency org="org.apache.commons" name="commons-math4-core" rev="4.0-beta1"/>
+        <dependency org="commons-net" name="commons-net" rev="3.10.0"/>
+        <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
+        <dependency org="commons-io" name="commons-io" rev="2.15.1"/>
+        <!--https://mvnrepository.com/artifact/org.apache.commons/commons-text--> 
+        <dependency org="org.apache.commons" name="commons-text" rev="1.11.0"/>
+
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
         
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
@@ -89,7 +92,7 @@ MA 02110-1301  USA
         </dependency>
         <!--TODO sort out opencv and javacv - seems to be multiple versions used in jaer-->
         <!--TODO the bytedeco wrapper on opencv (opencv_core) is needed in a few places -->
-<!--        <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
+        <!--        <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
             <artifact name="opencv" type="jar" ext="jar"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="macosx-x86_64"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="windows-x86_64"/>
@@ -111,7 +114,7 @@ MA 02110-1301  USA
         <!--<dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.4.0-1.4" />-->
         <!--we use version 1.0 of javacv because the stereo matching opencv only has 3 arguments in existing code but later opencv has many more options-->
         <!--<dependency org="org.bytedeco" name="javacv" rev="1.0" />-->
-        <dependency org="org.bytedeco" name="javacv" rev="1.5.9" />
+        <!--<dependency org="org.bytedeco" name="javacv" rev="1.5.9" />-->
         
         <!--tensorflow has native libraries, but handled fine with this dependeny - see https://www.tensorflow.org/install/lang_java -->
         <!--if having trouble loading the DLL, you might have to downgrade locally to version 1.5.0-->
