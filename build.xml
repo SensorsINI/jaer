@@ -2,96 +2,33 @@
 <!-- You may freely edit this file. See commented blocks below for -->
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
-<project name="jAER" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+<project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
-    <!--
 
-    There exist several targets which are by default empty and which can be
-    used for execution of your tasks. These targets are usually executed
-    before and after some main targets. They are:
-
-      -pre-init:                 called before initialization of project properties
-      -post-init:                called after initialization of project properties
-      -pre-compile:              called before javac compilation
-      -post-compile:             called after javac compilation
-      -pre-compile-single:       called before javac compilation of single file
-      -post-compile-single:      called after javac compilation of single file
-      -pre-compile-test:         called before javac compilation of JUnit tests
-      -post-compile-test:        called after javac compilation of JUnit tests
-      -pre-compile-test-single:  called before javac compilation of single JUnit test
-      -post-compile-test-single: called after javac compilation of single JUunit test
-      -pre-jar:                  called before JAR building
-      -post-jar:                 called after JAR building
-      -post-clean:               called after cleaning build products
-
-    (Targets beginning with '-' are not intended to be called on their own.)
-
-    Example of inserting an obfuscator after compilation could look like this:
-
-        <target name="-post-compile">
-            <obfuscate>
-                <fileset dir="${build.classes.dir}"/>
-            </obfuscate>
-        </target>
-
-    For list of available properties check the imported
-    nbproject/build-impl.xml file.
-
-
-    Another way to customize the build is by overriding existing main targets.
-    The targets of interest are:
-
-      -init-macrodef-javac:     defines macro for javac compilation
-      -init-macrodef-junit:     defines macro for junit execution
-      -init-macrodef-debug:     defines macro for class debugging
-      -init-macrodef-java:      defines macro for class execution
-      -do-jar-with-manifest:    JAR building (if you are using a manifest)
-      -do-jar-without-manifest: JAR building (if you are not using a manifest)
-      run:                      execution of project
-      -javadoc-build:           Javadoc generation
-      test-report:              JUnit report generation
-
-    An example of overriding the target for project execution could look like this:
-
-        <target name="run" depends="usb2aemon-impl.jar">
-            <exec dir="bin" executable="launcher.exe">
-                <arg file="${dist.jar}"/>
-            </exec>
-        </target>
-
-    Notice that the overridden target depends on the jar target and not only on
-    the compile target as the regular run target does. Again, for a list of available
-    properties which you can use, check the target you are overriding in the
-    nbproject/build-impl.xml file.
-
-    -->
-    <!-- override clean to not delete dist dir, because this messes up svn -->
     <target name="-do-clean" depends="init,clean-ivy">
         <delete dir="${build.dir}"/>
     </target>
-
-
     <!--
-        https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
-    https://ant.apache.org/ivy/ 
-    http://wiki.netbeans.org/FaqIvy 
-    see ivy.xml 
-    <target name="retrieve-dependencies"
-            description="Retrieve dependencies with Apache IVY">
-        <ivy:retrieve type="jar" />
-    </target>
-    
-    <path id="ivy.lib.path">
-        <fileset dir="jars" includes="ivy-2.4.0.jar"/>
-    </path>
-    <taskdef resource="org/apache/ivy/ant/antlib.xml"
-             uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
-    
-    <target name="-ivy-cleancache">
-        <ivy:cleancache />
-    </target>
-    
+            https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
+        https://ant.apache.org/ivy/ 
+        http://wiki.netbeans.org/FaqIvy 
+        see ivy.xml 
+        <target name="retrieve-dependencies"
+                description="Retrieve dependencies with Apache IVY">
+            <ivy:retrieve type="jar" />
+        </target>
+        
+        <path id="ivy.lib.path">
+            <fileset dir="jars" includes="ivy-2.4.0.jar"/>
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml"
+                 uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+        
+        <target name="-ivy-cleancache">
+            <ivy:cleancache />
+        </target>
+        
     <target name="-ivy-retrieve">
         <ivy:retrieve/>  Load dependencies to the project 
         <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
@@ -115,15 +52,17 @@
     </target>-->
     
     <!--ivy download and configure, from https://gist.github.com/snipsnipsnip/3284453 -->
-    <property name="ivy.install.version" value="2.4.0" />
+    <property name="ivy.install.version" value="2.5.2" />
     <property name="ivy.jar.dir" value="${basedir}/ivy" />
     <property name="ivy.cache.dir" value="${basedir}/ivy" />
     <property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar" />
     <property name="ivy.lib" value="${basedir}/lib" />
     <property name="ivy.settings.location" value="${basedir}/ivysettings.xml" />
-
+    
     <target name="-check-ivy">
+    <echo message="ivy.lib=${ivy.lib}" />
         <available file="${ivy.jar.file}" property="ivy.skip.download"/>
+        <mkdir dir="${ivy.lib}"/>
     </target>
 
     <target name="-download-ivy" unless="ivy.skip.download" depends="-check-ivy">
@@ -138,15 +77,20 @@
             <pathelement location="${ivy.jar.file}"/>
         </path>
         <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+
     </target>
+    
 
     <target name="download-deps" depends="-load-ivy-tasks"
             description="Download dependent libraries.">
-        <echo message="******** ivy.default.settings.dir=${ivy.default.settings.dir}"/>
-        <echo message="****** If you get dialog Artifactory Domain asking for user/pass hit Cancel button"/>
-        <ivy:resolve/>
 
-        <ivy:retrieve/>
+        <!--<echo message="****** If you get dialog Artifactory Domain asking for user/pass hit Cancel button"/>-->
+        <ivy:resolve file="ivy.xml"/>
+
+        <!--note following pattern that must be used instead of ${ivy.lib} which does not work for unknown reason-->
+        <ivy:retrieve pattern="lib/[artifact]-[revision](-[classifier]).[ext]" sync="true"/>
+        <!--<echo message="Retrieve pattern=${ivy.retrieve.pattern}"/>-->
+        <!--<ivy:retrieve/>-->
          
         <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
             <path>
@@ -155,13 +99,21 @@
             <map from="${basedir}${file.separator}" to=""/>
         </pathconvert>
 
+        <echo message="ivy.classpath.computed = ${line.separator} ${ivy.classpath.computed}" />
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
         </propertyfile>
     </target>
 
     <target name="clean-deps" description="Clean downloaded libraries.">
-        <delete dir="${ivy.lib}"/>
+        <echo message="clean-deps: deleting ${ivy.lib}" />
+        <delete dir="${ivy.lib}" failonerror="false" />
+    </target>
+    
+    <target name="clean-ivy-cache" description="Clear ivy/ folder of all libraries."  depends="-load-ivy-tasks">
+        <!--<ivy:cleancache />-->
+        <echo message="Clearing ivy cache ${ivy.cache.dir} excluding ${ivy.jar.file}"/>
+        <delete dir="${ivy.cache.dir}" failonerror="false" />
     </target>
 
     <target name="clean-ivy" depends="clean-deps" description="Clean ivy.">
@@ -231,6 +183,13 @@
         <exe4j projectfile="jaer_win_jre_x64.exe4j" requirelicense="true"/>
     </target>
 
+    <!--    <taskdef name="install4j"
+             classname="com.install4j.Install4JTask"
+             classpath="C:\Program Files\install4j10\bin\ant.jar"/>
+
+    <target name="media">
+        <install4j projectFile="jaer.install4j"/>
+    </target>-->
  
 
     <!-- builds the windows executable .exe launcher files -->
