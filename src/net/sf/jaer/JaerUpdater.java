@@ -70,6 +70,9 @@ import com.install4j.api.launcher.Variables;
 import java.awt.HeadlessException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.logging.Level;
 import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
 import net.sf.jaer.util.MessageWithLink;
@@ -91,8 +94,7 @@ public class JaerUpdater {
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
     public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
-    private static AEViewerConsoleOutputFrame loggingWindow=null;
-
+//    private static AEViewerConsoleOutputFrame loggingWindow = null;
 
     public static void throwIoExceptionIfNoGit() throws IOException {
         File f = new File(".git");
@@ -258,9 +260,9 @@ public class JaerUpdater {
 
                     pm.setNote("Building jAER");
                     log.info(project.getTargets().toString());
-                    if(loggingWindow!=null){
-                        loggingWindow.clear();
-                    }
+//                    if (loggingWindow != null) {
+//                        loggingWindow.clear();
+//                    }
                     project.executeTarget("compile");
 //                    project.executeTarget(project.getDefaultTarget());
                     pm.setNote("Build suceeeded");
@@ -312,26 +314,39 @@ public class JaerUpdater {
         Level level;
         private StringBuilder stringBuilder;
 
+        /** Custom output stream or logging stdout and stderr.
+         * 
+         * @param logger the logger to use to log the stream
+         * @param level what level to log this stream
+         */
         public CustomOutputStream(Logger logger, Level level) {
             this.logger = logger;
             this.level = level;
             stringBuilder = new StringBuilder();
         }
 
+        /** Writes the character to the stream. 
+         * On every newline the stream is logged out to the logger defined on construction.
+//         * If string contains "error" the level is elevated to SEVERE to flag compile errors.
+         * 
+         * @param i the character. 
+         * @throws IOException 
+         */
         @Override
         public final void write(int i) throws IOException {
             char c = (char) i;
             if (c == '\r' || c == '\n') {
                 if (stringBuilder.length() > 0) {
-                    logger.log(level, stringBuilder.toString());
-                    if(level.intValue()>=Level.INFO.intValue()){
-                        if(loggingWindow==null){
-                            loggingWindow=new AEViewerConsoleOutputFrame();
-                            loggingWindow.setTitle("jAER Build output");
-                        }
-                        loggingWindow.append(stringBuilder.toString(),level);
-                        loggingWindow.setVisible(true);
-                    }
+                    logger.log(stringBuilder.toString().contains("error")? Level.SEVERE:level, stringBuilder.toString());
+                    // logging output already goes to the JaerConsoleLoggerWindow
+//                    if (level.intValue() >= Level.INFO.intValue()) {
+//                        if (loggingWindow == null) {
+//                            loggingWindow = new AEViewerConsoleOutputFrame();
+//                            loggingWindow.setTitle("jAER Build output");
+//                        }
+//                        loggingWindow.append(stringBuilder.toString(), level);
+//                        loggingWindow.setVisible(true);
+//                    }
                     stringBuilder = new StringBuilder();
                 }
             } else {
@@ -416,7 +431,7 @@ public class JaerUpdater {
 
                 }
                 try (Git git = Git.open(new File("."))) {
-                    final FetchCommand fetch=git.fetch();
+                    final FetchCommand fetch = git.fetch();
 //                    final PullCommand pull = git.pull();
 //                    pull.setFastForward(MergeCommand.FastForwardMode.FF);
 
@@ -462,19 +477,27 @@ public class JaerUpdater {
 //                    fetch.setRemoteBranchName("master");
                     final FetchResult result = fetch.call();
                     antProgMon.endTask();
-                    String s="Git fetch result: " + result.toString();
+                    String s = "Git fetch result messages: " + result.getMessages();
                     log.info(s);
                     pm.setNote(s);
-                    CheckoutCommand checkoutCommand=git.checkout();
-                    checkoutCommand.setName("master");
+                    CheckoutCommand checkoutCommand = git.checkout();
+                    checkoutCommand.setStartPoint("master");
+                    checkoutCommand.setCreateBranch(true);
+                    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+                    LocalDateTime now = LocalDateTime.now();
+                    String branchName = "update-" + dtf.format(now);
+                    String s2="checking out changes from master to new branch named "+branchName;
+                    log.info(s2);
+                    pm.setNote(s2);
+                    checkoutCommand.setName(branchName);
                     checkoutCommand.call();
-                    final CheckoutResult checkoutResult=checkoutCommand.getResult();
-                    s=checkoutResult.toString();
-                    log.info(s);
-                    s = WordUtils.wrap(s, 40);
+                    final CheckoutResult checkoutResult = checkoutCommand.getResult();
+                    log.info("Git checkout succeeded");
                     pm.close();
-                    JOptionPane.showMessageDialog(parent, s, "Git update succeeded", JOptionPane.INFORMATION_MESSAGE);
-                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
+                    String msg="<html> Git checkout to "+branchName+" succeeded. <p> <b> Remember to switch back to <i>master</i> branch if debugging update!</b>";
+                    JOptionPane.showMessageDialog(parent, msg,"Git checkout succeeded",  JOptionPane.INFORMATION_MESSAGE);
+//                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
+// not needed for fetch/checkout
                 } catch (Exception e) {
                     log.warning(e.toString());
                     pm.close();
@@ -492,7 +515,7 @@ public class JaerUpdater {
                     FetchCommand fetch = git.fetch();
                     fetch.setRemote("origin");
                     FetchResult result = fetch.call();
-                    log.info("Git fetch result: " + result.toString());
+                    log.info("Git fetch result messages: " + result.getMessages());
                     String latestTag = getLatestTag(git);
                     String buildVersion = JaerConstants.getBuildVersion();
                     log.info(String.format("latest tag after fetch is %s", latestTag));
