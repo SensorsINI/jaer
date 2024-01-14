@@ -69,6 +69,7 @@ import org.eclipse.jgit.lib.BatchingProgressMonitor;
 import org.eclipse.jgit.transport.FetchResult;
 import com.install4j.api.update.*;
 import com.install4j.api.launcher.Variables;
+import java.awt.HeadlessException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.logging.Level;
@@ -147,6 +148,7 @@ public class JaerUpdater {
 
         return (ActionEvent ae) -> {
             new Thread(() -> {
+                log.info("Starting build");
                 //creating ProgressMonitor instance
                 final ProgressCounter progressCounter = new ProgressCounter("build");
                 javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Build Task",
@@ -187,8 +189,12 @@ public class JaerUpdater {
                     public void targetFinished(BuildEvent be) {
                         String s = String.format("Target %s finished: description %s, source %s", be.getTarget().getName(), be.getTarget().getDescription(), be.getSource());
                         log.info(s);
-                        pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(100));
+                        try {
+                            pm.setNote(wrap(s));
+                            pm.setProgress(progressCounter.inc(100));
+                        } catch (NullPointerException e) {
+                            log.warning(String.format("Could not set note on finishing target: %s", e.toString()));
+                        }
                     }
 
                     @Override
@@ -216,9 +222,9 @@ public class JaerUpdater {
                     }
 
                 });
-                     CustomOutputStream errStream=new CustomOutputStream(log, Level.SEVERE);
-                    CustomOutputStream stdStream=new CustomOutputStream(log, Level.INFO);
-               try {
+                CustomOutputStream errStream = new CustomOutputStream(log, Level.SEVERE);
+                CustomOutputStream stdStream = new CustomOutputStream(log, Level.INFO);
+                try {
                     log.log(Level.INFO, "Build file is {0}", buildFile.getAbsolutePath());
                     p.setUserProperty("ant.file", buildFile.getAbsolutePath());
 
@@ -246,8 +252,8 @@ public class JaerUpdater {
                     JOptionPane.showMessageDialog(parent, "<html>Build finished. <p> <b>Restart jAER to see changes.</b>", "Build result", JOptionPane.INFORMATION_MESSAGE);
                 } catch (BuildException e) {
                     log.severe(e.toString());
-                    String errString=String.format("<html>Build error: <p> %s <p> Compiler Error:<br>%s </html>",e.toString(), errStream.accumulatedStringBuilder.toString());
-                    errString=errString.replaceAll("\n", "<br>");
+                    String errString = String.format("<html>Build error: <p> %s <p> Compiler Error:<br>%s </html>", e.toString(), errStream.accumulatedStringBuilder.toString());
+                    errString = errString.replaceAll("\n", "<br>");
                     JOptionPane.showMessageDialog(parent, errString, "Build failed", JOptionPane.ERROR_MESSAGE);
                     pm.close();
                 }
@@ -255,8 +261,9 @@ public class JaerUpdater {
         };
 
     }
-    
+
     private static class StringBuilderStream extends OutputStream {
+
         StringBuilder stringBuilder;
 
         public StringBuilderStream() {
@@ -274,7 +281,7 @@ public class JaerUpdater {
                 stringBuilder.append(c);
             }
         }
-     
+
     }
 
     // http://blog.adeel.io/2017/05/06/redirecting-all-stdout-and-stderr-to-logger-in-java/
@@ -283,7 +290,6 @@ public class JaerUpdater {
         Logger logger;
         Level level;
         StringBuilder stringBuilder, accumulatedStringBuilder;
-        
 
         public CustomOutputStream(Logger logger, Level level) {
             this.logger = logger;
@@ -580,11 +586,12 @@ public class JaerUpdater {
                                 sb.append(p.toString() + "\n");
                             }
                             log.info(sb.toString());
-                            final String msg = String.format("moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
+                            final String msg = String.format("Moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
                             log.info(msg);
                             JOptionPane.showMessageDialog(parent, msg, "Copying git clone done", JOptionPane.INFORMATION_MESSAGE);
+                            parent.setGitButtonsEnabled(true);
                             pm.close();
-                        } catch (Exception e) {
+                        } catch (HeadlessException | IOException e) {
                             log.warning(e.toString());
                             JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
                             pm.close();
@@ -600,7 +607,6 @@ public class JaerUpdater {
                 fileMover.addPropertyChangeListener(mover);
                 fileMover.execute();
                 parent.setCursor(null);
-                parent.setGitButtonsEnabled(true);
 
             }).start();
         };
