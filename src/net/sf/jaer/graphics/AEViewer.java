@@ -92,6 +92,7 @@ import eu.seebetter.ini.chips.davis.DAVIS240C;
 import eu.seebetter.ini.chips.davis.Davis640;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.net.URISyntaxException;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdater;
@@ -4414,12 +4415,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        log.info("opening folder window for folder "+curDir);
         if (osName.startsWith("Windows")) {
             try {
-                Runtime.getRuntime().exec("explorer.exe " + curDir);
+                Runtime.getRuntime().exec(new String[]{"explorer.exe",curDir});
             } catch (IOException e) {
                 log.warning(e.getMessage());
             }
 
-        } else if (System.getProperty("os.name").indexOf("Linux") != -1) {
+        } else if (System.getProperty("os.name").contains("Linux")) {
             log.warning("cannot open linux folder browsing window");
         }
 
@@ -4751,14 +4752,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * java.lang.String)
      * @throws MalformedURLException if there is something wrong with the URL
      */
-    public String pathToURL(String path) throws MalformedURLException {
-        String curDir = System.getProperty("user.dir");
-        File f = new File(curDir);
-        File pf = f.getParentFile().getParentFile();
-        String urlString = "file://" + pf.getPath() + path;
-        URL url = new URL(urlString);
-        return url.toString();
-    }
+//    public String pathToURL(String path) throws MalformedURLException, URISyntaxException {
+//        String curDir = System.getProperty("user.dir");
+//        File f = new File(curDir);
+//        File pf = f.getParentFile().getParentFile();
+//        String urlString = "file://" + pf.getPath() + path;
+//        URL url = new URI(urlString).toURL();
+//        return url.toString();
+//    }
 
     /**
      * Adds item above separator/about
@@ -4789,7 +4790,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param tooltip useful tip about help
      * @return the menu item - useful for removing the help item.
      * @see #removeHelpItem(javax.swing.JMenuItem)
-     * @see #pathToURL(java.lang.String)
      */
     final public JComponent addHelpURLItem(final String url, String title, String tooltip) {
         JMenuItem menuItem = new JMenuItem(title);
