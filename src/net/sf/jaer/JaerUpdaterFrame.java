@@ -232,7 +232,8 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
 
         antBuildButton.setText("Rebuild jAER from source");
 
-        gitPullButton.setText("Pull git changes");
+        gitPullButton.setText("Git fetch and checkout latest master branch");
+        gitPullButton.setToolTipText("Does \"git fetch\" from master branch, then checks out master to a new branch");
 
         jTextPane5.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
         jTextPane5.setText("You must be running jAER from a git clone for anything here to work.");
