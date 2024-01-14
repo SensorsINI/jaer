@@ -1,3 +1,5 @@
+package net.sf.jaer.eventprocessing;
+
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
