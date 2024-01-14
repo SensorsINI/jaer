@@ -26,10 +26,10 @@ Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqm
 **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac).
 **Linux:** Run *jaer* from the installation directory.
 
-Releases do NOT include git information, but using the new self-update feature introduced in jAER-1.8.1, 
+* install4j installers install a bundled version of the [latest Java from Eclipse Adoptium](https://adoptium.net/) (see [Guide fo Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features)).
+* Release install4j installers do NOT install git working copy, but using the new self-update feature introduced in jAER-1.8.1, 
 you can initialize the release to a git working copy and pull+build within jAER. 
-
-You will get the best experience running from lastest bug fixes. 
+* You will get the best experience running from lastest bug fixes. 
 
 ## Quick start sample data
 
