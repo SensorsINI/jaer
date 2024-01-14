@@ -42,7 +42,7 @@ public class LoggingWindow extends JFrame {
     public LoggingWindow(String title, final int width,
             final int height) {
         super(title);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // exit if the user clicks the close button on uncaught exception
+        setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE); // just hide window if the user clicks the close button
         EventQueue.invokeLater(new Runnable() {
 
             public void run() {
