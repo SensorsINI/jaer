@@ -949,7 +949,7 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="gitUpdateMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Git Update jAER...."/>
+                <Property name="text" type="java.lang.String" value="Git update and build jAER...."/>
                 <Property name="toolTipText" type="java.lang.String" value="Shows dialog to check for git updates to jAER"/>
               </Properties>
               <Events>
