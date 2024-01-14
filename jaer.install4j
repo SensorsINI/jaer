@@ -1,25 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="10.0.6" transformSequenceNumber="10">
-  <directoryPresets config="./lib/opencv-4.8.1-0.jar" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="C:/Users/tobid/Downloads" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - UZH-ETH Zurich" publisherWeb="https://jaerproject.org" version="2.0.3" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <directoryPresets config="./lib/libtensorflow_jni_gpu-1.15.0.jar" />
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="G:/Downloads/jaerinstallers" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - UZH-ETH Zurich" publisherWeb="https://jaerproject.org" version="2.0.3" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./installers/install4j-custom-resources.utf8" />
     </languages>
-    <jreBundles jdkProviderId="Adoptium" release="17/latest" />
+    <jreBundles jdkProviderId="Adoptium" release="21/latest">
+      <modules>
+        <defaultModules set="all" />
+      </modules>
+    </jreBundles>
   </application>
   <files>
-    <filesets>
-      <fileset name="TensorFlow and OpenCV" id="42" />
-    </filesets>
-    <roots>
-      <root id="43" fileset="42" />
-    </roots>
     <mountPoints>
       <mountPoint id="24" />
-      <mountPoint id="44" root="43" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file="." overwriteMode="2" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar">
+      <dirEntry mountPoint="24" file="." overwriteMode="2" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form">
         <exclude>
           <entry location=".classpath" />
           <entry location=".git" />
@@ -42,11 +39,6 @@
           <entry location="jaer.install4j" />
           <entry location="jAERViewer_linux.xml" />
           <entry location="jaer_win_jre_x64.exe4j" />
-          <entry location="lib/libtensorflow-1.15.0.jar" />
-          <entry location="lib/libtensorflow_jni-1.15.0.jar" />
-          <entry location="lib/libtensorflow_jni_gpu-1.15.0.jar" />
-          <entry location="lib/opencv-4.7.0-1.5.9.jar" />
-          <entry location="lib/opencv-4.8.1-0.jar" />
           <entry location="MainTest" />
           <entry location="manifest.mf" />
           <entry location="nbproject" />
@@ -54,26 +46,13 @@
           <entry location="test" />
         </exclude>
       </dirEntry>
-      <fileEntry mountPoint="44" file="./lib/libtensorflow_jni_gpu-1.15.0.jar" />
-      <fileEntry mountPoint="44" file="./lib/libtensorflow_jni-1.15.0.jar" />
-      <fileEntry mountPoint="44" file="./lib/libtensorflow-1.15.0.jar" />
-      <fileEntry mountPoint="44" file="./lib/opencv-4.8.1-0.jar" />
     </entries>
     <components>
       <component name="Base" id="45">
-        <description>The base components needed to run jAER and interface to sensors.</description>
-        <include>
+        <description>The  components needed to run jAER and interface to sensors.</description>
+        <include all="true">
           <entry defaultFileset="true" />
         </include>
-      </component>
-      <component name="TensorFlow and OpenCV" id="46">
-        <description>Only needed for some EventFilters such as RoshamboCNN and optical flow methods</description>
-        <include>
-          <entry filesetId="42" />
-        </include>
-        <dependencies>
-          <component id="45" />
-        </dependencies>
       </component>
     </components>
   </files>
@@ -554,10 +533,13 @@ return console.askYesNo(message, true);
     <unixInstaller name="Unix Installer" id="37">
       <jreBundle usePack200="false" />
     </unixInstaller>
-    <windows name="Windows" id="26" architecture="64" />
+    <windows name="Windows" id="26" architecture="64">
+      <jreBundle usePack200="false" />
+    </windows>
   </mediaSets>
-  <buildIds buildAll="false">
+  <buildIds>
+    <mediaSet refId="38" />
+    <mediaSet refId="37" />
     <mediaSet refId="26" />
   </buildIds>
-  <buildOptions faster="true" disableSigning="true" />
 </install4j>
