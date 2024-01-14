@@ -78,6 +78,7 @@ import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
 import net.sf.jaer.util.LoggingWindow;
 import net.sf.jaer.util.LoggingWindowHandler;
 import net.sf.jaer.util.MessageWithLink;
+import org.eclipse.jgit.api.MergeCommand;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
@@ -278,8 +279,8 @@ public class JaerUpdater {
                     log.severe(e.toString());
 //                    String errString = String.format("<html>Build error: <p> %s <p> Compiler Error:<br>%s </html>", e.toString(), errStream.getAccumulatedString());
 //                    errString = errString.replaceAll("\n", "<br>");
-                    JOptionPane.showMessageDialog(parent, e.toString(), "Build failed", JOptionPane.ERROR_MESSAGE);
                     pm.close();
+                    JOptionPane.showMessageDialog(parent, e.toString(), "Build failed", JOptionPane.ERROR_MESSAGE);
                 }
             }).start();
         };
@@ -396,7 +397,7 @@ public class JaerUpdater {
                 org.slf4j.Logger gitLogger = (org.slf4j.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
                 final ProgressCounter progressCounter = new ProgressCounter("git.pull");
                 final javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Update Task",
-                        "Task starting", 0, 100); // adjust for approximate build time
+                        "Task starting", 0, progressCounter.getEstimatedTotal()); // adjust for approximate build time
                 if (gitLogger instanceof ch.qos.logback.classic.Logger) {
 //                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
 //                    Handler handler = new StreamHandler(stream, new SimpleFormatter());
@@ -421,6 +422,7 @@ public class JaerUpdater {
                 try (Git git = Git.open(new File("."))) {
 
                     final PullCommand pull = git.pull();
+                    pull.setFastForward(MergeCommand.FastForwardMode.FF);
 
                     //decide after 100 millis whether to show popup or not
                     pm.setMillisToDecideToPopup(1);
@@ -466,13 +468,13 @@ public class JaerUpdater {
                     antProgMon.endTask();
                     log.info("Git pull result: " + result.toString());
                     String s = WordUtils.wrap(result.toString(), 40);
-                    JOptionPane.showMessageDialog(parent, s.toString(), "Pull result", JOptionPane.INFORMATION_MESSAGE);
-                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
                     pm.close();
+                    JOptionPane.showMessageDialog(parent, s.toString(), "Pull succeeded", JOptionPane.INFORMATION_MESSAGE);
+                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
                 } catch (Exception e) {
                     log.warning(e.toString());
-                    JOptionPane.showMessageDialog(parent, e.toString(), "Pull failed", JOptionPane.ERROR_MESSAGE);
                     pm.close();
+                    JOptionPane.showMessageDialog(parent, e.toString(), "Pull failed", JOptionPane.ERROR_MESSAGE);
                 }
             }).start();
         };
@@ -619,13 +621,13 @@ public class JaerUpdater {
                             log.info(sb.toString());
                             final String msg = String.format("Moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
                             log.info(msg);
+                            pm.close();
                             JOptionPane.showMessageDialog(parent, msg, "Copying git clone done", JOptionPane.INFORMATION_MESSAGE);
                             parent.setGitButtonsEnabled(true);
-                            pm.close();
                         } catch (HeadlessException | IOException e) {
                             log.warning(e.toString());
-                            JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
                             pm.close();
+                            JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
                         }
                         return null;
                     }
