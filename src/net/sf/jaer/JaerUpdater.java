@@ -62,8 +62,6 @@ import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.DescribeCommand;
 import org.eclipse.jgit.api.FetchCommand;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.PullCommand;
-import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.BatchingProgressMonitor;
 import org.eclipse.jgit.transport.FetchResult;
@@ -72,13 +70,11 @@ import com.install4j.api.launcher.Variables;
 import java.awt.HeadlessException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.logging.Handler;
 import java.util.logging.Level;
 import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
-import net.sf.jaer.util.LoggingWindow;
-import net.sf.jaer.util.LoggingWindowHandler;
 import net.sf.jaer.util.MessageWithLink;
-import org.eclipse.jgit.api.MergeCommand;
+import org.eclipse.jgit.api.CheckoutCommand;
+import org.eclipse.jgit.api.CheckoutResult;
 
 /**
  * Handles self update git version/tag check, git pull, and ant rebuild, via
@@ -420,9 +416,9 @@ public class JaerUpdater {
 
                 }
                 try (Git git = Git.open(new File("."))) {
-
-                    final PullCommand pull = git.pull();
-                    pull.setFastForward(MergeCommand.FastForwardMode.FF);
+                    final FetchCommand fetch=git.fetch();
+//                    final PullCommand pull = git.pull();
+//                    pull.setFastForward(MergeCommand.FastForwardMode.FF);
 
                     //decide after 100 millis whether to show popup or not
                     pm.setMillisToDecideToPopup(1);
@@ -460,21 +456,29 @@ public class JaerUpdater {
                         }
                     };
 
-                    pull.setProgressMonitor(antProgMon);
+                    fetch.setProgressMonitor(antProgMon);
                     antProgMon.beginTask("Beginning pull", org.eclipse.jgit.lib.ProgressMonitor.UNKNOWN);
-                    pull.setRemote("origin");
-                    pull.setRemoteBranchName("master");
-                    final PullResult result = pull.call();
+                    fetch.setRemote("origin");
+//                    fetch.setRemoteBranchName("master");
+                    final FetchResult result = fetch.call();
                     antProgMon.endTask();
-                    log.info("Git pull result: " + result.toString());
-                    String s = WordUtils.wrap(result.toString(), 40);
+                    String s="Git fetch result: " + result.toString();
+                    log.info(s);
+                    pm.setNote(s);
+                    CheckoutCommand checkoutCommand=git.checkout();
+                    checkoutCommand.setName("master");
+                    checkoutCommand.call();
+                    final CheckoutResult checkoutResult=checkoutCommand.getResult();
+                    s=checkoutResult.toString();
+                    log.info(s);
+                    s = WordUtils.wrap(s, 40);
                     pm.close();
-                    JOptionPane.showMessageDialog(parent, s.toString(), "Pull succeeded", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(parent, s, "Git update succeeded", JOptionPane.INFORMATION_MESSAGE);
                     git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
                 } catch (Exception e) {
                     log.warning(e.toString());
                     pm.close();
-                    JOptionPane.showMessageDialog(parent, e.toString(), "Pull failed", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(parent, e.toString(), "Git update failed", JOptionPane.ERROR_MESSAGE);
                 }
             }).start();
         };
