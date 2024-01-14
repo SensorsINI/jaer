@@ -72,7 +72,11 @@ import com.install4j.api.launcher.Variables;
 import java.awt.HeadlessException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.logging.Handler;
 import java.util.logging.Level;
+import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
+import net.sf.jaer.util.LoggingWindow;
+import net.sf.jaer.util.LoggingWindowHandler;
 import net.sf.jaer.util.MessageWithLink;
 
 /**
@@ -90,6 +94,8 @@ public class JaerUpdater {
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
     public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
+    private static AEViewerConsoleOutputFrame loggingWindow=null;
+
 
     public static void throwIoExceptionIfNoGit() throws IOException {
         File f = new File(".git");
@@ -159,14 +165,14 @@ public class JaerUpdater {
                 //after deciding if predicted time is longer than 100 show popup
                 pm.setMillisToPopup(100);
                 File buildFile = new File("build.xml");
-                Project p = new Project();
-                p.addBuildListener(new BuildListener() {
+                Project project = new Project();
+                project.addBuildListener(new BuildListener() {
                     @Override
                     public void buildStarted(BuildEvent be) {
                         String s = String.format("Build of %s started", be.getProject().getName());
                         log.info(s);
                         pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc());
+                        pm.setProgress(progressCounter.inc(1));
                     }
 
                     @Override
@@ -182,7 +188,7 @@ public class JaerUpdater {
                     public void targetStarted(BuildEvent be) {
                         String s = String.format("Target %s started: description %s, source %s", be.getTarget().getName(), be.getTarget().getDescription(), be.getSource());
                         pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(100));
+                        pm.setProgress(progressCounter.inc(1));
                     }
 
                     @Override
@@ -191,7 +197,7 @@ public class JaerUpdater {
                         log.info(s);
                         try {
                             pm.setNote(wrap(s));
-                            pm.setProgress(progressCounter.inc(100));
+                            pm.setProgress(progressCounter.inc(1));
                         } catch (NullPointerException e) {
                             log.warning(String.format("Could not set note on finishing target: %s", e.toString()));
                         }
@@ -199,41 +205,48 @@ public class JaerUpdater {
 
                     @Override
                     public void taskStarted(BuildEvent be) {
-                        String s = String.format("Task %s started, type %s, source %s", be.getTask().getTaskName(), be.getTask().getTaskType(), be.getSource());
+
+                        String s = String.format("Task %s started, type %s, target %s, message %s, description %s",
+                                be.getTask().getTaskName(),
+                                be.getTask().getTaskType(),
+                                be.getTarget(),
+                                be.getMessage(),
+                                be.getTask().getDescription());
                         log.info(s);
                         pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(10));
+                        pm.setProgress(progressCounter.inc(1));
                     }
 
                     @Override
                     public void taskFinished(BuildEvent be) {
-                        log.info(be.getMessage());
+//                        log.info(be.getMessage());
                         String s = String.format("Task %s finished, type %s, source %s", be.getTask().getTaskName(), be.getTask().getTaskType(), be.getSource());
                         log.info(s);
                         pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(10));
+                        pm.setProgress(progressCounter.inc(1));
                     }
 
                     @Override
                     public void messageLogged(BuildEvent be) {
 //                        pm.setNote(be.getMessage());
-                        log.info(be.getMessage());
+                        log.fine(be.getMessage());
                         pm.setProgress(progressCounter.inc());
                     }
 
                 });
-                CustomOutputStream errStream = new CustomOutputStream(log, Level.SEVERE);
-                CustomOutputStream stdStream = new CustomOutputStream(log, Level.INFO);
+                CustomOutputStream errStream = new CustomOutputStream(log, Level.WARNING);
+                CustomOutputStream stdStream = new CustomOutputStream(log, Level.FINE);
                 try {
                     log.log(Level.INFO, "Build file is {0}", buildFile.getAbsolutePath());
-                    p.setUserProperty("ant.file", buildFile.getAbsolutePath());
+                    project.setUserProperty("ant.file", buildFile.getAbsolutePath());
 
-                    p.init();
+                    project.init();
                     ProjectHelper helper = ProjectHelper.getProjectHelper();
 
-                    p.addReference("ant.projectHelper", helper);
-                    helper.parse(p, buildFile);
-                    pm.setNote("Building jAER");
+                    project.addReference("ant.projectHelper", helper);
+                    helper.parse(project, buildFile);
+//                    project.setProperty("javac.deprecation", "false");
+//                    project.setUserProperty("javac.deprecation", "false");
                     // http://blog.adeel.io/2017/05/06/redirecting-all-stdout-and-stderr-to-logger-in-java/
                     System.setErr(
                             new PrintStream(
@@ -245,16 +258,27 @@ public class JaerUpdater {
                                     stdStream //Or whatever logger level you
                             )
                     );
-                    p.executeTarget(p.getDefaultTarget());
 
-                    pm.setNote("Build finished");
+                    pm.setNote("Building jAER");
+                    log.info(project.getTargets().toString());
+                    if(loggingWindow!=null){
+                        loggingWindow.clear();
+                    }
+                    project.executeTarget("compile");
+//                    project.executeTarget(project.getDefaultTarget());
+                    pm.setNote("Build suceeeded");
+                    try {
+                        Thread.sleep(4000);
+                    } catch (InterruptedException ex) {
+                    }
                     pm.close();
                     JOptionPane.showMessageDialog(parent, "<html>Build finished. <p> <b>Restart jAER to see changes.</b>", "Build result", JOptionPane.INFORMATION_MESSAGE);
                 } catch (BuildException e) {
+                    progressCounter.saveProgress();
                     log.severe(e.toString());
-                    String errString = String.format("<html>Build error: <p> %s <p> Compiler Error:<br>%s </html>", e.toString(), errStream.accumulatedStringBuilder.toString());
-                    errString = errString.replaceAll("\n", "<br>");
-                    JOptionPane.showMessageDialog(parent, errString, "Build failed", JOptionPane.ERROR_MESSAGE);
+//                    String errString = String.format("<html>Build error: <p> %s <p> Compiler Error:<br>%s </html>", e.toString(), errStream.getAccumulatedString());
+//                    errString = errString.replaceAll("\n", "<br>");
+                    JOptionPane.showMessageDialog(parent, e.toString(), "Build failed", JOptionPane.ERROR_MESSAGE);
                     pm.close();
                 }
             }).start();
@@ -289,13 +313,12 @@ public class JaerUpdater {
 
         Logger logger;
         Level level;
-        StringBuilder stringBuilder, accumulatedStringBuilder;
+        private StringBuilder stringBuilder;
 
         public CustomOutputStream(Logger logger, Level level) {
             this.logger = logger;
             this.level = level;
             stringBuilder = new StringBuilder();
-            accumulatedStringBuilder = new StringBuilder();
         }
 
         @Override
@@ -304,17 +327,25 @@ public class JaerUpdater {
             if (c == '\r' || c == '\n') {
                 if (stringBuilder.length() > 0) {
                     logger.log(level, stringBuilder.toString());
+                    if(level.intValue()>=Level.INFO.intValue()){
+                        if(loggingWindow==null){
+                            loggingWindow=new AEViewerConsoleOutputFrame();
+                            loggingWindow.setTitle("jAER Build output");
+                        }
+                        loggingWindow.append(stringBuilder.toString(),level);
+                        loggingWindow.setVisible(true);
+                    }
                     stringBuilder = new StringBuilder();
                 }
             } else {
                 stringBuilder.append(c);
-                accumulatedStringBuilder.append(c);
             }
         }
+
     }
 
     private static String wrap(String s) {
-        s = "<HTML>" + WordUtils.wrap(s, 25);
+        s = "<HTML>" + WordUtils.wrap(s, 35);
         return s;
     }
 
@@ -784,11 +815,11 @@ public class JaerUpdater {
         }
 
         int getEstimatedTotal() {
-            return prefs.getInt("buildTotalProgressCount." + name, 80000);
+            return prefs.getInt("estimatedTotalPogress." + name, 200000);
         }
 
         void saveProgress() {
-            prefs.putInt("totalProgressCount." + name, progress);
+            prefs.putInt("estimatedTotalPogress." + name, progress);
         }
 
         @Override
