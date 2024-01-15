@@ -29,7 +29,7 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 * install4j installers install a bundled version of the [latest Java from Eclipse Adoptium](https://adoptium.net/) (see [Guide fo Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features)).
 * Release install4j installers do NOT install git working copy, but using the new self-update feature introduced in jAER-1.8.1, 
-you can initialize the release to a git working copy and pull+build within jAER. 
+you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 * You will get the best experience running from lastest bug fixes. 
 
 ## Quick start sample data
