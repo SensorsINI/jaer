@@ -25,6 +25,7 @@ Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqm
 **Windows:** Click *More info*, *Run anyway* and *Install anyway* for unsigned app.
 **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac).
 **Linux:** Run *jaer* from the installation directory.
+See video [installing and updating jaer on YouTube][https://youtu.be/qQVt8_gwYVY).
 
 * install4j installers install a bundled version of the [latest Java from Eclipse Adoptium](https://adoptium.net/) (see [Guide fo Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features)).
 * Release install4j installers do NOT install git working copy, but using the new self-update feature introduced in jAER-1.8.1, 
