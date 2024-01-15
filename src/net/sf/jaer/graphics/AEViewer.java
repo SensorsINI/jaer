@@ -301,6 +301,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
+    JaerUpdaterFrame jaerUpdaterFrame = null;
+
     private AEChip chip;
     /**
      * The default AEChip class.
@@ -3964,7 +3966,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_biasesToggleButtonActionPerformed
 
 	private void imagePanelMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_imagePanelMouseWheelMoved
-            boolean control = ((evt.getModifiersEx()& InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK);
+            boolean control = ((evt.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK);
             boolean alt = ((evt.getModifiersEx() & InputEvent.ALT_DOWN_MASK) == InputEvent.ALT_DOWN_MASK);;
             boolean shift = ((evt.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == InputEvent.SHIFT_DOWN_MASK);;
             int rotation = evt.getWheelRotation();
@@ -4415,7 +4417,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        log.info("opening folder window for folder "+curDir);
         if (osName.startsWith("Windows")) {
             try {
-                Runtime.getRuntime().exec(new String[]{"explorer.exe",curDir});
+                Runtime.getRuntime().exec(new String[]{"explorer.exe", curDir});
             } catch (IOException e) {
                 log.warning(e.getMessage());
             }
@@ -4760,7 +4762,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        URL url = new URI(urlString).toURL();
 //        return url.toString();
 //    }
-
     /**
      * Adds item above separator/about
      *
@@ -5694,9 +5695,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_jogForwardMIActionPerformed
 
     private void gitUpdateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_gitUpdateMenuItemActionPerformed
-        JaerUpdaterFrame frame = new JaerUpdaterFrame();
-        frame.setLocationRelativeTo(this);
-        frame.setVisible(true);
+        if(jaerUpdaterFrame==null){
+            jaerUpdaterFrame = new JaerUpdaterFrame();
+        }
+        jaerUpdaterFrame.setLocationRelativeTo(this);
+        jaerUpdaterFrame.setVisible(true);
     }//GEN-LAST:event_gitUpdateMenuItemActionPerformed
 
     private void viewStepBackwardsMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewStepBackwardsMIActionPerformed

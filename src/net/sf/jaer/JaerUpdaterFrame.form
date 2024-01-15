@@ -257,7 +257,8 @@
         </Container>
         <Component class="javax.swing.JButton" name="statusButton">
           <Properties>
-            <Property name="text" type="java.lang.String" value="See git status"/>
+            <Property name="text" type="java.lang.String" value="Fetch Changes and show git status"/>
+            <Property name="toolTipText" type="java.lang.String" value="Fetches git changes and shows git status and tag information"/>
           </Properties>
         </Component>
         <Container class="javax.swing.JScrollPane" name="jScrollPane4">
@@ -273,7 +274,7 @@
                 <Property name="background" type="java.awt.Color" editor="org.netbeans.beaninfo.editors.ColorEditor">
                   <Color blue="f0" green="f0" id="Button.background" palette="3" red="f0" type="palette"/>
                 </Property>
-                <Property name="text" type="java.lang.String" value="Update your source code using &quot;git pull&quot; ."/>
+                <Property name="text" type="java.lang.String" value="Update your source code "/>
               </Properties>
             </Component>
           </SubComponents>
@@ -299,12 +300,13 @@
         <Component class="javax.swing.JButton" name="antBuildButton">
           <Properties>
             <Property name="text" type="java.lang.String" value="Rebuild jAER from source"/>
+            <Property name="toolTipText" type="java.lang.String" value="Rebuilds the &quot;jar&quot; ant target from source code"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JButton" name="gitPullButton">
           <Properties>
-            <Property name="text" type="java.lang.String" value="Git fetch and checkout latest master branch"/>
-            <Property name="toolTipText" type="java.lang.String" value="Does &quot;git fetch&quot; from master branch, then checks out master to a new branch"/>
+            <Property name="text" type="java.lang.String" value="Fetch changes and checkout latest master branch"/>
+            <Property name="toolTipText" type="java.lang.String" value="Fetches git changes, then checks out master to a new branch"/>
           </Properties>
         </Component>
         <Container class="javax.swing.JScrollPane" name="jScrollPane5">

@@ -48,9 +48,9 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         try {
             setGitButtonsEnabled(false);
             initGitButton.setEnabled(false);
-            gitPullButton.addActionListener(JaerUpdater.gitPullActionListener(this));
+            gitPullButton.addActionListener(JaerUpdater.gitUpdateActionListener(this));
             antBuildButton.addActionListener(JaerUpdater.buildActionListener(this));
-            statusButton.addActionListener(JaerUpdater.gitCFetchChangesActionListener(this));
+            statusButton.addActionListener(JaerUpdater.gitStatusActionListener(this));
             setGitButtonsEnabled(true);
         } catch (IOException e) {
             log.warning(e.toString());
@@ -218,11 +218,12 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jTextPane1.setText("Check your code to see if there have been remote changes with \"git status\".");
         jScrollPane2.setViewportView(jTextPane1);
 
-        statusButton.setText("See git status");
+        statusButton.setText("Fetch Changes and show git status");
+        statusButton.setToolTipText("Fetches git changes and shows git status and tag information");
 
         jTextPane3.setEditable(false);
         jTextPane3.setBackground(javax.swing.UIManager.getDefaults().getColor("Button.background"));
-        jTextPane3.setText("Update your source code using \"git pull\" .");
+        jTextPane3.setText("Update your source code ");
         jScrollPane4.setViewportView(jTextPane3);
 
         jTextPane2.setEditable(false);
@@ -231,9 +232,10 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jScrollPane3.setViewportView(jTextPane2);
 
         antBuildButton.setText("Rebuild jAER from source");
+        antBuildButton.setToolTipText("Rebuilds the \"jar\" ant target from source code");
 
-        gitPullButton.setText("Git fetch and checkout latest master branch");
-        gitPullButton.setToolTipText("Does \"git fetch\" from master branch, then checks out master to a new branch");
+        gitPullButton.setText("Fetch changes and checkout latest master branch");
+        gitPullButton.setToolTipText("Fetches git changes, then checks out master to a new branch");
 
         jTextPane5.setFont(new java.awt.Font("Tahoma", 1, 14)); // NOI18N
         jTextPane5.setText("You must be running jAER from a git clone for anything here to work.");
