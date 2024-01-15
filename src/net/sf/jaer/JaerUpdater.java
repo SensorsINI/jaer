@@ -72,9 +72,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.logging.Level;
-import net.sf.jaer.graphics.AEViewerConsoleOutputFrame;
+import javax.swing.ProgressMonitor;
 import net.sf.jaer.util.MessageWithLink;
 import org.eclipse.jgit.api.CheckoutCommand;
 import org.eclipse.jgit.api.CheckoutResult;
@@ -155,9 +154,9 @@ public class JaerUpdater {
             new Thread(() -> {
                 log.info("Starting build");
                 //creating ProgressMonitor instance
-                final ProgressCounter progressCounter = new ProgressCounter("build");
                 javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Build Task",
-                        "Build starting", 0, progressCounter.getEstimatedTotal()); // adjust for approximate build time
+                        "Build starting", 0, 100);
+                final ProgressCounter progressCounter = new ProgressCounter("build", pm, 100000);
 
                 //decide after 100 millis whether to show popup or not
                 pm.setMillisToDecideToPopup(100);
@@ -170,33 +169,30 @@ public class JaerUpdater {
                     public void buildStarted(BuildEvent be) {
                         String s = String.format("Build of %s started", be.getProject().getName());
                         log.info(s);
-                        pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(1));
+                        pm.setNote(clipString(s));
                     }
 
                     @Override
                     public void buildFinished(BuildEvent be) {
+                        progressCounter.inc();
                         String s = String.format("Build of %s finished", be.getProject().getName());
                         log.info(s);
-                        pm.setNote(wrap(s));
-                        progressCounter.saveProgress();
-                        pm.close();
+                        pm.setNote(clipString(s));
                     }
 
                     @Override
                     public void targetStarted(BuildEvent be) {
                         String s = String.format("Target %s started: description %s, source %s", be.getTarget().getName(), be.getTarget().getDescription(), be.getSource());
-                        pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(1));
+                        pm.setNote(clipString(s));
                     }
 
                     @Override
                     public void targetFinished(BuildEvent be) {
-                        String s = String.format("Target %s finished: description %s, source %s", be.getTarget().getName(), be.getTarget().getDescription(), be.getSource());
+                        String s = String.format("Finished Target %s : description %s, source %s", be.getTarget().getName(), be.getTarget().getDescription(), be.getSource());
                         log.info(s);
                         try {
-                            pm.setNote(wrap(s));
-                            pm.setProgress(progressCounter.inc(1));
+                            progressCounter.inc();
+                            pm.setNote(clipString(s));
                         } catch (NullPointerException e) {
                             log.warning(String.format("Could not set note on finishing target: %s", e.toString()));
                         }
@@ -212,30 +208,29 @@ public class JaerUpdater {
                                 be.getMessage(),
                                 be.getTask().getDescription());
                         log.info(s);
-                        pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(1));
+                        pm.setNote(clipString(s));
                     }
 
                     @Override
                     public void taskFinished(BuildEvent be) {
-//                        log.info(be.getMessage());
+                        progressCounter.inc();
                         String s = String.format("Task %s finished, type %s, source %s", be.getTask().getTaskName(), be.getTask().getTaskType(), be.getSource());
                         log.info(s);
-                        pm.setNote(wrap(s));
-                        pm.setProgress(progressCounter.inc(1));
+                        pm.setNote(clipString(s));
                     }
 
                     @Override
                     public void messageLogged(BuildEvent be) {
 //                        pm.setNote(be.getMessage());
+                        progressCounter.inc();
                         log.fine(be.getMessage());
-                        pm.setProgress(progressCounter.inc());
                     }
 
                 });
                 CustomOutputStream errStream = new CustomOutputStream(log, Level.WARNING);
                 CustomOutputStream stdStream = new CustomOutputStream(log, Level.FINE);
                 try {
+                    parent.setCursor(new Cursor(Cursor.WAIT_CURSOR));
                     log.log(Level.INFO, "Build file is {0}", buildFile.getAbsolutePath());
                     project.setUserProperty("ant.file", buildFile.getAbsolutePath());
 
@@ -263,22 +258,18 @@ public class JaerUpdater {
 //                    if (loggingWindow != null) {
 //                        loggingWindow.clear();
 //                    }
-                    project.executeTarget("compile");
+                    project.executeTarget("jar");
 //                    project.executeTarget(project.getDefaultTarget());
-                    pm.setNote("Build suceeeded");
-                    try {
-                        Thread.sleep(4000);
-                    } catch (InterruptedException ex) {
-                    }
+                    progressCounter.saveEstimatedTotalWork();
                     pm.close();
                     JOptionPane.showMessageDialog(parent, "<html>Build finished. <p> <b>Restart jAER to see changes.</b>", "Build result", JOptionPane.INFORMATION_MESSAGE);
+
                 } catch (BuildException e) {
-                    progressCounter.saveProgress();
                     log.severe(e.toString());
-//                    String errString = String.format("<html>Build error: <p> %s <p> Compiler Error:<br>%s </html>", e.toString(), errStream.getAccumulatedString());
-//                    errString = errString.replaceAll("\n", "<br>");
                     pm.close();
                     JOptionPane.showMessageDialog(parent, e.toString(), "Build failed", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    parent.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                 }
             }).start();
         };
@@ -314,8 +305,9 @@ public class JaerUpdater {
         Level level;
         private StringBuilder stringBuilder;
 
-        /** Custom output stream or logging stdout and stderr.
-         * 
+        /**
+         * Custom output stream or logging stdout and stderr.
+         *
          * @param logger the logger to use to log the stream
          * @param level what level to log this stream
          */
@@ -325,19 +317,21 @@ public class JaerUpdater {
             stringBuilder = new StringBuilder();
         }
 
-        /** Writes the character to the stream. 
-         * On every newline the stream is logged out to the logger defined on construction.
-//         * If string contains "error" the level is elevated to SEVERE to flag compile errors.
-         * 
-         * @param i the character. 
-         * @throws IOException 
+        /**
+         * Writes the character to the stream. On every newline the stream is
+         * logged out to the logger defined on construction. // * If string
+         * contains "error" the level is elevated to SEVERE to flag compile
+         * errors.
+         *
+         * @param i the character.
+         * @throws IOException
          */
         @Override
         public final void write(int i) throws IOException {
             char c = (char) i;
             if (c == '\r' || c == '\n') {
                 if (stringBuilder.length() > 0) {
-                    logger.log(stringBuilder.toString().contains("error")? Level.SEVERE:level, stringBuilder.toString());
+                    logger.log(stringBuilder.toString().contains("error") ? Level.SEVERE : level, stringBuilder.toString());
                     // logging output already goes to the JaerConsoleLoggerWindow
 //                    if (level.intValue() >= Level.INFO.intValue()) {
 //                        if (loggingWindow == null) {
@@ -356,22 +350,57 @@ public class JaerUpdater {
 
     }
 
-    private static String wrap(String s) {
-        s = "<HTML>" + WordUtils.wrap(s, 35);
+    /**
+     * Wraps text with <html> to 60 character lines with breaks and replaces
+     * line breaks with <br>
+     *
+     * @param s the string to wrap
+     * @return the wrapped string
+     */
+    private static String wrapString(String s) {
+        s = "<HTML>" + WordUtils.wrap(s, 60).replaceAll("\n", "<br>");
         return s;
     }
 
     /**
-     * Action listener that runs git pull
+     * Clips string to 80 characters keeping start and end and replacing
+     * newlines by spaces
+     *
+     * @param s the input string
+     * @return the output string
+     */
+    private static String clipString(String s) {
+        if (s.length() <= 80) {
+            return s.replaceAll("\n", " ");
+        }
+        // clip middle part retaining 80 characters
+        int n = s.length();
+        int keep = 36;
+        s = s.replaceAll("\n", " ");
+        String s0 = s.substring(0, keep);
+        String s1 = s.substring(n - keep);
+        return s0 + "..." + s1;
+    }
+
+    /**
+     * Action listener that runs git fetch/checkout
      *
      * @param parent display progress dialog over this component
      * @return the listener
      * @throws IOException if .git does not exist
      */
-    public static ActionListener gitPullActionListener(Component parent) throws IOException {
+    public static ActionListener gitUpdateActionListener(Component parent) throws IOException {
         throwIoExceptionIfNoGit();
         return (ActionEvent ae) -> {
             new Thread(() -> {
+
+                parent.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                final javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Update Task",
+                        "Task starting", 0, 100);
+                pm.setMillisToDecideToPopup(1);
+                pm.setMillisToPopup(1);
+
+                ProgressCounter progressCounter = new ProgressCounter("git-update", pm, 100);
 
                 class MyAppender extends OutputStreamAppender<ILoggingEvent> {
 
@@ -389,12 +418,10 @@ public class JaerUpdater {
                     protected void append(ILoggingEvent eventObject) {
                         String formattedMessage = eventObject.getFormattedMessage();
                         log.info(formattedMessage);
-                        formattedMessage = "<HTML>" + WordUtils.wrap(formattedMessage, 30);
+//                        formattedMessage = "<HTML>" + WordUtils.wrap(formattedMessage, 30);
 
-                        pm.setNote(wrap(formattedMessage));
                         pc.inc();
-                        pm.setProgress(pc.getProgress());
-                        pm.setMaximum(pc.getEstimatedTotal());
+//                        pm.setNote(clipString(formattedMessage));
 
                     }
 
@@ -406,9 +433,6 @@ public class JaerUpdater {
                 }
 
                 org.slf4j.Logger gitLogger = (org.slf4j.Logger) org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-                final ProgressCounter progressCounter = new ProgressCounter("git.pull");
-                final javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "Update Task",
-                        "Task starting", 0, progressCounter.getEstimatedTotal()); // adjust for approximate build time
                 if (gitLogger instanceof ch.qos.logback.classic.Logger) {
 //                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
 //                    Handler handler = new StreamHandler(stream, new SimpleFormatter());
@@ -426,23 +450,20 @@ public class JaerUpdater {
                     appender.setContext(context);
                     appender.start();
                     logBackLogger.setAdditive(false);
-                    logBackLogger.addAppender(appender);
+//                    logBackLogger.addAppender(appender);
                     StatusPrinter.print(context);
 
                 }
+                progressCounter.inc();
                 try (Git git = Git.open(new File("."))) {
                     final FetchCommand fetch = git.fetch();
 //                    final PullCommand pull = git.pull();
 //                    pull.setFastForward(MergeCommand.FastForwardMode.FF);
 
-                    //decide after 100 millis whether to show popup or not
-                    pm.setMillisToDecideToPopup(1);
-                    //after deciding if predicted time is longer than 100 show popup
-                    pm.setMillisToPopup(1);
                     BatchingProgressMonitor antProgMon = new BatchingProgressMonitor() {
                         @Override
                         protected void onUpdate(String taskName, int workCurr) {
-                            pm.setNote(wrap(taskName));
+//                            pm.setNote(clipString(taskName));
                             pm.setProgress(workCurr);
                             if (pm.isCanceled()) {
                                 endTask();
@@ -451,13 +472,13 @@ public class JaerUpdater {
 
                         @Override
                         protected void onEndTask(String taskName, int workCurr) {
-                            pm.setNote(wrap(taskName));
+//                            pm.setNote(clipString(taskName));
                             pm.setProgress(workCurr);
                         }
 
                         @Override
                         protected void onUpdate(String taskName, int workCurr, int workTotal, int percentDone) {
-                            pm.setNote(wrap(taskName));
+//                            pm.setNote(clipString(taskName));
                             pm.setMaximum(workTotal);
                             pm.setProgress(workCurr);
                             if (pm.isCanceled()) {
@@ -472,46 +493,56 @@ public class JaerUpdater {
                     };
 
                     fetch.setProgressMonitor(antProgMon);
-                    antProgMon.beginTask("Beginning pull", org.eclipse.jgit.lib.ProgressMonitor.UNKNOWN);
+                    antProgMon.beginTask("Beginning fetch", org.eclipse.jgit.lib.ProgressMonitor.UNKNOWN);
                     fetch.setRemote("origin");
 //                    fetch.setRemoteBranchName("master");
                     final FetchResult result = fetch.call();
                     antProgMon.endTask();
+                    progressCounter.inc();
                     String s = "Git fetch result messages: " + result.getMessages();
                     log.info(s);
                     pm.setNote(s);
                     CheckoutCommand checkoutCommand = git.checkout();
+                    checkoutCommand.setProgressMonitor(antProgMon);
+                    antProgMon.beginTask("Beginning checkout", org.eclipse.jgit.lib.ProgressMonitor.UNKNOWN);
                     checkoutCommand.setStartPoint("master");
                     checkoutCommand.setCreateBranch(true);
                     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
                     LocalDateTime now = LocalDateTime.now();
                     String branchName = "update-" + dtf.format(now);
-                    String s2="checking out changes from master to new branch named "+branchName;
+                    String s2 = "checking out changes from master to new branch named " + branchName;
                     log.info(s2);
                     pm.setNote(s2);
                     checkoutCommand.setName(branchName);
+                    progressCounter.inc();
                     checkoutCommand.call();
+                    antProgMon.endTask();
+                    progressCounter.inc();
                     final CheckoutResult checkoutResult = checkoutCommand.getResult();
                     log.info("Git checkout succeeded");
                     pm.close();
-                    String msg="<html> Git checkout to "+branchName+" succeeded. <p> <b> Remember to switch back to <i>master</i> branch if debugging update!</b>";
-                    JOptionPane.showMessageDialog(parent, msg,"Git checkout succeeded",  JOptionPane.INFORMATION_MESSAGE);
+                    progressCounter.saveEstimatedTotalWork();
+                    String msg = "<html> Git checkout to " + branchName + " succeeded. <p> <b> Remember to switch back to <i>master</i> branch if debugging update!</b>";
+                    JOptionPane.showMessageDialog(parent, msg, "Git checkout succeeded", JOptionPane.INFORMATION_MESSAGE);
 //                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
 // not needed for fetch/checkout
                 } catch (Exception e) {
                     log.warning(e.toString());
                     pm.close();
                     JOptionPane.showMessageDialog(parent, e.toString(), "Git update failed", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    parent.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                 }
             }).start();
         };
     }
 
-    public static ActionListener gitCFetchChangesActionListener(Component parent) throws IOException {
+    public static ActionListener gitStatusActionListener(Component parent) throws IOException {
         throwIoExceptionIfNoGit();
         return (ae) -> {
             new Thread(() -> {
                 try (Git git = Git.open(new File("."))) {
+                    parent.setCursor(new Cursor(Cursor.WAIT_CURSOR));
                     FetchCommand fetch = git.fetch();
                     fetch.setRemote("origin");
                     FetchResult result = fetch.call();
@@ -521,11 +552,13 @@ public class JaerUpdater {
                     log.info(String.format("latest tag after fetch is %s", latestTag));
                     String s = String.format("<html>Lastest remote release tag: %s \n\nYour build version info: \n%s", latestTag, buildVersion);
                     JOptionPane.showMessageDialog(parent, s, "Latest tag", JOptionPane.INFORMATION_MESSAGE);
-                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
+//                    git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
 
                 } catch (Exception e) {
                     log.warning(e.toString());
                     JOptionPane.showMessageDialog(parent, e.toString(), "Check failed", JOptionPane.ERROR_MESSAGE);
+                } finally {
+                    parent.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                 }
             }).start();
         };
@@ -824,36 +857,46 @@ public class JaerUpdater {
     private static class ProgressCounter {
 
         String name = "";
+        ProgressMonitor pm;
+        int estimatedTotalWork = 10000;
 
-        public ProgressCounter(String name) {
+        public ProgressCounter(String name, ProgressMonitor pm, int estimatedTotalWork) {
             this.name = name;
+            this.pm = pm;
+            this.estimatedTotalWork = prefs.getInt("estimatedTotalWork." + name, estimatedTotalWork);
+            pm.setMaximum(estimatedTotalWork);
         }
 
         int progress = 0;
 
         int inc() {
+            if (++progress > pm.getMaximum()) {
+                pm.setMaximum(progress + 10);
+            }
+            pm.setProgress(progress);
             return ++progress;
-        }
-
-        int inc(int amt) {
-            return progress += amt;
         }
 
         int getProgress() {
             return progress;
         }
 
-        int getEstimatedTotal() {
-            return prefs.getInt("estimatedTotalPogress." + name, 200000);
+        int getEstimatedTotalWork() {
+            return estimatedTotalWork;
         }
 
-        void saveProgress() {
-            prefs.putInt("estimatedTotalPogress." + name, progress);
+        void setEstimatedTotalWork(int w) {
+            this.estimatedTotalWork = w;
+            pm.setMaximum(w);
+        }
+
+        void saveEstimatedTotalWork() {
+            prefs.putInt("estimatedTotalWork." + name, progress);
         }
 
         @Override
         public String toString() {
-            return "ProgressCounter{" + "name=" + name + ", progress=" + progress + ", estimatedTotal=" + getEstimatedTotal() + '}';
+            return "ProgressCounter{" + "name=" + name + ", progress=" + progress + ", estimatedTotal=" + getEstimatedTotalWork() + '}';
         }
 
     }
@@ -869,42 +912,33 @@ public class JaerUpdater {
         public GitProgressMonitor(Component parent, String name) {
             this.parent = parent;
             this.name = name;
-            this.pc = new ProgressCounter(name);
-            this.pm = new javax.swing.ProgressMonitor(parent, name,
-                    "Constructed " + name, 0, pc.getEstimatedTotal());
+            this.pm = new javax.swing.ProgressMonitor(this.parent, this.name,
+                    "Starting " + name, 0, 100);
+            pm.setMillisToDecideToPopup(100);
+            pm.setMillisToPopup(100);
         }
 
         @Override
         public void start(int totalTasks) {
-            this.pc = new ProgressCounter(name);
-            this.pm = new javax.swing.ProgressMonitor(parent, name,
-                    "Starting " + name, 0, pc.getEstimatedTotal());
-            pm.setMillisToDecideToPopup(100);
-            pm.setMillisToPopup(100);
             pm.setNote("Starting work on " + totalTasks + " tasks");
             pm.setMaximum(totalTasks);
         }
 
         @Override
         public void beginTask(String title, int totalWork) {
-            this.pm = new javax.swing.ProgressMonitor(parent, name + ": " + title,
-                    "Starting " + title, 0, pc.getEstimatedTotal());
             this.taskTitle = title;
-            this.pc = new ProgressCounter(taskTitle);
-            pm.setMillisToDecideToPopup(100);
             pm.setNote("Starting task " + title + " with " + totalWork + " tasks");
             pm.setMaximum(totalWork);
         }
 
         @Override
         public void update(int completed) {
-            pm.setProgress(pc.inc(completed));
+            pc.inc();
             pm.setNote("completed " + pc.progress + " / " + pm.getMaximum() + " on " + taskTitle);
         }
 
         @Override
         public void endTask() {
-            pc.saveProgress();
             pm.setNote("Done");
             pm.close();
         }
