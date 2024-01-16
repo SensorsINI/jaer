@@ -47,7 +47,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         boolean debug = JaerUpdater.DEBUG;
         try {
             setGitButtonsEnabled(false);
-            initGitButton.setEnabled(false);
+            initGitButton.setEnabled(JaerUpdater.DEBUG);
             gitPullButton.addActionListener(JaerUpdater.gitUpdateActionListener(this));
             antBuildButton.addActionListener(JaerUpdater.buildActionListener(this));
             statusButton.addActionListener(JaerUpdater.gitStatusActionListener(this));
