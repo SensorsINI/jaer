@@ -651,6 +651,8 @@ public class JaerUpdater {
                         parent.setCursor(null);
                         return;
                     }
+                } finally{
+                    gpm.close();
                 }
                 if (gpm.isCancelled()) {
                     parent.setCursor(null);
@@ -681,13 +683,13 @@ public class JaerUpdater {
                             log.info(sb.toString());
                             final String msg = String.format("Moved %d files from %s to %s, skipped %d files", mover.filesAdded.size(), source, target, mover.filesSkipped.size());
                             log.info(msg);
-                            pm.close();
                             JOptionPane.showMessageDialog(parent, msg, "Copying git clone done", JOptionPane.INFORMATION_MESSAGE);
                             parent.setGitButtonsEnabled(true);
                         } catch (HeadlessException | IOException e) {
                             log.warning(e.toString());
-                            pm.close();
                             JOptionPane.showMessageDialog(parent, e.toString(), "Copying git clone failed", JOptionPane.ERROR_MESSAGE);
+                        } finally{
+                            pm.close();
                         }
                         return null;
                     }
@@ -871,7 +873,7 @@ public class JaerUpdater {
 
         int inc() {
             if (++progress > pm.getMaximum()) {
-                pm.setMaximum(progress + 10);
+                pm.setMaximum(progress * 2);
             }
             pm.setProgress(progress);
             return ++progress;
@@ -948,6 +950,10 @@ public class JaerUpdater {
         public boolean isCancelled() {
             return pm.isCanceled();
 
+        }
+
+        private void close() {
+            pm.close();
         }
     }
 
