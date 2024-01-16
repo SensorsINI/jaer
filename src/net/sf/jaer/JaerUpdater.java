@@ -913,7 +913,8 @@ public class JaerUpdater {
             this.parent = parent;
             this.name = name;
             this.pm = new javax.swing.ProgressMonitor(this.parent, this.name,
-                    "Starting " + name, 0, 100);
+                    "Starting " + name, 0, 100000);
+            this.pc = new ProgressCounter(name,this.pm,100000);
             pm.setMillisToDecideToPopup(100);
             pm.setMillisToPopup(100);
         }
