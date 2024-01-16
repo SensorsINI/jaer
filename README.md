@@ -8,7 +8,7 @@ Java tools for Address-Event Representation (AER) neuromorphic processing.
 **Welcome to the jAER Open Source Project
 Real time sensory-motor processing for event-based sensors and systems**
 
-Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.uzh.ch). 
+Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch). 
 
 #### What jAER feels like to use
 
@@ -37,9 +37,33 @@ you can [initialize the release to a git working copy and pull+build within jAER
 Download [some DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and
 drop them onto the jAER window to play them with the *DVS128* *AEChip* (the default AEChip).
 
+## Citation
+Delbruck, Tobi. 2008. “Frame-Free Dynamic Digital Vision.” In *Proceedings of Intl. Symp. on Secure-Life Electronics, 
+Advanced Electronics for Quality Life and Society*, 1:21–26. Tokyo, Japan: Tokyo. https://citeseerx.ist.psu.edu/pdf/92754e0f56fadae8e0508f06209f98a43506d60a.
+
+### jAER applications
+jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors), 
+but has also been used to build many robots: 
+[robogoalie](https://youtu.be/IC5x7ftJ96w?si=ajsJWWYJW-tSJ2MI), 
+[laser goalie](https://www.youtube.com/watch?v=5c5W18nuPQk), 
+[pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8), 
+[bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU), 
+[slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI), 
+[Dextra roshambo (rock-scissors-poaper)](https://www.youtube.com/watch?v=95GsOQbwNLU), 
+[incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc).
+jAER was also used to develop many event camera algorithms: 
+[Feature extraction](https://www.youtube.com/watch?v=IEsMkIpCE1o), 
+[tracking](https://www.youtube.com/watch?v=5I6haFXVuD8), 
+[optical flow methods](https://www.youtube.com/watch?v=Ji1MzE4QbM4),
+[EDFLOW hardware optical flow](https://www.youtube.com/watch?v=8LedyiHMe_A), and 
+[efficient and accurate event denoising](https://sites.google.com/view/dnd21/home?authuser=0).
+
 ## Developing with jAER
 
 To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing). 
+
+
+ 
 
 ## Support
 
