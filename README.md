@@ -44,19 +44,19 @@ Advanced Electronics for Quality Life and Society*, 1:21–26. Tokyo, Japan: Tok
 ### jAER applications
 jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors), 
 but has also been used to build many robots: 
-[robogoalie](https://youtu.be/IC5x7ftJ96w?si=ajsJWWYJW-tSJ2MI), 
-[laser goalie](https://www.youtube.com/watch?v=5c5W18nuPQk), 
-[pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8), 
-[bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU), 
-[slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI), 
-[Dextra roshambo (rock-scissors-poaper)](https://www.youtube.com/watch?v=95GsOQbwNLU), 
-[incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc).
+[robogoalie](https://youtu.be/IC5x7ftJ96w?si=ajsJWWYJW-tSJ2MI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/Goalie.java)), 
+[laser goalie](https://www.youtube.com/watch?v=5c5W18nuPQk) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/LaserGoalie.java)), 
+[pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/pencilbalancer/PencilBalancer.java)), 
+[bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/billcatcher/BillCatcher.java)), 
+[slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/virtualslotcar/SlotCarRacer.java)), 
+[Dextra roshambo (rock-scissors-poaper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java)), 
+[incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoIncremental.java)).
 jAER was also used to develop many event camera algorithms: 
-[Feature extraction](https://www.youtube.com/watch?v=IEsMkIpCE1o), 
-[tracking](https://www.youtube.com/watch?v=5I6haFXVuD8), 
-[optical flow methods](https://www.youtube.com/watch?v=Ji1MzE4QbM4),
-[EDFLOW hardware optical flow](https://www.youtube.com/watch?v=8LedyiHMe_A), and 
-[efficient and accurate event denoising](https://sites.google.com/view/dnd21/home?authuser=0).
+[Feature extraction](https://www.youtube.com/watch?v=IEsMkIpCE1o) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/label/SimpleOrientationFilter.java)), 
+[tracking](https://www.youtube.com/watch?v=5I6haFXVuD8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/tracking/RectangularClusterTracker.java)), 
+[optical flow methods](https://www.youtube.com/watch?v=Ji1MzE4QbM4) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/rbodo/opticalflow/AbstractMotionFlowIMU.java)),
+[EDFLOW hardware optical flow](https://www.youtube.com/watch?v=8LedyiHMe_A) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/minliu/PatchMatchFlow.java)), and 
+[efficient and accurate event denoising](https://sites.google.com/view/dnd21/home?authuser=0) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/filter/NoiseTesterFilter.java)).
 
 ## Developing with jAER
 
