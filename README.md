@@ -45,6 +45,8 @@ Advanced Electronics for Quality Life and Society*, 1:21–26. Tokyo, Japan: Tok
 jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors), 
 but has also been used to build many robots: 
 [robogoalie](https://youtu.be/IC5x7ftJ96w?si=ajsJWWYJW-tSJ2MI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/Goalie.java)), 
+[audio localization by spike ITD](https://www.youtube.com/watch?v=-Klbmm4vgew) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/cochsoundloc/ITDFilter.java)), 
+[speaker identification from spiking cochlea](https://www.youtube.com/watch?v=KFPi65WV-S8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/speakerid/CochleaSVMTwoEars.java)), 
 [laser goalie](https://www.youtube.com/watch?v=5c5W18nuPQk) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/LaserGoalie.java)), 
 [pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/pencilbalancer/PencilBalancer.java)), 
 [bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/billcatcher/BillCatcher.java)), 
