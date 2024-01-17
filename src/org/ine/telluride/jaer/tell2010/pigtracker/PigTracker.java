@@ -22,7 +22,7 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 
 /** Tracks generalized objects made of line segments.
  *
- * @author Matthew Coook, Tobias Glassmachers, Jorg Conradt, Telluride Neuromorphic Cognition Engnineering Workshop, 2010. Adapted for jAER by Tobi Delbruck.
+ * @author Matthew Coook, Tobias Glasmachers, Jorg Conradt, Telluride Neuromorphic Cognition Engnineering Workshop, 2010. Adapted for jAER by Tobi Delbruck.
  */
 public class PigTracker extends EventFilter2D implements Observer, FrameAnnotater {
 
