@@ -89,7 +89,7 @@ import org.eclipse.jgit.api.CheckoutResult;
  */
 public class JaerUpdater {
 
-    public static final boolean DEBUG = false; // false for production version,  true to clone here to tmp folders that do not overwrite our own .git
+    public static final boolean DEBUG = false; // TODO remember to revert false for production version,  true to clone here to tmp folders that do not overwrite our own .git
     private static Logger log = Logger.getLogger("JaerUpdater");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
     public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
@@ -630,7 +630,7 @@ public class JaerUpdater {
                 final Path source = Paths.get("jaer-clone");
                 // debug, copy to new folder, not here at root level
 //                final Path target = Paths.get("jaer-clone-copy");   // we will create .git and also copy all non-existing files to starting folder
-                final Path target = DEBUG ? Paths.get("jaer-clone-copy") : Paths.get(".");   // we will create .git and also copy all non-existing files to starting folder
+                final Path target = DEBUG ? Paths.get("jaer-clone-debug") : Paths.get(".");   // we will create .git and also copy all non-existing files to starting folder
                 log.info(JaerConstants.JAER_HOME + " cloning to folder " + source.toString());
                 parent.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
                 CloneCommand cloneCmd = Git.cloneRepository();
@@ -643,14 +643,14 @@ public class JaerUpdater {
                     git.getRepository().close(); // https://stackoverflow.com/questions/31764311/how-do-i-release-file-system-locks-after-cloning-repo-via-jgit
                 } catch (Exception e) {
                     log.warning(e.toString());
-                    if (!DEBUG) {
+//                    if (!DEBUG) {
                         JOptionPane.showMessageDialog(parent, e.toString(), "Cloning failed", JOptionPane.ERROR_MESSAGE);
-                    }
+//                    }
 
-                    if (!DEBUG) {
+//                    if (!DEBUG) {
                         parent.setCursor(null);
                         return;
-                    }
+//                    }
                 } finally{
                     gpm.close();
                 }
@@ -662,7 +662,7 @@ public class JaerUpdater {
                 // copy new files/folder to targets
                 log.info("copying non-existing files to release");
                 // https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileVisitor.html
-                int estimatedCloneTotalFiles = prefs.getInt("JaerUpdaterFrame.estimatedCloneTotalFiles", 10000);
+                int estimatedCloneTotalFiles = 100000;
                 javax.swing.ProgressMonitor pm = new javax.swing.ProgressMonitor(parent, "moving clone", source.toString(), 0, estimatedCloneTotalFiles);
                 Mover mover = new Mover(source, target, pm, parent);
                 SwingWorker fileMover = new SwingWorker() {
@@ -670,7 +670,6 @@ public class JaerUpdater {
                     protected Object doInBackground() throws Exception {
                         try {
                             Files.walkFileTree(source, mover);
-                            prefs.putInt("JaerUpdaterFrame.estimatedCloneTotalFiles", mover.fileCount);
                             StringBuilder sb = new StringBuilder("file errors\n");
                             sb.append("Could not copy following files");
                             for (Path p : mover.filesCouldNotCopy) {
@@ -806,6 +805,7 @@ public class JaerUpdater {
                 }
                 try {
                     Files.delete(targetFile);
+                    log.info(String.format("deleted %s",targetFile));
                 } catch (IOException e) {
                     log.warning("could not delete existing target file " + targetFile + ": caught " + e.toString());
                     filesCouldNotDelete.add(targetFile);
@@ -815,6 +815,7 @@ public class JaerUpdater {
             try {
                 filesAdded.add(file);
                 Files.copy(file, targetFile);
+                log.info(String.format("copied %s -> %s",file,targetFile));;
                 pm.setProgress(fileCount);
             } catch (IOException ex) {
                 log.warning("error copying " + file + ": caught " + ex.toString());
