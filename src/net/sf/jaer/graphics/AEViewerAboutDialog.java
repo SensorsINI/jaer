@@ -32,12 +32,14 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
     public final static String VERSION_FILE = "BUILDVERSION.txt";
     static Logger log = Logger.getLogger("About");
+    AEViewer parent=null;
 
     /**
      * Creates new form AEViewerAboutDialog
      */
-    public AEViewerAboutDialog(java.awt.Frame parent, boolean modal) {
+    public AEViewerAboutDialog(AEViewer parent, boolean modal) {
         super(parent, modal);
+        this.parent=parent;
         initComponents();
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
         Properties props = new Properties();
@@ -210,18 +212,12 @@ public class AEViewerAboutDialog extends javax.swing.JDialog {
 
     private void updatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_updatesButtonActionPerformed
         dispose();
-        JaerUpdaterFrame frame = new JaerUpdaterFrame();
-        frame.setLocationRelativeTo(this);
-        frame.setVisible(true);
+        if(parent.getJaerUpdaterFrame()==null){
+            parent.setJaerUpdaterFrame(new JaerUpdaterFrame());
+        }
+        parent.getJaerUpdaterFrame().setVisible(true);
+        parent.getJaerUpdaterFrame().setLocationRelativeTo(parent);
     }//GEN-LAST:event_updatesButtonActionPerformed
-
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        new AEViewerAboutDialog(new javax.swing.JFrame(), true).setVisible(true);
-    }
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel aboutLabel;

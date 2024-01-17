@@ -51,10 +51,8 @@ import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.SocketException;
 import java.net.URI;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -84,15 +82,10 @@ import javax.swing.ToolTipManager;
 import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
-import ch.unizh.ini.jaer.chip.retina.DVS128;
-import ch.unizh.ini.jaer.chip.retina.DVXplorer;
-import com.install4j.api.context.UserCanceledException;
-import eu.seebetter.ini.chips.davis.DAVIS240B;
-import eu.seebetter.ini.chips.davis.DAVIS240C;
-import eu.seebetter.ini.chips.davis.Davis640;
+import ch.unizh.ini.jaer.chip.retina.*;
+import eu.seebetter.ini.chips.davis.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.net.URISyntaxException;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdater;
@@ -301,24 +294,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
-    JaerUpdaterFrame jaerUpdaterFrame = null;
+    private JaerUpdaterFrame jaerUpdaterFrame = null;
 
     private AEChip chip;
     /**
      * The default AEChip class.
      */
-    public static String DEFAULT_CHIP_CLASS = DVS128.class.getName();
+    public static String DEFAULT_CHIP_CLASS = Davis346red.class.getName();
     /**
      * The array list of default available AEChip classes pre-loaded into AEChip
      * menu
      */
     public static String[] DEFAULT_CHIP_CLASS_NAMES = {
         DEFAULT_CHIP_CLASS,
-        DAVIS240B.class.getName(),
+//        DAVIS240B.class.getName(),
+        DVS128.class.getName(),
         DAVIS240C.class.getName(),
+        Davis346blue.class.getName(),
+        Davis346red.class.getName(),
+        Davis346redColor.class.getName(),
+//        Davis640.class.getName(),
+        DVXplorer.class.getName(),
         CochleaAMS1c.class.getName(),
-        Davis640.class.getName(),
-        DVXplorer.class.getName()
+        DVS640.class.getName(),
+        DVS1280x720SD.class.getName()
     };
     /**
      * The class name of the aeChipClass
@@ -5698,8 +5697,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if(jaerUpdaterFrame==null){
             jaerUpdaterFrame = new JaerUpdaterFrame();
         }
-        jaerUpdaterFrame.setLocationRelativeTo(this);
         jaerUpdaterFrame.setVisible(true);
+        jaerUpdaterFrame.setLocationRelativeTo(this);
     }//GEN-LAST:event_gitUpdateMenuItemActionPerformed
 
     private void viewStepBackwardsMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewStepBackwardsMIActionPerformed
@@ -6139,6 +6138,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             Logger.getAnonymousLogger().warning("Unknown hardware, can't find chip class.");
             return null;
         }
+    }
+
+    /**
+     * @return the jaerUpdaterFrame
+     */
+    public JaerUpdaterFrame getJaerUpdaterFrame() {
+        return jaerUpdaterFrame;
+    }
+
+    /**
+     * @param jaerUpdaterFrame the jaerUpdaterFrame to set
+     */
+    public void setJaerUpdaterFrame(JaerUpdaterFrame jaerUpdaterFrame) {
+        this.jaerUpdaterFrame = jaerUpdaterFrame;
     }
 
 
