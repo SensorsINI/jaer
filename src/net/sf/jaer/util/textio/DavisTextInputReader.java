@@ -21,20 +21,22 @@ package net.sf.jaer.util.textio;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.Cursor;
+import java.awt.Toolkit;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.lang.reflect.MalformedParametersException;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.JProgressBar;
+import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -67,20 +69,21 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
 // for logging concole messages
     // for logging concole messages
     private BufferedReader dvsReader = null;
-    private int lastTimestampRead = Integer.MIN_VALUE, lastPacketLastTimestamp = Integer.MIN_VALUE;
+    private int lastTimestampRead = 0, lastPacketLastTimestamp = 0;
     private boolean noEventsReadYet = true; // set false when new file is opened
-    private int numEventsThisPacket=0, numEventsInFile=0;
+    private int numEventsThisPacket = 0, numEventsInFile = 0;
     private ApsDvsEventPacket outputPacket = null;
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
     private boolean weWereNeverEnabled = true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
     // we set PlayMode to WAITING even if a file is currently playing back
-    private final int MAX_ERRORS = 100;
+    private final int MAX_ERRORS = 3;
     private int errorCount = 0;
     protected boolean checkNonMonotonicTimestamps = getBoolean("checkNonMonotonicTimestamps", true);
     private int previousTimestamp = 0;
     private boolean openFileAndRecordAedat = false;
     protected boolean flipPolarity = getBoolean("flipPolarity", false);
-    final int SPECIAL_COL=4; // location of special flag (0 normal, 1 special) 
+    final int SPECIAL_COL = 4; // location of special flag (0 normal, 1 special) 
+    long lastFileLength = 0; // used to check if the file is the same length as before to avoid line count
 
     public DavisTextInputReader(AEChip chip) {
         super(chip);
@@ -127,7 +130,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
 
     private void setViewerToFilterInputViewMode() {
         getChip().getAeViewer().setPlayMode(AEViewer.PlayMode.FILTER_INPUT); // TODO may not work
-         weWereNeverEnabled = false;
+        weWereNeverEnabled = false;
     }
 
     /**
@@ -141,29 +144,39 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
      */
     public BufferedReader openReader(File f) throws IOException {
         resetFilter();
-        long lineCount;
 //        https://stackoverflow.com/questions/1277880/how-can-i-get-the-count-of-line-in-a-file-in-an-efficient-way
         BufferedReader reader = new BufferedReader(new FileReader(f));
-        log.info("counting events in file....");
-        numEventsInFile = 0;
-        while (reader.readLine() != null) {
-            numEventsInFile++;
+        long fileLength = f.length();
+        if (fileLength != lastFileLength || numEventsInFile == 0) {
+            log.info("counting events in file....");
+            numEventsInFile = 0;
+            int numChars = 0;
+            numEventsInFile = 0;
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                numEventsInFile++;
+                numChars += line.length();
+                float avgEventLengthChars = (float) numChars / numEventsInFile;
+                int estTotalEvents = (int) (fileLength / avgEventLengthChars);
+                if (numEventsInFile % 1000000 == 0) {
+                    log.info(String.format("Counting events: %,d events, %.1f%% complete", numEventsInFile, 100 * (float) numEventsInFile / estTotalEvents));
+                }
+            }
+
+            reader.close();
+            lastFileLength=fileLength;
         }
-        reader.close();
-        log.info(String.format("%s has %,d events",f,numEventsInFile));
         reader = new BufferedReader(new FileReader(f));
         lastFile = f;
         setEventsProcessed(0);
         noEventsReadYet = true;
         lastLineNumber = 0;
-        lastPacketLastTimestamp = Integer.MIN_VALUE;
-        lastTimestampRead = Integer.MIN_VALUE;
-        log.info("Opened text input file " + f.toString() + " with text format");
+        log.info(String.format("Opened text input file %s with %,d events",f.toString(),numEventsInFile));
         setViewerToFilterInputViewMode();
         return reader;
     }
 
-        @Override
+    @Override
     public void annotate(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
@@ -176,7 +189,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 filePercent);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
         gl.glPopMatrix();
-        getChip().getAeViewer().getAePlayer().setFractionalPosition(filePercent/100);
+        getChip().getAeViewer().getAePlayer().setFractionalPosition(filePercent / 100);
     }
 
     private float getFilePercent() {
@@ -215,10 +228,13 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             if (dvsReader != null) {
                 doCloseFile();
             }
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             dvsReader = openReader(c.getSelectedFile());
 
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't open input file", JOptionPane.WARNING_MESSAGE, null);
+        } finally {
+            setCursor(null);
         }
     }
 
@@ -227,6 +243,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             if (dvsReader != null) {
                 dvsReader.close();
                 dvsReader = null;
+                log.info(String.format("Closed %s",lastFile));
             }
             setEventsProcessed(0);
         } catch (IOException ex) {
@@ -265,14 +282,15 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     public void resetFilter() {
         setEventsProcessed(0);
         noEventsReadYet = true;
-        lastPacketLastTimestamp = Integer.MIN_VALUE;
-        lastTimestampRead = Integer.MIN_VALUE;
+        lastPacketLastTimestamp = 0;
+        lastTimestampRead = 0;
         errorCount = 0;
-        previousTimestamp = Integer.MIN_VALUE;
+        previousTimestamp = 0;
     }
 
     @Override
     public void initFilter() {
+        resetFilter();
     }
 
     private EventPacket readPacket(EventPacket<? extends BasicEvent> in) {
@@ -287,7 +305,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         int durationUs = getChip().getAeViewer().getAePlayer().getTimesliceUs(); // TODO handle flex time (constant count)
         int eventCount = getChip().getAeViewer().getAePlayer().getPacketSizeEvents();
         OutputEventIterator outItr = outputPacket.outputIterator();
-        lastTimestampRead = lastPacketLastTimestamp;
+//        lastTimestampRead = lastPacketLastTimestamp;
         String line = null;
         maxX = chip.getSizeX();
         maxY = chip.getSizeY();
@@ -314,12 +332,6 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 parseEvent(line, outItr);
                 noEventsInThisPacket = false;
                 numEventsThisPacket++;
-            } catch (NumberFormatException nfe) {
-                log.warning(String.format("%s: Line #%d has a bad number format: \"%s\"; check options", nfe.toString(), lastLineNumber, line));
-                if (errorCount++ > MAX_ERRORS) {
-                    log.warning(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
-                    doCloseFile();
-                }
             } catch (EOFException eof) {
                 log.info("EOF (end of file)");
                 doCloseFile();
@@ -332,6 +344,15 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         return outputPacket;
     }
 
+    private void checkErrorHalt(String s) {
+        log.warning(s);
+        errorCount++;
+        if (errorCount++ > MAX_ERRORS) {
+            showWarningDialogInSwingThread(s, "DavisTextInputReader error");
+            throw new MalformedParametersException(s);
+        }
+    }
+
     private void parseEvent(String line, OutputEventIterator outItr) throws IOException {
         lastLineNumber++;
         if (line.startsWith("#")) {
@@ -339,15 +360,10 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             return;
         }
         String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
-        if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length!=5)) {
-            log.warning(String.format("Line #%d does not have enough tokens, needs 4 without and 5 with specialEvents:\n\"%s\"", lastLineNumber, line));
-            if(errorCount++>MAX_ERRORS){
-                log.warning(String.format("Gave up after %d errors, closing file",errorCount));
-                doCloseFile();
-            }
-            return;
+        if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length != 5)) {
+            String s = String.format("Only %d tokens but needs 4 without and 5 with specialEvents:\n%s\nCheck useCSV for ',' or space separator", split.length, lineinfo(line));
+            checkErrorHalt(s);
         }
-        
 
         int ix, iy, ip, it;
         if (timestampLast) {
@@ -361,74 +377,71 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             ip = 3;
             it = 0;
         }
-        lastTimestampRead = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
-        int dt = lastTimestampRead - previousTimestamp;
-        if (checkNonMonotonicTimestamps && dt < 0) {
+        try {
+            if(useUsTimestamps&&split[it].contains(".")){
+                checkErrorHalt(String.format("timestamp %s has a '.' in it but useUsTimestamps is true\n%s", split[it], lineinfo(line)));
+            }else if(!useUsTimestamps&&!split[it].contains(".")){
+                checkErrorHalt(String.format("timestamp %s has no '.' in it but useUsTimestamps is false\n%s", split[it], lineinfo(line)));
+            }
+            lastTimestampRead = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
+            int dt = lastTimestampRead - previousTimestamp;
+            if (checkNonMonotonicTimestamps && dt < 0) {
+                checkErrorHalt(String.format("timestamp %,d is %,d us earlier than previous %,d at %s", lastTimestampRead, dt, previousTimestamp, lineinfo(line)));
+            }
+            previousTimestamp = lastTimestampRead;
+            short x = Short.parseShort(split[ix]);
+            short y = Short.parseShort(split[iy]);
+            byte pol = Byte.parseByte(split[ip]);
 
-            log.warning(String.format("timestamp %,d is %,d us earlier than previous %,d", lastTimestampRead, dt, previousTimestamp));
-            if (errorCount++ > MAX_ERRORS) {
-                throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
+            if (x < 0 || x >= maxX || y < 0 || y >= maxY) {
+                checkErrorHalt(String.format("address x=%d y=%d outside of AEChip allowed range maxX=%d, maxY=%d: , ignoring. %s\nAre you using the correct AEChip?", x, y, maxX, maxY, lineinfo(line)));
             }
-
-        }
-        previousTimestamp = lastTimestampRead;
-        short x = Short.parseShort(split[ix]);
-        short y = Short.parseShort(split[iy]);
-        byte pol = Byte.parseByte(split[ip]);
-        if (x < 0 || x >= maxX || y < 0 || y >= maxY) {
-            log.warning(String.format("address outside of AEChip allowed range: x=%d y=%d, ignoring. %s ", x, y, pol, lineinfo(line)));
-             if (errorCount++ > MAX_ERRORS) {
-                throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
-            }
-        }
-        Polarity polType = PolarityEvent.Polarity.Off;
-        if (useSignedPolarity) {
-            if (pol != -1 && pol != 1) {
-                log.warning(String.format("polarity %d is not valid (check useSignedPolarity flag), ignoring, %s", pol, lineinfo(line)));
-                return;
-            } else if (pol == 1) {
-                polType = Polarity.On;
-
-            }
-        } else {
-            if (pol < 0 || pol > 1) {
-                log.warning(String.format("polarity %d is not valid (check useSignedPolarity flag), ignoring. %s", pol, lineinfo(line)));
-             if (errorCount++ > MAX_ERRORS) {
-                throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
-            }
-           } else if (pol == 1) {
-                polType = Polarity.On;
-            }
-        }
-
-        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
-        noEventsReadYet = false;
-        e.setFilteredOut(false);
-        e.setTimestamp(lastTimestampRead);
-        e.setX(x);
-        e.setY(y);
-        e.setPolarity(polType);
-        if (flipPolarity) {
-            e.flipPolarity();
-        }
-        e.setType(polType==Polarity.Off? (byte)0:(byte)1);
-        e.setDvsType();
-        if(isSpecialEvents()){
-            int specialFlag=Integer.parseInt(split[SPECIAL_COL]);
-            if(specialFlag==0){
-                e.setSpecial(false);
-            }else if(specialFlag==1){
-                e.setSpecial(true);
-            }else{
-                log.warning(String.format("Line #%d has Unknown type of special event, must be 0 (normal) or 1 (special):\n\"%s\"", lastLineNumber, line));
-                errorCount++;
-                if (errorCount++ > MAX_ERRORS) {
-                    throw new IOException(String.format("Generated more than %d errors reading file; giving up and closing file.", errorCount));
+            Polarity polType = PolarityEvent.Polarity.Off;
+            if (useSignedPolarity) {
+                if (pol != -1 && pol != 1) {
+                    checkErrorHalt(String.format("polarity %d is not valid (check useSignedPolarity flag), ignoring. %s", pol, lineinfo(line)));
+                } else if (pol == 1) {
+                    polType = Polarity.On;
+                }
+            } else {
+                if (pol < 0 || pol > 1) {
+                    checkErrorHalt(String.format("polarity %d is not valid (check useSignedPolarity flag), ignoring. %s", pol, lineinfo(line)));
+                } else if (pol == 1) {
+                    polType = Polarity.On;
                 }
             }
+
+            ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+            noEventsReadYet = false;
+            e.setFilteredOut(false);
+            e.setTimestamp(lastTimestampRead);
+            e.setX(x);
+            e.setY(y);
+            e.setPolarity(polType);
+            if (flipPolarity) {
+                e.flipPolarity();
+            }
+            e.setType(polType == Polarity.Off ? (byte) 0 : (byte) 1);
+            e.setDvsType();
+            if (isSpecialEvents()) {
+                int specialFlag = Integer.parseInt(split[SPECIAL_COL]);
+                if (specialFlag == 0) {
+                    e.setSpecial(false);
+                } else if (specialFlag == 1) {
+                    e.setSpecial(true);
+                } else {
+                    String s = String.format("Line #%d has Unknown type of special event, must be 0 (normal) or 1 (special):\n\"%s\"", lastLineNumber, line);
+                    checkErrorHalt(s);
+                }
+            }
+            setEventsProcessed(this.eventsProcessed + 1);
+            noEventsReadYet = false;
+        } catch (NumberFormatException nfe) {
+            String s = String.format("%s: Line #%d has a bad number format: \"%s\"; check options; maybe you should set timestampLast?", nfe.toString(), lastLineNumber, line);
+            log.warning(s);
+            showWarningDialogInSwingThread(s, "DavisTextInputReader error");
+            throw new MalformedParametersException(s);
         }
-        setEventsProcessed(this.eventsProcessed + 1);
-        noEventsReadYet = false;
     }
 
     private String lineinfo(String line) {
