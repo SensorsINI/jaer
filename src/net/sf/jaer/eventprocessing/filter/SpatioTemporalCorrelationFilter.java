@@ -82,9 +82,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 if (e == null) {
                     continue;
                 }
-                if (e.isSpecial()) {
-                    continue;
-                }
+                // comment out to support special "noise" events that are labeled special for denoising study
+//                if (e.isSpecial()) {
+//                    continue;
+//                }
                 totalEventCount++;
                 final int ts = e.timestamp;
                 final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
@@ -150,9 +151,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 if (e == null) {
                     continue;
                 }
-                if (e.isSpecial()) {
-                    continue;
-                }
+//                if (e.isSpecial()) {
+//                    continue;
+//                }
                 totalEventCount++;
                 int ts = e.timestamp;
                 final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address

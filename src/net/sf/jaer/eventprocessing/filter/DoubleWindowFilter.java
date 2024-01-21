@@ -127,9 +127,9 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
                 frameid = 0;
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
-            if (e.isSpecial()) {
-                continue;
-            }
+//            if (e.isSpecial()) {
+//                continue;
+//            }
 
             ts = e.timestamp;
             totalEventCount++;

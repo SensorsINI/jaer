@@ -60,9 +60,9 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
             if (e == null) {
                 continue;
             }
-            if (e.isSpecial()) {
-                continue;
-            }
+//            if (e.isSpecial()) {
+//                continue;
+//            }
             totalEventCount++;
             int ts = e.timestamp;
             lastTimestamp = ts;

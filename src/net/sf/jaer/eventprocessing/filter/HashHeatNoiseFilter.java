@@ -181,9 +181,9 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter  {
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
             BasicEvent e = (BasicEvent) eIn;
-            if (e.isSpecial()) {
-                continue;
-            }
+//            if (e.isSpecial()) {
+//                continue;
+//            }
             
             if (totalEventCount == 0){
                 int sum = 0;
