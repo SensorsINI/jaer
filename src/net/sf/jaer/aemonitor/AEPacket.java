@@ -28,7 +28,7 @@ public abstract class AEPacket {
      */
     public static final int MAX_PACKET_SIZE_EVENTS = 100000;
 
-    static Logger log = Logger.getLogger("AEPacket");
+    static Logger log = Logger.getLogger("net.sf.jaer");
 
     /**
      * when we try to store an event and the packet is not big enough, we
