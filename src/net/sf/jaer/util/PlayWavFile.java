@@ -33,7 +33,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  */
 public class PlayWavFile extends Thread {
 
-    private static Logger log = Logger.getLogger("net.sf.jaer.util");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     private String filename;
 
     private Position curPosition;

@@ -32,7 +32,7 @@ import net.sf.jaer.graphics.AbstractAEPlayer.PlaybackMode;
  */
 public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
-    static final Logger log = Logger.getLogger("AEViewerPlaybackControlDialog");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     private AbstractAEPlayer aePlayer;
     private final AEViewer aeViewer;
     MoreLessAction moreLessAction = new MoreLessAction();

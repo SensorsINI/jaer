@@ -40,9 +40,9 @@ public class ApsDvsEvent extends PolarityEvent {
             this.code = code;
         }
         
-
-    }
-
+            
+        }
+        
 	/**
 	 * This bit determines whether it is the first read (ResetRead) or the
 	 * second read (SignalRead) of a pixel. Start/end of frame (SOF/EOF) and
@@ -124,16 +124,15 @@ public class ApsDvsEvent extends PolarityEvent {
 			adcSample = 0;
 			readoutType = ReadoutType.DVS;
 			imuSample = null;
-			colorFilter = ColorFilter.W;
-		}
-		else {
-			final ApsDvsEvent e = (ApsDvsEvent) src;
-			super.copyFrom(src);
+		                  colorFilter = ColorFilter.W;
+                } else {
+                    final ApsDvsEvent e = (ApsDvsEvent) src;
+                    super.copyFrom(src);
 
-			adcSample = e.getAdcSample();
-			readoutType = e.getReadoutType();
-			imuSample = e.getImuSample();
-			colorFilter = e.getColorFilter();
+                    setAdcSample(e.getAdcSample());
+                    setReadoutType(e.getReadoutType());
+                    setImuSample(e.getImuSample());
+                    setColorFilter(e.getColorFilter());
 		}
 	}
 

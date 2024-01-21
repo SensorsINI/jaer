@@ -53,7 +53,7 @@ import net.sf.jaer.util.XMLFileFilter;
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener {
 
     static Preferences prefs = Preferences.userNodeForPackage(BiasgenFrame.class);
-    static Logger log = Logger.getLogger("Biasgen");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     private Biasgen biasgen;
     JPanel biasgenPanel = null;
     //    UndoableEditSupport editSupport=new UndoableEditSupport();

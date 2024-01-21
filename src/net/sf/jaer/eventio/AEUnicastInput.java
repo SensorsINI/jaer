@@ -78,7 +78,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
     private ArrayBlockingQueue<ByteBuffer> filledBufferQueue = new ArrayBlockingQueue(NBUFFERS), availableBufferQueue = new ArrayBlockingQueue(NBUFFERS);
     private AENetworkRawPacket packet = new AENetworkRawPacket();
-    private static final Logger log = Logger.getLogger("AESocketStream");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     private int bufferSize = prefs.getInt("AEUnicastInput.bufferSize", AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
     private boolean swapBytesEnabled = prefs.getBoolean("AEUnicastInput.swapBytesEnabled", false);
     private float timestampMultiplier = prefs.getFloat("AEUnicastInput.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);

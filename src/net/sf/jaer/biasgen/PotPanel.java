@@ -33,7 +33,7 @@ import javax.swing.table.TableCellRenderer;
  * @author  tobi
  */
 public class PotPanel extends javax.swing.JPanel implements FocusListener {
-    static Logger log=Logger.getLogger("PotPanel");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     public PotArray pots=null;
     JScrollPane scrollPane=null;
     JPanel potsPanel;

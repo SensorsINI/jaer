@@ -39,7 +39,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	private static final long serialVersionUID = 6795768174203484869L;
 	HashSet<Class> factoryHashSet = new HashSet<Class>();
 	private final ArrayList<HardwareInterface> interfaceList = new ArrayList<HardwareInterface>();
-	static final Logger log = Logger.getLogger("HardwareInterfaceFactory");
+	static final Logger log = Logger.getLogger("net.sf.jaer");
 
 	// these are devices that can be enumerated and opened
 	// TODO fix to used scanned classpath as in filter menu or chip classes

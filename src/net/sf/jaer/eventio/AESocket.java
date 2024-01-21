@@ -62,7 +62,7 @@ public class AESocket implements AESocketSettings{
     private boolean localTimestampsEnabled=prefs.getBoolean("AESocket.localTimestampsEnabled", false);
     public static boolean isiEnabled = prefs.getBoolean("AESocket.isiEnabled", DEFAULT_USE_ISI_ENABLED);
 //    private PropertyChangeSupport support=new PropertyChangeSupport(this);
-    private static Logger log=Logger.getLogger("net.sf.jaer.eventio");
+    private static Logger log=Logger.getLogger("net.sf.jaer");
     private Socket socket;
     
     private String hostname=prefs.get("AESocket.hostname",DEFAULT_HOST);

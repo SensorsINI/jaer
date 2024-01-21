@@ -45,7 +45,7 @@ import net.sf.jaer.event.BasicEvent;
  * @author tobi
  */
 public class Batter extends EventFilter2D implements FrameAnnotater {
-    static protected Logger log=Logger.getLogger("Batter");
+    static protected Logger log=Logger.getLogger("net.sf.jaer");
     
     final int SWING_DELAY_MS_DEFAULT=350;
     final int DISABLE_SERVOS_DELAY_MS=10000;

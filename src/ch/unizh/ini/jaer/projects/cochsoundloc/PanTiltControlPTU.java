@@ -101,7 +101,7 @@ public class PanTiltControlPTU extends PanTiltControl {
         private byte[] buffer = new byte[1024];
         private static volatile boolean logResponses = false;
         private boolean waitingForStarResponse = false;
-        private static Logger loggerResponses = Logger.getLogger("Pan-Tilt-Responses");
+        private static Logger loggerResponses = Logger.getLogger("net.sf.jaer");
         static ActionListener taskPerformer = new ActionListener() {
 
             public void actionPerformed(ActionEvent evt) {

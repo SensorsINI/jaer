@@ -91,7 +91,7 @@ public class ToradexOakG3AxisAccelerationSensor extends UsbIoReader implements H
     //  ReadFile(DeviceHandle, ReadBuffer, ...);
     //  CloseHandle(DeviceHandle);
      */
-    static Logger log = Logger.getLogger("ToradexOakG3AxisAccelerationSensor");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     int seqNum = 0;
     private long gDevList;
     public static String GUID = "{A08B149E-81AC-47b0-988F-52FDC1BB1E57}";

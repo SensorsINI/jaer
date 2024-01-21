@@ -32,7 +32,7 @@ public class LabyrinthTableTiltControllerGUI extends javax.swing.JFrame implemen
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     // property change messages
     public final String POSITION = "position";
-    Logger log = Logger.getLogger("LabyrinthBallController");
+    Logger log = Logger.getLogger("net.sf.jaer");
     private LabyrinthBallControllerInterface controller;
     private int w = 200, h = 200, x0 = 0, y0 = 0;
     private Point2D.Float lastPanTilt = new Point2D.Float(0, 0);

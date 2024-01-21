@@ -91,7 +91,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      */
     protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX2.class);
 
-    protected static final Logger log = Logger.getLogger("CypressFX2");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     protected AEChip chip;
     // A .bix file format is needed for RAM download.
     // The binary file format .iic (i2c) format are image files for the EEPROM. IIC files will not

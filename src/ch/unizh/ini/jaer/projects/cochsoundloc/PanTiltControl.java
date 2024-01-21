@@ -13,7 +13,7 @@ import java.util.logging.Logger;
  */
 public abstract class PanTiltControl {
 
-    public Logger log = Logger.getLogger("PanTiltControl");
+    public Logger log = Logger.getLogger("net.sf.jaer");
     public static volatile boolean moving = false;
     public static volatile boolean wasMoving = false;
     public boolean connected = false;

@@ -76,7 +76,7 @@ return "bufferbias " + getValue()+"\n";
 public class RemoteControl /* implements RemoteControlled */{
     /** Max length of remote control packet in bytes. */
     public static final int MAX_COMMAND_LENGTH_BYTES = 8196;
-    private static Logger log = Logger.getLogger("RemoteControl");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     /** The default UDP local port for the default constructor. */
     public static final int PORT_DEFAULT = 8995;
     private int port;

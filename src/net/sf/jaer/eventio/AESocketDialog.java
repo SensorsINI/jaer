@@ -19,7 +19,7 @@ import javax.swing.KeyStroke;
  * @author  tobi
  */
 public class AESocketDialog extends javax.swing.JDialog{
-    Logger log = Logger.getLogger("AESocketDialog");
+    Logger log = Logger.getLogger("net.sf.jaer");
     private AESocketSettings socketInterface;
     private int returnStatus = RET_CANCEL;
     /** A return status code - returned if Cancel button has been pressed */

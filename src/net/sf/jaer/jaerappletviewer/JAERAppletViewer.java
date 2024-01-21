@@ -61,7 +61,7 @@ public class JAERAppletViewer extends javax.swing.JApplet {
 
     AEChip liveChip, recordedChip;
     ChipCanvas liveCanvas, recordedCanvas;
-    Logger log = Logger.getLogger("JAERAppletViewer");
+    Logger log = Logger.getLogger("net.sf.jaer");
     EngineeringFormat fmt = new EngineeringFormat();
     volatile String fileSizeString = "";
 //    File indexFile = null;

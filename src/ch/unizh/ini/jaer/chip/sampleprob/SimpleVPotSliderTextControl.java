@@ -47,7 +47,7 @@ public class SimpleVPotSliderTextControl extends JPanel implements Observer, Sta
 	 */
 	private static final long serialVersionUID = -3063125813210251518L;
 	static Preferences prefs = Preferences.userNodeForPackage(SimpleVPotSliderTextControl.class);
-	static Logger log = Logger.getLogger("VPotSliderTextControl");
+	static Logger log = Logger.getLogger("net.sf.jaer");
 	VPot pot;
 	StateEdit edit = null;
 	UndoableEditSupport editSupport = new UndoableEditSupport();

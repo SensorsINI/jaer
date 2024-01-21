@@ -79,7 +79,7 @@ import org.apache.commons.lang3.mutable.MutableBoolean;
  */
 public class RosbagFileInputStream implements AEFileInputStreamInterface, RosbagTopicMessageSupport {
 
-    private static final Logger log = Logger.getLogger("RosbagFileInputStream");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     /**

@@ -70,7 +70,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private boolean measurePerformanceEnabled = false;
     volatile private boolean resetPerformanceMeasurementStatistics = false; // flag to reset everyone on this cycle
-    static final Logger log = Logger.getLogger("FilterChain");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     AEChip chip;
     private boolean filteringEnabled = true;
     /**

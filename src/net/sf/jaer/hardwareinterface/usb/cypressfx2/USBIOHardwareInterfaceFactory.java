@@ -39,7 +39,7 @@ HardwareInterfaceFactory or it can be directly accessed.
  */
 public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotifyInterface, HardwareInterfaceFactoryInterface {
 
-    final static Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
+    final static Logger log = Logger.getLogger("net.sf.jaer");
 //    int status;
     PnPNotify pnp = null;    //static instance, by which this class can be accessed
     private static USBIOHardwareInterfaceFactory instance = new USBIOHardwareInterfaceFactory();

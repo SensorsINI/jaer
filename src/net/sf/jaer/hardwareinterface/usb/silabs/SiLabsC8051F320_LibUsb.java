@@ -61,7 +61,7 @@ public abstract class SiLabsC8051F320_LibUsb implements
     protected DeviceDescriptor deviceDescriptor;
     protected boolean isOpened = false;
     protected boolean eventAcquisitionEnabled = false;
-    protected static final Logger log = Logger.getLogger("SilabsC8051F320_LibUsb");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
     private int estimatedEventRate = 0;
     protected SilabsAEReader aeReader;

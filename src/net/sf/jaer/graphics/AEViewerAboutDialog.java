@@ -31,7 +31,7 @@ import org.apache.commons.io.IOUtils;
 public class AEViewerAboutDialog extends javax.swing.JDialog {
 
     public final static String VERSION_FILE = "BUILDVERSION.txt";
-    static Logger log = Logger.getLogger("About");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     AEViewer parent=null;
 
     /**

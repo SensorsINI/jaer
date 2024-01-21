@@ -53,7 +53,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements HardwareInterfaceFactoryChooserDialog {
 
     private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_InterfaceFactory.class);
-    private static final Logger log = Logger.getLogger("eDVS128");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     public static final int[] SERIAL_BAUD_RATES_MBPS = {1, 2, 4, 8, 12};
     /**
      * The baud rate used by the eDVS FTDI serial port interface

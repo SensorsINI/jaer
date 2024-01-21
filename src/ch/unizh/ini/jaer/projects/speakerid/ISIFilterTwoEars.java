@@ -40,7 +40,7 @@ import net.sf.jaer.DevelopmentStatus;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class ISIFilterTwoEars extends EventFilter2D implements Observer {
 
-    protected static final Logger log = Logger.getLogger("ISIFilterTwoEars");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     private int nBins = getPrefs().getInt("nBins", 50);
     private int maxIsiUs = getPrefs().getInt("maxIsiUs", 10000);
     private int minIsiUs = getPrefs().getInt("minIsiUs", 0);

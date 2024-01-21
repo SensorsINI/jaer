@@ -43,7 +43,7 @@ public class SpikeSound{
     private byte[] spikeSoundSamples, spikeSoundSamplesLeft, spikeSoundSamplesRight;
 //    private AudioInputStream spikeStream, spikeStreamLeft, spikeStreamRight;
     private SourceDataLine line = null;
-    static Logger log = Logger.getLogger("SpikeSound");
+    static Logger log = Logger.getLogger("net.sf.jaer");
 
     /** Creates a new instance of SpikeSound */
     public SpikeSound (){

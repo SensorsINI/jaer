@@ -26,7 +26,7 @@ import org.opencv.core.Mat;
  */
 public class YamlMatFileStorage {
 
-    private static final Logger log = Logger.getLogger("YamlMatLoader");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     // Mat cannot be used directly because it is a native object and yamlbeans only deals with Java objects
     protected static class MatStorage {

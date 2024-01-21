@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  */
 public class EventProcessingPerformanceView extends javax.swing.JFrame {
     
-    private static Logger log=Logger.getLogger("EventProcessingPerformanceView");
+    private static Logger log=Logger.getLogger("net.sf.jaer");
 
     private EventProcessingPerformanceMeter model=null;
     private Component parent;

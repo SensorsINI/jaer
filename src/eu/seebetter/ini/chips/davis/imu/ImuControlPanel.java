@@ -20,7 +20,7 @@ import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
  */
 public class ImuControlPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
-	private static final Logger log = Logger.getLogger("ImuControlPanel");
+	private static final Logger log = Logger.getLogger("net.sf.jaer");
 	private ImuControl imuControl;
 	private boolean dontProcess = false;
 

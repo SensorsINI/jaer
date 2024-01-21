@@ -75,7 +75,7 @@ import javax.swing.JFileChooser;
  */
 public class HexFileParser {
 
-    Logger log = Logger.getLogger("HexFileParser");
+    Logger log = Logger.getLogger("net.sf.jaer");
     /** you have to specify the required MAX_CODE_LENGTH */
     public static final int MAX_CODE_LENGTH = 16384;  // FX2LP has 16k RAM, FX2 only 8192;
     public static final int RADIX = 16;

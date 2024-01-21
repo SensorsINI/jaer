@@ -11,7 +11,7 @@ import java.util.logging.Logger;
  */
 class LapTimer implements PropertyChangeListener {
 
-    private static Logger log = Logger.getLogger("LapTimer");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
 
     SlotcarTrack track;
     int lastSegment = 0;

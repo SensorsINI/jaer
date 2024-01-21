@@ -11,7 +11,7 @@ import java.util.prefs.Preferences;
  */
 public class DrumSounds{
     private static Preferences prefs = Preferences.userNodeForPackage(DrumSounds.class);
-    private Logger log = Logger.getLogger("DrumSounds");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     final static int NDRUMS = 2;
     final static int LEFT_BEATING = 0;
     final static int RIGHT_BEATING = 1;

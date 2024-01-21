@@ -61,7 +61,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
  */
 abstract public class DvsFramer extends EventFilter2D {
 
-    protected static Logger log = Logger.getLogger("DvsFramer");
+    protected static Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * PropertyChangeEvent that is fired when a new DVS frame is available.
      *

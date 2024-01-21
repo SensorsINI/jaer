@@ -27,7 +27,7 @@ public class ITDCalibrationLines {
 
     private ITDCalibrationLine[][] lines;
     int maxNumOfLines = 0;
-    public Logger log=Logger.getLogger("EventFilter");
+    public Logger log=Logger.getLogger("net.sf.jaer");
 
     public void loadCalibrationFile(String calibrationFilePath) {
         log.info("called loadCalibrationFile()");

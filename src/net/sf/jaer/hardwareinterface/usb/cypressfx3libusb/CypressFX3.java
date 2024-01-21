@@ -85,7 +85,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	/** Used to store preferences, e.g. buffer sizes and number of buffers. */
 	protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX3.class);
 
-	protected static final Logger log = Logger.getLogger("CypressFX3");
+	protected static final Logger log = Logger.getLogger("net.sf.jaer");
 	protected AEChip chip;
 
 	/**

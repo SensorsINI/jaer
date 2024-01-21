@@ -46,7 +46,7 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 	// of the
 	// text field. likewise, if code changes the pot, the appearance here will automagically be updated.
 	static Preferences prefs = Preferences.userNodeForPackage(SimpleIPotSliderTextControl.class);
-	static Logger log = Logger.getLogger("IPotSliderTextControl");
+	static Logger log = Logger.getLogger("net.sf.jaer");
 	IPot pot;
 	StateEdit edit = null;
 	UndoableEditSupport editSupport = new UndoableEditSupport();

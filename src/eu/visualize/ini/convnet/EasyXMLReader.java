@@ -36,7 +36,7 @@ import org.xml.sax.SAXException;
  */
 public class EasyXMLReader {
 
-    private static final Logger log = Logger.getLogger("EasyXMLReader");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     Node doc;
     File file;
     //BASE64Decoder decoder = new BASE64Decoder();

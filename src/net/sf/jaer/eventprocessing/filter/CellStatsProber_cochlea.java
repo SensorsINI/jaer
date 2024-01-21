@@ -65,7 +65,7 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
     public static DevelopmentStatus getDevelopementStatus() {
         return DevelopmentStatus.Unknown;
     }
-    protected static final Logger log = Logger.getLogger("CellStatsProber_cochlea");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
     private DisplayMethod displayMethod;

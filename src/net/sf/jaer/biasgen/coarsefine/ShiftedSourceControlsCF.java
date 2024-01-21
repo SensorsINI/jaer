@@ -51,7 +51,7 @@ public class ShiftedSourceControlsCF extends javax.swing.JPanel implements Obser
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
 
     static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
-    static Logger log = Logger.getLogger("ConfigurableIPotGUIControl");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     static double ln2 = Math.log(2.);
     ShiftedSourceBiasCF pot;
     StateEdit edit = null;

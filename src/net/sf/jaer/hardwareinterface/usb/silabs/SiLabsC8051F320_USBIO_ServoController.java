@@ -52,7 +52,7 @@ import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
  */
 public class SiLabsC8051F320_USBIO_ServoController implements UsbIoErrorCodes, PnPNotifyInterface, ServoInterface {
 
-    static final Logger log = Logger.getLogger("SiLabsC8051F320_USBIO_ServoController");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * driver GUID (Globally unique ID, for this USB driver instance
      */

@@ -56,7 +56,7 @@ public abstract class AbstractDavisCNN {
      * height
      */
     public static final float HISTOGRAM_HEIGHT_FRACTION = 0.9f;
-    protected static final Logger log = Logger.getLogger("AbstractDavisCNN");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     protected String netname;
     /**
      * This PropertyChange is emitted when either APS or DVS net outputs. The

@@ -24,7 +24,7 @@ import de.thesycon.usbio.PnPNotifyInterface;
  */
 public class HardwareInterfaceMenu extends JMenu implements PnPNotifyInterface{
 
-    static Logger log=Logger.getLogger("HardwareInterfaceMenu");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     /** Creates a new instance of HardwareInterfaceMenu */
     public HardwareInterfaceMenu() {
         setName("Interface");

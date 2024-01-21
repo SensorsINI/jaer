@@ -47,7 +47,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
      */
     private static final long serialVersionUID = -1987171851823131804L;
     static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
-    static Logger log = Logger.getLogger("ConfigurableIPotGUIControl");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     static double ln2 = Math.log(2.);
     TowerOnChip6BitVDAC pot;
     StateEdit edit = null;

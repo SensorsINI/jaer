@@ -178,7 +178,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     private BeanInfo info;
     private PropertyDescriptor[] props;
     private Method[] methods;
-    private static final Logger log = Logger.getLogger("Parameters");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     final float fontSize = 14f;
     private Border normalBorder, redLineBorder;
     private TitledBorder titledBorder;

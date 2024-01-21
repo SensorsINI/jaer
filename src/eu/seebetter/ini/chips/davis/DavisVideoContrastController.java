@@ -33,7 +33,7 @@ import net.sf.jaer.util.filter.LowpassFilter2D;
  */
 public class DavisVideoContrastController extends Observable {
 
-	private static Logger log = Logger.getLogger("DavisVideoContrastController");
+	private static Logger log = Logger.getLogger("net.sf.jaer");
 	DavisChip chip;
 	Preferences prefs = Preferences.userNodeForPackage(this.getClass());
 

@@ -108,7 +108,7 @@ public class FancyDriver extends EventFilter2D implements FrameAnnotater{
     private float normalizationFactorU=(float)Math.PI/8; // normlization steering angle
     
     DrivingController controller;
-    //static Logger log=Logger.getLogger("FancyDriver");
+    //static Logger log=Logger.getLogger("net.sf.jaer");
     private SiLabsC8051F320_USBIO_CarServoController servo;
     private ToradexOakG3AxisAccelerationSensor accelerometer;
     private ToradexOakG3AxisAccelerationSensorGUI acceleromterGUI=null;

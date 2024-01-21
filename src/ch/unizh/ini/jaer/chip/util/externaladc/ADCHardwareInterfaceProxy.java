@@ -18,7 +18,7 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  */
 public class ADCHardwareInterfaceProxy extends HardwareInterfaceProxy implements ADCHardwareInterface, HasPropertyTooltips {
 
-    static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     private boolean adcEnabled;
     private int trackTime,  idleTime;
     private boolean sequencingEnabled;

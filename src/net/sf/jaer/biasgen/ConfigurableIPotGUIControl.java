@@ -51,7 +51,7 @@ public class ConfigurableIPotGUIControl extends javax.swing.JPanel implements Ob
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
 
     final static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
-    static final Logger log = Logger.getLogger("ConfigurableIPotGUIControl");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     static double ln2 = Math.log(2.);
     ConfigurableIPotRev0 pot;
     StateEdit edit = null;

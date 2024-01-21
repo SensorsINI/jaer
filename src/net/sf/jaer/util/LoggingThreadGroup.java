@@ -27,7 +27,7 @@ public class LoggingThreadGroup extends ThreadGroup {
     public void uncaughtException(Thread thread, Throwable throwable) {
         // Initialize logger once
         if (logger == null) {
-            logger = Logger.getLogger("UncaughtExceptionLogger");
+            logger = Logger.getLogger("net.sf.jaer");
             Handler handler = LoggingWindowHandler.getInstance();
             logger.addHandler(handler);
         }

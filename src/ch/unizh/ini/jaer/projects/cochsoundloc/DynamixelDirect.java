@@ -40,7 +40,7 @@ import javax.swing.Timer;
  */
 public class DynamixelDirect extends javax.swing.JFrame {
 
-    private static Logger log = Logger.getLogger("Dynamixel");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     public OutputStream out;
     public InputStream in;
     private SerialReader serialReader;

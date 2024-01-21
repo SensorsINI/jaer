@@ -22,7 +22,7 @@ import net.sf.jaer.biasgen.VDAC.VPot;
 public final class CochleaAMS1cBasicPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
     Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1cBasicPanel.class);
-    Logger log = Logger.getLogger("CochleaAMS1cBasicPanel");
+    Logger log = Logger.getLogger("net.sf.jaer");
     CochleaAMS1c chip;
     private CochleaAMS1c.Biasgen biasgen;
 

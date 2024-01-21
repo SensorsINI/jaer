@@ -55,7 +55,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     public String toString() {
         return "SiLabsC8051F320_USBIO_DVS128";
     }
-    static Logger log = Logger.getLogger("SiLabsC8051F320_USBIO_DVS128");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     /** Used to store preferences, e.g. the default firmware download file for blank devices */
     protected static Preferences prefs = Preferences.userNodeForPackage(SiLabsC8051F320_USBIO_DVS128.class);
     PnPNotify pnp = null;

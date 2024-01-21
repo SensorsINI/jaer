@@ -27,7 +27,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
      * The path relative to starting folder of CypressFX2 firmware files
      */
     public static final String DEFAULT_RELATIVE_FIRMWARE_PATH = "../../devices/firmware/CypressFX2/";
-    static Logger log = Logger.getLogger("CypressFX2FirmwareFilennameChooserOkCancelDialog");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     static Preferences prefs = Preferences.userNodeForPackage(CypressFX2FirmwareFilennameChooserOkCancelDialog.class);
     /**
      * A return status code - returned if Cancel button has been pressed

@@ -31,7 +31,7 @@ import net.sf.jaer.event.TypedEvent;
  */
 abstract public class TypedEventExtractor<T extends BasicEvent> implements EventExtractor2D<T>, java.io.Serializable {
 
-    static Logger log = Logger.getLogger("net.sf.jaer.chip");
+    static Logger log = Logger.getLogger("net.sf.jaer");
 
 //    protected AEChip chip;
     protected int xmask, ymask;

@@ -33,7 +33,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  */
 public abstract class Chart extends GLJPanel {
 
-	//    static Logger log=Logger.getLogger("chart");
+	//    static Logger log=Logger.getLogger("net.sf.jaer");
 	/** The title of the chart. */
 	protected String title = "";
 	/** The chart's categories. */

@@ -23,7 +23,7 @@ import javax.swing.KeyStroke;
  */
 public class AEUnicastDialog extends javax.swing.JDialog {
 
-    Logger log = Logger.getLogger("AEUnicastDialog");
+    Logger log = Logger.getLogger("net.sf.jaer");
     private AEUnicastSettings unicastInterface;
     private int returnStatus = RET_CANCEL;
     /**

@@ -48,7 +48,7 @@ import net.sf.jaer.event.BasicEvent;
 public class BillCatcher extends EventFilter2D implements FrameAnnotater {
 
     ServoInterface servo = null;
-    Logger log = Logger.getLogger("BillCatcher");
+    Logger log = Logger.getLogger("net.sf.jaer");
     FilterChain chain = null;
     RectangularClusterTracker tracker = null;
     AbstractMotionFlow motionFilter = null;

@@ -40,7 +40,7 @@ public class VPotSliderTextControl extends JPanel implements Observer, StateEdit
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
 
     static Preferences prefs = Preferences.userNodeForPackage(VPotSliderTextControl.class);
-    static Logger log = Logger.getLogger("VPotSliderTextControl");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     VPot pot;
     StateEdit edit = null;
     UndoableEditSupport editSupport = new UndoableEditSupport();

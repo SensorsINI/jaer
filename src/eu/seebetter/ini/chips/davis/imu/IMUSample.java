@@ -20,7 +20,7 @@ import eu.seebetter.ini.chips.DavisChip;
  */
 public class IMUSample {
 
-    private final static Logger log = Logger.getLogger("IMUSample");
+    private final static Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * This byte value as first byte signals an IMU (gyro/accelerometer/compass)
      * sample in the USB byte array sent from device

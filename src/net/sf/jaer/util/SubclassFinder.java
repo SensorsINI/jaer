@@ -32,7 +32,7 @@ import javax.swing.SwingWorker;
 public class SubclassFinder {
 
     private static Preferences prefs = Preferences.userNodeForPackage(SubclassFinder.class); // used to store keys/values of cache filenames
-    private final static Logger log = Logger.getLogger("SubclassFinder");
+    private final static Logger log = Logger.getLogger("net.sf.jaer");
 // TODO needs a way of caching in preferences the list of classes and the number or checksum of classes,
     // to reduce startup time, since this lookup of subclasses takes 10s of seconds on some machines
 

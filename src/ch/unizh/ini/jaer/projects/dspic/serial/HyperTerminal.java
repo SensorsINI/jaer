@@ -38,7 +38,7 @@ public class HyperTerminal extends javax.swing.JFrame
 
     final static String PORT_NAME_DEFAULT = "COM5";
     Preferences prefs = Preferences.userNodeForPackage(HyperTerminal.class);
-    static final Logger log = Logger.getLogger("HyperTerminal");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     //public final static String portName= "/dev/ttyUSB0";
     public String portName = prefs.get("portName", PORT_NAME_DEFAULT);
     public int baudRate = prefs.getInt("baudRate", 618964); // 460800 for J. Conradt's FTDI on robot head controller

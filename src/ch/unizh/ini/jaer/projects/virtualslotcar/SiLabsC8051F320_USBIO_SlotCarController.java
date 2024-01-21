@@ -48,7 +48,7 @@ import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
  */
 public class SiLabsC8051F320_USBIO_SlotCarController implements UsbIoErrorCodes, PnPNotifyInterface {
     
-    static final Logger log=Logger.getLogger("SiLabsC8051F320_USBIO_SlotCarController");
+    static final Logger log=Logger.getLogger("net.sf.jaer");
     
     /** driver GUID (Globally unique ID, for this USB driver instance */
     public final static String GUID  = "{3B15398D-1EF2-44d7-A6B8-74A3FCCD29BF}"; // tobi generated in pasadena july 2006

@@ -40,7 +40,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     AEChipRenderer renderer = null;
     private static EngineeringFormat engFmt = new EngineeringFormat();
 
-    private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     /**
      * Creates new form ApsDVSUserControlPanel

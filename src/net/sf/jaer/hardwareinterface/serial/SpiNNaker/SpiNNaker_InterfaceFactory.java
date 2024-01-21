@@ -45,7 +45,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 public class SpiNNaker_InterfaceFactory extends javax.swing.JDialog implements HardwareInterfaceFactoryChooserDialog {
 
     private static Preferences prefs = Preferences.userNodeForPackage(SpiNNaker_InterfaceFactory.class);
-    private static final Logger log = Logger.getLogger("SpiNNaker");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     public static final String HOST = "192.168.240.10"; // spinn10 
     public static final int UDP_PORT = 17386; //TODO confirm this is right
     //public static final int TCP_RECEIVE_BUFFER_SIZE_BYTES = 8192;

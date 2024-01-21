@@ -128,7 +128,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * the chip rendered for
      */
     protected boolean ignorePolarityEnabled = false;
-    protected Logger log = Logger.getLogger("net.sf.jaer.graphics");
+    protected Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * The Colors that different cell types are painted. checkTypeColors should
      * populate this array.

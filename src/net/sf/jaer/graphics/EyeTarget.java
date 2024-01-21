@@ -39,7 +39,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
  */
 public class EyeTarget extends GLCanvas implements GLEventListener {
 
-	private static Logger log=Logger.getLogger("EyeTarget");
+	private static Logger log=Logger.getLogger("net.sf.jaer");
 
 	final int SIZE=15;
 	Target target;

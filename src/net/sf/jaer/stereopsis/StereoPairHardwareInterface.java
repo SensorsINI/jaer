@@ -46,7 +46,7 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
     protected AEChip chip;
     private AEMonitorInterface aemonLeft;
     private AEMonitorInterface aemonRight;
-    final static Logger log = Logger.getLogger("HardwareInterface");
+    final static Logger log = Logger.getLogger("net.sf.jaer");
     private boolean ignoreTimestampNonmonotonicity = false;
     private int RESET_DELAY_MS = 200;
 

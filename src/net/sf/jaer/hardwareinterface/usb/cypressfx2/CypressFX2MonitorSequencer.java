@@ -35,7 +35,7 @@ import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
  */
 public class CypressFX2MonitorSequencer extends CypressFX2 implements AEMonitorSequencerInterface, AESoftMapper, HasUpdatableFirmware {
 
-    protected static Logger log = Logger.getLogger("CypressFX2MonitorSequencer");
+    protected static Logger log = Logger.getLogger("net.sf.jaer");
     // consts
     final static byte ENDPOINT_OUT = (byte) 0x02;  // this is endpoint of AE fifo on Cypress FX2, 0x02 means OUT endpoint EP2.
     public static final byte VR_ENABLE_AE_OUT = (byte) 0xD0;  // vendor request to start sequencing

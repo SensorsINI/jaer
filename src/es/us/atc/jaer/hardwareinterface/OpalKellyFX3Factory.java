@@ -31,8 +31,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
  */
 public class OpalKellyFX3Factory implements HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 
-    static final Logger log = Logger.getLogger("USBIO");
-    final static Logger LOG = Logger.getLogger("OpalKellyFX3Factory");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
+    final static Logger LOG = Logger.getLogger("net.sf.jaer");
     private final String GUID="{c4caf39f-201c-46d2-813b-9f6542cc7686}";
    /** classes can check this before trying to do things with UsbIo */
     private static boolean libraryLoaded = false;

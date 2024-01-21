@@ -21,7 +21,7 @@ licensed under the LGPL (<a href="http://en.wikipedia.org/wiki/GNU_Lesser_Genera
 public class SlotCarHardwareInterface implements HardwareInterface, ThrottleBrakeInterface {
 
     private SiLabsC8051F320_USBIO_SlotCarController hw;
-    static final Logger log = Logger.getLogger("SlotCarHardwareInterface");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     private ThrottleBrake throttle = new ThrottleBrake();
     private boolean brakeEnabled = false;
     private static final int THROTTLE_CHANNEL = 0;

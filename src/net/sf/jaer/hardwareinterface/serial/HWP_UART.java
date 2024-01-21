@@ -21,7 +21,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class HWP_UART implements HardwareInterface {
 
-    static Logger log = Logger.getLogger("HWP_UART");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     protected SerialPort serialPort;
     final char START_BINARY_MODE = ((byte) 01);
     final char NEW_LINE = ((byte) 10);

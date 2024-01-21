@@ -53,7 +53,7 @@ public class SlotCarSoundSample implements SoundPlayerInterface {
     private byte[] samples = null; // , spikeSoundSamplesLeft, spikeSoundSamplesRight;
 //    private AudioInputStream spikeStream, spikeStreamLeft, spikeStreamRight;
     private SourceDataLine line = null;
-    static final Logger log = Logger.getLogger("SlotcarSoundEffects");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     private SlotcarSoundEffectsThread T;
     // used for buffering in to out in play()...
     private byte[] abData = null;

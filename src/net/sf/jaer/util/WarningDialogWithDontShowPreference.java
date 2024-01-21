@@ -48,7 +48,7 @@ import javax.swing.SwingUtilities;
 public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
 
     private Preferences prefs = Preferences.userNodeForPackage(WarningDialogWithDontShowPreference.class);
-    private Logger log = Logger.getLogger("WarningDialogWithDontShowPreference");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */

@@ -35,7 +35,7 @@ public class JAERWindowUtilities {
 
     final static int WINDOWS_TASK_BAR_HEIGHT = 100; // accounts for task bar at bottom, don't want window to underlap it
     private static int lowerInset = WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
-    private static Logger log = Logger.getLogger("JAERWindowUtilities");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
 //    private static int resizeCounter=0;
     final static int STOP_TRYING_THRESHOLD = 5;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
     private final static HashMap<JFrame, Integer> resizingCountMap = new HashMap<JFrame, Integer>();
