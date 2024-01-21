@@ -25,6 +25,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeSupport;
+import net.sf.jaer.util.DrawGL;
 import org.apache.commons.text.WordUtils;
 
 /**
@@ -204,7 +205,8 @@ public abstract class DisplayMethod {
         int nlines = ss.length;
 
         GL2 gl = drawable.getGL().getGL2();
-        TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 16), true, true);
+        DrawGL.setTextRenderer(renderer);
         // need to translate to correct position
 //        gl.glPushMatrix();
 //        for (String sss : ss) {
@@ -214,23 +216,25 @@ public abstract class DisplayMethod {
 //        }
 //        gl.glPopMatrix();
         try {
-            renderer.begin3DRendering();
-            renderer.setColor(Color.BLUE);
+//            renderer.begin3DRendering();
+//            renderer.setColor(Color.BLUE);
 
             Rectangle2D r = renderer.getBounds(ss[0]);
-            float h1 = (float) (r.getHeight());
-            float ht = (float) h1 * nlines;
-            float w = (float) (r.getWidth());
-            float scale = .5f;
-            final float linespace = (float) (h1 * scale * 1.2f);
-            float ypos = (float) (chip.getSizeY() / 2 + ht / 2 * scale - linespace / 2);
+            float h1 = (float) (r.getHeight()); // height of first line
+            float ht = (float) h1 * nlines; // total height of multiline string
+            float w = (float) (r.getWidth()); // width of first line
+            float scale = .3f;
+            final float linespace = (float) (h1 * 1.5f); // line spacing as factor of line height
+            float ypos = (float) (chip.getSizeY() / 2 + ht / 2 - linespace / 2);
             float xpos = (float) (chip.getSizeX() / 2 - w / 2 * scale);
             float y = ypos;
             for (String sss : ss) {
-                renderer.draw3D(sss, xpos, y, 0, scale);
+                DrawGL.drawString(gl, 24, xpos, y, scale, Color.black, sss);
+                DrawGL.drawString(gl, 24,  xpos-2, y-2, scale, Color.white, sss); // drop shadow
+//                renderer.draw3D(sss, xpos, y, 0, scale);
                 y -= linespace;
             }
-            renderer.end3DRendering();
+//            renderer.end3DRendering();
         } catch (GLException e) {
             log.warning("caught " + e + " when trying to render text into the current OpenGL context");
         }
