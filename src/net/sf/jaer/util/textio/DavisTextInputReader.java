@@ -22,20 +22,20 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Cursor;
-import java.awt.Toolkit;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.MalformedParametersException;
-import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.JProgressBar;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
@@ -146,32 +146,11 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         resetFilter();
 //        https://stackoverflow.com/questions/1277880/how-can-i-get-the-count-of-line-in-a-file-in-an-efficient-way
         BufferedReader reader = new BufferedReader(new FileReader(f));
-        long fileLength = f.length();
-        if (fileLength != lastFileLength || numEventsInFile == 0) {
-            log.info("counting events in file....");
-            numEventsInFile = 0;
-            int numChars = 0;
-            numEventsInFile = 0;
-            String line = null;
-            while ((line = reader.readLine()) != null) {
-                numEventsInFile++;
-                numChars += line.length();
-                float avgEventLengthChars = (float) numChars / numEventsInFile;
-                int estTotalEvents = (int) (fileLength / avgEventLengthChars);
-                if (numEventsInFile % 1000000 == 0) {
-                    log.info(String.format("Counting events: %,d events, %.1f%% complete", numEventsInFile, 100 * (float) numEventsInFile / estTotalEvents));
-                }
-            }
-
-            reader.close();
-            lastFileLength=fileLength;
-        }
-        reader = new BufferedReader(new FileReader(f));
         lastFile = f;
         setEventsProcessed(0);
         noEventsReadYet = true;
         lastLineNumber = 0;
-        log.info(String.format("Opened text input file %s with %,d events",f.toString(),numEventsInFile));
+        log.info(String.format("Opened text input file %s with estimated %,d events", f.toString(), numEventsInFile));
         setViewerToFilterInputViewMode();
         return reader;
     }
@@ -222,15 +201,37 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         if (ret != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        lastFileName = c.getSelectedFile().toString();
+        final File f = c.getSelectedFile(); // final to use on runnable
+        lastFileName = f.toString();
         putString("lastFileName", lastFileName);
+        if (dvsReader != null) {
+            doCloseFile();
+        }
         try {
-            if (dvsReader != null) {
-                doCloseFile();
-            }
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            dvsReader = openReader(c.getSelectedFile());
 
+            BufferedReader reader = new BufferedReader(new FileReader(f));
+            long fileLength = f.length();
+            if (fileLength != lastFileLength || numEventsInFile == 0) {
+                log.info("counting events in file....");
+                numEventsInFile = 0;
+                int numChars = 0;
+                numEventsInFile = 0;
+                String line = null;
+                while ((line = reader.readLine()) != null) {
+                    numEventsInFile++;
+                    numChars += line.length();
+                    float avgEventLengthChars = (float) numChars / numEventsInFile;
+                    int estTotalEvents = (int) (fileLength / avgEventLengthChars);
+                    if (numEventsInFile % 1000000 == 0) {
+                        log.info(String.format("Counting events: %,d events, %.1f%% complete", numEventsInFile, 100 * (float) numEventsInFile / estTotalEvents));
+                    }
+                }
+
+                reader.close();
+                lastFileLength = fileLength;
+            }
+
+            dvsReader = openReader(f);
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't open input file", JOptionPane.WARNING_MESSAGE, null);
         } finally {
@@ -243,7 +244,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             if (dvsReader != null) {
                 dvsReader.close();
                 dvsReader = null;
-                log.info(String.format("Closed %s",lastFile));
+                log.info(String.format("Closed %s", lastFile));
             }
             setEventsProcessed(0);
         } catch (IOException ex) {
@@ -378,9 +379,9 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             it = 0;
         }
         try {
-            if(useUsTimestamps&&split[it].contains(".")){
+            if (useUsTimestamps && split[it].contains(".")) {
                 checkErrorHalt(String.format("timestamp %s has a '.' in it but useUsTimestamps is true\n%s", split[it], lineinfo(line)));
-            }else if(!useUsTimestamps&&!split[it].contains(".")){
+            } else if (!useUsTimestamps && !split[it].contains(".")) {
                 checkErrorHalt(String.format("timestamp %s has no '.' in it but useUsTimestamps is false\n%s", split[it], lineinfo(line)));
             }
             lastTimestampRead = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
