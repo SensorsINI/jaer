@@ -32,7 +32,7 @@ import net.sf.jaer.util.EngineeringFormat;
 public abstract class AbstractAEPlayer {
 
     protected AEViewer viewer = null;
-    protected static Logger log = Logger.getLogger("AbstractAEPlayer");
+    protected static Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * The AE file input stream.
      */
@@ -175,7 +175,8 @@ public abstract class AbstractAEPlayer {
     abstract public AEPacketRaw getNextPacket(AbstractAEPlayer player);
 
     abstract public AEPacketRaw getNextPacket();
-    private double SPEED_UP_SLOW_DOWN_FACTOR=Math.pow(2,0.25);
+    /** How much the player speeds up or slows down with slower() and faster() actions */
+    public static double SPEED_UP_SLOW_DOWN_FACTOR=Math.pow(2,0.25);
     
     /**
      * Speeds up the playback so that more time or more events are displayed per
@@ -184,7 +185,11 @@ public abstract class AbstractAEPlayer {
      */
     public void speedUp() {
         if (isFlexTimeEnabled()) {
-            setPacketSizeEvents((int)Math.round(getPacketSizeEvents() * SPEED_UP_SLOW_DOWN_FACTOR));
+            int newCount = (int) Math.round(getPacketSizeEvents() * SPEED_UP_SLOW_DOWN_FACTOR);
+            if (newCount == getPacketSizeEvents()) {
+                newCount += 1; // make sure we don't get stuck at 1
+            }
+            setPacketSizeEvents(newCount);
         } else {
             long newTimeSlice = (long) Math.round(getTimesliceUs() * SPEED_UP_SLOW_DOWN_FACTOR);
             if (newTimeSlice > (long) Integer.MAX_VALUE) {
