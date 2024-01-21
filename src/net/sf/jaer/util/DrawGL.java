@@ -254,20 +254,21 @@ public final class DrawGL {
      * @return the bounds of the text
      */
     public static Rectangle2D drawString(GLAutoDrawable drawable, int fontSize, float x, float y, float alignmentX, Color color, String s) {
-        if (textRenderer == null || textRenderer.getFont().getSize() != fontSize) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false);
+        if (getTextRenderer() == null || getTextRenderer().getFont().getSize() != fontSize) {
+            setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false));
         }
-        textRenderer.beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
-        textRenderer.setColor(color);
-        Rectangle2D r = textRenderer.getBounds(s);
-        textRenderer.draw(s, (int) ((x * drawable.getSurfaceWidth()) - alignmentX * r.getWidth()), (int) (y * drawable.getSurfaceHeight()));
-        textRenderer.endRendering();
+        getTextRenderer().beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+        getTextRenderer().setColor(color);
+        Rectangle2D r = getTextRenderer().getBounds(s);
+        getTextRenderer().draw(s, (int) ((x * drawable.getSurfaceWidth()) - alignmentX * r.getWidth()), (int) (y * drawable.getSurfaceHeight()));
+        getTextRenderer().endRendering();
         return r;
     }
 
     /**
      * Draws a string using TextRenderer.draw using native GL coordinates,
-     * usually setup to represent pixels on AEChip
+     * usually setup to represent pixels on AEChip.
+     * Embedded newlines are not rendered as additional lines.
      *
      * @param gl the rendering context surface
      * @param fontSize typically 12 to 36
@@ -279,14 +280,14 @@ public final class DrawGL {
      * @return the bounds of the text
      */
     public static Rectangle2D drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
-        if (textRenderer == null || textRenderer.getFont().getSize() != fontSize) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false);
+        if (getTextRenderer() == null || getTextRenderer().getFont().getSize() != fontSize) {
+            setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false));
         }
-        textRenderer.begin3DRendering();
-        textRenderer.setColor(color);
-        Rectangle2D r = textRenderer.getBounds(s);
-        textRenderer.draw(s, (int) (x - alignmentX * r.getWidth()), (int) (y));
-        textRenderer.end3DRendering();
+        getTextRenderer().begin3DRendering();
+        getTextRenderer().setColor(color);
+        Rectangle2D r = getTextRenderer().getBounds(s);
+        getTextRenderer().draw(s, (int) (x - alignmentX * r.getWidth()), (int) (y));
+        getTextRenderer().end3DRendering();
         return r;
     }
 
@@ -307,5 +308,21 @@ public final class DrawGL {
         drawString(gl, fontSize, x+1, y-1, alignmentX, Color.black, s);
         Rectangle2D r = drawString(gl, fontSize, x, y, alignmentX, color, s);
         return r;
+    }
+
+    /**
+     * Returns the text renderer if it has been initialized. These should only be initialized in the OpenGL rendering context.
+     * @return the textRenderer
+     */
+    public static TextRenderer getTextRenderer() {
+        return textRenderer;
+    }
+
+    /**
+     * Allows setting a text renderer for DrawGL, which might be useful for determining a scale, etc, before rendering.
+     * @param aTextRenderer the textRenderer to set
+     */
+    public static void setTextRenderer(TextRenderer aTextRenderer) {
+        textRenderer = aTextRenderer;
     }
 }
