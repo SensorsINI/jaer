@@ -61,8 +61,8 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     OutputEventIterator<ApsDvsEvent> outItr = outputPacket.outputIterator();
     private int firstEventTimestamp = 0, packetDurationUs = 0, packetEventCount = 0, renderedEventCount = 0; // for actual packet
 
-    private ApsDvsEventPacket<ApsDvsEvent> emptyPacket=new ApsDvsEventPacket(ApsDvsEvent.class); // empty packet to return if there is no output packet yet
-    
+    private ApsDvsEventPacket<ApsDvsEvent> emptyPacket = new ApsDvsEventPacket(ApsDvsEvent.class); // empty packet to return if there is no output packet yet
+
     private boolean packetWasFinished = true; // flag set when output packet is finished so output can be reset on next input packet
 
     private EngineeringFormat engFmt = new EngineeringFormat();
@@ -110,7 +110,14 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         }
     }
 
-    boolean addEvent(ApsDvsEvent e) {
+    /**
+     * Adds event to output and checks if enough events have been accumulated or
+     * any of the other conditions have been satisfied
+     *
+     * @param e the event
+     * @return true if packet is full
+     */
+    private boolean addEvent(ApsDvsEvent e) {
         if ((e.isFilteredOut())) {
             if (e.isApsData()) {
                 log.severe("APS event is filtered, should not happen");
@@ -125,7 +132,11 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             packetEventCount++;
             packetDurationUs = eout.getTimestamp() - firstEventTimestamp;
             if (method == Method.ConstantEventNumber) {
-                if (packetEventCount >= constantEventNumber) {
+                // if either 1: enough events AND packet long enough, OR 2: packet too long
+                // then packet is done
+                if ((packetEventCount >= constantEventNumber
+                        && (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
+                        || (maxPacketDurationUs > 0 && packetDurationUs >= maxPacketDurationUs)) {
 //                    log.fine(String.format("packet done with %,d DVS events", packetEventCount));
                     return true;
                 }
@@ -134,7 +145,9 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                     clearAreaCounts();
                 }
                 int c = ++areaCounts[e.x >> areaEventNumberSubsampling][e.y >> areaEventNumberSubsampling];
-                if (c >= constantEventNumber) {
+                if ((c >= constantEventNumber
+                        && (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
+                        || (maxPacketDurationUs > 0 && packetDurationUs >= maxPacketDurationUs)) {
 //                    log.fine(String.format("packet done with %,d areaCounts DVS events", packetEventCount));
                     clearAreaCounts();
                     return true;
@@ -166,19 +179,16 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         while (leftoverItr.hasNext() || inItr.hasNext()) {
             // first take leftover events
             ApsDvsEvent e = leftoverItr.hasNext() ? (ApsDvsEvent) leftoverItr.next() : (ApsDvsEvent) inItr.next(); // first take leftover events
-            if (e.getReadoutType() == ApsDvsEvent.ReadoutType.SOF
-                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.EOF
-                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.SOE
-                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.EOE) {
-                log.fine(e.toString());
-            }
+//            if (e.getReadoutType() == ApsDvsEvent.ReadoutType.SOF
+//                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.EOF
+//                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.SOE
+//                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.EOE) {
+//                log.fine(e.toString());
+//            }
 
             boolean packetDone = addEvent(e);
 
-            if ((packetDone 
-                    || (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
-                    || (maxPacketDurationUs > 0 && (packetDurationUs >= maxPacketDurationUs))
-                ){
+            if (packetDone) {
                 finishPacket(leftoverItr, inItr);
                 controlInputDataRate();
                 return outputPacket; // should not come here often, only if there are no events in this period
@@ -193,13 +203,13 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
                 AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
                 final int leftOverCount = leftOverEvents.getSize();
-                if (leftOverCount < chip.getNumPixels()*3 && player.getPlaybackMode()==AbstractAEPlayer.PlaybackMode.FixedPacketSize) {
+                if (leftOverCount < chip.getNumPixels() * 3 && player.getPlaybackMode() == AbstractAEPlayer.PlaybackMode.FixedPacketSize) {
                     player.setPlaybackMode(AbstractAEPlayer.PlaybackMode.FixedTimeSlice);
-                    log.fine(String.format("Set play mode to fixed time slice %,d us to fill buffer",player.getTimesliceUs()));
-                } else if (leftOverCount > chip.getNumPixels()* 10 && player.getPlaybackMode()==AbstractAEPlayer.PlaybackMode.FixedTimeSlice) {
+                    log.fine(String.format("Set play mode to fixed time slice %,d us to fill buffer", player.getTimesliceUs()));
+                } else if (leftOverCount > chip.getNumPixels() * 10 && player.getPlaybackMode() == AbstractAEPlayer.PlaybackMode.FixedTimeSlice) {
                     player.setPlaybackMode(AbstractAEPlayer.PlaybackMode.FixedPacketSize);
-                    player.setPacketSizeEvents(constantEventNumber/2);
-                    log.fine(String.format("Automatically set input packet size to constantEventNumber/2=%,d", constantEventNumber/2));
+                    player.setPacketSizeEvents(constantEventNumber / 2);
+                    log.fine(String.format("Automatically set input packet size to constantEventNumber/2=%,d", constantEventNumber / 2));
                 }
             }
         }
