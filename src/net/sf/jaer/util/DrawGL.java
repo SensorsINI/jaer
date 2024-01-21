@@ -304,7 +304,7 @@ public final class DrawGL {
      * @param s the string to draw
      * @return the bounds of the text
      */
-       public static Rectangle2D drawStrinDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+       public static Rectangle2D drawStringDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
         drawString(gl, fontSize, x+1, y-1, alignmentX, Color.black, s);
         Rectangle2D r = drawString(gl, fontSize, x, y, alignmentX, color, s);
         return r;
