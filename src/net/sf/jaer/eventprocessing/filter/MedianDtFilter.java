@@ -80,9 +80,9 @@ public class MedianDtFilter extends AbstractNoiseFilter {
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
             BasicEvent e = (BasicEvent) eIn;
-            if (e.isSpecial()) {
-                continue;
-            }
+//            if (e.isSpecial()) {
+//                continue;
+//            }
             totalEventCount++;
             int ts = e.timestamp;
             lastTimestamp = ts;

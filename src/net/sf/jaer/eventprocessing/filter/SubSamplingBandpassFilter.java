@@ -283,7 +283,7 @@ public class SubSamplingBandpassFilter extends EventFilter2D implements Observer
 
 		for ( Object obj:in ){
 			PolarityEvent i = (PolarityEvent)obj;
-                        if(i.isSpecial()) continue;
+//                        if(i.isSpecial()) continue;
 			// if the event occurred too close after a surround spike don't pass it.
 			if ( filterEvent(i) ){
 				o.nextOutput().copyFrom(i);
