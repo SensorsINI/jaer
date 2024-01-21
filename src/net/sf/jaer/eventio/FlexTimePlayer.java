@@ -5,7 +5,6 @@
  */
 package net.sf.jaer.eventio;
 
-import ch.unizh.ini.jaer.projects.minliu.PatchMatchFlow;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import java.awt.Color;
@@ -15,6 +14,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.Level;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -25,11 +25,13 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEPlayer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
+import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
  * Plays DVS & DAVIS recordings (with APS frames) at either constant time per
@@ -51,22 +53,36 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     protected int constantFrameDurationUs = getInt("constantFrameDurationUs", 30000);
     protected int maxPacketDurationUs = getInt("maxPacketDurationUs", 0);
     protected int minPacketDurationUs = getInt("minPacketDurationUs", 0);
-    private ApsDvsEventPacket<ApsDvsEvent> out = new ApsDvsEventPacket(ApsDvsEvent.class), leftOverEvents = new ApsDvsEventPacket<ApsDvsEvent>(ApsDvsEvent.class);
-    OutputEventIterator<ApsDvsEvent> outItr = out.outputIterator();
-    private int eventCounter = 0;
-    private boolean resetPacket = true;
-    private int firstEventTimestamp = 0, packetDurationUs = 0, packetEventCount = 0; // for actual packet
+    // packets to hold output events and leftover events
+    private ApsDvsEventPacket<ApsDvsEvent> outputPacket = new ApsDvsEventPacket(ApsDvsEvent.class),
+            leftOverEvents = new ApsDvsEventPacket<>(ApsDvsEvent.class),
+            leftOverEventsTmp = new ApsDvsEventPacket<>(ApsDvsEvent.class); // buffer used to copy leftover and input back to leftover
+    // iterators for output packet that only is reset after packet is full and new one is started
+    OutputEventIterator<ApsDvsEvent> outItr = outputPacket.outputIterator();
+    private int firstEventTimestamp = 0, packetDurationUs = 0, packetEventCount = 0, renderedEventCount = 0; // for actual packet
+
+    private ApsDvsEventPacket<ApsDvsEvent> emptyPacket=new ApsDvsEventPacket(ApsDvsEvent.class); // empty packet to return if there is no output packet yet
+    
+    private boolean packetWasFinished = true; // flag set when output packet is finished so output can be reset on next input packet
+
     private EngineeringFormat engFmt = new EngineeringFormat();
-    // counting events into subsampled areas, when count exceeds the threshold in any area, the slices are rotated
 
     // AreaEventCount stuff
+    // counting events into subsampled areas, when count exceeds the threshold in any area, the slices are rotated
     protected int areaEventNumberSubsampling = getInt("areaEventNumberSubsampling", 5);
     private int[][] areaCounts = null;
-    private int numAreas = 1;
     private int sx, sy;
     private volatile boolean showAreaCountAreasTemporarily = false;
     private final int SHOW_STUFF_DURATION_MS = 4000;
     private volatile TimerTask stopShowingStuffTask = null;
+
+    private AEPlayer.PlaybackMode playbackModeOriginal = null;
+
+    private boolean automaticallyControlInputRate = getBoolean("automaticallySetInputRate", true);
+    private static final int LEFTOVER_EVENT_COUNT_LOW_THRESHOLD = 10000;
+    private static final int LEFTOVER_EVENT_COUNT_HIGH_THRESHOLD = 100000;
+    private static final int EVENT_COUNT_FILTER_TAU_MS = 1000;
+    private LowpassFilter eventCountFilter = new LowpassFilter(EVENT_COUNT_FILTER_TAU_MS);
 
     private boolean enablePacketDurationLogging = false;
     private TobiLogger actualPacketDurationLogger = null;
@@ -84,8 +100,9 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("maxPacketDurationUs", "Maximum duration of packet in us; set to 0 to disable");
         setPropertyTooltip("minPacketDurationUs", "Minimum duration of packet in us; set to 0 to disable");
         setPropertyTooltip("areaEventNumberSubsampling", "How many bits to shift x and y addresses for AreaEventCount method; determines the size of the areas.");
+        setPropertyTooltip("automaticallyControlInputRate", "Automatically set input packet duration or time to control the number of left over events.");
         engFmt.setPrecision(2);
-        out.allocate(constantEventNumber);
+        outputPacket.allocate(constantEventNumber);
         try {
             method = Method.valueOf(getString("method", Method.ConstantEventNumber.toString()));
         } catch (IllegalArgumentException e) {
@@ -93,96 +110,136 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         }
     }
 
+    boolean addEvent(ApsDvsEvent e) {
+        if ((e.isFilteredOut())) {
+            if (e.isApsData()) {
+                log.severe("APS event is filtered, should not happen");
+            } else if (e.isImuSample()) {
+                log.severe("IMU event is filtered, should not happen");
+            }
+            return false; // filter out filtered events
+        }
+        ApsDvsEvent eout = outItr.nextOutput();
+        eout.copyFrom(e); // copy the event to the output
+        if (e.isDVSEvent()) {
+            packetEventCount++;
+            packetDurationUs = eout.getTimestamp() - firstEventTimestamp;
+            if (method == Method.ConstantEventNumber) {
+                if (packetEventCount >= constantEventNumber) {
+//                    log.fine(String.format("packet done with %,d DVS events", packetEventCount));
+                    return true;
+                }
+            } else if (method == Method.AreaEventCount) {
+                if (areaCounts == null) {
+                    clearAreaCounts();
+                }
+                int c = ++areaCounts[e.x >> areaEventNumberSubsampling][e.y >> areaEventNumberSubsampling];
+                if (c >= constantEventNumber) {
+//                    log.fine(String.format("packet done with %,d areaCounts DVS events", packetEventCount));
+                    clearAreaCounts();
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false; // cannot finish packet on APS or IMU
+    }
+
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        Iterator<BasicEvent> i = null, leftOverIterator = null;
-        if (in instanceof ApsDvsEventPacket) {
-            i = ((ApsDvsEventPacket) in).fullIterator();
-            leftOverIterator = ((ApsDvsEventPacket) leftOverEvents).fullIterator();
-        } else {
-            i = ((EventPacket) in).inputIterator();
-            leftOverIterator = ((EventPacket) leftOverEvents).inputIterator();
+        if (!(in instanceof ApsDvsEventPacket)) {
+            String s = String.format("FlexTimePlayer only works with DAVIS input packets\nActual input packet is %s", in.toString());
+            log.severe(s);
+            showWarningDialogInSwingThread(s, "Wrong input packet type");
+            throw new RuntimeException(s);
         }
-        if (resetPacket) {
-            outItr = out.outputIterator();
-            resetPacket = false;
+        ApsDvsEventPacket inPacket = (ApsDvsEventPacket) in;
+        Iterator<ApsDvsEvent> inItr = inPacket.fullIterator();
+        Iterator<ApsDvsEvent> leftoverItr = leftOverEvents.fullIterator();
+        if (packetWasFinished) {
+            outItr = outputPacket.outputIterator(); // reset output iterator to start a new output packet
+            packetWasFinished = false;
+            packetEventCount = 0;
         }
-        while (leftOverIterator.hasNext()) {
-            BasicEvent e = leftOverIterator.next();
-            if (!(e.isFilteredOut())) {
-                BasicEvent eout = outItr.nextOutput();
-                eout.copyFrom(e);
-                if ((!(in instanceof ApsDvsEventPacket)) || ((ApsDvsEvent) e).isDVSEvent()) {
-                    ++eventCounter;
+
+//        log.fine(String.format("%,d leftover, %,d input events", leftOverEvents.getSize(), inPacket.getSize()));
+        while (leftoverItr.hasNext() || inItr.hasNext()) {
+            // first take leftover events
+            ApsDvsEvent e = leftoverItr.hasNext() ? (ApsDvsEvent) leftoverItr.next() : (ApsDvsEvent) inItr.next(); // first take leftover events
+            if (e.getReadoutType() == ApsDvsEvent.ReadoutType.SOF
+                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.EOF
+                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.SOE
+                    || e.getReadoutType() == ApsDvsEvent.ReadoutType.EOE) {
+                log.fine(e.toString());
+            }
+
+            boolean packetDone = addEvent(e);
+
+            if ((packetDone 
+                    || (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
+                    || (maxPacketDurationUs > 0 && (packetDurationUs >= maxPacketDurationUs))
+                ){
+                finishPacket(leftoverItr, inItr);
+                controlInputDataRate();
+                return outputPacket; // should not come here often, only if there are no events in this period
+            } // packetDone block
+        } // while loop
+        return emptyPacket; // if packet not complete, return empty packet
+    }
+
+    private void controlInputDataRate() {
+        if (automaticallyControlInputRate) {
+            // if leftOverEvents is growing,tAe slow down playback, otherwise speed it up
+            if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
+                AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+                final int leftOverCount = leftOverEvents.getSize();
+                if (leftOverCount < chip.getNumPixels()*3 && player.getPlaybackMode()==AbstractAEPlayer.PlaybackMode.FixedPacketSize) {
+                    player.setPlaybackMode(AbstractAEPlayer.PlaybackMode.FixedTimeSlice);
+                    log.fine(String.format("Set play mode to fixed time slice %,d us to fill buffer",player.getTimesliceUs()));
+                } else if (leftOverCount > chip.getNumPixels()* 10 && player.getPlaybackMode()==AbstractAEPlayer.PlaybackMode.FixedTimeSlice) {
+                    player.setPlaybackMode(AbstractAEPlayer.PlaybackMode.FixedPacketSize);
+                    player.setPacketSizeEvents(constantEventNumber/2);
+                    log.fine(String.format("Automatically set input packet size to constantEventNumber/2=%,d", constantEventNumber/2));
                 }
             }
         }
-//        // if leftOverEvents is growing, slow down playback, otherwise speed it up
-//        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
-//            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-//            final int leftOverCount = leftOverEvents.getSize();
-//            if (leftOverCount > 1000000) {
-//                player.slowerAction.actionPerformed(null);
-//            } else if(leftOverCount<10000) {
-//                player.fasterAction.actionPerformed(null);
-//            }
-//        }
+    }
 
-        leftOverEvents.clear();
-        while (i.hasNext()) {
-            BasicEvent e = i.next();
-            if ((e.isFilteredOut())) {
-                continue;
-            }
-            BasicEvent eout = outItr.nextOutput();
-            eout.copyFrom(e);
-            if ((!(in instanceof ApsDvsEventPacket)) || (((ApsDvsEvent) e).isDVSEvent())) {
-                ++eventCounter;
-                switch (method) {
-                    case ConstantEventNumber:
-                    case AreaEventCount:
-                        boolean frameDone = false;
-                        if (method == Method.ConstantEventNumber) {
-                            if (eventCounter >= constantEventNumber) {
-                                frameDone = true;
-                            }
-                        } else if (method == Method.AreaEventCount) {
-                            if (areaCounts == null) {
-                                clearAreaCounts();
-                            }
-                            int c = ++areaCounts[e.x >> areaEventNumberSubsampling][e.y >> areaEventNumberSubsampling];
-                            if (c >= constantEventNumber) {
-                                frameDone = true;
-                                clearAreaCounts();
-                            }
-                        }
-                        packetDurationUs = eout.getTimestamp() - firstEventTimestamp;
-                        if ((frameDone || (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
-                                || (maxPacketDurationUs > 0 && (packetDurationUs >= maxPacketDurationUs))) {
-                            resetPacket = true;
-                            packetEventCount = eventCounter;
-                            eventCounter = 0;
-
-                            // Store duration and event count to file if logging is enabled
-                            if (actualPacketDurationLogger != null && actualPacketDurationLogger.isEnabled()) {
-                                actualPacketDurationLogger.log(String.format("%d\t%d\t%d", sliceDurationPacketCount++, packetDurationUs, packetEventCount));
-                            }
-                            
-                            OutputEventIterator<ApsDvsEvent> iLeftOver = leftOverEvents.outputIterator();
-                            while (i.hasNext()) {
-                                BasicEvent eLeftOver = i.next();
-                                if (resetPacket) {
-                                    firstEventTimestamp = eLeftOver.getTimestamp();
-                                }
-                                ApsDvsEvent outputLeftOverEvent = iLeftOver.nextOutput();
-                                outputLeftOverEvent.copyFrom(eLeftOver);
-                            }
-                            return out;
-                        }
-                }
-            }
+    private void finishPacket(Iterator<ApsDvsEvent> leftoverItr, Iterator<ApsDvsEvent> inItr) {
+        // this packet is done so store some state about it
+        firstEventTimestamp = outputPacket.getLastTimestamp(); // to determine when to finish next packet
+        renderedEventCount = packetEventCount;
+        // Store duration and event count to file if logging is enabled
+        if (actualPacketDurationLogger != null && actualPacketDurationLogger.isEnabled()) {
+            actualPacketDurationLogger.log(String.format("%d\t%d\t%d", sliceDurationPacketCount++, packetDurationUs, packetEventCount));
         }
-        return new EventPacket(); // should not come here often, only if there are no events in this period
+
+        // there could be events left in both input and leftover packets
+        // we want to append the leftover input events to the end of the leftoverEvents packet
+        // copy left over events from input packet to end of leftOverEvents packet
+        OutputEventIterator tmpItr = leftOverEventsTmp.outputIterator();
+        int nLeftOver = 0;
+        while (leftoverItr.hasNext()) {
+            ApsDvsEvent ev = leftoverItr.next();
+            tmpItr.nextOutput().copyFrom(ev);
+            nLeftOver++;
+        }
+
+        int nInLeftOver = 0;
+        while (inItr.hasNext()) {
+            ApsDvsEvent ev = inItr.next();
+
+            tmpItr.nextOutput().copyFrom(ev);
+//                    tmpItr.nextOutput().copyFrom(inItr.next());
+            nInLeftOver++;
+        }
+        ApsDvsEventPacket tmp = leftOverEvents;
+        leftOverEvents = leftOverEventsTmp;
+        leftOverEventsTmp = tmp;
+        if (nLeftOver > 0 || nInLeftOver > 0) {
+            log.fine(String.format("Copied %,d leftover and %,d input events to buffer", nLeftOver, nInLeftOver));
+        }
+        packetWasFinished = true;
     }
 
     private void clearAreaCounts() {
@@ -191,7 +248,6 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         }
         if (areaCounts == null || areaCounts.length != 1 + (sx >> getAreaEventNumberSubsampling())) {
             int nax = 1 + (sx >> getAreaEventNumberSubsampling()), nay = 1 + (sy >> getAreaEventNumberSubsampling());
-            numAreas = nax * nay;
             areaCounts = new int[nax][nay];
         } else {
             for (int[] i : areaCounts) {
@@ -201,12 +257,12 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
-    public void resetFilter() {
-        eventCounter = 0;
-        resetPacket = true;
+    synchronized public void resetFilter() {
         firstEventTimestamp = 0;
         packetDurationUs = 0;
         packetEventCount = 0;
+        leftOverEvents.clear();
+        outputPacket.clear();
     }
 
     @Override
@@ -229,7 +285,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     synchronized public void setConstantEventNumber(int constantEventNumber) {
         this.constantEventNumber = constantEventNumber;
         putInt("constantEventNumber", constantEventNumber);
-        out.allocate(constantEventNumber);
+        outputPacket.allocate(constantEventNumber);
 //        if (isFilterEnabled() && (chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
 //            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
 //            player.setFlexTimeEnabled();
@@ -241,27 +297,34 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-//        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
-//            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
-//            if (yes) {
-//                player.setFlexTimeEnabled();
-//                player.setPacketSizeEvents(constantEventNumber); // ensure that we don't get more DVS events than can be returned in one of our out packets
-//                log.info("set player to flex time mode and set packet size to match nEventsPerPacket");
-//            } else {
-//                player.setFixedTimesliceEnabled();
-//            }
-//        }
+        if ((chip.getAeViewer() != null) && (chip.getAeViewer().getAePlayer() != null)) {
+            AbstractAEPlayer player = chip.getAeViewer().getAePlayer();
+            if (yes) {
+                playbackModeOriginal = player.getPlaybackMode();
+                player.setFlexTimeEnabled();
+                player.setPacketSizeEvents(constantEventNumber); // ensure that we don't get more DVS events than can be returned in one of our out packets
+                log.info(String.format("set player to flex time mode with event count %,d", constantEventNumber));
+            } else {
+                if (playbackModeOriginal != null) {
+                    player.setPlaybackMode(playbackModeOriginal);
+                }
+            }
+        }
     }
 
     @Override
-    public void annotate(GLAutoDrawable drawable) {
+    synchronized public void annotate(GLAutoDrawable drawable) {
         if (!isFilterEnabled()) {
             return;
         }
         MultilineAnnotationTextRenderer.setColor(Color.CYAN);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
-        MultilineAnnotationTextRenderer.setScale(.5f);
-        MultilineAnnotationTextRenderer.renderMultilineString(String.format("%d events, %10ss", packetEventCount, engFmt.format(1e-6 * packetDurationUs)));
+        MultilineAnnotationTextRenderer.setScale(.4f);
+        MultilineAnnotationTextRenderer.renderMultilineString(
+                String.format("%,10d events, %10ss",
+                        renderedEventCount,
+                        engFmt.format(1e-6 * packetDurationUs))
+        );
 
         if (method == Method.AreaEventCount && showAreaCountAreasTemporarily) {
             GL2 gl = drawable.getGL().getGL2();
@@ -338,6 +401,9 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
      * @param maxPacketDurationUs the maxPacketDurationUs to set
      */
     public void setMaxPacketDurationUs(int maxPacketDurationUs) {
+        if (maxPacketDurationUs < 0) {
+            maxPacketDurationUs = 0;
+        }
         this.maxPacketDurationUs = maxPacketDurationUs;
         putInt("maxPacketDurationUs", maxPacketDurationUs);
     }
@@ -353,6 +419,9 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
      * @param minPacketDurationUs the minPacketDurationUs to set
      */
     public void setMinPacketDurationUs(int minPacketDurationUs) {
+        if (minPacketDurationUs < 0) {
+            minPacketDurationUs = 0;
+        }
         this.minPacketDurationUs = minPacketDurationUs;
         putInt("minPacketDurationUs", minPacketDurationUs);
     }
@@ -397,5 +466,21 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             }
         }
         actualPacketDurationLogger.setEnabled(enableImuTimesliceLogging);
-    }    
+    }
+
+    /**
+     * @return the automaticallyControlInputRate
+     */
+    public boolean isAutomaticallyControlInputRate() {
+        return automaticallyControlInputRate;
+    }
+
+    /**
+     * @param automaticallyControlInputRate the automaticallyControlInputRate to
+     * set
+     */
+    public void setAutomaticallyControlInputRate(boolean automaticallyControlInputRate) {
+        this.automaticallyControlInputRate = automaticallyControlInputRate;
+        putBoolean("automaticallySetInputRate", automaticallyControlInputRate);
+    }
 }
