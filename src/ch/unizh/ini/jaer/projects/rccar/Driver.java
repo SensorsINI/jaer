@@ -186,7 +186,7 @@ public class Driver extends EventFilter2D implements FrameAnnotater {
             return true; // force active
         }
     }
-    static Logger log = Logger.getLogger("Driver");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     private SiLabsC8051F320_USBIO_CarServoController servo;
     private LowpassFilter steeringFilter = new LowpassFilter(); // steering command filter
     private LowpassFilter steerAngleFilter = new LowpassFilter(); // steer angle filter, same as above but yulia's

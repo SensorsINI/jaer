@@ -24,7 +24,7 @@ import java.util.prefs.Preferences;
 public class UDPMesssgeSender {
 
     final static Preferences prefs = Preferences.userNodeForPackage(UDPMesssgeSender.class);
-    static final Logger log = Logger.getLogger("UDPMesssgeSender");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     protected DatagramChannel channel = null;
     protected DatagramSocket socket = null;
     int sequenceNumber = 0;  // increments on each message, used to detect dropped packets at receiver

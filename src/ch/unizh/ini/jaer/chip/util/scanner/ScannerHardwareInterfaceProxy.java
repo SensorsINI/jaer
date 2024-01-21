@@ -18,7 +18,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceProxy;
  */
 public class ScannerHardwareInterfaceProxy extends HardwareInterfaceProxy implements ScannerHardwareInterface {
 
-//     static final Logger log = Logger.getLogger("HardwareInterfaceProxy");
+//     static final Logger log = Logger.getLogger("net.sf.jaer");
     protected ScannerHardwareInterface hw;
     protected int scanX, scanY;
     protected boolean scanContinuouslyEnabled;

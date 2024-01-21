@@ -35,7 +35,7 @@ import net.sf.jaer.util.WindowSaver.DontRestore;
  */
 public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore {
 
-    private static Logger log = Logger.getLogger("JaerUpdater");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
 
     /**
      * Creates new form JaerUpdaterFrame. Make sure to run this from swing

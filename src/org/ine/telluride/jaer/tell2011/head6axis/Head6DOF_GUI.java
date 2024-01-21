@@ -30,7 +30,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class Head6DOF_GUI extends javax.swing.JFrame implements PropertyChangeListener {
 
-    private static Logger log = Logger.getLogger("Head6DOF_ServoController");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     Head6DOF_ServoController controller = null;
     private int w = 200, h = 200;
 

@@ -32,7 +32,7 @@ import javax.swing.JPanel;
  */
 public class GoingFishingFishingRodControlFrame extends javax.swing.JFrame {
 
-    static Logger log = Logger.getLogger("GoingFishing");
+    static Logger log = Logger.getLogger("net.sf.jaer");
 
     private long lastTimeMs = 0;
     private boolean recording = false;

@@ -24,7 +24,7 @@ import net.sf.jaer.hardwareinterface.udp.smartEyeTDS.SmartEyeTDS;
 public class UDPInterfaceFactory implements HardwareInterfaceFactoryInterface {
     //TODO Implement a nice way to build the list of available UDPInterfaces
 
-    private static final Logger log = Logger.getLogger("USBIOHardwareInterfaceFactory");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * Each call to {@link #getNumInterfacesAvailable() } waits this long for a data packet.
      */

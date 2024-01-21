@@ -52,7 +52,7 @@ import net.sf.jaer.hardwareinterface.serial.HWP_UART;
 @Description("Controls 6-DOF head from the group of Jorg Conradt at TUM")
 public class Head6DOF_ServoController extends EventFilter2D { // extends EventFilter only to allow enclosing in filter
 
-    protected static final Logger log = Logger.getLogger("Head6DOF_ServoController");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     int warningCount = 10;
     HWP_UART serialPort;
     final int NSERVOS = 6;

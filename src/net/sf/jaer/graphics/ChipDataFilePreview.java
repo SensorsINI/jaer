@@ -51,7 +51,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
     JLabel infoLabel;
     AEChip chip;
     volatile boolean indexFileEnabled = false;
-    Logger log = Logger.getLogger("AEViewer");
+    Logger log = Logger.getLogger("net.sf.jaer");
     /**
      * The time in us of packets by default
      */

@@ -23,7 +23,7 @@ public class CameraMap extends ConcurrentHashMap<InetSocketAddress, Integer> imp
     public static final long serialVersionUID = 42L;
 
     // private fields, must be initialized in init() for readObject to work
-    private static Logger log = Logger.getLogger("MultiUDPNetworkDVS128Camera");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     private Map<Integer, InetSocketAddress> positionMap;
     private PropertyChangeSupport support;
 

@@ -169,7 +169,7 @@ import org.apache.commons.io.FilenameUtils;
 public class ImageDisplay extends GLJPanel implements GLEventListener {
 
     private static Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
-    static final Logger log = Logger.getLogger("ImageDisplay");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     private int fontSize = 20;
     private int sizeX = 0, sizeY = 0;
     /**

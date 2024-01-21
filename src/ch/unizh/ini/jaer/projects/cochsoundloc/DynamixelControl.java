@@ -18,7 +18,7 @@ import java.util.logging.Logger;
  */
 public class DynamixelControl {
 
-    public Logger log = Logger.getLogger("Dynamixel");
+    public Logger log = Logger.getLogger("net.sf.jaer");
     public OutputStream out;
     public InputStream in;
 
@@ -51,7 +51,7 @@ public class DynamixelControl {
         private byte[] buffer = new byte[1024];
         private static volatile boolean logResponses = false;
         private boolean waitingForStarResponse = false;
-        private static Logger loggerResponses = Logger.getLogger("Pan-Tilt-Responses");
+        private static Logger loggerResponses = Logger.getLogger("net.sf.jaer");
 
         /**
          *

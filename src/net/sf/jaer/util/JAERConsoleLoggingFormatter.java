@@ -84,7 +84,7 @@ public class JAERConsoleLoggingFormatter extends SimpleFormatter{
     }
 
 //    public static void main(String[] args){
-//        Logger log=Logger.getLogger("test");
+//        Logger log=Logger.getLogger("net.sf.jaer");
 //        log.info("info log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
 //        log.warning("warning log jjjjjjjjjjjjjjjjjjjjj jjjaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccccccccc");
 //    }

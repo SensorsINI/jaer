@@ -31,7 +31,7 @@ package will not run there.  Also includes a static method for registering a PnP
  */
 public class UsbIoUtilities {
 
-    static final Logger log = Logger.getLogger("USBIO");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     /** classes can check this before trying to do things with UsbIo */
     private static boolean libraryLoaded = false;
 

@@ -53,7 +53,7 @@ import net.sf.jaer.event.BasicEvent;
 
 public class CochleaSVMTwoEars extends ISIFilterTwoEars implements FrameAnnotater, Observer, PropertyChangeListener {
 
-    protected static final Logger log = Logger.getLogger("CochleaSVM");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     public FilterChain filterChain; //filter chain that holds the enclosed filters
     //static public ChannelEventRateEstimator channelEventRateFilter = null;  //the CahnnelEventRateEstimator
     private BufferedWriter writer;  //file writer that writes into the training and model files

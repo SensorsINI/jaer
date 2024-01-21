@@ -48,7 +48,7 @@ public class SampledSoundPlayer implements SoundPlayerInterface {
     private byte[] samples = null; // , spikeSoundSamplesLeft, spikeSoundSamplesRight;
 //    private AudioInputStream spikeStream, spikeStreamLeft, spikeStreamRight;
     private SourceDataLine line = null;
-    static Logger log = Logger.getLogger("SampledSoundPlayer");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     private SampledSoundPlayerThread T;
     // used for buffering in to out in play()...
     private byte[] abData = null;

@@ -38,7 +38,7 @@ public class RecentFiles {
     int menuPosition=0;
     public static final int MAX_FILES=20, MAX_FOLDERS=15;
     ArrayList<JMenuItem> fileMenuList=null, folderMenuList=null;
-    private static Logger log=Logger.getLogger("RecentFiles");
+    private static Logger log=Logger.getLogger("net.sf.jaer");
     
     /** Creates a new instance of RecentFiles
      * @param prefs the Preferences node to store recent files in

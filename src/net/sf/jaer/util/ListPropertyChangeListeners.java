@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * @author Tobi
  */
 public class ListPropertyChangeListeners {
-    Logger log=Logger.getLogger("Debug");
+    Logger log=Logger.getLogger("net.sf.jaer");
     public static String listListeners(PropertyChangeSupport support){
         if(support==null) return "null support";
         StringBuilder sb=new StringBuilder();

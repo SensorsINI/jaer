@@ -25,7 +25,7 @@ import net.sf.jaer.util.ExceptionListener;
 public class PanTiltCalibrationGUI extends javax.swing.JFrame implements ExceptionListener {
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
-    Logger log = Logger.getLogger("PanTiltGUI");
+    Logger log = Logger.getLogger("net.sf.jaer");
     private PanTilt panTilt;
     private int w = 200,  h = 200,  x0 = 0,  y0 = 0;
     private Point2D.Float lastPanTilt = new Point2D.Float(0.5f, 0.5f);

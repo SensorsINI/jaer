@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  */
 final public class TimeLimiter extends Timer {
 
-    private static Logger log = Logger.getLogger("TimeLimiter");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
 //    int counter=0;
     public final int DEFAULT_TIME_LIMIT_MS = 10;
     volatile public boolean timedOut = false;

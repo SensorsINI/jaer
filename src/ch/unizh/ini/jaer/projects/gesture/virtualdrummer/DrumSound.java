@@ -25,7 +25,7 @@ public class DrumSound implements SoundPlayerInterface{
     DrumSounds drumSounds;
     private Timer timer = new Timer();
     private MidiChannel[] channels = null; // each channel is one drum
-    private Logger log = Logger.getLogger("DrumSound");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     private Synthesizer synth = null;
     private int index;
     private String name;

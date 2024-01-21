@@ -21,7 +21,7 @@ import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
  */
 final public class CochleaAMS1cADCSamples implements Observer {
 
-    final static Logger log = Logger.getLogger("CochleaAMS1c");
+    final static Logger log = Logger.getLogger("net.sf.jaer");
 //    public static final int WIDTH = 64, HEIGHT = 1;
     public static final int MAX_NUM_SAMPLES = 20000; // fixed max size now, with sync() call to reset to start of array // WIDTH * HEIGHT;
     public static final int NUM_CHANNELS = 4;

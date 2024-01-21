@@ -33,7 +33,7 @@ public final class SampleProbControlPanel extends JTabbedPane {
 
 	private static final long serialVersionUID = -7435419921722582550L;
 
-	private final Logger log = Logger.getLogger("SampleProbControlPanel");
+	private final Logger log = Logger.getLogger("net.sf.jaer");
 
 	private final SampleProb chip;
 	private final SampleProb.Biasgen biasgen;

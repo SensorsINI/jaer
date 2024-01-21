@@ -90,7 +90,7 @@ import org.eclipse.jgit.api.CheckoutResult;
 public class JaerUpdater {
 
     public static final boolean DEBUG = false; // TODO remember to revert false for production version,  true to clone here to tmp folders that do not overwrite our own .git
-    private static Logger log = Logger.getLogger("JaerUpdater");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     private static Preferences prefs = Preferences.userNodeForPackage(JaerUpdater.class);
     public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
 //    private static AEViewerConsoleOutputFrame loggingWindow = null;

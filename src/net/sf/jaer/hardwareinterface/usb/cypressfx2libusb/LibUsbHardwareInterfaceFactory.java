@@ -20,7 +20,7 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
 
 public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
-	private final static Logger log = Logger.getLogger("LibUsbHardwareInterfaceFactory");
+	private final static Logger log = Logger.getLogger("net.sf.jaer");
 
 	private static LibUsbHardwareInterfaceFactory instance = new LibUsbHardwareInterfaceFactory();
 

@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 public class ITDBins {
 
     private ITDCalibrationGaussians calibration = null;
-    private Logger log = Logger.getLogger("ITDBins");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     private float AveragingDecay;
     private int maxITD;
     private int timestamp = 0;

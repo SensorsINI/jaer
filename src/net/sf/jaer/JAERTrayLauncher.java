@@ -41,7 +41,7 @@ import de.thesycon.usbio.PnPNotifyInterface;
  */
 public class JAERTrayLauncher implements PnPNotifyInterface {
 //TODO: keeps restarting every time user quits, because device is closed and then "added" again by reset of USB driver.    
-    static Logger log=Logger.getLogger("JAERTrayLauncher");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     private TrayIcon trayIcon;
     
     PnPNotify pnp;

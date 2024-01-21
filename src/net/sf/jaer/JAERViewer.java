@@ -249,7 +249,7 @@ public class JAERViewer {
             }
             this.splashScreen = splashScreen;
             this.g = splashScreen.createGraphics();
-            logger = Logger.getLogger("");
+            logger = Logger.getLogger("net.sf.jaer");
             logger.addHandler(this);
         }
 
@@ -626,7 +626,7 @@ public class JAERViewer {
         Thread.setDefaultUncaughtExceptionHandler(handler);
 
         //init static fields
-        log = Logger.getLogger("JAERViewer");
+        log = Logger.getLogger("net.sf.jaer");
 
         final java.awt.SplashScreen splash = java.awt.SplashScreen.getSplashScreen();
         if (splash != null) {

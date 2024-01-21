@@ -114,7 +114,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected GLCanvas drawable;
     protected GLU glu; // instance this if we need glu calls on context
     protected GLUT glut = null;
-    protected Logger log = Logger.getLogger("Graphics");
+    protected Logger log = Logger.getLogger("net.sf.jaer");
     private float origin3dx;
     private float origin3dy;
     /**

@@ -48,7 +48,7 @@ public class DVSActApplet extends javax.swing.JApplet {
 
     private AEChip liveChip;
     private ChipCanvas liveCanvas;
-    private Logger log = Logger.getLogger("JAERAppletViewer");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     private AEUnicastInput aeLiveInputStream; // network input stream, from ARC TDS
 //    private AEUnicastOutput aeLiveOutputStream; // streams to client, on same host
     volatile boolean stopflag = false;

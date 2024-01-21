@@ -13,7 +13,7 @@ import java.util.logging.Logger;
 
 public class RodSequence extends ArrayList<RodPosition> implements Serializable {
 
-    static Logger log = Logger.getLogger("GoingFishing");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     static String FILENAME = "filterSettings/GoingFishingRodSequence", FILENAME_SUF=".ser";
 
     private String name;

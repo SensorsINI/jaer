@@ -54,7 +54,7 @@ import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Observer {
 
     Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1cControlPanel.class);
-    Logger log = Logger.getLogger("CochleaAMS1cControlPanel");
+    Logger log = Logger.getLogger("net.sf.jaer");
     CochleaAMS1c chip;
     private CochleaAMS1c.Biasgen biasgen;
     SpinnerNumberModel scannerChannelSpinnerModel = null, scannerPeriodSpinnerModel = null;

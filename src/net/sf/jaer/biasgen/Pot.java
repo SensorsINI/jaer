@@ -28,7 +28,7 @@ generator design kit, programmed over an SPI interface. These are generally IPot
  */
 abstract public class Pot extends Observable implements PreferenceChangeListener {
 
-    protected static Logger log = Logger.getLogger("Pot");
+    protected static Logger log = Logger.getLogger("net.sf.jaer");
 //    /**
 //     * If true, then modifcations to the bias caused by loadPreferences are checked; if the bias is modified by loading the preferred value, then
 //     * setModified(true) is called.

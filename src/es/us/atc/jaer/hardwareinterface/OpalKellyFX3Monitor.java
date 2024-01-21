@@ -39,7 +39,7 @@ import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
  */
 public class OpalKellyFX3Monitor implements AEMonitorInterface, PnPNotifyInterface, ReaderBufferControl{
 
-    private static final Logger LOG = Logger.getLogger("OpalKellyFX3Factory");
+    private static final Logger LOG = Logger.getLogger("net.sf.jaer");
     public static okFrontPanel ok_front_panel;
     
     /** The pool of raw AE packets, used for data transfer */

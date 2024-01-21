@@ -184,12 +184,12 @@ public class DavisRenderer extends AEChipRenderer {
                         grayBuffer.put(0);
                         grayBuffer.put(.5f);
                         grayBuffer.put(.5f);
-                    }else if (colorMode == ColorMode.RedGreen) {
+                    } else if (colorMode == ColorMode.RedGreen) {
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(0);
                         grayBuffer.put(.5f);
-                    }else if (colorMode == ColorMode.WhiteBackground) {
+                    } else if (colorMode == ColorMode.WhiteBackground) {
                         grayBuffer.put(1);
                         grayBuffer.put(1);
                         grayBuffer.put(1);
@@ -330,6 +330,9 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
+        if (pkt.isEmpty()) {
+            return;
+        }
 //        adaptDvsDownsampling();
 
         numEventTypes = pkt.getNumCellTypes();
@@ -347,7 +350,7 @@ public class DavisRenderer extends AEChipRenderer {
         }
 
         if (resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
-            resetAccumulationFlag=false;
+            resetAccumulationFlag = false;
             resetMaps();
 
             if (numEventTypes > 2) {
@@ -355,7 +358,7 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
 
-        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer()!=null && !chip.getAeViewer().isPaused()) {
+        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
             checkPixmapAllocation();
             float fadeby = 1 - 1f / (colorScale + 1);
             float[] f = dvsEventsMap.array();
@@ -417,13 +420,13 @@ public class DavisRenderer extends AEChipRenderer {
     protected void renderDvsEvents(final EventPacket pkt) {
         if (resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
             resetMaps();
-            resetAccumulationFlag=false;
+            resetAccumulationFlag = false;
 
             if (numEventTypes > 2) {
                 resetAnnotationFrame(0.0f);
             }
         }
-        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer()!=null && !chip.getAeViewer().isPaused()) {
+        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
             checkPixmapAllocation();
             float fadeby = 1 - 1f / (colorScale + 1);
             float[] f = dvsEventsMap.array();
@@ -436,7 +439,6 @@ public class DavisRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
         setSpecialCount(0);
- 
 
         final boolean displayEvents = isDisplayEvents();
 

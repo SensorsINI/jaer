@@ -168,7 +168,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     private BeanInfo info;
     private PropertyDescriptor[] props;
     private Method[] methods;
-    private static Logger log = Logger.getLogger("Filters");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     final float fontSize = 10f;
 //    private Border normalBorder, redLineBorder;
 //    private TitledBorder titledBorder;

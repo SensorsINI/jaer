@@ -30,7 +30,7 @@ import net.sf.jaer.event.EventPacket;
  */
 public class AEOutputStream extends DataOutputStream {
 
-    protected static final Logger log=Logger.getLogger("AEOutputStream");
+    protected static final Logger log=Logger.getLogger("net.sf.jaer");
 
     /** Used to protect binary content from additional headers. */
     protected boolean wrotePacket=false;

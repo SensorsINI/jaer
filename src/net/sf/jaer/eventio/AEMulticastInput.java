@@ -37,7 +37,7 @@ public class AEMulticastInput extends Thread {
     AEPacketRaw initialFullBuffer = new AEPacketRaw(EVENT_BUFFER_SIZE);    // the buffer to render/process first
     AEPacketRaw fillingBuffer=initialEmptyBuffer, emptyingBuffer=initialFullBuffer; // starting buffer
     
-    static Logger log=Logger.getLogger("AESocketStream");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     
     /** Constructs a new AEMulticastInput thread. This Thread must be started before it will
      *collect events from a source.

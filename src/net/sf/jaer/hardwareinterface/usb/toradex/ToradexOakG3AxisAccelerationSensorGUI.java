@@ -25,7 +25,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class ToradexOakG3AxisAccelerationSensorGUI extends JFrame implements PropertyChangeListener {
 
-    static Logger log = Logger.getLogger("ToradexOakG3AxisAccelerationSensor");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     JPanel panel;
     private boolean stop = false;
     PlotPanel plotPanel;

@@ -49,7 +49,7 @@ import net.sf.jaer.graphics.ImageDisplay;
  */
 public class SlotcarTrack implements java.io.Serializable {
 
-    private static Logger log = Logger.getLogger("SlotcarTrack");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     private static final long serialVersionUID = 8769462155491049760L; // define so that rebuilds don't cause load failure
     private static Preferences prefs = Preferences.userNodeForPackage(SlotcarTrack.class);
     /**

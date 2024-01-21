@@ -20,7 +20,7 @@ import javax.swing.border.TitledBorder;
  */
 public class SampledSoundSelector extends javax.swing.JPanel{
     private SampledSoundPlayer drumSound = null;
-    static Logger log = Logger.getLogger("SampledSoundPlayer");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     private ArrayList<String> names;
 
     /** Creates new form DrumSelector.

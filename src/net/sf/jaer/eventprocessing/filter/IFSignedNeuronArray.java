@@ -118,7 +118,7 @@ public class IFSignedNeuronArray extends EventFilter2D implements FrameAnnotater
         Neuron[][] cells;
         private int numCells;
         transient private TextRenderer renderer;
-        transient private Logger log = Logger.getLogger("DepressingSynapseFilter.Neurons");
+        transient private Logger log = Logger.getLogger("net.sf.jaer");
         transient IFSignedNeuronArray filter;
 
         public Neurons(IFSignedNeuronArray filter) {

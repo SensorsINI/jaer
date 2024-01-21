@@ -81,7 +81,7 @@ import javax.swing.undo.UndoableEditSupport;
  * @author tobi
  */
 public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeListener,StateEditable, PropertyChangeListener{
-    static final Logger log = Logger.getLogger("PotTweaker");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     protected int maxSlider,  halfMaxSlider;
     private String name = "<name>";
     private String tooltip = null;

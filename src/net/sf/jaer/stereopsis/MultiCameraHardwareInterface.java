@@ -51,7 +51,7 @@ from the devices owing to buffering.
  */
 public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderBufferControl, PropertyChangeListener {
 
-    final static Logger log = Logger.getLogger("HardwareInterface");  // define Logger first in case exception thrown in constructor that needs to log the error
+    final static Logger log = Logger.getLogger("net.sf.jaer");  // define Logger first in case exception thrown in constructor that needs to log the error
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     protected AEChip chip;
     /** The multiple hardware interfaces. */ // TODO currently depends on global static MultiCameraEvent.NUM_CAMERAS

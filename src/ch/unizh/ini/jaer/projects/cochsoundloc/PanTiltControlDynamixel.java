@@ -82,7 +82,7 @@ public class PanTiltControlDynamixel extends PanTiltControl {
         private InputStream in;
         private byte[] buffer = new byte[1024];
         private volatile boolean logResponses = false;
-        private Logger loggerResponses = Logger.getLogger("Pan-Tilt-Responses");
+        private Logger loggerResponses = Logger.getLogger("net.sf.jaer");
         public boolean askedIfMoving = false;
 
         /**

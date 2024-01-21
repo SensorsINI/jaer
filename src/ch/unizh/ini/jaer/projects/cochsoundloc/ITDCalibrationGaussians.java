@@ -24,7 +24,7 @@ import org.xml.sax.SAXException;
 public class ITDCalibrationGaussians {
 
     private ITDCalibrationGaussian[][][] gaussians;
-    public Logger log = Logger.getLogger("EventFilter");
+    public Logger log = Logger.getLogger("net.sf.jaer");
     private int maxITD;
     private int NumOfBins;
     private int NumOfChannels;

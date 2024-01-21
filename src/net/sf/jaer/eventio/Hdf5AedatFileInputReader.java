@@ -35,7 +35,7 @@ import static net.sf.jaer.eventio.Jaer3BufferParser.JAER3YSHIFT;
  */
 public class Hdf5AedatFileInputReader {
 
-    protected static Logger log = Logger.getLogger("Hdf5AedatFileInputReader");
+    protected static Logger log = Logger.getLogger("net.sf.jaer");
 
     private String fileName;
 

@@ -44,7 +44,7 @@ import javax.swing.filechooser.FileFilter;
 public class PanTiltFrame extends javax.swing.JFrame {
 
     public DatagramSocket datagramSocket = null;
-    private Logger log = Logger.getLogger("PanTiltFrame");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     public PanTiltControl panTiltControl = null;
     final JFileChooser fc;
     private Clip clip;

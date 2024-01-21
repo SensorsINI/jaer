@@ -260,7 +260,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     volatile private PlayMode playMode = PlayMode.WAITING;
     public static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
-    Logger log = Logger.getLogger("AEViewer");
+    Logger log = Logger.getLogger("net.sf.jaer");
     //    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
     EventExtractor2D extractor = null;
     private BiasgenFrame biasgenFrame = null;

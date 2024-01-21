@@ -13,7 +13,7 @@ A dialog for opening AEServerSocket connections. Includes buffer sizes.
 @author  tobi
  */
 public class AEServerSocketOptionsDialog extends javax.swing.JDialog {
-    static Logger log=Logger.getLogger("AEServerSocketOptionsDialog");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */

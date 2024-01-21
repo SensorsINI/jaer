@@ -32,7 +32,7 @@ import java.util.logging.Logger;
  * @author tobi */
 public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChangeListener, ExceptionListener {
 
-    static  final Logger log = Logger.getLogger("PanTiltGUI");
+    static  final Logger log = Logger.getLogger("net.sf.jaer");
     static  final float dash1[] = {10.0f};
     static  final BasicStroke dashed = new BasicStroke(1.0f, BasicStroke.CAP_BUTT,BasicStroke.JOIN_MITER,10.0f, dash1, 0.0f);
     private final PropertyChangeSupport supportPTAimerGUI = new PropertyChangeSupport(this);

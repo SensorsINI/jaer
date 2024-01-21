@@ -36,7 +36,7 @@ public class CarServoInterfaceFactory implements
         PnPNotifyInterface,
         HardwareInterfaceFactoryInterface {
     
-    static Logger log=Logger.getLogger("USB");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     int status;
     
     /** driver guid (Globally unique ID, for this USB driver instance */

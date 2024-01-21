@@ -55,7 +55,7 @@ import net.sf.jaer.DevelopmentStatus;
  */
 public class ClassChooserPanel extends javax.swing.JPanel {
 
-    private static final Logger log = Logger.getLogger("net.sf.jaer.util");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final String MISSING_DESCRIPTION_MESSAGE = "<html>No description available - provide one using @Description annotation, as in <pre>@Description(\"Example class\") \n public class MyClass</pre></html>";
     private FilterableListModel chosenClassesListModel, availClassesListModel;
     private ArrayList<ClassNameWithDescriptionAndDevelopmentStatus> availAllList;

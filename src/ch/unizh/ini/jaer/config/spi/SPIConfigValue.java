@@ -9,7 +9,7 @@ import net.sf.jaer.chip.AEChip;
 
 public abstract class SPIConfigValue extends AbstractConfigValue {
 
-	protected static final Logger log = Logger.getLogger("SPIConfigValue");
+	protected static final Logger log = Logger.getLogger("net.sf.jaer");
 	private final short moduleAddr, paramAddr;
 	private final int numBits;
 

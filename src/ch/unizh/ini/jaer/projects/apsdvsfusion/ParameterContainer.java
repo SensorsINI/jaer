@@ -44,7 +44,7 @@ public abstract class ParameterContainer implements /*Serializable,*/ PropertyCh
 	 * 
 	 */
 //	private static final long serialVersionUID = 7279068027303003157L;
-    private static Logger log = Logger.getLogger("Filters");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
 
     private static boolean storageAllowed = true;
     

@@ -38,7 +38,7 @@ public class DrummerServer extends javax.swing.JFrame implements RemoteControlle
     PnPNotify pnp = null;
     java.util.Timer timer;
     RemoteControl remoteControl = null; // to control servos over UDP
-    static Logger log = Logger.getLogger("ServoTest");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     ServoInterface hwInterface = null;
     Preferences prefs = Preferences.userNodeForPackage(DrummerServer.class);
     private int servoNumber = 0;

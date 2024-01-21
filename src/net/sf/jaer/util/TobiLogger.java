@@ -35,7 +35,7 @@ import net.sf.jaer.eventio.AEDataFile;
  */
 public class TobiLogger {
 
-    static Logger log = Logger.getLogger("TobiLogger");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     protected PrintStream logStream;
     boolean logDataEnabled = false;
     private boolean absoluteTimeEnabled = false;

@@ -42,7 +42,7 @@ import net.sf.jaer.event.OutputEventIterator;
  */
 public class Jaer3BufferParser {
 
-    private static final Logger log = Logger.getLogger("net.sf.jaer.eventio");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
 //	private int BUFFER_CAPACITY_BYTES = 8 * 1000000;
     private ByteBuffer in = null; // no reason to allocate here since it is copied reference from constuctor  (tobi) // ByteBuffer.allocate(BUFFER_CAPACITY_BYTES);
     // private ByteBuffer out = ByteBuffer.allocate(BUFFER_CAPACITY_BYTES);

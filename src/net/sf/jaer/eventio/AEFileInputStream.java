@@ -123,7 +123,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public int MARK_OFFSET_EVENTS = 0;
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
-    static Logger log = Logger.getLogger("net.sf.jaer.eventio");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     private FileInputStream fileInputStream = null;
     long fileSize = 0; // size of file in bytes
     private File file = null;

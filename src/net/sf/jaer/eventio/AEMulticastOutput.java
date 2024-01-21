@@ -43,7 +43,7 @@ public class AEMulticastOutput {
     final int QUEUE_LENGTH=100;
     BlockingQueue<DatagramPacket> queue=new ArrayBlockingQueue<DatagramPacket>(QUEUE_LENGTH);
     
-    Logger log=Logger.getLogger("AESocketStream");
+    Logger log=Logger.getLogger("net.sf.jaer");
     protected DatagramChannel channel=null;
     protected MulticastSocket socket = null;
     InetAddress group=null;

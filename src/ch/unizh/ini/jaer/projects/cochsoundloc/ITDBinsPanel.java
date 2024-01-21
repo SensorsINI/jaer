@@ -29,7 +29,7 @@ import net.sf.jaer.util.chart.XYChart;
 
 public class ITDBinsPanel extends JPanel {
 
-    private Logger log = Logger.getLogger("JAERITDViewer");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     public ITDBins myBins;
     volatile boolean stopflag = false;
     // activity

@@ -25,7 +25,7 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
     private final AEViewer viewer;
     private final AEViewerConsoleOutputFrame consoleWindow;
     private final Formatter consoleFormatter;
-    private PropertyChangeSupport support=new PropertyChangeSupport(this);
+    private final PropertyChangeSupport support=new PropertyChangeSupport(this);
 
     public AEViewerLoggingHandler(final AEViewer v) {
         viewer = v;
@@ -55,6 +55,7 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
             final String smsg = statusMessage,  cmsg = consoleMessage;
             Runnable r = new Runnable() {
 
+                @Override
                 public void run() {
                     try {
                         viewer.setStatusMessage(smsg);
@@ -88,6 +89,7 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
         return support;
     }
 
+    @Override
     public void propertyChange (PropertyChangeEvent evt){
         support.firePropertyChange(evt);
     }

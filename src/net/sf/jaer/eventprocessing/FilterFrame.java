@@ -51,7 +51,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     // tobi commented out DontResize because the filter frame was extending below the bottom of screen, making it awkward to control properties for deep implementations
     final int MAX_ROWS = 10; // max rows of filters, then wraps back to top
     static Preferences prefs = Preferences.userNodeForPackage(FilterFrame.class);
-    Logger log = Logger.getLogger("filter");
+    Logger log = Logger.getLogger("net.sf.jaer");
     AEChip chip;
     FilterChain filterChain;
     RecentFiles recentFiles = null;

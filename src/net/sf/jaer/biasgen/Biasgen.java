@@ -72,7 +72,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
     /**
      * Can be used for subclass logging
      */
-    protected static final Logger log = Logger.getLogger("Biasgen");
+    protected static final Logger log = Logger.getLogger("net.sf.jaer");
     private ArrayList<IPotGroup> iPotGroups = new ArrayList<IPotGroup>(); // groups of pots
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
 

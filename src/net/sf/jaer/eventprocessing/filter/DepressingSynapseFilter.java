@@ -121,7 +121,7 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
         Neuron[][][] cells;
         private int numCells;
         transient private TextRenderer renderer;
-        transient private Logger log = Logger.getLogger("DepressingSynapseFilter.Neurons");
+        transient private Logger log = Logger.getLogger("net.sf.jaer");
         transient DepressingSynapseFilter filter;
 
         public Neurons(DepressingSynapseFilter filter) {

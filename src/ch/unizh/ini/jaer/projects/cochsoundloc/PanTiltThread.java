@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 public class PanTiltThread extends Thread {
 
     public PanTiltFrame panTiltFrame = null;
-    private Logger log = Logger.getLogger("PanTiltThread");
+    private Logger log = Logger.getLogger("net.sf.jaer");
     boolean exitThread = false;
     long nextFrameRetinaUpdate=0;
     long nextFrameCochleaUpdate=0;

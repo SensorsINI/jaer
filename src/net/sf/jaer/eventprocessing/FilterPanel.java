@@ -211,7 +211,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private BeanInfo info;
     private PropertyDescriptor[] props;
     private Method[] methods;
-    private static Logger log = Logger.getLogger("Filters");
+    private static Logger log = Logger.getLogger("net.sf.jaer");
     private EventFilter filter = null;
     final float fontSize = 10f;
     private Border normalBorder, redLineBorder, enclosedFilterSelectedBorder;

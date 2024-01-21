@@ -42,7 +42,7 @@ import de.thesycon.usbio.UsbIoErrorCodes;
  */
 public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCodes, PnPNotifyInterface {
 
-    Logger log = Logger.getLogger("CypressFX2EEPROM");
+    Logger log = Logger.getLogger("net.sf.jaer");
     Preferences prefs = Preferences.userNodeForPackage(CypressFX2EEPROM.class);
     AEChip chip;
     PnPNotify pnp = null;

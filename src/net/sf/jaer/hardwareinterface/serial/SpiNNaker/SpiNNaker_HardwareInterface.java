@@ -35,7 +35,7 @@ public class SpiNNaker_HardwareInterface implements HardwareInterface, AEMonitor
 
     private static Preferences prefs = Preferences.userNodeForPackage(SpiNNaker_HardwareInterface.class);
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
-    static Logger log = Logger.getLogger("SpiNNaker");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     private AEChip chip;
     /** Amount by which we need to divide the received timestamp values to get us timestamps. */
     public final int TICK_DIVIDER = 1;

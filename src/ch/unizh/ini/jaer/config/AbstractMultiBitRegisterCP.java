@@ -43,7 +43,7 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 	private static final Dimension tfMinimumSize = new Dimension(TF_MIN_W, TF_HEIGHT);
 	private static final Dimension tfPreferredSize = new Dimension(TF_PREF_W, TF_HEIGHT);
 	private static final Dimension tfMaxSize = new Dimension(TF_MAX_W, TF_MAX_HEIGHT);
-	private static final Logger log = Logger.getLogger("MultiBitRegisterCP");
+	private static final Logger log = Logger.getLogger("net.sf.jaer");
 
 	private final JComponent[] controls;
 	protected final MultiBitConfigRegister reg;

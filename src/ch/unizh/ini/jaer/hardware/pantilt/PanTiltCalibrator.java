@@ -28,7 +28,7 @@ import net.sf.jaer.util.Matrix;
  * @author tobi
  */
 public class PanTiltCalibrator implements PropertyChangeListener, FrameAnnotater {
-	static Logger log=Logger.getLogger("PanTiltCalibrator");
+	static Logger log=Logger.getLogger("net.sf.jaer");
 	CalibratedPanTilt calibratedPanTilt;
 	private boolean calibrating=false;
 	transient PanTiltGUI gui;

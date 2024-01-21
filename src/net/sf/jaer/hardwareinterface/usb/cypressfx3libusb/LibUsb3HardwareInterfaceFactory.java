@@ -19,7 +19,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
-	private final static Logger log = Logger.getLogger("LibUsb3HardwareInterfaceFactory");
+	private final static Logger log = Logger.getLogger("net.sf.jaer");
 
 	private static LibUsb3HardwareInterfaceFactory instance = new LibUsb3HardwareInterfaceFactory();
 

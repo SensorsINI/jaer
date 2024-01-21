@@ -45,7 +45,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
 
     static Preferences prefs = Preferences.userNodeForPackage(AEUnicastOutput.class);
     private int sendBufferSize = prefs.getInt("AEUnicastOutput.bufferSize", 1500);
-    static Logger log = Logger.getLogger("AEUnicastOutput");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     protected DatagramChannel channel = null;
     protected DatagramSocket socket = null;
     int packetSequenceNumber = 0;

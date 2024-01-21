@@ -43,7 +43,7 @@ import java.util.logging.Logger;
  */
 public strictfp class Matrix {
     
-    static final Logger log=Logger.getLogger("Matrix");
+    static final Logger log=Logger.getLogger("net.sf.jaer");
     
 /**
  *         // solve real linear equations for X where Y = A * X

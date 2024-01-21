@@ -35,7 +35,7 @@ public class ServoInterfaceFactory implements
         UsbIoErrorCodes,
         PnPNotifyInterface,
         HardwareInterfaceFactoryInterface {
-    static Logger log=Logger.getLogger("USB");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     
     int status;
     

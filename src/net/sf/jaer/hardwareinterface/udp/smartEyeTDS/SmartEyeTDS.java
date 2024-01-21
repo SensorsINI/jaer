@@ -40,7 +40,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
 	/** This support can be used to register this interface for property change events */
 	public PropertyChangeSupport support = new PropertyChangeSupport(this);
 
-	protected Logger log = Logger.getLogger("SmartEyeTDS");
+	protected Logger log = Logger.getLogger("net.sf.jaer");
 	protected AEChip chip;
 
 	/** Time in us of each timestamp count here on host, could be different on board. */

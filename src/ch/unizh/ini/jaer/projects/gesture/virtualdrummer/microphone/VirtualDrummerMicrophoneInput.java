@@ -30,7 +30,7 @@ a new beat is not generated until the input falls below the threshold-{@link #se
  *@version $Revision: 1.3 $
  */
 public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeReporter,  Updateable*/{
-    Logger log = Logger.getLogger("VirtualDrummer");
+    Logger log = Logger.getLogger("net.sf.jaer");
     private AudioFormat format;
 //    private float readbufferRatio = .5f;
     private float sampleRate = 8000f; // hz

@@ -16,7 +16,7 @@ import net.sf.jaer.util.TobiLogger;
  */
 public class ServoConnection extends Thread {
 
-    static Logger log = Logger.getLogger("ServoConnection");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     private HWP_RS232 rs232Port = null;
     private boolean isRunning = true;
     

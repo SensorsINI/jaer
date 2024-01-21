@@ -20,7 +20,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
 
     AETemporalConstastRetina chip;
     DVSTweaks biasgen;
-    private static final Logger log = Logger.getLogger("DVSFunctionalControlPanel");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     /**
      * Creates new form Tmpdiff128FunctionalBiasgenPanel

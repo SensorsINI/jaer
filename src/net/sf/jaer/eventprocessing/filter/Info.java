@@ -460,7 +460,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 long relativeTimeInFileMs = (msg.timestamp - dataFileTimestampStartTimeUs) / 1000;
                 updateTimeMs = computeDisplayTime(relativeTimeInFileMs);
                 if(updateTimeMs<lastUpdateTimeMs){
-                    log.warning("nonmonotonic update time");
+                    log.warning(String.format("nonmonotonic update time, updateTimeMs=%,d, lastUpdateTimeMs=%,d",updateTimeMs,lastUpdateTimeMs));
                 }
                 lastUpdateTimeMs=updateTimeMs;
 //                long dt = (updateTimeMs - lastUpdateTime);

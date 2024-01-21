@@ -87,7 +87,7 @@ public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorIn
 
 	private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
 	public PropertyChangeSupport support = new PropertyChangeSupport(this);
-	static Logger log = Logger.getLogger("eDVS128");
+	static Logger log = Logger.getLogger("net.sf.jaer");
 	private AEChip chip;
 	/** Amount by which we need to divide the received timestamp values to get us timestamps. */
 	public final int TICK_DIVIDER = 1;

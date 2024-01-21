@@ -54,7 +54,7 @@ public class ListJaerClasses {
         "lib/", "org/tensorflow/", "org/ros/", "com/fasterxml/", "ch/qos/", "groovy/lang/", "com/google/", "groovy/", "ch/systemsx/"
     };
 
-    static final Logger log = Logger.getLogger("net.sf.jaer.util");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     private static boolean debug = true;
     private static final int INIT_SIZE = 4000;
 

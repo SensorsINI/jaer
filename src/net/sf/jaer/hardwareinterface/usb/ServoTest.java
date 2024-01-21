@@ -34,7 +34,7 @@ import de.thesycon.usbio.PnPNotifyInterface;
  */
 public class ServoTest extends javax.swing.JFrame implements PnPNotifyInterface,RemoteControlled{
     final int MAX_SLIDER = 1000;
-    static Logger log = Logger.getLogger("ServoTest");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     ServoInterface hwInterface = null;
     float[] servoValues;
     PnPNotify pnp = null;

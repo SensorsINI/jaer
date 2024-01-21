@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  */
 public class EventFilterDataLogger {
     
-    static Logger log=Logger.getLogger("EventFilterDataLogger");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     protected PrintStream logStream;
     boolean logDataEnabled=false;
     EventFilter2D filter;

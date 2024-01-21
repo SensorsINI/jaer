@@ -109,7 +109,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * All filters can log to this logger
      */
-    public static final Logger log = Logger.getLogger("EventFilter");
+    public static final Logger log = Logger.getLogger("net.sf.jaer");
+ 
     /**
      * true if filter is enclosed by another filter
      */

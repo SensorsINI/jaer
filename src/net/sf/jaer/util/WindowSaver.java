@@ -55,7 +55,7 @@ import javax.swing.SwingUtilities;
 public class WindowSaver implements AWTEventListener {
 
     Preferences preferences = null;
-    static final Logger log = Logger.getLogger("WindowSaver");
+    static final Logger log = Logger.getLogger("net.sf.jaer");
     /* Accounts for task bar at bottom; don't want window to underlap it. */
     public final int WINDOWS_TASK_BAR_HEIGHT = 100;
     /**

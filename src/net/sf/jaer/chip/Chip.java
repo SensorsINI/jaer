@@ -103,7 +103,7 @@ public class Chip extends Observable {
     /** This built in Logger should be used for logging, e.g. via log.info or log.warn
      *
      */
-    protected static Logger log=Logger.getLogger("Chip");
+    protected static Logger log=Logger.getLogger("net.sf.jaer");
 
 
     /** Built-in PropertyChangeSupport to allow this Chip to generate PropertyChangeEvents. */

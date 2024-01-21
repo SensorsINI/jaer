@@ -460,7 +460,7 @@ public class AEInputStream implements Closeable {
     private InputStream is;
     AEPacketRaw packet = new AEPacketRaw();
     int lastPacketEndTimestamp = 0;
-    static Logger log = Logger.getLogger("AEInputStream");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     protected ArrayList<String> header = new ArrayList<String>();
     private Class addressType = Short.TYPE; // default address type, unless file header specifies otherwise
     DataInputStream dis;

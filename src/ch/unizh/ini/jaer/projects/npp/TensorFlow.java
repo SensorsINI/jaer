@@ -35,7 +35,7 @@ import org.tensorflow.types.UInt8;
  * @author Tobi
  */
 public class TensorFlow {
-    private static Logger log=Logger.getLogger("TensorFlow");
+    private static Logger log=Logger.getLogger("net.sf.jaer");
 
     public static int maxIndex(float[] probabilities) {
         int best = 0;

@@ -48,7 +48,7 @@ public class PotGUIControl extends javax.swing.JPanel implements  Observer, Stat
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
     
     static Preferences prefs=Preferences.userNodeForPackage(IPotSliderTextControl.class);
-    static Logger log=Logger.getLogger("PotGUIControl");
+    static Logger log=Logger.getLogger("net.sf.jaer");
     
     Pot pot;
     StateEdit edit=null;
