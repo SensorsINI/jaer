@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.AEPlayer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -49,6 +50,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     };
     protected Method method = null;
 
+    private boolean showStatistics = getBoolean("showStatistics", true);
     private int constantEventNumber = getInt("constantEventNumber", 10000);
     protected int constantFrameDurationUs = getInt("constantFrameDurationUs", 30000);
     protected int maxPacketDurationUs = getInt("maxPacketDurationUs", 0);
@@ -101,6 +103,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("minPacketDurationUs", "Minimum duration of packet in us; set to 0 to disable");
         setPropertyTooltip("areaEventNumberSubsampling", "How many bits to shift x and y addresses for AreaEventCount method; determines the size of the areas.");
         setPropertyTooltip("automaticallyControlInputRate", "Automatically set input packet duration or time to control the number of left over events.");
+        setPropertyTooltip("showStatistics", "Displays statistics: event count, packet duration and FPS and effective slomo or speedup factor");
         engFmt.setPrecision(2);
         outputPacket.allocate(constantEventNumber);
         try {
@@ -108,6 +111,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         } catch (IllegalArgumentException e) {
             method = Method.ConstantEventNumber;
         }
+        engFmt.setPrecision(1);
     }
 
     /**
@@ -132,11 +136,9 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             packetEventCount++;
             packetDurationUs = eout.getTimestamp() - firstEventTimestamp;
             if (method == Method.ConstantEventNumber) {
-                // if either 1: enough events AND packet long enough, OR 2: packet too long
+
                 // then packet is done
-                if ((packetEventCount >= constantEventNumber
-                        && (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
-                        || (maxPacketDurationUs > 0 && packetDurationUs >= maxPacketDurationUs)) {
+                if (isPacketDone(packetEventCount)) {
 //                    log.fine(String.format("packet done with %,d DVS events", packetEventCount));
                     return true;
                 }
@@ -144,10 +146,8 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
                 if (areaCounts == null) {
                     clearAreaCounts();
                 }
-                int c = ++areaCounts[e.x >> areaEventNumberSubsampling][e.y >> areaEventNumberSubsampling];
-                if ((c >= constantEventNumber
-                        && (minPacketDurationUs > 0 && packetDurationUs > minPacketDurationUs))
-                        || (maxPacketDurationUs > 0 && packetDurationUs >= maxPacketDurationUs)) {
+                int areaCount = ++areaCounts[e.x >> areaEventNumberSubsampling][e.y >> areaEventNumberSubsampling];
+                if (isPacketDone(areaCount)) {
 //                    log.fine(String.format("packet done with %,d areaCounts DVS events", packetEventCount));
                     clearAreaCounts();
                     return true;
@@ -156,6 +156,29 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             return false;
         }
         return false; // cannot finish packet on APS or IMU
+    }
+
+    /**
+     * Packet is done when either 1: enough events AND packet long enough, OR 2:
+     * packet too long
+     *
+     * @param count
+     * @return true if done
+     */
+    private boolean isPacketDone(int count) {
+        if (maxPacketDurationUs > 0 && packetDurationUs >= maxPacketDurationUs) {
+            // if packet gets too long, return unconditionally
+            return true;
+        }
+        // now we need sufficient events
+        if (count >= constantEventNumber) {
+            if (minPacketDurationUs > 0 && packetDurationUs < minPacketDurationUs) {
+                // if we have enough events but packet is not long enough, return false
+                return false;
+            }
+            return true;
+        }
+        return false; // if no condition satisfied, we are not done
     }
 
     @Override
@@ -327,15 +350,27 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         if (!isFilterEnabled()) {
             return;
         }
-        MultilineAnnotationTextRenderer.setColor(Color.CYAN);
-        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
-        MultilineAnnotationTextRenderer.setScale(.4f);
-        MultilineAnnotationTextRenderer.renderMultilineString(
-                String.format("%,10d events, %10ss",
-                        renderedEventCount,
-                        engFmt.format(1e-6 * packetDurationUs))
-        );
+//        MultilineAnnotationTextRenderer.setColor(Color.CYAN);
+//        MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
+//        MultilineAnnotationTextRenderer.setScale(.4f);
+//        MultilineAnnotationTextRenderer.renderMultilineString(
+//                String.format("%,10d events, %10ss",
+//                        renderedEventCount,
+//                        engFmt.format(1e-6 * packetDurationUs))
+//        );
+        if (showStatistics) {
+            float packetDurationS = 1e-6f * packetDurationUs;
+            final String durStr = engFmt.format(packetDurationS);
+            float packetFPS = 1 / packetDurationS;
+            final String fpsStr = engFmt.format(packetFPS);
+            final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
+            final float sloMoFactor = packetFPS / averageFPS; // 500Hz/50Hz is 10X slomo
+            final String sloMoFactorStr = engFmt.format(sloMoFactor);
+            String sloMoString = sloMoFactor > 1 ? "X slomo" : "X speedup";
+            String s = String.format("FlexTime %,7d events, %5ss, %7sFPS, %5s%s", renderedEventCount, durStr, fpsStr, sloMoFactorStr, sloMoString);
 
+            DrawGL.drawStringDropShadow(drawable.getGL().getGL2(), 10, 0f, .5f, 0, Color.white, s);
+        }
         if (method == Method.AreaEventCount && showAreaCountAreasTemporarily) {
             GL2 gl = drawable.getGL().getGL2();
             int d = 1 << getAreaEventNumberSubsampling();
@@ -492,5 +527,20 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     public void setAutomaticallyControlInputRate(boolean automaticallyControlInputRate) {
         this.automaticallyControlInputRate = automaticallyControlInputRate;
         putBoolean("automaticallySetInputRate", automaticallyControlInputRate);
+    }
+
+    /**
+     * @return the showStatistics
+     */
+    public boolean isShowStatistics() {
+        return showStatistics;
+    }
+
+    /**
+     * @param showStatistics the showStatistics to set
+     */
+    public void setShowStatistics(boolean showStatistics) {
+        this.showStatistics = showStatistics;
+        putBoolean("showStatistics", showStatistics);
     }
 }
