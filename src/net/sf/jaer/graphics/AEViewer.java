@@ -511,6 +511,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             addHelpItem(new JSeparator());
             addHelpURLItem(JaerConstants.HELP_URL_HARDWARE_USER_GUIDE, "Hardware user guides", "Guides for inivation hardware");
             addHelpURLItem(JaerConstants.HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
+            addHelpItem(new JSeparator());
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
 //            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
@@ -4787,10 +4788,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public JComponent addHelpItem(JComponent menuItem) {
         int n = helpMenu.getItemCount();
-        if (n <= 5) {
+        final int NUM_STATIC_HELP_ITEMS=6;
+        if (n <= NUM_STATIC_HELP_ITEMS) { // TODO NOTE adjust when adding new helpMenu items
             n = 0;
         } else {
-            n = n - 5;
+            n = n - NUM_STATIC_HELP_ITEMS;
         }
         helpMenu.add(menuItem, n);
         return menuItem;
