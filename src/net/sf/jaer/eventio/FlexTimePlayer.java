@@ -11,6 +11,8 @@ import java.awt.Color;
 import java.util.Iterator;
 
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.glu.GLUquadric;
 import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -51,6 +53,8 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     protected Method method = null;
 
     private boolean showStatistics = getBoolean("showStatistics", true);
+    private boolean showSpeedo = getBoolean("showSpeedo", true);
+
     private int constantEventNumber = getInt("constantEventNumber", 10000);
     protected int constantFrameDurationUs = getInt("constantFrameDurationUs", 30000);
     protected int maxPacketDurationUs = getInt("maxPacketDurationUs", 0);
@@ -104,6 +108,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("areaEventNumberSubsampling", "How many bits to shift x and y addresses for AreaEventCount method; determines the size of the areas.");
         setPropertyTooltip("automaticallyControlInputRate", "Automatically set input packet duration or time to control the number of left over events.");
         setPropertyTooltip("showStatistics", "Displays statistics: event count, packet duration and FPS and effective slomo or speedup factor");
+        setPropertyTooltip("showSpeedo", "Displays speedometer");
         engFmt.setPrecision(2);
         outputPacket.allocate(constantEventNumber);
         try {
@@ -358,18 +363,28 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 //                        renderedEventCount,
 //                        engFmt.format(1e-6 * packetDurationUs))
 //        );
-        if (showStatistics) {
+        if (showStatistics || showSpeedo) {
+            GL2 gl = drawable.getGL().getGL2();
             float packetDurationS = 1e-6f * packetDurationUs;
-            final String durStr = engFmt.format(packetDurationS);
             float packetFPS = 1 / packetDurationS;
-            final String fpsStr = engFmt.format(packetFPS);
-            final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
-            final float sloMoFactor = packetFPS / averageFPS; // 500Hz/50Hz is 10X slomo
-            final String sloMoFactorStr = engFmt.format(sloMoFactor);
-            String sloMoString = sloMoFactor > 1 ? "X slomo" : "X speedup";
-            String s = String.format("FlexTime %,7d events, %5ss, %7sFPS, %5s%s", renderedEventCount, durStr, fpsStr, sloMoFactorStr, sloMoString);
+            final float renderingAvgFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
+            final float sloMoFactor = packetFPS / renderingAvgFPS; // 500Hz/50Hz is 10X slomo
+            boolean isSlowMo = sloMoFactor > 1;
+            float factor = isSlowMo ? -sloMoFactor : 1 / sloMoFactor; // factor is  negative<-1 for slow down,  positive >1 for speedup
+            final String sloMoFactorStr = engFmt.format(Math.abs(factor));
+            final String slomoTypeSlowdownSpeedupStr = isSlowMo ? "X slomo" : "X speedup";
+            final String sloMoSummaryStr=String.format("%7s %s", sloMoFactorStr,slomoTypeSlowdownSpeedupStr);
 
-            DrawGL.drawStringDropShadow(drawable.getGL().getGL2(), 10, 0f, .5f, 0, Color.white, s);
+            drawSpeedo(gl, factor, sloMoSummaryStr);
+
+            if (showStatistics) {
+                final String fpsStr = engFmt.format(packetFPS);
+                final String durStr = engFmt.format(packetDurationS);
+
+                String s = String.format("FlexTime %,7d events, %5ss, %7sFPS, %13s", renderedEventCount, durStr, fpsStr, sloMoSummaryStr);
+
+                DrawGL.drawStringDropShadow(gl, 10, 0f, .5f, 0, Color.white, s);
+            }
         }
         if (method == Method.AreaEventCount && showAreaCountAreasTemporarily) {
             GL2 gl = drawable.getGL().getGL2();
@@ -388,6 +403,52 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             gl.glEnd();
         }
 
+    }
+
+    GLU glu = null;
+    GLUquadric wheelQuad;
+
+    private void drawSpeedo(GL2 gl, float slomoFactor, String sloMoString) {
+        final int radius = 20, speedoHandLength = 18;
+
+        if (!showSpeedo) {
+            return;
+        }
+        // draw clock circle
+        if (glu == null) {
+            glu = new GLU();
+        }
+        if (wheelQuad == null) {
+            wheelQuad = glu.gluNewQuadric();
+        }
+        gl.glPushMatrix();
+            gl.glTranslatef(0, radius * 2 + 6, 0); // clock center
+            DrawGL.drawStringDropShadow(gl,9, 0f, 0f, 0, Color.white, sloMoString);
+            gl.glTranslatef(0, -(radius * 2 + 6), 0); // clock center
+        gl.glPopMatrix();;
+        gl.glPushMatrix();
+        {
+            gl.glTranslatef(radius + 2, radius + 6, 0); // clock center
+            glu.gluQuadricDrawStyle(wheelQuad, GLU.GLU_FILL);
+            glu.gluDisk(wheelQuad, radius, radius + 0.5f, 24, 1);
+
+            // draw hour, minute, second hands
+            // each hand has x,y components related to periodicity of clock and time
+            gl.glColor3f(1, 1, 1);
+
+            // hour hand
+            gl.glLineWidth(6f);
+            gl.glBegin(GL.GL_LINES);
+            gl.glVertex2f(0, 0);
+            float a = -(float) (Math.PI * (1 - slomoFactor) / 50); // a=0 for no slomo, pi for max speedup
+            float x = speedoHandLength * (float) Math.sin(a);
+            float y = speedoHandLength * (float) Math.cos(a);
+            gl.glVertex2f(x, y);
+
+//            gl.glTranslatef(radius + 2, radius + 6, 0); // clock center
+            gl.glEnd();
+        }
+        gl.glPopMatrix();
     }
 
     private void showAreasForAreaCountsTemporarily() {
@@ -542,5 +603,20 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     public void setShowStatistics(boolean showStatistics) {
         this.showStatistics = showStatistics;
         putBoolean("showStatistics", showStatistics);
+    }
+
+    /**
+     * @return the showSpeedo
+     */
+    public boolean isShowSpeedo() {
+        return showSpeedo;
+    }
+
+    /**
+     * @param showSpeedo the showSpeedo to set
+     */
+    public void setShowSpeedo(boolean showSpeedo) {
+        this.showSpeedo = showSpeedo;
+        putBoolean("showSpeedo", showSpeedo);
     }
 }
