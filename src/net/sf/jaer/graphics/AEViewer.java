@@ -2658,6 +2658,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         checkForUpdatesMenuItem = new javax.swing.JMenuItem();
         gitUpdateMenuItem = new javax.swing.JMenuItem();
         jSeparator6 = new javax.swing.JPopupMenu.Separator();
+        loggingLevelMenu = new javax.swing.JMenu();
+        jSeparator25 = new javax.swing.JPopupMenu.Separator();
         aboutMenuItem = new javax.swing.JMenuItem();
 
         jMenuItem2.setText("jMenuItem2");
@@ -3594,6 +3596,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         helpMenu.add(gitUpdateMenuItem);
         helpMenu.add(jSeparator6);
+
+        loggingLevelMenu.setText("Set logging level...");
+        loggingLevelMenu.addMenuListener(new javax.swing.event.MenuListener() {
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            }
+            public void menuDeselected(javax.swing.event.MenuEvent evt) {
+            }
+            public void menuSelected(javax.swing.event.MenuEvent evt) {
+                loggingLevelMenuMenuSelected(evt);
+            }
+        });
+        helpMenu.add(loggingLevelMenu);
+        helpMenu.add(jSeparator25);
 
         aboutMenuItem.setText("About");
         aboutMenuItem.setToolTipText("Version information");
@@ -5719,6 +5734,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         JaerUpdater.checkForInstall4jReleaseUpdate(this);
     }//GEN-LAST:event_checkForUpdatesMenuItemActionPerformed
 
+    private void loggingLevelMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_loggingLevelMenuMenuSelected
+        if(loggingLevelRadioButtons==null){
+            loggingLevelMenu.getPopupMenu().setLightWeightPopupEnabled(false);
+            loggingLevelRadioButtons=new ArrayList();
+            for(Level l:loggingLevels){
+                LoggingLevelButton bmi=new LoggingLevelButton(l);
+                loggingLevelButtonGroup.add(bmi);
+                loggingLevelMenu.add(bmi);
+            }
+        } 
+    }//GEN-LAST:event_loggingLevelMenuMenuSelected
+
+    private ArrayList<LoggingLevelButton> loggingLevelRadioButtons=null;
+    private final Level[] loggingLevels={Level.OFF,Level.WARNING,Level.INFO,Level.SEVERE,Level.FINEST,Level.ALL};
+    private final ButtonGroup loggingLevelButtonGroup=new ButtonGroup();
+
+    final class LoggingLevelButton extends JRadioButtonMenuItem{
+        final Level level;
+        public LoggingLevelButton(Level level) {
+            this.level=level;
+            setName(level.getName());
+            setText(level.getName());
+            setToolTipText(String.format("Sets logging level to %s",level.getName()));
+            addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    log.info(String.format("Setting logging level of logger %s to %s",log.getName(), level.getName()));
+                    log.setLevel(level);
+                }
+            });
+        }
+        
+    }
+    
     private KeyEvent lastKeyEvent = null;
 
     /**
@@ -6218,6 +6267,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator22;
     private javax.swing.JPopupMenu.Separator jSeparator23;
     private javax.swing.JPopupMenu.Separator jSeparator24;
+    private javax.swing.JPopupMenu.Separator jSeparator25;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
@@ -6229,6 +6279,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem jogForwardMI;
     private javax.swing.JCheckBoxMenuItem logFilteredEventsCheckBoxMenuItem;
     private javax.swing.JToggleButton loggingButton;
+    private javax.swing.JMenu loggingLevelMenu;
     private javax.swing.JMenuItem loggingMenuItem;
     private javax.swing.JCheckBoxMenuItem loggingPlaybackImmediatelyCheckBoxMenuItem;
     private javax.swing.JMenuItem loggingSetTimelimitMenuItem;
