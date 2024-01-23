@@ -1066,7 +1066,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //        private TextRenderer exposureRenderer = null; // memory hog
         public DavisDisplayMethod(final DavisBaseCamera chip) {
             super(chip.getCanvas());
-            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 70));
+            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 10));
         }
 
         private TextRenderer exposureTextRenderer = null;
