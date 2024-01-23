@@ -269,6 +269,9 @@ public final class DrawGL {
      * Draws a string using TextRenderer.draw using native GL coordinates,
      * usually setup to represent pixels on AEChip.
      * Embedded newlines are not rendered as additional lines.
+     * <p>
+     * If the TextRenderer does not exist for DrawGL, it is created. This can cause problems if it is out of context, so 
+     * it might be necessary to create it.
      *
      * @param gl the rendering context surface
      * @param fontSize typically 12 to 36
@@ -279,7 +282,7 @@ public final class DrawGL {
      * @param s the string to draw
      * @return the bounds of the text
      */
-    public static Rectangle2D drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+    public static Rectangle2D drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
         if (getTextRenderer() == null || getTextRenderer().getFont().getSize() != fontSize) {
             setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false));
         }
