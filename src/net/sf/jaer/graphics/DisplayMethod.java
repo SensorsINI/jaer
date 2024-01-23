@@ -203,24 +203,43 @@ public abstract class DisplayMethod {
         }
         String[] ss = s.split("\n");
         int nlines = ss.length;
+        int maxlenidx=Integer.MIN_VALUE;
+        int idx=0;
+        for(String sss:ss){
+            if(sss.length()>maxlenidx){
+                maxlenidx=idx;
+                idx++;
+            }
+        }
 
+        int fontsize = Math.round(16*(chip.getSizeX()/346f)); // heuristic to scale font based on empirical estimate for DAVIS346
+        // if font is too small, then make a larger one and scale all the drawing
+        float scale=1;
+        if(fontsize<10){
+            fontsize*=2;
+            scale=.5f;
+        }
+        log.fine(String.format("Chose fontsize=%d and scale=%f for chip with %d horizontal pixels",fontsize,scale,chip.getSizeX()));
         GL2 gl = drawable.getGL().getGL2();
-        TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 16), true, true);
+        // we want status display to fill about 1/2 of width of chip area, so choose font size appropriately.
+        TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontsize), true, true);
         DrawGL.setTextRenderer(renderer);
         try {
-            Rectangle2D r = renderer.getBounds(ss[0]);
-            float h1 = (float) (r.getHeight()); // height of first line
-            float ht = (float) h1 * nlines; // total height of multiline string
-            float w = (float) (r.getWidth()); // width of first line
-            float scale = .3f;
+            gl.glPushMatrix();
+            gl.glScalef(scale, scale, scale);
+            Rectangle2D r = renderer.getBounds(ss[maxlenidx]); // get bounds of max width string
+            float h1 = (float) (r.getHeight()); // height of this line
+            float ht = (float) h1 * nlines/scale; // total height of multiline string
+            float w = (float) (r.getWidth()/scale); // width of widest line
             final float linespace = (float) (h1 * 1.2f); // line spacing as factor of line height
-            float ypos = (float) (chip.getSizeY() / 2 + ht / 2 - linespace / 2);
-            float xpos = (float) (chip.getSizeX() / 2 - w / 2 * scale);
+            float ypos = (float) (chip.getSizeY() / 2 + ht / 2 - linespace / 2)/scale;
+            float xpos = (float) (chip.getSizeX() / 2 )/scale; // xpos is center because alignment is 0.5 below
             float y = ypos;
             for (String sss : ss) {
-                DrawGL.drawStringDropShadow(gl, 16, xpos, y, scale, Color.white, sss);
+                DrawGL.drawStringDropShadow(gl, fontsize, xpos, y, .5f, Color.white, sss); // use alignment 0.5f to center, font size determined by chip pixels
                 y -= linespace;
             }
+            gl.glPopMatrix();
         } catch (GLException e) {
             log.warning("caught " + e + " when trying to render text into the current OpenGL context");
         }
