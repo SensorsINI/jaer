@@ -22,20 +22,19 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Cursor;
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.BufferedReader;
 import java.io.EOFException;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.MalformedParametersException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
+import javax.swing.ProgressMonitor;
 import javax.swing.SwingWorker;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
@@ -49,8 +48,11 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.FilterFrame;
 import net.sf.jaer.graphics.AEViewer;
+import static net.sf.jaer.graphics.AbstractAEPlayer.EVENT_FILEOPEN;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * "Writes out text format files with DVS and IMU data from DAVIS and DVS
@@ -209,34 +211,95 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         }
         try {
 
-            BufferedReader reader = new BufferedReader(new FileReader(f));
             long fileLength = f.length();
             if (fileLength != lastFileLength || numEventsInFile == 0) {
                 log.info("counting events in file....");
-                numEventsInFile = 0;
-                int numChars = 0;
-                numEventsInFile = 0;
-                String line = null;
-                while ((line = reader.readLine()) != null) {
-                    numEventsInFile++;
-                    numChars += line.length();
-                    float avgEventLengthChars = (float) numChars / numEventsInFile;
-                    int estTotalEvents = (int) (fileLength / avgEventLengthChars);
-                    if (numEventsInFile % 1000000 == 0) {
-                        log.info(String.format("Counting events: %,d events, %.1f%% complete", numEventsInFile, 100 * (float) numEventsInFile / estTotalEvents));
-                    }
-                }
-
-                reader.close();
-                lastFileLength = fileLength;
+                countEvents(f);
             }
 
             dvsReader = openReader(f);
+        } catch (InterruptedException ie) {
+            log.info("interrupted event counting");
         } catch (IOException ex) {
             JOptionPane.showMessageDialog(null, ex.toString(), "Couldn't open input file", JOptionPane.WARNING_MESSAGE, null);
         } finally {
             setCursor(null);
         }
+    }
+
+    private void countEvents(File f) throws IOException, InterruptedException {
+        FilterFrame frame = chip.getAeViewer().getFilterFrame();
+        final ProgressMonitor progressMonitor = new ProgressMonitor(frame, "Opening " + f, "Counting events", 0, 100);
+        progressMonitor.setMillisToPopup(300);
+        progressMonitor.setMillisToDecideToPopup(300);
+        final SwingWorker<Void, Void> worker = new SwingWorker() {
+            Exception exception = null;
+
+            @Override
+            protected Object doInBackground() throws Exception {
+                try {
+                    chip.getAeViewer().setPaused(true);
+                    frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+//                    progressMonitor.setNote("Opening " + file);
+                    progressMonitor.setProgress(0);
+//                    TimeUnit.SECONDS.sleep(10);
+                    BufferedReader reader = new BufferedReader(new FileReader(f));
+                    long fileLength = f.length();
+
+                    numEventsInFile = 0;
+                    int numChars = 0;
+                    numEventsInFile = 0;
+                    String line = null;
+                    while ((line = reader.readLine()) != null) {
+                        numEventsInFile++;
+                        numChars += line.length();
+                        float avgEventLengthChars = (float) numChars / numEventsInFile;
+                        int estTotalEvents = (int) (fileLength / avgEventLengthChars);
+                        if (isCancelled()) {
+                            log.info("Cancelled event counting");
+                            return null;
+                        }
+                        if (numEventsInFile % 100000 == 0) {
+                            int percentComplete=(int)(100 * (float) numEventsInFile / estTotalEvents);
+                            setProgress(percentComplete);
+                            log.info(String.format("Counting events: %,d events, %d%% complete", numEventsInFile, percentComplete));
+                        }
+                    }
+
+                    reader.close();
+                    lastFileLength = fileLength;
+
+                } catch (Exception e) {
+                    exception = e;
+                    log.warning("other type of exception " + e.toString());
+                } finally {
+                    frame.setCursor(Cursor.getDefaultCursor());
+                    chip.getAeViewer().setPaused(false);
+                }
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                progressMonitor.close();
+            }
+
+        };
+        worker.addPropertyChangeListener(new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                if (evt.getSource() == worker) {
+                    if (evt.getPropertyName().equals("progress")) {
+                        progressMonitor.setProgress((Integer) evt.getNewValue());
+                    }
+                    if (progressMonitor.isCanceled()) {
+                        worker.cancel(true);
+                    }
+                }
+            }
+        });
+
+        worker.execute();
     }
 
     synchronized public void doCloseFile() {
