@@ -64,6 +64,7 @@ import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.lang.reflect.Field;
@@ -1120,6 +1121,8 @@ public class ChipCanvas implements GLEventListener, Observer {
             return;
         }
         final float border = getBorderSpacePixels(); // desired smallest border in screen pixels
+        final Insets insets=getBorderInsets();
+        
         float glScale;
         checkGLError(g, glu, "before setDefaultProjection");
         g.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
@@ -1127,40 +1130,45 @@ public class ChipCanvas implements GLEventListener, Observer {
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1)
         // or wide (ar<1).
 
-        if (isFillsHorizontally()) { // tall
-            glScale = (w - (2 * border)) / sx; // chip pix to screen pix scaling in horizontal&vert direction
-            float b = border / glScale; // l,r border in model coordinates
-            if (b <= 0) {
-                b = 1;
+        if (isFillsHorizontally()) { // tall, chip fills horizontally
+            glScale = ((float)w - (insets.left+insets.right)) / sx; // chip pix to screen pix scaling in horizontal&vert direction, 
+            //  i.e. one glScale is one chip pixel in screen pixels
+            float lrborder = (insets.left+insets.right)/2 / glScale; // l,r border in model coordinates
+            if (lrborder <= 0) {
+                lrborder = 1;
             }
-            float bb = ((h / glScale) - sy) / 2; // leftover y in model coordinates that makes up vertical border
-            if (bb <= 0) {
-                bb = 1;
+            float leftoverY = ((h / glScale) - sy) / 2; // leftover y in model coordinates that makes up vertical border
+            if (leftoverY <= 0) {
+                leftoverY = 1;
             }
-            clipArea.left = -b;
-            clipArea.right = sx + b;
-            clipArea.bottom = -bb;
-            clipArea.top = sy + bb;
-            borders.leftRight = b;
-            borders.bottomTop = bb;
-            g.glOrtho(-b, sx + b, -bb, (sy + bb), ZCLIP, -ZCLIP); // clip area has same ar as screen!
-        } else {
-            glScale = (h - (2 * border)) / sy;
-            float b = border / glScale;
-            if (b <= .5f) {
-                b = 1;
+            clipArea.left = -lrborder;
+            clipArea.right = sx + lrborder;
+            clipArea.bottom = -leftoverY;
+            clipArea.top = sy + leftoverY;
+            borders.leftRight = lrborder;
+            borders.bottomTop = leftoverY;
+            g.glOrtho(-lrborder, sx + lrborder, -leftoverY, (sy + leftoverY), ZCLIP, -ZCLIP); // clip area has same ar as screen!
+        } else { // wide, chip fill vertically
+            glScale = ((float)h - (insets.top+insets.bottom)) / sy; // total scale from screen pixels chip pixels, one glScale is one chip pixel in screen pixels
+            float btop = insets.top / glScale; // b is generic border in chip pixels
+            float bbot = insets.bottom / glScale; // b is generic border in chip pixels
+            if (bbot <= .5f) {
+                bbot = 1;
             }
-            float bb = ((w / glScale) - sx) / 2; // leftover y in model coordinates that makes up vertical border
-            if (bb <= 0) {
-                bb = 1;
+            if(btop<=.5f){
+                btop=1;
             }
-            clipArea.left = -bb;
-            clipArea.right = sx + bb;
-            clipArea.bottom = -b;
-            clipArea.top = sy + b;
-            borders.leftRight = bb;
-            borders.bottomTop = b;
-            g.glOrtho(-bb, (sx + bb), -b, sy + b, ZCLIP, -ZCLIP);
+            float leftoverX = ((w / glScale) - sx) / 2; // total leftover x in model coordinates that makes up horizontal border
+            if (leftoverX <= 0) {
+                leftoverX = 1;
+            }
+            clipArea.left = -leftoverX;
+            clipArea.right = sx + leftoverX;
+            clipArea.bottom = -bbot;
+            clipArea.top = sy + btop;
+            borders.leftRight = leftoverX;
+            borders.bottomTop = bbot+btop;
+            g.glOrtho(-leftoverX, (sx + leftoverX), -bbot, sy + btop, ZCLIP, -ZCLIP);
         }
         setScale(glScale);
         g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
@@ -1283,10 +1291,23 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void setBorderSpacePixels(final int borderSpacePixels) {
         this.borderSpacePixels = borderSpacePixels;
         insets.bottom = borderSpacePixels;
-        insets.top = borderSpacePixels;
+        int extratop=0;
+        if(chip!=null && chip instanceof DavisBaseCamera){ // leave room for stats label for DAVIS
+            extratop+=(int)(chip.getSizeY()*0.1f);
+            log.fine(String.format("adding extra %,d pixels top inset for DAVIS chip",extratop));
+        }
+        insets.top = borderSpacePixels+ extratop ; 
         insets.left = borderSpacePixels;
         insets.right = borderSpacePixels;
         prefs.putInt("borderSpacePixels", this.borderSpacePixels);
+    }
+    
+    /** Returns the border insets around the chip display, These insets are in screen pixels.
+     * 
+     * @return the Insets 
+     */
+    public Insets getBorderInsets(){
+        return insets;
     }
 
     /**
