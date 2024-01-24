@@ -55,9 +55,9 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
- * "Writes out text format files with DVS and IMU data from DAVIS and DVS
- * cameras. Previous filtering affects the output. Output format is compatible
- * with http://rpg.ifi.uzh.ch/davis_data.html
+ * Reads in text format files with DVS and IMU data from DAVIS and DVS cameras.
+ * Previous filtering affects the output. Format is compatible with
+ * http://rpg.ifi.uzh.ch/davis_data.html
  *
  * @author Tobi Delbruck
  */
@@ -83,8 +83,6 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     protected boolean checkNonMonotonicTimestamps = getBoolean("checkNonMonotonicTimestamps", true);
     private int previousTimestamp = 0;
     private boolean openFileAndRecordAedat = false;
-    protected boolean flipPolarity = getBoolean("flipPolarity", false);
-    final int SPECIAL_COL = 4; // location of special flag (0 normal, 1 special) 
     long lastFileLength = 0; // used to check if the file is the same length as before to avoid line count
 
     public DavisTextInputReader(AEChip chip) {
@@ -260,7 +258,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                             return null;
                         }
                         if (numEventsInFile % 100000 == 0) {
-                            int percentComplete=(int)(100 * (float) numEventsInFile / estTotalEvents);
+                            int percentComplete = (int) (100 * (float) numEventsInFile / estTotalEvents);
                             setProgress(percentComplete);
                             log.info(String.format("Counting events: %,d events, %d%% complete", numEventsInFile, percentComplete));
                         }
@@ -416,6 +414,8 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             throw new MalformedParametersException(s);
         }
     }
+    
+
 
     private void parseEvent(String line, OutputEventIterator outItr) throws IOException {
         lastLineNumber++;
@@ -501,7 +501,12 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             setEventsProcessed(this.eventsProcessed + 1);
             noEventsReadYet = false;
         } catch (NumberFormatException nfe) {
-            String s = String.format("%s: Line #%d has a bad number format: \"%s\"; check options; maybe you should set timestampLast?", nfe.toString(), lastLineNumber, line);
+            String s = String.format("""
+                                     %s
+                                     Line #%,d has a bad number format: "%s",
+                                     Check options; maybe you should set timestampLast or use int or float timestamps?
+                                     Or else you are trying to assingn a timestamp to short address?""", 
+                    nfe.toString(), lastLineNumber, line);
             log.warning(s);
             showWarningDialogInSwingThread(s, "DavisTextInputReader error");
             throw new MalformedParametersException(s);
@@ -527,19 +532,6 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         putBoolean("checkNonMonotonicTimestamps", checkNonMonotonicTimestamps);
     }
 
-    /**
-     * @return the flipPolarity
-     */
-    public boolean isFlipPolarity() {
-        return flipPolarity;
-    }
 
-    /**
-     * @param flipPolarity the flipPolarity to set
-     */
-    public void setFlipPolarity(boolean flipPolarity) {
-        this.flipPolarity = flipPolarity;
-        putBoolean("flipPolarity", flipPolarity);
-    }
 
 }
