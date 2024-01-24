@@ -55,11 +55,16 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     protected boolean useCSV = getBoolean("useCSV", false);
     protected boolean useUsTimestamps = getBoolean("useUsTimestamps", false);
     protected boolean useSignedPolarity = getBoolean("useSignedPolarity", false);
-    protected boolean timestampLast=getBoolean("timestampLast", false);
-    private boolean specialEvents=getBoolean("specialEvents", false);
+    protected boolean timestampLast = getBoolean("timestampLast", false);
+    protected boolean flipPolarity = getBoolean("flipPolarity", false);
+    protected boolean specialEvents = getBoolean("specialEvents", false);
+    protected final int SPECIAL_COL = 4; // location of special flag (0 normal, 1 special) 
 
     public AbstractDavisTextIo(AEChip chip) {
         super(chip);
+        setPropertyTooltip("showFormattingHelp", "Show help for line formatting");
+        setPropertyTooltip("format", "Readonly string to show line formatting with current options");
+        setPropertyTooltip("formattingHelp", "Show help for line formatting");
         setPropertyTooltip("eventsProcessed", "READONLY, shows number of events read");
         setPropertyTooltip("useCSV", "use CSV (comma separated) format rather than space separated values");
         setPropertyTooltip("useUsTimestamps", "use us int timestamps rather than float time in seconds");
@@ -73,16 +78,20 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
      * @param useCSV the useCSV to set
      */
     public void setUseCSV(boolean useCSV) {
+        String oldFormat = getShortFormattingHintString();
         this.useCSV = useCSV;
         putBoolean("useCSV", useCSV);
+        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
     }
 
     /**
      * @param useUsTimestamps the useUsTimestamps to set
      */
     public void setUseUsTimestamps(boolean useUsTimestamps) {
+        String oldFormat = getShortFormattingHintString();
         this.useUsTimestamps = useUsTimestamps;
         putBoolean("useUsTimestamps", useUsTimestamps);
+        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
     }
 
     /**
@@ -116,8 +125,10 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
      * @param useSignedPolarity the useSignedPolarity to set
      */
     public void setUseSignedPolarity(boolean useSignedPolarity) {
+        String oldFormat = getShortFormattingHintString();
         this.useSignedPolarity = useSignedPolarity;
         putBoolean("useSignedPolarity", useSignedPolarity);
+        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
     }
 
     /**
@@ -131,8 +142,10 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
      * @param timestampLast the timestampLast to set
      */
     public void setTimestampLast(boolean timestampLast) {
+        String oldFormat = getShortFormattingHintString();
         this.timestampLast = timestampLast;
         putBoolean("timestampLast", timestampLast);
+        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
     }
 
     /**
@@ -146,8 +159,67 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
      * @param specialEvents the specialEvents to set
      */
     public void setSpecialEvents(boolean specialEvents) {
+        String oldFormat = getShortFormattingHintString();
         this.specialEvents = specialEvents;
         putBoolean("specialEvents", specialEvents);
+        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+    }
+    
+        /**
+     * @return the flipPolarity
+     */
+    public boolean isFlipPolarity() {
+        return flipPolarity;
+    }
+
+    /**
+     * @param flipPolarity the flipPolarity to set
+     */
+    public void setFlipPolarity(boolean flipPolarity) {
+        this.flipPolarity = flipPolarity;
+        putBoolean("flipPolarity", flipPolarity);
+    }
+
+    public void doShowFormattingHelp() {
+        showPlainMessageDialogInSwingThread(getFormattingHelpString(), "Line formatting help");
+    }
+
+    private String getShortFormattingHintString() {
+        char sep = useCSV ? ',' : ' ';
+        String format;
+        if (timestampLast) {
+            format = "x,y,p,t";
+        } else {
+            format = "t,x,y,p";
+        }
+        if (isSpecialEvents()) {
+            format += ",s";
+        }
+        format = format.replace(',', sep);
+        return format;
+    }
+
+    private String getFormattingHelpString() {
+        String sb = "Line formatting: Comment lines start with '#'\n";
+        char sep = useCSV ? ',' : ' ';
+        String polOrder=isFlipPolarity()?"ON/OFF":"OFF/ON";
+        String pol = useSignedPolarity ? "polarity XXX: -1/+1" : "polarity XXX: 0/1";
+        pol=pol.replaceAll("XXX", polOrder);
+        String ts = useUsTimestamps ? "timestamp: int [us], e.g. 1234" : "timestamp: float [s], e.g. 1.234";
+        String xy = "addresses x,y: short,short".replace(',', sep);
+        String special = isSpecialEvents() ? "special events: 0(normal)/1(special)" : "";
+        String format = getShortFormattingHintString();
+        sb += format + "\n";
+        sb += "\n" + xy + "\n" + pol + "\n" + ts + "\n" + special;
+        return sb;
+    }
+
+    public String getFormat() {
+        return getShortFormattingHintString();
+    }
+
+    public void setFormat(String s) {
+        log.info(String.format("Format is %s", s));
     }
 
 }
