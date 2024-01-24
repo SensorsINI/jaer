@@ -78,7 +78,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     int maxX = chip.getSizeX(), maxY = chip.getSizeY();
     private boolean weWereNeverEnabled = true; // Tobi added this hack to work around the problem that if we are included in FilterChain but not enabled,
     // we set PlayMode to WAITING even if a file is currently playing back
-    private final int MAX_ERRORS = 3;
+    private final int MAX_ERRORS = 1;
     private int errorCount = 0;
     protected boolean checkNonMonotonicTimestamps = getBoolean("checkNonMonotonicTimestamps", true);
     private int previousTimestamp = 0;
@@ -409,7 +409,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     private void checkErrorHalt(String s) {
         log.warning(s);
         errorCount++;
-        if (errorCount++ > MAX_ERRORS) {
+        if (errorCount++ >= MAX_ERRORS) {
             showWarningDialogInSwingThread(s, "DavisTextInputReader error");
             throw new MalformedParametersException(s);
         }
@@ -425,7 +425,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         }
         String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
         if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length != 5)) {
-            String s = String.format("Only %d tokens but needs 4 without and 5 with specialEvents:\n%s\nCheck useCSV for ',' or space separator", split.length, lineinfo(line));
+            String s = String.format("Only %d tokens but needs 4 without and 5 with specialEvents:\n%s\nCheck useCSV for ',' or space separator\n and then try to reenable DavisTextInputReader", split.length, lineinfo(line));
             checkErrorHalt(s);
         }
 
@@ -443,9 +443,9 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
         }
         try {
             if (useUsTimestamps && split[it].contains(".")) {
-                checkErrorHalt(String.format("timestamp %s has a '.' in it but useUsTimestamps is true\n%s", split[it], lineinfo(line)));
+                checkErrorHalt(String.format("timestamp %s has a '.' in it but useUsTimestamps is true\n%s;\ncheck options and then try to reenable DavisTextInputReader", split[it], lineinfo(line)));
             } else if (!useUsTimestamps && !split[it].contains(".")) {
-                checkErrorHalt(String.format("timestamp %s has no '.' in it but useUsTimestamps is false\n%s", split[it], lineinfo(line)));
+                checkErrorHalt(String.format("timestamp %s has no '.' in it but useUsTimestamps is false\n%s;\ncheck options and then try to reenable DavisTextInputReader", split[it], lineinfo(line)));
             }
             lastTimestampRead = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
             int dt = lastTimestampRead - previousTimestamp;
@@ -494,7 +494,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 } else if (specialFlag == 1) {
                     e.setSpecial(true);
                 } else {
-                    String s = String.format("Line #%d has Unknown type of special event, must be 0 (normal) or 1 (special):\n\"%s\"", lastLineNumber, line);
+                    String s = String.format("Line #%d has Unknown type of special event, must be 0 (normal) or 1 (special):\n\"%s\";\ncheck options and then try to reenable DavisTextInputReader", lastLineNumber, line);
                     checkErrorHalt(s);
                 }
             }
@@ -504,8 +504,9 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
             String s = String.format("""
                                      %s
                                      Line #%,d has a bad number format: "%s",
-                                     Check options; maybe you should set timestampLast or use int or float timestamps?
-                                     Or else you are trying to assingn a timestamp to short address?""", 
+                                     Check options and then try to reenable DavisTextInputReader; maybe you should set timestampLast or use int or float timestamps?
+                                     Or else you are trying to assingn a timestamp to short address?
+                                     Check options and then try to reenable DavisTextInputReader""", 
                     nfe.toString(), lastLineNumber, line);
             log.warning(s);
             showWarningDialogInSwingThread(s, "DavisTextInputReader error");
