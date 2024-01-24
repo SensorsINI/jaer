@@ -21,6 +21,7 @@ package net.sf.jaer.util.textio;
 import java.io.File;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.util.MessageWithLink;
 
 /**
  * Abstract class for text IO filters for DAVIS cameras.
@@ -59,9 +60,11 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     protected boolean flipPolarity = getBoolean("flipPolarity", false);
     protected boolean specialEvents = getBoolean("specialEvents", false);
     protected final int SPECIAL_COL = 4; // location of special flag (0 normal, 1 special) 
-
+    protected String RPG_FORMAT_URL_HYPERLINK=" <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data</a>";
+    
     public AbstractDavisTextIo(AEChip chip) {
         super(chip);
+        setPropertyTooltip("setToRPGFormat", "<html>Set options to RPG standard <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>");
         setPropertyTooltip("showFormattingHelp", "Show help for line formatting");
         setPropertyTooltip("format", "Readonly string to show line formatting with current options");
         setPropertyTooltip("formattingHelp", "Show help for line formatting");
@@ -181,7 +184,21 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     }
 
     public void doShowFormattingHelp() {
-        showPlainMessageDialogInSwingThread(getFormattingHelpString(), "Line formatting help");
+        showPlainMessageDialogInSwingThread(new MessageWithLink(getFormattingHelpString()), "Event line formatting help");
+    }
+    
+    public void doSetToRPGFormat(){
+        /* "<html>Reads in text format files with DVS data from DAVIS and DVS cameras."
+        + "<p>Input format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>"
+        + "i.e. one DVS event per line,  <i>(timestamp x y polarity)</i>, timestamp is float seconds, x, y, polarity are ints. polarity is 0 for off, 1 for on"
+        + "<p> DavisTextInputReader uses the current time slice duration or event count depending on FlexTime setting in View/Flextime enabled menu"
+*/
+        setTimestampLast(false);
+        setFlipPolarity(false);
+        setSpecialEvents(false);
+        setUseCSV(false);
+        setUseUsTimestamps(false);
+        setUseSignedPolarity(false);
     }
 
     private String getShortFormattingHintString() {
@@ -211,6 +228,8 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
         String format = getShortFormattingHintString();
         sb += format + "\n";
         sb += "\n" + xy + "\n" + pol + "\n" + ts + "\n" + special;
+        sb+= "\nClick SetToRPG format to reset to standard in "+RPG_FORMAT_URL_HYPERLINK;
+        sb=sb.replaceAll("\n", "<br>"); // for HTML rendering
         return sb;
     }
 
