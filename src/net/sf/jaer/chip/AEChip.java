@@ -25,6 +25,7 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
+import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -455,7 +456,17 @@ public class AEChip extends Chip2D {
      */
     public AEFileInputStreamInterface constuctFileInputStream(File file, ProgressMonitor progressMonitor) throws IOException, InterruptedException {
         // usually called from EDT.. makes it tricky to update any progress GUI
-        if (FilenameUtils.isExtension(file.getName(), RosbagFileInputStream.DATA_FILE_EXTENSION)) {
+        if (FilenameUtils.isExtension(file.getName(),TextFileInputStream.FILE_EXTENSION_TXT) 
+                ||FilenameUtils.isExtension(file.getName(),TextFileInputStream.FILE_EXTENSION_CSV) ) {
+            // for text file, since counting events is slow, show progress dialog and let user cancel it
+            try {
+                log.info(String.format("Opening file %s as a text CSV file",file));
+                aeInputStream = new TextFileInputStream(file, this, progressMonitor);
+            } catch (IOException ex) {
+                log.warning(ex.toString());
+                throw new IOException("Could not open " + file + ": got " + ex.toString(), ex);
+            }
+        } else if (FilenameUtils.isExtension(file.getName(), RosbagFileInputStream.DATA_FILE_EXTENSION)) {
             // for rosbag, since creating index is slow, show progress dialog and let user cancel it
             try {
                 aeInputStream = new RosbagFileInputStream(file, this, progressMonitor);

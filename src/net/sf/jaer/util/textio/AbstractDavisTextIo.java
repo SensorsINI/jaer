@@ -60,7 +60,7 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
     protected boolean flipPolarity = getBoolean("flipPolarity", false);
     protected boolean specialEvents = getBoolean("specialEvents", false);
     protected final int SPECIAL_COL = 4; // location of special flag (0 normal, 1 special) 
-    protected String RPG_FORMAT_URL_HYPERLINK=" <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data</a>";
+    public static final String RPG_FORMAT_URL_HYPERLINK=" <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data</a>";
     
     public AbstractDavisTextIo(AEChip chip) {
         super(chip);
@@ -77,25 +77,6 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
                 + "<p>For NoiseTesterFilter, events that are special are treated as labeled noisee events..");
     }
 
-    /**
-     * @param useCSV the useCSV to set
-     */
-    public void setUseCSV(boolean useCSV) {
-        String oldFormat = getShortFormattingHintString();
-        this.useCSV = useCSV;
-        putBoolean("useCSV", useCSV);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
-    }
-
-    /**
-     * @param useUsTimestamps the useUsTimestamps to set
-     */
-    public void setUseUsTimestamps(boolean useUsTimestamps) {
-        String oldFormat = getShortFormattingHintString();
-        this.useUsTimestamps = useUsTimestamps;
-        putBoolean("useUsTimestamps", useUsTimestamps);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
-    }
 
     /**
      * @return the eventsProcessed
@@ -182,6 +163,27 @@ public abstract class AbstractDavisTextIo extends EventFilter2D {
         this.flipPolarity = flipPolarity;
         putBoolean("flipPolarity", flipPolarity);
     }
+    
+        /**
+     * @param useCSV the useCSV to set
+     */
+    public void setUseCSV(boolean useCSV) {
+        String oldFormat = getShortFormattingHintString();
+        this.useCSV = useCSV;
+        putBoolean("useCSV", useCSV);
+        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+    }
+
+    /**
+     * @param useUsTimestamps the useUsTimestamps to set
+     */
+    public void setUseUsTimestamps(boolean useUsTimestamps) {
+        String oldFormat = getShortFormattingHintString();
+        this.useUsTimestamps = useUsTimestamps;
+        putBoolean("useUsTimestamps", useUsTimestamps);
+        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+    }
+
 
     public void doShowFormattingHelp() {
         showPlainMessageDialogInSwingThread(new MessageWithLink(getFormattingHelpString()), "Event line formatting help");
