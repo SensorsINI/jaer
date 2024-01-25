@@ -59,58 +59,50 @@ import net.sf.jaer.util.textio.BufferedRandomAccessFile;
  */
 public class TextFileInputStream extends BufferedInputStream implements AEFileInputStreamInterface {
 
-    static final Logger log = Logger.getLogger("net.sf.jaer");
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
+
     public static final String FILE_EXTENSION_TXT = "txt", FILE_EXTENSION_CSV = "csv";
-    public static final String EXTENTION1 = "txt", EXTENTION2 = "csv";
+    /**
+     * BufferedRandomAccessFile buffer size in bytes
+     */
     private static final int BUFFER_SIZE_BYTES = 10_0000_0000;
-    private static final int POSITION_PROPERTY_CHANGE_EVENT_INTERVAL = 10_0000;  // interval to update position to save a lot of Swing calls
+    /**
+     * // interval to update position to save a lot of Swing calls
+     */
+    private static final int POSITION_PROPERTY_CHANGE_EVENT_INTERVAL = 10_0000;
+
     static private int positionUpdates = 0; // counter to avoid too many Swing updates
 
     /**
-     * The AEChip object associated with this stream. This field was added for
-     * supported jAER 3.0 format files to support translating bit locations in
-     * events.
+     * The AEChip object associated with this stream.
      */
     private AEChip chip = null;
-    private File file = null;
-    private long fileLength = 0;
-    private Preferences prefs = Preferences.userNodeForPackage(this.getClass());
-
-//    private class FileAndLength implements Serializable {
-//
-//        String filePath = null;
-//        long length = 0;
-//
-//        public FileAndLength(File file, long length) {
-//            try {
-//                this.filePath = file.getCanonicalPath();
-//            } catch (IOException ex) {
-//                Logger.getLogger(TextFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//            this.length = length;
-//        }
-//
-//        @Override
-//        public boolean equals(Object obj) {
-//            if (this.filePath != null && obj != null && (obj instanceof FileAndLength)
-//                    && this.filePath.equals(((FileAndLength) obj).filePath)
-//                    && (this.length == ((FileAndLength) obj).length)) {
-//                return true;
-//            }
-//            return false;
-//        }
-//
-//    }
-    private HashMap<String, Long> previousFilesHashMap = (HashMap) getObject("previousFilesHashMap", new HashMap());
-
-    protected File lastFile = null;
-    protected String lastFileName = prefs.get("lastFileName", "");
+    /**
+     * The chip's event extractor, used to reconstruct raw packet from
+     * ApsDvsEvent's
+     */
+    private EventExtractor2D eventExtractor = null;
 
     /**
-     * the next event number to be read (not the one that has just been read
+     * The input file
      */
-    protected long position = 0;
-    protected int lastLineNumber = 0;
+    private File file = null;
+
+    /* length of input file in bytes */
+    private long fileLength = 0;
+    /**
+     * Preferences to hold state over runs
+     */
+    private Preferences prefs = Preferences.userNodeForPackage(this.getClass());
+
+    /**
+     * Stores the canonical (unique) file path as the key and an array of 2
+     * longs [filelength, numevents]
+     */
+    private HashMap<String, Long[]> previousFilesHashMap = null;
+    private final static int PREV_FILE_LENGTH_INDEX = 0, PREV_NUM_EVENTS_INDEX = 1;
+
+    // preference items
     protected boolean useCSV = prefs.getBoolean("useCSV", false);
     protected boolean useUsTimestamps = prefs.getBoolean("useUsTimestamps", false);
     protected boolean useSignedPolarity = prefs.getBoolean("useSignedPolarity", false);
@@ -119,20 +111,53 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     protected boolean nonMonotonicTimestampsChecked = prefs.getBoolean("nonMonotonicTimestampsChecked", true);
 
     private BufferedRandomAccessFile reader = null;
+
+    // state of stream
     private boolean noEventsReadYet = true; // set false when new file is opened
     private long numEventsInFile = 0;
-
+    /**
+     * the last timestamp read by readNextEvent
+     */
     private int mostRecentTimestamp = 0;
+    /**
+     * The previous timestamp read by readNextEvent
+     */
     private int previousTimestamp = 0;
-
-    private int firstTimestamp;
-    private int lastTimestamp = 0;
+    /**
+     * the next event number to be read by readNextEvent (not the one that has
+     * just been read
+     */
+    private long position = 0;
+    /**
+     * the last line read by readNextEvent
+     */
     private String lastLineRead = null;
+    /**
+     * Last line number (event) read by readNextEvent
+     */
+    private int lastLineNumber = 0;
 
+    /**
+     * the first timestamp in file
+     */
+    private int firstTimestamp;
+    /**
+     * the last timestamp in file
+     */
+    private int lastTimestamp = 0;
+
+    /**
+     * the reused output packet
+     */
     private ApsDvsEventPacket outputPacket = null;
+    /**
+     * Used to hold dummy output for readNextEvent(null)
+     */
     private ApsDvsEvent dummyEvent = new ApsDvsEvent(); // used to hold output when there is no output packet supplied to readNextEvent
+    /**
+     * the reused output packet
+     */
     private AEPacketRaw aePacketRaw = null;
-    private EventExtractor2D eventExtractor = null;
 
     private boolean repeat;
 
@@ -149,6 +174,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private float avgLineLength = 15; // TODO guesstimate, measuring during initial open
+    private int startTimestamp = 0; // timestamp that packet starts at while readPacketByTime runs, reset by rewind
 
     /**
      * Construct and open the text file input stream from a file that has one
@@ -174,6 +200,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             throw new NullPointerException(String.format("This AEChip %s has no event extractor to reconstruct raw events from the t,x,y,p DVS events", this.chip));
         }
         outputPacket = new ApsDvsEventPacket(ApsDvsEvent.class);
+        outputPacket.allocate(32768);
         aePacketRaw = new AEPacketRaw();
 
         if (progressMonitor == null) {
@@ -200,15 +227,18 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      */
     @Override
     synchronized public AEPacketRaw readPacketByNumber(int n) throws IOException {
+        startTimestamp = mostRecentTimestamp;
         OutputEventIterator outItr = outputPacket.outputIterator();
         try {
-            for (int i = 0; i < n; i++) {
+            for (int i = 0; i < n && !Thread.interrupted(); i++) {
                 readNextEvent(outItr);
             }
             AEPacketRaw rawPacket = chip.getEventExtractor().reconstructRawPacket(outputPacket);
             return rawPacket;
         } catch (EventFormatException e) {
             delayForError();
+        } catch (EOFException e) {
+            rewind();
         }
         return null;
     }
@@ -223,8 +253,8 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     @Override
     synchronized public AEPacketRaw readPacketByTime(int dt) throws IOException {
         OutputEventIterator outItr = outputPacket.outputIterator();
-        int startTimestamp = mostRecentTimestamp;
         try {
+            startTimestamp = mostRecentTimestamp;
             while (mostRecentTimestamp < startTimestamp + dt) {
                 readNextEvent(outItr);
             }
@@ -232,6 +262,8 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             return rawPacket;
         } catch (EventFormatException e) {
             delayForError();
+        } catch (EOFException e) {
+            rewind();
         }
         return null;
     }
@@ -244,25 +276,24 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @throws IOException if there is an error with file
      * @throws net.sf.jaer.eventio.TextFileInputStream.EventFormatException if
      * there is some problem in the line format
+     * @throws EOFException at end of file or markOut mark
      */
-    private ApsDvsEvent readNextEvent(OutputEventIterator outItr) throws IOException, EventFormatException {
+    private ApsDvsEvent readNextEvent(OutputEventIterator outItr) throws IOException, EventFormatException, EOFException {
         if (reader == null) {
             throw new NullPointerException("the BufferedRandomAccessFile is null");
         }
         if (isMarkOutSet() && position() >= getMarkOutPosition()) {
-            rewind();
+            throw new EOFException("reached markOut position");
         }
-        if (position() >= size()) {
-            rewind();
+        if (position >= numEventsInFile) {
+            throw new EOFException("reached end of file");
         }
         String line = null;
         try {
             line = reader.getNextLine();
             while (line == null) {
                 if (line == null) {
-                    log.info(String.format("rewind after %,d events", lastLineNumber));
-                    rewind();
-                    line = reader.getNextLine();
+                    throw new EOFException(String.format("reached end of file after %,d events", lastLineNumber));
                 }
                 if (line.startsWith("#")) {
                     log.log(Level.INFO, "Comment: {0}", line);
@@ -270,14 +301,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                 }
             }
         } catch (EOFException e) {
-            log.info("reached end of file, rewinding to start or markIn");
-            rewind();
-            line = reader.getNextLine();
+            throw new EOFException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s",  e.toString(),position(), lastLineNumber, lastLineRead));
         } catch (IOException e) {
-            throw new IOException(String.format("at event %,d; lastLineNumber=%,d, lastLineRead=%s", position(), lastLineNumber, lastLineRead));
+            throw new IOException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s",  e.toString(),position(), lastLineNumber, lastLineRead));
         }
-        lastLineNumber++;
-        lastLineRead = line;
         try {
             String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
             if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length != 5)) {
@@ -302,13 +329,13 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             } else if (!useUsTimestamps && !split[it].contains(".")) {
                 throwLineFormatException(String.format("timestamp %s has no '.' in it but useUsTimestamps is false\n%s", split[it], lineinfo(line)));
             }
+            previousTimestamp = mostRecentTimestamp;
             mostRecentTimestamp = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
             int dt = mostRecentTimestamp - previousTimestamp;
             if (nonMonotonicTimestampsChecked && dt < 0) {
                 String s = String.format("timestamp %,d is %,d us earlier than previous %,d at %s", mostRecentTimestamp, dt, previousTimestamp, lineinfo(line));
                 log.warning(s);
             }
-            previousTimestamp = mostRecentTimestamp;
             short x = Short.parseShort(split[ix]);
             short y = Short.parseShort(split[iy]);
             byte pol = Byte.parseByte(split[ip]);
@@ -353,12 +380,16 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                     throwLineFormatException(s);
                 }
             }
-            setPositionValue(position + 1);
             if (noEventsReadYet) {
                 firstTimestamp = mostRecentTimestamp;
                 noEventsReadYet = false;
                 log.info(String.format("First timestamp is %,d", e.timestamp));
             }
+
+            setPositionValue(position + 1);
+            lastLineNumber++;
+            lastLineRead = line;
+
             return e;
         } catch (NumberFormatException nfe) {
             String s = String.format("%s: Line #%d has a bad number format: \"%s\"; check options; maybe you should set timestampLast?", nfe.toString(), lastLineNumber, line);
@@ -483,20 +514,29 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      */
     private void init(ProgressMonitor progressMonitor) throws IOException {
         try {
-
+            try {
+                this.previousFilesHashMap = (HashMap) getObject("previousFilesHashMap", new HashMap());
+            } catch (Exception e) {
+                log.warning(String.format("Making new previousFilesHashMap; could not load previousFilesHashMap from preferences: %s", e.toString()));
+                previousFilesHashMap = new HashMap<String, Long[]>();
+            }
             this.fileLength = this.file.length();
             final String canonicalPath = file.getCanonicalPath();
-            if (previousFilesHashMap.containsKey(canonicalPath) && previousFilesHashMap.get(canonicalPath) == fileLength) {
-                numEventsInFile = previousFilesHashMap.get(canonicalPath);
-                log.info(String.format("found file '%s' in previousFilesHashMap with same length %,d bytes that we read before", canonicalPath, numEventsInFile));
-            } else {
-                log.info(String.format("file '%s' with length %,d bytes not found in previousFilesHashMap, counting events...",canonicalPath,this.fileLength));
-                try {
-                    chip.getAeViewer().setPaused(true);
-                    countEvents(this.file, progressMonitor);
-                } finally {
-                    chip.getAeViewer().setPaused(false);
+            boolean success = false;
+            if (previousFilesHashMap.containsKey(canonicalPath)) {
+                Object o = previousFilesHashMap.get(canonicalPath);
+                if (o instanceof Long[]) {
+                    Long[] vals = (Long[]) o;
+                    if (vals[PREV_FILE_LENGTH_INDEX] == fileLength) {
+                        numEventsInFile = vals[PREV_NUM_EVENTS_INDEX];
+                        log.info(String.format("found file '%s' in previousFilesHashMap with same length %,d bytes that we read before that has %,d events", canonicalPath, fileLength, numEventsInFile));
+                        success = true;
+                    }
                 }
+            }
+            if (!success) {
+                log.info(String.format("file '%s' with length %,d bytes not found in previousFilesHashMap, counting events...", canonicalPath, this.fileLength));
+                countEvents(this.file, progressMonitor);
             }
 
             reader = openReader(this.file);
@@ -512,7 +552,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     }
 
     void eraseFileHashMap() {
-        previousFilesHashMap = new HashMap<String, Long>();
+        previousFilesHashMap = new HashMap<String, Long[]>();
         putObject("previousFilesHashMap", previousFilesHashMap);
         log.info("erased hashed file map");
     }
@@ -527,7 +567,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @throws java.lang.InterruptedException if open is interrupted
      *
      */
-    public BufferedRandomAccessFile openReader(File f) throws IOException, InterruptedException {
+    private BufferedRandomAccessFile openReader(File f) throws IOException, InterruptedException {
 //        https://stackoverflow.com/questions/1277880/how-can-i-get-the-count-of-line-in-a-file-in-an-efficient-way
 
         TextFileInputStreamOptionsDialog optionsDialog = new TextFileInputStreamOptionsDialog(chip.getAeViewer(), false, this); // non-model to allow correcting format while reading file
@@ -538,11 +578,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         // https://pdfbox.apache.org/docs/2.0.8/javadocs/org/apache/fontbox/ttf/BufferedRandomAccessFile.html
         // from https://raw.githubusercontent.com/apache/pdfbox/a27ee917bea372a1c940f74ae45fba94ba220b57/fontbox/src/main/java/org/apache/fontbox/ttf/BufferedRandomAccessFile.java
         BufferedRandomAccessFile reader = new BufferedRandomAccessFile(f, "r", BUFFER_SIZE_BYTES);
-        lastFile = f;
         setPositionValue(0);
         noEventsReadYet = true;
         lastLineNumber = 0;
-        log.info(String.format("Opened text input file %s with estimated %,d events", f.toString(), numEventsInFile));
+        log.info(String.format("Opened text input file %s with %,d events", f.toString(), numEventsInFile));
         return reader;
     }
 
@@ -613,14 +652,14 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                             log.info("Cancelled event counting");
                             return null;
                         }
-                        if (numEventsInFile % 10000000 == 0) {
+                        if (numEventsInFile % POSITION_PROPERTY_CHANGE_EVENT_INTERVAL == 0) {
                             int percentComplete = (int) (100 * (float) numEventsInFile / estTotalEvents);
                             setProgress(percentComplete);
                             log.info(String.format("Counting events: %,d events, %d%% complete", numEventsInFile, percentComplete));
                         }
                     }
                     setProgress(100);
-                    previousFilesHashMap.put(file.getCanonicalPath(), file.length());
+                    previousFilesHashMap.put(file.getCanonicalPath(), new Long[]{file.length(), numEventsInFile});
                     putObject("previousFilesHashMap", previousFilesHashMap); // store in prefs
                     log.info(String.format("stored size %,d events from %s in previousFilesHashMap", numEventsInFile, file.getCanonicalPath()));
 
@@ -787,7 +826,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             if (reader != null) {
                 reader.close();
                 reader = null;
-                log.info(String.format("Closed %s", lastFile));
+                log.info(String.format("Closed %s", this.file.getCanonicalPath()));
             }
             setPositionValue(0);
         } catch (IOException ex) {
@@ -803,8 +842,8 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     }
 
     @Override
-    public void setCurrentStartTimestamp(int currentStartTimestamp) {
-        log.warning("cannot set start timestamp");
+    synchronized public void setCurrentStartTimestamp(int currentStartTimestamp) {
+        this.startTimestamp=currentStartTimestamp;
     }
 
     @Override
@@ -822,7 +861,6 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     @Override
     public long position() {
         return position;
-
     }
 
     @Override
@@ -836,13 +874,13 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             reader.seek(filePos); // TODO very approximate, since lines get longer later in file
 //            String line = dvsReader.readLine();  // read to next line
             String line = reader.getNextLine();  // read to next line
-            readNextEvent(null);
-            setPositionValue(n);
             if (line == null) {
                 log.warning(String.format("Setting postion %,d which computes to filePos(bytes)=%,d resulted in null line, rewinding", n, filePos));
                 rewind();
                 readNextEvent(null);
             }
+            readNextEvent(null);
+            setPositionValue(n);
         } catch (IOException ex) {
             log.severe(String.format("Could not seek to position event %,d, caught: %s", n, ex.toString()));
         }
@@ -861,18 +899,16 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      *
      * @param key the property name, e.g. "hotPixels"
      * @param defObject the default Object
+     * @return the object, which must be cast to the expected type
+     * @throws java.io.IOException
+     * @throws java.util.prefs.BackingStoreException
      */
-    public Object getObject(String key, Object defObject) {
-        try {
-            Object o = PrefObj.getObject(prefs, key);
-            if (o == null) {
-                return defObject;
-            }
-            return o;
-        } catch (Exception ex) {
-            log.fine(String.format("cannot read stored preference for %s", key));
+    public Object getObject(String key, Object defObject) throws ClassCastException, IOException, BackingStoreException, ClassNotFoundException {
+        Object o = PrefObj.getObject(prefs, key);
+        if (o == null) {
+            return defObject;
         }
-        return defObject;
+        return o;
     }
 
     public void doSetToRPGFormat() {
@@ -924,12 +960,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     @Override
     synchronized public void rewind() throws IOException {
         log.info(String.format("rewind at position=%,d", position()));
-        position = getMarkInPosition();
-        noEventsReadYet = true;
-        previousTimestamp = 0;
         reader.seek(isMarkInSet() ? markInSeekPosition : 0);
         reader.getNextLine(); // go to next line to avoid format exception from reading in middle of a line
-        readNextEvent(null);
+        setPositionValue(getMarkInPosition());
+        readNextEvent(null);// set mostRecentTimestamp
         getSupport().firePropertyChange(AEInputStream.EVENT_REWOUND, null, true);
     }
 
@@ -950,7 +984,12 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     @Override
     public long setMarkIn() {
         try {
-            markInSeekPosition = reader.getFilePointer(); // note that marks are stored internally as file bytes because we need to seek() to these marks
+            long pos = reader.getFilePointer(); // note that marks are stored internally as file bytes because we need to seek() to these marks
+            if(isMarkOutSet() && pos>=markOutSeekPosition){
+                log.warning(String.format("tried to set mark IN later than mark OUT"));
+                return 0;
+            }
+            this.markInSeekPosition=pos;
             markIn = position();
             getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, markIn);
             return markIn;
@@ -963,7 +1002,12 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     @Override
     public long setMarkOut() {
         try {
-            markOutSeekPosition = reader.getFilePointer();
+            long pos = reader.getFilePointer();
+            if(isMarkInSet() && pos<=markInSeekPosition){
+                log.warning(String.format("tried to set mark OUR earlier than mark IN"));
+                return Long.MAX_VALUE;
+            }
+            this.markOutSeekPosition=pos;
             markOut = position();
             getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, markOut);
             return markOut;

@@ -681,6 +681,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if (viewer != null) {
             viewer.filterChain.reset(); // already done in aePlayer
             viewer.getRenderer().resetAccumulation();
+            viewer.interruptViewloop();
         }
     }
 
