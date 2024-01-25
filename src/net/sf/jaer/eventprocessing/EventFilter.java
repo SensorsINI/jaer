@@ -42,6 +42,7 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.HasPropertyTooltips;
+import net.sf.jaer.util.MessageWithLink;
 import net.sf.jaer.util.PrefObj;
 import net.sf.jaer.util.PropertyTooltipSupport;
 
@@ -557,16 +558,20 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Shows a information-type message dialog in Swing thread; safe to call
      * from event filter processing thread.
      *
-     * @param msg the string, can use HTML format for multiline or accenting. If string contains newline(s), these are automatically  converted to <br> in HTML format.
+     * @param msg the string, can use HTML format for multiline or accenting. 
+     *      If string contains newline(s), these are automatically  converted to <br> in HTML format.
+     *      You can use MessageWithLink to include URL hyperlink.
      * @param title the dialog title, should be short
+     * 
+     * @see MessageWithLink
      */
-    protected void showPlainMessageDialogInSwingThread(final String msg, final String title) {
+    protected void showPlainMessageDialogInSwingThread(final Object msg, final String title) {
         SwingUtilities.invokeLater(new Runnable() {
             // outside swing thread, must do this
             @Override
             public void run() {
-                if (msg.contains("\n")) {
-                    String m = "<html>" + msg;
+                if ((msg instanceof String) && (((String)msg).contains("\n")) ) {
+                    String m = "<html>" + (String)msg;
                     String m2 = m.replaceAll("\n", "<br>");
                     JOptionPane.showMessageDialog(chip.getFilterFrame(), m2, title, JOptionPane.PLAIN_MESSAGE);
                 } else {
@@ -580,15 +585,23 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Shows a warning-type message dialog in Swing thread; safe to call from
      * event filter processing thread.
      *
-     * @param msg the string, can use HTML format for multiline or accenting
+     * @param msg the string object, can use HTML format for multiline or
+     * accenting and MessageWithLink to include URL hyperlink
      * @param title the dialog title, should be short
+     * @see MessageWithLink
      */
-    protected void showWarningDialogInSwingThread(final String msg, final String title) {
+    protected void showWarningDialogInSwingThread(final Object msg, final String title) {
         SwingUtilities.invokeLater(new Runnable() {
             // outside swing thread, must do this
             @Override
             public void run() {
-                JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.WARNING_MESSAGE);
+                if ((msg instanceof String) && (((String)msg).contains("\n")) ) {
+                    String m = "<html>" + (String)msg;
+                    String m2 = m.replaceAll("\n", "<br>");
+                    JOptionPane.showMessageDialog(chip.getFilterFrame(), m2, title, JOptionPane.WARNING_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(chip.getFilterFrame(), msg, title, JOptionPane.WARNING_MESSAGE);
+                }
             }
         });
     }
