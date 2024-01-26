@@ -165,7 +165,11 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
 
     protected boolean checkNonMonotonicTimestamps = prefs.getBoolean("checkNonMonotonicTimestamps", true);
     private boolean openFileAndRecordAedat = false;
+
     protected boolean flipPolarity = prefs.getBoolean("flipPolarity", false);
+    private boolean flipX = prefs.getBoolean("flipX", false);
+    private boolean flipY = prefs.getBoolean("flipY", false);
+
     final int SPECIAL_COL = 4; // location of special flag (0 normal, 1 special) 
 
     private long markIn = 0, markOut = Long.MAX_VALUE;
@@ -301,9 +305,9 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                 }
             }
         } catch (EOFException e) {
-            throw new EOFException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s",  e.toString(),position(), lastLineNumber, lastLineRead));
+            throw new EOFException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s", e.toString(), position(), lastLineNumber, lastLineRead));
         } catch (IOException e) {
-            throw new IOException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s",  e.toString(),position(), lastLineNumber, lastLineRead));
+            throw new IOException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s", e.toString(), position(), lastLineNumber, lastLineRead));
         }
         try {
             String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
@@ -361,8 +365,8 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             ApsDvsEvent e = outItr != null ? (ApsDvsEvent) outItr.nextOutput() : dummyEvent;
             e.setFilteredOut(false);
             e.setTimestamp(mostRecentTimestamp);
-            e.setX(x);
-            e.setY(y);
+            e.setX(!flipX?x:(short)(chip.getSizeX()-x-1));
+            e.setY(!flipY?y:(short)(chip.getSizeY()-y-1));
             e.setPolarity(polType);
             if (flipPolarity) {
                 e.flipPolarity();
@@ -430,6 +434,37 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     public void setCheckNonMonotonicTimestamps(boolean nonMonotonicTimestampsChecked) {
         this.nonMonotonicTimestampsChecked = nonMonotonicTimestampsChecked;
         prefs.putBoolean("nonMonotonicTimestampsChecked", nonMonotonicTimestampsChecked);
+    }
+
+    /**
+     * @return the flipX
+     */
+    public boolean isFlipX() {
+        return flipX;
+    }
+
+    /**
+     * @param flipX the flipX to set
+     */
+    public void setFlipX(boolean flipX) {
+        this.flipX = flipX;
+        prefs.putBoolean("flipX", flipX);
+    }
+
+    /**
+     * @return the flipY
+     */
+    public boolean isFlipY() {
+        return flipY;
+    }
+
+    /**
+     * @param flipY the flipY to set
+     */
+    public void setFlipY(boolean flipY) {
+        this.flipY = flipY;
+        prefs.putBoolean("flipY", flipY);
+
     }
 
     /**
@@ -747,6 +782,20 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
     }
 
+    public void doSetToRPGFormat() {
+        /* "<html>Reads in text format files with DVS data from DAVIS and DVS cameras."
+        + "<p>Input format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>"
+        + "i.e. one DVS event per line,  <i>(timestamp x y polarity)</i>, timestamp is float seconds, x, y, polarity are ints. polarity is 0 for off, 1 for on"
+        + "<p> DavisTextInputReader uses the current time slice duration or event count depending on FlexTime setting in View/Flextime enabled menu"
+         */
+        setTimestampLast(false);
+        setFlipPolarity(false);
+        setSpecialEvents(false);
+        setUseCSV(false);
+        setUseUsTimestamps(false);
+        setUseSignedPolarity(false);
+    }
+
     @Override
     public boolean isNonMonotonicTimeExceptionsChecked() {
         return nonMonotonicTimestampsChecked;
@@ -843,7 +892,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
 
     @Override
     synchronized public void setCurrentStartTimestamp(int currentStartTimestamp) {
-        this.startTimestamp=currentStartTimestamp;
+        this.startTimestamp = currentStartTimestamp;
     }
 
     @Override
@@ -911,20 +960,6 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         return o;
     }
 
-    public void doSetToRPGFormat() {
-        /* "<html>Reads in text format files with DVS data from DAVIS and DVS cameras."
-        + "<p>Input format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html\">rpg.ifi.uzh.ch/davis_data.html</a>"
-        + "i.e. one DVS event per line,  <i>(timestamp x y polarity)</i>, timestamp is float seconds, x, y, polarity are ints. polarity is 0 for off, 1 for on"
-        + "<p> DavisTextInputReader uses the current time slice duration or event count depending on FlexTime setting in View/Flextime enabled menu"
-         */
-        setTimestampLast(false);
-        setFlipPolarity(false);
-        setSpecialEvents(false);
-        setUseCSV(false);
-        setUseUsTimestamps(false);
-        setUseSignedPolarity(false);
-    }
-
     String getShortFormattingHintString() {
         char sep = useCSV ? ',' : ' ';
         String format;
@@ -985,11 +1020,11 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     public long setMarkIn() {
         try {
             long pos = reader.getFilePointer(); // note that marks are stored internally as file bytes because we need to seek() to these marks
-            if(isMarkOutSet() && pos>=markOutSeekPosition){
+            if (isMarkOutSet() && pos >= markOutSeekPosition) {
                 log.warning(String.format("tried to set mark IN later than mark OUT"));
                 return 0;
             }
-            this.markInSeekPosition=pos;
+            this.markInSeekPosition = pos;
             markIn = position();
             getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, markIn);
             return markIn;
@@ -1003,11 +1038,11 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     public long setMarkOut() {
         try {
             long pos = reader.getFilePointer();
-            if(isMarkInSet() && pos<=markInSeekPosition){
+            if (isMarkInSet() && pos <= markInSeekPosition) {
                 log.warning(String.format("tried to set mark OUR earlier than mark IN"));
                 return Long.MAX_VALUE;
             }
-            this.markOutSeekPosition=pos;
+            this.markOutSeekPosition = pos;
             markOut = position();
             getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, markOut);
             return markOut;
