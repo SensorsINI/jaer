@@ -108,15 +108,12 @@ public class DVS1280x720SD extends AETemporalConstastRetina implements Serializa
     }
 
     /**
-     * the event extractor for DVS640. DVS640 has two polarities 0 and 1. Here
-     * the polarity is flipped by the extractor so that the raw polarity 0
-     * becomes 1 in the extracted event. The ON events have raw polarity 0. 1 is
-     * an ON event after event extraction, which flips the type. Raw polarity 1
-     * is OFF event, which becomes 0 after extraction.
+     * the event extractor. 
      */
     public class Extractor extends RetinaExtractor {
 
-        final int XSHIFT = 1, XMASK = 0b11_1111_1111<<XSHIFT , YSHIFT = 11, YMASK = 0b11_1111_1111<<YSHIFT;
+        // 1280 horizontal X needs 2048=11 bits, 720 vertical Y needs 1024=10 bits. polarity 1 bit. Total 22 bits
+        final int XSHIFT = 1, XMASK = 0b111_1111_1111<<XSHIFT , YSHIFT = 12, YMASK = 0b11_1111_1111<<YSHIFT;
 
         public Extractor(DVS1280x720SD chip) {
             super(chip);
@@ -126,7 +123,7 @@ public class DVS1280x720SD extends AETemporalConstastRetina implements Serializa
             setYshift((byte) YSHIFT);
             setTypemask(1);
             setTypeshift((byte) 0);
-            setFlipx(true); // flip x to match rosbags from ev-imo dataset (tobi)
+            setFlipx(false); // flip x to match rosbags from ev-imo dataset (tobi)
             setFlipy(false);
             setFliptype(false);
         }
