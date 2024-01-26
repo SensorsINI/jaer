@@ -115,6 +115,7 @@ import net.sf.jaer.eventio.AESocketDialog;
 import net.sf.jaer.eventio.AEUnicastDialog;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
+import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -5845,7 +5846,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
                             || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
-                            || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)) {
+                            || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
+                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_CSV)
+                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)
+                            
+                            ) {
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);
                     } else {
