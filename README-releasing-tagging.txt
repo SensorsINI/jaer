@@ -37,11 +37,12 @@ To make a new token, if needed, login to https://github.com/settings/tokens ,
 2. Install your license (tobi has his own by donation to jaer project)
 3. Open install4j project (jaer.install4j)
 4. Update version number there and save install4j project
-5. Generate the installers
-6. Put the installers and checksums in new dropbox installers folder
-7. Put updates.xml to root folder and push it so install4j can check if there is an update available
-8. Maybe update splash screen image and push new png from photoshop
-9. Push a tag and generate the github release
+5. Do a complete clean and build to make sure classes are clean and all in jaer.jar
+6. Generate the installers
+7. Put the installers and checksums in new dropbox installers folder
+8. Put updates.xml to root folder and push it so install4j can check if there is an update available
+9. Maybe update splash screen image and push new png from photoshop
+10. Push a tag and generate the github release
 
 
 
