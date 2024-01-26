@@ -42,7 +42,7 @@ To make a new token, if needed, login to https://github.com/settings/tokens ,
 7. Put the installers and checksums in new dropbox installers folder
 8. Put updates.xml to root folder and push it so install4j can check if there is an update available
 9. Maybe update splash screen image and push new png from photoshop
-10. Push a tag and generate the github release
+10. Push a tag and generate the github release on github release 
 
 
 
