@@ -155,6 +155,13 @@ MA 02110-1301  USA
         
         <dependency org="com.install4j" name="install4j-runtime" rev="10.0.6" />
         
+<!--         https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox 
+        https://stackoverflow.com/questions/5614206/buffered-randomaccessfile-java
+        Used in TextFileInputStream
+        
+        <dependency org="org.apache.pdfbox" name="pdfbox" rev="3.0.1"/>-->
+
+        
     </dependencies>
 </ivy-module>
 
