@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-/*
+ /*
  * AEViewerConsoleOutputFrame.java
  *
  * Created on Feb 1, 2009, 7:18:36 PM
@@ -14,18 +14,21 @@ import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.geom.Rectangle2D;
+import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeSupport;
 import java.util.Date;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicArrowButton;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * A window used to show Logger output.
@@ -37,303 +40,380 @@ import javax.swing.text.StyledDocument;
  */
 public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
-	// final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
-	private final MutableAttributeSet attr;
-	private final StyledDocument doc;
+    // final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
+    private final MutableAttributeSet attr;
+    private final StyledDocument doc;
 
-	private PropertyChangeSupport support = new PropertyChangeSupport(this);
-	private int lastFindPos = -1;
-	private int caretPosition = 0;
-	private int lastOffset = -1;
-	String word = null;
+    private PropertyChangeSupport support = new PropertyChangeSupport(this);
+    String word = null;
+    WordSearcher searcher = null;
 
-	/**
-	 * Maximum document length in characters. If the document gets larger than
-	 * this it is cleared. This should prevent OutOfMemory errors during long
-	 * runs.
-	 */
-	public final int MAX_CHARS = 80 * 80 * 400; // lines*lines/page*pages
+    private void f3pressed(KeyEvent evt) {
+        int code = evt.getKeyCode();
+        boolean f3 = (code == java.awt.event.KeyEvent.VK_F3);
+        boolean shift = evt.isShiftDown();
+        if (f3) {
+            if (!shift) {
+                searcher.searchNext();
+            } else {
+                searcher.searchPrevious();
+            }
+        }
+    }
 
-	/**
-	 * Creates new form AEViewerConsoleOutputFrame
-	 */
-	public AEViewerConsoleOutputFrame() {
-		initComponents();
-		attr = pane.getInputAttributes();
-		doc = pane.getStyledDocument();
-		final WordSearcher searcher = new WordSearcher(pane);
+    private void findFirst() {
+        if (searcher == null) {
+            return;
+        }
+        word = findTF.getText();
+        if (word == null || word == "") {
+            return;
+        }
+        
+        int caret = findTF.hasFocus()?0:pane.getCaretPosition(); // if in find textfield, search from start of doc, if in pane, search in pane starting from point
+        int offset = searcher.searchFirst(word, caret, true);
+        setFindFieldColorAndScroll(offset);
+    }
 
-		findTF.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent evt) {
-				word = findTF.getText();
-				int offset = searcher.search(word);
-				// System.out.println("offset="+offset);
-				if (offset > 0) {
-					findTF.setForeground(Color.black);
-					try {
-						pane.scrollRectToVisible(pane.modelToView2D(offset).getBounds());
-					}
-					catch (BadLocationException e) {
-					}
-				}
-				else if (offset < 0) {
-					findTF.setForeground(Color.red);
-				}
-			}
-		});
-		findTF.addKeyListener(new java.awt.event.KeyAdapter() {
-			@Override
-			public void keyTyped(java.awt.event.KeyEvent evt) {
+    private void findNext() {
 
-				word = findTF.getText();
-				int offset = searcher.search(word);
-				if (offset > 0) {
-					findTF.setForeground(Color.black);
-					try {
-						pane.scrollRectToVisible(pane.modelToView2D(offset).getBounds());
-					}
-					catch (BadLocationException e) {
-					}
-				}
-				else if (offset < 0) {
-					findTF.setForeground(Color.red);
-				}
-			}
-		});
+        if (searcher == null) {
+            return;
+        }
+        int offset = searcher.searchNext();
+        setFindFieldColorAndScroll(offset);
+    }
 
-		// findTF.addKeyListener(new java.awt.event.KeyAdapter() {
-		// public void keyPressed(java.awt.event.KeyEvent evt) {
-		// int code = evt.getKeyCode();
-		// switch (code) {
-		// case java.awt.event.KeyEvent.VK_F3:
-		// int offset = searcher.search(word);
-		// if (offset != -1) {
-		// try {
-		// pane.scrollRectToVisible(pane
-		// .modelToView(offset));
-		// } catch (BadLocationException e) {
-		// }
-		// }
-		// }
-		//
-		// }
-		// });
-		pane.getDocument().addDocumentListener(new DocumentListener() {
-			@Override
-			public void insertUpdate(DocumentEvent evt) {
-				searcher.search(word);
-			}
+    private void findPrev() {
+        if (searcher == null) {
+            return;
+        }
+        int offset = searcher.searchPrevious();
+        setFindFieldColorAndScroll(offset);
 
-			@Override
-			public void removeUpdate(DocumentEvent evt) {
-				searcher.search(word);
-			}
+    }
 
-			@Override
-			public void changedUpdate(DocumentEvent evt) {
-			}
-		});
+    private void setFindFieldColorAndScroll(int offset) {
+        // System.out.println("offset="+offset);
+        if (offset > 0) {
+            findTF.setForeground(Color.black);
+            try {
+                pane.scrollRectToVisible(pane.modelToView2D(offset).getBounds());
+            } catch (BadLocationException e) {
+            }
+        } else if (offset < 0) {
+            findTF.setForeground(Color.red);
+        }
+    }
+    /**
+     * Maximum document length in characters. If the document gets larger than
+     * this it is cleared. This should prevent OutOfMemory errors during long
+     * runs.
+     */
+    public final int MAX_CHARS = 80 * 80 * 400; // lines*lines/page*pages
 
-		pane.addKeyListener(new java.awt.event.KeyAdapter() {
-			@Override
-			public void keyPressed(java.awt.event.KeyEvent evt) {
-				int code = evt.getKeyCode();
-				switch (code) {
-					case java.awt.event.KeyEvent.VK_F3:
-						int offset = searcher.search(word);
-						if (offset != -1) {
-							try {
-								pane.scrollRectToVisible(pane.modelToView2D(offset).getBounds());
-							}
-							catch (BadLocationException e) {
-							}
-						}
-				}
+    /**
+     * Creates new form AEViewerConsoleOutputFrame
+     */
+    public AEViewerConsoleOutputFrame() {
+        initComponents();
+        attr = pane.getInputAttributes();
+        doc = pane.getStyledDocument();
+        searcher = new WordSearcher(pane);
 
-			}
-		});
+        findTF.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+//                findFirst(); // already handled enter by keyTyped
+            }
 
-		// levelComboxBox.removeAllItems();
-		// for (Level l : levels) {
-		// levelComboxBox.addItem(l.getName());
-		// }
-	}
+        });
+        findTF.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                findFirst(); // already handled enter by keyTyped
+//                if (evt.getKeyChar() == '\n') {
+//                    findNext();
+//                } else {
+//                    findFirst();
+//                }
+            }
+        });
 
-	/**
-	 * Applies to next append
-	 */
-	private void setWarning() {
-		StyleConstants.setForeground(attr, Color.red);
-	}
+        findTF.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                f3pressed(evt);
 
-	/**
-	 * Applies to next append
-	 */
-	private void setInfo() {
-		StyleConstants.setForeground(attr, Color.black);
-	}
+            }
+        });
 
-	/**
-	 * Appends the message using the level to set the style
-	 */
-	public void append(final String s, final Level level) {
-		EventQueue.invokeLater(new Runnable() {
+        pane.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent evt) {
+//                searcher.searchFirst(word);
+            }
 
-			@Override
-			public void run() {
-				try {
-					if (doc.getLength() > MAX_CHARS) {
-						doc.remove(0, doc.getLength());
-						String s = new Date() + ": cleared log to prevent OutOfMemory, increase MAX_CHARS (currently " + MAX_CHARS
-							+ ") to save more logging";
-						doc.insertString(0, s, attr);
-					}
-					if (level.intValue() > Level.INFO.intValue()) {
-						setWarning();
-					}
-					else {
-						setInfo();
-					}
-					boolean tail = pane.getCaretPosition() == doc.getLength() ? true : false;
-					doc.insertString(doc.getLength(), s, attr);
-					if (tail) {
-						pane.setCaretPosition(doc.getLength());
-					}
-				}
-				catch (BadLocationException ex) {
-					Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
-				}
-			}
-		});
-	}
+            @Override
+            public void removeUpdate(DocumentEvent evt) {
+//                searcher.searchFirst(word);
+            }
 
-	public void clear() {
-		EventQueue.invokeLater(new Runnable() {
+            @Override
+            public void changedUpdate(DocumentEvent evt) {
+            }
+        });
 
-			@Override
-			public void run() {
-				try {
-					support.firePropertyChange("cleared", null, null);
-					doc.remove(0, doc.getLength());
-					// txtTextLog.setText(null);
-				}
-				catch (BadLocationException ex) {
-					Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
-				}
-			}
-		});
-	}
+        pane.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent evt) {
+                f3pressed(evt);
 
-	/**
-	 * This method is called from within the constructor to initialize the form.
-	 * WARNING: Do NOT modify this code. The content of this method is always
-	 * regenerated by the Form Editor.
-	 */
-	@SuppressWarnings("unchecked")
-	// <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-	private void initComponents() {
+            }
 
-		closeButton = new javax.swing.JButton();
-		clearButton = new javax.swing.JButton();
-		jScrollPane1 = new javax.swing.JScrollPane();
-		pane = new javax.swing.JTextPane();
-		findLabel = new javax.swing.JLabel();
-		findTF = new javax.swing.JTextField();
+        });
 
-		setTitle("jAER Console");
+        // levelComboxBox.removeAllItems();
+        // for (Level l : levels) {
+        // levelComboxBox.addItem(l.getName());
+        // }
+    }
 
-		closeButton.setMnemonic('c');
-		closeButton.setText("Close");
-		closeButton.addActionListener(new java.awt.event.ActionListener() {
-			@Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-				closeButtonActionPerformed(evt);
-			}
-		});
+    /**
+     * Applies to next append
+     */
+    private void setWarning() {
+        StyleConstants.setForeground(attr, Color.red);
+    }
 
-		clearButton.setMnemonic('r');
-		clearButton.setText("Clear");
-		clearButton.setToolTipText("Clear contents");
-		clearButton.addActionListener(new java.awt.event.ActionListener() {
-			@Override
-			public void actionPerformed(java.awt.event.ActionEvent evt) {
-				clearButtonActionPerformed(evt);
-			}
-		});
+    /**
+     * Applies to next append
+     */
+    private void setInfo() {
+        StyleConstants.setForeground(attr, Color.black);
+    }
 
-		jScrollPane1.setViewportView(pane);
+    /**
+     * Appends the message using the level to set the style
+     */
+    public void append(final String s, final Level level) {
+        EventQueue.invokeLater(new Runnable() {
 
-		findLabel.setText("Highlight");
+            @Override
+            public void run() {
+                try {
+                    if (doc.getLength() > MAX_CHARS) {
+                        doc.remove(0, doc.getLength());
+                        String s = new Date() + ": cleared log to prevent OutOfMemory, increase MAX_CHARS (currently " + MAX_CHARS
+                                + ") to save more logging";
+                        doc.insertString(0, s, attr);
+                    }
+                    if (level.intValue() > Level.INFO.intValue()) {
+                        setWarning();
+                    } else {
+                        setInfo();
+                    }
+                    boolean tail = pane.getCaretPosition() == doc.getLength() ? true : false;
+                    doc.insertString(doc.getLength(), s, attr);
+                    if (tail) {
+                        pane.setCaretPosition(doc.getLength());
+                    }
+                } catch (BadLocationException ex) {
+                    Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
+    }
 
-		findTF.setToolTipText("Highlights a string.");
+    public void clear() {
+        EventQueue.invokeLater(new Runnable() {
 
-		javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-		getContentPane().setLayout(layout);
-		layout.setHorizontalGroup(
-			layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addGroup(javax.swing.GroupLayout.Alignment.TRAILING,
-				layout.createSequentialGroup()
-					.addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-						.addGroup(layout.createSequentialGroup().addContainerGap().addComponent(jScrollPane1,
-							javax.swing.GroupLayout.DEFAULT_SIZE, 687, Short.MAX_VALUE))
-				.addGroup(layout.createSequentialGroup().addGap(58, 58, 58).addComponent(findLabel).addGap(18, 18, 18)
-					.addComponent(findTF, javax.swing.GroupLayout.PREFERRED_SIZE, 335, javax.swing.GroupLayout.PREFERRED_SIZE)
-					.addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE,
-						Short.MAX_VALUE)
-					.addComponent(clearButton).addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-					.addComponent(closeButton))).addContainerGap()));
-		layout.setVerticalGroup(
-			layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING).addGroup(javax.swing.GroupLayout.Alignment.TRAILING,
-				layout.createSequentialGroup().addContainerGap()
-					.addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE)
-					.addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-					.addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-						.addGroup(javax.swing.GroupLayout.Alignment.TRAILING,
-							layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE).addComponent(clearButton)
-								.addComponent(findLabel).addComponent(findTF, javax.swing.GroupLayout.PREFERRED_SIZE,
-									javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-						.addComponent(closeButton, javax.swing.GroupLayout.Alignment.TRAILING))
-					.addContainerGap()));
+            @Override
+            public void run() {
+                try {
+                    support.firePropertyChange("cleared", null, null);
+                    doc.remove(0, doc.getLength());
+                    // txtTextLog.setText(null);
+                } catch (BadLocationException ex) {
+                    Logger.getLogger(AEViewerConsoleOutputFrame.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        });
+    }
 
-		pack();
-	}// </editor-fold>//GEN-END:initComponents
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
 
-	private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_closeButtonActionPerformed
-		setVisible(false);
-	}// GEN-LAST:event_closeButtonActionPerformed
+        closeButton = new javax.swing.JButton();
+        clearButton = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        pane = new javax.swing.JTextPane();
+        findLabel = new javax.swing.JLabel();
+        findTF = new javax.swing.JTextField();
+        next = new BasicArrowButton(BasicArrowButton.SOUTH);
+        prev = new BasicArrowButton(BasicArrowButton.NORTH);
 
-	private void clearButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_clearButtonActionPerformed
-		clear();
-	}// GEN-LAST:event_clearButtonActionPerformed
+        setTitle("jAER Console");
 
-	/**
-	 * @param args
-	 *            the command line arguments
-	 */
-	public static void main(String args[]) {
-		java.awt.EventQueue.invokeLater(new Runnable() {
+        closeButton.setMnemonic('c');
+        closeButton.setText("Close");
+        closeButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                closeButtonActionPerformed(evt);
+            }
+        });
 
-			@Override
-			public void run() {
-				new AEViewerConsoleOutputFrame().setVisible(true);
-			}
-		});
-	}
+        clearButton.setMnemonic('r');
+        clearButton.setText("Clear");
+        clearButton.setToolTipText("Clear contents");
+        clearButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearButtonActionPerformed(evt);
+            }
+        });
 
-	// Variables declaration - do not modify//GEN-BEGIN:variables
-	private javax.swing.JButton clearButton;
-	private javax.swing.JButton closeButton;
-	private javax.swing.JLabel findLabel;
-	private javax.swing.JTextField findTF;
-	private javax.swing.JScrollPane jScrollPane1;
-	private javax.swing.JTextPane pane;
-	// End of variables declaration//GEN-END:variables
+        pane.setEditable(false);
+        jScrollPane1.setViewportView(pane);
 
-	/**
-	 * @return the support
-	 */
-	public PropertyChangeSupport getSupport() {
-		return support;
-	}
+        findLabel.setText("Highlight");
+
+        findTF.setToolTipText("Highlights a string.");
+
+        next.setToolTipText("go to next (F3)");
+        next.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                nextActionPerformed(evt);
+            }
+        });
+
+        prev.setToolTipText("go to previous (Shift+F3)");
+        prev.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                prevActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(6, 6, 6)
+                        .addComponent(findLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(findTF, javax.swing.GroupLayout.PREFERRED_SIZE, 335, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(next, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(prev, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 113, Short.MAX_VALUE)
+                        .addComponent(clearButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(closeButton))
+                    .addComponent(jScrollPane1))
+                .addContainerGap())
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(clearButton)
+                        .addComponent(findLabel)
+                        .addComponent(findTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(next, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(prev, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(closeButton, javax.swing.GroupLayout.Alignment.TRAILING))
+                .addContainerGap())
+        );
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void nextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_nextActionPerformed
+        findNext();
+    }//GEN-LAST:event_nextActionPerformed
+
+    private void prevActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_prevActionPerformed
+        findPrev();
+    }//GEN-LAST:event_prevActionPerformed
+
+    private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_closeButtonActionPerformed
+        setVisible(false);
+    }// GEN-LAST:event_closeButtonActionPerformed
+
+    private void clearButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_clearButtonActionPerformed
+        clear();
+    }// GEN-LAST:event_clearButtonActionPerformed
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String args[]) {
+
+        final AEViewerConsoleOutputFrame frame = new AEViewerConsoleOutputFrame();
+        frame.setVisible(true);
+        frame.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        Random r = new Random();
+        while (true) {
+            try {
+                Thread.sleep(600);
+            } catch (InterruptedException e) {
+                System.out.println("interrupted");
+                break;
+            }
+            int n = r.nextInt(80);
+            String s = RandomStringUtils.randomPrint(n);
+            if (r.nextInt(100) < 10) {
+                s += "       tobi    ";
+            }
+            s += "\n";
+            boolean warning = r.nextInt(10) < 2;
+            if (warning) {
+                frame.append(s, Level.WARNING);
+            } else {
+                frame.append(s, Level.INFO);
+            }
+        }
+
+        java.awt.EventQueue.invokeLater(new Runnable() {
+
+            @Override
+            public void run() {
+
+//                frame.append(word, Level.SEVERE);
+            }
+        });
+    }
+
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton clearButton;
+    private javax.swing.JButton closeButton;
+    private javax.swing.JLabel findLabel;
+    private javax.swing.JTextField findTF;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JButton next;
+    private javax.swing.JTextPane pane;
+    private javax.swing.JButton prev;
+    // End of variables declaration//GEN-END:variables
+
+    /**
+     * @return the support
+     */
+    public PropertyChangeSupport getSupport() {
+        return support;
+    }
 
 }

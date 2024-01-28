@@ -6,6 +6,8 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.Shape;
+import java.util.ArrayList;
+import javax.swing.plaf.basic.BasicTextUI;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Document;
@@ -15,25 +17,28 @@ import javax.swing.text.LayeredHighlighter;
 import javax.swing.text.Position;
 import javax.swing.text.View;
 
-/** Takes a document and highlights occurrences of that word */
+/**
+ * Takes a document and highlights occurrences of that word
+ */
 public class WordSearcher {
 
     int lastOffset = 0;
     private String word = null;
+    private ArrayList<Integer> locations = new ArrayList();
 
+    /**
+     * Make a new instance using a JTextComponent
+     *
+     * @param comp - the Document is obtained from the component
+     */
     public WordSearcher(JTextComponent comp) {
         this.comp = comp;
         this.painter = new UnderlineHighlighter.UnderlineHighlightPainter(
                 Color.red);
     }
 
-   /** Search for a word and return the offset of the
-    first occurrence. Highlights are added for all
-     occurrences found.
-     * @param word
-    */
-    public int search(String word) {
-        int firstOffset = -1;
+    private int search(String word, int offset, boolean forwards) {
+        this.word = word;  // for next and prev to use
         Highlighter highlighter = comp.getHighlighter();
 
         // Remove any existing highlights for last word
@@ -49,38 +54,83 @@ public class WordSearcher {
             return -1;
         }
 
-        // Look for the word we are given - insensitive search
+        // Look for the word we are given - case insensitive search
         String content = null;
         try {
             Document d = comp.getDocument();
-            content = d.getText(lastOffset, d.getLength()).toLowerCase();
+            content = d.getText(0, d.getLength()).toLowerCase();
         } catch (BadLocationException e) {
             // Cannot happen
             return -1;
         }
 
         word = word.toLowerCase();
-        int lastIndex = 0;
+        int firstOffset = -1;
+        int lastIndex = offset;
         int wordSize = word.length();
+        if (forwards) {
+            while ((lastIndex = content.indexOf(word, lastIndex)) != -1) { // find next word starting at lastIndex
+                int endIndex = lastIndex + wordSize;
+                try {
+                    highlighter.addHighlight(lastIndex, endIndex, painter);
+                } catch (BadLocationException e) {
+                    // Nothing to do
+                }
+                if (firstOffset == -1) {
+                    firstOffset = lastIndex;
+                }
+                lastIndex = endIndex;
+            }
+        } else { // backwards
+            lastIndex = content.lastIndexOf(word, lastIndex-word.length()); // find last one in doc before current offset (next one backwards)
 
-        while ((lastIndex = content.indexOf(word, lastIndex)) != -1) {
-            int endIndex = lastIndex + wordSize;
             try {
-                highlighter.addHighlight(lastIndex, endIndex, painter);
+                highlighter.addHighlight(lastIndex, lastIndex + word.length(), painter);
             } catch (BadLocationException e) {
                 // Nothing to do
             }
             if (firstOffset == -1) {
                 firstOffset = lastIndex;
             }
-            lastIndex = endIndex;
+
         }
+//        System.out.println(String.format("word=%s dir=%s, offset=%,d firstOffset=%,d", word, forwards ? "forwards" : "backwards", offset, firstOffset));
         return firstOffset;
+
+    }
+
+    /**
+     * Search for a word and return the offset of the first occurrence.
+     * Highlights are added for all occurrences found.
+     *
+     * @param word word to search for (case ignored)
+     * @param offset characters in document
+     * @param forwards true to go forwards
+     * @return first word offset in characters from start of document
+     */
+    public int searchFirst(String word, int offset, boolean forwards) {
+        lastOffset = search(word, offset, forwards);
+        return lastOffset;
     }
 
     protected JTextComponent comp;
 
     protected Highlighter.HighlightPainter painter;
+
+    public int searchNext() {
+        if (word == null || word.isBlank()) {
+            return lastOffset;
+        }
+        lastOffset += word.length();
+        lastOffset = search(word, lastOffset, true);
+        return lastOffset;
+    }
+
+    public int searchPrevious() {
+        lastOffset = search(word, lastOffset, false);
+        return lastOffset;
+
+    }
 
 }
 
