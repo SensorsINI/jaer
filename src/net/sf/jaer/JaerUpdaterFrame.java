@@ -120,6 +120,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         jaerProjectLinkLabel = new javax.swing.JLabel();
         seeReleasesButton = new javax.swing.JButton();
         seeCommitsButton = new javax.swing.JButton();
+        checkForUpdateButton = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         statusButton = new javax.swing.JButton();
         antBuildButton = new javax.swing.JButton();
@@ -170,6 +171,14 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             }
         });
 
+        checkForUpdateButton.setText("Check for new release");
+        checkForUpdateButton.setToolTipText("(Only for installed jAER; not for cloned/built jAER)");
+        checkForUpdateButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                checkForUpdateButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -178,8 +187,10 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                 .addContainerGap()
                 .addComponent(jaerProjectLinkLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(checkForUpdateButton)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(seeReleasesButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(seeCommitsButton)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
@@ -190,7 +201,8 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jaerProjectLinkLabel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(seeReleasesButton)
-                    .addComponent(seeCommitsButton))
+                    .addComponent(seeCommitsButton)
+                    .addComponent(checkForUpdateButton))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -321,14 +333,11 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -385,6 +394,10 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         }
     }//GEN-LAST:event_seeReleasesButtonActionPerformed
 
+    private void checkForUpdateButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkForUpdateButtonActionPerformed
+       JaerUpdater.checkForInstall4jReleaseUpdate(this);
+    }//GEN-LAST:event_checkForUpdateButtonActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -430,6 +443,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton antBuildButton;
+    private javax.swing.JButton checkForUpdateButton;
     private javax.swing.JButton closeButton;
     private javax.swing.JButton gitPullButton;
     private javax.swing.JButton initGitButton;
