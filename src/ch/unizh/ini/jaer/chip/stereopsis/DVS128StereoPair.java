@@ -288,7 +288,7 @@ public class DVS128StereoPair extends DVS128 implements StereoChipInterface {
         for (int i = 0; i < n; i++) {
             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);
             if (hw instanceof AEMonitorInterface && (hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface
-                    || hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2DVS128HardwareInterface)) {
+                    || hw instanceof net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2LibUsbDVS128HardwareInterface)) {
                 log.info("found AEMonitorInterface && BiasgenHardwareInterface " + hw);
                 hws.add(hw);
             }

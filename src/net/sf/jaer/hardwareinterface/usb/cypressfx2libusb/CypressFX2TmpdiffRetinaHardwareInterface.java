@@ -10,6 +10,8 @@
 package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -119,7 +121,8 @@ public class CypressFX2TmpdiffRetinaHardwareInterface extends CypressFX2Biasgen 
                 // before there is more room for new events
             }
             int shortts;
-            final byte[] aeBuffer = b.array();
+            final byte[] aeBuffer = b.array(); // TODO update to follow what other classes do by directly using buffer, since there is no backing array for LibUsb buffers
+            final ShortBuffer sBuf = b.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer();
             // byte lsb,msb;
             int bytesSent = b.limit();
             if ((bytesSent % 4) != 0) {

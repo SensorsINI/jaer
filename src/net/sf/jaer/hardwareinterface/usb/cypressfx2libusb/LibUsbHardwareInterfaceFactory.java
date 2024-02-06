@@ -19,6 +19,10 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
 
+/** Generates correct HardwareInterface for boards that use LibUsb driver.
+ * 
+ * @author luca
+ */
 public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
 
     private final static Logger log = Logger.getLogger("net.sf.jaer");
@@ -40,9 +44,11 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
         // HardwareInterfaces.
         // addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USB2AERmapper,
         // CypressFX2Mapper.class);
-        addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_DVS128_REV0, CypressFX2DVS128HardwareInterface.class);
-        addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
-        addDeviceToMap(CypressFX2.VID_DVS128_ORIG_FX2_ONLY, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
+        addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_DVS128_REV0, CypressFX2LibUsbDVS128HardwareInterface.class);
+        addDeviceToMap(CypressFX2.VID_DVS128_ORIG_FX2_ONLY, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2LibUsbDVS128HardwareInterface.class); // tobi added for Tmpdiff128 StereoBoard VID/PID 0x547/0x8700
+// maybe need to comment back in to handle very first Tmpdiff128 board
+//        addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
+//        addDeviceToMap(CypressFX2.VID_DVS128_ORIG_FX2_ONLY, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
         addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_COCHLEAAMS, CochleaAMS1cHardwareInterface.class);
 
         // Linux Drivers for PAER retina.
@@ -65,10 +71,12 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
         // Build up first list of compatible devices.
         refreshCompatibleDevicesList();
+
     }
 
     private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
+        log.info(String.format("Put mapping from USB VID/PID=0x%x/0x%x to class %s",VID,PID,cls));
     }
 
     private void refreshCompatibleDevicesList() {
@@ -105,11 +113,14 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
         final DeviceDescriptor devDesc = new DeviceDescriptor();
 
+        String devicesFound = "LibUsbHardwareInterfaceFactory: devices found:";
+        int nFound = 0;
         for (final Device dev : devList) {
 
             LibUsb.getDeviceDescriptor(dev, devDesc);
 
             final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
+            
 
             // Check that the device is not already bound to any other driver.
             final DeviceHandle devHandle = new DeviceHandle();
@@ -119,6 +130,8 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
             }
 
             status = LibUsb.kernelDriverActive(devHandle, 0);
+            
+            log.fine(String.format("probing libusb device with VID/PID 0x%x/0x%x to see if it maps to a compatible LibUsbHardwareInterface", vidPid.left,vidPid.right));
 
             LibUsb.close(devHandle);
 
@@ -128,7 +141,12 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
                 // device to the compatible
                 // devices list and increase its reference count.
                 compatibleDevicesListLocal.add(LibUsb.refDevice(dev));
+                nFound++;
+                devicesFound += String.format("\n %s for USB VID/PID 0x%x/0x%x", vidPidToClassMap.get(vidPid).toString(),vidPid.left,vidPid.right);
             }
+        }
+        if (nFound > 0) {
+            log.info(devicesFound);
         }
 
         LibUsb.freeDeviceList(devList, true);
