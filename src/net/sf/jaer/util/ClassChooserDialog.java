@@ -61,12 +61,23 @@ public class ClassChooserDialog extends javax.swing.JDialog {
         return returnStatus;
     }
 
-    
+    /** Returns list of classes that should populate the users choices.
+     * 
+     * @return list of class names, fully qualified with package path 
+     */
     public ArrayList<String> getList(){
         if(returnStatus==RET_CANCEL) return null;
         Object[] oa=chooserPanel.getChosenClassesListModel().toArray();
         ArrayList<String> ret=new ArrayList(Arrays.asList(oa));
         return ret;
+    }
+    
+    /** Return the last class added if any.
+     * 
+     * @return fully-qualified class name, or null if none added.
+     */
+    public String getLastSelectedClass(){
+        return chooserPanel.getLastSelectedClassName();
     }
     
     /** This method is called from within the constructor to

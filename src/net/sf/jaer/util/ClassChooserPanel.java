@@ -62,7 +62,8 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private ArrayList<String> revertCopy, defaultClassNames;
     private DescriptionMap descriptionMap = new DescriptionMap();
     private Class superClass = null; // the classes available will be subclasses of this class
-
+    private String lastSelectedClassName=null;
+    
     private class ClassDescription {
 
         String description = null;
@@ -893,6 +894,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
     private void classJListMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_classJListMouseClicked
         moveDownButton.setEnabled(true);
         moveUpButton.setEnabled(true);
+        setLastSelectedClassName(classJList.getSelectedValue().toString());
     }//GEN-LAST:event_classJListMouseClicked
 
     private void clearFilterButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterButActionPerformed
@@ -1021,6 +1023,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         }
         chosenClassesListModel.add(last + 1, o);
         classJList.setSelectedIndex(last + 1);
+        setLastSelectedClassName(o.toString());
     }//GEN-LAST:event_addClassButtonActionPerformed
 
     private void refrreshButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refrreshButtonActionPerformed
@@ -1078,6 +1081,20 @@ public class ClassChooserPanel extends javax.swing.JPanel {
         source.addMouseListener(new ActionMouseListener());
     }
     //  Implement Mouse Listener
+
+    /**
+     * @return the lastSelectedClassName
+     */
+    public String getLastSelectedClassName() {
+        return lastSelectedClassName;
+    }
+
+    /**
+     * @param lastAddedClassName the lastSelectedClassName to set
+     */
+    public void setLastSelectedClassName(String lastAddedClassName) {
+        this.lastSelectedClassName = lastAddedClassName;
+    }
 
     static class ActionMouseListener extends MouseAdapter {
 
