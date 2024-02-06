@@ -213,7 +213,7 @@ public class USBIOHardwareInterfaceFactory implements UsbIoErrorCodes, PnPNotify
             case CypressFX2.PID_TMPDIFF128_RETINA:
 
                 if (did == CypressFX2.DID_STEREOBOARD) {
-                    return new CypressFX2StereoBoard(n);
+                    return new CypressFX2UsbIoStereoBoard(n);
                     //System.out.println(did);
                 }
                 return new CypressFX2TmpdiffRetinaHardwareInterface(n);
