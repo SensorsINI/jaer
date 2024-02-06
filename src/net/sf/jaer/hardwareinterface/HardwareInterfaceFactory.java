@@ -24,6 +24,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.LibUsb3HardwareInterfa
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
 import es.us.atc.jaer.hardwareinterface.OpalKellyFX3Factory;
+import java.util.logging.Level;
 
 /**
  * This class builds a list of all available devices and lets you get one of them.
@@ -100,22 +101,14 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 					}
 
 					interfaceList.add(u);
-					// System.out.println("HardwareInterfaceFactory.buildInterfaceList: added "+u);// TODO comment
+					log.log(Level.INFO, "HardwareInterfaceFactory.buildInterfaceList: added device {0} with HardwareInterfaceFactory {1}", new Object[]{u, factorie});
 				}
 			}
 			catch (final NoSuchMethodException e) {
-				HardwareInterfaceFactory.log.warning(factorie
-					+ " has no instance() method but it needs to be a singleton of this form");
-				e.printStackTrace();
+				HardwareInterfaceFactory.log.log(Level.WARNING, "{0} has no instance() method but it needs to be a singleton of this form", factorie);
 			}
-			catch (final IllegalAccessException e3) {
+			catch (final IllegalAccessException | InvocationTargetException | HardwareInterfaceException e3) {
 				e3.printStackTrace();
-			}
-			catch (final InvocationTargetException e4) {
-				e4.printStackTrace();
-			}
-			catch (final HardwareInterfaceException e5) {
-				e5.printStackTrace();
 			}
 		}
 	}
