@@ -77,6 +77,7 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
         key = title;
         setTitle(title);
         optionPane.setMessageType(JOptionPane.WARNING_MESSAGE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         pack();
     }
 
