@@ -88,8 +88,8 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
-import net.sf.jaer.JaerUpdater;
 import net.sf.jaer.JaerUpdaterFrame;
+import net.sf.jaer.JaerUpdaterInstall4j;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aesequencer.AEMonitorSequencerInterface;
@@ -3677,6 +3677,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chipClassNames = dlg.getList();
                 putChipClassPrefs();
                 buildDeviceMenu();
+                if (dlg.getLastSelectedClass() != null) {
+                        String cn = dlg.getLastSelectedClass();
+                    try {
+                        Class cl = FastClassFinder.forName(cn);
+                        setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                        setAeChipClass(cl);
+                        log.info(String.format("Set AEChip to last one added which is %s", cn));
+                       JOptionPane.showMessageDialog(this, 
+                                String.format("Set AEChip to  %s", cn),
+                                "AEChip error", JOptionPane.INFORMATION_MESSAGE);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        JOptionPane.showMessageDialog(this, 
+                                String.format("Error setting AEChip to  %s: got exception %s", cn,e.toString()),
+                                "AEChip error", JOptionPane.ERROR_MESSAGE);
+                    } finally {
+                        setCursor(Cursor.getDefaultCursor());
+                    }
+                }
             }
 	}//GEN-LAST:event_customizeDevicesMenuItemActionPerformed
 
@@ -5734,7 +5754,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_resetAccumulationMenuItemActionPerformed
 
     private void checkForUpdatesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkForUpdatesMenuItemActionPerformed
-        JaerUpdater.checkForInstall4jReleaseUpdate(this);
+        JaerUpdaterInstall4j.checkForInstall4jReleaseUpdate(this);
     }//GEN-LAST:event_checkForUpdatesMenuItemActionPerformed
 
     private void loggingLevelMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_loggingLevelMenuMenuSelected
