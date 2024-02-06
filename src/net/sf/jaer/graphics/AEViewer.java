@@ -2355,7 +2355,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         int delayMs = 1;
         int desiredPeriodMs = (int) (1000f / desiredFPS);
         private long beforeTimeNs = System.nanoTime(), lastdt, afterTimeNs;
-        WarningDialogWithDontShowPreference fpsWarning;
         private LowpassFilter periodFilter = new LowpassFilter(FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
 
         /**
@@ -2368,19 +2367,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          */
         public final void setDesiredFPS(int fps) {
             if ((fps < 30) || (fps > 120)) {
-                if (fpsWarning == null) {
-                    fpsWarning = new WarningDialogWithDontShowPreference(AEViewer.this, false,
-                            "jAER Rendering rate warning",
-                            "<html>You are setting rendering (and processing rate) at " + fps + " Hz. <br>which is either less than 30Hz or greater than 120Hz. "
-                            + "<p>To change the rendering rate, see menu item use the LEFT or RIGHT arrow keys. "
-                            + "<p>The current actual/desired rendering rate is shown in the status bar as XX/YYfps"
-                            + "<p>You can render at a higher rate to reduce latency, but computational cost will be higher. "
-                            + "<p>For real-time applications, see the <i>Options/Process on acquistion cycle</i> menu item in the FilterFrame window."
-                    );
-                }
-                if (!fpsWarning.isVisible()) {
-                    fpsWarning.setVisible(true);
-                }
+                WarningDialogWithDontShowPreference fpsWarning;
+
+                fpsWarning = new WarningDialogWithDontShowPreference(AEViewer.this, false,
+                        "jAER Rendering rate warning",
+                        "<html>You are setting rendering (and processing rate) at " + fps + " Hz. <br>which is either less than 30Hz or greater than 120Hz. "
+                        + "<p>To change the rendering rate, see menu item use the LEFT or RIGHT arrow keys. "
+                        + "<p>The current actual/desired rendering rate is shown in the status bar as XX/YYfps"
+                        + "<p>You can render at a higher rate to reduce latency, but computational cost will be higher. "
+                        + "<p>For real-time applications, see the <i>Options/Process on acquistion cycle</i> menu item in the FilterFrame window."
+                );
+                fpsWarning.setLocationRelativeTo(AEViewer.this);
+                fpsWarning.setVisible(true);
             }
             if (fps < 1) {
                 fps = 1;
