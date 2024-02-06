@@ -44,13 +44,13 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     public JaerUpdaterFrame() {
         initComponents();
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE)).getImage());
-        boolean debug = JaerUpdater.DEBUG;
+        boolean debug = JaerUpdaterGit.DEBUG;
         try {
             setGitButtonsEnabled(false);
-            initGitButton.setEnabled(JaerUpdater.DEBUG);
-            gitPullButton.addActionListener(JaerUpdater.gitUpdateActionListener(this));
-            antBuildButton.addActionListener(JaerUpdater.buildActionListener(this));
-            statusButton.addActionListener(JaerUpdater.gitStatusActionListener(this));
+            initGitButton.setEnabled(JaerUpdaterGit.DEBUG);
+            gitPullButton.addActionListener(JaerUpdaterGit.gitUpdateActionListener(this));
+            antBuildButton.addActionListener(JaerUpdaterGit.buildActionListener(this));
+            statusButton.addActionListener(JaerUpdaterGit.gitStatusActionListener(this));
             setGitButtonsEnabled(true);
         } catch (IOException e) {
             log.warning(e.toString());
@@ -68,7 +68,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
             try {
                 if (!debug) {
                     initGitButton.setEnabled(true);
-                    initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+                    initGitButton.addActionListener(JaerUpdaterGit.initReleaseForGitActionListener(this));
                 }
             } catch (IOException ex) {
                 Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
@@ -80,7 +80,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
         if (debug) {
             initGitButton.setEnabled(true);
             try {
-                initGitButton.addActionListener(JaerUpdater.initReleaseForGitActionListener(this));
+                initGitButton.addActionListener(JaerUpdaterGit.initReleaseForGitActionListener(this));
             } catch (IOException ex) {
                 Logger.getLogger(JaerUpdaterFrame.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -395,7 +395,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     }//GEN-LAST:event_seeReleasesButtonActionPerformed
 
     private void checkForUpdateButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkForUpdateButtonActionPerformed
-       JaerUpdater.checkForInstall4jReleaseUpdate(this);
+       JaerUpdaterInstall4j.checkForInstall4jReleaseUpdate(this);
     }//GEN-LAST:event_checkForUpdateButtonActionPerformed
 
     /**
