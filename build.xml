@@ -3,6 +3,7 @@
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
 <project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+        <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
 
@@ -161,16 +162,6 @@
     <target name="-post-jar" depends="jaer-exe4j">
         
     </target>
-
-    <!-- builds a zip of all the javadoc -->
-<!--    <target name="jaer-archive-javadoc" depends="javadoc">
-        <tstamp/>
-        <delete file="../jaer-javadoc-*.zip" />
-        <property name="javadocZipFileName" value="../jaer-javadoc-${DSTAMP}.zip" />
-        <zip destfile="${javadocZipFileName}" comment="jAER javadoc ${DSTAMP} - see https://jaerproject.org">
-            <zipfileset prefix="jAER-javadoc" dir="${dist.javadoc.dir}" />
-        </zip>
-    </target>-->
 
 
     <!-- builds a runtime archive for end users who don't want to develop -->
