@@ -195,7 +195,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         prefs.getInt("borderSpacePixels", 20);
-        
 
         // GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
         // GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that
@@ -232,14 +231,16 @@ public class ChipCanvas implements GLEventListener, Observer {
 //            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL3bc); // getMaxProgrammable(true);// FixedFunc(true);
-                log.info("Getting GLProfile with GLProfile.getDefault()\n If this throws access violotion outside the JVM, and in atio6axx.dll driver"
-                        + ", then it may be your AMD graphics driver."
-                        + "\n If you are running dual display on laptop, try starting with only main laptop display."
-                        + "\n Try to enable use of discrete Nvidia GPU.");
+            log.info("Getting GLProfile with GLProfile.getDefault()\n If this throws access violotion outside the JVM, and in atio6axx.dll driver"
+                    + ", then it may be your AMD graphics driver."
+                    + "\n If you are running dual display on laptop, try starting with only main laptop display."
+                    + "\n Try to enable use of discrete Nvidia GPU.");
             final GLProfile glp = GLProfile.getDefault();
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2ES2);
             final GLCapabilities caps = new GLCapabilities(glp);
-            drawable = new GLCanvas(caps);
+            caps.setDoubleBuffered(true);// TODO debug true should be default
+            drawable = new GLCanvas(caps); 
+            drawable.setAutoSwapBufferMode(true); // TODO debug
 //            if (SystemUtils.IS_OS_WINDOWS) {
 //                List<GLCapabilitiesImmutable> capsAvailable = GLDrawableFactory.getDesktopFactory()
 //                        .getAvailableCapabilities(null);
@@ -525,6 +526,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         final GL2 gl = drawable.getGL().getGL2();
         checkGLError(gl, glu, "start of display");
 
+
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
         // log.info("display");
@@ -543,7 +545,11 @@ public class ChipCanvas implements GLEventListener, Observer {
             if (m == null) {
                 log.warning("null display method for chip " + getChip());
             } else {
+                gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+                gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
                 m.display(drawable);
+//                drawable.swapBuffers();
+//                drawable.swapBuffers();
             }
             // checkGLError(gl, glu, "after " + getDisplayMethod() + ".display()");
             checkGLError(gl, glu, "after DisplayMethod.display()");
@@ -760,7 +766,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     @Override
     public void init(final GLAutoDrawable drawable) {
         // drawable.setGL(new DebugGL(drawable.getGL()));
-        drawable.setAutoSwapBufferMode(true);
         GL2 gl = null;
         try {
             gl = drawable.getGL().getGL2();
@@ -781,7 +786,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         // System.out.println("GLU_EXTENSIONS: "+glu.gluGetString(GLU.GLU_EXTENSIONS));
 
-        gl.setSwapInterval(1);
+//        gl.setSwapInterval(0);
         gl.glShadeModel(GLLightingFunc.GL_FLAT);
 
         gl.glClearColor(0, 0, 0, 0f);
@@ -1121,19 +1126,21 @@ public class ChipCanvas implements GLEventListener, Observer {
             return;
         }
         final float border = getBorderSpacePixels(); // desired smallest border in screen pixels
-        final Insets insets=getBorderInsets();
-        
+        final Insets insets = getBorderInsets();
+
         float glScale;
         checkGLError(g, glu, "before setDefaultProjection");
+        g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         g.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
         g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1)
         // or wide (ar<1).
 
         if (isFillsHorizontally()) { // tall, chip fills horizontally
-            glScale = ((float)w - (insets.left+insets.right)) / sx; // chip pix to screen pix scaling in horizontal&vert direction, 
+            glScale = ((float) w - (insets.left + insets.right)) / sx; // chip pix to screen pix scaling in horizontal&vert direction, 
             //  i.e. one glScale is one chip pixel in screen pixels
-            float lrborder = (insets.left+insets.right)/2 / glScale; // l,r border in model coordinates
+            float lrborder = (insets.left + insets.right) / 2 / glScale; // l,r border in model coordinates
             if (lrborder <= 0) {
                 lrborder = 1;
             }
@@ -1149,14 +1156,14 @@ public class ChipCanvas implements GLEventListener, Observer {
             borders.bottomTop = leftoverY;
             g.glOrtho(-lrborder, sx + lrborder, -leftoverY, (sy + leftoverY), ZCLIP, -ZCLIP); // clip area has same ar as screen!
         } else { // wide, chip fill vertically
-            glScale = ((float)h - (insets.top+insets.bottom)) / sy; // total scale from screen pixels chip pixels, one glScale is one chip pixel in screen pixels
+            glScale = ((float) h - (insets.top + insets.bottom)) / sy; // total scale from screen pixels chip pixels, one glScale is one chip pixel in screen pixels
             float btop = insets.top / glScale; // b is generic border in chip pixels
             float bbot = insets.bottom / glScale; // b is generic border in chip pixels
             if (bbot <= .5f) {
                 bbot = 1;
             }
-            if(btop<=.5f){
-                btop=1;
+            if (btop <= .5f) {
+                btop = 1;
             }
             float leftoverX = ((w / glScale) - sx) / 2; // total leftover x in model coordinates that makes up horizontal border
             if (leftoverX <= 0) {
@@ -1167,7 +1174,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             clipArea.bottom = -bbot;
             clipArea.top = sy + btop;
             borders.leftRight = leftoverX;
-            borders.bottomTop = bbot+btop;
+            borders.bottomTop = bbot + btop;
             g.glOrtho(-leftoverX, (sx + leftoverX), -bbot, sy + btop, ZCLIP, -ZCLIP);
         }
         setScale(glScale);
@@ -1291,22 +1298,24 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void setBorderSpacePixels(final int borderSpacePixels) {
         this.borderSpacePixels = borderSpacePixels;
         insets.bottom = borderSpacePixels;
-        int extratop=0;
-        if(chip!=null && chip instanceof DavisBaseCamera){ // leave room for stats label for DAVIS
-            extratop+=(int)(chip.getSizeY()*0.1f);
-            log.fine(String.format("adding extra %,d pixels top inset for DAVIS chip",extratop));
+        int extratop = 0;
+        if (chip != null && chip instanceof DavisBaseCamera) { // leave room for stats label for DAVIS
+            extratop += (int) (chip.getSizeY() * 0.1f);
+            log.fine(String.format("adding extra %,d pixels top inset for DAVIS chip", extratop));
         }
-        insets.top = borderSpacePixels+ extratop ; 
+        insets.top = borderSpacePixels + extratop;
         insets.left = borderSpacePixels;
         insets.right = borderSpacePixels;
         prefs.putInt("borderSpacePixels", this.borderSpacePixels);
     }
-    
-    /** Returns the border insets around the chip display, These insets are in screen pixels.
-     * 
-     * @return the Insets 
+
+    /**
+     * Returns the border insets around the chip display, These insets are in
+     * screen pixels.
+     *
+     * @return the Insets
      */
-    public Insets getBorderInsets(){
+    public Insets getBorderInsets() {
         return insets;
     }
 
@@ -1372,6 +1381,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         private boolean zoomEnabled = false;
 
         private void setProjection(final GL2 gl) {
+            gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+            gl.glLoadIdentity();
             gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
             gl.glLoadIdentity();
             gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area
