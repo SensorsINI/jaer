@@ -56,6 +56,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
      * values. The GL context is assumed to already be transformed so that chip
      * pixel x,y values can be used for coordinate values, with 0,0 at LL
      * corner.
+     * @param drawable
      */
     @Override
     public void display(final GLAutoDrawable drawable) {
@@ -195,7 +196,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 //            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_ADD);
 //            gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
 
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, 2);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
@@ -218,7 +219,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
 
             gl.glEnable(GL.GL_TEXTURE_2D);
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, 2);
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
             gl.glDisable(GL2.GL_ALPHA_TEST);
