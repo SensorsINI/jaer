@@ -28,6 +28,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author Christian/Tobi
  */
 public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
+    
+    private int warningCount=0;
+    private static final int WARNING_INTERVAL=1000;
 
 	protected DAViSFX3HardwareInterface(final Device device) {
 		super(device);
@@ -210,10 +213,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		}
 
 		private void checkMonotonicTimestamp() {
-			if (currentTimestamp <= lastTimestamp) {
+			if (currentTimestamp <= lastTimestamp && warningCount%WARNING_INTERVAL==0) {
 				CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp=" + lastTimestamp
 					+ ", currentTimestamp=" + currentTimestamp + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
                         }
+                        warningCount++;
 		}
 
 		private void initFrame() {
@@ -342,10 +346,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										CypressFX3.log.fine("APS Frame End event received.");
 
 										for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
-											if (apsCountX[j] != apsSizeX) {
+											if (apsCountX[j] != apsSizeX  && warningCount%WARNING_INTERVAL==0) {
 												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j]
 													+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 											}
+                                                                                        warningCount++;
 										}
 
 										break;
@@ -375,11 +380,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 13: // APS Column End
 										CypressFX3.log.fine("APS Column End event received.");
 
-										if (apsCountY[apsCurrentReadoutType] != apsSizeY) {
+										if (apsCountY[apsCurrentReadoutType] != apsSizeY && warningCount%WARNING_INTERVAL==0) {
 											CypressFX3.log.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
 												+ apsCountY[apsCurrentReadoutType]
 												+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
-										}
+                                                                                        warningCount++;
+                                                                                }
 
 										apsCountX[apsCurrentReadoutType]++;
 
@@ -421,9 +427,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 							case 2: // X address, Polarity OFF
 							case 3: // X address, Polarity ON
 								// Check range conformity.
-								if (data >= dvsSizeX) {
+								if (data >= dvsSizeX && warningCount%WARNING_INTERVAL==0) {
 									CypressFX3.log.severe("DVS: X address out of range (0-" + (dvsSizeX - 1) + "): " + data + ".");
-									break; // Skip invalid event.
+									warningCount++;
+                                                                        break; // Skip invalid event.
 								}
 
 								// Check that the buffer has space for this event. Enlarge if needed.

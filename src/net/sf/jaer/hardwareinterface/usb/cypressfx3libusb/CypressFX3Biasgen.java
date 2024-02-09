@@ -54,7 +54,7 @@ public abstract class CypressFX3Biasgen extends CypressFX3 implements BiasgenHar
 
 	@Override
 	synchronized public void open() throws HardwareInterfaceException {
-		super.open();
+            super.open();
 
 		// And now send the current bias values to the device to enable it.
 		if ((getChip() != null) && (getChip().getBiasgen() != null)) {
