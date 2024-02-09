@@ -623,7 +623,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void cleanup() {
         stopLogging(true); // in case logging, make sure we give chance to save file
         if ((aemon != null) && aemon.isOpen()) {
-            log.info("closing " + aemon);
+            log.info("closing device " + aemon);
             aemon.close();
         }
 

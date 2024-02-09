@@ -1103,7 +1103,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 							realTimeFilter(addresses, timestamps);
 						}
 					}
-					else {
+					else if(transfer.status() != LibUsb.TRANSFER_CANCELLED){
 						CypressFX3.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength() + "  Status: "
 							+ LibUsb.errorName(transfer.status()));
 					}
