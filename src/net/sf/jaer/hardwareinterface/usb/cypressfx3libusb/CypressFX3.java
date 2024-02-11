@@ -9,12 +9,12 @@ import java.awt.Desktop;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,7 +43,6 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
-import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
@@ -664,6 +663,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 		final AEReader reader = getAeReader();
 
 		if (reader != null) {
+                    log.info("Stopping thread "+reader);
 			reader.stopThread();
 
 			setAeReader(null);
@@ -1039,10 +1039,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                         log.warning("USB transfer thread became null before stopThread was called; doing nothing");
                         return;
                     }
+                    log.info("Interrupting USBTransferThread "+usbTransfer);
 			usbTransfer.interrupt();
 
 			try {
-				usbTransfer.join();
+                            log.info("Waiting for USBTransferThread to join()");
+				usbTransfer.join(Duration.ofSeconds(1));
+                                log.info("USBTransferThread join()'ed");
 			}
 			catch (final InterruptedException e) {
 				CypressFX3.log.severe("Failed to join AEReaderThread");
@@ -1331,6 +1334,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			startAEReader();
 		}
 		else {
+                    log.info("stopping AEReader");
 			stopAEReader();
 		}
 
