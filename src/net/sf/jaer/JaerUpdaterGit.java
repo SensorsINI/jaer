@@ -108,11 +108,6 @@ public class JaerUpdaterGit {
         }
     }
 
-    /** Deprecated, use the method in JaerUpdaterInstall4j */
-    public static void checkForInstall4jReleaseUpdate(Component parent) {
-       JaerUpdaterInstall4j.checkForInstall4jReleaseUpdate(parent);
-    }
-
     /**
      * Action listener that runs jAER ant build
      *

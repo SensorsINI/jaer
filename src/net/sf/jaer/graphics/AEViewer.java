@@ -308,13 +308,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public static String[] DEFAULT_CHIP_CLASS_NAMES = {
         DEFAULT_CHIP_CLASS,
-//        DAVIS240B.class.getName(),
+        //        DAVIS240B.class.getName(),
         DVS128.class.getName(),
         DAVIS240C.class.getName(),
         Davis346blue.class.getName(),
         Davis346red.class.getName(),
         Davis346redColor.class.getName(),
-//        Davis640.class.getName(),
+        //        Davis640.class.getName(),
         DVXplorer.class.getName(),
         CochleaAMS1c.class.getName(),
         DVS640.class.getName(),
@@ -623,7 +623,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void cleanup() {
         stopLogging(true); // in case logging, make sure we give chance to save file
         if (chip != null) {
-            log.info("Running .cleanup for "+chip);
+            log.info("Running .cleanup for " + chip);
             chip.cleanup();
         }
         if ((aemon != null) && aemon.isOpen()) {
@@ -2671,6 +2671,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
             }
+            public void windowOpened(java.awt.event.WindowEvent evt) {
+                formWindowOpened(evt);
+            }
         });
 
         statisticsPanel.setFocusable(false);
@@ -3677,20 +3680,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 putChipClassPrefs();
                 buildDeviceMenu();
                 if (dlg.getLastSelectedClass() != null) {
-                        String cn = dlg.getLastSelectedClass();
+                    String cn = dlg.getLastSelectedClass();
                     try {
                         Class cl = FastClassFinder.forName(cn);
                         setCursor(new Cursor(Cursor.WAIT_CURSOR));
                         setAeChipClass(cl);
                         log.info(String.format("Set AEChip to last one added which is %s", cn));
-                       JOptionPane.showMessageDialog(this, 
+                        JOptionPane.showMessageDialog(this,
                                 String.format("Set AEChip to  %s", cn),
                                 "AEChip error", JOptionPane.INFORMATION_MESSAGE);
 
                     } catch (Exception e) {
                         e.printStackTrace();
-                        JOptionPane.showMessageDialog(this, 
-                                String.format("Error setting AEChip to  %s: got exception %s", cn,e.toString()),
+                        JOptionPane.showMessageDialog(this,
+                                String.format("Error setting AEChip to  %s: got exception %s", cn, e.toString()),
                                 "AEChip error", JOptionPane.ERROR_MESSAGE);
                     } finally {
                         setCursor(Cursor.getDefaultCursor());
@@ -4808,7 +4811,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public JComponent addHelpItem(JComponent menuItem) {
         int n = helpMenu.getItemCount();
-        final int NUM_STATIC_HELP_ITEMS=6;
+        final int NUM_STATIC_HELP_ITEMS = 6;
         if (n <= NUM_STATIC_HELP_ITEMS) { // TODO NOTE adjust when adding new helpMenu items
             n = 0;
         } else {
@@ -5731,7 +5734,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_jogForwardMIActionPerformed
 
     private void gitUpdateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_gitUpdateMenuItemActionPerformed
-        if(jaerUpdaterFrame==null){
+        if (jaerUpdaterFrame == null) {
             jaerUpdaterFrame = new JaerUpdaterFrame();
         }
         jaerUpdaterFrame.setVisible(true);
@@ -5753,43 +5756,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_resetAccumulationMenuItemActionPerformed
 
     private void checkForUpdatesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkForUpdatesMenuItemActionPerformed
-        JaerUpdaterInstall4j.checkForInstall4jReleaseUpdate(this);
+        new JaerUpdaterInstall4j().checkForInstall4jReleaseUpdate(this, true);
     }//GEN-LAST:event_checkForUpdatesMenuItemActionPerformed
 
     private void loggingLevelMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_loggingLevelMenuMenuSelected
-        if(loggingLevelRadioButtons==null){
+        if (loggingLevelRadioButtons == null) {
             loggingLevelMenu.getPopupMenu().setLightWeightPopupEnabled(false);
-            loggingLevelRadioButtons=new ArrayList();
-            for(Level l:loggingLevels){
-                LoggingLevelButton bmi=new LoggingLevelButton(l);
+            loggingLevelRadioButtons = new ArrayList();
+            for (Level l : loggingLevels) {
+                LoggingLevelButton bmi = new LoggingLevelButton(l);
                 loggingLevelButtonGroup.add(bmi);
                 loggingLevelMenu.add(bmi);
             }
-        } 
+        }
     }//GEN-LAST:event_loggingLevelMenuMenuSelected
 
-    private ArrayList<LoggingLevelButton> loggingLevelRadioButtons=null;
-    private final Level[] loggingLevels={Level.OFF,Level.WARNING,Level.INFO,Level.SEVERE,Level.FINEST,Level.ALL};
-    private final ButtonGroup loggingLevelButtonGroup=new ButtonGroup();
+    private void formWindowOpened(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowOpened
+        new JaerUpdaterInstall4j().maybeDoPeriodicUpdateCheck(AEViewer.this);
+    }//GEN-LAST:event_formWindowOpened
 
-    final class LoggingLevelButton extends JRadioButtonMenuItem{
+    private ArrayList<LoggingLevelButton> loggingLevelRadioButtons = null;
+    private final Level[] loggingLevels = {Level.OFF, Level.WARNING, Level.INFO, Level.SEVERE, Level.FINEST, Level.ALL};
+    private final ButtonGroup loggingLevelButtonGroup = new ButtonGroup();
+
+    final class LoggingLevelButton extends JRadioButtonMenuItem {
+
         final Level level;
+
         public LoggingLevelButton(Level level) {
-            this.level=level;
+            this.level = level;
             setName(level.getName());
             setText(level.getName());
-            setToolTipText(String.format("Sets logging level to %s",level.getName()));
+            setToolTipText(String.format("Sets logging level to %s", level.getName()));
             addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    log.info(String.format("Setting logging level of logger %s to %s",log.getName(), level.getName()));
+                    log.info(String.format("Setting logging level of logger %s to %s", log.getName(), level.getName()));
                     log.setLevel(level);
                 }
             });
         }
-        
+
     }
-    
+
     private KeyEvent lastKeyEvent = null;
 
     /**
@@ -5867,9 +5876,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
                             || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_CSV)
-                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)
-                            
-                            ) {
+                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)) {
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);
                     } else {
