@@ -622,6 +622,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void cleanup() {
         stopLogging(true); // in case logging, make sure we give chance to save file
+        if (chip != null) {
+            log.info("Running .cleanup for "+chip);
+            chip.cleanup();
+        }
         if ((aemon != null) && aemon.isOpen()) {
             log.info("closing device " + aemon);
             aemon.close();
@@ -650,9 +654,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (aeMulticastOutput != null) {
             log.info("closing multicastOutput " + aeMulticastOutput);
             aeMulticastOutput.close();
-        }
-        if (chip != null) {
-            chip.cleanup();
         }
 
     }
