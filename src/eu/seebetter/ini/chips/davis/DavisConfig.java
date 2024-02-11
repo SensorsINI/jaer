@@ -923,7 +923,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
                     fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
                 }
-            } catch (final HardwareInterfaceException e) {
+            } catch (final HardwareInterfaceException|java.lang.IllegalStateException e) {
                 net.sf.jaer.biasgen.Biasgen.log.warning("On update() caught " + e.toString());
             }
         }
