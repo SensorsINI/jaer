@@ -110,7 +110,7 @@ public class DavisTowerBaseConfig extends DavisConfig {
 					fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) vdPot.getAddress(), vdPot.computeBinaryRepresentation());
 				}
 			}
-			catch (final HardwareInterfaceException e) {
+			catch (final HardwareInterfaceException|java.lang.IllegalStateException e) {
 				Biasgen.log.warning("On update() caught " + e.toString());
 			}
 		}
