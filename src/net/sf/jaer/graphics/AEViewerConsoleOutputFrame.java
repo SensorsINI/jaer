@@ -69,8 +69,8 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         if (word == null || word == "") {
             return;
         }
-        
-        int caret = findTF.hasFocus()?0:pane.getCaretPosition(); // if in find textfield, search from start of doc, if in pane, search in pane starting from point
+
+        int caret = findTF.hasFocus() ? 0 : pane.getCaretPosition(); // if in find textfield, search from start of doc, if in pane, search in pane starting from point
         int offset = searcher.searchFirst(word, caret, true);
         setFindFieldColorAndScroll(offset);
     }
@@ -121,33 +121,34 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         doc = pane.getStyledDocument();
         searcher = new WordSearcher(pane);
 
-        findTF.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent evt) {
+//        findTF.addActionListener(new ActionListener() {
+//            @Override
+//            public void actionPerformed(ActionEvent evt) {
+//                 System.out.println("findTF text:"+word);
 //                findFirst(); // already handled enter by keyTyped
-            }
-
-        });
+//            }
+//
+//        });
         findTF.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
-            public void keyTyped(java.awt.event.KeyEvent evt) {
-                findFirst(); // already handled enter by keyTyped
-//                if (evt.getKeyChar() == '\n') {
-//                    findNext();
-//                } else {
-//                    findFirst();
-//                }
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                System.out.println("findTF text:" + findTF.getText());
+
+                if (evt.getKeyChar() == '\n') {
+                    findNext();
+                } else {
+                    findFirst();
+                }
             }
         });
 
-        findTF.addKeyListener(new java.awt.event.KeyAdapter() {
-            @Override
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                f3pressed(evt);
-
-            }
-        });
-
+//        findTF.addKeyListener(new java.awt.event.KeyAdapter() {
+//            @Override
+//            public void keyPressed(java.awt.event.KeyEvent evt) {
+//                f3pressed(evt);
+//
+//            }
+//        });
         pane.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent evt) {
@@ -258,6 +259,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         findTF = new javax.swing.JTextField();
         next = new BasicArrowButton(BasicArrowButton.SOUTH);
         prev = new BasicArrowButton(BasicArrowButton.NORTH);
+        clearSeachB = new javax.swing.JButton();
 
         setTitle("jAER Console");
 
@@ -299,6 +301,14 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
             }
         });
 
+        clearSeachB.setText("X");
+        clearSeachB.setToolTipText("Clears search box");
+        clearSeachB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearSeachBActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -311,11 +321,13 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
                         .addComponent(findLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(findTF, javax.swing.GroupLayout.PREFERRED_SIZE, 335, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(clearSeachB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(next, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(prev, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 113, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 90, Short.MAX_VALUE)
                         .addComponent(clearButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(closeButton))
@@ -329,12 +341,13 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 383, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(next, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(prev, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(clearButton)
                         .addComponent(findLabel)
                         .addComponent(findTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(next, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(prev, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addComponent(clearSeachB))
                     .addComponent(closeButton, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addContainerGap())
         );
@@ -349,6 +362,11 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     private void prevActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_prevActionPerformed
         findPrev();
     }//GEN-LAST:event_prevActionPerformed
+
+    private void clearSeachBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearSeachBActionPerformed
+        findTF.setText("");
+        findTF.requestFocus();
+    }//GEN-LAST:event_clearSeachBActionPerformed
 
     private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_closeButtonActionPerformed
         setVisible(false);
@@ -400,6 +418,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton clearButton;
+    private javax.swing.JButton clearSeachB;
     private javax.swing.JButton closeButton;
     private javax.swing.JLabel findLabel;
     private javax.swing.JTextField findTF;

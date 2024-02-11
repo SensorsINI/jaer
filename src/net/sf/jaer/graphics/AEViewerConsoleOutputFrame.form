@@ -31,11 +31,13 @@
                       <Component id="findLabel" min="-2" max="-2" attributes="0"/>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
                       <Component id="findTF" min="-2" pref="335" max="-2" attributes="0"/>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="clearSeachB" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
                       <Component id="next" min="-2" pref="37" max="-2" attributes="0"/>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
                       <Component id="prev" min="-2" pref="40" max="-2" attributes="0"/>
-                      <EmptySpace pref="113" max="32767" attributes="0"/>
+                      <EmptySpace pref="90" max="32767" attributes="0"/>
                       <Component id="clearButton" min="-2" max="-2" attributes="0"/>
                       <EmptySpace type="unrelated" max="-2" attributes="0"/>
                       <Component id="closeButton" min="-2" max="-2" attributes="0"/>
@@ -53,12 +55,13 @@
               <Component id="jScrollPane1" pref="383" max="32767" attributes="0"/>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                  <Group type="103" alignment="1" groupAlignment="3" attributes="0">
+                  <Component id="next" alignment="0" max="32767" attributes="0"/>
+                  <Component id="prev" alignment="0" max="32767" attributes="0"/>
+                  <Group type="103" groupAlignment="3" attributes="0">
                       <Component id="clearButton" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="findLabel" alignment="3" min="-2" max="-2" attributes="0"/>
                       <Component id="findTF" alignment="3" min="-2" max="-2" attributes="0"/>
-                      <Component id="next" alignment="0" max="32767" attributes="0"/>
-                      <Component id="prev" alignment="0" max="32767" attributes="0"/>
+                      <Component id="clearSeachB" alignment="3" min="-2" max="-2" attributes="0"/>
                   </Group>
                   <Component id="closeButton" alignment="1" min="-2" max="-2" attributes="0"/>
               </Group>
@@ -132,6 +135,15 @@
       <AuxValues>
         <AuxValue name="JavaCodeGenerator_CreateCodeCustom" type="java.lang.String" value="new BasicArrowButton(BasicArrowButton.NORTH)"/>
       </AuxValues>
+    </Component>
+    <Component class="javax.swing.JButton" name="clearSeachB">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="X"/>
+        <Property name="toolTipText" type="java.lang.String" value="Clears search box"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearSeachBActionPerformed"/>
+      </Events>
     </Component>
   </SubComponents>
 </Form>

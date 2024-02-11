@@ -34,21 +34,14 @@ public class WordSearcher {
     public WordSearcher(JTextComponent comp) {
         this.comp = comp;
         this.painter = new UnderlineHighlighter.UnderlineHighlightPainter(
-                Color.red);
+                Color.blue);
     }
 
     private int search(String word, int offset, boolean forwards) {
         this.word = word;  // for next and prev to use
         Highlighter highlighter = comp.getHighlighter();
 
-        // Remove any existing highlights for last word
-        Highlighter.Highlight[] highlights = highlighter.getHighlights();
-        for (int i = 0; i < highlights.length; i++) {
-            Highlighter.Highlight h = highlights[i];
-            if (h.getPainter() instanceof UnderlineHighlighter.UnderlineHighlightPainter) {
-                highlighter.removeHighlight(h);
-            }
-        }
+        removeExistingHighlights(highlighter);
 
         if (word == null || word.equals("")) {
             return -1;
@@ -82,7 +75,7 @@ public class WordSearcher {
                 lastIndex = endIndex;
             }
         } else { // backwards
-            lastIndex = content.lastIndexOf(word, lastIndex-word.length()); // find last one in doc before current offset (next one backwards)
+            lastIndex = content.lastIndexOf(word, lastIndex - word.length()); // find last one in doc before current offset (next one backwards)
 
             try {
                 highlighter.addHighlight(lastIndex, lastIndex + word.length(), painter);
@@ -97,6 +90,17 @@ public class WordSearcher {
 //        System.out.println(String.format("word=%s dir=%s, offset=%,d firstOffset=%,d", word, forwards ? "forwards" : "backwards", offset, firstOffset));
         return firstOffset;
 
+    }
+
+    private void removeExistingHighlights(Highlighter highlighter) {
+        // Remove any existing highlights for last word
+        Highlighter.Highlight[] highlights = highlighter.getHighlights();
+        for (int i = 0; i < highlights.length; i++) {
+            Highlighter.Highlight h = highlights[i];
+            if (h.getPainter() instanceof UnderlineHighlighter.UnderlineHighlightPainter) {
+                highlighter.removeHighlight(h);
+            }
+        }
     }
 
     /**
@@ -123,11 +127,26 @@ public class WordSearcher {
         }
         lastOffset += word.length();
         lastOffset = search(word, lastOffset, true);
+        Highlighter highlighter = comp.getHighlighter();
+        removeExistingHighlights(highlighter);
+        try {
+            highlighter.addHighlight(lastOffset, lastOffset + word.length(), painter);
+        } catch (BadLocationException e) {
+            // Nothing to do
+        }
+
         return lastOffset;
     }
 
     public int searchPrevious() {
         lastOffset = search(word, lastOffset, false);
+        Highlighter highlighter = comp.getHighlighter();
+        removeExistingHighlights(highlighter);
+        try {
+            highlighter.addHighlight(lastOffset, lastOffset + word.length(), painter);
+        } catch (BadLocationException e) {
+            // Nothing to do
+        }
         return lastOffset;
 
     }
@@ -196,6 +215,10 @@ class UnderlineHighlighter extends DefaultHighlighter {
             g.drawLine(alloc.x, baseline, alloc.x + alloc.width, baseline);
             g.drawLine(alloc.x, baseline + 1, alloc.x + alloc.width,
                     baseline + 1);
+           g.drawLine(alloc.x, baseline + 2, alloc.x + alloc.width,
+                    baseline + 2);
+           g.drawLine(alloc.x, baseline + 3, alloc.x + alloc.width,
+                    baseline + 3);
 
             return alloc;
         }
