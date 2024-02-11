@@ -395,7 +395,7 @@ public class JaerUpdaterFrame extends javax.swing.JFrame implements DontRestore 
     }//GEN-LAST:event_seeReleasesButtonActionPerformed
 
     private void checkForUpdateButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkForUpdateButtonActionPerformed
-       JaerUpdaterInstall4j.checkForInstall4jReleaseUpdate(this);
+       new JaerUpdaterInstall4j().checkForInstall4jReleaseUpdate(this, true);
     }//GEN-LAST:event_checkForUpdateButtonActionPerformed
 
     /**
