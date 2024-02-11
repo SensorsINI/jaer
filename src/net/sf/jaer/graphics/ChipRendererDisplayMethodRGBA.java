@@ -135,7 +135,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
         if ((dvsEventsMap != null) && displayEvents) {
             // DVS event histograms are written with Alpha=0 when the frame is cleared, same for annotation maps. When events occur, they replace the APS values
-            gl.glEnable(GL2.GL_ALPHA_TEST);
+            gl.glPushMatrix();
             gl.glAlphaFunc(GL2.GL_GREATER, 0);
             gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
@@ -147,10 +147,15 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, dvsEventsMap);
 
             gl.glEnable(GL.GL_TEXTURE_2D);
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
+            gl.glEnable(GL2.GL_ALPHA_TEST);
+            //  gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
             gl.glDisable(GL2.GL_ALPHA_TEST);
+            gl.glPopMatrix();
+
+            getChipCanvas().checkGLError(gl, glu, "after dvs events");
+
         }
 
 //                // see // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glTexEnv.xml for API
@@ -203,8 +208,8 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
             // rgb
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, GL2.GL_REPLACE); 
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, GL2.GL_ADD_SIGNED); 
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, GL2.GL_REPLACE);
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, GL2.GL_ADD_SIGNED);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_RGB, GL2.GL_PREVIOUS);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_RGB, GL2.GL_TEXTURE);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_RGB, GL2.GL_SRC_COLOR);
@@ -219,7 +224,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
 
             gl.glEnable(GL.GL_TEXTURE_2D);
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 2);
+            //gl.glBindTexture(GL.GL_TEXTURE_2D, 2);
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
             gl.glDisable(GL2.GL_ALPHA_TEST);
@@ -248,14 +253,14 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         // show special event count on left of array as white bar
         if (renderSpecialEvents && (renderer instanceof AEChipRenderer)) {
             final AEChipRenderer r = (AEChipRenderer) renderer;
-            float n= (float)r.getSpecialCount(); // In June 2023 tobi add capability of v2e to label noise events as "special events"
+            float n = (float) r.getSpecialCount(); // In June 2023 tobi add capability of v2e to label noise events as "special events"
             if (n > 0) {
-                n= (float)Math.sqrt(n); // a bit of comprression for high counts
+                n = (float) Math.sqrt(n); // a bit of comprression for high counts
                 gl.glColor3f(1, 1, 1);
                 gl.glLineWidth(SPECIAL_BAR_LINE_WIDTH);
                 gl.glBegin(GL.GL_LINE_STRIP);
                 gl.glVertex2f(SPECIAL_BAR_LOCATION_X, SPECIAL_BAR_LOCATION_Y);
-                gl.glVertex2f(SPECIAL_BAR_LOCATION_X, (float)SPECIAL_BAR_LOCATION_Y + n);
+                gl.glVertex2f(SPECIAL_BAR_LOCATION_X, (float) SPECIAL_BAR_LOCATION_Y + n);
                 gl.glEnd();
                 getChipCanvas().checkGLError(gl, glu, "after rendering special events");
             }
