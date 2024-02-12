@@ -653,6 +653,22 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     }
 
     @Override
+    public boolean isInitialized() {
+        if(ipots==null){
+            log.info("returning true because ipots is null");
+            return true;
+        }
+        for (final Pot b : ipots) {
+            if (b instanceof AddressedIPotCF && ((AddressedIPotCF)b).getCurrent() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    
+
+    @Override
     public void setAutoShotEventThreshold(final int threshold) {
         autoShotThreshold = threshold;
     }

@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.prefs.Preferences;
+import javax.swing.JFrame;
 
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -748,7 +749,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      *
      * @param container the window or panel that should contain the dialog
      */
-    public void showUnitializedBiasesWarningDialog(final AEViewer container) {
+    public void showUnitializedBiasesWarningDialog(final JFrame container) {
         if (showedUnitializedBiasesWarning) {
             return;
         }
