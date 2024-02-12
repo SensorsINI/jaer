@@ -66,7 +66,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     private boolean fileModified = false;
     Chip chip;
     private boolean viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
-    private String defaultFolder = "";
+    private String defaultFolder = ""; // "/biasgenSettings is appended in importPreferencesDialog
 
     /**
      * Creates new form BiasgenApp, using an existing {@link Biasgen}.
