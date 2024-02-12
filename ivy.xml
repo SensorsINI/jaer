@@ -78,9 +78,15 @@ MA 02110-1301  USA
         <!--<dependency org="com.github.fommil.netlib" name="all" rev="1.1.2" />-->
         <!--        <dependency org="com.github.fommil.netlib" name="native_system-java" rev="1.1" />
         <dependency org="com.github.fommil.netlib" name="core" rev="1.1.2" />-->
-        <dependency org="org.usb4java" name="usb4java" rev="1.2.0" />
+        <!--<dependency org="org.usb4java" name="usb4java" rev="1.2.0" />-->
         <!--<dependency org="com.google.guava" name="guava" rev="30.1-jre" />-->
+        <!--
+        libusb not obtained from maven because there is no artifcact for Mac osx darwin (M1 apple silicon)
+        Instead tobi obtained it separately from https://github.com/marian-m12l/studio/issues/244 and combined with jar download
+        of libusb4java release
+        --> 
         <!--libusb4java needs following to work around bug in maven that incorrectly constucts the ivy dependency - see https://github.com/sbt/sbt/issues/285 -->
+        <!--
         <dependency org="org.usb4java" name="libusb4java" rev="1.2.0">
             <artifact name="libusb4java" type="jar" ext="jar" m:classifier="osx-x86_64"/>
             <artifact name="libusb4java" type="jar" ext="jar" m:classifier="osx-x86"/>
@@ -90,6 +96,7 @@ MA 02110-1301  USA
             <artifact name="libusb4java" type="jar" ext="jar" m:classifier="linux-x86_64"/>
             <artifact name="libusb4java" type="jar" ext="jar" m:classifier="linux-x86"/>
         </dependency>
+        -->
         <!--TODO sort out opencv and javacv - seems to be multiple versions used in jaer-->
         <!--TODO the bytedeco wrapper on opencv (opencv_core) is needed in a few places -->
         <!--        <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
