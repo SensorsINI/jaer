@@ -39,6 +39,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.XMLFileFilter;
 
 /**
@@ -157,6 +158,23 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         setTitle(chip.getName() + " - " + lastFile.getName() + " - Biases ");
         //        saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
+
+        // check and warn users about uninitialized biases
+        if (chip.getBiasgen() != null) {
+            if (chip.getBiasgen().isInitialized()) {
+                log.info("biasgen reports it it initialized");
+                return;
+            }
+            Biasgen bg = chip.getBiasgen();
+            if ((bg != null) && !bg.isInitialized()) {
+                final String WARNING_MESSAGE = "<html>No bias values or other hardware configuration have been set for " + chip.getName() + ".<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Hardware Configuration panel and load values using the File/Load settings menu item. <p>Settings are available in the folder <i>biasgenSettings</i><p>Navigate to appropriate folder to load values from the XML file.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
+                final String WARNING_TITLE = "Unitialized configuration for " + chip.getName();
+                WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, true, WARNING_TITLE, WARNING_MESSAGE);
+                d.setVisible(true);
+
+            }
+
+        }
 
     }
 

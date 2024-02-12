@@ -5,11 +5,11 @@
  */
 package net.sf.jaer.util;
 
-import java.util.StringTokenizer;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.ImageIcon;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
@@ -61,7 +61,7 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
      * @param parent parent frame to center on, or null
      * @param modal true to make dialog model, i.e. to stop other GUI interaction
      */
-    public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal) {
+    public WarningDialogWithDontShowPreference(JFrame parent, boolean modal) {
         super(parent, modal);
         initComponents();
     }
