@@ -106,7 +106,6 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         if ((chip.getCanvas() != null) && (chip.getCanvas().getCanvas() != null)) {
             canvas = chip.getCanvas();
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         }
         chip.addObserver(this);
         final String h = "ISIs", e = "Event rate", l = "Latency", c = "Count", g = "General";
@@ -141,6 +140,9 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
     public void displayStats(GLAutoDrawable drawable) {
         if ((drawable == null) || (chip.getCanvas() == null)) {
             return;
+        }
+        if (renderer == null) {
+            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         }
         canvas = chip.getCanvas();
         glCanvas = (GLCanvas) canvas.getCanvas();
