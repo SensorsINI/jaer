@@ -349,7 +349,7 @@ public class DavisRenderer extends AEChipRenderer {
             computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
         }
 
-        if (resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
+        if (grayBuffer==null || resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
             resetAccumulationFlag = false;
             resetMaps();
 
@@ -730,6 +730,7 @@ public class DavisRenderer extends AEChipRenderer {
             sizeY = chip.getSizeY();
             textureHeight = DavisRenderer.ceilingPow2(sizeY);
         }
+     
 
         final int n = 4 * textureWidth * textureHeight;
         if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (dvsEventsMap.capacity() < n) /*|| (offMap.capacity() < n)*/
