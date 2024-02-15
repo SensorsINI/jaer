@@ -1498,7 +1498,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     LibUsb.getConfiguration(deviceHandle, activeConfig);
                 } catch (IllegalStateException e) {
                     log.log(Level.SEVERE, "Exception try to LibUsb.getConfiguration: "+ e.toString(), e);
-                    return;
+                   throw e;
                 }
 		if (activeConfig.get() != 1) {
 			LibUsb.setConfiguration(deviceHandle, 1);
