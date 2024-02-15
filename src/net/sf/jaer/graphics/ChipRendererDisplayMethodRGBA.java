@@ -41,6 +41,9 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
     public final float SPECIAL_BAR_LOCATION_Y = 0;
     public final float SPECIAL_BAR_LINE_WIDTH = 8;
     private boolean renderSpecialEvents = true;
+    private int TEX_EVENTS=0; // texture number for binding events frame texture
+    private int TEX_FRAME=0;
+    private int TEX_ANNOTATE=0;
 
     /**
      * Creates a new instance of ChipRendererDisplayMethodRGBA
@@ -117,7 +120,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
                 gl.glRotatef((float) ((imageTransform.rotationRad * 180) / Math.PI), 0, 0, 1);
                 gl.glTranslatef(imageTransform.translationPixels.x - sx, imageTransform.translationPixels.y - sy, 0);
             }
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_FRAME);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
@@ -137,7 +140,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             // DVS event histograms are written with Alpha=0 when the frame is cleared, same for annotation maps. When events occur, they replace the APS values
             gl.glPushMatrix();
             gl.glAlphaFunc(GL2.GL_GREATER, 0);
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_EVENTS);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
@@ -148,7 +151,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
             gl.glEnable(GL.GL_TEXTURE_2D);
             gl.glEnable(GL2.GL_ALPHA_TEST);
-            //  gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
+//              gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
             gl.glDisable(GL2.GL_ALPHA_TEST);
@@ -201,7 +204,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 //            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_ADD);
 //            gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
 
-            gl.glBindTexture(GL.GL_TEXTURE_2D, 2);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_ANNOTATE);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
