@@ -1116,6 +1116,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             item.setSelected(true);
             interfaceMenu.add(new JSeparator());
             interfaceAlreadyOpen = true;
+            log.info(String.format("Added open device %s",chip.getHardwareInterface().toString()));
             // don't appendCopy action listener because we are already selected as interface
         }
         ButtonGroup bg = new ButtonGroup();
@@ -1140,6 +1141,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
                 // then appendCopy a menu item to select this interface.
                 String menuText = String.format("%s (#%d)", hw.toString(), i);
+                log.info(String.format("Adding menu item for %s",menuText));
                 interfaceButton = new JRadioButtonMenuItem(menuText);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, i);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, hw);
@@ -1176,11 +1178,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.add(new JSeparator());
 
         for (Class c : HardwareInterfaceFactory.factories) {
+            log.info(String.format("Checking HardwareInterfaceFactory %s",c.toString()));
             if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
                 //                log.log(Level.INFO, "found hardware chooser class {0}", c);
                 try {
                     Method m = (c.getMethod("instance")); // get singleton instance of factory
                     final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
+                    log.info(String.format("Adding menu item for %s",inst.getName()));
                     JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getName());
                     mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
                     interfaceMenu.add(mi);
@@ -1229,9 +1233,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public void actionPerformed(ActionEvent evt) {
-                //                log.info("selected null interface");
                 synchronized (viewLoop) {
                     if (chip.getHardwareInterface() != null) {
+                        log.info(String.format("selected None interface so closing %s",chip.getHardwareInterface().toString()));
                         chip.getHardwareInterface().close();
                     }
                     chip.setHardwareInterface(null);
