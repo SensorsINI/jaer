@@ -30,7 +30,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
     
     private int warningCount=0;
-    private static final int WARNING_INTERVAL=1000;
+    private static final int WARNING_INTERVAL=10000;
 
 	protected DAViSFX3HardwareInterface(final Device device) {
 		super(device);
@@ -323,8 +323,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											}
 										}
 										else {
+                                                                                    if(warningCount%WARNING_INTERVAL==0){
 											CypressFX3.log.info(
 												"IMU End: failed to validate IMU sample count (" + imuCount + "), discarding samples.");
+                                                                                        warningCount++;
+                                                                                    }
 										}
 										break;
 
