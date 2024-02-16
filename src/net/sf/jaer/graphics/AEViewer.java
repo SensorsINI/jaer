@@ -1706,7 +1706,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             throw new HardwareInterfaceException("hardware interface became null");
                         }
                         return aemon.acquireAvailableEventsFromDriver();
-                    } catch (HardwareInterfaceException e) {
+                    } catch (HardwareInterfaceException|IllegalArgumentException e) {
                         if (stop) {
                             break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
                         }
@@ -1716,7 +1716,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             aemon.close(); // TODO check if this is OK -tobi
                         }//                                e.printStackTrace();
                         nullifyHardware();
-                        stopMe();
+//                        stopMe();
 
                         return emptyRawPacket;
                     } catch (ClassCastException cce) {
