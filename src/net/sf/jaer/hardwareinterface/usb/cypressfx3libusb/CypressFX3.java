@@ -632,28 +632,35 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	@Override
 	synchronized public void close() {
 		if (!isOpen()) {
+                    log.info("close(): not open, not doing anything");
 			return;
 		}
 
+		isOpened = false;
 		try {
 			setEventAcquisitionEnabled(false);
+		inEndpointEnabled = false;
 
 			if (asyncStatusThread != null) {
 				asyncStatusThread.stopThread();
 			}
 		}
-		catch (final HardwareInterfaceException e) {
-			e.printStackTrace();
+		catch (final HardwareInterfaceException|IllegalStateException e) {
+                    log.warning(String.format("Error stopping event aquisition: %s",e.toString()));
 		}
 
-		LibUsb.releaseInterface(deviceHandle, 0);
-		LibUsb.close(deviceHandle);
+            if (deviceHandle != null) {
+                try {
+                    LibUsb.releaseInterface(deviceHandle, 0);
+                    LibUsb.close(deviceHandle);
+                } catch (IllegalStateException e) {
+                    log.warning(String.format("Error releasing interface: %s", e.toString()));
+                }
+            }
 
 		deviceHandle = null;
 		deviceDescriptor = null;
 
-		inEndpointEnabled = false;
-		isOpened = false;
 	}
 
 	// not really necessary to stop this thread, i believe, because close will
@@ -1330,6 +1337,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 	@Override
 	public synchronized void setEventAcquisitionEnabled(final boolean enable) throws HardwareInterfaceException {
 		// Start reader before sending data enable commands.
+		setInEndpointEnabled(enable);
 		if (enable) {
 			startAEReader();
 		}
@@ -1338,7 +1346,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 			stopAEReader();
 		}
 
-		setInEndpointEnabled(enable);
 	}
 
 	@Override
@@ -1516,11 +1523,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
 		CypressFX3.log.info("open(): device opened");
 
-		if (LibUsb.getDeviceSpeed(device) == LibUsb.SPEED_FULL) {
-			CypressFX3.log.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
-		}
+            try {
+                if (LibUsb.getDeviceSpeed(device) == LibUsb.SPEED_FULL) {
+                    CypressFX3.log.warning("Device is not operating at USB 2.0 High Speed, performance will be limited to about 300 keps");
+                }
+            } catch (IllegalStateException e) {
+                log.warning(String.format("Could not check device speed: %s", e.toString()));
+            }
 
-		// start the thread that listens for device status information.
+            // start the thread that listens for device status information.
 		// This is only preset on FX3 devices.
 		// if (getPID() == DAViSFX3HardwareInterface.PID_FX3) {
 		// asyncStatusThread = new AsyncStatusThread(this);

@@ -18,9 +18,13 @@ import org.usb4java.LibUsb;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
+import org.usb4java.Context;
+import org.usb4java.HotplugCallback;
+import org.usb4java.LibUsbException;
 
-/** Generates correct HardwareInterface for boards that use LibUsb driver.
- * 
+/**
+ * Generates correct HardwareInterface for boards that use LibUsb driver.
+ *
  * @author luca
  */
 public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
@@ -40,6 +44,27 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
     private final List<Device> compatibleDevicesList = new ArrayList<>();
 
     private LibUsbHardwareInterfaceFactory() {
+
+        // Initialize LibUsb.
+        try {
+            // Initialize LibUsb.
+            int result = LibUsb.init(null);
+            if (result != LibUsb.SUCCESS) {
+                throw new LibUsbException("Unable to initialize libusb", result);
+            }
+
+            if (!LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
+                log.warning("LibUsb cannot register HotPlug callbacks on this platform");
+            }
+        } catch (UnsatisfiedLinkError | LibUsbException ule) {
+            UnsatisfiedLinkError u = new UnsatisfiedLinkError("Failed to initialize libusb4java native library."
+                    + "\nOn OS-X you might need to install with 'brew install libusb'."
+                    + "\nOn Linux, do you have noexec on your /tmp folder?\n"
+                    + ule.getLocalizedMessage());
+            u.setStackTrace(ule.getStackTrace());
+            throw u;
+        }
+
         // Build a mapping of VID/PID pairs and corresponding
         // HardwareInterfaces.
         // addDeviceToMap(CypressFX2.VID, CypressFX2.PID_USB2AERmapper,
@@ -58,17 +83,6 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
         // Add blank device for flashing.
         addDeviceToMap(CypressFX2.VID_BLANK, CypressFX2.PID_BLANK, CypressFX2.class);
-
-        // Initialize LibUsb.
-        try {
-            LibUsb.init(null);
-        } catch (UnsatisfiedLinkError ule) {
-            UnsatisfiedLinkError u = new UnsatisfiedLinkError("Failed to initialize libusb4java! Do you have noexec on your /tmp ? See jAERViewer1.5_linux.sh for a workaround.\n"
-                    + ule.getLocalizedMessage());
-            u.setStackTrace(ule.getStackTrace());
-            throw u;
-        }
-
         // Build up first list of compatible devices.
         refreshCompatibleDevicesList();
 
@@ -76,7 +90,29 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
     private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
-        log.info(String.format("Put mapping from USB VID/PID=0x%x/0x%x to class %s",VID,PID,cls));
+        log.info(String.format("Put mapping from USB VID/PID=0x%x/0x%x to class %s", VID, PID, cls));
+        if (LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
+            HotplugCallback callback = (Context cntxt, Device device, int event, Object userData) -> {
+                DeviceDescriptor descriptor = new DeviceDescriptor();
+                int errCode = LibUsb.getDeviceDescriptor(device, descriptor);
+                if (errCode != LibUsb.SUCCESS) {
+                    log.warning(String.format("Unable to read device descriptor: got error code %d", errCode));
+                } else {
+                    log.info(String.format("LibUsb: %s VID:PID=%04x:%04x",
+                            event == LibUsb.HOTPLUG_EVENT_DEVICE_ARRIVED ? "Connected" : "Disconnected",
+                            descriptor.idVendor(), descriptor.idProduct()));
+                }
+                return 0;
+            };
+            int errCode = LibUsb.hotplugRegisterCallback(null,
+                    LibUsb.HOTPLUG_EVENT_DEVICE_ARRIVED | LibUsb.HOTPLUG_EVENT_DEVICE_LEFT,
+                    LibUsb.HOTPLUG_ENUMERATE,
+                    VID, PID, LibUsb.HOTPLUG_MATCH_ANY,
+                    callback, null, null);
+            if (errCode != LibUsb.SUCCESS) {
+                log.warning(String.format("Could not register LibUsb hot plug callback for VID=%d, PID=%d, got error code %d", VID, PID, errCode));
+            }
+        }
     }
 
     private void refreshCompatibleDevicesList() {
@@ -120,7 +156,6 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
             LibUsb.getDeviceDescriptor(dev, devDesc);
 
             final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
-            
 
             // Check that the device is not already bound to any other driver.
             final DeviceHandle devHandle = new DeviceHandle();
@@ -130,8 +165,8 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
             }
 
             status = LibUsb.kernelDriverActive(devHandle, 0);
-            
-            log.fine(String.format("probing libusb device with VID/PID 0x%x/0x%x to see if it maps to a compatible LibUsbHardwareInterface", vidPid.left,vidPid.right));
+
+            log.fine(String.format("probing libusb device with VID/PID 0x%x/0x%x to see if it maps to a compatible LibUsbHardwareInterface", vidPid.left, vidPid.right));
 
             LibUsb.close(devHandle);
 
@@ -142,7 +177,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
                 // devices list and increase its reference count.
                 compatibleDevicesListLocal.add(LibUsb.refDevice(dev));
                 nFound++;
-                devicesFound += String.format("\n %s for USB VID/PID 0x%x/0x%x", vidPidToClassMap.get(vidPid).toString(),vidPid.left,vidPid.right);
+                devicesFound += String.format("\n %s for USB VID/PID 0x%x/0x%x", vidPidToClassMap.get(vidPid).toString(), vidPid.left, vidPid.right);
             }
         }
         if (nFound > 0) {
