@@ -464,9 +464,9 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
     private void makeDualViewPanel() {
         dualViewPanel = new JPanel();
-        dualViewPanel.setLayout(new BoxLayout(dualViewPanel,BoxLayout.X_AXIS));
+        dualViewPanel.setLayout(new BoxLayout(dualViewPanel, BoxLayout.X_AXIS));
         dualViewPanel.add(userFriendlyControls); // removes it from configTabbedPane
-        JScrollPane biasesSP=new JScrollPane(combinedBiasShiftedSourcePanel);
+        JScrollPane biasesSP = new JScrollPane(combinedBiasShiftedSourcePanel);
         dualViewPanel.add(biasesSP); // removes it from configTabbedPane
     }
 
@@ -654,19 +654,17 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
     @Override
     public boolean isInitialized() {
-        if(ipots==null){
+        if (ipots == null) {
             log.info("returning true because ipots is null");
             return true;
         }
         for (final Pot b : ipots) {
-            if (b instanceof AddressedIPotCF && ((AddressedIPotCF)b).getCurrent() > 0) {
+            if (b instanceof AddressedIPotCF && ((AddressedIPotCF) b).getCurrent() > 0) {
                 return true;
             }
         }
         return false;
     }
-    
-    
 
     @Override
     public void setAutoShotEventThreshold(final int threshold) {
@@ -911,36 +909,36 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     @Override
     public synchronized void update(final Observable observable, final Object object) {
         if (getHardwareInterface() != null) {
-            if (getHardwareInterface() instanceof MultiCameraBiasgenHardwareInterface) {
-                for (BiasgenHardwareInterface b : ((MultiCameraBiasgenHardwareInterface) getHardwareInterface()).getBiasgens()) {
-                    updateHW(observable, b);
+            try {
+                if (getHardwareInterface() instanceof MultiCameraBiasgenHardwareInterface) {
+                    for (BiasgenHardwareInterface b : ((MultiCameraBiasgenHardwareInterface) getHardwareInterface()).getBiasgens()) {
+                        updateHW(observable, b);
+                    }
+                } else if (getHardwareInterface() instanceof CypressFX3) {
+                    updateHW(observable, getHardwareInterface());
                 }
-            } else if (getHardwareInterface() instanceof CypressFX3) {
-                updateHW(observable, getHardwareInterface());
+            } catch (HardwareInterfaceException | IllegalStateException e) {
+                log.warning(String.format("Got %s",e.toString()));
             }
         }
     }
 
-    private static void updateHW(final Observable observable, final BiasgenHardwareInterface b) {
-        if ((b != null) && (b instanceof CypressFX3)) {
-            final CypressFX3 fx3HwIntf = (CypressFX3) b;
+    private static void updateHW(final Observable observable, final BiasgenHardwareInterface hwInterface) throws HardwareInterfaceException, IllegalStateException {
+        if ((hwInterface != null) && (hwInterface instanceof CypressFX3)) {
+            final CypressFX3 fx3HwIntf = (CypressFX3) hwInterface;
 
-            try {
-                if (observable instanceof AddressedIPotCF) {
-                    final AddressedIPotCF iPot = (AddressedIPotCF) observable;
+            if (observable instanceof AddressedIPotCF) {
+                final AddressedIPotCF iPot = (AddressedIPotCF) observable;
 
-                    fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeCleanBinaryRepresentation());
-                } else if (observable instanceof ShiftedSourceBiasCF) {
-                    final ShiftedSourceBiasCF iPot = (ShiftedSourceBiasCF) observable;
+                fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeCleanBinaryRepresentation());
+            } else if (observable instanceof ShiftedSourceBiasCF) {
+                final ShiftedSourceBiasCF iPot = (ShiftedSourceBiasCF) observable;
 
-                    fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeBinaryRepresentation());
-                } else if (observable instanceof SPIConfigValue) {
-                    final SPIConfigValue cfgVal = (SPIConfigValue) observable;
+                fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) iPot.getAddress(), iPot.computeBinaryRepresentation());
+            } else if (observable instanceof SPIConfigValue) {
+                final SPIConfigValue cfgVal = (SPIConfigValue) observable;
 
-                    fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
-                }
-            } catch (final HardwareInterfaceException|java.lang.IllegalStateException e) {
-                net.sf.jaer.biasgen.Biasgen.log.warning("On update() caught " + e.toString());
+                fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
             }
         }
     }
