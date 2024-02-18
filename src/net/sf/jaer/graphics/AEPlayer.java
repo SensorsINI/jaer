@@ -544,6 +544,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
             return aeRaw;
         } catch (EOFException e) {
+            e.printStackTrace();
+            log.info(String.format("Got EOFException on %s: %s",player.getAEInputStream().getFile(),e.toString()));
             cancelJog();
             setDirectionForwards(true);
             try {
@@ -681,7 +683,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if (viewer != null) {
             viewer.filterChain.reset(); // already done in aePlayer
             viewer.getRenderer().resetAccumulation();
-            viewer.interruptViewloop();
+//            viewer.interruptViewloop(); // causes havoc in AEFileInputStream with the mapped FileChannel being ClosedByInterrupt exceptions
         }
     }
 
