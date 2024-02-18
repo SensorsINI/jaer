@@ -23,8 +23,8 @@ multi-platform installer builder [install4j](https://www.ej-technologies.com/pro
 
 Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers. 
 **Windows:** Click *More info*, *Run anyway* and *Install anyway* for unsigned app.
-**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac).
-**Linux:** Run *jaer* from the installation directory.
+**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder.
+**Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu.
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
 * install4j installers install a bundled version of the [latest Java from Eclipse Adoptium](https://adoptium.net/) (see [Guide fo Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features)).
