@@ -4017,14 +4017,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (!(control || alt || shift)) {
                 getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
                 showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
-                interruptViewloop();
+                if(isPaused()) interruptViewloop();
             } else if (control && !(shift || alt)) {
                 if (rotation > 0) {
                     chipCanvas.zoomOut(); // wheel down
                 } else if (rotation < 0) {
                     chipCanvas.zoomIn(); //wheel up
                 }
-                interruptViewloop();
+                if(isPaused()) interruptViewloop();
             } else if (shift && !(control || alt)) { // shift mouse scrolls through recording
                 if (getAePlayer() != null) {
                     AbstractAEPlayer p = getAePlayer();
@@ -4067,7 +4067,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         decreasePlaybackSpeedMenuItemActionPerformed(ae);
                     }
                 }
-                interruptViewloop();
+                if(isPaused()) interruptViewloop();
             }
 	}//GEN-LAST:event_imagePanelMouseWheelMoved
 
@@ -5231,17 +5231,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void zoomInMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomInMenuItemActionPerformed
             chip.getCanvas().zoomIn();
-            interruptViewloop();
+            if(isPaused()) interruptViewloop();
 	}//GEN-LAST:event_zoomInMenuItemActionPerformed
 
 	private void zoomOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomOutMenuItemActionPerformed
             chip.getCanvas().zoomOut();
-            interruptViewloop();
+            if(isPaused()) interruptViewloop();
 	}//GEN-LAST:event_zoomOutMenuItemActionPerformed
 
 	private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomCenterMenuItemActionPerformed
             chip.getCanvas().zoomCenter();
-            interruptViewloop();
+            if(isPaused()) interruptViewloop();
 	}//GEN-LAST:event_zoomCenterMenuItemActionPerformed
 
 	private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
@@ -6062,7 +6062,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         synchronized (viewLoop) {
             this.playMode = playMode;
-            interruptViewloop();
+            if (isPaused()) interruptViewloop();
         }
         setTitleAccordingToState();
         fixLoggingControls();
