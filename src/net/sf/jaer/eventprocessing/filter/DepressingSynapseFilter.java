@@ -60,24 +60,28 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
 
     public DepressingSynapseFilter(AEChip chip) {
         super(chip); // as usual when we're called here we don't have array size yet. Defer memory allocation to running filter.
-        setPropertyTooltip("tauMs", "recorery time constant in ms of depressing synapse; recovers full strength with this 1st order time constant; increase to make filtering last longer");
-        setPropertyTooltip("weight", "weight of each incoming spike on depressing synapse; incrrease to reduce number of spikes within tauMs window to filter out events.");
-        setPropertyTooltip("showStateAtMouse", "Shows synaptic adaptation state at mouse position (expensive)");
-        setPropertyTooltip("saveState", "Saves synaptic state to disk");
-        setPropertyTooltip("loadState", "Loads synaptic state from disk");
-        setPropertyTooltip("clearState", "Clears the synaptic depression state of all synapses");
+        String cat = "DepressingSynapseFilter";
+        setPropertyTooltip(cat, "tauMs", "recorery time constant in ms of depressing synapse; recovers full strength with this 1st order time constant; increase to make filtering last longer");
+        setPropertyTooltip(cat, "weight", "weight of each incoming spike on depressing synapse; incrrease to reduce number of spikes within tauMs window to filter out events.");
+        setPropertyTooltip(cat, "showStateAtMouse", "Shows synaptic adaptation state at mouse position (expensive)");
+        setPropertyTooltip(cat, "saveState", "Saves synaptic state to disk");
+        setPropertyTooltip(cat, "loadState", "Loads synaptic state from disk");
+        setPropertyTooltip(cat, "clearState", "Clears the synaptic depression state of all synapses");
     }
 
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        super.filterPacket(in); // sets up statistics
         checkNeuronAllocation();
-        int k = 0;
         for (BasicEvent e : in) {
-            if(!(e instanceof TypedEvent)){
-                throw new RuntimeException("event type must be TypedEvent, got event "+e);
+            if (!(e instanceof TypedEvent)) {
+                throw new RuntimeException("event type must be TypedEvent, got event " + e);
             }
-            if (!neurons.stimulate((TypedEvent)e)) {
+            totalEventCount++; // for statistics
+            if (!neurons.stimulate((TypedEvent) e)) {
                 filterOut(e);
+            } else {
+                filterIn(e);
             }
         }
         return in;
@@ -96,11 +100,12 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
+        super.annotate(drawable);
         if ((showStateAtMouse == false) || (neurons == null)) {
             return;
         }
         Point p = chip.getCanvas().getMousePixel();
-        if (!chip.getCanvas().wasMousePixelInsideChipBounds()) {
+        if (p==null || !chip.getCanvas().wasMousePixelInsideChipBounds()) {
             return;
         }
         neurons.display(drawable, p);
