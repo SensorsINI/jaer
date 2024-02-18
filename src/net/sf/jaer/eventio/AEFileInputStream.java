@@ -171,7 +171,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * the size of the memory mapped part of the input file. This window is
      * centered over the file position except at the start and end of the file.
      */
-    private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE / 64 / EVENT32_SIZE;
+    private long CHUNK_SIZE_EVENTS = Integer.MAX_VALUE / 32 / EVENT32_SIZE;
     private long chunkSizeBytes = CHUNK_SIZE_EVENTS * EVENT32_SIZE; // size of memory mapped file chunk, depends on event
     // size and number of events to map, initialized as
     // though we didn't have a file header. Max value is Integer.MAX_VALUE however. Will generate illegalargument exception if we try to allowcate larger chunk
@@ -503,15 +503,19 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             try {
                 mapNextChunk();
                 return readEventForwards(maxTimestamp);
+            } catch (ClosedByInterruptException cbi) {
+                log.info(String.format("Closing file; FileChannel was closed by interrupt from another thread (probably GUI Swing thread): %s",cbi.toString()));
+                close();
+                return null;
             } catch (IOException eof) {
-                byteBuffer = null;
+//                byteBuffer = null;
                 System.gc(); // all the byteBuffers have referred to mapped files and use up all memory, now free them
                 // since we're at end of file anyhow
                 getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 throw new EOFException("reached end of file");
             }
         } catch (NullPointerException npe) {
-            log.severe(String.format("got NullPointerException reading %s: %s",this.toString(),npe));
+            log.severe(String.format("got NullPointerException reading %s: %s", this.toString(), npe));
             rewind();
             return null;
         } finally {
@@ -915,10 +919,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     @Override
     synchronized public void setFractionalPosition(float frac) {
-        position((int) (frac * size()));
         try {
+            position((int) (frac * size()));
             readEventForwards();
+        } catch (NonMonotonicTimeException e) {
+            log.info(String.format("When setting fractionalPosition to %.2f got %s", frac, e.toString()));
         } catch (Exception e) {
+            e.printStackTrace();
             log.warning("When changing fractional position, got " + e.toString());
         }
     }
@@ -1096,7 +1103,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             fileInputStream.close(); // should have been done by super(), but file seems to be kept open
         }
         System.gc();
-        System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
+//        System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
     }
 
     /**
@@ -1337,7 +1344,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * Maps in the next chunk of the file.
      */
-    public void mapNextChunk() throws IOException {
+    synchronized private void mapNextChunk() throws IOException {
         chunkNumber++; // increment the chunk number
         if (chunkNumber >= numChunks) {
             // if we try now to map a chunk past the last one then throw an EOF
@@ -1353,7 +1360,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * Maps back in the previous file chunk.
      */
-    protected void mapPreviousChunk() throws IOException {
+    synchronized private void mapPreviousChunk() throws IOException {
         chunkNumber--;
         if (chunkNumber < 0) {
             chunkNumber = 0;
@@ -1373,7 +1380,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      *
      * @param chunkNumber the number of the chunk, starting with 0
      */
-    private void mapChunk(int chunkNumber) throws IOException {
+    synchronized private void mapChunk(int chunkNumber) throws IOException {
         this.chunkNumber = chunkNumber;
         long start = getChunkStartPosition(chunkNumber);
         if (start >= fileSize) {
