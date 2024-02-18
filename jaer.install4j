@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="10.0.6" transformSequenceNumber="10">
-  <directoryPresets config="C:/Users/tobid/Downloads/jaerinstallers" />
+  <directoryPresets config="./images" />
   <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - UZH-ETH Zurich" publisherWeb="https://jaerproject.org" version="2.2.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./installers/install4j-custom-resources.utf8" />
@@ -31,18 +31,23 @@
           <entry location="docs" />
           <entry location="dvs-slice-avi-writer.exe4j" />
           <entry location="exe4j-launcher" />
+          <entry location="hs_err_pid33652.log" />
           <entry location="install4j License key  2024-01-02 0834.txt" />
           <entry location="installers" />
           <entry location="ivy" />
           <entry location="ivy.xml" />
           <entry location="ivysettings.xml" />
           <entry location="jaer.install4j" />
+          <entry location="JAERViewerRunning.txt" />
           <entry location="jAERViewer_linux.xml" />
           <entry location="jaer_win_jre_x64.exe4j" />
-          <entry location="MainTest" />
+          <entry location="javac.20240124_184101.args" />
+          <entry location="javac.20240124_184643.args" />
+          <entry location="jogl-osx-problem" />
           <entry location="manifest.mf" />
           <entry location="nbproject" />
           <entry location="README-releasing-tagging.txt" />
+          <entry location="sven_goethel" />
           <entry location="test" />
         </exclude>
       </dirEntry>
@@ -69,6 +74,16 @@
     <autoUpdate useMinUpdatableVersion="true" minUpdatableVersion="2.0" />
     <applications>
       <application id="installer" beanClass="com.install4j.runtime.beans.applications.InstallerApplication">
+        <serializedBean>
+          <property name="customIconImageFiles">
+            <add>
+              <object class="com.install4j.api.beans.ExternalFile">
+                <string>./images/SplashScreen.png</string>
+              </object>
+            </add>
+          </property>
+          <property name="useCustomIcon" type="boolean" value="true" />
+        </serializedBean>
         <startup>
           <screen id="1" beanClass="com.install4j.runtime.beans.screens.StartupScreen" rollbackBarrierExitCode="0">
             <actions>
