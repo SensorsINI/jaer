@@ -647,6 +647,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Point getMousePixel() {
         final Point mp = getCanvas().getMousePosition();
+        if(mp==null) return null;
         return getChipPixelFromMousePoint(mp);
     }
 
@@ -668,6 +669,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Point getPixelFromMouseEvent(final MouseEvent evt) {
         final Point mp = evt.getPoint();
+        if(mp==null) return null;
         return getChipPixelFromMousePoint(mp);
     }
 
@@ -677,9 +679,12 @@ public class ChipCanvas implements GLEventListener, Observer {
      * forum link</a>.
      *
      * @param mp a Point in ChipCanvas (i.e. screen) pixels.
-     * @return the AEChip pixel, clipped to the bounds of the AEChip.
+     * @return the AEChip pixel, clipped to the bounds of the AEChip, or null if not valid.
      */
     public Point getChipPixelFromMousePoint(final Point mp) {
+        if(mp==null){
+            return null;
+        }
         // May 2021, Tobi changed to use simpler clipArea object along with chip size.
         // Former method using all the matrices was just too cryptic to understand
         int x = (int) ((mp.getX() / getScale()) + clipArea.left);
