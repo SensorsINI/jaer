@@ -923,11 +923,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             position((int) (frac * size()));
             readEventForwards();
         } catch (NonMonotonicTimeException e) {
-            log.info(String.format("When setting fractionalPosition to %.2f got %s", frac, e.toString()));
+//            log.info(String.format("When setting fractionalPosition to %.2f got %s", frac, e.toString()));
         } catch (Exception e) {
             e.printStackTrace();
             log.warning("When changing fractional position, got " + e.toString());
         }
+        log.info(String.format("Set fractional position %.1f%%",frac*100));
     }
 
     /**
