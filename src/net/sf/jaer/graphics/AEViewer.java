@@ -1116,7 +1116,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             item.setSelected(true);
             interfaceMenu.add(new JSeparator());
             interfaceAlreadyOpen = true;
-            log.info(String.format("Added open device %s",chip.getHardwareInterface().toString()));
+            log.info(String.format("Added open device %s", chip.getHardwareInterface().toString()));
             // don't appendCopy action listener because we are already selected as interface
         }
         ButtonGroup bg = new ButtonGroup();
@@ -1141,7 +1141,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
                 // then appendCopy a menu item to select this interface.
                 String menuText = String.format("%s (#%d)", hw.toString(), i);
-                log.info(String.format("Adding menu item for %s",menuText));
+                log.info(String.format("Adding menu item for %s", menuText));
                 interfaceButton = new JRadioButtonMenuItem(menuText);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_NUMBER_PROPERTY, i);
                 interfaceButton.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, hw);
@@ -1178,13 +1178,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         interfaceMenu.add(new JSeparator());
 
         for (Class c : HardwareInterfaceFactory.factories) {
-            log.info(String.format("Checking HardwareInterfaceFactory %s",c.toString()));
+            log.info(String.format("Checking HardwareInterfaceFactory %s", c.toString()));
             if (HardwareInterfaceFactoryChooserDialog.class.isAssignableFrom(c)) {
                 //                log.log(Level.INFO, "found hardware chooser class {0}", c);
                 try {
                     Method m = (c.getMethod("instance")); // get singleton instance of factory
                     final HardwareInterfaceFactoryChooserDialog inst = (HardwareInterfaceFactoryChooserDialog) m.invoke(c);
-                    log.info(String.format("Adding menu item for %s",inst.getName()));
+                    log.info(String.format("Adding menu item for %s", inst.getName()));
                     JRadioButtonMenuItem mi = new JRadioButtonMenuItem(inst.getName());
                     mi.setToolTipText("Shows a chooser dialog for making this type of HardwareInterface");
                     interfaceMenu.add(mi);
@@ -1235,7 +1235,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             public void actionPerformed(ActionEvent evt) {
                 synchronized (viewLoop) {
                     if (chip.getHardwareInterface() != null) {
-                        log.info(String.format("selected None interface so closing %s",chip.getHardwareInterface().toString()));
+                        log.info(String.format("selected None interface so closing %s", chip.getHardwareInterface().toString()));
                         chip.getHardwareInterface().close();
                     }
                     chip.setHardwareInterface(null);
@@ -1706,7 +1706,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             throw new HardwareInterfaceException("hardware interface became null");
                         }
                         return aemon.acquireAvailableEventsFromDriver();
-                    } catch (HardwareInterfaceException|IllegalArgumentException e) {
+                    } catch (HardwareInterfaceException | IllegalArgumentException e) {
                         if (stop) {
                             break; // break out of loop if this aquisition thread got HardwareInterfaceException because we are exiting
                         }
@@ -4017,14 +4017,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (!(control || alt || shift)) {
                 getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
                 showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
-                if(isPaused()) interruptViewloop();
+                if (isPaused()) {
+                    interruptViewloop();
+                }
             } else if (control && !(shift || alt)) {
                 if (rotation > 0) {
                     chipCanvas.zoomOut(); // wheel down
                 } else if (rotation < 0) {
                     chipCanvas.zoomIn(); //wheel up
                 }
-                if(isPaused()) interruptViewloop();
+                if (isPaused()) {
+                    interruptViewloop();
+                }
             } else if (shift && !(control || alt)) { // shift mouse scrolls through recording
                 if (getAePlayer() != null) {
                     AbstractAEPlayer p = getAePlayer();
@@ -4067,7 +4071,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         decreasePlaybackSpeedMenuItemActionPerformed(ae);
                     }
                 }
-                if(isPaused()) interruptViewloop();
+                if (isPaused()) {
+                    interruptViewloop();
+                }
             }
 	}//GEN-LAST:event_imagePanelMouseWheelMoved
 
@@ -5231,17 +5237,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void zoomInMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomInMenuItemActionPerformed
             chip.getCanvas().zoomIn();
-            if(isPaused()) interruptViewloop();
+            if (isPaused())
+                interruptViewloop();
 	}//GEN-LAST:event_zoomInMenuItemActionPerformed
 
 	private void zoomOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomOutMenuItemActionPerformed
             chip.getCanvas().zoomOut();
-            if(isPaused()) interruptViewloop();
+            if (isPaused())
+                interruptViewloop();
 	}//GEN-LAST:event_zoomOutMenuItemActionPerformed
 
 	private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomCenterMenuItemActionPerformed
             chip.getCanvas().zoomCenter();
-            if(isPaused()) interruptViewloop();
+            if (isPaused())
+                interruptViewloop();
 	}//GEN-LAST:event_zoomCenterMenuItemActionPerformed
 
 	private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
@@ -5867,7 +5876,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      */
     @Override
-    public void dragEnter(DropTargetDragEvent dtde) {
+    synchronized public void dragEnter(DropTargetDragEvent dtde) {
+        log.info(dtde.toString());
         Transferable transferable = dtde.getTransferable();
         try {
             if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
@@ -5905,13 +5915,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param dte the event.
      */
     @Override
-    public void dragExit(DropTargetEvent dte) {
+    synchronized public void dragExit(DropTargetEvent dte) {
+        log.info(dte.toString());
         draggedFile = null;
     }
     //          Called when a drag operation is ongoing, while the mouse pointer is still over the operable part of the drop site for the DropTarget registered with this listener.
 
     @Override
-    public void dragOver(DropTargetDragEvent dtde) {
+    synchronized public void dragOver(DropTargetDragEvent dtde) {
+//        log.info(dtde.toString());
     }
 
     /**
@@ -5921,12 +5933,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @param dtde the drop event.
      */
     @Override
-    public void drop(DropTargetDropEvent dtde) {
+    synchronized public void drop(DropTargetDropEvent dtde) {
+        log.info(dtde.toString());
         if (draggedFile != null) {
             //            log.info("AEViewer.drop(): opening file "+draggedFile);
             try {
                 recentFiles.addFile(draggedFile);
-                getAePlayer().startPlayback(draggedFile); // TODO fix with progress monitor
+                synchronized (getAePlayer()) {
+                    getAePlayer().startPlayback(draggedFile); // TODO fix with progress monitor
+                }
             } catch (IOException e) {
                 log.warning(e.toString());
                 e.printStackTrace();
@@ -6062,7 +6077,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         synchronized (viewLoop) {
             this.playMode = playMode;
-            if (isPaused()) interruptViewloop();
+            if (isPaused()) {
+                interruptViewloop();
+            }
         }
         setTitleAccordingToState();
         fixLoggingControls();
