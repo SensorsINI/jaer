@@ -69,6 +69,8 @@ import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.NonMonotonicTimeException;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 
 /**
@@ -316,14 +318,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      * @throws EOFException
      */
     synchronized private MessageWithIndex getMsg(int msgIndex) throws BagReaderException, EOFException {
+        if (msgIndex < 0 || msgIndex >= numMessages) {
+            throw new IllegalArgumentException(String.format("msgIndex=%,d is out of bounds (0,%,d)", msgIndex, numMessages));
+        }
         MessageType msg = null;
         try {
             if (nextMessageNumber == markOut) { // TODO check exceptions here for markOut set before markIn
                 throw new EOFException("Hit OUT marker at messange number " + markOut);
             }
             msg = bagFile.getMessageFromIndex(msgIndexes, msgIndex);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new EOFException("Hit ArrayIndexOutOfBoundsException, probably at end of file");
+        } catch (IndexOutOfBoundsException e) {
+            throw new EOFException(String.format("Hit IndexOutOfBoundsException: %s", e.toString()));
         } catch (IOException e) {
             throw new EOFException("Hit IOException at end of file");
         }
@@ -351,7 +356,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     private long determineEarliestTimestamp() throws UninitializedFieldException {
-        final int NUM_MESSAGES_TO_READ = 100;
+        final int NUM_MESSAGES_TO_READ = 1000;
         log.info(String.format("Determining earliest timestamp by scanning first %d messages", NUM_MESSAGES_TO_READ));
         long earliest = Long.MAX_VALUE;
         boolean gotDvs = false, gotImu = false, gotAps = false;
@@ -371,10 +376,15 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                     default:
                         log.info("got unexpected type " + m);
                 }
-                long tsUs = getMessageTimestamp(m);
-                if (tsUs < earliest) {
-                    earliest = tsUs;
-                    log.info(String.format("earlist timestamp updated to %,d us", earliest));
+                try {
+                    long tsUs = getMessageTimestamp(m);
+                    if (tsUs < earliest) {
+                        earliest = tsUs;
+                        log.info(String.format("earlist timestamp updated to %,d us", earliest));
+                    }
+                } catch (UninitializedFieldException e) {
+                    log.warning(String.format("Message %s did not set timestamp", m.toString()));
+                    continue;
                 }
                 if (gotDvs && gotImu && gotAps) {
                     log.info("breaking out because we got Dvs,Imu,Aps messages already");
@@ -392,12 +402,17 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      *
      * @param message
      * @return us timestamp since 1970
+     * @throws UninitializedFieldException if the timestamp is null or 0
      */
     private long getMessageTimestamp(MessageWithIndex message) throws UninitializedFieldException {
         String pkg = message.messageType.getPackage();
         String type = message.messageType.getType();
         Timestamp timestamp = null;
         switch (pkg) {
+            case "std_msgs": {
+                timestamp = message.messageIndex.timestamp;
+            }
+            break;
             case "sensor_msgs": // for RPG and MVSEC
                 switch (type) {
                     case "Image": { // http://docs.ros.org/api/sensor_msgs/html/index-msg.html
@@ -437,8 +452,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 break;
         }
         if (timestamp == null) {
-            log.warning("message has null timestamp: " + message);
-            return 0;
+            throw new UninitializedFieldException();
         }
         long tsNs = timestamp.getNanos(); // gets the fractional seconds in ns
         // https://docs.oracle.com/javase/8/docs/api/java/sql/Timestamp.html "Only integral seconds are stored in the java.util.Date component. The fractional seconds - the nanos - are separate."
@@ -893,16 +907,34 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 if (p.isEmpty()) {
                     continue;
                 }
-                aePacketRawBuffered.append(p); // reaching EOF here will throw EOFException
+                try {
+                    aePacketRawBuffered.append(p); // reaching EOF here will throw EOFException
+                } catch (NonMonotonicTimeException e) {
+                    if (isNonMonotonicTimeExceptionsChecked()) {
+                        log.warning(e.toString());
+                    }
+                }
             } catch (BagReaderException ex) {
                 throw new IOException(ex);
             }
         }
         aePacketRawOutput.clear();
-        AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, numEventsToRead); // copy over collected events
+        try {
+            AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, numEventsToRead); // copy over collected events
+        } catch (NonMonotonicTimeException e) {
+            if (isNonMonotonicTimeExceptionsChecked()) {
+                log.warning(e.toString());
+            }
+        }
         // now use tmp packet to copy rest of buffered to
         aePacketRawTmp.setNumEvents(0);
-        AEPacketRaw.copy(aePacketRawBuffered, numEventsToRead, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - numEventsToRead);
+        try {
+            AEPacketRaw.copy(aePacketRawBuffered, numEventsToRead, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - numEventsToRead);
+        } catch (NonMonotonicTimeException e) {
+            if (isNonMonotonicTimeExceptionsChecked()) {
+                log.warning(e.toString());
+            }
+        }
         AEPacketRaw tmp = aePacketRawBuffered;
         aePacketRawBuffered = aePacketRawTmp;
         aePacketRawTmp = tmp;
@@ -939,6 +971,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                         continue;
                     }
                     aePacketRawBuffered.append(p); // reaching EOF here will throw EOFException
+                } catch (NonMonotonicTimeException e) {
+                    if (isNonMonotonicTimeExceptionsChecked()) {
+                        log.warning(e.toString());
+                    }
                 } catch (BagReaderException ex) {
                     if (ex.getCause() instanceof ClosedByInterruptException) { // ignore, caussed by interrupting ViewLoop to change rendering mode 
                         return emptyPacket;
@@ -956,17 +992,35 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 }
                 aePacketRawOutput.clear(); // just in case 0 copied to packet
                 //public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
-                AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, idx); // copy over collected events
+                try {
+                    AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, idx); // copy over collected events
+                } catch (NonMonotonicTimeException e) {
+                    if (isNonMonotonicTimeExceptionsChecked()) {
+                        log.warning(e.toString());
+                    }
+                }
                 // now use tmp packet to copy rest of buffered to, and then make that the new buffered
                 aePacketRawTmp.setNumEvents(0); // in case we copy 0 events over
-                AEPacketRaw.copy(aePacketRawBuffered, idx, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - idx);
+                try {
+                    AEPacketRaw.copy(aePacketRawBuffered, idx, aePacketRawTmp, 0, aePacketRawBuffered.getNumEvents() - idx);
+                } catch (NonMonotonicTimeException e) {
+                    if (isNonMonotonicTimeExceptionsChecked()) {
+                        log.warning(e.toString());
+                    }
+                }
                 AEPacketRaw tmp = aePacketRawBuffered;
                 aePacketRawBuffered = aePacketRawTmp;
                 aePacketRawTmp = tmp;
             } else {
                 aePacketRawOutput.clear(); // just in case 0 copied to packet
                 //public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
-                AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, aePacketRawBuffered.getNumEvents()); // copy over collected events
+                try {
+                    AEPacketRaw.copy(aePacketRawBuffered, 0, aePacketRawOutput, 0, aePacketRawBuffered.getNumEvents()); // copy over collected events
+                } catch (NonMonotonicTimeException e) {
+                    if (isNonMonotonicTimeExceptionsChecked()) {
+                        log.warning(e.toString());
+                    }
+                }
                 clearAccumulatedEvents();
             }
             if (aePacketRawOutput.isEmpty()) {
@@ -1096,7 +1150,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     synchronized public void setFractionalPosition(float frac) {
-        position((int) (frac * numMessages)); // must also clear partially accumulated events in collecting packet and reset the timestamp
+        int messageNumber = (int) (frac * numMessages);
+        log.info(String.format("Setting fractional position %.1f%% which is message %,d out of total %,d messages", frac * 100, messageNumber, numMessages));
+        position(messageNumber); // must also clear partially accumulated events in collecting packet and reset the timestamp
+
         clearAccumulatedEvents();
         try {
             AEPacketRaw raw = getNextRawPacket(true);
@@ -1105,6 +1162,10 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 raw = getNextRawPacket(true);
             }
             aePacketRawBuffered.append(raw); // reaching EOF here will throw EOFException
+        } catch (NonMonotonicTimeException e) {
+            if (isNonMonotonicTimeExceptionsChecked()) {
+                log.warning(e.toString());
+            }
         } catch (EOFException ex) {
             try {
                 aePacketRawBuffered.clear();
@@ -1232,7 +1293,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     synchronized public void setCurrentStartTimestamp(int currentStartTimestamp) {
         this.currentStartTimestamp = currentStartTimestamp;
-        nextMessageNumber = (int) (numMessages * (float) currentStartTimestamp / getDurationUs()); // TODO only very approximate
+        nextMessageNumber = (int) (numMessages * ((float) currentStartTimestamp) / getDurationUs()); // TODO only very approximate
         aePacketRawBuffered.clear();
     }
 
@@ -1436,7 +1497,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                    clear();
                 }
             }
-            if (size == 10*MAX_EVENTS) {
+            if (size == 10 * MAX_EVENTS) {
                 full = true;
                 log.warning(String.format("FIFO has reached capacity RosbagFileInputStream.MAX_EVENTS=%,d events: %s", MAX_EVENTS, toString()));
                 for (AEFifo f : aeFifos) {
@@ -1513,65 +1574,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
      */
     public Timestamp getStartAbsoluteTimestamp() {
         return startAbsoluteTimestamp;
-    }
-
-    /**
-     * class used to signal a backwards read from input stream
-     */
-    public class NonMonotonicTimeException extends Exception {
-
-        protected int timestamp, lastTimestamp;
-        protected long position;
-
-        public NonMonotonicTimeException() {
-            super();
-        }
-
-        public NonMonotonicTimeException(String s) {
-            super(s);
-        }
-
-        public NonMonotonicTimeException(int ts) {
-            this.timestamp = ts;
-        }
-
-        /**
-         * Constructs a new NonMonotonicTimeException
-         *
-         * @param readTs the timestamp just read
-         * @param lastTs the previous timestamp
-         */
-        public NonMonotonicTimeException(int readTs, int lastTs) {
-            this.timestamp = readTs;
-            this.lastTimestamp = lastTs;
-        }
-
-        /**
-         * Constructs a new NonMonotonicTimeException
-         *
-         * @param readTs the timestamp just read
-         * @param lastTs the previous timestamp
-         * @param position the current position in the stream
-         */
-        public NonMonotonicTimeException(int readTs, int lastTs, long position) {
-            this.timestamp = readTs;
-            this.lastTimestamp = lastTs;
-            this.position = position;
-        }
-
-        public int getCurrentTimestamp() {
-            return timestamp;
-        }
-
-        public int getPreviousTimestamp() {
-            return lastTimestamp;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("NonMonotonicTimeException: position=%,d timestamp=%,d lastTimestamp=%,d jumps backwards by %,d",
-                    position, timestamp, lastTimestamp, (timestamp - lastTimestamp));
-        }
     }
 
 }
