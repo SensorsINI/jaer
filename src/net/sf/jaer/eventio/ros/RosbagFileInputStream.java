@@ -183,6 +183,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     private int markIn = 0;
     private int markOut;
     private boolean repeatEnabled = true;
+    private Timestamp lastEndOfExposureTimestamp = null;  // stores an end-of-frame-exposure timestamp to put on APS frame events
 
     /**
      * Makes a new instance for a file and chip. A progressMonitor can pop up a
@@ -356,11 +357,14 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     private long determineEarliestTimestamp() throws UninitializedFieldException {
-        final int NUM_MESSAGES_TO_READ = 1000;
-        log.info(String.format("Determining earliest timestamp by scanning first %d messages", NUM_MESSAGES_TO_READ));
+        int numMsgsToRead = 1000;
+        if (numMsgsToRead >= numMessages) {
+            numMsgsToRead = numMessages;
+        }
+        log.info(String.format("Determining earliest timestamp by scanning first %d messages", numMsgsToRead));
         long earliest = Long.MAX_VALUE;
         boolean gotDvs = false, gotImu = false, gotAps = false;
-        for (int i = 0; i < NUM_MESSAGES_TO_READ; i++) {
+        for (int i = 0; i < numMsgsToRead; i++) {
             try {
                 MessageWithIndex m = getMsg(i);
                 switch (m.messageType.getType()) {
@@ -564,12 +568,18 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                     case "std_msgs": { // exposure
                         MessageType messageType = message.messageType;
 //                         List<String> fieldNames = messageType.getFieldNames();
-                        try {
-                            int exposureUs = messageType.<Int32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
-                            lastExposureUs = (int) (exposureUs);
-                        } catch (Exception ex) {
-                            float exposureUs = messageType.<Float32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
-                            lastExposureUs = (int) (exposureUs); // hack to deal with recordings made with pre-Int32 version of rpg-ros-dvs
+                        if (topic.equals("/dvs/exposure")) {
+                            try {
+                                int exposureUs = messageType.<Int32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
+                                lastExposureUs = (int) (exposureUs);
+                                lastEndOfExposureTimestamp = message.messageIndex.timestamp;
+                            } catch (Exception ex) {
+                                float exposureUs = messageType.<Float32Type>getField("data").getValue(); // message seems to be exposure in ms as float although https://github.com/uzh-rpg/rpg_dvs_ros/blob/master/davis_ros_driver/src/driver.cpp publishes as Int32, very confusing
+                                lastExposureUs = (int) (exposureUs); // hack to deal with recordings made with pre-Int32 version of rpg-ros-dvs
+                                lastEndOfExposureTimestamp = message.messageIndex.timestamp;
+                            }
+                        } else {
+                            log.warning(String.format("std_msgs recieved that is not /dvs/exposure message, don't know what to to. Message: %s", message.toString()));
                         }
 
                     }
@@ -590,6 +600,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
                                 Timestamp timestamp = header.<TimeType>getField("stamp").getValue();
                                 int ts = getTimestampUsRelative(timestamp, true, forwards); // don't check nonmonotonic for reverse mode
+                                if (lastEndOfExposureTimestamp != null) {
+                                    ts = getTimestampUsRelative(lastEndOfExposureTimestamp, false, false);
+                                }
                                 gotEventsOrFrame = true;
                                 byte[] bytes = data.getAsBytes();
                                 final int sizey1 = chip.getSizeY() - 1, sizex = chip.getSizeX();
@@ -626,6 +639,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 // Also, y is flipped for the rpg-dvs driver which is based on libcaer where the frame starts at
                                 // upper left corner as in most computer vision, 
                                 // unlike jaer that starts like in cartesian coordinates at lower left.
+
                                 for (int f = 0; f < 2; f++) { // reset/signal pixels samples
                                     // now we start at 
                                     for (int y = firstPixel.y; (yinc > 0 ? y <= lastPixel.y : y >= lastPixel.y); y += yinc) {
@@ -637,15 +651,16 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                             e.x = (short) x;
                                             e.y = (short) y;
                                             e.setAdcSample(f == 0 ? 255 : (255 - (0xff & bytes[idx])));
-                                            if (davisCamera == null) {
-                                                e.setTimestamp(ts);
-                                            } else {
-                                                if (davisCamera.lastFrameAddress((short) x, (short) y)) {
-                                                    e.setTimestamp(ts + lastExposureUs); // set timestamp of last event written out to the frame end timestamp, TODO complete hack to have 1 pixel with larger timestamp
-                                                } else {
-                                                    e.setTimestamp(ts);
-                                                }
-                                            }
+                                            e.setTimestamp(ts);
+//                                            if (davisCamera == null) {
+//                                                e.setTimestamp(ts);
+//                                            } else {
+//                                                if (davisCamera.lastFrameAddress((short) x, (short) y)) {
+//                                                    e.setTimestamp(ts + lastExposureUs); // set timestamp of last event written out to the frame end timestamp, TODO complete hack to have 1 pixel with larger timestamp
+//                                                } else {
+//                                                    e.setTimestamp(ts);
+//                                                }
+//                                            }
                                             maybePushEvent(e, apsFifo, outItr, forwards);
                                             // debug
 //                                            if(x==firstPixel.x && y==firstPixel.y){
@@ -662,14 +677,14 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOE);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts + lastExposureUs); // TODO should really be end of exposure timestamp, have to get that from last exposure message
+                                e.setTimestamp(ts); // TODO should really be end of exposure timestamp, have to get that from last exposure message
                                 maybePushEvent(e, apsFifo, outItr, forwards);
                                 // end of frame event
 //                                e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts + lastExposureUs);
+                                e.setTimestamp(ts);
                                 maybePushEvent(e, apsFifo, outItr, forwards);
 
                             }
@@ -971,6 +986,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                         continue;
                     }
                     aePacketRawBuffered.append(p); // reaching EOF here will throw EOFException
+                } catch (EOFException e) {
+                    log.info(e.toString());
+                    rewind();
                 } catch (NonMonotonicTimeException e) {
                     if (isNonMonotonicTimeExceptionsChecked()) {
                         log.warning(e.toString());
