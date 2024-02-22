@@ -11,7 +11,7 @@ package net.sf.jaer.aemonitor;
 
 import java.util.Collection;
 import net.sf.jaer.aemonitor.EventRaw.EventType;
-import net.sf.jaer.eventio.ros.RosbagFileInputStream;
+import net.sf.jaer.eventio.NonMonotonicTimeException;
 
 /**
  * A structure containing a packer of AEs: addresses, timestamps. The AE packet
@@ -309,7 +309,7 @@ public class AEPacketRaw extends AEPacket {
      * @return the appended packet
      * @see #prepend(net.sf.jaer.aemonitor.AEPacketRaw)
      */
-    public AEPacketRaw append(AEPacketRaw source) {
+    public AEPacketRaw append(AEPacketRaw source) throws NonMonotonicTimeException{
         if (source == null || source.getNumEvents() == 0) {
             return this;
         }
@@ -331,7 +331,7 @@ public class AEPacketRaw extends AEPacket {
      * @since 12.1.21 - to support RosbagFileInputStream backwards mode
      * @see #append(net.sf.jaer.aemonitor.AEPacketRaw)
      */
-    public AEPacketRaw prepend(AEPacketRaw source) {
+    public AEPacketRaw prepend(AEPacketRaw source) throws NonMonotonicTimeException {
         if (source == null || source.getNumEvents() == 0) {
             return this;
         }
@@ -358,7 +358,7 @@ public class AEPacketRaw extends AEPacket {
      * @param destPos the starting index in destination
      * @param length the number of events to copy from src
      */
-    public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) {
+    public static void copy(AEPacketRaw src, int srcPos, AEPacketRaw dest, int destPos, int length) throws net.sf.jaer.eventio.NonMonotonicTimeException {
         // num events in dest =destPos+length
 
         if (src == null || dest == null) {
@@ -368,8 +368,8 @@ public class AEPacketRaw extends AEPacket {
             return;
         }
         AEPacketRaw.timestampCheck(src);
-        if (srcPos+length > src.getNumEvents()) {
-            throw new IllegalArgumentException(String.format("srcPos (%,d)+length (%,d) (total %,d) goes past its end (%,d)", srcPos,length,srcPos+length, src.getNumEvents()));
+        if (srcPos + length > src.getNumEvents()) {
+            throw new IllegalArgumentException(String.format("srcPos (%,d)+length (%,d) (total %,d) goes past its end (%,d)", srcPos, length, srcPos + length, src.getNumEvents()));
         }
 
         if (destPos > dest.getNumEvents()) {
@@ -389,17 +389,19 @@ public class AEPacketRaw extends AEPacket {
         AEPacketRaw.timestampCheck(dest);
     }
 
-    /** Tests the packet to see if the timestamps are monotonic.  Mainly for debugging.
-     * 
-     * @param dest the packet 
+    /**
+     * Tests the packet to see if the timestamps are monotonic. Mainly for
+     * debugging.
+     *
+     * @param dest the packet
      */
-    private static void timestampCheck(AEPacketRaw dest) throws IllegalArgumentException {
+    private static void timestampCheck(AEPacketRaw dest) throws NonMonotonicTimeException {
         if (dest.isEmpty()) {
             return;
         }
         int t0 = dest.getFirstTimestamp(), t1 = dest.getLastTimestamp();
         if (t0 > t1) {
-            throw new RuntimeException(String.format("First timestamp (%,d) later by dt=%,d us than last timestamp (%,d) for packet %s", t0, t1 - t0, t1, dest.toString()));
+            throw new NonMonotonicTimeException(String.format("First timestamp (%,d) later by dt=%,d us than last timestamp (%,d) for packet %s", t0, t1 - t0, t1, dest.toString()));
         }
     }
 

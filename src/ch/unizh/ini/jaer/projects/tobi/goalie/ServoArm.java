@@ -308,7 +308,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater/
 
     @Override
     protected void finalize() throws Throwable {
-        super.finalize();
         closeHardware();
     }
 
