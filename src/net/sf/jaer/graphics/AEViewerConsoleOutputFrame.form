@@ -84,7 +84,7 @@
       <Properties>
         <Property name="mnemonic" type="int" value="114"/>
         <Property name="text" type="java.lang.String" value="Clear"/>
-        <Property name="toolTipText" type="java.lang.String" value="Clear contents"/>
+        <Property name="toolTipText" type="java.lang.String" value="Clear contents (Ctl-L)"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearButtonActionPerformed"/>
@@ -101,6 +101,9 @@
           <Properties>
             <Property name="editable" type="boolean" value="false"/>
           </Properties>
+          <Events>
+            <EventHandler event="keyReleased" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="paneKeyReleased"/>
+          </Events>
         </Component>
       </SubComponents>
     </Container>

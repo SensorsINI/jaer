@@ -273,7 +273,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
         clearButton.setMnemonic('r');
         clearButton.setText("Clear");
-        clearButton.setToolTipText("Clear contents");
+        clearButton.setToolTipText("Clear contents (Ctl-L)");
         clearButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 clearButtonActionPerformed(evt);
@@ -281,6 +281,11 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         });
 
         pane.setEditable(false);
+        pane.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                paneKeyReleased(evt);
+            }
+        });
         jScrollPane1.setViewportView(pane);
 
         findLabel.setText("Highlight");
@@ -367,6 +372,15 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         findTF.setText("");
         findTF.requestFocus();
     }//GEN-LAST:event_clearSeachBActionPerformed
+
+    private void paneKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_paneKeyReleased
+                int code = evt.getKeyCode();
+        boolean lkey = (code == java.awt.event.KeyEvent.VK_L);
+        boolean ctl = evt.isControlDown();
+        if (lkey && ctl) {
+           clear();
+        }
+    }//GEN-LAST:event_paneKeyReleased
 
     private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_closeButtonActionPerformed
         setVisible(false);
