@@ -86,7 +86,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     /**
      * Default capacity in events for new EventPackets
      */
-    public final int DEFAULT_INITIAL_CAPACITY = 4096;
+    public final int DEFAULT_INITIAL_CAPACITY = 1<<16;
     private int capacity;
     /**
      * the number of events eventList actually contains (0 to size-1)

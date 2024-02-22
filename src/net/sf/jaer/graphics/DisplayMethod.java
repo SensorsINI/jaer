@@ -219,7 +219,7 @@ public abstract class DisplayMethod {
             fontsize*=2;
             scale=.5f;
         }
-        log.fine(String.format("Chose fontsize=%d and scale=%f for chip with %d horizontal pixels",fontsize,scale,chip.getSizeX()));
+//        log.fine(String.format("Chose fontsize=%d and scale=%f for chip with %d horizontal pixels",fontsize,scale,chip.getSizeX()));
         GL2 gl = drawable.getGL().getGL2();
         // we want status display to fill about 1/2 of width of chip area, so choose font size appropriately.
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontsize), true, true);

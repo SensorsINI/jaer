@@ -158,7 +158,6 @@ public class VirtualDrummerMicrophoneInput extends Thread /*implements SpikeRepo
         if ( targetDataLine.isOpen() ){
             targetDataLine.close();
         }
-        super.finalize();
     }
     LinkedList listeners = new LinkedList();
 
