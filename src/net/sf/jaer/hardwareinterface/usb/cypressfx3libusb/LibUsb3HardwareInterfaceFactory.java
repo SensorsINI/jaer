@@ -145,7 +145,7 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
                 continue; // Skip device.
             }
 
-            status = LibUsb.kernelDriverActive(devHandle, 0);
+            status = LibUsb.kernelDriverActive(devHandle, 0); // returns ERROR_NOT_SUPPORTED on windows, where we cannot determine if something else has claimed the device
 
             LibUsb.close(devHandle);
             if (((status == LibUsb.ERROR_NOT_SUPPORTED) || (status == LibUsb.SUCCESS)) && vidPidToClassMap.containsKey(vidPid)) {
