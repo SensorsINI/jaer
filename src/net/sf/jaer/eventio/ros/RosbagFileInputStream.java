@@ -544,6 +544,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     /**
+     * This is the main method that parses input bag file to jAER raw events.
+     * <p>
      * Typical file info about contents of a bag file recorded on Traxxas slash
      * platform INFO: Bagfile information:
      * /davis_ros_driver/parameter_descriptions 1 msgs :
@@ -630,6 +632,9 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 // Since DVS events are also arriving (presumably) we only emit the frame APS events once we have the whole frame, which is here.
                                 // (We already lost the original order of data from the camera in the ROS frame event format.)
                                 // To keep monotonic time, we give all pixels of the frame the same timestamp as the most recent DVS event.
+                                // the exposure events (SOE, EOE) are important to recover the correct frame exposure time. The frame readout start and end (SOF, EOF) are less important and are set to the EOE)
+                                // We emit on SOE at the frame time, and one EOE at frame time plus the exposure time (which we got from std_msgs message, probably after we got the frame).
+                                
                                 hasAps.setTrue();
                                 MessageType messageType = message.messageType;
 //                                List<String> fieldNames = messageType.getFieldNames();
@@ -650,6 +655,8 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 final int sizey1 = chip.getSizeY() - 1, sizex = chip.getSizeX();
                                 // construct frames as events, so that reconstuction as raw packet results in frame again. 
                                 // what a hack...
+                                // There is no real point to writing out thes special flag events since they are discarded when the packet is reconstructed as raw packet,
+                                // but we leave them here for historical reasons.
                                 // start of frame
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.SOF);
                                 e.x = (short) 0;
@@ -682,7 +689,21 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 // upper left corner as in most computer vision, 
                                 // unlike jaer that starts like in cartesian coordinates at lower left.
 
-                                for (int f = 0; f < 2; f++) { // reset/signal pixels samples
+                                /* From inivation docs  https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html
+                                Frames, in this format, are laid out as a sequence of events, one for each pixel. 
+                                The timestamp for each pixel is also stored and corresponds to the start of the readout of the column where the pixel resides. 
+                                To get start and end of frame and exposure timestamps, 
+                                one has to look at the timestamp of the pixel readouts closest to those moments:
+                                    Start of Frame: first reset read pixel.
+                                    Start of Exposure: last reset read pixel for GlobalShutter mode, first reset read pixel for RollingShutter mode.
+                                    End of Exposure: first signal read pixel.
+                                    End of Frame: last signal read pixel.
+                                */
+
+                                for (int f = 0; f < 2; f++) { // First reset reads, then signal reads
+                                    int tsFrame=ts;
+                                    if(f==1) ts+=lastExposureUs; // on first signal read, increment timestamp by measured exposure, not quite correct, should be ts up to last reset read pixel
+                                    e.setTimestamp(ts);
                                     // now we start at 
                                     for (int y = firstPixel.y; (yinc > 0 ? y <= lastPixel.y : y >= lastPixel.y); y += yinc) {
                                         for (int x = firstPixel.x; (xinc > 0 ? x <= lastPixel.x : x >= lastPixel.x); x += xinc) {
@@ -693,7 +714,6 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                             e.x = (short) x;
                                             e.y = (short) y;
                                             e.setAdcSample(f == 0 ? 255 : (255 - (0xff & bytes[idx])));
-                                            e.setTimestamp(ts);
 //                                            if (davisCamera == null) {
 //                                                e.setTimestamp(ts);
 //                                            } else {
@@ -714,20 +734,22 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     }
                                 }
 
+                                 // end of frame event
+//                                e = outItr.nextOutput();
+                                e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
+                                e.x = (short) 0;
+                                e.y = (short) 0;
+                                e.setTimestamp(ts+lastExposureUs);
+                                maybePushEvent(e, apsFifo, outItr, forwards);
+                                
                                 // end of exposure event
 //                                e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOE); // TODO now the exposure time of all frames will be 0 since we don't have the SOE event in the DVS stream 
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts); // TODO should really be end of exposure timestamp, have to get that from last exposure message
+                                e.setTimestamp(ts+lastExposureUs); // NOTE this EOE event is this many us after, this will cause the frame to be buffered in AEFifo
                                 maybePushEvent(e, apsFifo, outItr, forwards);
-                                // end of frame event
-//                                e = outItr.nextOutput();
-                                e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
-                                e.x = (short) 0;
-                                e.y = (short) 0;
-                                e.setTimestamp(ts);
-                                maybePushEvent(e, apsFifo, outItr, forwards);
+                               
 
                             }
                             break;
