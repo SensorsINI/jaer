@@ -634,7 +634,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 // To keep monotonic time, we give all pixels of the frame the same timestamp as the most recent DVS event.
                                 // the exposure events (SOE, EOE) are important to recover the correct frame exposure time. The frame readout start and end (SOF, EOF) are less important and are set to the EOE)
                                 // We emit on SOE at the frame time, and one EOE at frame time plus the exposure time (which we got from std_msgs message, probably after we got the frame).
-                                
+
                                 hasAps.setTrue();
                                 MessageType messageType = message.messageType;
 //                                List<String> fieldNames = messageType.getFieldNames();
@@ -644,7 +644,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                                int height = (int) (messageType.<UInt32Type>getField("height").getValue()).intValue();
 //                                Timestamp timestamp = header.<TimeType>getField("stamp").getValue(); // this is the actual timestamp in wall clock time of this ROS message, but it is not really useful.
                                 Timestamp timestamp = message.messageIndex.timestamp; // this is the actual timestamp in wall clock time of this ROS message, but it is not really useful.
-                       
+
                                 int ts = getTimestampUsRelative(timestamp, true, forwards); // don't check nonmonotonic for reverse mode
 //                                if (lastEndOfExposureTimestamp != null) {
 //                                    ts = getTimestampUsRelative(lastEndOfExposureTimestamp, false, false);
@@ -698,11 +698,12 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     Start of Exposure: last reset read pixel for GlobalShutter mode, first reset read pixel for RollingShutter mode.
                                     End of Exposure: first signal read pixel.
                                     End of Frame: last signal read pixel.
-                                */
-
+                                 */
                                 for (int f = 0; f < 2; f++) { // First reset reads, then signal reads
-                                    int tsFrame=ts;
-                                    if(f==1) ts+=lastExposureUs; // on first signal read, increment timestamp by measured exposure, not quite correct, should be ts up to last reset read pixel
+                                    int tsFrame = ts;
+                                    if (f == 1) {
+                                        ts += lastExposureUs; // on first signal read, increment timestamp by measured exposure, not quite correct, should be ts up to last reset read pixel
+                                    }
                                     e.setTimestamp(ts);
                                     // now we start at 
                                     for (int y = firstPixel.y; (yinc > 0 ? y <= lastPixel.y : y >= lastPixel.y); y += yinc) {
@@ -734,22 +735,21 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                     }
                                 }
 
-                                 // end of frame event
+                                // end of frame event
 //                                e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOF);
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts+lastExposureUs);
+                                e.setTimestamp(ts + lastExposureUs);
                                 maybePushEvent(e, apsFifo, outItr, forwards);
-                                
+
                                 // end of exposure event
 //                                e = outItr.nextOutput();
                                 e.setReadoutType(ApsDvsEvent.ReadoutType.EOE); // TODO now the exposure time of all frames will be 0 since we don't have the SOE event in the DVS stream 
                                 e.x = (short) 0;
                                 e.y = (short) 0;
-                                e.setTimestamp(ts+lastExposureUs); // NOTE this EOE event is this many us after, this will cause the frame to be buffered in AEFifo
+                                e.setTimestamp(ts + lastExposureUs); // NOTE this EOE event is this many us after, this will cause the frame to be buffered in AEFifo
                                 maybePushEvent(e, apsFifo, outItr, forwards);
-                               
 
                             }
                             break;
@@ -786,18 +786,19 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                                 float zacc = (float) (linear_acceleration.<Float64Type>getField("z").getValue().doubleValue());
                                 short[] buf = new short[7];
 
-                                buf[IMUSampleType.ax.code] = (short) (G_PER_MPS2 * xacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb()); // TODO set these scales from caer parameter messages in stream
-                                buf[IMUSampleType.ay.code] = (short) (G_PER_MPS2 * yacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
-                                buf[IMUSampleType.az.code] = (short) (G_PER_MPS2 * zacc / IMUSample.getAccelSensitivityScaleFactorGPerLsb());
+                                buf[IMUSampleType.ax.code] = (short) encodeImuAccel(xacc); // TODO set these scales from caer parameter messages in stream
+                                buf[IMUSampleType.ay.code] = (short) encodeImuAccel(yacc);
+                                buf[IMUSampleType.az.code] = (short) encodeImuAccel(zacc);
 
-                                buf[IMUSampleType.gx.code] = (short) (DEG_PER_RAD * xrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gy.code] = (short) (DEG_PER_RAD * yrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
-                                buf[IMUSampleType.gz.code] = (short) (DEG_PER_RAD * zrot / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb());
+                                buf[IMUSampleType.gx.code] = (short) encodeImuGyro(xrot);
+                                buf[IMUSampleType.gy.code] = (short) encodeImuGyro(yrot);
+                                buf[IMUSampleType.gz.code] = (short) encodeImuGyro(zrot);
 //                                ApsDvsEvent e = null;
 //                                e = outItr.nextOutput();
                                 IMUSample imuSample = new IMUSample(ts, buf);
                                 e.setImuSample(imuSample);
                                 e.setTimestamp(ts);
+                                log.finest(imuSample.toString());
                                 maybePushEvent(e, imuFifo, outItr, forwards);
                                 gotEventsOrFrame = true;
                             }
@@ -889,8 +890,26 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return aePacketRawCollecting;
     }
 
+    private final static short encodeImuGyro(float rotationDegPerSec) {
+        float f = DEG_PER_RAD * rotationDegPerSec / IMUSample.getGyroSensitivityScaleFactorDegPerSecPerLsb();
+        if (f > Short.MAX_VALUE || f<Short.MIN_VALUE) {
+            log.warning(String.format("IMU Rate gyro value %.1f deg/s when encoded is %,d which exceeds 16b short encoding range; increase max IMU rate gyro scale in Hardware Configuration panel",rotationDegPerSec,(int)f));
+            return f>0? Short.MAX_VALUE:Short.MIN_VALUE;
+        }
+        return (short) f;
+    }
+
+    private final static short encodeImuAccel(float accelerationG) {
+        float f = G_PER_MPS2 * accelerationG / IMUSample.getAccelSensitivityScaleFactorGPerLsb();
+        if (f > Short.MAX_VALUE || f<Short.MIN_VALUE) {
+            log.warning(String.format("IMU Acceleration value %.1fg when encoded is %,d which exceeds 16b short encoding range; increase max IMU acceleration scale in Hardware Configuration panel",accelerationG,(int)f));
+            return  f>0? Short.MAX_VALUE:Short.MIN_VALUE;
+        }
+        return (short) f;
+    }
+
     /**
-     * Either pushes event to fifo or just directly writes it to output packet,
+     * Either pushes event to FIFO or just directly writes it to output packet,
      * depending on flag nonMonotonicTimestampExceptionsChecked.
      *
      * @param ev the event
