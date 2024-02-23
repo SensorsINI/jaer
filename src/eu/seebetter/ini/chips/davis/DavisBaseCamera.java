@@ -547,6 +547,16 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             warningCount++;
                             break;
                     }
+                    /* From inivation docs  https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html
+                    Frames, in this format, are laid out as a sequence of events, one for each pixel. 
+                    The timestamp for each pixel is also stored and corresponds to the start of the readout of the column where the pixel resides. 
+                    To get start and end of frame and exposure timestamps, 
+                    one has to look at the timestamp of the pixel readouts closest to those moments:
+                        Start of Frame: first reset read pixel.
+                        Start of Exposure: last reset read pixel for GlobalShutter mode, first reset read pixel for RollingShutter mode.
+                        End of Exposure: first signal read pixel.
+                        End of Frame: last signal read pixel.
+                    */
 
                     if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
@@ -676,6 +686,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
          */
         @Override
         public int reconstructRawAddressFromEvent(final TypedEvent te) {
+            // see https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html
             if (!(te instanceof ApsDvsEvent)) {
                 throw new RuntimeException("event is not an ApsDvsEvent, cannot reconstruct from it");
             }
@@ -689,6 +700,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 address = (address & ~DavisChip.YMASK) | (e.y << DavisChip.YSHIFT);
                 address = (address & ~DavisChip.POLMASK) | (e.type << DavisChip.POLSHIFT);
             } else if (e.isApsData()) {
+                // see DavisEventExtractor for APS frame exposure event handling (there are no special events to mark these; they are inferred from readout of pixels which sucks)
                 /* switch ((data & DavisChip.ADC_READCYCLE_MASK) >> DavisChip.ADC_NUMBER_OF_TRAILING_ZEROS) {
                         case 0:
                             readoutType = ApsDvsEvent.ReadoutType.ResetRead;
