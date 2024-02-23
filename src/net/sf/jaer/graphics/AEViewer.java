@@ -5789,7 +5789,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_formWindowOpened
 
     private ArrayList<LoggingLevelButton> loggingLevelRadioButtons = null;
-    private final Level[] loggingLevels = {Level.OFF, Level.WARNING, Level.INFO, Level.SEVERE, Level.FINEST, Level.ALL};
+    private final Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO,  Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
     private final ButtonGroup loggingLevelButtonGroup = new ButtonGroup();
 
     final class LoggingLevelButton extends JRadioButtonMenuItem {
