@@ -2596,6 +2596,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator3 = new javax.swing.JSeparator();
         cycleColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
+        cycleColorRenderingMethodMenuItem1 = new javax.swing.JMenuItem();
         increaseContrastMenuItem = new javax.swing.JMenuItem();
         decreaseContrastMenuItem = new javax.swing.JMenuItem();
         autoscaleContrastEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -3084,7 +3085,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(jSeparator3);
 
         cycleColorRenderingMethodMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
-        cycleColorRenderingMethodMenuItem.setText("Cycle color rendering mode");
+        cycleColorRenderingMethodMenuItem.setText("Next color rendering mode");
         cycleColorRenderingMethodMenuItem.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
         cycleColorRenderingMethodMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -3092,6 +3093,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(cycleColorRenderingMethodMenuItem);
+
+        cycleColorRenderingMethodMenuItem1.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        cycleColorRenderingMethodMenuItem1.setText("Previous color rendering mode");
+        cycleColorRenderingMethodMenuItem1.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
+        cycleColorRenderingMethodMenuItem1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cycleColorRenderingMethodMenuItem1ActionPerformed(evt);
+            }
+        });
+        viewMenu.add(cycleColorRenderingMethodMenuItem1);
 
         increaseContrastMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0));
         increaseContrastMenuItem.setText("Increase contrast");
@@ -4150,7 +4161,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
 	private void cycleColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItemActionPerformed
             if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) && (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)) {
-                getRenderer().cycleColorMode();
+                getRenderer().cycleColorMode(true);
                 showActionText(String.format("DVS color mode %s", getRenderer().getColorMode().toString()));
             } else {
                 log.warning("It does not make sense to cycle color mode for this display method, ignoring");
@@ -5788,8 +5799,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         new JaerUpdaterInstall4j().maybeDoPeriodicUpdateCheck(AEViewer.this);
     }//GEN-LAST:event_formWindowOpened
 
+    private void cycleColorRenderingMethodMenuItem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItem1ActionPerformed
+        if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) && (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)) {
+            getRenderer().cycleColorMode(false);
+            showActionText(String.format("DVS color mode %s", getRenderer().getColorMode().toString()));
+        } else {
+            log.warning("It does not make sense to cycle color mode for this display method, ignoring");
+        }
+    }//GEN-LAST:event_cycleColorRenderingMethodMenuItem1ActionPerformed
+
     private ArrayList<LoggingLevelButton> loggingLevelRadioButtons = null;
-    private final Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO,  Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
+    private final Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO, Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
     private final ButtonGroup loggingLevelButtonGroup = new ButtonGroup();
 
     final class LoggingLevelButton extends JRadioButtonMenuItem {
@@ -6274,6 +6294,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu controlMenu;
     private javax.swing.JMenuItem customizeDevicesMenuItem;
     private javax.swing.JMenuItem cycleColorRenderingMethodMenuItem;
+    private javax.swing.JMenuItem cycleColorRenderingMethodMenuItem1;
     private javax.swing.JMenuItem cycleDisplayMethodButton;
     private javax.swing.JMenuItem decreaseBufferSizeMenuItem;
     private javax.swing.JMenuItem decreaseContrastMenuItem;

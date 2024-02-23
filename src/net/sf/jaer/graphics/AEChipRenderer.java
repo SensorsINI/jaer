@@ -664,12 +664,20 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
-     * go on to next rendering method
+     * go on to next or previous rendering method
+     *
+     * @param forwards true for forwards, false for backwards
      */
-    public synchronized void cycleColorMode() {
+    public synchronized void cycleColorMode(boolean forwards) {
         int m = colorMode.ordinal();
-        if (++m >= colorModes.length) {
-            m = 0;
+        if (forwards) {
+            if (++m >= colorModes.length) {
+                m = 0;
+            }
+        } else {
+            if (--m <0) {
+                m = colorModes.length-1;
+            }
         }
         setColorMode(colorModes[m]);
         // method++;
