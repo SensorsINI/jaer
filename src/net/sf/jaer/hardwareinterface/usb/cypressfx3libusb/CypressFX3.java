@@ -1307,8 +1307,8 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public synchronized void setEventAcquisitionEnabled(final boolean enable) throws HardwareInterfaceException {
-        if(!isOpen()){
-            return; 
+        if (!isOpen()) {
+            return;
         }
         // Start reader before sending data enable commands.
         setInEndpointEnabled(enable);
@@ -1413,9 +1413,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // Open device.
         if (deviceHandle == null) {
             deviceHandle = new DeviceHandle();
-            status = LibUsb.open(device, deviceHandle);
-            if (status != LibUsb.SUCCESS) {
-                throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
+            try {
+                status = LibUsb.open(device, deviceHandle);
+                if (status != LibUsb.SUCCESS) {
+                    throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
+                }
+            } catch (IllegalStateException e) {
+                throw new HardwareInterfaceException(String.format("Got %s", e.toString()));
             }
         }
 
@@ -1543,9 +1547,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // Open device.
         if (deviceHandle == null) {
             deviceHandle = new DeviceHandle();
-            status = LibUsb.open(device, deviceHandle);
-            if (status != LibUsb.SUCCESS) {
-                throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
+            try {
+                status = LibUsb.open(device, deviceHandle);
+                if (status != LibUsb.SUCCESS) {
+                    throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
+                }
+            } catch (IllegalStateException e) {
+                throw new HardwareInterfaceException(e.toString());
             }
         }
 
@@ -1814,14 +1822,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         if (!isOpen()) {
             open();
         }
-        
 
         final ByteBuffer dataBuffer = BufferUtils.allocateByteBuffer(dataLength);
 
         final byte bmRequestType = (byte) (LibUsb.ENDPOINT_IN | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
-        if(deviceHandle==null){
-            throw new HardwareInterfaceException(String.format("deviceHandle is null for %s which should not occur",this.toString()));
+        if (deviceHandle == null) {
+            throw new HardwareInterfaceException(String.format("deviceHandle is null for %s which should not occur", this.toString()));
         }
         final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
         if (status < LibUsb.SUCCESS) {
