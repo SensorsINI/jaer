@@ -1307,6 +1307,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     @Override
     public synchronized void setEventAcquisitionEnabled(final boolean enable) throws HardwareInterfaceException {
+        if(!isOpen()){
+            return; 
+        }
         // Start reader before sending data enable commands.
         setInEndpointEnabled(enable);
         if (enable) {
@@ -1811,11 +1814,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         if (!isOpen()) {
             open();
         }
+        
 
         final ByteBuffer dataBuffer = BufferUtils.allocateByteBuffer(dataLength);
 
         final byte bmRequestType = (byte) (LibUsb.ENDPOINT_IN | LibUsb.REQUEST_TYPE_VENDOR | LibUsb.RECIPIENT_DEVICE);
 
+        if(deviceHandle==null){
+            throw new HardwareInterfaceException(String.format("deviceHandle is null for %s which should not occur",this.toString()));
+        }
         final int status = LibUsb.controlTransfer(deviceHandle, bmRequestType, request, value, index, dataBuffer, 0);
         if (status < LibUsb.SUCCESS) {
             throw new HardwareInterfaceException(
