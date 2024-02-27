@@ -381,7 +381,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             viewer.getPlayMode();
                             if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
                                 viewer.stopSequencing();
-                            } else {
+                            } else if(viewer.getPlayMode().equals(PlayMode.LIVE)) {
                                 viewer.aemon.setEventAcquisitionEnabled(false);
                             }
                         } catch (HardwareInterfaceException e) {
