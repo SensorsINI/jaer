@@ -668,6 +668,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     private int showMultipleInterfacesMessageCount = 0;
 
+    private long lastInterfaceCheckTime = 0;
+    private static final long INTERFACE_CHECK_INTERVAL_MS = 3000; // don't scan USB bus too often while paused
+
     /**
      * If we are are the only viewer, automatically set interface to the
      * hardware interface if there is only 1 of them and there is not already a
@@ -682,6 +685,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (nullInterface) {
             return;
         }
+        final long dtCheck = System.currentTimeMillis() - lastInterfaceCheckTime;
+
+        if (dtCheck < INTERFACE_CHECK_INTERVAL_MS) {
+            log.fine(String.format("Not checking for new devices because only %,d<%,d ms have elapsed since last check", dtCheck, INTERFACE_CHECK_INTERVAL_MS));
+            return;
+        }
+        lastInterfaceCheckTime = System.currentTimeMillis();
 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         if (ninterfaces > 1) {
@@ -1398,7 +1408,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             } catch (Exception e) {
                 log.warning(e.getMessage() + " (Could some other process have the device open, e.g. flashy or caer?)");
-                log.log(Level.SEVERE, e.toString(), e);
+                log.log(Level.WARNING, e.toString(), e);
                 if (aemon != null) {
                     log.info("closing Monitor" + aemon);
                     aemon.close();
@@ -5914,7 +5924,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);
                     } else {
-                        String s=String.format("Cannot play this file extension for file '%s'", f.getAbsoluteFile());
+                        String s = String.format("Cannot play this file extension for file '%s'", f.getAbsoluteFile());
                         log.warning(s);
                         JOptionPane.showMessageDialog(this, s, "Cannot play", JOptionPane.WARNING_MESSAGE);
                         draggedFile = null;
