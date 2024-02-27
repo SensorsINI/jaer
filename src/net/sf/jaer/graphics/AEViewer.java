@@ -1246,7 +1246,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 synchronized (viewLoop) {
                     if (chip.getHardwareInterface() != null) {
                         log.info(String.format("selected None interface so closing %s", chip.getHardwareInterface().toString()));
-                        chip.getHardwareInterface().close();
+                        try {
+                            chip.getHardwareInterface().close();
+                        } catch (Exception e) {
+                            String s=String.format("Exception closing device: %s",e.toString());
+                            log.warning(s);
+                            JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
+                        }
                     }
                     chip.setHardwareInterface(null);
                     // force null interface
