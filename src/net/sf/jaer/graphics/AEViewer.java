@@ -5914,7 +5914,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);
                     } else {
-                        log.warning(String.format("Cannot handle this file extension for file '%s'", f.getAbsoluteFile()));
+                        String s=String.format("Cannot play this file extension for file '%s'", f.getAbsoluteFile());
+                        log.warning(s);
+                        JOptionPane.showMessageDialog(this, s, "Cannot play", JOptionPane.WARNING_MESSAGE);
                         draggedFile = null;
                     }
                 }
