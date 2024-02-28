@@ -25,6 +25,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JTabbedPane;
+import javax.swing.text.html.HTML;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -49,6 +50,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl.LEDState;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
+import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -86,6 +88,8 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 //    public static final String USER_GUIDE_URL_DVS128 = "http://inilabs.com/support/dvs128";
 //    public static final String USER_GUIDE_URL_EDVS = "http://inilabs.com/support/hardware/edvs/";
     public static final String FIRMWARE_CHANGELOG = "https://sourceforge.net/p/jaer/code/HEAD/tree/devices/firmware/CypressFX2/firmware_FX2LP_DVS128/CHANGELOG.txt";
+
+    private EngineeringFormat eng = new EngineeringFormat();
 
     /**
      * Creates a new instance of DVS128. No biasgen is constructed for this
@@ -711,7 +715,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
                     getPrefs().putInt("DVS128.selectedBiasgenControlTab", pane.getSelectedIndex());
                 }
             });
-
+            panel.revalidate();
             return panel;
         }
         private float bandwidth = 1, maxFiringRate = 1, threshold = 1, onOffBalance = 1;
@@ -734,7 +738,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             }
             bandwidth = val;
             final float MAX = 300;
-            pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
+            // 23.2.24: tobi commented PR setting since subsequent work showed that only SF should be controlled to minimize
+            // noise, PR bias should be kept high
+//            pr.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             sf.changeByRatioFromPreferred(PotTweakerUtilities.getRatioTweak(val, MAX));
             getSupport().firePropertyChange(DVSTweaks.BANDWIDTH, old, val);
         }
@@ -891,7 +897,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         /**
          * see https://ieeexplore.ieee.org/document/7962235 fig 1
          */
-        private final float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 22, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+        private final float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 20, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+
+        private float C1_CAP = 467e-15f, C2_CAP = 24e-15f; // guesstimated
 
         @Override
         public float getOnThresholdLogE() {
@@ -903,7 +911,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             return (float) (THR_FAC * Math.log(diffOff.getCurrent() / diff.getCurrent()));
         }
 
-        private final float REFR_CAP = 32e-15f, REFR_VOLTAGE = (3.3f-1.2f); // from DVS128 paper
+        private final float REFR_CAP = 32e-15f, REFR_VOLTAGE = (3.3f - 1.2f); // from DVS128 paper
 
         @Override
         public float getRefractoryPeriodS() {
@@ -913,7 +921,16 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
 
         @Override
         public float getPhotoreceptorSourceFollowerBandwidthHz() {
-            return Float.NaN; // TODO implement like in DavisConfig for Davis240/346/128
+            // computed based on Davis240/346 C1=132fF and estimated SF bias current
+            float iSf = sf.getCurrent(), iPr = pr.getCurrent();
+            if (iSf > iPr * .5) {
+                log.info(String.format("Source follower bias current (%sA) is larger than half of Photoreceptor bias current (%sA); cannot estimate cutoff frequency from SF current alone", eng.format(iSf), eng.format(iPr)));
+                return Float.NaN;
+            }
+            // TODO note from IMU we have temperature, could account for it in thermal voltage
+            // f3dB=(1/2pi) g/C=(1/2pi) Ib/UT/C in Hz where Ib is bias current, UT is thermal voltage, and C is load capacitance, and assuming SF is biased in subthreshold.
+            float f3dBHz = (float) ((1 / (2 * Math.PI)) * (iSf / U_T_THERMAL_VOLTAGE_ROOM_TEMPERATURE) / C1_CAP);
+            return f3dBHz;
         }
     } // DVS128Biasgen
 
