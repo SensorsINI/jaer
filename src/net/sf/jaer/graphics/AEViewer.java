@@ -1289,10 +1289,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // make a 'reset device' item 
         JMenuItem resetDeviceB = new JMenuItem("Reset");
         resetDeviceB.setToolTipText("Close and reset device and then reopen it");
-        resetDeviceB.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, null);
+//        resetDeviceB.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, null);
         interfaceMenu.add(new JSeparator());
         interfaceMenu.add(resetDeviceB);
-        bg.add(noneInterfaceButton);
         resetDeviceB.addActionListener(new ActionListener() {
 
             @Override
