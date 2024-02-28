@@ -498,18 +498,18 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //                        e.address = data;
 //                        e.timestamp = (timestamps[i]);
 //                    } else {
-                        if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
-                            e.setSpecial(true); // if special bit for DVS address (bit 10) is set, then mark this as spscial event (e.g. signal event for denoising labeling)
-                            // In June 2023 tobi add capability of v2e to label noise events as "special events"
-                        }
-                        e.address = data;
-                        e.timestamp = (timestamps[i]);
-                        e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
-                        e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
-                        e.x = (short) (sx1 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-                        e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
-                        // autoshot triggering
-                        autoshotEventsSinceLastShot++; // number DVS events captured here
+                    if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) { // tobi changed to detect just bit set to transmit rising falling and pulse events
+                        e.setSpecial(true); // if special bit for DVS address (bit 10) is set, then mark this as spscial event (e.g. signal event for denoising labeling)
+                        // In June 2023 tobi add capability of v2e to label noise events as "special events"
+                    }
+                    e.address = data;
+                    e.timestamp = (timestamps[i]);
+                    e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? ApsDvsEvent.Polarity.On : ApsDvsEvent.Polarity.Off;
+                    e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
+                    e.x = (short) (sx1 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+                    e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+                    // autoshot triggering
+                    autoshotEventsSinceLastShot++; // number DVS events captured here
 //                    }
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_APS) {
                     // APS event
@@ -556,7 +556,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         Start of Exposure: last reset read pixel for GlobalShutter mode, first reset read pixel for RollingShutter mode.
                         End of Exposure: first signal read pixel.
                         End of Frame: last signal read pixel.
-                    */
+                     */
 
                     if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
@@ -1078,13 +1078,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 //        private TextRenderer exposureRenderer = null; // memory hog
         public DavisDisplayMethod(final DavisBaseCamera chip) {
             super(chip.getCanvas());
-            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 10));
         }
 
         private TextRenderer exposureTextRenderer = null;
 
         @Override
         public void display(final GLAutoDrawable drawable) {
+            // must call here since the chip dimensions for adding extra space are not known on construction
+            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 10));
             super.display(drawable);
 
             if (exposureTextRenderer == null) { // recreate every frame, memory hog otherwise
