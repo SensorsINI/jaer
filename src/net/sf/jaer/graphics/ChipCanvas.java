@@ -1306,7 +1306,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         int extratop = 0;
         if (chip != null && chip instanceof DavisBaseCamera) { // leave room for stats label for DAVIS
             extratop += (int) (chip.getSizeY() * 0.1f);
-            log.fine(String.format("adding extra %,d pixels top inset for DAVIS chip", extratop));
+//            log.finest(String.format("adding extra %,d pixels top inset for DAVIS chip", extratop));
         }
         insets.top = borderSpacePixels + extratop;
         insets.left = borderSpacePixels;
