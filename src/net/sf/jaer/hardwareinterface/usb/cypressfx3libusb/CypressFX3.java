@@ -296,8 +296,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * USBAEMonitor. Note that it is possible to construct several instances and
      * use each of them to open and read from the same device.
      *
-     * @param devNumber the desired device number, in range returned by
-     * CypressFX3Factory.getNumInterfacesAvailable
+     * @param device the LibUsb Device we want to open
      */
     protected CypressFX3(final Device device) {
         this.device = device;
@@ -629,6 +628,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             log.info("close(): not open, not doing anything");
             return;
         }
+        log.info(String.format("Closing %s", this.toString()));
 
         isOpened = false;
         try {
@@ -644,15 +644,22 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         if (deviceHandle != null) {
             try {
-                LibUsb.releaseInterface(deviceHandle, 0);
+                int status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
+                if (status != LibUsb.SUCCESS) {
+                    throw new HardwareInterfaceException("failed to reset device: " + LibUsb.errorName(status));
+                }
+                status = LibUsb.releaseInterface(deviceHandle, 0);
+                if (status != LibUsb.SUCCESS) {
+                    throw new HardwareInterfaceException("open(): failed to releaseInterface: " + LibUsb.errorName(status));
+                }
                 LibUsb.close(deviceHandle);
-            } catch (IllegalStateException e) {
+            } catch (IllegalStateException | HardwareInterfaceException e) {
                 log.warning(String.format("Error releasing interface: %s", e.toString()));
+            } finally {
+                deviceHandle = null;
+                deviceDescriptor = null;
             }
         }
-
-        deviceHandle = null;
-        deviceDescriptor = null;
 
     }
 
@@ -1371,8 +1378,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      *
      * @return false if not, true if there is one
      */
-    private boolean hasStringIdentifier() {
-        // getString string descriptor
+    private boolean hasStringIdentifier() throws IllegalStateException {
+
+        log.fine(String.format("Getting string identifier for deviceHandle %s", deviceHandle.toString()));
+        if (deviceHandle == null) {
+            throw new IllegalStateException("null deviceHandle");
+        }
         final String stringDescriptor1 = LibUsb.getStringDescriptor(deviceHandle, (byte) 1);
 
         if (stringDescriptor1 == null) {
@@ -1417,6 +1428,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 status = LibUsb.open(device, deviceHandle);
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open(): failed to open device: " + LibUsb.errorName(status));
+                }
+                status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
+                if (status != LibUsb.SUCCESS) {
+                    throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
                 }
             } catch (IllegalStateException e) {
                 throw new HardwareInterfaceException(String.format("Got %s", e.toString()));
@@ -1522,7 +1537,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * descriptor it is assumed that firmware must be downloaded to device RAM
      * and this is done automatically. The device is <strong>not configured by
      * this method. Vendor requests and probably other functionality will not be
-     * available.</strong>. The device is left open this method returns.
+     * available.</strong>.
+     * <p>
+     * The device is closed after this method returns.
      *
      * @throws net.sf.jaer.hardwareinterface.HardwareInterfaceException
      * @see #open()
@@ -1552,6 +1569,10 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
                 }
+                status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
+                if (status != LibUsb.SUCCESS) {
+                    throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
+                }
             } catch (IllegalStateException e) {
                 throw new HardwareInterfaceException(e.toString());
             }
@@ -1568,6 +1589,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         if (!hasStringIdentifier()) { // TODO: does this really ever happen, a
+//        if (false) { // TODO: does this really ever happen, a
             // non-blank device with invalid fw?
             CypressFX3.log.warning("open_minimal_close(): blank device detected, downloading preferred firmware");
 
