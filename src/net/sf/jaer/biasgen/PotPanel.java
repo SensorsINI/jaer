@@ -105,6 +105,7 @@ public class PotPanel extends javax.swing.JPanel implements FocusListener {
             addBorderSetter(s);
         }
         potsPanel.add(Box.createVerticalGlue());
+        potsPanel.revalidate();
 //        JPanel fillPanel=new JPanel();
 //        fillPanel.setMinimumSize(new Dimension(0, 0));
 //        fillPanel.setPreferredSize(new Dimension(0, 0));
