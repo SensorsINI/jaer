@@ -16,10 +16,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.ButtonGroup;
+import javax.swing.JPopupMenu;
+import javax.swing.JRadioButtonMenuItem;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -43,7 +47,8 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     // final Level[] levels = {Level.OFF, Level.INFO, Level.WARNING};
     private final MutableAttributeSet attr;
     private final StyledDocument doc;
-
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
+    private JPopupMenu loggingLevelMenu = null;
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     String word = null;
     WordSearcher searcher = null;
@@ -174,6 +179,19 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
 
         });
 
+        Level currentLevel = log.getLevel();
+        loggingLevelMenu = new JPopupMenu("Level");
+        Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO, Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
+        ButtonGroup loggingLevelButtonGroup = new ButtonGroup();
+        for (Level l : loggingLevels) {
+            LoggingLevelButton bmi = new LoggingLevelButton(l);
+            loggingLevelButtonGroup.add(bmi);
+            loggingLevelMenu.add(bmi);
+            if (l.equals(currentLevel)) {
+                bmi.setSelected(true);
+            }
+        }
+
         // levelComboxBox.removeAllItems();
         // for (Level l : levels) {
         // levelComboxBox.addItem(l.getName());
@@ -260,6 +278,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         next = new BasicArrowButton(BasicArrowButton.SOUTH);
         prev = new BasicArrowButton(BasicArrowButton.NORTH);
         clearSeachB = new javax.swing.JButton();
+        setLevelB = new javax.swing.JButton();
 
         setTitle("jAER Console");
 
@@ -314,6 +333,14 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
             }
         });
 
+        setLevelB.setText("Set level");
+        setLevelB.setToolTipText("Set the logging level");
+        setLevelB.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                setLevelBMousePressed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -332,7 +359,9 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
                         .addComponent(next, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(prev, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 90, Short.MAX_VALUE)
+                        .addGap(18, 18, 18)
+                        .addComponent(setLevelB)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(clearButton)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(closeButton))
@@ -352,7 +381,8 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
                         .addComponent(clearButton)
                         .addComponent(findLabel)
                         .addComponent(findTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(clearSeachB))
+                        .addComponent(clearSeachB)
+                        .addComponent(setLevelB))
                     .addComponent(closeButton, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addContainerGap())
         );
@@ -374,13 +404,17 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_clearSeachBActionPerformed
 
     private void paneKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_paneKeyReleased
-                int code = evt.getKeyCode();
+        int code = evt.getKeyCode();
         boolean lkey = (code == java.awt.event.KeyEvent.VK_L);
         boolean ctl = evt.isControlDown();
         if (lkey && ctl) {
-           clear();
+            clear();
         }
     }//GEN-LAST:event_paneKeyReleased
+
+    private void setLevelBMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_setLevelBMousePressed
+        loggingLevelMenu.show(evt.getComponent(), evt.getX(), evt.getY());
+    }//GEN-LAST:event_setLevelBMousePressed
 
     private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_closeButtonActionPerformed
         setVisible(false);
@@ -440,6 +474,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     private javax.swing.JButton next;
     private javax.swing.JTextPane pane;
     private javax.swing.JButton prev;
+    private javax.swing.JButton setLevelB;
     // End of variables declaration//GEN-END:variables
 
     /**
@@ -447,6 +482,26 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
      */
     public PropertyChangeSupport getSupport() {
         return support;
+    }
+
+    final class LoggingLevelButton extends JRadioButtonMenuItem {
+
+        final Level level;
+
+        public LoggingLevelButton(Level level) {
+            this.level = level;
+            setName(level.getName());
+            setText(level.getName());
+            setToolTipText(String.format("Sets logging level to %s", level.getName()));
+            addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    log.info(String.format("Setting logging level of logger %s to %s", log.getName(), level.getName()));
+                    log.setLevel(level);
+                }
+            });
+        }
+
     }
 
 }
