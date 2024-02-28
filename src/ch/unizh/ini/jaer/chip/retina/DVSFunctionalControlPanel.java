@@ -10,6 +10,7 @@ import java.beans.PropertyChangeListener;
 import java.util.logging.Logger;
 
 import net.sf.jaer.biasgen.PotTweaker;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * A panel for simplified control of DVS retina biases.
@@ -21,6 +22,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
     AETemporalConstastRetina chip;
     DVSTweaks biasgen;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
+    private static EngineeringFormat engFmt = new EngineeringFormat();
 
     /**
      * Creates new form Tmpdiff128FunctionalBiasgenPanel
@@ -34,6 +36,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
             chip.getBiasgen().getSupport().addPropertyChangeListener(tweaker); // to reset sliders on load/save of biases
         }
         setEstimatedThresholdValues();
+        setEstimatedBandwidthValues();
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -53,6 +56,9 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
 
         jLabel1 = new javax.swing.JLabel();
         bandwidthTweaker = new net.sf.jaer.biasgen.PotTweaker();
+        jPanel1 = new javax.swing.JPanel();
+        jLabel2 = new javax.swing.JLabel();
+        bwTF = new javax.swing.JTextField();
         thresholdTweaker = new net.sf.jaer.biasgen.PotTweaker();
         jPanel4 = new javax.swing.JPanel();
         jLabel9 = new javax.swing.JLabel();
@@ -67,7 +73,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
 
         setLayout(new java.awt.GridLayout(0, 1));
 
-        jLabel1.setText("<html>This panel allows \"tweaking\" bias values around the nominal ones loaded from the XML file. Change made here are <b>not</b> permanent until the settings are saved to an XML file. On restart, these new settings will then become the nominal settings.");
+        jLabel1.setText("<html>This panel allows \"tweaking\" bias values around the nominal ones loaded from the XML file. <p>Changes made here are <b>not</b> permanent until the settings are saved to an XML file. <p>On restart, these new settings will then become the nominal settings.");
         add(jLabel1);
 
         bandwidthTweaker.setLessDescription("Slower");
@@ -80,6 +86,17 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
             }
         });
         add(bandwidthTweaker);
+
+        jLabel2.setText("Est. photoreceptor bandwidth");
+        jLabel2.setToolTipText("Show theoertical computed BW based on SF bias; only makes sense in range 100Hz to few kHz with sufficient light");
+        jPanel1.add(jLabel2);
+
+        bwTF.setEditable(false);
+        bwTF.setColumns(14);
+        bwTF.setToolTipText("Show theoertical computed BW based on SF bias; only makes sense in range 100Hz to few kHz with sufficient light");
+        jPanel1.add(bwTF);
+
+        add(jPanel1);
 
         thresholdTweaker.setLessDescription("Lower/more events");
         thresholdTweaker.setMoreDescription("Higher/less events");
@@ -102,7 +119,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         jPanel4.add(jLabel7);
 
         onThrTF.setEditable(false);
-        onThrTF.setColumns(12);
+        onThrTF.setColumns(14);
         onThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
         jPanel4.add(onThrTF);
 
@@ -110,7 +127,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         jPanel4.add(jLabel8);
 
         offThrTF.setEditable(false);
-        offThrTF.setColumns(12);
+        offThrTF.setColumns(14);
         offThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
         offThrTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -125,6 +142,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
 
         onMinusOffTF.setEditable(false);
         onMinusOffTF.setColumns(7);
+        onMinusOffTF.setToolTipText("difference ON to OFF thresholds (nominal balance)");
         jPanel4.add(onMinusOffTF);
 
         add(jPanel4);
@@ -154,6 +172,7 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
 
     private void bandwidthTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bandwidthTweakerStateChanged
         biasgen.setBandwidthTweak(bandwidthTweaker.getValue());
+        setEstimatedBandwidthValues();
         setFileModified();
     }//GEN-LAST:event_bandwidthTweakerStateChanged
 
@@ -174,6 +193,11 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         onMinusOffTF.setText(String.format("%.3f", onThresholdLogE + offThresholdLogE));
     }
 
+    private void setEstimatedBandwidthValues() {
+        final float bw=biasgen.getPhotoreceptorSourceFollowerBandwidthHz();
+        bwTF.setText(String.format("%s Hz",engFmt.format(bw)));
+    }
+
 
     private void maxFiringRateTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_maxFiringRateTweakerStateChanged
         biasgen.setMaxFiringRateTweak(maxFiringRateTweaker.getValue());
@@ -192,11 +216,14 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private net.sf.jaer.biasgen.PotTweaker bandwidthTweaker;
+    private javax.swing.JTextField bwTF;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel4;
     private net.sf.jaer.biasgen.PotTweaker maxFiringRateTweaker;
     private javax.swing.JTextField offThrTF;
@@ -231,4 +258,5 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
             e.printStackTrace();
         }
     }
+
 }
