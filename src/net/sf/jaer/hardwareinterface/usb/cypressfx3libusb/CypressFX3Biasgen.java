@@ -25,9 +25,7 @@ public abstract class CypressFX3Biasgen extends CypressFX3 implements BiasgenHar
 	 * Creates a new instance of CypressFX3Biasgen. Note that it is possible to construct several instances
 	 * and use each of them to open and read from the same device.
 	 *
-	 * @param devNumber
-	 *            the desired device number, in range returned by CypressFX3Factory.getNumInterfacesAvailable
-	 * @see CypressFX3TmpdiffRetinaFactory
+	 * @param device the desired Device
 	 */
 	protected CypressFX3Biasgen(final Device device) {
 		super(device);
