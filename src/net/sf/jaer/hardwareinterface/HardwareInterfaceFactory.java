@@ -101,7 +101,8 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 					}
 
 					interfaceList.add(u);
-					log.log(Level.INFO, "HardwareInterfaceFactory.buildInterfaceList: added device {0} with HardwareInterfaceFactory {1}", new Object[]{u, factorie});
+                                        // don't do following because to print device toString() requires opening it minimally. this causes hang on windows.
+//					log.log(Level.INFO, "HardwareInterfaceFactory.buildInterfaceList: added device {0} with HardwareInterfaceFactory {1}", new Object[]{u, factorie});
 				}
 			}
 			catch (final NoSuchMethodException e) {
