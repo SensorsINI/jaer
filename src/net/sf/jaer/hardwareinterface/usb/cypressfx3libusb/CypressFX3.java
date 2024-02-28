@@ -1569,10 +1569,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open_minimal_close(): failed to open device: " + LibUsb.errorName(status));
                 }
-                status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
-                if (status != LibUsb.SUCCESS) {
-                    throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
-                }
+                // do not reset device because this method is called when menu is built, even while device is open and giving data
+//                status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
+//                if (status != LibUsb.SUCCESS) {
+//                    throw new HardwareInterfaceException("open_minimal_close(): failed to reset device: " + LibUsb.errorName(status));
+//                }
             } catch (IllegalStateException e) {
                 throw new HardwareInterfaceException(e.toString());
             }
