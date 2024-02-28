@@ -1260,7 +1260,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         });
-        interfaceMenu.add(new JSeparator());
+//        interfaceMenu.add(new JSeparator());
         noneInterfaceButton.setSelected(!interfaceAlreadyOpen);  // if we already have an interface open, then set none button deselected
         // set current interface selected
         if ((chip != null) && (chip.getHardwareInterface() != null)) {
@@ -1286,8 +1286,33 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         }
         //        log.info(sb.toString());
+        // make a 'reset device' item 
+        JMenuItem resetDeviceB = new JMenuItem("Reset");
+        resetDeviceB.setToolTipText("Close and reset device and then reopen it");
+        resetDeviceB.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, null);
+        interfaceMenu.add(new JSeparator());
+        interfaceMenu.add(resetDeviceB);
+        bg.add(noneInterfaceButton);
+        resetDeviceB.addActionListener(new ActionListener() {
 
-        // TODO appendCopy menu item for choosers for things that cannot be easily enumerated like serial port devices, e.g. where enumeration is very expensive because
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                synchronized (viewLoop) {
+                    if (chip.getHardwareInterface() != null) {
+                        log.info(String.format("Resetting %s", chip.getHardwareInterface().toString()));
+                        try {
+                            chip.getHardwareInterface().close();
+                        } catch (Exception e) {
+                            String s=String.format("Exception closing device: %s",e.toString());
+                            log.warning(s);
+                            JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
+                        }
+                    }
+                    chip.setHardwareInterface(null); // force null interface, AEViewer will repopen it
+                }
+            }
+        });
+        
     }
 
     void fixBiasgenControls() {
