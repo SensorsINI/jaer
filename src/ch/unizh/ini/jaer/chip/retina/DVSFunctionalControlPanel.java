@@ -88,12 +88,12 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         add(bandwidthTweaker);
 
         jLabel2.setText("Est. photoreceptor bandwidth");
-        jLabel2.setToolTipText("Show theoertical computed BW based on SF bias; only makes sense in range 100Hz to few kHz with sufficient light");
+        jLabel2.setToolTipText("<html>Show theoertical computed bandwidth based on source follower buffer bias;<br>only makes sense in range 100Hz to few kHz with sufficient light. <p>Also, the photoreceptor bias current (<i>Pr</i>) <br>must at least 2X larger than the source follower bias current (<i>foll</i>). <p>Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer. </html>");
         jPanel1.add(jLabel2);
 
         bwTF.setEditable(false);
         bwTF.setColumns(14);
-        bwTF.setToolTipText("Show theoertical computed BW based on SF bias; only makes sense in range 100Hz to few kHz with sufficient light");
+        bwTF.setToolTipText("<html>Show theoertical computed bandwidth based on source follower buffer bias;<br>only makes sense in range 100Hz to few kHz with sufficient light.\n<p>Also, the photoreceptor bias current (<i>Pr</i>) <br>must at least 2X larger than the source follower bias current (<i>foll</i>).\n<p>Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer.\n</html>");
         jPanel1.add(bwTF);
 
         add(jPanel1);

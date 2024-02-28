@@ -42,14 +42,14 @@
         <Component class="javax.swing.JLabel" name="jLabel2">
           <Properties>
             <Property name="text" type="java.lang.String" value="Est. photoreceptor bandwidth"/>
-            <Property name="toolTipText" type="java.lang.String" value="Show theoertical computed BW based on SF bias; only makes sense in range 100Hz to few kHz with sufficient light"/>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Show theoertical computed bandwidth based on source follower buffer bias;&lt;br&gt;only makes sense in range 100Hz to few kHz with sufficient light. &lt;p&gt;Also, the photoreceptor bias current (&lt;i&gt;Pr&lt;/i&gt;) &lt;br&gt;must at least 2X larger than the source follower bias current (&lt;i&gt;foll&lt;/i&gt;). &lt;p&gt;Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer. &lt;/html&gt;"/>
           </Properties>
         </Component>
         <Component class="javax.swing.JTextField" name="bwTF">
           <Properties>
             <Property name="editable" type="boolean" value="false"/>
             <Property name="columns" type="int" value="14"/>
-            <Property name="toolTipText" type="java.lang.String" value="Show theoertical computed BW based on SF bias; only makes sense in range 100Hz to few kHz with sufficient light"/>
+            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Show theoertical computed bandwidth based on source follower buffer bias;&lt;br&gt;only makes sense in range 100Hz to few kHz with sufficient light.&#xa;&lt;p&gt;Also, the photoreceptor bias current (&lt;i&gt;Pr&lt;/i&gt;) &lt;br&gt;must at least 2X larger than the source follower bias current (&lt;i&gt;foll&lt;/i&gt;).&#xa;&lt;p&gt;Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer.&#xa;&lt;/html&gt;"/>
           </Properties>
         </Component>
       </SubComponents>
