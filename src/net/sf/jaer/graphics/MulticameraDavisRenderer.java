@@ -202,7 +202,7 @@ public class MulticameraDavisRenderer extends DavisRenderer{
 
     /** go on to next rendering method */
     @Override
-    public synchronized void cycleColorMode (){
+    public synchronized void cycleColorMode (boolean forwards){  // TODO handle forwards boolean
         int m = multiCameraColorMode.ordinal();
         if ( ++m >= multiCameraColorModes.length ){
             m = 0;
