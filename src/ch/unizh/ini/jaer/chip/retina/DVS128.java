@@ -898,8 +898,11 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
          * see https://ieeexplore.ieee.org/document/7962235 fig 1
          */
         private final float KAPPA_N = .7f, KAPPA_P = 0.7f, CAP_RATIO = 20, THR_FAC = ((KAPPA_N / (KAPPA_P * KAPPA_P)) / CAP_RATIO);
+        private final float MD_WL=1.5f/3.2f;
 
-        private float C1_CAP = 467e-15f, C2_CAP = 24e-15f; // guesstimated
+        private float C1_CAP = 467e-15f, C2_CAP = 24e-15f; // from DVS128 paper fig 2 https://ieeexplore.ieee.org/document/4444573
+
+        private final float REFR_CAP = 32e-15f, REFR_VOLTAGE = (3.3f - .7f), REFR_WL=1.2f/2.2f; // from DVS128 paper
 
         @Override
         public float getOnThresholdLogE() {
@@ -911,11 +914,9 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
             return (float) (THR_FAC * Math.log(diffOff.getCurrent() / diff.getCurrent()));
         }
 
-        private final float REFR_CAP = 32e-15f, REFR_VOLTAGE = (3.3f - 1.2f); // from DVS128 paper
-
         @Override
         public float getRefractoryPeriodS() {
-            float iRefr = refr.getCurrent();
+            float iRefr = REFR_WL*refr.getCurrent();
             return (float) (REFR_CAP * REFR_VOLTAGE / iRefr);
         }
 
