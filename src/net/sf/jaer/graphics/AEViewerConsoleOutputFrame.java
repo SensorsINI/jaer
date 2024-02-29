@@ -211,6 +211,10 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
     private void setInfo() {
         StyleConstants.setForeground(attr, Color.black);
     }
+    
+    private void setFine(){
+         StyleConstants.setForeground(attr, Color.gray);
+    }
 
     /**
      * Appends the message using the level to set the style
@@ -227,10 +231,12 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
                                 + ") to save more logging";
                         doc.insertString(0, s, attr);
                     }
-                    if (level.intValue() > Level.INFO.intValue()) {
+                    if (level.intValue() >= Level.WARNING.intValue()) {
                         setWarning();
-                    } else {
+                    } else if(level.intValue()>=Level.INFO.intValue()) {
                         setInfo();
+                    } else{
+                        setFine();
                     }
                     boolean tail = pane.getCaretPosition() == doc.getLength() ? true : false;
                     doc.insertString(doc.getLength(), s, attr);
