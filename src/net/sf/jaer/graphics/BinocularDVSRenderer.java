@@ -217,7 +217,7 @@ public class BinocularDVSRenderer extends DavisRenderer{
 
     /** go on to next rendering method */
     @Override
-    public synchronized void cycleColorMode (){
+    public synchronized void cycleColorMode (boolean forwards){  // TODO handle forwards boolean
         int m = stereoColorMode.ordinal();
         if ( ++m >= stereoColorModes.length ){
             m = 0;
