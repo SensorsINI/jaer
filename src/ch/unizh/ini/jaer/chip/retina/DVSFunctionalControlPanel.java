@@ -35,8 +35,9 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         for (PotTweaker tweaker : tweakers) {
             chip.getBiasgen().getSupport().addPropertyChangeListener(tweaker); // to reset sliders on load/save of biases
         }
-        setEstimatedThresholdValues();
-        setEstimatedBandwidthValues();
+        updateEstimatedThresholdValues();
+        updateEstimatedBandwidthValue();
+        updateEstimatedRefractoryPeriodValue();
         chip.getSupport().addPropertyChangeListener(this);
     }
 
@@ -70,11 +71,11 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         onMinusOffTF = new javax.swing.JTextField();
         onOffBalanceTweaker = new net.sf.jaer.biasgen.PotTweaker();
         maxFiringRateTweaker = new net.sf.jaer.biasgen.PotTweaker();
-
-        setLayout(new java.awt.GridLayout(0, 1));
+        jPanel2 = new javax.swing.JPanel();
+        jLabel3 = new javax.swing.JLabel();
+        refrPerTF = new javax.swing.JTextField();
 
         jLabel1.setText("<html>This panel allows \"tweaking\" bias values around the nominal ones loaded from the XML file. <p>Changes made here are <b>not</b> permanent until the settings are saved to an XML file. <p>On restart, these new settings will then become the nominal settings.");
-        add(jLabel1);
 
         bandwidthTweaker.setLessDescription("Slower");
         bandwidthTweaker.setMoreDescription("Faster");
@@ -85,7 +86,6 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
                 bandwidthTweakerStateChanged(evt);
             }
         });
-        add(bandwidthTweaker);
 
         jLabel2.setText("Est. photoreceptor bandwidth");
         jLabel2.setToolTipText("<html>Show theoertical computed bandwidth based on source follower buffer bias;<br>only makes sense in range 100Hz to few kHz with sufficient light. <p>Also, the photoreceptor bias current (<i>Pr</i>) <br>must at least 2X larger than the source follower bias current (<i>foll</i>). <p>Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer. </html>");
@@ -96,8 +96,6 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         bwTF.setToolTipText("<html>Show theoertical computed bandwidth based on source follower buffer bias;<br>only makes sense in range 100Hz to few kHz with sufficient light.\n<p>Also, the photoreceptor bias current (<i>Pr</i>) <br>must at least 2X larger than the source follower bias current (<i>foll</i>).\n<p>Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer.\n</html>");
         jPanel1.add(bwTF);
 
-        add(jPanel1);
-
         thresholdTweaker.setLessDescription("Lower/more events");
         thresholdTweaker.setMoreDescription("Higher/less events");
         thresholdTweaker.setName("Threshold"); // NOI18N
@@ -107,11 +105,10 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
                 thresholdTweakerStateChanged(evt);
             }
         });
-        add(thresholdTweaker);
 
         jPanel4.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
 
-        jLabel9.setText("Estimated DVS thresholds:");
+        jLabel9.setText("Est. DVS thresholds");
         jLabel9.setToolTipText("<html>Displays computed values of DVS event temporal contrast thresholds<br> \nbased on paper\n<a href=\"https://ieeexplore.ieee.org/document/7962235\">Temperature and\n Parasitic Photocurrent <br> Effects in Dynamic Vision Sensors, <br>Y Nozaki, T\nDelbruck. <br>IEEE Trans. on Electron Devices, 2018</a>");
         jPanel4.add(jLabel9);
 
@@ -129,11 +126,6 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         offThrTF.setEditable(false);
         offThrTF.setColumns(14);
         offThrTF.setToolTipText("Estimated DVS  temporal contrast threshold  (log base e units)");
-        offThrTF.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                offThrTFActionPerformed(evt);
-            }
-        });
         jPanel4.add(offThrTF);
 
         jLabel10.setText("ON+OFF");
@@ -145,8 +137,6 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         onMinusOffTF.setToolTipText("difference ON to OFF thresholds (nominal balance)");
         jPanel4.add(onMinusOffTF);
 
-        add(jPanel4);
-
         onOffBalanceTweaker.setLessDescription("More Off events");
         onOffBalanceTweaker.setMoreDescription("More On events");
         onOffBalanceTweaker.setName("On/Off balance"); // NOI18N
@@ -156,7 +146,6 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
                 onOffBalanceTweakerStateChanged(evt);
             }
         });
-        add(onOffBalanceTweaker);
 
         maxFiringRateTweaker.setLessDescription("Slower");
         maxFiringRateTweaker.setMoreDescription("Faster");
@@ -167,23 +156,73 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
                 maxFiringRateTweakerStateChanged(evt);
             }
         });
-        add(maxFiringRateTweaker);
+
+        jLabel3.setText("Est. refractory period");
+        jLabel3.setToolTipText("<html>Show theoertical computed bandwidth based on source follower buffer bias;<br>only makes sense in range 100Hz to few kHz with sufficient light. <p>Also, the photoreceptor bias current (<i>Pr</i>) <br>must at least 2X larger than the source follower bias current (<i>foll</i>). <p>Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer. </html>");
+        jPanel2.add(jLabel3);
+
+        refrPerTF.setEditable(false);
+        refrPerTF.setColumns(14);
+        refrPerTF.setToolTipText("<html>Show theoertical computed bandwidth based on source follower buffer bias;<br>only makes sense in range 100Hz to few kHz with sufficient light.\n<p>Also, the photoreceptor bias current (<i>Pr</i>) <br>must at least 2X larger than the source follower bias current (<i>foll</i>).\n<p>Only valid under high illumination condtions where the bandwidth is dominated by the source follower buffer.\n</html>");
+        jPanel2.add(refrPerTF);
+
+        org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(this);
+        this.setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(layout.createSequentialGroup()
+                .addContainerGap()
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                    .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(layout.createSequentialGroup()
+                        .add(jPanel2, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .add(145, 145, 145))))
+            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                .add(org.jdesktop.layout.GroupLayout.LEADING, maxFiringRateTweaker, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 643, Short.MAX_VALUE)
+                .add(org.jdesktop.layout.GroupLayout.LEADING, onOffBalanceTweaker, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                .add(org.jdesktop.layout.GroupLayout.LEADING, jLabel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 648, Short.MAX_VALUE)
+                .add(org.jdesktop.layout.GroupLayout.LEADING, thresholdTweaker, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .add(org.jdesktop.layout.GroupLayout.LEADING, jPanel1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .add(org.jdesktop.layout.GroupLayout.LEADING, bandwidthTweaker, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(layout.createSequentialGroup()
+                .add(1, 1, 1)
+                .add(jLabel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 73, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(bandwidthTweaker, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 81, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(thresholdTweaker, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 79, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .add(onOffBalanceTweaker, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 79, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(maxFiringRateTweaker, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 73, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(jPanel2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
     }// </editor-fold>//GEN-END:initComponents
 
     private void bandwidthTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_bandwidthTweakerStateChanged
         biasgen.setBandwidthTweak(bandwidthTweaker.getValue());
-        setEstimatedBandwidthValues();
+        updateEstimatedBandwidthValue();
         setFileModified();
     }//GEN-LAST:event_bandwidthTweakerStateChanged
 
     private void thresholdTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_thresholdTweakerStateChanged
         biasgen.setThresholdTweak(thresholdTweaker.getValue());
 
-        setEstimatedThresholdValues();
+        updateEstimatedThresholdValues();
         setFileModified();
     }//GEN-LAST:event_thresholdTweakerStateChanged
 
-    private void setEstimatedThresholdValues() {
+    private void updateEstimatedThresholdValues() {
         final float onThresholdLogE = biasgen.getOnThresholdLogE();
         final float offThresholdLogE = biasgen.getOffThresholdLogE();
         final float onPerCent = (float) (100 * (Math.exp(onThresholdLogE) - 1));
@@ -193,26 +232,28 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
         onMinusOffTF.setText(String.format("%.3f", onThresholdLogE + offThresholdLogE));
     }
 
-    private void setEstimatedBandwidthValues() {
-        final float bw=biasgen.getPhotoreceptorSourceFollowerBandwidthHz();
-        bwTF.setText(String.format("%s Hz",engFmt.format(bw)));
+    private void updateEstimatedBandwidthValue() {
+        final float bw = biasgen.getPhotoreceptorSourceFollowerBandwidthHz();
+        bwTF.setText(String.format("%sHz", engFmt.format(bw)));
+    }
+
+    private void updateEstimatedRefractoryPeriodValue() {
+        final float refrPer = biasgen.getRefractoryPeriodS();
+        refrPerTF.setText(String.format("%ss", engFmt.format(refrPer)));
     }
 
 
     private void maxFiringRateTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_maxFiringRateTweakerStateChanged
         biasgen.setMaxFiringRateTweak(maxFiringRateTweaker.getValue());
+        updateEstimatedRefractoryPeriodValue();
         setFileModified();
     }//GEN-LAST:event_maxFiringRateTweakerStateChanged
 
     private void onOffBalanceTweakerStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_onOffBalanceTweakerStateChanged
         biasgen.setOnOffBalanceTweak(onOffBalanceTweaker.getValue());
-        setEstimatedThresholdValues();
+        updateEstimatedThresholdValues();
         setFileModified();
     }//GEN-LAST:event_onOffBalanceTweakerStateChanged
-
-    private void offThrTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_offThrTFActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_offThrTFActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private net.sf.jaer.biasgen.PotTweaker bandwidthTweaker;
@@ -220,16 +261,19 @@ public class DVSFunctionalControlPanel extends javax.swing.JPanel implements Pro
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
+    private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel4;
     private net.sf.jaer.biasgen.PotTweaker maxFiringRateTweaker;
     private javax.swing.JTextField offThrTF;
     private javax.swing.JTextField onMinusOffTF;
     private net.sf.jaer.biasgen.PotTweaker onOffBalanceTweaker;
     private javax.swing.JTextField onThrTF;
+    private javax.swing.JTextField refrPerTF;
     private net.sf.jaer.biasgen.PotTweaker thresholdTweaker;
     // End of variables declaration//GEN-END:variables
 
