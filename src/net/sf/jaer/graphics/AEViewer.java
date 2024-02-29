@@ -78,6 +78,8 @@ import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
+import java.util.logging.Handler;
+import java.util.logging.ConsoleHandler;
 
 import org.apache.commons.io.FileUtils;
 
@@ -261,7 +263,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     volatile private PlayMode playMode = PlayMode.WAITING;
     public static Preferences prefs = Preferences.userNodeForPackage(AEViewer.class);
-    Logger log = Logger.getLogger("net.sf.jaer");
+    static Logger log = Logger.getLogger("net.sf.jaer");
     //    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
     EventExtractor2D extractor = null;
     private BiasgenFrame biasgenFrame = null;
@@ -1249,7 +1251,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         try {
                             chip.getHardwareInterface().close();
                         } catch (Exception e) {
-                            String s=String.format("Exception closing device: %s",e.toString());
+                            String s = String.format("Exception closing device: %s", e.toString());
                             log.warning(s);
                             JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
                         }
@@ -1302,7 +1304,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         try {
                             chip.getHardwareInterface().close();
                         } catch (Exception e) {
-                            String s=String.format("Exception closing device: %s",e.toString());
+                            String s = String.format("Exception closing device: %s", e.toString());
                             log.warning(s);
                             JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
                         }
@@ -1311,7 +1313,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         });
-        
+
     }
 
     void fixBiasgenControls() {
@@ -5825,14 +5827,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void loggingLevelMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_loggingLevelMenuMenuSelected
         if (loggingLevelRadioButtons == null) {
-            Level currentLevel=log.getLevel();
+            Level currentLevel = log.getLevel();
             loggingLevelMenu.getPopupMenu().setLightWeightPopupEnabled(false);
             loggingLevelRadioButtons = new ArrayList();
             for (Level l : loggingLevels) {
                 LoggingLevelButton bmi = new LoggingLevelButton(l);
                 loggingLevelButtonGroup.add(bmi);
                 loggingLevelMenu.add(bmi);
-                if(l.equals(currentLevel)){
+                if (l.equals(currentLevel)) {
                     bmi.setSelected(true);
                 }
             }
@@ -5870,6 +5872,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 public void actionPerformed(ActionEvent e) {
                     log.info(String.format("Setting logging level of logger %s to %s", log.getName(), level.getName()));
                     log.setLevel(level);
+                    //get the top Logger
+                    Logger topLogger = java.util.logging.Logger.getLogger("");
+
+                    // Handler for console (reuse it if it already exists)
+                    // https://stackoverflow.com/questions/470430/java-util-logging-logger-doesnt-respect-java-util-logging-level
+                    Handler consoleHandler = null;
+                    //find the console handler
+                    for (Handler handler : topLogger.getHandlers()) {
+                        if (handler instanceof ConsoleHandler) {
+                            //found the console handler
+                            consoleHandler = handler;
+                            break;
+                        }
+                    }
+
+                    if (consoleHandler != null) {
+                        consoleHandler.setLevel(level);
+                    }
                 }
             });
         }
