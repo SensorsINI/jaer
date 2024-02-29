@@ -15,17 +15,17 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 /**
- * Handles logging messages for AEViewer status line.
- * Passes on PropertyChangeEvents from AEViewerConsoleOutputFrame.
+ * Handles logging messages for AEViewer status line. Passes on
+ * PropertyChangeEvents from AEViewerConsoleOutputFrame.
  *
  * @author tobi
  */
-public class AEViewerLoggingHandler extends java.util.logging.Handler implements PropertyChangeListener{
+public class AEViewerLoggingHandler extends java.util.logging.Handler implements PropertyChangeListener {
 
     private final AEViewer viewer;
     private final AEViewerConsoleOutputFrame consoleWindow;
     private final Formatter consoleFormatter;
-    private final PropertyChangeSupport support=new PropertyChangeSupport(this);
+    private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     public AEViewerLoggingHandler(final AEViewer v) {
         viewer = v;
@@ -52,7 +52,7 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
                 reportError(null, e, ErrorManager.FORMAT_FAILURE);
                 return;
             }
-            final String smsg = statusMessage,  cmsg = consoleMessage;
+            final String smsg = statusMessage, cmsg = consoleMessage;
             Runnable r = new Runnable() {
 
                 @Override
@@ -61,8 +61,10 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
                         viewer.setStatusMessage(smsg);
                         if (record.getLevel().intValue() >= Level.WARNING.intValue()) {
                             viewer.setStatusColor(Color.red);
+                        } else if (record.getLevel().intValue() >= Level.INFO.intValue()) {
+                            viewer.setStatusColor(Color.green.darker().darker());
                         } else {
-                            viewer.setStatusColor(Color.black);
+                            viewer.setStatusColor(Color.gray);
                         }
                         consoleWindow.append(cmsg, record.getLevel());
                     } catch (Exception e) {
@@ -85,13 +87,12 @@ public class AEViewerLoggingHandler extends java.util.logging.Handler implements
     /**
      * @return the support
      */
-    public PropertyChangeSupport getSupport (){
+    public PropertyChangeSupport getSupport() {
         return support;
     }
 
     @Override
-    public void propertyChange (PropertyChangeEvent evt){
+    public void propertyChange(PropertyChangeEvent evt) {
         support.firePropertyChange(evt);
     }
 }
-
