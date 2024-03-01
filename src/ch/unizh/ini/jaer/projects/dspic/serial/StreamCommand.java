@@ -580,7 +580,7 @@ public class StreamCommand implements SerialPortEventListener
                 if (pos == message.getLength())
                 {
                     // whole message received
-                    messageTimes.add(new Long(System.currentTimeMillis()));
+                    messageTimes.add(System.currentTimeMillis());
 
                     if (message.getType() == MSG_ANSWER)
                     {
