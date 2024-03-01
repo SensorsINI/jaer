@@ -193,7 +193,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         double scaled = scalePanToDevice(pos);
         this.panPos = scalePanFromDevice(scaled);
         DecimalFormat format = new DecimalFormat("#.##");
-        this.txtPanPos.setText(format.format(new Double(scaled)));
+        this.txtPanPos.setText(format.format(Double.valueOf(scaled)));
         sldPanPos.setValue((int)(this.panPos*1000));
         if (panTiltControl != null && panTiltControl.isConnected()) {
             panTiltControl.setPanPos(scaled);
@@ -206,7 +206,7 @@ public class PanTiltFrame extends javax.swing.JFrame {
         double scaled = scaleTiltToDevice(pos);
         this.tiltPos = scaleTiltFromDevice(scaled);
         DecimalFormat format = new DecimalFormat("#.##");
-        this.txtTiltPos.setText(format.format(new Double(scaled)));
+        this.txtTiltPos.setText(format.format(Double.valueOf(scaled)));
         sldTiltPos.setValue((int)(this.tiltPos*1000));
         if (panTiltControl != null && panTiltControl.isConnected()) {
             panTiltControl.setTiltPos(scaled);
