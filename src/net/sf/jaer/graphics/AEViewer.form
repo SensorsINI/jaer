@@ -441,6 +441,45 @@
             </Menu>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator12">
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="increasePlaybackSpeedMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="F"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Increase accumulation"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice or event count longer (see FlextTime mode)&lt;p&gt;Or use SHIFT+ALT+mouse wheel up.&lt;p&gt;Only enabled for playing back recorded data."/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="increasePlaybackSpeedMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="decreasePlaybackSpeedMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="S"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Decrease accumulation"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice or event count shorter (see FlextTime mode)&lt;p&gt;Or use SHIFT+ALT+mouse wheel down.&lt;p&gt;Only enabled for playing back recorded data."/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="decreasePlaybackSpeedMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="flextimePlaybackEnabledCheckBoxMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="T"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Toggle Flextime playback mode"/>
+                <Property name="toolTipText" type="java.lang.String" value="Toggles playback betweeen constant-duration and constant count event frames "/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="flextimePlaybackEnabledCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="acccumulateImageEnabledCheckBoxMenuItem">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
@@ -560,32 +599,6 @@
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator11">
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="increasePlaybackSpeedMenuItem">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="F"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Increase playback speed"/>
-                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice longer&lt;p&gt;Or use SHIFT+ALT+mouse wheel up"/>
-                <Property name="enabled" type="boolean" value="false"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="increasePlaybackSpeedMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="decreasePlaybackSpeedMenuItem">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="S"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Decrease playback speed"/>
-                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice shorter&lt;p&gt;Or use SHIFT+ALT+mouse wheel down"/>
-                <Property name="enabled" type="boolean" value="false"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="decreasePlaybackSpeedMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="rewindPlaybackMenuItem">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
@@ -596,19 +609,6 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="rewindPlaybackMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="flextimePlaybackEnabledCheckBoxMenuItem">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="T"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Flextime playback enabled"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enables playback with constant number of events"/>
-                <Property name="enabled" type="boolean" value="false"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="flextimePlaybackEnabledCheckBoxMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="togglePlaybackDirectionMenuItem">
