@@ -489,6 +489,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         buttonGroup1.add(fixedTimeSliceButton);
         fixedTimeSliceButton.setText("Fixed time slice");
+        fixedTimeSliceButton.setToolTipText("Accumulate events for a fixed duration in time");
         fixedTimeSliceButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 fixedTimeSliceButtonActionPerformed(evt);
@@ -497,6 +498,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         buttonGroup1.add(fixedPacketSizeButton);
         fixedPacketSizeButton.setText("Fixed number of events");
+        fixedPacketSizeButton.setToolTipText("Accumulate frames that have a fixed number of events");
         fixedPacketSizeButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 fixedPacketSizeButtonActionPerformed(evt);
@@ -505,6 +507,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
         buttonGroup1.add(realtimeButton);
         realtimeButton.setText("Real time playback");
+        realtimeButton.setToolTipText("Continually modifies the time slice or event number so that the playback is close to real time, given current rendering rate");
         realtimeButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 realtimeButtonActionPerformed(evt);
@@ -512,6 +515,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         });
 
         timesliceSpinner.setModel(new OctaveSpinnerNumberModel(20000, 1, 3000000, 100));
+        timesliceSpinner.setToolTipText("The time slice duration in us");
         timesliceSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 timesliceSpinnerStateChanged(evt);
@@ -521,6 +525,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         msLabel.setText("us");
 
         packetSizeSpinner.setModel(new OctaveSpinnerNumberModel(256, 1, 1000000, 128));
+        packetSizeSpinner.setToolTipText("The event slice number of events");
         packetSizeSpinner.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 packetSizeSpinnerStateChanged(evt);
