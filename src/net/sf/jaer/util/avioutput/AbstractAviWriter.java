@@ -101,7 +101,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         setPropertyTooltip("framesWritten", "READONLY, shows number of frames written");
         setPropertyTooltip("compressionQuality", "In PNG or JPG format, sets compression quality; 0 is lowest quality and 1 is highest, 0.9 is default value");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written AVI file");
-        setPropertyTooltip("frameRate", "Specifies frame rate of AVI file.");
+        setPropertyTooltip("frameRate", "<html>Specifies the <b>playback</b> frame rate of AVI file (different than jAER rendering rate)."
+                + "<p>For real time playback, match frameRate to the frame slice duration (View/Increase|Decrease playback speed)");
         setPropertyTooltip("saveFramesAsIndividualImageFiles", "If selected, then the frames are saved as individual image files in the selected folder");
         setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the frames are are saved only when the mouse is pressed in the AEViewer window");
         setPropertyTooltip("writeEnabled", "Selects if writing frames is enabled. Use this to temporarily disable output, or in conjunction with writeOnlyWhenMousePressed");
