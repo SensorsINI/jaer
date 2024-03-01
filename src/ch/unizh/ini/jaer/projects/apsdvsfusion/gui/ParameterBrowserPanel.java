@@ -51,116 +51,131 @@ import javax.swing.event.ChangeListener;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.util.EngineeringFormat;
 import ch.unizh.ini.jaer.projects.apsdvsfusion.ParameterContainer;
-
+import java.util.logging.Level;
 
 /**
- * A panel for a filter that has Integer/Float/Boolean/String/enum getter/setter methods (bound properties).
-These methods are introspected and a set of controls are built for them. Enclosed filters and
-filter chains have panels built for them that are enlosed inside the filter panel, hierarchically.
+ * A panel for a filter that has Integer/Float/Boolean/String/enum getter/setter
+ * methods (bound properties). These methods are introspected and a set of
+ * controls are built for them. Enclosed filters and filter chains have panels
+ * built for them that are enlosed inside the filter panel, hierarchically.
  * <ul>
- * <li>Numerical properties (ints, floats, but not currently doubles) construct a JTextBox control that also allows changes from mouse wheel or arrow keys.
+ * <li>Numerical properties (ints, floats, but not currently doubles) construct
+ * a JTextBox control that also allows changes from mouse wheel or arrow keys.
  * <li> boolean properties construct a JCheckBox control.
  * <li> String properties construct a JTextField control.
- * <li> enum properties construct a JComboBox control, which all the possible enum constant values.
+ * <li> enum properties construct a JComboBox control, which all the possible
+ * enum constant values.
  * </ul>
  * <p>
- * If a filter wants to automatically have the GUI controls reflect what the property state is, then it should
- * fire PropertyChangeEvent when the property changes. For example, an {@link EventFilter} can implement a setter like this:
+ * If a filter wants to automatically have the GUI controls reflect what the
+ * property state is, then it should fire PropertyChangeEvent when the property
+ * changes. For example, an {@link EventFilter} can implement a setter like
+ * this:
  * <pre>
-public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
-this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
-getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
-}
-</pre>
- * Here, <code>support</code> is a protected field of EventFilter. The change event comes here to FilterPanel and the appropriate automatically
+ * public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
+ * support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
+ * this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
+ * getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
+ * }
+ * </pre> Here, <code>support</code> is a protected field of EventFilter. The
+ * change event comes here to FilterPanel and the appropriate automatically
  * generated control is modified.
  * <p>
- * Note that calling firePropertyChange as shown above will inform listeners <em>before</em> the property has actually been
- * changed (this.dt has not been set yet).
+ * Note that calling firePropertyChange as shown above will inform listeners
+ * <em>before</em> the property has actually been changed (this.dt has not been
+ * set yet).
  * <p>
- * A tooltip for the property can be installed using the EventFilter setPropertyTooltip method, for example
+ * A tooltip for the property can be installed using the EventFilter
+ * setPropertyTooltip method, for example
  * <pre>
  *         setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
- * </pre>
- * will install a tip for the property sizeClassificationEnabled.
+ * </pre> will install a tip for the property sizeClassificationEnabled.
  * <p>
  * <strong>Slider controls.</strong>
  *
- * If you want a slider for an int or float property, then create getMin and getMax methods for the property, e.g., for
- * the property <code>dt</code>:
+ * If you want a slider for an int or float property, then create getMin and
+ * getMax methods for the property, e.g., for the property <code>dt</code>:
  * <pre>
-public int getDt() {
-return this.dt;
-}
-
-public void setDt(final int dt) {
-getPrefs().putInt("BackgroundActivityFilter.dt",dt);
-support.firePropertyChange("dt",this.dt,dt);
-this.dt = dt;
-}
-
-public int getMinDt(){
-return 10;
-}
-
-public int getMaxDt(){
-return 100000;
-}
-</pre>
+ * public int getDt() {
+ * return this.dt;
+ * }
+ *
+ * public void setDt(final int dt) {
+ * getPrefs().putInt("BackgroundActivityFilter.dt",dt);
+ * support.firePropertyChange("dt",this.dt,dt);
+ * this.dt = dt;
+ * }
+ *
+ * public int getMinDt(){
+ * return 10;
+ * }
+ *
+ * public int getMaxDt(){
+ * return 100000;
+ * }
+ * </pre>
  * <strong>Button control</strong>
  * <p>
- * To add a button control to a panel, implement a method starting with "do", e.g.
+ * To add a button control to a panel, implement a method starting with "do",
+ * e.g.
  * <pre>
  *     public void doSendParameters() {
-sendParameters();
-}
- * </pre>
- * This method will construct a button with label "SendParameters" which, when pressed, will call the method "doSendParameters".
+ * sendParameters();
+ * }
+ * </pre> This method will construct a button with label "SendParameters" which,
+ * when pressed, will call the method "doSendParameters".
  * <p>
  * <strong>
  * Grouping parameters.</strong>
  * <p>
- * Properties are normally sorted alphabetically, with button controls at the top. If you want to group parameters, use
- * the built in EventFilter method {@link net.sf.jaer.eventprocessing.EventFilter#addPropertyToGroup}. All properties of a given group are grouped together. Within
- * a group the parameters are sorted alphabetically, and the groups will also be sorted alphabetically and shown before
- * any ungrouped parameters. E.g., to Create groups "Sizing" and "Tracking" and add properties to each, do
+ * Properties are normally sorted alphabetically, with button controls at the
+ * top. If you want to group parameters, use the built in EventFilter method
+ * {@link net.sf.jaer.eventprocessing.EventFilter#addPropertyToGroup}. All
+ * properties of a given group are grouped together. Within a group the
+ * parameters are sorted alphabetically, and the groups will also be sorted
+ * alphabetically and shown before any ungrouped parameters. E.g., to Create
+ * groups "Sizing" and "Tracking" and add properties to each, do
  * <pre>
-addPropertyToGroup("Sizing", "clusterSize");
-addPropertyToGroup("Sizing", "aspectRatio");
-addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
-addPropertyToGroup("Tracking", "mixingFactor");
-addPropertyToGroup("Tracking", "velocityMixingFactor");
+ * addPropertyToGroup("Sizing", "clusterSize");
+ * addPropertyToGroup("Sizing", "aspectRatio");
+ * addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
+ * addPropertyToGroup("Tracking", "mixingFactor");
+ * addPropertyToGroup("Tracking", "velocityMixingFactor");
+ * </pre> Or, even simpler, if you have already defined tooltips for your
+ * properties, then you can use the overloaded
+ * {@link net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String) setPropertyTooltip}
+ * of {@link net.sf.jaer.eventprocessing.EventFilter}, as shown next. Here two
+ * groups "Size" and "Timing" are defined and properties are added to each (or
+ * to neither for "multiOriOutputEnabled").
+ * <pre>
+ * final String size="Size", tim="Timing";
+ *
+ * setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
+ * setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
+ * setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
+ * setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
+ * setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
  * </pre>
- * Or, even simpler, if you have already defined tooltips for your properties, then
- * you can use the overloaded
- * {@link net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String) setPropertyTooltip} of
- * {@link net.sf.jaer.eventprocessing.EventFilter},
- * as shown next. Here two groups "Size" and "Timing" are defined and properties are added to each (or to neither for "multiOriOutputEnabled").
- * <pre>
-final String size="Size", tim="Timing";
-
-setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
-setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
-setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
-setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
-setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
-</pre>
  *
  *
- * @author  Tobi Dellbruck, heavily modified by Peter O`Connor, finetuned by Dennis Goehlsdorf
- * @see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String)
- *@see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String)
+ * @author Tobi Dellbruck, heavily modified by Peter O`Connor, finetuned by
+ * Dennis Goehlsdorf
+ * @see
+ * net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String,
+ * java.lang.String)
+ * @see
+ * net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String,
+ * java.lang.String, java.lang.String)
  * @see net.sf.jaer.eventprocessing.EventFilter
  */
 public class ParameterBrowserPanel extends CollapsablePanel implements PropertyChangeListener {
 
     /**
-	 *
-	 */
-	private static final long serialVersionUID = -8774445069061985174L;
+     *
+     */
+    private static final long serialVersionUID = -8774445069061985174L;
 
-	private interface HasSetter {
+    private interface HasSetter {
 
         void set(Object o);
     }
@@ -176,14 +191,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
     private HashMap<String, Container> groupContainerMap = new HashMap<String, Container>();
 //    private JPanel inheritedPanel = null;
-    private float DEFAULT_REAL_VALUE=0.01f; // value jumped to from zero on key or wheel up
+    private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
     private boolean showNameField = true;
     ParameterContainer parameterContainer;
 
-    /** Creates new form FilterPanel */
+    /**
+     * Creates new form FilterPanel
+     */
     public ParameterBrowserPanel(ParameterContainer topLevel, boolean showNameField) {
-    	super(topLevel.getName());
-    	this.showNameField = showNameField;
+        super(topLevel.getName());
+        this.showNameField = showNameField;
 //        titledBorder = new TitledBorder("Network Controls");
 //        titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
 ////        titledBorder.setBorder(BorderFactory.createLineBorder(Color.blue));
@@ -192,13 +209,12 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //        setBorder(titledBorder);
         initComponents();
 
-        addController(topLevel,getContentPanel());
+        addController(topLevel, getContentPanel());
     }
 
     public ParameterBrowserPanel(ParameterContainer topLevel) {
-    	this(topLevel, true);
+        this(topLevel, true);
     }
-
 
 //    public GeneralController() {
 //        log.info("building FilterPanel for "+f);
@@ -220,14 +236,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //        ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
 //        setToolTipText(f.getDescription());
 //    }
-
-
-
-
-
-
     // checks for group container and adds to that if needed.
- // checks for group container and adds to that if needed.
+    // checks for group container and adds to that if needed.
 //    private void myadd(JComponent comp, String propertyName, boolean inherited) {
 //        JPanel pan = new JPanel();
 //        pan.setLayout(new BoxLayout(pan, BoxLayout.X_AXIS));
@@ -264,28 +274,27 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //        add(pan); // to fix horizontal all left alignment
 //        controls.add(comp);
 //    }
-
-
-    /** Adds a top-level control */
-@SuppressWarnings("unchecked")
+    /**
+     * Adds a top-level control
+     */
+    @SuppressWarnings("unchecked")
 //    void addController(Controllable filter)
 //    {
 //        addController(filter,this);
 //
 //    }
 
-
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
-    void addController(final ParameterContainer parameterContainer,final JPanel topPanel) {
+    void addController(final ParameterContainer parameterContainer, final JPanel topPanel) {
 //        JPanel control = null;
 //        NetController filter = getControllable();
         if (parameterContainer != null) {
-			parameterContainer.getSupport().addPropertyChangeListener(this);
-		}
-		JPanel hostPanel = new JPanel();
-		topPanel.setLayout(new BorderLayout());
-		topPanel.add(new JLabel("   "),BorderLayout.WEST);
-		topPanel.add(hostPanel,BorderLayout.CENTER);
+            parameterContainer.getSupport().addPropertyChangeListener(this);
+        }
+        JPanel hostPanel = new JPanel();
+        topPanel.setLayout(new BorderLayout());
+        topPanel.add(new JLabel("   "), BorderLayout.WEST);
+        topPanel.add(hostPanel, BorderLayout.CENTER);
 //        hostPanel.setLayout(new javax.swing.BoxLayout(hostPanel, javax.swing.BoxLayout.Y_AXIS));
         hostPanel.setLayout(new GridBagLayout());
         GridBagConstraints gbcHost = new GridBagConstraints();
@@ -296,9 +305,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 
         hostPanel.setBorder(BorderFactory.createMatteBorder(1, 1, 1, 1, Color.lightGray));
 
-
 //        boolean topLevel=hostPanel==this;
-
 //        if (topLevel) // Top-Level control
 //        {   titledBorder = new TitledBorder(parameterContainer.getName());
 //            titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
@@ -308,7 +315,6 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //            setBorder(titledBorder);
 //
 //        }
-
         setParameterContainer(parameterContainer);
         try {
             info = Introspector.getBeanInfo(parameterContainer.getClass());
@@ -316,12 +322,10 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             props = info.getPropertyDescriptors();
             methods = parameterContainer.getClass().getMethods();
 
-
-            JPanel controla=new JPanel();
+            JPanel controla = new JPanel();
 
 //            if (controla==null)
 //                controla =
-
             int numDoButtons = 0;
             // first add buttons when the method name starts with "do". These methods are by convention associated with actions.
             // these methods, e.g. "void doDisableServo()" do an action.
@@ -339,7 +343,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     button.addActionListener(new ActionListener() {
 
                         @Override
-						public void actionPerformed(ActionEvent e) {
+                        public void actionPerformed(ActionEvent e) {
                             try {
                                 meth.invoke(f);
                             } catch (IllegalArgumentException ex) {
@@ -370,7 +374,6 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             if (numDoButtons > 3) {
                 controla.setLayout(new GridLayout(0, 3, 3, 3));
             }
-
 
             // next add enclosed Filter and enclosed FilterChain so they appear at top of list (they are processed first)
 //            for (PropertyDescriptor p : props) {
@@ -425,10 +428,8 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //                    }
 //                }
 //            }
-
             // next add all other properties that we can handle
             // these must be saved and then sorted in case there are property groups defined.
-
             final JPanel groupPanel;
             //            if (topLevel)
             //            {   groupPanel=this;
@@ -479,13 +480,10 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 ////                    System.out.println("bound: "+p.isBound());
 ////                    System.out.println("");
 //                }
-                JPanel control=null;
+                JPanel control = null;
                 try {
 
-
-
 //                    boolean inherited = false;
-
                     // TODO handle indexed properties
                     Class<?> c = p.getPropertyType();
                     String name = p.getName();
@@ -499,76 +497,73 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //                    }
                     if (!getParameterContainer().isPropertyExcluded(name)) {
 
-	                    if ((c == Integer.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                        if ((c == Integer.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
 
-	                        SliderParams params;
-	                        if ((params = isSliderType(p, parameterContainer)) != null) {
-	                            control = new IntSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
-	                        } else {
-	                            control = new IntControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-	                        }
-	//                        myadd(control, name, inherited);
-	                    } else if ((c == Float.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
-	                        SliderParams params;
-	                        if ((params = isSliderType(p, parameterContainer)) != null) {
-	                            control = new FloatSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
-	                        } else {
-	                            control = new FloatControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            SliderParams params;
+                            if ((params = isSliderType(p, parameterContainer)) != null) {
+                                control = new IntSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+                            } else {
+                                control = new IntControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            }
+                            //                        myadd(control, name, inherited);
+                        } else if ((c == Float.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                            SliderParams params;
+                            if ((params = isSliderType(p, parameterContainer)) != null) {
+                                control = new FloatSliderControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+                            } else {
+                                control = new FloatControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
 
-	                        }
-	//                        myadd(control, name, inherited);
-	                    } else if ((c == Boolean.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
-	                        if (p.getName().equals("filterEnabled")) { // built in, skip
-	                            continue;
-	                        }
-	                        if (p.getName().equals("annotationEnabled")) {// built in, skip
-	                            continue;
-	                        }
-	                        if (p.getName().equals("selected")) {// built in, skip
-	                            continue;
-	                        }
+                            }
+                            //                        myadd(control, name, inherited);
+                        } else if ((c == Boolean.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                            if (p.getName().equals("filterEnabled")) { // built in, skip
+                                continue;
+                            }
+                            if (p.getName().equals("annotationEnabled")) {// built in, skip
+                                continue;
+                            }
+                            if (p.getName().equals("selected")) {// built in, skip
+                                continue;
+                            }
 
-	                        control = new BooleanControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-	//                        myadd(control, name, inherited);
-	                    } else if ((c == String.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
-	//                        if (p.getName().equals("filterEnabled")) {
-	//                            continue;
-	//                        }
-	//                        if (p.getName().equals("annotationEnabled")) {
-	//                            continue;
-	//                        }
-	                    	if (showNameField || !p.getName().equals("name"))
-							 {
-								control = new StringControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-	//                        myadd(control, name, inherited);
-							}
-	                    } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
-	                        control = new EnumControl((Class<? extends Enum<?>>)c, getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-	//                        myadd(control, name, inherited);
-	                    }else if ((c != null) && (c==Point2D.Float.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
-	                        control = new Point2DControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
-	//                        myadd(control, name, inherited);
-	                    } else {
-	//                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
-	                    }
-	                    if (control != null) {
-	                        control.setToolTipText(getParameterContainer().getPropertyTooltip(name));
-	                    }
+                            control = new BooleanControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            //                        myadd(control, name, inherited);
+                        } else if ((c == String.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                            //                        if (p.getName().equals("filterEnabled")) {
+                            //                            continue;
+                            //                        }
+                            //                        if (p.getName().equals("annotationEnabled")) {
+                            //                            continue;
+                            //                        }
+                            if (showNameField || !p.getName().equals("name")) {
+                                control = new StringControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                                //                        myadd(control, name, inherited);
+                            }
+                        } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                            control = new EnumControl((Class<? extends Enum<?>>) c, getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            //                        myadd(control, name, inherited);
+                        } else if ((c != null) && (c == Point2D.Float.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                            control = new Point2DControl(getParameterContainer(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            //                        myadd(control, name, inherited);
+                        } else {
+                            //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
+                        }
+                        if (control != null) {
+                            control.setToolTipText(getParameterContainer().getPropertyTooltip(name));
+                        }
                     }
                 } catch (Exception e) {
                     log.warning(e + " caught on property " + p.getName() + " from EventFilter " + parameterContainer);
                 }
-                if (control!=null) {
+                if (control != null) {
                     groupPanel.add(control, gbcGroup);
                     gbcGroup.gridy++;
                 }
-                if (gbcGroup.gridy > 0)
-				 {
-					controls.add(groupPanel); // visibility list
-				}
+                if (gbcGroup.gridy > 0) {
+                    controls.add(groupPanel); // visibility list
+                }
 
             }
-
 
 //            final ArrayList<JPanel> subcontrols=new ArrayList();
 //            ActionListener subrebuilder=new ActionListener(){
@@ -597,18 +592,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //            controllable.addActionListener(subrebuilder);
 //
 //            subrebuilder.actionPerformed(null);
-
 //            filter.updateControl();
-
             if (gbcGroup.gridy > 0) {
-	            hostPanel.add(groupPanel, gbcHost);
-	            gbcHost.gridy++;
+                hostPanel.add(groupPanel, gbcHost);
+                gbcHost.gridy++;
             }
 
             JComponent custom = getParameterContainer().getCustomControls();
             if (custom != null) {
-            	hostPanel.add(custom, gbcHost);
-            	gbcHost.gridy++;
+                hostPanel.add(custom, gbcHost);
+                gbcHost.gridy++;
             }
 
 //            groupContainerMap = null;
@@ -618,9 +611,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             e.printStackTrace();
         }
 
-
 //        add(Box.createHorizontalGlue());
-
         setControlsVisible(true);
 //        System.out.println("added glue to "+this);
     }
@@ -655,16 +646,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     class EnumControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = -5669224963030440630L;
-		Method write, read;
+         *
+         */
+        private static final long serialVersionUID = -5669224963030440630L;
+        Method write, read;
         ParameterContainer filter;
         boolean initValue = false, nval;
         final JComboBox control;
 
         @Override
-		public void set(Object o) {
+        public void set(Object o) {
             control.setSelectedItem(o);
         }
 
@@ -702,7 +693,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             control.addActionListener(new ActionListener() {
 
                 @Override
-				public void actionPerformed(ActionEvent e) {
+                public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, control.getSelectedItem());
                     } catch (Exception e2) {
@@ -716,16 +707,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     class StringControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = 4136508027569378649L;
-		Method write, read;
+         *
+         */
+        private static final long serialVersionUID = 4136508027569378649L;
+        Method write, read;
         ParameterContainer filter;
         boolean initValue = false, nval;
         final JTextField textField;
 
         @Override
-		public void set(Object o) {
+        public void set(Object o) {
             if (o instanceof String) {
                 String b = (String) o;
                 textField.setText(b);
@@ -768,7 +759,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             textField.addActionListener(new ActionListener() {
 
                 @Override
-				public void actionPerformed(ActionEvent e) {
+                public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, textField.getText());
                     } catch (Exception e2) {
@@ -777,19 +768,19 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                 }
             });
             textField.addFocusListener(new FocusListener() {
-				@Override
-				public void focusLost(FocusEvent arg0) {
+                @Override
+                public void focusLost(FocusEvent arg0) {
                     try {
                         w.invoke(filter, textField.getText());
                     } catch (Exception e2) {
                         e2.printStackTrace();
                     }
-				}
+                }
 
-				@Override
-				public void focusGained(FocusEvent arg0) {
-				}
-			});
+                @Override
+                public void focusGained(FocusEvent arg0) {
+                }
+            });
         }
     }
     final float factor = 1.51f, wheelFactor = 1.05f; // factors to change by with arrow and mouse wheel
@@ -797,10 +788,9 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     class BooleanControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = 3914986042058679017L;
-		Method write, read;
+         *
+         */
+        private static final long serialVersionUID = 3914986042058679017L;
         ParameterContainer filter;
         boolean initValue = false, nval;
         final JCheckBox checkBox;
@@ -809,8 +799,6 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             super();
             setterMap.put(name, this);
             filter = f;
-            write = w;
-            read = r;
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
@@ -826,31 +814,28 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                     log.warning("null Boolean returned from read method " + r);
                     return;
                 }
-                initValue = x.booleanValue();
+                initValue = x;
                 checkBox.setSelected(initValue);
             } catch (InvocationTargetException e) {
-                e.printStackTrace();
+                log.warning(e.toString());
             } catch (IllegalAccessException e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
+                log.log(Level.WARNING, "cannot access the field named {0} is the class or method not public?", name);
             }
             checkBox.addActionListener(new ActionListener() {
 
                 @Override
-				public void actionPerformed(ActionEvent e) {
+                public void actionPerformed(ActionEvent e) {
                     try {
                         w.invoke(filter, checkBox.isSelected());
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException ite) {
+                        log.warning(ite.toString());
                     }
                 }
             });
         }
 
         @Override
-		public void set(Object o) {
+        public void set(Object o) {
             if (o instanceof Boolean) {
                 Boolean b = (Boolean) o;
                 checkBox.setSelected(b);
@@ -861,17 +846,17 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     class IntSliderControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = 4455144970014168302L;
-		Method write, read;
+         *
+         */
+        private static final long serialVersionUID = 4455144970014168302L;
+        Method write, read;
         Object filter;
         int initValue = 0, nval;
         JSlider slider;
         JTextField tf;
 
         @Override
-		public void set(Object o) {
+        public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 slider.setValue(b);
@@ -909,15 +894,13 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             slider.addChangeListener(new ChangeListener() {
 
                 @Override
-				public void stateChanged(ChangeEvent e) {
+                public void stateChanged(ChangeEvent e) {
                     try {
-                        w.invoke(filter, new Integer(slider.getValue())); // write int value
+                        w.invoke(filter, slider.getValue()); // write int value
                         ic.set(slider.getValue());
 //                        tf.setText(Integer.toString(slider.getValue()));
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException ite) {
+                        log.warning(ite.toString());
                     }
                 }
             });
@@ -928,10 +911,10 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     class FloatSliderControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = 2875473990519438532L;
-		Method write, read;
+         *
+         */
+        private static final long serialVersionUID = 2875473990519438532L;
+        Method write, read;
         ParameterContainer filter;
         JSlider slider;
         JTextField tf;
@@ -941,7 +924,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
         float minValue, maxValue, currentValue;
 
         @Override
-		public void set(Object o) {
+        public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 slider.setValue(b);
@@ -974,32 +957,29 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             try {
                 Float x = (Float) r.invoke(filter); // read int value
                 if (x == null) {
-                    log.warning("null Float returned from read method " + r);
+                    log.log(Level.WARNING, "null Float returned from read method {0}", r);
                     return;
                 }
-                currentValue = x.floatValue();
-                set(new Float(currentValue));
-            } catch (Exception e) {
-                log.warning("cannot access the field named " + name + " is the class or method not public?");
-                e.printStackTrace();
+                currentValue = x;
+                set(currentValue);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                log.log(Level.WARNING, "cannot access the field named {0} is the class or method not public?", name);
             }
             add(slider);
 
             slider.addChangeListener(new ChangeListener() {
 
                 @Override
-				public void stateChanged(ChangeEvent e) {
+                public void stateChanged(ChangeEvent e) {
                     try {
 //                        int v = slider.getValue();
                         currentValue = minValue + ((maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum())));
-                        fc.set(new Float(currentValue));
-                        w.invoke(filter, new Float(currentValue)); // write int value
+                        fc.set(currentValue);
+                        w.invoke(filter, currentValue); // write int value
 
 //                        tf.setText(engFmt.format(currentValue));
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException ite) {
+                        log.warning(ite.toString());
                     }
                 }
             });
@@ -1009,16 +989,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     class IntControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = 7384247963259592507L;
-		Method write, read;
+         *
+         */
+        private static final long serialVersionUID = 7384247963259592507L;
+        Method write, read;
         ParameterContainer filter;
         int initValue = 0, nval;
         final JTextField tf;
 
         @Override
-		public void set(Object o) {
+        public void set(Object o) {
             if (o instanceof Integer) {
                 Integer b = (Integer) o;
                 tf.setText(b.toString());
@@ -1053,60 +1033,55 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                 String s = Integer.toString(x);
 //                System.out.println("init value of "+name+" is "+s);
                 tf.setText(s);
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                log.warning(e.toString());
             }
             add(tf);
             tf.addActionListener(new ActionListener() {
                 @Override
-				public void actionPerformed(ActionEvent e) {
+                public void actionPerformed(ActionEvent e) {
                     try {
                         int y = Integer.parseInt(
                                 tf.getText());
-                        w.invoke(filter, new Integer(y)); // write int value
+                        w.invoke(filter, y); // write int value
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException ite) {
+                        log.warning(ite.toString());
                     }
                 }
             });
             tf.addFocusListener(new FocusListener() {
-				@Override
-				public void focusLost(FocusEvent arg0) {
+                @Override
+                public void focusLost(FocusEvent arg0) {
                     try {
                         int y = Integer.parseInt(
                                 tf.getText());
-                        w.invoke(filter, new Integer(y)); // write int value
+                        w.invoke(filter, y); // write int value
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException ite) {
+                        log.warning(ite.toString());
                     }
-				}
-				@Override
-				public void focusGained(FocusEvent arg0) {
-				}
-			});
+                }
+
+                @Override
+                public void focusGained(FocusEvent arg0) {
+                }
+            });
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
 
                 @Override
-				public void keyPressed(java.awt.event.KeyEvent evt) {
+                public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
                         Integer x = (Integer) r.invoke(filter);
-                        initValue = x.intValue();
+                        initValue = x;
 //                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException e) {
+                        log.warning(e.toString());
                     }
                     int code = evt.getKeyCode();
-                //    int mod = evt.getModifiers();
+                    //    int mod = evt.getModifiers();
                     boolean shift = evt.isShiftDown();
                     if (!shift) {
                         if (code == KeyEvent.VK_UP) {
@@ -1117,13 +1092,11 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = Math.round(initValue * factor);
                                 }
-                                tf.setText(new Integer(nval).toString());
-                                w.invoke(filter, new Integer(nval));
+                                tf.setText(Integer.toString(nval));
+                                w.invoke(filter, nval);
                                 fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         } else if (code == KeyEvent.VK_DOWN) {
                             try {
@@ -1133,13 +1106,11 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = Math.round(initValue / factor);
                                 }
-                                tf.setText(new Integer(nval).toString());
-                                w.invoke(filter, new Integer(nval));
+                                tf.setText(Integer.toString(nval));
+                                w.invoke(filter, nval);
                                 fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         }
                     } else {
@@ -1147,24 +1118,20 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                         if (code == KeyEvent.VK_UP) {
                             try {
                                 nval = initValue + 1;
-                                w.invoke(filter, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         } else if (code == KeyEvent.VK_DOWN) {
                             try {
                                 nval = initValue - 1;
-                                w.invoke(filter, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         }
 
@@ -1175,18 +1142,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
 
                 @Override
-				public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     try {
                         Integer x = (Integer) r.invoke(filter);
-                        initValue = x.intValue();
+                        initValue = x;
 //                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException e) {
+                        log.warning(e.toString());
                     }
                     int code = evt.getWheelRotation();
-                  //  int mod = evt.getModifiers();
+                    //  int mod = evt.getModifiers();
                     boolean shift = evt.isShiftDown();
                     if (!shift) {
                         if (code < 0) {
@@ -1197,12 +1162,10 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = Math.round(initValue * wheelFactor);
                                 }
-                                tf.setText(new Integer(nval).toString());
-                                w.invoke(filter, new Integer(nval));
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                                tf.setText(Integer.toString(nval));
+                                w.invoke(filter, nval);
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         } else if (code > 0) {
                             try {
@@ -1215,12 +1178,10 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 if (nval < 0) {
                                     nval = 0;
                                 }
-                                tf.setText(new Integer(nval).toString());
-                                w.invoke(filter, new Integer(nval));
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                                tf.setText(Integer.toString(nval));
+                                w.invoke(filter, nval);
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         }
                     }
@@ -1229,13 +1190,13 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             tf.addFocusListener(new FocusListener() {
 
                 @Override
-				public void focusGained(FocusEvent e) {
+                public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
                 @Override
-				public void focusLost(FocusEvent e) {
+                public void focusLost(FocusEvent e) {
                 }
             });
         }
@@ -1252,21 +1213,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             e.printStackTrace();
         }
 
-
-
-
-
-
     }
 
     class FloatControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = -4380664677658538035L;
+         *
+         */
+        private static final long serialVersionUID = -4380664677658538035L;
 
-		EngineeringFormat engFmt=new EngineeringFormat();
+        EngineeringFormat engFmt = new EngineeringFormat();
 //        final String format="%.6f";
 
         Method write, read;
@@ -1275,7 +1231,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
         final JTextField tf;
 
         @Override
-		public void set(Object o) {
+        public void set(Object o) {
             if (o instanceof Float) {
                 Float b = (Float) o;
                 tf.setText(b.toString());
@@ -1317,60 +1273,55 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             tf.addActionListener(new ActionListener() {
 
                 @Override
-				public void actionPerformed(ActionEvent e) {
+                public void actionPerformed(ActionEvent e) {
 //                    System.out.println(e);
                     try {
                         float y = engFmt.parseFloat(tf.getText());
-                        w.invoke(filter, new Float(y));
+                        w.invoke(filter, y);
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                        nval = x.floatValue();
+                        nval = x;
                         tf.setText(engFmt.format(nval));
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException ite) {
+                        log.warning(ite.toString());
                     }
                 }
             });
             tf.addFocusListener(new FocusListener() {
 
-				@Override
-				public void focusLost(FocusEvent e) {
+                @Override
+                public void focusLost(FocusEvent e) {
                     try {
                         float y = engFmt.parseFloat(tf.getText());
-                        w.invoke(filter, new Float(y));
+                        w.invoke(filter, y);
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                        nval = x.floatValue();
+                        nval = x;
                         tf.setText(engFmt.format(nval));
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException ite) {
+                        log.warning(ite.toString());
                     }
-				}
-				@Override
-				public void focusGained(FocusEvent e) {
-				}
-			});
+                }
+
+                @Override
+                public void focusGained(FocusEvent e) {
+                }
+            });
             tf.addKeyListener(new java.awt.event.KeyAdapter() {
 
                 {
                 }
 
                 @Override
-				public void keyPressed(java.awt.event.KeyEvent evt) {
+                public void keyPressed(java.awt.event.KeyEvent evt) {
                     try {
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method
-                        initValue = x.floatValue();
+                        initValue = x;
 //                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException e) {
+                        log.warning(e.toString());
                     }
                     int code = evt.getKeyCode();
 //                    int mod = evt.getModifiers();
@@ -1387,14 +1338,12 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                             } else {
                                 nval = (initValue * floatFactor);
                             }
-                            w.invoke(filter, new Float(nval)); // setter the value
+                            w.invoke(filter, nval); // setter the value
                             Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                            nval = x.floatValue();
+                            nval = x;
                             tf.setText(engFmt.format(nval));
-                        } catch (InvocationTargetException ite) {
-                            ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
-                            iae.printStackTrace();
+                        } catch (InvocationTargetException | IllegalAccessException ite) {
+                            log.warning(ite.toString());
                         }
                     } else if (code == KeyEvent.VK_DOWN) {
                         try {
@@ -1404,14 +1353,12 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                             } else {
                                 nval = (initValue / floatFactor);
                             }
-                            w.invoke(filter, new Float(initValue / floatFactor));
+                            w.invoke(filter, initValue / floatFactor);
                             Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                            nval = x.floatValue();
+                            nval = x;
                             tf.setText(engFmt.format(nval));
-                        } catch (InvocationTargetException ite) {
-                            ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
-                            iae.printStackTrace();
+                        } catch (InvocationTargetException | IllegalAccessException ite) {
+                            log.warning(ite.toString());
                         }
                     }
                 }
@@ -1419,18 +1366,16 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             tf.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
 
                 @Override
-				public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     try {
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method
-                        initValue = x.floatValue();
+                        initValue = x;
 //                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
-                        e.printStackTrace();
+                    } catch (InvocationTargetException | IllegalAccessException e) {
+                        log.warning(e.toString());
                     }
                     int code = evt.getWheelRotation();
-  //                  int mod = evt.getModifiers();
+                    //                  int mod = evt.getModifiers();
                     boolean shift = evt.isShiftDown();
                     if (!shift) {
                         if (code < 0) {
@@ -1441,14 +1386,12 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = (initValue * wheelFactor);
                                 }
-                                w.invoke(filter, new Float(nval)); // setter the value
+                                w.invoke(filter, nval); // setter the value
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                                nval = x.floatValue();
+                                nval = x;
                                 tf.setText(engFmt.format(nval));
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         } else if (code > 0) {
                             try {
@@ -1458,14 +1401,12 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                                 } else {
                                     nval = (initValue / wheelFactor);
                                 }
-                                w.invoke(filter, new Float(initValue / wheelFactor));
+                                w.invoke(filter, initValue / wheelFactor);
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                                nval = x.floatValue();
+                                nval = x;
                                 tf.setText(engFmt.format(nval));
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
+                                log.warning(ite.toString());
                             }
                         }
                     }
@@ -1474,28 +1415,31 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             tf.addFocusListener(new FocusListener() {
 
                 @Override
-				public void focusGained(FocusEvent e) {
+                public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
                 @Override
-				public void focusLost(FocusEvent e) {
+                public void focusLost(FocusEvent e) {
                 }
             });
         }
     }
 
-    private boolean printedSetterWarning=false;
+    private boolean printedSetterWarning = false;
 
-    /** Called when a filter calls firePropertyChange. The PropertyChangeEvent should send the bound property name and the old and new values.
-    The GUI control is then updated by this method.
-    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from an EventFilter
-     * with
+    /**
+     * Called when a filter calls firePropertyChange. The PropertyChangeEvent
+     * should send the bound property name and the old and new values. The GUI
+     * control is then updated by this method.
+     *
+     * @param propertyChangeEvent contains the property that has changed, e.g.
+     * it would be called from an EventFilter with
      * <code>support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);</code>
      */
     @Override
-	public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
+    public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
         if (propertyChangeEvent.getSource() == getParameterContainer()) {
             if (propertyChangeEvent.getPropertyName().equals("selected")) {
                 return; // ignore changes to "selected" for filter because these are masked out from GUI building
@@ -1506,7 +1450,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
                 setBorderActive(yes);
             } else if (propertyChangeEvent.getPropertyName().equals("controlsExpanded")) { // comes from EventFilter when filter is enabled or disabled
 //              log.info("propertyChangeEvent name="+propertyChangeEvent.getPropertyName()+" src="+propertyChangeEvent.getSource()+" oldValue="+propertyChangeEvent.getOldValue()+" newValue="+propertyChangeEvent.getNewValue());
-            	this.setExpanded((Boolean)propertyChangeEvent.getNewValue());
+                this.setExpanded((Boolean) propertyChangeEvent.getNewValue());
             } else {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
@@ -1514,18 +1458,18 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                	if (propertyChangeEvent.getPropertyName().equals("name")) {
-                		setTitle(propertyChangeEvent.getNewValue().toString());
-                	}
+                    if (propertyChangeEvent.getPropertyName().equals("name")) {
+                        setTitle(propertyChangeEvent.getNewValue().toString());
+                    }
 
-                	HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                    HasSetter setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!getParameterContainer().isPropertyExcluded(propertyChangeEvent.getPropertyName()) && !printedSetterWarning) {
-                        	Object o = propertyChangeEvent.getNewValue();
-                        	if ((o instanceof Integer) || (o instanceof String) || (o instanceof Float) || (o instanceof Double) || (o instanceof Boolean) || (o instanceof Point2D) || (o instanceof Enum)) {
-                        		log.warning("in parameter container " + getParameterContainer() + " (class :"+getParameterContainer().getClass().toString()+") there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
-                        		printedSetterWarning = true;
-                        	}
+                            Object o = propertyChangeEvent.getNewValue();
+                            if ((o instanceof Integer) || (o instanceof String) || (o instanceof Float) || (o instanceof Double) || (o instanceof Boolean) || (o instanceof Point2D) || (o instanceof Enum)) {
+                                log.warning("in parameter container " + getParameterContainer() + " (class :" + getParameterContainer().getClass().toString() + ") there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
+                                printedSetterWarning = true;
+                            }
                         }
                     } else {
                         setter.set(propertyChangeEvent.getNewValue());
@@ -1549,16 +1493,14 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
         }
     }
 
-    /** This method is called from within the constructor to
-     * initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is
-     * always regenerated by the Form Editor.
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
      */
     // <editor-fold defaultstate="collapsed" desc="Generated Code">
     private void initComponents() {
 //        bindingGroup = new org.jdesktop.beansbinding.BindingGroup();
-
-
 
         jPanel1 = new javax.swing.JPanel();
         enabledCheckBox = new javax.swing.JCheckBox();
@@ -1572,27 +1514,29 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 
     @Override
     public void setExpanded(boolean expanded) {
-    	super.setExpanded(expanded);
-    	if ((parameterContainer != null) && (this.isExpanded() != parameterContainer.isControlsExpanded())) {
-			parameterContainer.setControlsExpanded(this.isExpanded());
-		}
+        super.setExpanded(expanded);
+        if ((parameterContainer != null) && (this.isExpanded() != parameterContainer.isControlsExpanded())) {
+            parameterContainer.setControlsExpanded(this.isExpanded());
+        }
     }
 
     @Override
     public void toggleSelection() {
-    	super.toggleSelection();
-    	if ((parameterContainer != null) && (this.isExpanded() != parameterContainer.isControlsExpanded())) {
-			parameterContainer.setControlsExpanded(this.isExpanded());
-		}
+        super.toggleSelection();
+        if ((parameterContainer != null) && (this.isExpanded() != parameterContainer.isControlsExpanded())) {
+            parameterContainer.setControlsExpanded(this.isExpanded());
+        }
     }
-
 
     public boolean isControlsVisible() {
         return controlsVisible;
     }
 
-    /** Set visibility of individual filter controls; hides other filters.
-     * @param visible true to show filter parameter controls, false to hide this filter's controls and to show all filters in chain.
+    /**
+     * Set visibility of individual filter controls; hides other filters.
+     *
+     * @param visible true to show filter parameter controls, false to hide this
+     * filter's controls and to show all filters in chain.
      */
     public void setControlsVisible(boolean visible) {
         controlsVisible = visible;
@@ -1681,18 +1625,15 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
 //        repaint();
 //        getControllable().setSelected(yes);
 //    }
-
 //    private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {
 //        if (getControllable() != null) {
 //            getControllable().resetFilter();
 //        }
 //        getControllable().setSelected(true);
 //    }
-
 //    private void showControlsToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {
 //        // TODO add your handling code here:
 //    }
-
     // Variables declaration - do not modify
     protected javax.swing.JCheckBox enabledCheckBox;
     protected javax.swing.JPanel jPanel1;
@@ -1748,10 +1689,10 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
     class Point2DControl extends JPanel implements HasSetter {
 
         /**
-		 *
-		 */
-		private static final long serialVersionUID = 4181987148305097419L;
-		Method write, read;
+         *
+         */
+        private static final long serialVersionUID = 4181987148305097419L;
+        Method write, read;
         ParameterContainer filter;
         Point2D.Float point;
         float initValue = 0, nval;
@@ -1759,7 +1700,7 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
         final String format = "%.1f";
 
         @Override
-		final public void set(Object o) {
+        final public void set(Object o) {
             if (o instanceof Point2D.Float) {
                 Point2D.Float b = (Point2D.Float) o;
                 tfx.setText(String.format(format, b.x));
@@ -1845,28 +1786,27 @@ public class ParameterBrowserPanel extends CollapsablePanel implements PropertyC
             tfx.addFocusListener(new FocusListener() {
 
                 @Override
-				public void focusGained(FocusEvent e) {
+                public void focusGained(FocusEvent e) {
                     tfx.setSelectionStart(0);
                     tfx.setSelectionEnd(tfx.getText().length());
                 }
 
                 @Override
-				public void focusLost(FocusEvent e) {
+                public void focusLost(FocusEvent e) {
                 }
             });
             tfy.addFocusListener(new FocusListener() {
 
                 @Override
-				public void focusGained(FocusEvent e) {
+                public void focusGained(FocusEvent e) {
                     tfy.setSelectionStart(0);
                     tfy.setSelectionEnd(tfy.getText().length());
                 }
 
                 @Override
-				public void focusLost(FocusEvent e) {
+                public void focusLost(FocusEvent e) {
                 }
             });
-
 
         }
     }
