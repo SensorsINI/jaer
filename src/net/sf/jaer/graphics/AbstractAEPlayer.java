@@ -646,7 +646,7 @@ public abstract class AbstractAEPlayer {
     final public class FasterAction extends MyAction {
 
         public FasterAction() {
-            super("Play faster", "Faster16");
+            super("Increase accumulation", "Faster16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, 0));
         }
 
@@ -660,16 +660,18 @@ public abstract class AbstractAEPlayer {
     private final EngineeringFormat engFmt = new EngineeringFormat();
 
     private final String speedText(boolean faster) {
-        return String.format("DVS frames %s to %s%s", faster ? "increased" : "reduced",
+        String fpsStr=isFlexTimeEnabled()?"":String.format(" (%s FPS)",engFmt.format(1e6f/getTimesliceUs()));
+        return String.format("DVS accumulation %s to %s%s%s", faster ? "increased" : "reduced",
                 isFlexTimeEnabled() ? Integer.toString(getPacketSizeEvents()) : engFmt.format(1e-6f*getTimesliceUs()),
-                isFlexTimeEnabled() ? " events" : "s"
+                isFlexTimeEnabled() ? " events" : "s",
+                fpsStr
         );
     }
 
     final public class SlowerAction extends MyAction {
 
         public SlowerAction() {
-            super("Play slower", "Slower16");
+            super("Decrease accumulation", "Slower16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
         }
 
