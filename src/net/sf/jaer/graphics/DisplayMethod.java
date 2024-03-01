@@ -192,7 +192,7 @@ public abstract class DisplayMethod {
             return;
         }
         long now = System.currentTimeMillis();
-        final int WRAP_LEN = 20;
+        final int WRAP_LEN = 24;
         if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis * (1 + (statusChangeString.length() / WRAP_LEN))) {
             statusChangeString = null;
             return;
@@ -226,14 +226,15 @@ public abstract class DisplayMethod {
         DrawGL.setTextRenderer(renderer);
         try {
             gl.glPushMatrix();
-            gl.glScalef(scale, scale, scale);
+            gl.glScalef(scale, scale, scale); // everything is scaled (maybe) down by this, e.g. 0.5 for DVS128
             Rectangle2D r = renderer.getBounds(ss[maxlenidx]); // get bounds of max width string
-            float h1 = (float) (r.getHeight()); // height of this line
-            float ht = (float) h1 * nlines/scale; // total height of multiline string
-            float w = (float) (r.getWidth()/scale); // width of widest line
-            final float linespace = (float) (h1 * 1.2f); // line spacing as factor of line height
-            float ypos = (float) (chip.getSizeY() / 2 + ht / 2 - linespace / 2)/scale;
+            float h1 = (float) (r.getHeight()*scale); // height of this line
+            final float linespace = (float) (h1 * 1.5f); // line spacing as factor of line height
+            float ht = (float) h1 * nlines; // total height of multiline string
+            float w = (float) (r.getWidth()*scale); // width of widest line
+            float ypos = (float) (chip.getSizeY() / 2 / scale) + (ht / 2);
             float xpos = (float) (chip.getSizeX() / 2 )/scale; // xpos is center because alignment is 0.5 below
+//            log.info(String.format("ypos=%.1f",ypos));
             float y = ypos;
             for (String sss : ss) {
                 DrawGL.drawStringDropShadow(gl, fontsize, xpos, y, .5f, Color.white, sss); // use alignment 0.5f to center, font size determined by chip pixels
