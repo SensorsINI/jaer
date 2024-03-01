@@ -440,6 +440,7 @@
                       <ComponentRef name="buttonGroup1"/>
                     </Property>
                     <Property name="text" type="java.lang.String" value="Fixed time slice"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Accumulate events for a fixed duration in time"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="fixedTimeSliceButtonActionPerformed"/>
@@ -451,6 +452,7 @@
                       <ComponentRef name="buttonGroup1"/>
                     </Property>
                     <Property name="text" type="java.lang.String" value="Fixed number of events"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Accumulate frames that have a fixed number of events"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="fixedPacketSizeButtonActionPerformed"/>
@@ -462,6 +464,7 @@
                       <ComponentRef name="buttonGroup1"/>
                     </Property>
                     <Property name="text" type="java.lang.String" value="Real time playback"/>
+                    <Property name="toolTipText" type="java.lang.String" value="Continually modifies the time slice or event number so that the playback is close to real time, given current rendering rate"/>
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="realtimeButtonActionPerformed"/>
@@ -472,6 +475,7 @@
                     <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
                       <Connection code="new OctaveSpinnerNumberModel(20000, 1, 3000000, 100)" type="code"/>
                     </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="The time slice duration in us"/>
                   </Properties>
                   <Events>
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="timesliceSpinnerStateChanged"/>
@@ -487,6 +491,7 @@
                     <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
                       <Connection code="new OctaveSpinnerNumberModel(256, 1, 1000000, 128)" type="code"/>
                     </Property>
+                    <Property name="toolTipText" type="java.lang.String" value="The event slice number of events"/>
                   </Properties>
                   <Events>
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="packetSizeSpinnerStateChanged"/>
