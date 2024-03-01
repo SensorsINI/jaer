@@ -1162,12 +1162,12 @@ public class PanTiltFrame extends javax.swing.JFrame {
 
     private void sldPanPosStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sldPanPosStateChanged
         DecimalFormat format = new DecimalFormat("#.##");
-        txtPanPos.setText(format.format(new Double(this.scalePanToDevice(sldPanPos.getValue()/1000.0))));
+        txtPanPos.setText(format.format(Double.valueOf(this.scalePanToDevice(sldPanPos.getValue()/1000.0))));
     }//GEN-LAST:event_sldPanPosStateChanged
 
     private void sldTiltPosStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_sldTiltPosStateChanged
 DecimalFormat format = new DecimalFormat("#.##");
-        txtTiltPos.setText(format.format(new Double(this.scaleTiltToDevice(sldTiltPos.getValue()/1000.0))));
+        txtTiltPos.setText(format.format(Double.valueOf(this.scaleTiltToDevice(sldTiltPos.getValue()/1000.0))));
     }//GEN-LAST:event_sldTiltPosStateChanged
 
     private void btnSetPanPosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSetPanPosActionPerformed

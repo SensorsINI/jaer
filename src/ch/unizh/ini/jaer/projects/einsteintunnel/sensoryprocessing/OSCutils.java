@@ -551,7 +551,7 @@ public class OSCutils {
 	 * @return a Character
 	 */
 	private Object readChar() {
-		return new Character((char) bytes[streamPosition++]);
+		return (char) bytes[streamPosition++];
 	}
 
 	/**
@@ -578,7 +578,7 @@ public class OSCutils {
 //				| (floatBytes[2] << 8)
 //				| (floatBytes[3]);
 		BigInteger floatBits = new BigInteger(floatBytes);
-		return new Float(Float.intBitsToFloat(floatBits.intValue()));
+		return Float.intBitsToFloat(floatBits.intValue());
 	}
 
 	/**
@@ -609,7 +609,7 @@ public class OSCutils {
 		intBytes[2] = bytes[streamPosition++];
 		intBytes[3] = bytes[streamPosition++];
 		BigInteger intBits = new BigInteger(intBytes);
-		return new Integer(intBits.intValue());
+		return intBits.intValue();
 	}
 
 	/**

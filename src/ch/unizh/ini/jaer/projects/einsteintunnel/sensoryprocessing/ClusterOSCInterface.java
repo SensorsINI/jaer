@@ -60,35 +60,35 @@ public class ClusterOSCInterface {
     public void sendActivity(short[] xHistogram){
         Object args[] = new Object[xHistogram.length];
         for(int i = 0; i<xHistogram.length; i++){
-            args[i] = new Float(xHistogram[i]);
+            args[i] = Float.valueOf(xHistogram[i]);
         }
         utils.sendMessage("/jAER/histogram", args);
     }
 
     public void sendCluster(Cluster c){
 
-        Object[] clusterNumber = { new Integer(c.hashCode())};
+        Object[] clusterNumber = { c.hashCode()};
         OSCMessage msg1 = utils.new OSCMessage("/jAER/nr", clusterNumber);
 
-        Object[] clusterPosX = { new Float(c.getLocation().x)};
+        Object[] clusterPosX = { c.getLocation().x};
         OSCMessage msg2 = utils.new OSCMessage("/jAER/pos/x", clusterPosX);
 
-        Object[] clusterPosY = { new Float(c.getLocation().y)};
+        Object[] clusterPosY = { c.getLocation().y};
         OSCMessage msg3 = utils.new OSCMessage("/jAER/pos/y", clusterPosY);
 
-        Object[] clusterVelX = { new Float(c.getVelocityPPS().x)};
+        Object[] clusterVelX = { c.getVelocityPPS().x};
         OSCMessage msg4 = utils.new OSCMessage("/jAER/vel/x", clusterVelX);
 
-        Object[] clusterVelY = { new Float(c.getVelocityPPS().y)};
+        Object[] clusterVelY = { c.getVelocityPPS().y};
         OSCMessage msg5 = utils.new OSCMessage("/jAER/vel/y", clusterVelY);
 
-        Object[] clusterMass = { new Float(c.mass)};
+        Object[] clusterMass = { c.mass};
         OSCMessage msg6 = utils.new OSCMessage("/jAER/mass", clusterMass);
 
-		Object[] superPosX = { new Float(c.getSuperPos().x)};
+		Object[] superPosX = { c.getSuperPos().x};
         OSCMessage msg7 = utils.new OSCMessage("/jAER/superPos/x", superPosX);
 
-        Object[] superPosY = { new Float(c.getSuperPos().y)};
+        Object[] superPosY = { c.getSuperPos().y};
         OSCMessage msg8 = utils.new OSCMessage("/jAER/superPos/y", superPosY);
 
         // create a timeStamped bundle of the messages
@@ -104,21 +104,21 @@ public class ClusterOSCInterface {
     }
 
 	public void sendFlow(int flow){
-		Object[] args = { new Integer(flow)};
+		Object[] args = { flow};
 		utils.sendMessage("/jAER/flow", args);
 	}
 
     public void sendXPosition(float position){
-        Object[] args = {new Float(position)};
+        Object[] args = {position};
         utils.sendMessage("/jAER/position/x", args);
     }
     public void sendYPosition(float position){
-        Object[] args = {new Float(position)};
+        Object[] args = {position};
         utils.sendMessage("/jAER/position/y", args);
     }
 
     public void sendSpeed(float speed){
-        Object[] args = {new Float(speed)};
+        Object[] args = {speed};
         utils.sendMessage("/jAER/speed", args);
     }
 

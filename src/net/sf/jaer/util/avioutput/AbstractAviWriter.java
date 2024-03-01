@@ -243,20 +243,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "<html>Could not mkdir folder " + selectedFile);
                     return;
                 }
-            } else if (selectedFile.exists()) {
-                try {
-                    AccessController.checkPermission(new FilePermission(selectedFile.toString(), "read,write"));
-                } catch (AccessControlException ex) {
-                    JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "<html>Cannot write to folder " + selectedFile + ": <p> " + ex);
-                    return;
-                }
-            } else if (!selectedFile.exists()) {
-                if (!selectedFile.mkdir()) {
-                    JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "<html>Could not mkdir folder " + selectedFile);
-                    return;
-                }
-                log.info("created folder " + selectedFile);
-            }
+            } 
             if (!selectedFile.canWrite()) {
                 JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "Cannot write to folder " + selectedFile);
                 return;
