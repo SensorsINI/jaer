@@ -18,13 +18,14 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.util.filter.LowpassFilter2D;
 import net.sf.jaer.util.histogram.SimpleHistogram;
@@ -107,7 +108,7 @@ public class DavisRenderer extends AEChipRenderer {
     protected FloatBuffer annotateMap;
     // double buffered histogram so we can accumulate new histogram while old one is still being rendered and returned
     // to caller
-    private final int histStep = 4; // histogram bin step in ADC counts of 1024 levels
+    private final int histStep = 4; // histogram bin colorContrastAdditiveStep in ADC counts of 1024 levels
     private final SimpleHistogram adcSampleValueHistogram1 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
     private final SimpleHistogram adcSampleValueHistogram2 = new SimpleHistogram(0, histStep, (DavisChip.MAX_ADC + 1) / histStep, 0);
     /**
@@ -127,6 +128,10 @@ public class DavisRenderer extends AEChipRenderer {
      * Downsampling of DVS to speed up rendering at high frame rate
      */
     private int dvsDownsamplingValue = 0, dvsDownsamplingCount = 0;
+
+    private int framesRenderedSinceApsFrame = 0; // to deactivate frames after some time with none
+    private static final int NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 360;
+    private boolean renderedApsFrame = false;
 
     public DavisRenderer(final AEChip chip) {
         super(chip);
@@ -340,7 +345,7 @@ public class DavisRenderer extends AEChipRenderer {
         if (pkt instanceof ApsDvsEventPacket) {
             renderApsDvsEvents(pkt);
         } else {
-            renderDvsEvents(pkt);
+            renderPureDvsEvents(pkt);
         }
     }
 
@@ -348,8 +353,9 @@ public class DavisRenderer extends AEChipRenderer {
         if (getChip() instanceof DavisBaseCamera) {
             computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
         }
-
-        if (grayBuffer==null || resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
+        renderedApsFrame = false;
+        checkPixmapAllocation();
+        if (grayBuffer == null || resetAccumulationFlag || (!isAccumulateEnabled() && !isFadingEnabled())) {
             resetAccumulationFlag = false;
             resetMaps();
 
@@ -358,18 +364,18 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
 
-        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
-            checkPixmapAllocation();
-            float fadeby = 1 - 1f / (colorScale + 1);
+        colorContrastAdditiveValue = computeColorContrastAdditiveStep();
+
+        if (isFadingEnabled() && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
+            float fadeby = computeFadingFactor();
             float[] f = dvsEventsMap.array();
             for (int i = 0; i < f.length; i++) {
-                f[i] *= fadeby;
+                f[i] = fadeToGray(f[i], fadeby, grayValue);
             }
         }
         final ApsDvsEventPacket packetAPS = (ApsDvsEventPacket) pkt;
         packet = packetAPS;
 
-        checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
         setSpecialCount(0);
 
@@ -409,16 +415,32 @@ public class DavisRenderer extends AEChipRenderer {
 
                     updateEventMaps(e);
                 }
-            } else if (!backwards && isAPSPixel && displayFrames) { // TODO need to handle single step updates
+            } else if (!backwards && isAPSPixel && displayFrames) { // TODO need to handle single colorContrastAdditiveStep updates
                 // here
                 updateFrameBuffer(e);
             }
         }
+        if (renderedApsFrame) {
+            framesRenderedSinceApsFrame = 0;
+        } else if(isDisplayFrames()){
+            framesRenderedSinceApsFrame++;
+        }
+        if (framesRenderedSinceApsFrame > NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES) {
+            if (isDisplayFrames()) {
+                log.warning(String.format("No APS frames for last %,d>%,d NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES rendered frames, disabling frames",
+                        framesRenderedSinceApsFrame, NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES));
+                setDisplayFrames(false);
+                framesRenderedSinceApsFrame = 0;
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Disabled APS frame rendering because there appear to be no frames");
+                });
 
+            }
+        }
     }
 
-    protected void renderDvsEvents(final EventPacket pkt) {
-        if (resetAccumulationFlag || !accumulateEnabled && !(colorMode == ColorMode.FadingActivity)) {
+    protected void renderPureDvsEvents(final EventPacket pkt) {
+        if (resetAccumulationFlag || (!isAccumulateEnabled() && !isFadingEnabled())) {
             resetMaps();
             resetAccumulationFlag = false;
 
@@ -426,14 +448,16 @@ public class DavisRenderer extends AEChipRenderer {
                 resetAnnotationFrame(0.0f);
             }
         }
-        if (colorMode == ColorMode.FadingActivity && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
+        if (isFadingEnabled() && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
             checkPixmapAllocation();
-            float fadeby = 1 - 1f / (colorScale + 1);
+            float fadeby = computeFadingFactor();
             float[] f = dvsEventsMap.array();
             for (int i = 0; i < f.length; i++) {
-                f[i] *= fadeby;
+                f[i] = fadeToGray(f[i], fadeby, grayValue);
             }
         }
+        colorContrastAdditiveValue = computeColorContrastAdditiveStep();
+
         packet = pkt;
 
         checkPixmapAllocation();
@@ -466,6 +490,7 @@ public class DavisRenderer extends AEChipRenderer {
                 updateEventMaps(e);
             }
         }
+        framesRenderedSinceApsFrame++;
     }
 
     private final Random random = new Random();
@@ -476,6 +501,7 @@ public class DavisRenderer extends AEChipRenderer {
 
         if (e.isStartOfFrame()) {
             startFrame(e.timestamp); // clear4sframe buffer contents, must be called first for each frame or contents will be erased
+            renderedApsFrame = true;
         } else if (e.isResetRead()) {
             final int index = getIndex(e);
             if ((index < 0) || (index >= buf.length)) {
@@ -564,8 +590,7 @@ public class DavisRenderer extends AEChipRenderer {
      */
     protected void updateEventMaps(final PolarityEvent e) {
         dvsDownsamplingCount = 0;
-        float[] map;
-        map = dvsEventsMap.array();
+        float[] map = dvsEventsMap.array();
 
         final int index = getIndex(e);
         if ((index < 0) || (index >= map.length)) {
@@ -589,18 +614,18 @@ public class DavisRenderer extends AEChipRenderer {
                 map[index + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
             }
 
-            final float alpha = map[index + 3] + (1.0f / colorScale);
+            final float alpha = map[index + 3] + (1.0f / (isFadingEnabled() ? 1 : colorScale));
             map[index + 3] += normalizeEvent(alpha);
         } else {
             switch (colorMode) {
-                case FadingActivity: {
-                    //fade later on
-                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale 
-                    map[index] = 1; // colorContrastAdditiveValue;
-                    map[index + 1] = 1; //colorContrastAdditiveValue;
-                    map[index + 2] = 1; // colorContrastAdditiveValue; // gray level
-                }
-                break;
+//                case FadingActivity: {
+//                    //fade later on
+//                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale 
+//                    map[index] = 1; // colorContrastAdditiveValue;
+//                    map[index + 1] = 1; //colorContrastAdditiveValue;
+//                    map[index + 2] = 1; // colorContrastAdditiveValue; // gray level
+//                }
+//                break;
                 case ColorTime: {
                     final int ts0 = packet.getFirstTimestamp();
                     final float dt = packet.getDurationUs();
@@ -619,7 +644,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case HotCode: {
-                    final float alpha = map[index + 3] + (1.0f / colorScale);
+                    final float alpha = map[index + 3] + (1.0f / (isFadingEnabled() ? 1 : colorScale));
                     map[index + 3] = normalizeEvent(alpha);
                     int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * alpha));
 
@@ -646,7 +671,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case GrayLevel: /*|| colorMode == ColorMode.Contrast*/ {
-                    if (map[index + 3] == 0) { // nothing there yet
+                    if (map[index + 3] == 0) { // nothing there yet leave transparent to show APS frame value
                         map[index + 3] = 1f;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
                         map[index] = 0.5f;
                         map[index + 1] = 0.5f;
@@ -730,7 +755,6 @@ public class DavisRenderer extends AEChipRenderer {
             sizeY = chip.getSizeY();
             textureHeight = DavisRenderer.ceilingPow2(sizeY);
         }
-     
 
         final int n = 4 * textureWidth * textureHeight;
         if ((pixmap == null) || (pixmap.capacity() < n) || (pixBuffer.capacity() < n) || (dvsEventsMap.capacity() < n) /*|| (offMap.capacity() < n)*/
@@ -1100,6 +1124,15 @@ public class DavisRenderer extends AEChipRenderer {
 
     public boolean isDisplayEvents() {
         return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayEvents();
+    }
+
+    public void setDisplayFrames(boolean yes) {
+        framesRenderedSinceApsFrame = 0;
+        ((DvsDisplayConfigInterface) chip.getBiasgen()).setDisplayFrames(yes);
+    }
+
+    public void setDisplayEvents(boolean yes) {
+        ((DvsDisplayConfigInterface) chip.getBiasgen()).setDisplayEvents(yes);
     }
 
     /**

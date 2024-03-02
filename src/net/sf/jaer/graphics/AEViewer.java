@@ -446,7 +446,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             JMenu m = menuBar.getMenu(i);
             m.getPopupMenu().setLightWeightPopupEnabled(false);
         }
-        filtersSubMenu.getPopupMenu().setLightWeightPopupEnabled(false); // otherwise can't see on canvas
         graphicsSubMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
 
@@ -473,6 +472,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
 
             @Override
+            @SuppressWarnings("LoggerStringConcat")
             public void actionPerformed(ActionEvent evt) {
                 if ((evt.getModifiers() & ActionEvent.SHIFT_MASK) != 0) {
                     if (Desktop.isDesktopSupported()) {
@@ -546,7 +546,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             throw new NullPointerException("getRenderer() returns null for this AEChip " + chip);
         }
         acccumulateImageEnabledCheckBoxMenuItem.setSelected(getRenderer().isAccumulateEnabled());
-        autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
+//        autoscaleContrastEnabledCheckBoxMenuItem.setSelected(getRenderer().isAutoscaleEnabled());
         pauseRenderingCheckBoxMenuItem.setSelected(false);// not isPaused because aePlayer doesn't exist yet
         viewRenderBlankFramesCheckBoxMenuItem.setSelected(isRenderBlankFramesEnabled());
         logFilteredEventsCheckBoxMenuItem.setSelected(logFilteredEventsEnabled);
@@ -792,22 +792,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 chipClasses.add(c);
                 JRadioButtonMenuItem b = new JRadioButtonMenuItem(deviceClassName);
                 deviceMenu.insert(b, deviceMenu.getItemCount() - 2);
-                b.addActionListener(new ActionListener() {
-
-                    @Override
-                    public void actionPerformed(ActionEvent evt) {
+                b.addActionListener((ActionEvent evt) -> {
+                    try {
+                        String name1 = evt.getActionCommand();
+                        Class cl = FastClassFinder.forName(name1);
                         try {
-                            String name = evt.getActionCommand();
-                            Class cl = FastClassFinder.forName(name);
-                            try {
-                                setCursor(new Cursor(Cursor.WAIT_CURSOR));
-                                setAeChipClass(cl);
-                            } finally {
-                                setCursor(Cursor.getDefaultCursor());
-                            }
-                        } catch (Exception e) {
-                            log.log(Level.SEVERE, e.toString(), e);
+                            setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                            setAeChipClass(cl);
+                        } finally {
+                            setCursor(Cursor.getDefaultCursor());
                         }
+                    }catch (Exception e) {
+                        log.log(Level.SEVERE, e.toString(), e);
                     }
                 });
                 deviceGroup.add(b);
@@ -966,17 +962,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             aeChipClass = deviceClass;
             setPreferredAEChipClass(aeChipClass);
             // chip constructed above, should have renderer already constructed as well
-            if ((chip.getRenderer() != null) && (chip.getRenderer() instanceof Calibratible)) {
-                // begin added by Philipp
-                //            if (aeChipClass.renderer instanceof AdaptiveIntensityRenderer){ // that does not work since the renderer is obviously not defined before a chip gets instanciated
-                //            if (aeChipClass.getName().equals("no.uio.ifi.jaer.chip.foveated.UioFoveatedImager") ||
-                //                    aeChipClass.getName().equals("no.uio.ifi.jaer.chip.staticbiovis.UioStaticBioVis")) {
-                calibrationStartStop.setVisible(true);
-                calibrationStartStop.setEnabled(true);
-            } else {
-                calibrationStartStop.setVisible(false);
-                calibrationStartStop.setEnabled(false);
-            }
+//            if ((chip.getRenderer() != null) && (chip.getRenderer() instanceof Calibratible)) {
+//                // begin added by Philipp
+//                //            if (aeChipClass.renderer instanceof AdaptiveIntensityRenderer){ // that does not work since the renderer is obviously not defined before a chip gets instanciated
+//                //            if (aeChipClass.getName().equals("no.uio.ifi.jaer.chip.foveated.UioFoveatedImager") ||
+//                //                    aeChipClass.getName().equals("no.uio.ifi.jaer.chip.staticbiovis.UioStaticBioVis")) {
+//                calibrationStartStop.setVisible(true);
+//                calibrationStartStop.setEnabled(true);
+//            } else {
+//                calibrationStartStop.setVisible(false);
+//                calibrationStartStop.setEnabled(false);
+//            }
             // end added by Philipp
             if (aemon != null) { // force reopen
                 aemon.close();
@@ -1022,7 +1018,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
             }
-            //            getSupport().firePropertyChange("chip", oldChip, getChip());
+            
+            // add renderer actions
+            
+            // TODO ugly, put the color mode menu at correct spot in View menu
+            int i=0,colorModeSelectionMenuLocation=0;
+            for(Component c:viewMenu.getMenuComponents()){
+                if(c==cyclePreviousColorRenderingMethodMenuItem){
+                    colorModeSelectionMenuLocation=i+1;
+                    break;
+                }
+                i++;
+            }
+            chip.getRenderer().getColorModeMenu().setMnemonic('m');
+            viewMenu.add(chip.getRenderer().getColorModeMenu(),colorModeSelectionMenuLocation);
+            
+            fadingMI.setAction(chip.getRenderer().toggleFadingAction);
+            acccumulateImageEnabledCheckBoxMenuItem.setAction(chip.getRenderer().toggleAccumulationAction);
+            increaseContrastMenuItem.setAction(chip.getRenderer().increaseContrastAction);
+            decreaseContrastMenuItem.setAction(chip.getRenderer().decreaseContrastAction);
+            
             getSupport().firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
             chip.onRegistration();
@@ -1059,9 +1074,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             //        chipCanvas.getCanvas().invalidate();
             // find display menu reference and fill it with display menu for this canvas
+            int dispMethodsMenuIdx=0;
+            for(Component c:viewMenu.getMenuComponents()){
+                if(c==displayMethodMenu){
+                    break;
+                }
+            }
             viewMenu.remove(displayMethodMenu);
-            viewMenu.add(chipCanvas.getDisplayMethodMenu());
             displayMethodMenu = chipCanvas.getDisplayMethodMenu();
+            viewMenu.add(chipCanvas.getDisplayMethodMenu(),dispMethodsMenuIdx+1);
             viewMenu.invalidate();
         }
 
@@ -1075,6 +1096,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * setInputFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the
      * oldFile and currentFile passed to listeners.
+     * @param f
      */
     protected void setInputFile(File f) {
         currentFile = new File(f.getPath());
@@ -1580,7 +1602,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         break;
                     }
 
-                    singleStepDone(); // if doing single step, mark it done
+                    singleStepDone(); // if doing single colorContrastAdditiveStep, mark it done
 
                 } // if (!isPaused() || isSingleStep())
 
@@ -1706,6 +1728,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * true if there is no data and the code should continue from here and
          * skip future processing
          */
+        @SuppressWarnings("LoggerStringConcat")
         private AEPacketRaw grabInput() {
 
             switch (getPlayMode()) {
@@ -2626,23 +2649,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         exitSeperator = new javax.swing.JSeparator();
         exitMenuItem = new javax.swing.JMenuItem();
         viewMenu = new javax.swing.JMenu();
-        viewBiasesMenuItem = new javax.swing.JMenuItem();
-        filtersSubMenu = new javax.swing.JMenu();
         viewFiltersMenuItem = new javax.swing.JMenuItem();
-        enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator1 = new javax.swing.JSeparator();
-        graphicsSubMenu = new javax.swing.JMenu();
-        viewActiveRenderingEnabledMenuItem = new javax.swing.JCheckBoxMenuItem();
-        viewRenderBlankFramesCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        jSeparator2 = new javax.swing.JSeparator();
-        skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        jSeparator3 = new javax.swing.JSeparator();
-        cycleColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
-        cycleColorRenderingMethodMenuItem1 = new javax.swing.JMenuItem();
         increaseContrastMenuItem = new javax.swing.JMenuItem();
         decreaseContrastMenuItem = new javax.swing.JMenuItem();
-        autoscaleContrastEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        calibrationStartStop = new javax.swing.JMenuItem();
+        cycleNextColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
+        cyclePreviousColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JSeparator();
         cycleDisplayMethodButton = new javax.swing.JMenuItem();
         displayMethodMenu = new javax.swing.JMenu();
@@ -2652,39 +2664,48 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         flextimePlaybackEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         acccumulateImageEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         resetAccumulationMenuItem = new javax.swing.JMenuItem();
+        fadingMI = new javax.swing.JCheckBoxMenuItem();
         viewIgnorePolarityCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator18 = new javax.swing.JPopupMenu.Separator();
-        increaseFrameRateMenuItem = new javax.swing.JMenuItem();
-        decreaseFrameRateMenuItem = new javax.swing.JMenuItem();
-        setFrameRateMenuItem = new javax.swing.JMenuItem();
-        pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        viewStepForwardsMI = new javax.swing.JMenuItem();
-        viewStepBackwardsMI = new javax.swing.JMenuItem();
-        jSeparator24 = new javax.swing.JPopupMenu.Separator();
-        zeroTimestampsMenuItem = new javax.swing.JMenuItem();
-        jSeparator11 = new javax.swing.JSeparator();
-        rewindPlaybackMenuItem = new javax.swing.JMenuItem();
-        togglePlaybackDirectionMenuItem = new javax.swing.JMenuItem();
-        jSeparator23 = new javax.swing.JPopupMenu.Separator();
-        jogForwardMI = new javax.swing.JMenuItem();
-        jogBackwardsMI = new javax.swing.JMenuItem();
-        setJogNCount = new javax.swing.JMenuItem();
-        jSeparator19 = new javax.swing.JPopupMenu.Separator();
-        setMarkInMI = new javax.swing.JMenuItem();
-        setMarkOutMI = new javax.swing.JMenuItem();
-        clearMarksMI = new javax.swing.JMenuItem();
-        jSeparator10 = new javax.swing.JSeparator();
         zoomInMenuItem = new javax.swing.JMenuItem();
         zoomOutMenuItem = new javax.swing.JMenuItem();
         zoomCenterMenuItem = new javax.swing.JMenuItem();
         unzoomMenuItem = new javax.swing.JMenuItem();
+        graphicsSubMenu = new javax.swing.JMenu();
+        viewActiveRenderingEnabledMenuItem = new javax.swing.JCheckBoxMenuItem();
+        viewRenderBlankFramesCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        jSeparator2 = new javax.swing.JSeparator();
+        setFrameRateMenuItem = new javax.swing.JMenuItem();
+        skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        setJogNCount = new javax.swing.JMenuItem();
         setBorderSpaceMenuItem = new javax.swing.JMenuItem();
+        jSeparator27 = new javax.swing.JPopupMenu.Separator();
+        enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        playbackMenu = new javax.swing.JMenu();
+        pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        viewStepForwardsMI = new javax.swing.JMenuItem();
+        viewStepBackwardsMI = new javax.swing.JMenuItem();
+        jSeparator11 = new javax.swing.JPopupMenu.Separator();
+        increaseFrameRateMenuItem = new javax.swing.JMenuItem();
+        decreaseFrameRateMenuItem = new javax.swing.JMenuItem();
+        jSeparator23 = new javax.swing.JPopupMenu.Separator();
+        rewindPlaybackMenuItem = new javax.swing.JMenuItem();
+        togglePlaybackDirectionMenuItem = new javax.swing.JMenuItem();
+        jSeparator10 = new javax.swing.JPopupMenu.Separator();
+        jogForwardMI = new javax.swing.JMenuItem();
+        jogBackwardsMI = new javax.swing.JMenuItem();
+        jSeparator19 = new javax.swing.JPopupMenu.Separator();
+        setMarkInMI = new javax.swing.JMenuItem();
+        setMarkOutMI = new javax.swing.JMenuItem();
+        clearMarksMI = new javax.swing.JMenuItem();
         deviceMenu = new javax.swing.JMenu();
         deviceMenuSpparator = new javax.swing.JSeparator();
         customizeDevicesMenuItem = new javax.swing.JMenuItem();
         interfaceMenu = new javax.swing.JMenu();
         refreshInterfaceMenuItem = new javax.swing.JMenuItem();
         controlMenu = new javax.swing.JMenu();
+        viewBiasesMenuItem = new javax.swing.JMenuItem();
+        jSeparator26 = new javax.swing.JPopupMenu.Separator();
         increaseBufferSizeMenuItem = new javax.swing.JMenuItem();
         decreaseBufferSizeMenuItem = new javax.swing.JMenuItem();
         increaseNumBuffersMenuItem = new javax.swing.JMenuItem();
@@ -2693,6 +2714,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         changeAEBufferSizeMenuItem = new javax.swing.JMenuItem();
         jSeparator5 = new javax.swing.JSeparator();
         printUSBStatisticsCBMI = new javax.swing.JCheckBoxMenuItem();
+        jSeparator24 = new javax.swing.JPopupMenu.Separator();
+        zeroTimestampsMenuItem = new javax.swing.JMenuItem();
         monSeqMenu = new javax.swing.JMenu();
         sequenceMenuItem = new javax.swing.JMenuItem();
         enableMissedEventsCheckBox = new javax.swing.JCheckBoxMenuItem();
@@ -3049,140 +3072,47 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         viewMenu.setMnemonic('v');
         viewMenu.setText("View");
-
-        viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        viewBiasesMenuItem.setMnemonic('b');
-        viewBiasesMenuItem.setText("Biases/HW Configuration");
-        viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
-        viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewBiasesMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(viewBiasesMenuItem);
-
-        filtersSubMenu.setMnemonic('f');
-        filtersSubMenu.setText("Event Filtering");
+        viewMenu.setToolTipText("Controls view of events, contrast, accumulation, etc.");
 
         viewFiltersMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         viewFiltersMenuItem.setMnemonic('f');
-        viewFiltersMenuItem.setText("Filters");
+        viewFiltersMenuItem.setText("Show filters");
         viewFiltersMenuItem.setToolTipText("Shows filter controls");
         viewFiltersMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 viewFiltersMenuItemActionPerformed(evt);
             }
         });
-        filtersSubMenu.add(viewFiltersMenuItem);
-
-        enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
-        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
-        enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        filtersSubMenu.add(enableFiltersOnStartupCheckBoxMenuItem);
-
-        viewMenu.add(filtersSubMenu);
+        viewMenu.add(viewFiltersMenuItem);
         viewMenu.add(jSeparator1);
-
-        graphicsSubMenu.setMnemonic('g');
-        graphicsSubMenu.setText("Graphics options");
-
-        viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
-        viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame if enabled.\nIf disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint.");
-        viewActiveRenderingEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewActiveRenderingEnabledMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(viewActiveRenderingEnabledMenuItem);
-
-        viewRenderBlankFramesCheckBoxMenuItem.setText("Render blank frames");
-        viewRenderBlankFramesCheckBoxMenuItem.setToolTipText("If enabled, frames without events are rendered");
-        viewRenderBlankFramesCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewRenderBlankFramesCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(viewRenderBlankFramesCheckBoxMenuItem);
-        graphicsSubMenu.add(jSeparator2);
-
-        skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets to speed up frame rate");
-        skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
-            public void stateChanged(javax.swing.event.ChangeEvent evt) {
-                skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
-            }
-        });
-        skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(skipPacketsRenderingCheckBoxMenuItem);
-
-        viewMenu.add(graphicsSubMenu);
-        viewMenu.add(jSeparator3);
-
-        cycleColorRenderingMethodMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
-        cycleColorRenderingMethodMenuItem.setText("Next color rendering mode");
-        cycleColorRenderingMethodMenuItem.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
-        cycleColorRenderingMethodMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cycleColorRenderingMethodMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(cycleColorRenderingMethodMenuItem);
-
-        cycleColorRenderingMethodMenuItem1.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        cycleColorRenderingMethodMenuItem1.setText("Previous color rendering mode");
-        cycleColorRenderingMethodMenuItem1.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
-        cycleColorRenderingMethodMenuItem1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cycleColorRenderingMethodMenuItem1ActionPerformed(evt);
-            }
-        });
-        viewMenu.add(cycleColorRenderingMethodMenuItem1);
 
         increaseContrastMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0));
         increaseContrastMenuItem.setText("Increase contrast");
-        increaseContrastMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increaseContrastMenuItemActionPerformed(evt);
-            }
-        });
         viewMenu.add(increaseContrastMenuItem);
 
         decreaseContrastMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0));
         decreaseContrastMenuItem.setText("Decrease contrast");
-        decreaseContrastMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                decreaseContrastMenuItemActionPerformed(evt);
-            }
-        });
         viewMenu.add(decreaseContrastMenuItem);
 
-        autoscaleContrastEnabledCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_A, 0));
-        autoscaleContrastEnabledCheckBoxMenuItem.setText("Autoscale contrast enabled");
-        autoscaleContrastEnabledCheckBoxMenuItem.setToolTipText("Tries to autoscale histogram values");
-        autoscaleContrastEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        cycleNextColorRenderingMethodMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, 0));
+        cycleNextColorRenderingMethodMenuItem.setText("Next color rendering mode");
+        cycleNextColorRenderingMethodMenuItem.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
+        cycleNextColorRenderingMethodMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(evt);
+                cycleNextColorRenderingMethodMenuItemActionPerformed(evt);
             }
         });
-        viewMenu.add(autoscaleContrastEnabledCheckBoxMenuItem);
+        viewMenu.add(cycleNextColorRenderingMethodMenuItem);
 
-        calibrationStartStop.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_K, 0));
-        calibrationStartStop.setText("Start Calibration");
-        calibrationStartStop.setToolTipText("Hold uniform surface in front of lens and start calibration. Wait a few seconds and stop calibration.");
-        calibrationStartStop.addActionListener(new java.awt.event.ActionListener() {
+        cyclePreviousColorRenderingMethodMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        cyclePreviousColorRenderingMethodMenuItem.setText("Previous color rendering mode");
+        cyclePreviousColorRenderingMethodMenuItem.setToolTipText("Changes rendering mode (gray, contrast, RG, color-time)");
+        cyclePreviousColorRenderingMethodMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                calibrationStartStopActionPerformed(evt);
+                cyclePreviousColorRenderingMethodMenuItemActionPerformed(evt);
             }
         });
-        viewMenu.add(calibrationStartStop);
+        viewMenu.add(cyclePreviousColorRenderingMethodMenuItem);
         viewMenu.add(jSeparator4);
 
         cycleDisplayMethodButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_3, 0));
@@ -3233,13 +3163,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(flextimePlaybackEnabledCheckBoxMenuItem);
 
         acccumulateImageEnabledCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, 0));
-        acccumulateImageEnabledCheckBoxMenuItem.setText("Accumulate image");
+        acccumulateImageEnabledCheckBoxMenuItem.setText("Accumulate events without resetting");
         acccumulateImageEnabledCheckBoxMenuItem.setToolTipText("Rendered data accumulates over 2d hisograms");
-        acccumulateImageEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                acccumulateImageEnabledCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
         viewMenu.add(acccumulateImageEnabledCheckBoxMenuItem);
 
         resetAccumulationMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
@@ -3252,6 +3177,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(resetAccumulationMenuItem);
 
+        fadingMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        fadingMI.setText("Fading");
+        fadingMI.setToolTipText("Controls if previous DVS events fade away according to color scale or frames are just last slice");
+        viewMenu.add(fadingMI);
+
         viewIgnorePolarityCheckBoxMenuItem.setText("Ignore cell type");
         viewIgnorePolarityCheckBoxMenuItem.setToolTipText("Throws away cells type for rendering");
         viewIgnorePolarityCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3261,157 +3191,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(viewIgnorePolarityCheckBoxMenuItem);
         viewMenu.add(jSeparator18);
-
-        increaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_RIGHT, 0));
-        increaseFrameRateMenuItem.setText("Increase rendering frame rate");
-        increaseFrameRateMenuItem.setToolTipText("Increases frames/second target for rendering");
-        increaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increaseFrameRateMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(increaseFrameRateMenuItem);
-
-        decreaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_LEFT, 0));
-        decreaseFrameRateMenuItem.setText("Decrease rendering frame rate");
-        decreaseFrameRateMenuItem.setToolTipText("Decreases frames/second target for rendering");
-        decreaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                decreaseFrameRateMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(decreaseFrameRateMenuItem);
-
-        setFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        setFrameRateMenuItem.setText("Set rendering rate...");
-        setFrameRateMenuItem.setToolTipText("Opens dialog to set the rendering (animation) target rate in frames/sec (fps)");
-        setFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setFrameRateMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(setFrameRateMenuItem);
-
-        pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
-        pauseRenderingCheckBoxMenuItem.setText("Paused");
-        pauseRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                pauseRenderingCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(pauseRenderingCheckBoxMenuItem);
-
-        viewStepForwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
-        viewStepForwardsMI.setText("Step forwards");
-        viewStepForwardsMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewStepForwardsMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(viewStepForwardsMI);
-
-        viewStepBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, 0));
-        viewStepBackwardsMI.setText("Step backwards");
-        viewStepBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                viewStepBackwardsMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(viewStepBackwardsMI);
-        viewMenu.add(jSeparator24);
-
-        zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
-        zeroTimestampsMenuItem.setText("Zero timestamps");
-        zeroTimestampsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                zeroTimestampsMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(zeroTimestampsMenuItem);
-        viewMenu.add(jSeparator11);
-
-        rewindPlaybackMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, 0));
-        rewindPlaybackMenuItem.setText("Rewind");
-        rewindPlaybackMenuItem.setEnabled(false);
-        rewindPlaybackMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                rewindPlaybackMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(rewindPlaybackMenuItem);
-
-        togglePlaybackDirectionMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, 0));
-        togglePlaybackDirectionMenuItem.setText("Toggle playback direction");
-        togglePlaybackDirectionMenuItem.setEnabled(false);
-        togglePlaybackDirectionMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                togglePlaybackDirectionMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(togglePlaybackDirectionMenuItem);
-        viewMenu.add(jSeparator23);
-
-        jogForwardMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        jogForwardMI.setText("Jog Forward N packets");
-        jogForwardMI.setToolTipText("Or use SHIFT+mouse wheel");
-        jogForwardMI.setActionCommand("Jog forward N packets");
-        jogForwardMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jogForwardMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(jogForwardMI);
-
-        jogBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
-        jogBackwardsMI.setText("Jog back N packets");
-        jogBackwardsMI.setToolTipText("Or use SHIFT+mouse wheel");
-        jogBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jogBackwardsMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(jogBackwardsMI);
-
-        setJogNCount.setText("Set jog N...");
-        setJogNCount.setToolTipText("Sets the size of jog for keyboard jog");
-        setJogNCount.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setJogNCountActionPerformed(evt);
-            }
-        });
-        viewMenu.add(setJogNCount);
-        viewMenu.add(jSeparator19);
-
-        setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_OPEN_BRACKET, 0));
-        setMarkInMI.setText("Set IN marker");
-        setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
-        setMarkInMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setMarkInMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(setMarkInMI);
-
-        setMarkOutMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_CLOSE_BRACKET, 0));
-        setMarkOutMI.setText("Set OUT marker");
-        setMarkOutMI.setToolTipText("If playing back recording, it plays to this marker");
-        setMarkOutMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setMarkOutMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(setMarkOutMI);
-
-        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
-        clearMarksMI.setText("Clear IN and OUT markers");
-        clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
-        clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                clearMarksMIActionPerformed(evt);
-            }
-        });
-        viewMenu.add(clearMarksMI);
-        viewMenu.add(jSeparator10);
 
         zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         zoomInMenuItem.setText("Zoom in");
@@ -3453,6 +3232,61 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         viewMenu.add(unzoomMenuItem);
 
+        graphicsSubMenu.setMnemonic('g');
+        graphicsSubMenu.setText("View/Filtering options");
+
+        viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
+        viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame if enabled.\nIf disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint.");
+        viewActiveRenderingEnabledMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewActiveRenderingEnabledMenuItemActionPerformed(evt);
+            }
+        });
+        graphicsSubMenu.add(viewActiveRenderingEnabledMenuItem);
+
+        viewRenderBlankFramesCheckBoxMenuItem.setText("Render blank frames");
+        viewRenderBlankFramesCheckBoxMenuItem.setToolTipText("If enabled, frames without events are rendered");
+        viewRenderBlankFramesCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewRenderBlankFramesCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        graphicsSubMenu.add(viewRenderBlankFramesCheckBoxMenuItem);
+        graphicsSubMenu.add(jSeparator2);
+
+        setFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        setFrameRateMenuItem.setText("Set rendering rate...");
+        setFrameRateMenuItem.setToolTipText("Opens dialog to set the rendering (animation) target rate in frames/sec (fps)");
+        setFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setFrameRateMenuItemActionPerformed(evt);
+            }
+        });
+        graphicsSubMenu.add(setFrameRateMenuItem);
+
+        skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets to speed up frame rate");
+        skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
+            }
+        });
+        skipPacketsRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                skipPacketsRenderingCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        graphicsSubMenu.add(skipPacketsRenderingCheckBoxMenuItem);
+
+        setJogNCount.setText("Set jog N...");
+        setJogNCount.setToolTipText("Sets the size of jog for keyboard jog");
+        setJogNCount.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setJogNCountActionPerformed(evt);
+            }
+        });
+        graphicsSubMenu.add(setJogNCount);
+
         setBorderSpaceMenuItem.setText("Set border space...");
         setBorderSpaceMenuItem.setToolTipText("Set the border space around the chip canvas in pixels");
         setBorderSpaceMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -3460,9 +3294,148 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 setBorderSpaceMenuItemActionPerformed(evt);
             }
         });
-        viewMenu.add(setBorderSpaceMenuItem);
+        graphicsSubMenu.add(setBorderSpaceMenuItem);
+        graphicsSubMenu.add(jSeparator27);
+
+        enableFiltersOnStartupCheckBoxMenuItem.setText("Enable filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.setToolTipText("Enables creation of event processing filters on startup");
+        enableFiltersOnStartupCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                enableFiltersOnStartupCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        graphicsSubMenu.add(enableFiltersOnStartupCheckBoxMenuItem);
+
+        viewMenu.add(graphicsSubMenu);
 
         menuBar.add(viewMenu);
+
+        playbackMenu.setText("Playback");
+        playbackMenu.setToolTipText("Controls playback time slices, frame rate, direction, etc");
+
+        pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
+        pauseRenderingCheckBoxMenuItem.setText("Pause");
+        pauseRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pauseRenderingCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(pauseRenderingCheckBoxMenuItem);
+
+        viewStepForwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
+        viewStepForwardsMI.setText("Step forwards");
+        viewStepForwardsMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewStepForwardsMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(viewStepForwardsMI);
+
+        viewStepBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, 0));
+        viewStepBackwardsMI.setText("Step backwards");
+        viewStepBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewStepBackwardsMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(viewStepBackwardsMI);
+        playbackMenu.add(jSeparator11);
+
+        increaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_RIGHT, 0));
+        increaseFrameRateMenuItem.setText("Increase rendering frame rate");
+        increaseFrameRateMenuItem.setToolTipText("Increases frames/second target for rendering");
+        increaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                increaseFrameRateMenuItemActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(increaseFrameRateMenuItem);
+
+        decreaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_LEFT, 0));
+        decreaseFrameRateMenuItem.setText("Decrease rendering frame rate");
+        decreaseFrameRateMenuItem.setToolTipText("Decreases frames/second target for rendering");
+        decreaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                decreaseFrameRateMenuItemActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(decreaseFrameRateMenuItem);
+        playbackMenu.add(jSeparator23);
+
+        rewindPlaybackMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, 0));
+        rewindPlaybackMenuItem.setText("Rewind");
+        rewindPlaybackMenuItem.setEnabled(false);
+        rewindPlaybackMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rewindPlaybackMenuItemActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(rewindPlaybackMenuItem);
+
+        togglePlaybackDirectionMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, 0));
+        togglePlaybackDirectionMenuItem.setText("Toggle playback direction");
+        togglePlaybackDirectionMenuItem.setEnabled(false);
+        togglePlaybackDirectionMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                togglePlaybackDirectionMenuItemActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(togglePlaybackDirectionMenuItem);
+        playbackMenu.add(jSeparator10);
+
+        jogForwardMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jogForwardMI.setText("Jog Forward N packets");
+        jogForwardMI.setToolTipText("Or use SHIFT+mouse wheel");
+        jogForwardMI.setActionCommand("Jog forward N packets");
+        jogForwardMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jogForwardMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(jogForwardMI);
+
+        jogBackwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        jogBackwardsMI.setText("Jog back N packets");
+        jogBackwardsMI.setToolTipText("Or use SHIFT+mouse wheel");
+        jogBackwardsMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jogBackwardsMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(jogBackwardsMI);
+        playbackMenu.add(jSeparator19);
+
+        setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_OPEN_BRACKET, 0));
+        setMarkInMI.setText("Set IN marker");
+        setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
+        setMarkInMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setMarkInMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(setMarkInMI);
+
+        setMarkOutMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_CLOSE_BRACKET, 0));
+        setMarkOutMI.setText("Set OUT marker");
+        setMarkOutMI.setToolTipText("If playing back recording, it plays to this marker");
+        setMarkOutMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setMarkOutMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(setMarkOutMI);
+
+        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
+        clearMarksMI.setText("Clear IN and OUT markers");
+        clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
+        clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearMarksMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(clearMarksMI);
+
+        menuBar.add(playbackMenu);
 
         deviceMenu.setMnemonic('a');
         deviceMenu.setText("AEChip");
@@ -3512,6 +3485,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.setMnemonic('c');
         controlMenu.setText("USB");
         controlMenu.setToolTipText("control CypresFX2 driver parameters");
+
+        viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        viewBiasesMenuItem.setMnemonic('b');
+        viewBiasesMenuItem.setText("Biases/HW Configuration");
+        viewBiasesMenuItem.setToolTipText("Shows chip or board configuration controls");
+        viewBiasesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewBiasesMenuItemActionPerformed(evt);
+            }
+        });
+        controlMenu.add(viewBiasesMenuItem);
+        controlMenu.add(jSeparator26);
 
         increaseBufferSizeMenuItem.setText("Increase host side USB buffer size");
         increaseBufferSizeMenuItem.setToolTipText("Increases the host USB fifo size. This buffer is used to buffer the data delivered by kernel-level USB host contoller. Decrease if you want lower latency servicing under high data rates from the device.");
@@ -3571,6 +3556,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         controlMenu.add(printUSBStatisticsCBMI);
+        controlMenu.add(jSeparator24);
+
+        zeroTimestampsMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, 0));
+        zeroTimestampsMenuItem.setText("Zero timestamps");
+        zeroTimestampsMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                zeroTimestampsMenuItemActionPerformed(evt);
+            }
+        });
+        controlMenu.add(zeroTimestampsMenuItem);
 
         menuBar.add(controlMenu);
 
@@ -3935,7 +3930,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     volatile boolean doSingleStepEnabled = false;
 
     synchronized public void doSingleStep() {
-        setPaused(true); // better to set paused before single step starts
+        setPaused(true); // better to set paused before single colorContrastAdditiveStep starts
         setDoSingleStepEnabled(true);
         interruptViewloop();
     }
@@ -3952,7 +3947,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     public void singleStepDone() {
         if (isSingleStep()) {
-//            log.info("finished single step");
+//            log.info("finished single colorContrastAdditiveStep");
             setDoSingleStepEnabled(false);
         }
     }
@@ -4068,8 +4063,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             ActionEvent ae = new ActionEvent(evt.getSource(), evt.getID(), evt.paramString());
 
             if (!(control || alt || shift)) {
-                getRenderer().setColorScale(getRenderer().getColorScale() + rotation);
-                showActionText(String.format("DVS full scale count=%d events", getRenderer().getColorScale()));
+                if(rotation>0){
+                    getRenderer().decreaseContrastAction.actionPerformed(ae);
+                }else if(rotation<0){
+                    getRenderer().increaseContrastAction.actionPerformed(ae);
+                }
                 if (isPaused()) {
                     interruptViewloop();
                 }
@@ -4158,18 +4156,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getAePlayer().fasterAction.actionPerformed(evt);
 	}//GEN-LAST:event_increasePlaybackSpeedMenuItemActionPerformed
 
-	private void autoscaleContrastEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
-            getRenderer().setAutoscaleEnabled(!getRenderer().isAutoscaleEnabled());
-            showActionText("DVS autoscale contras" + getRenderer().isAutoscaleEnabled());
-	}//GEN-LAST:event_autoscaleContrastEnabledCheckBoxMenuItemActionPerformed
-
-	private void acccumulateImageEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
-            boolean old = getRenderer().isAccumulateEnabled();
-            getRenderer().setAccumulateEnabled(!getRenderer().isAccumulateEnabled());
-            getSupport().firePropertyChange(AEViewer.EVENT_ACCUMULATE_ENABLED, old, getRenderer().isAccumulateEnabled());
-            showActionText("Accumulate events=" + getRenderer().isAccumulateEnabled());
-	}//GEN-LAST:event_acccumulateImageEnabledCheckBoxMenuItemActionPerformed
-
 	private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
             if ((jaerViewer != null) && jaerViewer.isSyncEnabled()) {
                 log.info("zeroing timestamps on all viewers because isSyncEnabled=true");
@@ -4191,24 +4177,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             showActionText(String.format("Increase rendering frame rate to %d Hz", getDesiredFrameRate()));
 	}//GEN-LAST:event_increaseFrameRateMenuItemActionPerformed
 
-	private void decreaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseContrastMenuItemActionPerformed
-            getRenderer().setColorScale(getRenderer().getColorScale() + 1);
-            showActionText(String.format("Decrease DVS contrast to %d events full scale", getRenderer().getColorScale()));
-	}//GEN-LAST:event_decreaseContrastMenuItemActionPerformed
-
-	private void increaseContrastMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseContrastMenuItemActionPerformed
-            getRenderer().setColorScale(getRenderer().getColorScale() - 1);
-            showActionText(String.format("Increase DVS contrast to %d events full scale", getRenderer().getColorScale()));
-	}//GEN-LAST:event_increaseContrastMenuItemActionPerformed
-
-	private void cycleColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItemActionPerformed
+	private void cycleNextColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleNextColorRenderingMethodMenuItemActionPerformed
             if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) && (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)) {
                 getRenderer().cycleColorMode(true);
                 showActionText(String.format("DVS color mode %s", getRenderer().getColorMode().toString()));
             } else {
                 log.warning("It does not make sense to cycle color mode for this display method, ignoring");
             }
-	}//GEN-LAST:event_cycleColorRenderingMethodMenuItemActionPerformed
+	}//GEN-LAST:event_cycleNextColorRenderingMethodMenuItemActionPerformed
 
     /**
      * Fills in the device control menu (the USB menu) so that menu items are
@@ -5272,18 +5248,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 	}//GEN-LAST:event_enableMissedEventsCheckBoxActionPerformed
 
-	private void calibrationStartStopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_calibrationStartStopActionPerformed
-            if (getRenderer() instanceof Calibratible) {
-                ((Calibratible) getRenderer()).setCalibrationInProgress(!((Calibratible) getRenderer()).isCalibrationInProgress());
-                if (((Calibratible) getRenderer()).isCalibrationInProgress()) {
-                    calibrationStartStop.setText("Stop Calibration");
-                } else {
-                    calibrationStartStop.setText("Start Calibration");
-                }
-
-            }
-	}//GEN-LAST:event_calibrationStartStopActionPerformed
-
 	private void refreshInterfaceMenuItemComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemComponentShown
             // TODO not used apparently
 	}//GEN-LAST:event_refreshInterfaceMenuItemComponentShown
@@ -5845,14 +5809,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         new JaerUpdaterInstall4j().maybeDoPeriodicUpdateCheck(AEViewer.this);
     }//GEN-LAST:event_formWindowOpened
 
-    private void cycleColorRenderingMethodMenuItem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleColorRenderingMethodMenuItem1ActionPerformed
+    private void cyclePreviousColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cyclePreviousColorRenderingMethodMenuItemActionPerformed
         if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) && (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)) {
             getRenderer().cycleColorMode(false);
             showActionText(String.format("DVS color mode %s", getRenderer().getColorMode().toString()));
         } else {
             log.warning("It does not make sense to cycle color mode for this display method, ignoring");
         }
-    }//GEN-LAST:event_cycleColorRenderingMethodMenuItem1ActionPerformed
+    }//GEN-LAST:event_cyclePreviousColorRenderingMethodMenuItemActionPerformed
 
     private ArrayList<LoggingLevelButton> loggingLevelRadioButtons = null;
     private final Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO, Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
@@ -6347,11 +6311,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JMenuItem aboutMenuItem;
     private javax.swing.JCheckBoxMenuItem acccumulateImageEnabledCheckBoxMenuItem;
-    private javax.swing.JCheckBoxMenuItem autoscaleContrastEnabledCheckBoxMenuItem;
     private javax.swing.JToggleButton biasesToggleButton;
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel buttonsPanel;
-    private javax.swing.JMenuItem calibrationStartStop;
     private javax.swing.JMenuItem changeAEBufferSizeMenuItem;
     private javax.swing.JMenuItem checkForUpdatesMenuItem;
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
@@ -6359,9 +6321,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem closeMenuItem;
     private javax.swing.JMenu controlMenu;
     private javax.swing.JMenuItem customizeDevicesMenuItem;
-    private javax.swing.JMenuItem cycleColorRenderingMethodMenuItem;
-    private javax.swing.JMenuItem cycleColorRenderingMethodMenuItem1;
     private javax.swing.JMenuItem cycleDisplayMethodButton;
+    private javax.swing.JMenuItem cycleNextColorRenderingMethodMenuItem;
+    private javax.swing.JMenuItem cyclePreviousColorRenderingMethodMenuItem;
     private javax.swing.JMenuItem decreaseBufferSizeMenuItem;
     private javax.swing.JMenuItem decreaseContrastMenuItem;
     private javax.swing.JMenuItem decreaseFrameRateMenuItem;
@@ -6374,8 +6336,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem enableMissedEventsCheckBox;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JSeparator exitSeperator;
+    private javax.swing.JCheckBoxMenuItem fadingMI;
     private javax.swing.JMenu fileMenu;
-    private javax.swing.JMenu filtersSubMenu;
     private javax.swing.JToggleButton filtersToggleButton;
     private javax.swing.JCheckBoxMenuItem flextimePlaybackEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem gitUpdateMenuItem;
@@ -6409,7 +6371,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator23;
     private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JPopupMenu.Separator jSeparator25;
-    private javax.swing.JSeparator jSeparator3;
+    private javax.swing.JSeparator jSeparator26;
+    private javax.swing.JSeparator jSeparator27;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
     private javax.swing.JPopupMenu.Separator jSeparator6;
@@ -6441,6 +6404,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem openSocketOutputStreamMenuItem;
     private javax.swing.JMenuItem openUnicastInputMenuItem;
     private javax.swing.JCheckBoxMenuItem pauseRenderingCheckBoxMenuItem;
+    private javax.swing.JMenu playbackMenu;
     private javax.swing.JPanel playerControlPanel;
     private javax.swing.JCheckBoxMenuItem printUSBStatisticsCBMI;
     private javax.swing.JMenuItem refreshInterfaceMenuItem;

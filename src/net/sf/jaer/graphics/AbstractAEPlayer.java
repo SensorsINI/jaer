@@ -762,7 +762,7 @@ public abstract class AbstractAEPlayer {
                 s=String.format("Flextime: Flextime: Constant-duration DVS frames with %ss/frame",engFmt.format(getTimesliceUs()*1e-6f));
             }
             showAction(s);
-            putValue(Action.SELECTED_KEY, true);
+            putValue(Action.SELECTED_KEY, isFlexTimeEnabled());
         }
     }
 
