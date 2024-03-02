@@ -6,12 +6,21 @@
 package net.sf.jaer.graphics;
 
 import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.HashMap;
 import java.util.logging.Logger;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import static javax.swing.Action.ACCELERATOR_KEY;
+import javax.swing.ButtonGroup;
 
 import javax.swing.JButton;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -19,6 +28,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.util.SpikeSound;
+import javax.swing.JRadioButtonMenuItem;
 
 /**
  * Superclass for classes that render DVS and other sensor/chip AEs to a memory
@@ -39,33 +49,34 @@ import net.sf.jaer.util.SpikeSound;
  */
 public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeListener {
 
+    public final ToggleFadingAction toggleFadingAction = new ToggleFadingAction();
+    public final ToggleAccumulation toggleAccumulationAction = new ToggleAccumulation();
+    public final IncreaseContrastAction increaseContrastAction = new IncreaseContrastAction();
+    public final DecreaseContrastAction decreaseContrastAction = new DecreaseContrastAction();
+
     private boolean addedPropertyChangeListener = false;
     public boolean externalRenderer = false;
 
-    /**
-     * @return the specialCount
-     */
-    public int getSpecialCount() {
-        return specialCount;
-    }
+    private ButtonGroup colorModeButtonGroup = new ButtonGroup();
+    private JMenu colorModeMenu = null;
+    private HashMap<ColorMode, JMenuItem> colorModeButtonMap = new HashMap();
+
+    private boolean fadingEnabled = prefs.getBoolean("fadingEnabled", false);
+    private int fadingFrames = prefs.getInt("fadingFrames", 4);
 
     /**
-     * @param specialCount the specialCount to set
+     * value to add or subtract to pixel color for ON/OFF events, set by
+     * setColorScale()
      */
-    public void setSpecialCount(int specialCount) {
-        this.specialCount = specialCount;
-    }
-
-    public void incrementSpecialCount(int specialCountInc) {
-        this.specialCount += specialCountInc;
-    }
+    protected float colorContrastAdditiveValue;
 
     public enum ColorMode {
 
         GrayLevel("Each event causes linear change in brightness", .5f),
         //        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
         RedGreen("ON events are green; OFF events are red", 0),
-        FadingActivity("Events are accumulated (without polarity) and are faded away over frames according to color scale", 0),
+        //        FadingActivity("Events are accumulated (without polarity) and are faded away according to color scale", 0),
+        //        SlidingWindow("Events are accumulated in overlapping windows", 0),
         ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events", 0f),
         GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events", 1f),
         HotCode("Events counts are colored blue to red, blue=0, red=full scale", 0),
@@ -141,7 +152,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      */
     protected float[][] typeColorRGBComponents;
     protected SpikeSound spikeSound;
-    protected float step; // this is last step of RGB value used in rendering
+    protected float colorContrastAdditiveStep; // this is last step of RGB value used in rendering
     protected boolean stereoEnabled = false;
     protected int subsampleThresholdEventCount = prefs.getInt("ChipRenderer.subsampleThresholdEventCount", 50000);
     /**
@@ -168,6 +179,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             timeColors[i][1] = comp[1];
             // System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
         }
+        setColorScale(prefs.getInt("colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
+
+        colorModeMenu = contructColorModeMenu();
         getSupport().addPropertyChangeListener(this);
     }
 
@@ -190,6 +204,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (packet == null) {
             return;
         }
+        colorContrastAdditiveStep = computeColorContrastAdditiveStep();
         this.packet = packet;
         int numEvents = packet.getSize();
         int skipBy = 1;
@@ -211,7 +226,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                     resetFrame(0);
                     resetAccumulationFlag = false;
                 }
-                step = 1f / (colorScale);
                 for (Object obj : packet) {
                     BasicEvent e = (BasicEvent) obj;
                     if (e.isSpecial()) {
@@ -228,19 +242,13 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                     float[] c = typeColorRGBComponents[type];
                     if ((obj instanceof OrientationEventInterface) && (((OrientationEventInterface) obj).isHasOrientation() == false)) {
                         // if event is orientation event but orientation was not set, just draw as gray level
-                        f[ind] += step; // if(f[0]>1f) f[0]=1f;
-                        f[ind + 1] += step; // if(f[1]>1f) f[1]=1f;
-                        f[ind + 2] += step; // if(f[2]>1f) f[2]=1f;
-                    } else if (colorScale > 1) {
-                        f[ind] += c[0] * step; // if(f[0]>1f) f[0]=1f;
-                        f[ind + 1] += c[1] * step; // if(f[1]>1f) f[1]=1f;
-                        f[ind + 2] += c[2] * step; // if(f[2]>1f) f[2]=1f;
+                        f[ind] += colorContrastAdditiveStep; // if(f[0]>1f) f[0]=1f;
+                        f[ind + 1] += colorContrastAdditiveStep; // if(f[1]>1f) f[1]=1f;
+                        f[ind + 2] += colorContrastAdditiveStep; // if(f[2]>1f) f[2]=1f;
                     } else {
-                        // if color scale is 1, then last value is used as the pixel value, which quantizes the color to
-                        // full scale.
-                        f[ind] = c[0]; // if(f[0]>1f) f[0]=1f;
-                        f[ind + 1] = c[1]; // if(f[1]>1f) f[1]=1f;
-                        f[ind + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
+                        f[ind] += c[0] * colorContrastAdditiveStep; // if(f[0]>1f) f[0]=1f;
+                        f[ind + 1] += c[1] * colorContrastAdditiveStep; // if(f[1]>1f) f[1]=1f;
+                        f[ind + 2] += c[2] * colorContrastAdditiveStep; // if(f[2]>1f) f[2]=1f;
                     }
                 }
             } else {
@@ -250,8 +258,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             resetFrame(getGrayValue()); // also sets grayValue
                             resetAccumulationFlag = false;
                         }
-                        step = 2f / (colorScale + 1);
-                        // colorScale=1,2,3; step = 1, 1/2, 1/3, 1/4, ;
+                        colorContrastAdditiveStep = 2f / (colorScale + 1);
+                        // colorScale=1,2,3; colorContrastAdditiveStep = 1, 1/2, 1/3, 1/4, ;
                         // later type-grayValue gives -.5 or .5 for spike value, when
                         // multipled gives steps of 1/2, 1/3, 1/4 to end up with 0 or 1 when colorScale=1 and you have
                         // one event
@@ -268,10 +276,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             int ind = getPixMapIndex(e.x, e.y);
                             a = f[ind];
                             if (!ignorePolarity) {
-                                a += step * (type - grayValue); // type-.5 = -.5 or .5; step*type= -.5, .5, (cs=1) or
+                                a += colorContrastAdditiveStep * (type - grayValue); // type-.5 = -.5 or .5; colorContrastAdditiveStep*type= -.5, .5, (cs=1) or
                                 // -.25, .25 (cs=2) etc.
                             } else {
-                                a += step * (1 - grayValue); // type-.5 = -.5 or .5; step*type= -.5, .5, (cs=1) or -.25,
+                                a += colorContrastAdditiveStep * (1 - grayValue); // type-.5 = -.5 or .5; colorContrastAdditiveStep*type= -.5, .5, (cs=1) or -.25,
                                 // .25 (cs=2) etc.
                             }
                             f[ind] = a;
@@ -279,32 +287,33 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             f[ind + 2] = a;
                         }
                         break;
-                    case FadingActivity:
-                        checkPixmapAllocation();
-                        float fadeby = 1 - 1f / (colorScale + 1);
-                        for (Object obj : packet) {
-                            BasicEvent e = (BasicEvent) obj;
-                            int type = e.getType();
-                            if (e.isSpecial()) {
-                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
-                                continue;
-                            }
-                            if ((e.x == xsel) && (e.y == ysel)) {
-                                playSpike(type);
-                            }
-                            int ind = getPixMapIndex(e.x, e.y);
-                            a = f[ind];
-                            if (!ignorePolarity) {
-                                a = a * fadeby + (type - grayValue) / 2;
-                            } else {
-                                a = a * fadeby * (1 - fadeby) * (1 - grayValue);
-
-                            }
-                            f[ind] = a;
-                            f[ind + 1] = a;
-                            f[ind + 2] = a;
-                        }
-                        break;
+//                    case FadingActivity:
+//                        checkPixmapAllocation();
+//
+//                        float fadeby = 1 - 1f / (colorScale + 1);
+//                        for (Object obj : packet) {
+//                            BasicEvent e = (BasicEvent) obj;
+//                            int type = e.getType();
+//                            if (e.isSpecial()) {
+//                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
+//                                continue;
+//                            }
+//                            if ((e.x == xsel) && (e.y == ysel)) {
+//                                playSpike(type);
+//                            }
+//                            int ind = getPixMapIndex(e.x, e.y);
+//                            a = f[ind];
+//                            if (!ignorePolarity) {
+//                                a = a * fadeby + (type - grayValue) / 2;
+//                            } else {
+//                                a = a * fadeby * (1 - fadeby) * (1 - grayValue);
+//
+//                            }
+//                            f[ind] = a;
+//                            f[ind + 1] = a;
+//                            f[ind + 2] = a;
+//                        }
+//                        break;
 //                    case Contrast:
 //                        if (!accumulateEnabled && !externalRenderer) {
 //                            resetFrame(.5f);
@@ -340,7 +349,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             resetFrame(getGrayValue());
                             resetAccumulationFlag = false;
                         }
-                        step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
+                        colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
                         for (Object obj : packet) {
                             BasicEvent e = (BasicEvent) obj;
 
@@ -354,7 +363,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                 playSpike(type);
                             }
                             int ind = getPixMapIndex(e.x, e.y);
-                            f[ind + type] += step;
+                            f[ind + type] += colorContrastAdditiveStep;
                         }
                         break;
                     case ColorTime:
@@ -367,7 +376,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                         }
                         int ts0 = packet.getFirstTimestamp();
                         float dt = packet.getDurationUs();
-                        step = 1f / (colorScale); // cs=1, step=1, cs=2, step=.5
+                        colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
                         for (Object obj : packet) {
                             BasicEvent e = (BasicEvent) obj;
 
@@ -388,7 +397,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             }
                             if (colorScale > 1) {
                                 for (int c = 0; c < 3; c++) {
-                                    f[index + c] += timeColors[ind][c] * step;
+                                    f[index + c] += timeColors[ind][c] * colorContrastAdditiveStep;
                                 }
                             } else {
                                 f[index] = timeColors[ind][0];
@@ -403,7 +412,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                         setColorMode(ColorMode.GrayLevel);
                 }
             }
-            autoScaleFrame(f);
+            fadeFrame();
         } catch (ArrayIndexOutOfBoundsException e) {
             if ((chip.getFilterChain() != null)
                     && (chip.getFilterChain().getProcessingMode() != net.sf.jaer.eventprocessing.FilterChain.ProcessingMode.ACQUISITION)) { // only
@@ -441,138 +450,74 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @param fr the frame rgb data [y][x][rgb]
      * @param gray the gray level
      */
-    protected void autoScaleFrame(float[][][] fr, float gray) {
-        if (!autoscaleEnabled) {
-            return;
-        }
-        { // compute min and max values and divide to keep gray level constant
-            // float[] mx={Float.MIN_VALUE,Float.MIN_VALUE,Float.MIN_VALUE},
-            // mn={Float.MAX_VALUE,Float.MAX_VALUE,Float.MAX_VALUE};
-            float max = Float.NEGATIVE_INFINITY, min = Float.POSITIVE_INFINITY;
-            // max=max-.5f; // distance of max from gray
-            // min=.5f-min; // distance of min from gray
-            for (float[][] element : fr) {
-                for (float[] element2 : element) {
-                    for (int k = 0; k < 3; k++) {
-                        float f = element2[k] - gray;
-                        if (f > max) {
-                            max = f;
-                        } else if (f < min) {
-                            min = f;
-                        }
-                    }
-                }
-            }
-            // global normalizer here
-            // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude,
-            // max or min
-            // ALSO, max and min are distances from gray level in positive and negative directions
-            float m, b = gray; // slope/intercept of mapping function
-            if (max == min) {
-                return; // if max==min then no need to normalize or do anything, just paint gray
-            }
-            if (max > -min) { // map max to 1, gray to gray
-                m = (1 - gray) / (max);
-                b = gray - (gray * m);
-            } else { // map min to 0, gray to gray
-                m = gray / (-min);
-                b = gray - (gray * m);
-            } // float norm=(float)Math.max(Math.abs(max),Math.abs(min)); // norm is max distance from gray level
-            // System.out.println("norm="+norm);
-//            if (colorMode != ColorMode.Contrast) {
-//                autoScaleValue = Math.round(Math.max(max, -min) / step); // this is value shown to user, step was
-//                // computed during rendering to be (usually)
-//                // 1/colorScale
-//            } else {
-//                if (max > -min) {
-//                    autoScaleValue = 1; // this is value shown to user, step was computed during rendering to be
-//                    // (usually) 1/colorScale
-//                } else {
-//                    autoScaleValue = -1; // this is value shown to user, step was computed during rendering to be
-//                    // (usually) 1/colorScale
+//    protected void autoScaleFrame(float[][][] fr, float gray) {
+//        if (!autoscaleEnabled) {
+//            return;
+//        }
+//        { // compute min and max values and divide to keep gray level constant
+//            // float[] mx={Float.MIN_VALUE,Float.MIN_VALUE,Float.MIN_VALUE},
+//            // mn={Float.MAX_VALUE,Float.MAX_VALUE,Float.MAX_VALUE};
+//            float max = Float.NEGATIVE_INFINITY, min = Float.POSITIVE_INFINITY;
+//            // max=max-.5f; // distance of max from gray
+//            // min=.5f-min; // distance of min from gray
+//            for (float[][] element : fr) {
+//                for (float[] element2 : element) {
+//                    for (int k = 0; k < 3; k++) {
+//                        float f = element2[k] - gray;
+//                        if (f > max) {
+//                            max = f;
+//                        } else if (f < min) {
+//                            min = f;
+//                        }
+//                    }
 //                }
 //            }
-            // normalize all channels
-            for (int i = 0; i < fr.length; i++) {
-                for (int j = 0; j < fr[i].length; j++) {
-                    for (int k = 0; k < 3; k++) {
-                        float f = fr[i][j][k];
-                        float f2 = (m * f) + b;
-                        if (f2 < 0) {
-                            f2 = 0;
-                        } else if (f2 > 1) {
-                            f2 = 1; // shouldn't need this
-                        }
-                        fr[i][j][k] = f2;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * autoscales frame data so that max value is 1. If autoscale is disabled,
-     * then values are just clipped to 0-1 range. If autoscale is enabled, then
-     * gray is mapped back to gray and following occurs:
-     * <p>
-     * Global normalizer is tricky because we want to map max value to 1 OR min
-     * value to 0, whichever is greater magnitude, max or min. ALSO, max and min
-     * are distances from gray level in positive and negative directions. After
-     * global normalizer is computed, all values are divided by normalizer in
-     * order to keep gray level constant.
-     *
-     * @param fr the frame rgb data pixmap
-     */
-    protected void autoScaleFrame(float[] fr) {
-        if (!autoscaleEnabled) {
-            return;
-        } // compute min and max values and divide to keep gray level constant
-        // float[] mx={Float.MIN_VALUE,Float.MIN_VALUE,Float.MIN_VALUE},
-        // mn={Float.MAX_VALUE,Float.MAX_VALUE,Float.MAX_VALUE};
-        float max = Float.NEGATIVE_INFINITY, min = Float.POSITIVE_INFINITY;
-        // max=max-.5f; // distance of max from gray
-        // min=.5f-min; // distance of min from gray
-        for (float element : fr) {
-            float f = element - grayValue;
-            if (f > max) {
-                max = f;
-            } else if (f < min) {
-                min = f;
-            }
-        }
-        // global normalizer here
-        // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude, max
-        // or min
-        // ALSO, max and min are distances from gray level in positive and negative directions
-        float m, b = grayValue; // slope/intercept of mapping function
-        if (max == min) {
-            return; // if max==min then no need to normalize or do anything, just paint gray
-        }
-        if (max > -min) { // map max to 1, gray to gray
-            m = (1 - grayValue) / (max);
-            b = grayValue - (grayValue * m);
-        } else { // map min to 0, gray to gray
-            m = grayValue / (-min);
-            b = grayValue - (grayValue * m);
-        }
-//        if (colorMode != ColorMode.Contrast) {
-//            autoScaleValue = Math.round(Math.max(max, -min) / step); // this is value shown to user, step was computed
-//            // during rendering to be (usually) 1/colorScale
-//        } else {
-//            if (max > -min) {
-//                autoScaleValue = 1; // this is value shown to user, step was computed during rendering to be (usually)
-//                // 1/colorScale
-//            } else {
-//                autoScaleValue = -1; // this is value shown to user, step was computed during rendering to be (usually)
-//                // 1/colorScale
+//            // global normalizer here
+//            // this is tricky because we want to map max value to 1 OR min value to 0, whichever is greater magnitude,
+//            // max or min
+//            // ALSO, max and min are distances from gray level in positive and negative directions
+//            float m, b = gray; // slope/intercept of mapping function
+//            if (max == min) {
+//                return; // if max==min then no need to normalize or do anything, just paint gray
+//            }
+//            if (max > -min) { // map max to 1, gray to gray
+//                m = (1 - gray) / (max);
+//                b = gray - (gray * m);
+//            } else { // map min to 0, gray to gray
+//                m = gray / (-min);
+//                b = gray - (gray * m);
+//            } // float norm=(float)Math.max(Math.abs(max),Math.abs(min)); // norm is max distance from gray level
+//            // System.out.println("norm="+norm);
+////            if (colorMode != ColorMode.Contrast) {
+////                autoScaleValue = Math.round(Math.max(max, -min) / colorContrastAdditiveStep); // this is value shown to user, colorContrastAdditiveStep was
+////                // computed during rendering to be (usually)
+////                // 1/colorScale
+////            } else {
+////                if (max > -min) {
+////                    autoScaleValue = 1; // this is value shown to user, colorContrastAdditiveStep was computed during rendering to be
+////                    // (usually) 1/colorScale
+////                } else {
+////                    autoScaleValue = -1; // this is value shown to user, colorContrastAdditiveStep was computed during rendering to be
+////                    // (usually) 1/colorScale
+////                }
+////            }
+//            // normalize all channels
+//            for (int i = 0; i < fr.length; i++) {
+//                for (int j = 0; j < fr[i].length; j++) {
+//                    for (int k = 0; k < 3; k++) {
+//                        float f = fr[i][j][k];
+//                        float f2 = (m * f) + b;
+//                        if (f2 < 0) {
+//                            f2 = 0;
+//                        } else if (f2 > 1) {
+//                            f2 = 1; // shouldn't need this
+//                        }
+//                        fr[i][j][k] = f2;
+//                    }
+//                }
 //            }
 //        }
-        // normalize all channels
-        for (int i = 0; i < fr.length; i++) {
-            fr[i] = (m * fr[i]) + b;
-        }
-    }
-
+//    }
     private HashMap<Integer, float[][]> typeColorsMap = new HashMap<Integer, float[][]>();
 
     /**
@@ -675,8 +620,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 m = 0;
             }
         } else {
-            if (--m <0) {
-                m = colorModes.length-1;
+            if (--m < 0) {
+                m = colorModes.length - 1;
             }
         }
         setColorMode(colorModes[m]);
@@ -765,17 +710,93 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         this.ignorePolarityEnabled = ignorePolarityEnabled;
     }
 
+    private class ColorModeMenuItem extends JRadioButtonMenuItem {
+
+        ColorMode mode;
+
+        ColorModeMenuItem(ColorMode mode) {
+            this.mode = mode;
+            colorModeButtonGroup.add(this);
+            setName(mode.name());
+            setText(mode.name());
+            setToolTipText(mode.description);
+            addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    log.info(String.format("Setting color mode to %s", mode.toString()));
+                    setColorMode(mode);
+                }
+            });
+        }
+    }
+
     /**
-     * @param colorMode the rendering method, e.g. gray, red/green opponency,
-     * time encoded.
+     * Construct the popup menu to select color mode from all possible modes.
+     *
+     * @return the menu
+     */
+    private JMenu contructColorModeMenu() {
+        JMenu menu = new JMenu("Color rendering mode");
+        for (ColorMode m : colorModes) {
+            JMenuItem item = new ColorModeMenuItem(m);
+            menu.add(item);
+            colorModeButtonMap.put(m, item);
+            if (colorMode == m) {
+                item.setSelected(true);
+            }
+        }
+        return menu;
+    }
+
+    /**
+     * Return the popup menu to select color mode
+     */
+    public JMenu getColorModeMenu() {
+        return colorModeMenu;
+    }
+
+    /**
+     * @param colorMode the rendering method, e.g. gray, red/green, time
+     * encoded.
      */
     public synchronized void setColorMode(ColorMode colorMode) {
         ColorMode old = this.colorMode;
         this.colorMode = colorMode;
+        colorModeButtonMap.get(colorMode).setSelected(true);
         prefs.put("ChipRenderer.colorMode", colorMode.name());
         log.info(this.getClass().getSimpleName() + ": colorMode=" + colorMode);
         getSupport().firePropertyChange(EVENT_COLOR_MODE_CHANGE, old, colorMode);
         setGrayValue(this.colorMode.backgroundGrayLevel);
+    }
+
+    /**
+     * set the color scale. 1 means a single event is full scale, 2 means a
+     * single event is half scale, etc. only applies to some rendering methods.
+     *
+     * @param colorScale the new color scale.
+     */
+    public void setColorScale(int colorScale) {
+        if (colorScale < 1) {
+            colorScale = 1;
+        }
+        if (colorScale > 32) {
+            colorScale = 32;
+        }
+        this.colorScale = colorScale;
+        // we set eventContrast so that colorScale events takes us from .5 to 1, i.e., .5*(eventContrast^cs)=1, so eventContrast=2^(1/cs)
+        eventContrast = (float) (Math.pow(2, 1.0 / colorScale)); // e.g. cs=1, eventContrast=2, cs=2, eventContrast=2^0.5, etc
+        prefs.putInt("colorScale", colorScale);
+    }
+
+    /**
+     * @return current color scale, full scale in events
+     */
+    public int getColorScale() {
+        if (!autoscaleEnabled) {
+            return colorScale;
+        } else {
+            return autoScaleValue;
+        }
     }
 
     public void setStereoEnabled(boolean stereoEnabled) {
@@ -827,6 +848,24 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     }
 
+    /**
+     * @return the specialCount
+     */
+    public int getSpecialCount() {
+        return specialCount;
+    }
+
+    /**
+     * @param specialCount the specialCount to set
+     */
+    public void setSpecialCount(int specialCount) {
+        this.specialCount = specialCount;
+    }
+
+    public void incrementSpecialCount(int specialCountInc) {
+        this.specialCount += specialCountInc;
+    }
+
     @Override
     public void propertyChange(PropertyChangeEvent pce) {
 //        log.info(pce.toString());
@@ -838,6 +877,272 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             resetFrame(getGrayValue());
         } else if (pce.getPropertyName() == EVENT_SET_BACKGROUND) {
             resetFrame(getGrayValue());
+        }
+    }
+
+    /**
+     * fades frame data
+     *
+     * @param fr the frame rgb data pixmap
+     */
+    protected void fadeFrame() {
+        if (!isFadingEnabled()) {
+            return;
+        }
+        float fadeBy = computeFadingFactor();
+
+        float[] fr = getPixmapArray();
+        for (int i = 0; i < fr.length; i++) {
+
+            fr[i] = fadeToGray(fr[i], fadeBy, grayValue); //fadeBy * fr[i]);
+        }
+    }
+
+    /**
+     * Set true to make the rendering accumulate and fade or false if should
+     * just render last slice from gray level
+     *
+     * @param fadingEnabled the fadingEnabled to set
+     */
+    public void setFadingEnabled(boolean fadingEnabled) {
+        log.info(String.format("Set fading=%s", fadingEnabled));
+        this.fadingEnabled = fadingEnabled;
+        prefs.putBoolean("fadingEnabled", fadingEnabled);
+    }
+
+    /**
+     * Returns true if the rendering should accumulate and fade or false if just
+     * last slice is rendered
+     *
+     * @return the fadingEnabled
+     */
+    public boolean isFadingEnabled() {
+        return fadingEnabled;
+    }
+
+    /**
+     * @return the fadingFrames
+     */
+    public int getFadingFrames() {
+        return fadingFrames;
+    }
+
+    /**
+     * @param fadingFrames the fadingFrames to set
+     */
+    public void setFadingFrames(int fadingFrames) {
+        if (fadingFrames < 1) {
+            fadingFrames = 1;
+        } else if (fadingFrames > 64) {
+            fadingFrames = 64;
+        }
+        this.fadingFrames = fadingFrames;
+        log.info(String.format("Set fading frames to %d which multiples past frame by %.2f", fadingFrames, computeFadingFactor()));
+        prefs.putInt("fadingFrames", fadingFrames);
+    }
+
+    /**
+     * Computes how much to fade the old rendering values
+     *
+     * @return 1 if fadingEnabled=false, otherwise how much to fade current
+     * values by, depending on fadingFrames. If fadingFrames=1, then previous
+     * frame is multiplied by 1-1/2=.5, if 2, then 1-1/3=.76, if 3, then
+     * 1-1/4=.75 etc.
+     */
+    protected float computeFadingFactor() {
+        if (!isFadingEnabled()) {
+            return 1;
+        }
+        if (chip.getAeViewer() == null || chip.getAeViewer().isPaused()) {
+            return 1;
+        }
+//        float renderingFps = chip.getAeViewer().getFrameRater().getAverageFPS();
+//        if (Float.isNaN(renderingFps)) {
+//            return 1;
+//        }
+        float fadeTo = 1 - 1f / (fadingFrames + 1); // TODO make it really depend on rendering rate
+        return fadeTo;
+    }
+
+    /**
+     * Computes how much to step R,G,and B values for methods that show linear
+     * contrast like gray and red/green
+     *
+     * @return the step size, computed from step = 1 - 1f / (getColorScale() +
+     * 1)
+     */
+    protected float computeColorContrastAdditiveStep() {
+        if (isFadingEnabled()) {
+            return 1;
+        }
+        if (chip.getAeViewer() == null) {
+            return 1;
+        }
+        if (chip.getAeViewer().isPaused()) {
+            return 1;
+        }
+        float step = 2f / (getColorScale() + 1); // TODO make it really depend on rendering rate
+        return step;
+    }
+
+    /**
+     * Fades existing RGB rendering value towards gray by the amount fadeBy (1
+     * to not fade, 0 to fade completely to gray)
+     *
+     * @param v current R,G, or B value
+     * @param fadeBy factor by which to fade, 1 to not fade, 0 to completely
+     * fade
+     * @param gray the gray level to fade towards
+     * @return the new pixel RGB value
+     */
+    protected final float fadeToGray(float v, float fadeBy, float gray) {
+        v = (v - gray) * fadeBy + gray;
+        return v;
+    }
+
+    abstract public class MyAction extends AbstractAction {
+
+        protected final String path = "/net/sf/jaer/graphics/icons/";
+
+        public MyAction() {
+            super();
+        }
+
+        public MyAction(String name) {
+            putValue(Action.NAME, name);
+            putValue("hideActionText", "true");
+            putValue(Action.SHORT_DESCRIPTION, name);
+        }
+
+        public MyAction(String name, String tooltip) {
+            putValue(Action.NAME, name);
+            putValue("hideActionText", "true");
+            putValue(Action.SHORT_DESCRIPTION, tooltip);
+        }
+
+        protected void showAction() {
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().showActionText((String) getValue(Action.SHORT_DESCRIPTION));
+            }
+        }
+
+        protected void showAction(String s) {
+            if (chip.getAeViewer() != null && s != null) {
+                chip.getAeViewer().showActionText(s);
+            }
+        }
+    }
+
+        final public class ToggleAccumulation extends MyAction {
+
+        public ToggleAccumulation() {
+            super("Accumulate", "<html>Toggles continuously accumulating events without resetting)");
+            putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, 0));
+            putValue(Action.SELECTED_KEY, isAccumulateEnabled());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            
+            setAccumulateEnabled(!isAccumulateEnabled());
+            putValue(Action.SELECTED_KEY, isAccumulateEnabled());
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (!isAccumulateEnabled()) {
+                showAction("Accumulation disabled");
+            } else {
+                showAction("Accumulation enabled");
+            }
+        }
+
+    }
+        
+    final public class ToggleFadingAction extends MyAction {
+
+        public ToggleFadingAction() {
+            super("Fade", "<html>Fade away display of past frames according to color scale."
+                    + "<p>To change the amount of fading,<br>  increase or decrease contrast with the UP and DOWN arrow keys.");
+            putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+            putValue(Action.SELECTED_KEY, isFadingEnabled());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (isFadingEnabled()) {
+                setFadingEnabled(false);
+            } else {
+                setFadingEnabled(true);
+            }
+            putValue(Action.SELECTED_KEY, isFadingEnabled());
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (!isFadingEnabled()) {
+                showAction("Fading disabled");
+            } else {
+                showAction(String.format("Fading over %d frames enabled", getColorScale()));
+            }
+        }
+
+    }
+
+    final public class IncreaseContrastAction extends MyAction {
+
+        public IncreaseContrastAction() {
+            super("Increase contrast", "<html>Increase constrast or decrease fading of display");
+            putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (isFadingEnabled()) {
+                setFadingFrames(getFadingFrames() - 1);
+            } else {
+                setColorScale(getColorScale() - 1);
+            }
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (!isFadingEnabled()) {
+                showAction(String.format("Increase DVS contrast to %d events full scale", getColorScale()));
+            } else {
+                showAction(String.format("Shorten fading to %d frames", getFadingFrames()));
+            }
+        }
+    }
+
+    final public class DecreaseContrastAction extends MyAction {
+
+        public DecreaseContrastAction() {
+            super("Decrease contrast", "<html>Decrease constrast or increase fading of display");
+            putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0));
+
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (isFadingEnabled()) {
+                setFadingFrames(getFadingFrames() + 1);
+            } else {
+                setColorScale(getColorScale() + 1);
+            }
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (!isFadingEnabled()) {
+                showAction(String.format("Decrease DVS contrast to %d events full scale", getColorScale()));
+            } else {
+                showAction(String.format("Lengthen fading to %d frames", getFadingFrames()));
+            }
         }
     }
 

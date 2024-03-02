@@ -245,7 +245,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             final int t1 = packet.getLastTimestamp();
 //        final int dtThisPacket = t1 - t0ThisPacket + 1;
             // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
-            int colorScale = getRenderer().getColorScale(); // use color scale to determine multiple, up and down arrows set it then
+            int colorScale = ((AEChipRenderer)getRenderer()).getColorScale(); // use color scale to determine multiple, up and down arrows set it then
             int newTimeWindowUs, frameDurationUs = 100000;
             if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
                 frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());

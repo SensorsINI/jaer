@@ -23,6 +23,7 @@ import java.util.Observer;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod2D;
@@ -89,7 +90,7 @@ public class ShammaMapDisplayMethod extends DisplayMethod implements DisplayMeth
 
 		void setScaling(){
 			if(getRenderer()!=null){
-				setScaling(10000f/(1<<getRenderer().getColorScale()));
+				setScaling(10000f/(1<<((AEChipRenderer)getRenderer()).getColorScale()));
 			}else{
 				setScaling(1000f);
 			}

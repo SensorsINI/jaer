@@ -67,12 +67,7 @@ public class Chip2DRenderer implements Observer {
      */
     protected float[] backgroundColor = new float[]{0, 0, 0};
 
-    /**
-     * value to add or subtract to pixel color for ON/OFF events, set by
-     * setColorScale()
-     */
-    protected float colorContrastAdditiveValue;
-    /**
+   /**
      * the contrast attributed to an event, either level is multiplied or
      * divided by this value depending on polarity of event. Gets set by
      * setColorScale
@@ -100,7 +95,6 @@ public class Chip2DRenderer implements Observer {
     protected FloatBuffer grayBuffer;
 
     public Chip2DRenderer() {
-        setColorScale(prefs.getInt("Chip2DRenderer.colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
     }
 
     public Chip2DRenderer(Chip2D chip) {
@@ -256,31 +250,8 @@ public class Chip2DRenderer implements Observer {
      */
     protected int selectedPixelEventCount = 0;
 
-    /**
-     * decrease contrast
-     *
-     * @return new color scale
-     */
-    public int decreaseContrast() {
-        int cs = getColorScale();
-        cs++;
-        if (cs > 255) {
-            cs = 255;
-        }
-        setColorScale(cs);
-        return getColorScale();
-    }
 
-    /**
-     * @return current color scale, full scale in events
-     */
-    public int getColorScale() {
-        if (!autoscaleEnabled) {
-            return colorScale;
-        } else {
-            return autoScaleValue;
-        }
-    }
+
 
     public void setBackgroundColor(float[] rgb) {
         float[] old = this.backgroundColor;
@@ -324,20 +295,7 @@ public class Chip2DRenderer implements Observer {
         return ysel;
     }
 
-    /**
-     * increase image contrast
-     *
-     * @return new color scale
-     */
-    public int increaseContrast() {
-        int cs = getColorScale();
-        cs--;
-        if (cs < 1) {
-            cs = 1;
-        }
-        setColorScale(cs);
-        return getColorScale();
-    }
+  
 
     public boolean isAutoscaleEnabled() {
         return this.autoscaleEnabled;
@@ -405,25 +363,6 @@ public class Chip2DRenderer implements Observer {
         prefs.putBoolean(("BinocularRenderer.autoscaleEnabled"), autoscaleEnabled);
     }
 
-    /**
-     * set the color scale. 1 means a single event is full scale, 2 means a
-     * single event is half scale, etc. only applies to some rendering methods.
-     *
-     * @param colorScale the new color scale.
-     */
-    public void setColorScale(int colorScale) {
-        if (colorScale < 1) {
-            colorScale = 1;
-        }
-        if (colorScale > 64) {
-            colorScale = 64;
-        }
-        this.colorScale = colorScale;
-        // we set eventContrast so that colorScale events takes us from .5 to 1, i.e., .5*(eventContrast^cs)=1, so eventContrast=2^(1/cs)
-        eventContrast = (float) (Math.pow(2, 1.0 / colorScale)); // e.g. cs=1, eventContrast=2, cs=2, eventContrast=2^0.5, etc
-        colorContrastAdditiveValue = 1f / colorScale;
-        prefs.putInt("Chip2DRenderer.colorScale", colorScale);
-    }
 
     /**
      * Gets width in chip pixels (not screen pixels).

@@ -65,7 +65,7 @@ public class MulticameraDavisRenderer extends DavisRenderer{
         checkPixmapAllocation();
         resetSelectedPixelEventCount();
         float a;
-        float step = 1f / ( colorScale ); // amount to step rendering gray level up or down for each event
+        float step = 1f / ( colorScale ); // amount to colorContrastAdditiveStep rendering gray level up or down for each event
         float[] f = getPixmapArray();
         try{
             float sc = 1f / getColorScale();
@@ -170,7 +170,7 @@ public class MulticameraDavisRenderer extends DavisRenderer{
                 default:
             }
 
-            autoScaleFrame(f);
+            fadeFrame();
         } catch ( ArrayIndexOutOfBoundsException e ){
             e.printStackTrace();
             log.warning(e.getCause() + ": some event out of bounds for this chip type?");

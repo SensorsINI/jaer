@@ -111,7 +111,7 @@ public class RollingCochleaGramDisplayMethod extends DisplayMethod implements Di
 		// timewidth comes from render contrast setting
 		// width starts with colorScale=1 to be the standard refresh rate
 		// so that a raster will refresh every frame and reduces by powers of two
-		int colorScale = getRenderer().getColorScale();
+		int colorScale = ((AEChipRenderer)getRenderer()).getColorScale(); // must cast now tht getColorScale is part of AEChipRenderer
 		if (colorScale != oldColorScale) {
 			clearScreenEnabled = true;
 		}
