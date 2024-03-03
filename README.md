@@ -3,8 +3,6 @@ Java tools for Address-Event Representation (AER) neuromorphic processing.
 
 **Permanent link:** http://jaerproject.org
 
-[![Build Status](https://travis-ci.org/SensorsINI/jaer.svg?branch=master)](https://travis-ci.org/SensorsINI/jaer)
-
 **Welcome to the jAER Open Source Project
 Real time sensory-motor processing for event-based sensors and systems**
 
@@ -14,7 +12,7 @@ Founded in 2007 to support event sensors and robot demonstrators developed by th
 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
-## Download
+## Installation
 
 You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. 
 
@@ -32,6 +30,7 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 * You will get the best experience running from lastest bug fixes. 
 
+
 ## Quick start sample data
 
 * Download [DVS128 data files from the DVS09 dataset](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?usp=sharing) and
@@ -39,9 +38,19 @@ drop them onto the jAER window to play them with the *DVS128* *AEChip*.
 * Download [DAVIS346 sample data files from the DAVIS24 dataset](https://sites.google.com/view/davis24-davis-sample-data/home) and
 drop them onto the jAER window to play them with the *Davis346blue* *AEChip*.
 
+## Device hardware support
+Systems built with Sensors Group chips:
+* inilabs DVS128 DVS event camera and inivation DAVIS240, and DAVIS346 HVS cameras
+* inilabs DAS (CochleaAMS) cochleas
+
+Event cameras from others:
+* iniVation Samsung DVExplorer
+
 ## Citation
-Delbruck, Tobi. 2008. “Frame-Free Dynamic Digital Vision.” In *Proceedings of Intl. Symp. on Secure-Life Electronics, 
-Advanced Electronics for Quality Life and Society*, 1:21–26. Tokyo, Japan: Tokyo. https://citeseerx.ist.psu.edu/pdf/92754e0f56fadae8e0508f06209f98a43506d60a.
+T. Delbruck, “Frame-free dynamic digital vision,” 
+in International Symposium on Secure-Life Electronics, University of Tokyo, 
+Mar. 2008, pp. 21–26. 
+doi: 10.5167/uzh-17620. Available: http://dx.doi.org/10.5167/uzh-17620
 
 ### jAER applications
 jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors), 
@@ -65,9 +74,6 @@ jAER was also used to develop many event camera algorithms:
 ## Developing with jAER
 
 To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing). 
-
-
- 
 
 ## Support
 
