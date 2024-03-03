@@ -270,8 +270,8 @@ public class Chip2DRenderer implements Observer {
 
     synchronized public void setGrayValue(float value) {
         float old = this.grayValue;
+        this.grayValue = value;
         resetPixmapGrayLevel(value);
-        grayValue = value;
         getSupport().firePropertyChange(EVENT_SET_GRAYLEVEL, old, this.grayValue);
     }
 
@@ -324,7 +324,6 @@ public class Chip2DRenderer implements Observer {
      */
     synchronized public void resetFrame(float value) {
         resetPixmapGrayLevel(value);
-        grayValue = value;
     }
 
     /**

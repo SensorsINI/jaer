@@ -208,7 +208,6 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
-        grayValue = value;
         grayBuffer.rewind();
         System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
         System.arraycopy(grayBuffer.array(), 0, pixBuffer.array(), 0, n);
@@ -422,7 +421,7 @@ public class DavisRenderer extends AEChipRenderer {
         }
         if (renderedApsFrame) {
             framesRenderedSinceApsFrame = 0;
-        } else if(isDisplayFrames()){
+        } else if (isDisplayFrames()) {
             framesRenderedSinceApsFrame++;
         }
         if (framesRenderedSinceApsFrame > NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES) {
@@ -1033,22 +1032,14 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     /**
+     * Overrides default method to return the color mode gray value.
+     *
      * @return the gray level of the rendered data; used to determine whether a
      * pixel needs to be drawn
      */
     @Override
     public float getGrayValue() {
-        if (isDisplayFrames() || (colorMode == ColorMode.GrayLevel)) {
-            grayValue = 0.5f;
-        } else if (colorMode == ColorMode.GrayTime) {
-            grayValue = 1.0f;
-        } else if (colorMode == ColorMode.WhiteBackground) {
-            grayValue = 1f;
-        } else {
-            grayValue = 0;
-        }
-
-        return grayValue;
+        return colorMode.getBackgroundGrayLevel();
     }
 
     /**
@@ -1129,10 +1120,12 @@ public class DavisRenderer extends AEChipRenderer {
     public void setDisplayFrames(boolean yes) {
         framesRenderedSinceApsFrame = 0;
         ((DvsDisplayConfigInterface) chip.getBiasgen()).setDisplayFrames(yes);
+        resetFrame(getGrayValue()); // add in case background changes
     }
 
     public void setDisplayEvents(boolean yes) {
         ((DvsDisplayConfigInterface) chip.getBiasgen()).setDisplayEvents(yes);
+        resetFrame(getGrayValue()); // add in case background changes
     }
 
     /**

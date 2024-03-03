@@ -29,6 +29,7 @@ import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.util.SpikeSound;
 import javax.swing.JRadioButtonMenuItem;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Superclass for classes that render DVS and other sensor/chip AEs to a memory
@@ -85,10 +86,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         public String description;
         public float backgroundGrayLevel = 0;
 
-        ColorMode(String description) {
-            this.description = description;
-        }
-
         ColorMode(String description, float backgroundGrayLevel) {
             this.description = description;
             this.backgroundGrayLevel = backgroundGrayLevel;
@@ -97,6 +94,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         @Override
         public String toString() {
             return super.toString() + ": " + description;
+        }
+
+        public float getBackgroundGrayLevel() {
+            return backgroundGrayLevel;
         }
     };
 
@@ -161,6 +162,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     protected boolean subsamplingEnabled = prefs.getBoolean("ChipRenderer.subsamplingEnabled", false);
     protected float[][] timeColors;
     protected int specialCount = 0;
+
+    private EngineeringFormat fmt = new EngineeringFormat();
 
     public AEChipRenderer(AEChip chip) {
         super(chip);
@@ -956,12 +959,27 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (chip.getAeViewer() == null || chip.getAeViewer().isPaused()) {
             return 1;
         }
-//        float renderingFps = chip.getAeViewer().getFrameRater().getAverageFPS();
-//        if (Float.isNaN(renderingFps)) {
-//            return 1;
-//        }
-        float fadeTo = 1 - 1f / (fadingFrames + 1); // TODO make it really depend on rendering rate
+        float fadeTo = 1 - 1f / (fadingFrames + .25f); // TODO make it really depend on rendering rate
         return fadeTo;
+    }
+
+    /**
+     * Computes the IIR tau of the current fading based on measured actual
+     * rendering rate
+     *
+     * @return tau in seconds
+     */
+    protected float computeFadingTauS() {
+        float renderingFps = chip.getAeViewer().getFrameRater().getAverageFPS();
+        if (Float.isNaN(renderingFps)) {
+            return Float.NaN;
+        }
+        float tau = 1 / ((1 - computeFadingFactor()) * renderingFps);
+        return tau;
+    }
+
+    private String getFadingDescription() {
+        return String.format("Fading level %d with tau=%ss",getFadingFrames(),fmt.format(computeFadingTauS()));
     }
 
     /**
@@ -1033,7 +1051,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
     }
 
-        final public class ToggleAccumulation extends MyAction {
+    final public class ToggleAccumulation extends MyAction {
 
         public ToggleAccumulation() {
             super("Accumulate", "<html>Toggles continuously accumulating events without resetting)");
@@ -1043,7 +1061,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            
+
             setAccumulateEnabled(!isAccumulateEnabled());
             putValue(Action.SELECTED_KEY, isAccumulateEnabled());
             showAction();
@@ -1059,7 +1077,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
 
     }
-        
+
     final public class ToggleFadingAction extends MyAction {
 
         public ToggleFadingAction() {
@@ -1085,7 +1103,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             if (!isFadingEnabled()) {
                 showAction("Fading disabled");
             } else {
-                showAction(String.format("Fading over %d frames enabled", getColorScale()));
+                float fadingTauS = computeFadingTauS();
+                showAction(getFadingDescription());
             }
         }
 
@@ -1113,7 +1132,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             if (!isFadingEnabled()) {
                 showAction(String.format("Increase DVS contrast to %d events full scale", getColorScale()));
             } else {
-                showAction(String.format("Shorten fading to %d frames", getFadingFrames()));
+                showAction(String.format("Shorten fading to %s", getFadingDescription()));
             }
         }
     }
@@ -1141,7 +1160,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             if (!isFadingEnabled()) {
                 showAction(String.format("Decrease DVS contrast to %d events full scale", getColorScale()));
             } else {
-                showAction(String.format("Lengthen fading to %d frames", getFadingFrames()));
+                showAction(String.format("Lengthen fading to %s", getFadingDescription()));
             }
         }
     }
