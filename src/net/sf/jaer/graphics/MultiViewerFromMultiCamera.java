@@ -47,8 +47,6 @@ public class MultiViewerFromMultiCamera extends DavisRenderer{
                 NumCam=1;
             }
         chip.setSizeX(sizeX*NumCam);
-        onColor = new float[4];
-        offColor = new float[4];
 
         checkPixmapAllocation();
         
