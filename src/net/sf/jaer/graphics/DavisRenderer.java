@@ -85,10 +85,6 @@ public class DavisRenderer extends AEChipRenderer {
      * min and max values of rendered gray values
      */
     protected float minValue, maxValue, annotateAlpha;
-    /**
-     * RGBA rendering colors for ON and OFF DVS events
-     */
-    protected float[] onColor, offColor;
 
     /**
      * The linear buffer of RGBA pixel colors of image frame brightness values.
@@ -97,7 +93,7 @@ public class DavisRenderer extends AEChipRenderer {
      */
     protected FloatBuffer pixBuffer;
     protected FloatBuffer dvsEventsMap;
-//    protected FloatBuffer offMap;
+
     /**
      * pix map used for annotation overlay.
      *
@@ -141,9 +137,6 @@ public class DavisRenderer extends AEChipRenderer {
             return;
         }
 
-        onColor = new float[4];
-        offColor = new float[4];
-
         checkPixmapAllocation();
 
         if (chip instanceof DavisChip) {
@@ -158,7 +151,6 @@ public class DavisRenderer extends AEChipRenderer {
     /**
      * Overridden to make gray buffer special for DAVIS cameras
      */
-    @Override
     protected void resetPixmapGrayLevel(final float value) {
         maxValue = Float.MIN_VALUE;
         minValue = Float.MAX_VALUE;
@@ -170,41 +162,17 @@ public class DavisRenderer extends AEChipRenderer {
             grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
             madebuffer = true;
         }
-        if (madebuffer || (value != grayValue)) {
+        if (madebuffer || (value != grayValue) || true) {
+            log.info("Resetting grayBuffer for colorMode=" + colorMode.name());
             grayBuffer.rewind();
+            int alpha = (isDisplayFrames()||colorMode==ColorMode.HotCode) ? 0 : 1; // HotCode uses alpha channel to store events for count to map to hot code
+            float gray = colorMode.getBackgroundGrayLevel();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
-                    if (isDisplayFrames()) {
-                        grayBuffer.put(0);
-                        grayBuffer.put(0);
-                        grayBuffer.put(0);
-                        grayBuffer.put(0);
-                    } else if (colorMode == ColorMode.GrayTime) {
-                        grayBuffer.put(1.0f);
-                        grayBuffer.put(1.0f);
-                        grayBuffer.put(1.0f);
-                        grayBuffer.put(1.0f);
-                    } else if (colorMode == ColorMode.HotCode) {
-                        grayBuffer.put(0);
-                        grayBuffer.put(0);
-                        grayBuffer.put(.5f);
-                        grayBuffer.put(.5f);
-                    } else if (colorMode == ColorMode.RedGreen) {
-                        grayBuffer.put(0);
-                        grayBuffer.put(0);
-                        grayBuffer.put(0);
-                        grayBuffer.put(.5f);
-                    } else if (colorMode == ColorMode.WhiteBackground) {
-                        grayBuffer.put(1);
-                        grayBuffer.put(1);
-                        grayBuffer.put(1);
-                        grayBuffer.put(.5f);
-                    } else {
-                        grayBuffer.put(value);
-                        grayBuffer.put(value);
-                        grayBuffer.put(value);
-                        grayBuffer.put(0);
-                    }
+                    grayBuffer.put(gray);
+                    grayBuffer.put(gray);
+                    grayBuffer.put(gray);
+                    grayBuffer.put(alpha); //
                 }
             }
         }
@@ -215,7 +183,6 @@ public class DavisRenderer extends AEChipRenderer {
         pixBuffer.rewind();
         pixmap.limit(n);
         pixBuffer.limit(n);
-        setColors();
         resetMaps();
     }
 
@@ -224,7 +191,6 @@ public class DavisRenderer extends AEChipRenderer {
      *
      */
     public void resetMaps() {
-        setColors();
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
@@ -263,56 +229,9 @@ public class DavisRenderer extends AEChipRenderer {
     @Override
     public synchronized void setColorMode(final ColorMode colorMode) {
         super.setColorMode(colorMode);
-        setColors();
     }
 
-    private void setColors() {
-        checkPixmapAllocation();
-        switch (colorMode) {
-            case GrayLevel:
-//            case Contrast:
-                onColor[0] = 1;
-                onColor[1] = 1;
-                onColor[2] = 1;
-                onColor[3] = 0;
-                offColor[0] = -1;
-                offColor[1] = -1;
-                offColor[2] = -1;
-                offColor[3] = 0;
-                break;
-            case HotCode:
-                onColor[0] = 1.0f;
-                onColor[1] = 1.0f;
-                onColor[2] = 1.0f;
-                onColor[3] = 0.0f;
-                offColor[0] = 0.0f;
-                offColor[1] = 0.0f;
-                offColor[2] = 0.0f;
-                offColor[3] = 0.0f;
-                break;
-            case WhiteBackground:
-                onColor[0] = 0.2f;
-                onColor[1] = 1.0f;
-                onColor[2] = 0.2f;
-                onColor[3] = 0.0f;
-                offColor[0] = 1.0f;
-                offColor[1] = 0.2f;
-                offColor[2] = 0.2f;
-                offColor[3] = 0.0f;
-                break;
-            case RedGreen:
-            default:
-                onColor[0] = 0.0f;
-                onColor[1] = 1.0f;
-                onColor[2] = 0.0f;
-                onColor[3] = 0.0f;
-                offColor[0] = 1.0f;
-                offColor[1] = 0.0f;
-                offColor[2] = 0.0f;
-                offColor[3] = 0.0f;
-                break;
-        }
-    }
+
 
     /**
      * warning counter for some warnings
@@ -363,14 +282,16 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
 
-        colorContrastAdditiveValue = computeColorContrastAdditiveStep();
+        colorContrastAdditiveStep = computeColorContrastAdditiveStep();
 
         if (isFadingEnabled() && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
             float fadeby = computeFadingFactor();
             float[] f = dvsEventsMap.array();
-            float gray=getGrayValue();
-            for (int i = 0; i < f.length; i++) {
+            float gray = getGrayValue();
+            for (int i = 0; i < f.length; i+=4) {// skip alpha channel
                 f[i] = fadeToGray(f[i], fadeby, gray);
+                f[i+1] = fadeToGray(f[i+1], fadeby, gray);
+                f[i+2] = fadeToGray(f[i+2], fadeby, gray);
             }
         }
         final ApsDvsEventPacket packetAPS = (ApsDvsEventPacket) pkt;
@@ -456,7 +377,7 @@ public class DavisRenderer extends AEChipRenderer {
                 f[i] = fadeToGray(f[i], fadeby, grayValue);
             }
         }
-        colorContrastAdditiveValue = computeColorContrastAdditiveStep();
+        colorContrastAdditiveStep = computeColorContrastAdditiveStep();
 
         packet = pkt;
 
@@ -618,14 +539,6 @@ public class DavisRenderer extends AEChipRenderer {
             map[index + 3] += normalizeEvent(alpha);
         } else {
             switch (colorMode) {
-//                case FadingActivity: {
-//                    //fade later on
-//                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale 
-//                    map[index] = 1; // colorContrastAdditiveValue;
-//                    map[index + 1] = 1; //colorContrastAdditiveValue;
-//                    map[index + 2] = 1; // colorContrastAdditiveValue; // gray level
-//                }
-//                break;
                 case ColorTime: {
                     final int ts0 = packet.getFirstTimestamp();
                     final float dt = packet.getDurationUs();
@@ -644,9 +557,8 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case HotCode: {
-                    final float alpha = map[index + 3] + (1.0f / (isFadingEnabled() ? 1 : colorScale));
-                    map[index + 3] = normalizeEvent(alpha);
-                    int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * alpha));
+                    map[index + 3] = normalizeEvent(map[index+3]+colorContrastAdditiveStep); // use alpha channel for storing event count
+                    int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * map[index+3]));
 
                     if (ind < 0) {
                         ind = 0;
@@ -671,43 +583,38 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case GrayLevel: /*|| colorMode == ColorMode.Contrast*/ {
-                    if (map[index + 3] == 0) { // nothing there yet leave transparent to show APS frame value
-                        map[index + 3] = 1f;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
-                        map[index] = 0.5f;
-                        map[index + 1] = 0.5f;
-                        map[index + 2] = 0.5f; // gray level
-                    }
+                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                        map[index] += colorContrastAdditiveValue;
-                        map[index + 1] += colorContrastAdditiveValue;
-                        map[index + 2] += colorContrastAdditiveValue;
+                        map[index] += colorContrastAdditiveStep;
+                        map[index + 1] += colorContrastAdditiveStep;
+                        map[index + 2] += colorContrastAdditiveStep;
                     } else {
-                        map[index] -= colorContrastAdditiveValue;
-                        map[index + 1] -= colorContrastAdditiveValue;
-                        map[index + 2] -= colorContrastAdditiveValue;
+                        map[index] -= colorContrastAdditiveStep;
+                        map[index + 1] -= colorContrastAdditiveStep;
+                        map[index + 2] -= colorContrastAdditiveStep;
                     }
                 }
                 break;
                 case RedGreen: {
                     map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                        map[index + 1] += colorContrastAdditiveValue; // green up from black 0
+                        map[index + 1] += colorContrastAdditiveStep; // green up from black 0
                     } else {
-                        map[index] += colorContrastAdditiveValue; // red up
+                        map[index] += colorContrastAdditiveStep; // red up
                     }
                 }
                 break;
                 case WhiteBackground: {
                     map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                        map[index + 1] += colorContrastAdditiveValue; // green up, others down
-                        map[index] -= colorContrastAdditiveValue; // red up
-                        map[index + 2] -= colorContrastAdditiveValue; // red up
+                        map[index + 1] += colorContrastAdditiveStep; // green up, others down
+                        map[index] -= colorContrastAdditiveStep; // red up
+                        map[index + 2] -= colorContrastAdditiveStep; // red up
 
                     } else {
-                        map[index] += colorContrastAdditiveValue; // red up, others down
-                        map[index + 1] -= colorContrastAdditiveValue; // red up
-                        map[index + 2] -= colorContrastAdditiveValue; // red up
+                        map[index] += colorContrastAdditiveStep; // red up, others down
+                        map[index + 1] -= colorContrastAdditiveStep; // red up
+                        map[index + 2] -= colorContrastAdditiveStep; // red up
                     }
                 }
             } // switch colorMode

@@ -65,23 +65,17 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     private boolean fadingEnabled = prefs.getBoolean("fadingEnabled", false);
     private int fadingFrames = prefs.getInt("fadingFrames", 4);
 
-    /**
-     * value to add or subtract to pixel color for ON/OFF events, set by
-     * setColorScale()
-     */
-    protected float colorContrastAdditiveValue;
-
     public enum ColorMode {
 
         GrayLevel("Each event causes linear change in brightness", .5f),
         //        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
-        RedGreen("ON events are green; OFF events are red", 0),
+        RedGreen("ON events are green; OFF events are red, black background", 0),
         //        FadingActivity("Events are accumulated (without polarity) and are faded away according to color scale", 0),
         //        SlidingWindow("Events are accumulated in overlapping windows", 0),
         ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events", 0f),
         GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events", 1f),
         HotCode("Events counts are colored blue to red, blue=0, red=full scale", 0),
-        WhiteBackground("Events counts (unsigned) are dark on white background", 1), //		ComplementaryFilter("Events are reconstructed using bandpass event filter")
+        WhiteBackground("ON events are green; OFF events are red, white background", 1), //		ComplementaryFilter("Events are reconstructed using bandpass event filter")
         ;
         public String description;
         public float backgroundGrayLevel = 0;
@@ -153,7 +147,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      */
     protected float[][] typeColorRGBComponents;
     protected SpikeSound spikeSound;
-    protected float colorContrastAdditiveStep; // this is last step of RGB value used in rendering
+    protected float colorContrastAdditiveStep; // this is step of RGB value used in rendering each event
     protected boolean stereoEnabled = false;
     protected int subsampleThresholdEventCount = prefs.getInt("ChipRenderer.subsampleThresholdEventCount", 50000);
     /**
@@ -187,6 +181,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         colorModeMenu = contructColorModeMenu();
         getSupport().addPropertyChangeListener(this);
     }
+    
+    
 
     /**
      * Does the rendering using selected method.
@@ -979,7 +975,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     private String getFadingDescription() {
-        return String.format("Fading level %d with tau=%ss",getFadingFrames(),fmt.format(computeFadingTauS()));
+        return String.format("Fading level %d with tau=%ss", getFadingFrames(), fmt.format(computeFadingTauS()));
     }
 
     /**
@@ -1015,6 +1011,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      */
     protected final float fadeToGray(float v, float fadeBy, float gray) {
         v = (v - gray) * fadeBy + gray;
+//        if (Math.abs(v - gray) < 1 / 255f) {
+//            v = gray;
+//        }
         return v;
     }
 

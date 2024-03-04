@@ -33,7 +33,7 @@ public class MultiCameraDifferentColorDisplayRenderer extends DavisRenderer{
     
     int camera;
     int numCam=1; //default value
-    
+    private float[] onColor, offColor;
 
     /**
      * Creates a new instance of MultiCameraDisplayRenderer.

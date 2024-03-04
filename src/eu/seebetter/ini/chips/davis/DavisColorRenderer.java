@@ -65,6 +65,8 @@ public class DavisColorRenderer extends DavisRenderer {
 	private final float[] valuesR = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
 	private final float[] valuesG = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
 	private final float[] valuesB = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+        
+        private float[] onColor=new float[4], offColor=new float[4];
 
 	public DavisColorRenderer(final AEChip chip, final boolean isDVSQuarterOfAPS, final ColorFilter[] colorFilterSequence,
 		final boolean isAPSSpecialReadout, final float[][] colorCorrectionMatrix) {
