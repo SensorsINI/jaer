@@ -368,8 +368,9 @@ public class DavisRenderer extends AEChipRenderer {
         if (isFadingEnabled() && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
             float fadeby = computeFadingFactor();
             float[] f = dvsEventsMap.array();
+            float gray=getGrayValue();
             for (int i = 0; i < f.length; i++) {
-                f[i] = fadeToGray(f[i], fadeby, grayValue);
+                f[i] = fadeToGray(f[i], fadeby, gray);
             }
         }
         final ApsDvsEventPacket packetAPS = (ApsDvsEventPacket) pkt;
