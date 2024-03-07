@@ -1112,7 +1112,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     final public class IncreaseContrastAction extends MyAction {
 
         public IncreaseContrastAction() {
-            super("Increase contrast", "<html>Increase constrast or decrease fading of display");
+            super("Increase contrast", "<html>Increase constrast or decrease fading of display <br>(or spin mouse wheel)");
             putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0));
         }
 
@@ -1139,7 +1139,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     final public class DecreaseContrastAction extends MyAction {
 
         public DecreaseContrastAction() {
-            super("Decrease contrast", "<html>Decrease constrast or increase fading of display");
+            super("Decrease contrast", "<html>Decrease constrast or increase fading of display <br>(or spin mouse wheel)");
             putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0));
 
         }
