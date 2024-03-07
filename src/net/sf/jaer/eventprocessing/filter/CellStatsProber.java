@@ -6,11 +6,9 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.awt.Font;
 import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-import java.awt.event.MouseWheelEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Arrays;
@@ -24,10 +22,7 @@ import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.ChipCanvas;
-import net.sf.jaer.graphics.ChipRendererDisplayMethod;
-import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.DisplayMethod2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
@@ -47,6 +42,8 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
 import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
@@ -450,8 +447,13 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         {
             rateFilter.setTauMs(getFloat("rateTauMs", 10));
         }
-        boolean initialized = false;
-        float instantaneousRate = 0, filteredRatePerPixel = 0;
+        private boolean initialized = false;
+        private float instantaneousRate = 0, filteredRatePerPixel = 0;
+
+        private float medianRatePerPixel = Float.NaN;
+        private float minRatePerPxHz = Float.NaN;
+        private float maxRatePerPxHz = Float.NaN;
+
         private int lastEventTimestamp = 0, lastRateMeasurementTimestamp = 0;
         int eventCount = 0; // last update event count
 
@@ -833,7 +835,15 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
 
         @Override
         public String toString() {
-            return String.format("ROI %6d pix, tot. %10d ev, %15s eps tot, %15s eps/pix", nPixels, eventCount, engFmt.format(filteredRatePerPixel * nPixels), engFmt.format(filteredRatePerPixel));
+            return String.format("ROI %,6dpx, %,8dev, %8sHz tot, avg %8sHz/px, med %9sHz, min %9sHz, max %9sHz",
+                    nPixels,
+                    eventCount,
+                    engFmt.format(filteredRatePerPixel * nPixels),
+                    engFmt.format(filteredRatePerPixel),
+                    engFmt.format(medianRatePerPixel),
+                    engFmt.format(minRatePerPxHz),
+                    engFmt.format(maxRatePerPxHz)
+            );
         }
 
         /**
@@ -860,13 +870,36 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             }
             filteredRatePerPixel = rateFilter.filter(instantaneousRate / nPixels, lastEventTimestamp);
             lastRateMeasurementTimestamp = lastEventTimestamp;
+
+            // compute other statistics
+            minRatePerPxHz = Float.MAX_VALUE;
+            maxRatePerPxHz = Float.MIN_VALUE;
+            ArrayList<Float> rates = new ArrayList(histMap.size());
+            for (IsiOrFreqHist h : histMap.values()) { // each hist also has its avgRateHz, build a list of these and then sort it to find median rate and min and max
+                rates.add(h.avgRateHz);
+                if (h.avgRateHz < minRatePerPxHz) {
+                    minRatePerPxHz = h.avgRateHz;
+                }
+                if (!Float.isInfinite(h.avgRateHz) && h.avgRateHz > maxRatePerPxHz) {
+                    maxRatePerPxHz = h.avgRateHz;
+                }
+            }
+            Collections.sort(rates);
+            int n = rates.size();
+            if (n > 2) {
+                if (n % 2 == 1) {
+                    medianRatePerPixel = rates.get(n / 2);
+                } else {
+                    medianRatePerPixel = (rates.get(n / 2) + rates.get(n / 2 + 1)) / 2;
+                }
+            }
         }
 
         synchronized private void drawStats(GLAutoDrawable drawable) {
             renderer.begin3DRendering();
             // renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
             // optionally set the color
-            renderer.setColor(.2f, .2f, 1, 1f);
+            renderer.setColor(.8f, .8f, 1, 1f);
             float scale = .3f;
             if (rateEnabled) {
                 scale = TextRendererScale.draw3dScale(renderer, toString(), getChip().getCanvas().getScale(), chip.getSizeX(), .9f);
@@ -1131,6 +1164,9 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             rateFilter.reset();
             lastEventTimestamp = 0;
             lastRateMeasurementTimestamp = 0;
+            medianRatePerPixel=Float.NaN;
+            maxRatePerPxHz=Float.NaN;
+            minRatePerPxHz=Float.NaN;
         }
 
         /**
