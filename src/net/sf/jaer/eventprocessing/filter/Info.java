@@ -390,8 +390,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
         setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
         setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
-        setPropertyTooltip("eventRate", "shows average event rate");
-        setPropertyTooltip("eventRatePerPixel", "shows average event rate per pixel (selected) or total (unselected). Set eventRateScaleMax to scale bars.");
+        setPropertyTooltip("eventRate", "<html>shows average event rate;<br>in enclosed filter <i>TypedEventRateEstimator</i> set <i>measureIndividualTypesEnabled</i> to see ON/OFF stats");
+        setPropertyTooltip("eventRatePerPixel", "<html>sets rate bar to show average event rate per pixel (selected) or total (unselected).<br>Set <i>eventRateScaleMax</i> to scale bars.");
         setPropertyTooltip("eventRateSigned", "uses signed event rate for ON positive and OFF negative");
         setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
         setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
