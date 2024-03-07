@@ -453,6 +453,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         private float medianRatePerPixel = Float.NaN;
         private float minRatePerPxHz = Float.NaN;
         private float maxRatePerPxHz = Float.NaN;
+        private int nForRateStats=0;
 
         private int lastEventTimestamp = 0, lastRateMeasurementTimestamp = 0;
         int eventCount = 0; // last update event count
@@ -835,14 +836,15 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
 
         @Override
         public String toString() {
-            return String.format("ROI %,6dpx, %,8dev, %8sHz tot, avg %8sHz/px, med %9sHz, min %9sHz, max %9sHz",
+            return String.format("ROI %,6dpx, %,8dev, %8sHz tot, avg %8sHz/px [med %8sHz, min %6sHz, max %8sHz, N=%,d]",
                     nPixels,
                     eventCount,
                     engFmt.format(filteredRatePerPixel * nPixels),
                     engFmt.format(filteredRatePerPixel),
                     engFmt.format(medianRatePerPixel),
                     engFmt.format(minRatePerPxHz),
-                    engFmt.format(maxRatePerPxHz)
+                    engFmt.format(maxRatePerPxHz),
+                    nForRateStats
             );
         }
 
@@ -885,12 +887,12 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                 }
             }
             Collections.sort(rates);
-            int n = rates.size();
-            if (n > 2) {
-                if (n % 2 == 1) {
-                    medianRatePerPixel = rates.get(n / 2);
+            nForRateStats = rates.size();
+            if (nForRateStats > 2) {
+                if (nForRateStats % 2 == 1) {
+                    medianRatePerPixel = rates.get(nForRateStats / 2);
                 } else {
-                    medianRatePerPixel = (rates.get(n / 2) + rates.get(n / 2 + 1)) / 2;
+                    medianRatePerPixel = (rates.get(nForRateStats / 2) + rates.get(nForRateStats / 2 + 1)) / 2;
                 }
             }
         }
