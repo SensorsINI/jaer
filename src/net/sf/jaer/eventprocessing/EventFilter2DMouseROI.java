@@ -121,7 +121,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         int sx = chip.getSizeX(), sy = chip.getSizeY();
         drawRois(gl, ROI_COLOR);
 
-        if (roiSelecting) {
+        if (roiSelecting && roiStartPoint!=null && currentMousePoint!=null) {
             gl.glPushMatrix();
             gl.glColor3fv(SELECT_COLOR, 0);
             gl.glLineWidth(3);
