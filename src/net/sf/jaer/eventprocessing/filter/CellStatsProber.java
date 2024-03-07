@@ -453,7 +453,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         private float medianRatePerPixel = Float.NaN;
         private float minRatePerPxHz = Float.NaN;
         private float maxRatePerPxHz = Float.NaN;
-        private int nForRateStats=0;
+        private int nForRateStats = 0;
 
         private int lastEventTimestamp = 0, lastRateMeasurementTimestamp = 0;
         int eventCount = 0; // last update event count
@@ -681,6 +681,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             boolean virgin = true; // true on init, false on first event (but still has no ISI after first event)
             LowpassFilter rateFilter = new LowpassFilter(getRateTauMs());
             float avgRateHz = 0;
+            int eventCount = 0;
 
             public IsiOrFreqHist(int x, int y) {
                 this.x = x;
@@ -726,6 +727,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
                 int bin = getIsiOrFreqBinNumber(isi);
                 incrementBin(bin);
                 lastT = e.timestamp;
+                eventCount++;
 //                System.out.println(String.format("added isi=%10d",isi));
             }
 
@@ -878,7 +880,9 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             maxRatePerPxHz = Float.MIN_VALUE;
             ArrayList<Float> rates = new ArrayList(histMap.size());
             for (IsiOrFreqHist h : histMap.values()) { // each hist also has its avgRateHz, build a list of these and then sort it to find median rate and min and max
-                rates.add(h.avgRateHz);
+                if (h.eventCount >= 2) {
+                    rates.add(h.avgRateHz);
+                }
                 if (h.avgRateHz < minRatePerPxHz) {
                     minRatePerPxHz = h.avgRateHz;
                 }
@@ -1166,9 +1170,9 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             rateFilter.reset();
             lastEventTimestamp = 0;
             lastRateMeasurementTimestamp = 0;
-            medianRatePerPixel=Float.NaN;
-            maxRatePerPxHz=Float.NaN;
-            minRatePerPxHz=Float.NaN;
+            medianRatePerPixel = Float.NaN;
+            maxRatePerPxHz = Float.NaN;
+            minRatePerPxHz = Float.NaN;
         }
 
         /**
