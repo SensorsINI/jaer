@@ -49,6 +49,7 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TobiLogger;
 
 /**
@@ -139,7 +140,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             return;
         }
         if (renderer == null) {
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+            renderer = new TextRenderer(new Font(Font.MONOSPACED+"-BOLD", Font.PLAIN, 24), true, true);
         }
         canvas = chip.getCanvas();
         glCanvas = (GLCanvas) canvas.getCanvas();
@@ -450,10 +451,12 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         private boolean initialized = false;
         private float instantaneousRate = 0, filteredRatePerPixel = 0;
 
-        private float medianRatePerPixel = Float.NaN;
-        private float minRatePerPxHz = Float.NaN;
-        private float maxRatePerPxHz = Float.NaN;
-        private int nForRateStats = 0;
+        // ROI stats
+        private float roiMedianRatePerPixel = Float.NaN; // median over pixels that have at least 2 events in the ROI
+        private float roiAvgRatePerPixel = Float.NaN; // avg over all pixels with at least one event in ROI
+        private float roiMinRatePerPxHz = Float.NaN;
+        private float roiMaxRatePerPxHz = Float.NaN;
+        private int roiNForRateStats = 0;
 
         private int lastEventTimestamp = 0, lastRateMeasurementTimestamp = 0;
         int eventCount = 0; // last update event count
@@ -838,15 +841,15 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
 
         @Override
         public String toString() {
-            return String.format("ROI %,6dpx, %,8dev, %8sHz tot, avg %8sHz/px [med %8sHz, min %6sHz, max %8sHz, N=%,d]",
+            return String.format("ROI %,6dpx, %,6dev, %6sHz tot, [avg %6s, med %6s, min %4s, max %6s, N=%,6d]",
                     nPixels,
                     eventCount,
                     engFmt.format(filteredRatePerPixel * nPixels),
-                    engFmt.format(filteredRatePerPixel),
-                    engFmt.format(medianRatePerPixel),
-                    engFmt.format(minRatePerPxHz),
-                    engFmt.format(maxRatePerPxHz),
-                    nForRateStats
+                    engFmt.format(roiAvgRatePerPixel),
+                    engFmt.format(roiMedianRatePerPixel),
+                    engFmt.format(roiMinRatePerPxHz),
+                    engFmt.format(roiMaxRatePerPxHz),
+                    roiNForRateStats
             );
         }
 
@@ -876,43 +879,50 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             lastRateMeasurementTimestamp = lastEventTimestamp;
 
             // compute other statistics
-            minRatePerPxHz = Float.MAX_VALUE;
-            maxRatePerPxHz = Float.MIN_VALUE;
+            roiMinRatePerPxHz = Float.MAX_VALUE;
+            roiMaxRatePerPxHz = Float.MIN_VALUE;
             ArrayList<Float> rates = new ArrayList(histMap.size());
+            float sumEventRates=0;
             for (IsiOrFreqHist h : histMap.values()) { // each hist also has its avgRateHz, build a list of these and then sort it to find median rate and min and max
                 if (h.eventCount >= 2) {
                     rates.add(h.avgRateHz);
+                    sumEventRates+=h.avgRateHz;
                 }
-                if (h.avgRateHz < minRatePerPxHz) {
-                    minRatePerPxHz = h.avgRateHz;
+                if (h.avgRateHz < roiMinRatePerPxHz) {
+                    roiMinRatePerPxHz = h.avgRateHz;
                 }
-                if (!Float.isInfinite(h.avgRateHz) && h.avgRateHz > maxRatePerPxHz) {
-                    maxRatePerPxHz = h.avgRateHz;
+                if (!Float.isInfinite(h.avgRateHz) && h.avgRateHz > roiMaxRatePerPxHz) {
+                    roiMaxRatePerPxHz = h.avgRateHz;
                 }
             }
             Collections.sort(rates);
-            nForRateStats = rates.size();
-            if (nForRateStats > 2) {
-                if (nForRateStats % 2 == 1) {
-                    medianRatePerPixel = rates.get(nForRateStats / 2);
+            roiNForRateStats = rates.size();
+            roiAvgRatePerPixel=sumEventRates/roiNForRateStats;
+            if (roiNForRateStats > 2) {
+                if (roiNForRateStats % 2 == 1) {
+                    roiMedianRatePerPixel = rates.get(roiNForRateStats / 2);
                 } else {
-                    medianRatePerPixel = (rates.get(nForRateStats / 2) + rates.get(nForRateStats / 2 + 1)) / 2;
+                    roiMedianRatePerPixel = (rates.get(roiNForRateStats / 2) + rates.get(roiNForRateStats / 2 + 1)) / 2;
                 }
             }
         }
 
         synchronized private void drawStats(GLAutoDrawable drawable) {
+            engFmt.setPrecision(1);
             renderer.begin3DRendering();
             // renderer.beginRendering(drawable.getWidth(), drawable.getHeight());
             // optionally set the color
             renderer.setColor(.8f, .8f, 1, 1f);
             float scale = .3f;
             if (rateEnabled) {
-                scale = TextRendererScale.draw3dScale(renderer, toString(), getChip().getCanvas().getScale(), chip.getSizeX(), .9f);
+                String s=toString();
+//                System.out.println("s.length="+s.length());
+                scale = TextRendererScale.draw3dScale(renderer, s, getChip().getCanvas().getScale(), chip.getSizeX(), .9f);
                 int ypos = chip.getSizeY() - 16;
                 if (ypos < (chip.getSizeY() / 2)) {
                     ypos = chip.getSizeY() / 2;
                 }
+//                DrawGL.
                 renderer.draw3D(toString(), 1, ypos, 0, scale); // TODO fix string n lines
             }
             renderer.end3DRendering();
@@ -1170,9 +1180,9 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             rateFilter.reset();
             lastEventTimestamp = 0;
             lastRateMeasurementTimestamp = 0;
-            medianRatePerPixel = Float.NaN;
-            maxRatePerPxHz = Float.NaN;
-            minRatePerPxHz = Float.NaN;
+            roiMedianRatePerPixel = Float.NaN;
+            roiMaxRatePerPxHz = Float.NaN;
+            roiMinRatePerPxHz = Float.NaN;
         }
 
         /**
