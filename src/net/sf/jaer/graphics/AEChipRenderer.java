@@ -8,7 +8,7 @@ package net.sf.jaer.graphics;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
+import java.awt.event.InputEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.HashMap;
@@ -181,8 +181,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         colorModeMenu = contructColorModeMenu();
         getSupport().addPropertyChangeListener(this);
     }
-    
-    
 
     /**
      * Does the rendering using selected method.
@@ -286,63 +284,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             f[ind + 2] = a;
                         }
                         break;
-//                    case FadingActivity:
-//                        checkPixmapAllocation();
-//
-//                        float fadeby = 1 - 1f / (colorScale + 1);
-//                        for (Object obj : packet) {
-//                            BasicEvent e = (BasicEvent) obj;
-//                            int type = e.getType();
-//                            if (e.isSpecial()) {
-//                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
-//                                continue;
-//                            }
-//                            if ((e.x == xsel) && (e.y == ysel)) {
-//                                playSpike(type);
-//                            }
-//                            int ind = getPixMapIndex(e.x, e.y);
-//                            a = f[ind];
-//                            if (!ignorePolarity) {
-//                                a = a * fadeby + (type - grayValue) / 2;
-//                            } else {
-//                                a = a * fadeby * (1 - fadeby) * (1 - grayValue);
-//
-//                            }
-//                            f[ind] = a;
-//                            f[ind + 1] = a;
-//                            f[ind + 2] = a;
-//                        }
-//                        break;
-//                    case Contrast:
-//                        if (!accumulateEnabled && !externalRenderer) {
-//                            resetFrame(.5f);
-//                        }
-//                        float eventContrastRecip = 1 / eventContrast;
-//                        for (Object obj : packet) {
-//                            BasicEvent e = (BasicEvent) obj;
-//
-//                            int type = e.getType();
-//                            if (e.isSpecial()) {
-//                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
-//                                continue;
-//                            }
-//                            if ((e.x == xsel) && (e.y == ysel)) {
-//                                playSpike(type);
-//                            }
-//                            int ind = getPixMapIndex(e.x, e.y);
-//                            a = f[ind];
-//                            switch (type) {
-//                                case 0:
-//                                    a *= eventContrastRecip; // off cell divides gray
-//                                    break;
-//                                case 1:
-//                                    a *= eventContrast; // on multiplies gray
-//                            }
-//                            f[ind] = a;
-//                            f[ind + 1] = a;
-//                            f[ind + 2] = a;
-//                        }
-//                        break;
                     case RedGreen:
                         if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
                             resetFrame(getGrayValue());
@@ -885,7 +826,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @param fr the frame rgb data pixmap
      */
     protected void fadeFrame() {
-        if (!isFadingEnabled()) {
+        if (!isFadingEnabled() || (chip.getAeViewer() != null && !chip.getAeViewer().isPaused())) {
             return;
         }
         float fadeBy = computeFadingFactor();
@@ -952,9 +893,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (!isFadingEnabled()) {
             return 1;
         }
-        if (chip.getAeViewer() == null || chip.getAeViewer().isPaused()) {
-            return 1;
-        }
         float fadeTo = 1 - 1f / (fadingFrames + .25f); // TODO make it really depend on rendering rate
         return fadeTo;
     }
@@ -986,15 +924,15 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * 1)
      */
     protected float computeColorContrastAdditiveStep() {
-        if (isFadingEnabled()) {
-            return 1;
-        }
+//        if (isFadingEnabled()) {
+//            return 1;
+//        }
         if (chip.getAeViewer() == null) {
             return 1;
         }
-        if (chip.getAeViewer().isPaused()) {
-            return 1;
-        }
+//        if (chip.getAeViewer().isPaused()) {
+//            return 1;
+//        }
         float step = 2f / (getColorScale() + 1); // TODO make it really depend on rendering rate
         return step;
     }
@@ -1112,14 +1050,20 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     final public class IncreaseContrastAction extends MyAction {
 
         public IncreaseContrastAction() {
-            super("Increase contrast", "<html>Increase constrast or decrease fading of display <br>(or spin mouse wheel)");
+            super("Increase contrast", "<html>Increase constrast or shorten fading of display <br>(or spin mouse wheel)<p>To modify contrast of each event (FS=XX),"
+                    + "<br>disable fading (ctrl-p).");
             putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_UP, 0));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            int modifiers = e.getModifiers();
             if (isFadingEnabled()) {
-                setFadingFrames(getFadingFrames() - 1);
+                if ((modifiers & ActionEvent.ALT_MASK) == 0) {
+                    setFadingFrames(getFadingFrames() - 1);
+                } else {
+                    setColorScale(getColorScale() - 1);
+                }
             } else {
                 setColorScale(getColorScale() - 1);
             }
@@ -1139,16 +1083,21 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     final public class DecreaseContrastAction extends MyAction {
 
         public DecreaseContrastAction() {
-            super("Decrease contrast", "<html>Decrease constrast or increase fading of display <br>(or spin mouse wheel)");
+            super("Decrease contrast", "<html>Descrease constrast or lengthen fading of display <br>(or spin mouse wheel)<p>To modify contrast of each event (FS=XX),"
+                    + "<br>disable fading (ctrl-p).");
             putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0));
-
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            int modifiers = e.getModifiers();
             if (isFadingEnabled()) {
-                setFadingFrames(getFadingFrames() + 1);
-            } else {
+                if ((modifiers & ActionEvent.ALT_MASK) == 0) {
+                    setFadingFrames(getFadingFrames() + 1);
+                } else {
+                    setColorScale(getColorScale() + 1);
+                }
+            } else { // if ctl key, then increase color scale
                 setColorScale(getColorScale() + 1);
             }
             showAction();
