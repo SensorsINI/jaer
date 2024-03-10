@@ -88,6 +88,9 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import eu.seebetter.ini.chips.davis.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.KeyStroke;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -100,7 +103,6 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenFrame;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.chip.Calibratible;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
@@ -1037,6 +1039,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             acccumulateImageEnabledCheckBoxMenuItem.setAction(chip.getRenderer().toggleAccumulationAction);
             increaseContrastMenuItem.setAction(chip.getRenderer().increaseContrastAction);
             decreaseContrastMenuItem.setAction(chip.getRenderer().decreaseContrastAction);
+            
+//            // https://docs.oracle.com/javase/tutorial/uiswing/misc/keybinding.html
+//            // https://docs.oracle.com/javase/tutorial/uiswing/misc/keybinding.html#howto
+//            // https://stackoverflow.com/questions/1946232/can-multiple-accelerators-be-defined-for-a-jmenuitem 
+////            InputMap im=getRootPane().getInputMap();
+//            InputMap imAnces=getRootPane().getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+//            ActionMap am=getRootPane().getActionMap();
+//            
+//            KeyStroke existingKeyStroke=null, additionalKeyStroke=null;
+//            InputMap im=null;
+//            
+//            existingKeyStroke=increaseContrastMenuItem.getAccelerator();
+//            additionalKeyStroke=KeyStroke.getKeyStroke("alt UP");
+//            im=increaseContrastMenuItem.getInputMap();
+//            imAnces.put(additionalKeyStroke,im.get(existingKeyStroke));
+////            im.put(altDown, im.get(KeyStroke.getKeyStroke("DOWN")));
+////            imAnces.put(altDown, imAnces.get(KeyStroke.getKeyStroke("DOWN")));
+////            am.put(altDown,chip.getRenderer().increaseContrastAction);
+//            
+////            String altUpStr="alt UP";
+////            KeyStroke altUp=KeyStroke.getKeyStroke(altUpStr);
+//////            getRootPane().getInputMap().put(altUp, altUpStr);
+////            im.put(altUp, im.get(KeyStroke.getKeyStroke("UP")));
+////            imAnces.put(altUp, imAnces.get(KeyStroke.getKeyStroke("UP")));
+////            am.put(altUp,chip.getRenderer().decreaseContrastAction);
             
             getSupport().firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
@@ -6354,8 +6381,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPanel jPanel1;
     private javax.swing.JProgressBar jProgressBar1;
     private javax.swing.JSeparator jSeparator1;
-    private javax.swing.JSeparator jSeparator10;
-    private javax.swing.JSeparator jSeparator11;
+    private javax.swing.JPopupMenu.Separator jSeparator10;
+    private javax.swing.JPopupMenu.Separator jSeparator11;
     private javax.swing.JSeparator jSeparator12;
     private javax.swing.JSeparator jSeparator13;
     private javax.swing.JSeparator jSeparator14;
@@ -6371,8 +6398,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator23;
     private javax.swing.JPopupMenu.Separator jSeparator24;
     private javax.swing.JPopupMenu.Separator jSeparator25;
-    private javax.swing.JSeparator jSeparator26;
-    private javax.swing.JSeparator jSeparator27;
+    private javax.swing.JPopupMenu.Separator jSeparator26;
+    private javax.swing.JPopupMenu.Separator jSeparator27;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
     private javax.swing.JPopupMenu.Separator jSeparator6;
