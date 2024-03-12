@@ -68,6 +68,8 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
         specialEventsCB.setSelected(textFileInputStream.isSpecialEvents());
 
         flipPolCB.setSelected(textFileInputStream.isFlipPolarity());
+        
+        longTimestampsCB.setSelected(textFileInputStream.isReadTimestampsAsLongAndSubtractFirst());
     }
 
     /**
@@ -99,6 +101,7 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
         tsFloatRB = new javax.swing.JRadioButton();
         tsFirstB = new javax.swing.JRadioButton();
         tsLastB = new javax.swing.JRadioButton();
+        longTimestampsCB = new javax.swing.JCheckBox();
         jPanel3 = new javax.swing.JPanel();
         jLabel5 = new javax.swing.JLabel();
         polBinB = new javax.swing.JRadioButton();
@@ -223,6 +226,14 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
             }
         });
 
+        longTimestampsCB.setText("long timestamps");
+        longTimestampsCB.setToolTipText("<html>Read timestamps as long values and subtract first one.<p>Use this option for files with large timestamp values.");
+        longTimestampsCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                longTimestampsCBActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -232,13 +243,16 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
                 .addComponent(jLabel3)
                 .addGap(18, 18, 18)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(tsIntRB)
-                    .addComponent(tsFirstB))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(tsLastB)
-                    .addComponent(tsFloatRB))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(tsIntRB)
+                            .addComponent(tsFirstB))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(tsLastB)
+                            .addComponent(tsFloatRB)))
+                    .addComponent(longTimestampsCB, javax.swing.GroupLayout.PREFERRED_SIZE, 127, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(74, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -252,7 +266,8 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(tsFirstB)
                     .addComponent(tsLastB))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(longTimestampsCB))
         );
 
         jPanel3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -352,7 +367,7 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
                 .addContainerGap()
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 56, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -499,7 +514,7 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
                         .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jPanel7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(27, 67, Short.MAX_VALUE))
+                .addGap(27, 41, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -572,6 +587,10 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
         textFileInputStream.setFlipPolarity(flipPolCB.isSelected());
     }//GEN-LAST:event_flipPolCBActionPerformed
 
+    private void longTimestampsCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_longTimestampsCBActionPerformed
+        textFileInputStream.setReadTimestampsAsLongAndSubtractFirst(longTimestampsCB.isSelected());
+    }//GEN-LAST:event_longTimestampsCBActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -636,6 +655,7 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
     private javax.swing.JPanel jPanel8;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JCheckBox longTimestampsCB;
     private javax.swing.ButtonGroup polBG;
     private javax.swing.JRadioButton polBinB;
     private javax.swing.JRadioButton polSignedB;

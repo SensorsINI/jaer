@@ -87,7 +87,7 @@
               </Group>
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
               <Component id="jPanel7" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="27" pref="67" max="32767" attributes="0"/>
+              <EmptySpace min="27" pref="41" max="32767" attributes="0"/>
           </Group>
           <Group type="102" alignment="1" attributes="0">
               <EmptySpace max="32767" attributes="0"/>
@@ -177,7 +177,7 @@
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel2" min="-2" pref="30" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
-                  <Component id="jPanel1" min="-2" pref="56" max="-2" attributes="0"/>
+                  <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
                   <Component id="jPanel3" min="-2" max="-2" attributes="0"/>
                   <EmptySpace max="-2" attributes="0"/>
@@ -274,15 +274,20 @@
                       <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
                       <EmptySpace type="separate" max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="tsIntRB" alignment="0" min="-2" max="-2" attributes="0"/>
-                          <Component id="tsFirstB" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="tsIntRB" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="tsFirstB" alignment="0" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="tsLastB" min="-2" max="-2" attributes="0"/>
+                                  <Component id="tsFloatRB" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <Component id="longTimestampsCB" min="-2" pref="127" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="tsLastB" min="-2" max="-2" attributes="0"/>
-                          <Component id="tsFloatRB" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                      <EmptySpace max="32767" attributes="0"/>
+                      <EmptySpace pref="74" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -301,6 +306,7 @@
                           <Component id="tsLastB" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
                       <EmptySpace max="32767" attributes="0"/>
+                      <Component id="longTimestampsCB" min="-2" max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -353,6 +359,15 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="tsLastBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="longTimestampsCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="long timestamps"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Read timestamps as long values and subtract first one.&lt;p&gt;Use this option for files with large timestamp values."/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="longTimestampsCBActionPerformed"/>
               </Events>
             </Component>
           </SubComponents>
