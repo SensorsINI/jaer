@@ -108,6 +108,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     protected boolean useSignedPolarity = prefs.getBoolean("useSignedPolarity", false);
     protected boolean timestampLast = prefs.getBoolean("timestampLast", false);
     private boolean specialEvents = prefs.getBoolean("specialEvents", false);
+    private boolean firstTimstampIsZero=prefs.getBoolean("firstTimstampIsZero", false);
     protected boolean nonMonotonicTimestampsChecked = prefs.getBoolean("nonMonotonicTimestampsChecked", true);
 
     private BufferedRandomAccessFile reader = null;
@@ -141,6 +142,8 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * the first timestamp in file
      */
     private int firstTimestamp;
+
+    private long firstLongTimestgamp = 0; // for parsing int timestamps in file that are larger than Integer.MAX_VALUE
     /**
      * the last timestamp in file
      */
@@ -333,8 +336,23 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             } else if (!useUsTimestamps && !split[it].contains(".")) {
                 throwLineFormatException(String.format("timestamp %s has no '.' in it but useUsTimestamps is false\n%s", split[it], lineinfo(line)));
             }
-            previousTimestamp = mostRecentTimestamp;
+            if (useUsTimestamps) {
+                long tsLong=Long.parseLong(split[it]);
+                if(tsLong>Integer.MAX_VALUE){
+                    String s=String.format("Int timestamp %s is larger than Integer.MAX_VALUE (%,d) (line %s)",split[it],Integer.MAX_VALUE,lineinfo(line));
+                    throwLineFormatException(s);
+                }
+            } else {
+                mostRecentTimestamp = (int) (Float.parseFloat(split[it]) * 1000000);
+            }
             mostRecentTimestamp = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
+            previousTimestamp = mostRecentTimestamp;
+            if (noEventsReadYet) {
+                firstTimestamp = mostRecentTimestamp;
+                noEventsReadYet = false;
+                log.info(String.format("First timestamp is %,d", mostRecentTimestamp));
+            }
+
             int dt = mostRecentTimestamp - previousTimestamp;
             if (nonMonotonicTimestampsChecked && dt < 0) {
                 String s = String.format("timestamp %,d is %,d us earlier than previous %,d at %s", mostRecentTimestamp, dt, previousTimestamp, lineinfo(line));
@@ -365,8 +383,8 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             ApsDvsEvent e = outItr != null ? (ApsDvsEvent) outItr.nextOutput() : dummyEvent;
             e.setFilteredOut(false);
             e.setTimestamp(mostRecentTimestamp);
-            e.setX(!flipX?x:(short)(chip.getSizeX()-x-1));
-            e.setY(!flipY?y:(short)(chip.getSizeY()-y-1));
+            e.setX(!flipX ? x : (short) (chip.getSizeX() - x - 1));
+            e.setY(!flipY ? y : (short) (chip.getSizeY() - y - 1));
             e.setPolarity(polType);
             if (flipPolarity) {
                 e.flipPolarity();
@@ -383,11 +401,6 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                     String s = String.format("Line #%d has Unknown type of special event, must be 0 (normal) or 1 (special):\n\"%s\"", lastLineNumber, line);
                     throwLineFormatException(s);
                 }
-            }
-            if (noEventsReadYet) {
-                firstTimestamp = mostRecentTimestamp;
-                noEventsReadYet = false;
-                log.info(String.format("First timestamp is %,d", e.timestamp));
             }
 
             setPositionValue(position + 1);
@@ -478,10 +491,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @param flipPolarity the flipPolarity to set
      */
     public void setFlipPolarity(boolean flipPolarity) {
-        String oldFormat = getShortFormattingHintString();
+        String oldFormat = getFormattingHelpString();
         this.flipPolarity = flipPolarity;
         prefs.putBoolean("flipPolarity", flipPolarity);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+        getSupport().firePropertyChange("format", oldFormat, getFormattingHelpString());
     }
 
     /**
@@ -495,10 +508,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @param timestampLast the timestampLast to set
      */
     public void setTimestampLast(boolean timestampLast) {
-        String oldFormat = getShortFormattingHintString();
+        String oldFormat = getFormattingHelpString();
         this.timestampLast = timestampLast;
         prefs.putBoolean("timestampLast", timestampLast);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+        getSupport().firePropertyChange("format", oldFormat, getFormattingHelpString());
     }
 
     /**
@@ -512,10 +525,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @param useCSV the useCSV to set
      */
     public void setUseCSV(boolean useCSV) {
-        String oldFormat = getShortFormattingHintString();
+        String oldFormat = getFormattingHelpString();
         this.useCSV = useCSV;
         prefs.putBoolean("useCSV", useCSV);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+        getSupport().firePropertyChange("format", oldFormat, getFormattingHelpString());
     }
 
     /**
@@ -529,10 +542,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @param useUsTimestamps the useUsTimestamps to set
      */
     public void setUseUsTimestamps(boolean useUsTimestamps) {
-        String oldFormat = getShortFormattingHintString();
+        String oldFormat = getFormattingHelpString();
         this.useUsTimestamps = useUsTimestamps;
         prefs.putBoolean("useUsTimestamps", useUsTimestamps);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+        getSupport().firePropertyChange("format", oldFormat, getFormattingHelpString());
     }
 
     private void throwLineFormatException(String s) throws EventFormatException {
@@ -759,10 +772,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @param specialEvents the specialEvents to set
      */
     public void setSpecialEvents(boolean specialEvents) {
-        String oldFormat = getShortFormattingHintString();
+        String oldFormat = getFormattingHelpString();
         this.specialEvents = specialEvents;
         prefs.putBoolean("specialEvents", specialEvents);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+        getSupport().firePropertyChange("format", oldFormat, getFormattingHelpString());
     }
 
     /**
@@ -776,10 +789,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      * @param useSignedPolarity the useSignedPolarity to set
      */
     public void setUseSignedPolarity(boolean useSignedPolarity) {
-        String oldFormat = getShortFormattingHintString();
+        String oldFormat = getFormattingHelpString();
         this.useSignedPolarity = useSignedPolarity;
         prefs.putBoolean("useSignedPolarity", useSignedPolarity);
-        getSupport().firePropertyChange("format", oldFormat, getShortFormattingHintString());
+        getSupport().firePropertyChange("format", oldFormat, getFormattingHelpString());
     }
 
     public void doSetToRPGFormat() {
@@ -987,7 +1000,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         String format = getShortFormattingHintString();
         sb += format + "\n";
         sb += "\n" + xy + "\n" + pol + "\n" + ts + "\n" + special;
-        sb += "\nClick SetToRPG format to reset to standard in " + AbstractDavisTextIo.RPG_FORMAT_URL_HYPERLINK;
+        sb += "\nClick <i>Set format to RPG standard</i> to reset to standard in " + AbstractDavisTextIo.RPG_FORMAT_URL_HYPERLINK;
         sb = sb.replaceAll("\n", "<br>"); // for HTML rendering
         return sb;
     }

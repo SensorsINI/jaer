@@ -43,28 +43,31 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
         this.textFileInputStream = textInputStream;
         initComponents();
         getRootPane().setDefaultButton(closeButton);
-        polSignedB.setSelected(textInputStream.isUseSignedPolarity());
-        polBinB.setSelected(!textInputStream.isUseSignedPolarity());
-
-        sepCommaB.setSelected(textInputStream.isUseCSV());
-        sepSpaceB.setSelected(!textInputStream.isUseCSV());
-
-        tsLastB.setSelected(textInputStream.isTimestampLast());
-        tsFirstB.setSelected(!textInputStream.isTimestampLast());
-
-        tsIntRB.setSelected(textInputStream.isUseUsTimestamps());
-        tsFloatRB.setSelected(!textInputStream.isUseUsTimestamps());
-
-        specialEventsCB.setSelected(textInputStream.isSpecialEvents());
-
-        flipPolCB.setSelected(textInputStream.isFlipPolarity());
 
         setFormatString(textInputStream.getShortFormattingHintString());
 
         helpText.setContentType("text/html"); // https://stackoverflow.com/questions/13195131/how-to-use-html-tags-in-jtextarea
         setHelpText(textInputStream.getFormattingHelpString());
-
+        setRadioButtons();
         textInputStream.addPropertyChangeListener(this);
+    }
+
+    private void setRadioButtons() {
+        polSignedB.setSelected(textFileInputStream.isUseSignedPolarity());
+        polBinB.setSelected(!textFileInputStream.isUseSignedPolarity());
+
+        sepCommaB.setSelected(textFileInputStream.isUseCSV());
+        sepSpaceB.setSelected(!textFileInputStream.isUseCSV());
+
+        tsLastB.setSelected(textFileInputStream.isTimestampLast());
+        tsFirstB.setSelected(!textFileInputStream.isTimestampLast());
+
+        tsIntRB.setSelected(textFileInputStream.isUseUsTimestamps());
+        tsFloatRB.setSelected(!textFileInputStream.isUseUsTimestamps());
+
+        specialEventsCB.setSelected(textFileInputStream.isSpecialEvents());
+
+        flipPolCB.setSelected(textFileInputStream.isFlipPolarity());
     }
 
     /**
@@ -650,11 +653,11 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
     private javax.swing.JRadioButton tsLastB;
     // End of variables declaration//GEN-END:variables
 
-    void setFormatString(String s) {
+    final private void setFormatString(String s) {
         formatLabel.setText(s);
     }
 
-    void setHelpText(String s) {
+    final private void setHelpText(String s) {
         helpText.setText(s);
     }
 
@@ -662,7 +665,7 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
         errorTA.setText(s);
     }
 
-    void setErrorMessage(String s) {
+    final private void setErrorMessage(String s) {
         errorTA.setText(s);
     }
 
@@ -672,6 +675,7 @@ public class TextFileInputStreamOptionsDialog extends javax.swing.JDialog implem
             if (evt.getPropertyName().equals("format")) {
                 setFormatString(textFileInputStream.getShortFormattingHintString());
                 setHelpText(textFileInputStream.getFormattingHelpString());
+                setRadioButtons();
             } else if (evt.getPropertyName().equals("sampleLine")) {
                 setSampleLine((String) evt.getNewValue());
             } else if (evt.getPropertyName().equals("lastError")) {
