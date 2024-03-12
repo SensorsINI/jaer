@@ -302,6 +302,13 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public synchronized void startPlayback(final File file) throws IOException, InterruptedException {
+        if(aeFileInputStream!=null){
+            try{
+                aeFileInputStream.close();
+            }catch(IOException e){
+                log.warning(String.format("Could not close existing file: %s",e.toString()));
+            }
+        }
         log.info("starting playback with file=" + file);
         inputFile = file;
         if ((file == null) || !file.isFile()) {
