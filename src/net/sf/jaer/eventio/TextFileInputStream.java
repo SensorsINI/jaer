@@ -108,7 +108,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     protected boolean useSignedPolarity = prefs.getBoolean("useSignedPolarity", false);
     protected boolean timestampLast = prefs.getBoolean("timestampLast", false);
     private boolean specialEvents = prefs.getBoolean("specialEvents", false);
-    private boolean firstTimstampIsZero=prefs.getBoolean("firstTimstampIsZero", false);
+    private boolean readTimestampsAsLongAndSubtractFirst = prefs.getBoolean("readTimestampsAsLongAndSubtractFirst", false);
     protected boolean nonMonotonicTimestampsChecked = prefs.getBoolean("nonMonotonicTimestampsChecked", true);
 
     private BufferedRandomAccessFile reader = null;
@@ -182,6 +182,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private float avgLineLength = 15; // TODO guesstimate, measuring during initial open
     private int startTimestamp = 0; // timestamp that packet starts at while readPacketByTime runs, reset by rewind
+    private TextFileInputStreamOptionsDialog optionsDialog=null;
 
     /**
      * Construct and open the text file input stream from a file that has one
@@ -337,15 +338,26 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                 throwLineFormatException(String.format("timestamp %s has no '.' in it but useUsTimestamps is false\n%s", split[it], lineinfo(line)));
             }
             if (useUsTimestamps) {
-                long tsLong=Long.parseLong(split[it]);
-                if(tsLong>Integer.MAX_VALUE){
-                    String s=String.format("Int timestamp %s is larger than Integer.MAX_VALUE (%,d) (line %s)",split[it],Integer.MAX_VALUE,lineinfo(line));
-                    throwLineFormatException(s);
+                if (readTimestampsAsLongAndSubtractFirst) {
+                    long tsLong = Long.parseLong(split[it]);
+                    if (noEventsReadYet) {
+                        firstLongTimestgamp = tsLong;
+                        noEventsReadYet = false;
+                        log.info(String.format("First (long) timestamp is %,d", firstLongTimestgamp));
+                    }
+                    mostRecentTimestamp=(int)(tsLong-firstLongTimestgamp);
+                } else {
+                    long tsLong = Long.parseLong(split[it]);
+                    if (tsLong > Integer.MAX_VALUE) {
+                        String s = String.format("Int timestamp %s is larger than Integer.MAX_VALUE (%,d) (line %s)", split[it], Integer.MAX_VALUE, lineinfo(line));
+                        throwLineFormatException(s);
+                    }
+                    mostRecentTimestamp=(int)tsLong;
                 }
             } else {
                 mostRecentTimestamp = (int) (Float.parseFloat(split[it]) * 1000000);
             }
-            mostRecentTimestamp = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
+//            mostRecentTimestamp = useUsTimestamps ? Integer.parseInt(split[it]) : (int) (Float.parseFloat(split[it]) * 1000000);
             previousTimestamp = mostRecentTimestamp;
             if (noEventsReadYet) {
                 firstTimestamp = mostRecentTimestamp;
@@ -515,6 +527,24 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     }
 
     /**
+     * @return the readTimestampsAsLongAndSubtractFirst
+     */
+    public boolean isReadTimestampsAsLongAndSubtractFirst() {
+        return readTimestampsAsLongAndSubtractFirst;
+    }
+
+    /**
+     * @param readTimestampsAsLongAndSubtractFirst the
+     * readTimestampsAsLongAndSubtractFirst to set
+     */
+    public void setReadTimestampsAsLongAndSubtractFirst(boolean readTimestampsAsLongAndSubtractFirst) {
+        String oldFormat = getFormattingHelpString();
+        this.readTimestampsAsLongAndSubtractFirst = readTimestampsAsLongAndSubtractFirst;
+        prefs.putBoolean("readTimestampsAsLongAndSubtractFirst", readTimestampsAsLongAndSubtractFirst);
+        getSupport().firePropertyChange("format", oldFormat, getFormattingHelpString());
+    }
+
+    /**
      * @return the useCSV
      */
     public boolean isUseCSV() {
@@ -618,7 +648,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     private BufferedRandomAccessFile openReader(File f) throws IOException, InterruptedException {
 //        https://stackoverflow.com/questions/1277880/how-can-i-get-the-count-of-line-in-a-file-in-an-efficient-way
 
-        TextFileInputStreamOptionsDialog optionsDialog = new TextFileInputStreamOptionsDialog(chip.getAeViewer(), false, this); // non-model to allow correcting format while reading file
+        optionsDialog = new TextFileInputStreamOptionsDialog(chip.getAeViewer(), false, this); // non-model to allow correcting format while reading file
         optionsDialog.setVisible(true);
 
         //        RandomAccessFile reader = new RandomAccessFile(f, "r");
@@ -891,6 +921,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                 log.info(String.format("Closed %s", this.file.getCanonicalPath()));
             }
             setPositionValue(0);
+            if(optionsDialog!=null){
+                optionsDialog.dispose();
+            }
+            
         } catch (IOException ex) {
             log.warning(ex.toString());
         } finally {
@@ -995,11 +1029,12 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         String pol = useSignedPolarity ? "polarity XXX: -1/+1" : "polarity XXX: 0/1";
         pol = pol.replaceAll("XXX", polOrder);
         String ts = useUsTimestamps ? "timestamp: int [us], e.g. 1234" : "timestamp: float [s], e.g. 1.234";
+        String tsLong = !readTimestampsAsLongAndSubtractFirst ? "timestamp are read as int [us]" : "timestamps are read as long [us] and first one is subtracted from subsequent";
         String xy = "addresses x,y: short,short".replace(',', sep);
         String special = isSpecialEvents() ? "special events: 0(normal)/1(special)" : "";
         String format = getShortFormattingHintString();
         sb += format + "\n";
-        sb += "\n" + xy + "\n" + pol + "\n" + ts + "\n" + special;
+        sb += "\n" + xy + "\n" + pol + "\n" + ts + "\n" + tsLong + "\n" + special;
         sb += "\nClick <i>Set format to RPG standard</i> to reset to standard in " + AbstractDavisTextIo.RPG_FORMAT_URL_HYPERLINK;
         sb = sb.replaceAll("\n", "<br>"); // for HTML rendering
         return sb;
