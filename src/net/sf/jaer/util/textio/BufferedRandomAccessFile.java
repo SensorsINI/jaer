@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.logging.Logger;
 
 /**
  * This class is a version of the one published at
@@ -35,6 +36,8 @@ import java.io.RandomAccessFile;
  * @author jg
  */
 public class BufferedRandomAccessFile extends RandomAccessFile {
+    
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     /**
      * Uses a byte instead of a char buffer for efficiency reasons.
@@ -52,6 +55,8 @@ public class BufferedRandomAccessFile extends RandomAccessFile {
      * Buffer size.
      */
     private final int BUFSIZE;
+    
+    private String filename=null;
 
     /**
      * Creates a new instance of the BufferedRandomAccessFile.
@@ -69,6 +74,7 @@ public class BufferedRandomAccessFile extends RandomAccessFile {
     public BufferedRandomAccessFile(String filename, String mode, int bufsize)
             throws FileNotFoundException {
         super(filename, mode);
+        this.filename=filename;
         BUFSIZE = bufsize;
         buffer = new byte[BUFSIZE];
     }
@@ -108,6 +114,11 @@ public class BufferedRandomAccessFile extends RandomAccessFile {
         return (buffer[bufpos++] + 256) & 0xFF;
         // End of fix
     }
+    
+    @Override
+    public String toString(){
+        return String.format("BufferedRandomAccessFile %s with BUFSIZE=%,d, realpos=%,d, bufpos=%,d, bufend=%,d",filename,BUFSIZE,realpos,bufpos,bufend);
+    }
 
     /**
      * Reads the next BUFSIZE bytes into the internal buffer.
@@ -119,6 +130,7 @@ public class BufferedRandomAccessFile extends RandomAccessFile {
      * some other I/O error occurs.
      */
     private int fillBuffer() throws IOException {
+        log.fine(String.format("Filling new buffer for %s", toString()));
         int n = super.read(buffer, 0, BUFSIZE);
 
         if (n >= 0) {
