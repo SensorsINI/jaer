@@ -65,7 +65,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     /**
      * BufferedRandomAccessFile buffer size in bytes
      */
-    private static final int BUFFER_SIZE_BYTES = 10_0000_0000;
+    private static final int BUFFER_SIZE_BYTES = 10_000_000;
     /**
      * // interval to update position to save a lot of Swing calls
      */
@@ -182,7 +182,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     private float avgLineLength = 15; // TODO guesstimate, measuring during initial open
     private int startTimestamp = 0; // timestamp that packet starts at while readPacketByTime runs, reset by rewind
-    private TextFileInputStreamOptionsDialog optionsDialog=null;
+    private TextFileInputStreamOptionsDialog optionsDialog = null;
 
     /**
      * Construct and open the text file input stream from a file that has one
@@ -314,6 +314,9 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             throw new IOException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s", e.toString(), position(), lastLineNumber, lastLineRead));
         }
         try {
+            if (line.charAt(line.length()-1)=='\r') { // tobi work around bug in BufferedRandomAccessFile that can end line with \r at end of buffer
+                line = line.substring(0, line.length() - 1);
+            }
             String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
             if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length != 5)) {
                 String s = String.format("Only %d tokens but needs 4 without and 5 with specialEvents:\n%s\nCheck useCSV for ',' or space separator", split.length, lineinfo(line));
@@ -345,14 +348,14 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                         noEventsReadYet = false;
                         log.info(String.format("First (long) timestamp is %,d", firstLongTimestgamp));
                     }
-                    mostRecentTimestamp=(int)(tsLong-firstLongTimestgamp);
+                    mostRecentTimestamp = (int) (tsLong - firstLongTimestgamp);
                 } else {
                     long tsLong = Long.parseLong(split[it]);
                     if (tsLong > Integer.MAX_VALUE) {
                         String s = String.format("Int timestamp %s is larger than Integer.MAX_VALUE (%,d) (line %s)", split[it], Integer.MAX_VALUE, lineinfo(line));
                         throwLineFormatException(s);
                     }
-                    mostRecentTimestamp=(int)tsLong;
+                    mostRecentTimestamp = (int) tsLong;
                 }
             } else {
                 mostRecentTimestamp = (int) (Float.parseFloat(split[it]) * 1000000);
@@ -372,11 +375,11 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             }
             short x = Short.parseShort(split[ix]);
             short y = Short.parseShort(split[iy]);
-            byte pol = Byte.parseByte(split[ip]);
-
             if (x < 0 || x >= chip.getSizeX() || y < 0 || y >= chip.getSizeY()) {
                 throwLineFormatException(String.format("address x=%d y=%d outside of AEChip allowed range maxX=%d, maxY=%d: , ignoring. %s\nAre you using the correct AEChip?", x, y, chip.getSizeX(), chip.getSizeY(), lineinfo(line)));
             }
+            byte pol = Byte.parseByte(split[ip]);
+
             PolarityEvent.Polarity polType = PolarityEvent.Polarity.Off;
             if (useSignedPolarity) {
                 if (pol != -1 && pol != 1) {
@@ -421,7 +424,12 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
 
             return e;
         } catch (NumberFormatException nfe) {
-            String s = String.format("%s: Line #%d has a bad number format: \"%s\"; check options; maybe you should set timestampLast?", nfe.toString(), lastLineNumber, line);
+            nfe.printStackTrace();
+            String s = String.format("%s: Line #%d has a bad number format: \"%s\"; check options; maybe you should set timestampLast?",
+                    nfe.toString(),
+                    lastLineNumber,
+                    line);
+            log.warning(s);
             throwLineFormatException(s);
         }
         return null;
@@ -921,10 +929,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
                 log.info(String.format("Closed %s", this.file.getCanonicalPath()));
             }
             setPositionValue(0);
-            if(optionsDialog!=null){
+            if (optionsDialog != null) {
                 optionsDialog.dispose();
             }
-            
+
         } catch (IOException ex) {
             log.warning(ex.toString());
         } finally {
