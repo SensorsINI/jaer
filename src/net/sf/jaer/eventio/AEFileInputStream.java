@@ -504,7 +504,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 mapNextChunk();
                 return readEventForwards(maxTimestamp);
             } catch (ClosedByInterruptException cbi) {
-                log.info(String.format("Closing file; FileChannel was closed by interrupt from another thread (probably GUI Swing thread): %s",cbi.toString()));
+                log.info(String.format("Closing file; FileChannel was closed by interrupt from another thread (probably GUI Swing thread): %s", cbi.toString()));
                 close();
                 return null;
             } catch (IOException eof) {
@@ -928,7 +928,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             e.printStackTrace();
             log.warning("When changing fractional position, got " + e.toString());
         }
-        log.info(String.format("Set fractional position %.1f%%",frac*100));
+        log.info(String.format("Set fractional position %.1f%%", frac * 100));
     }
 
     /**
@@ -1052,6 +1052,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     // https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java
+    // causes JDK crash on JDK20 if the byte buffer is already open and we try to close a file to open another one
+    // fixed based on same stackoverflow thread
     private static void closeDirectBuffer(ByteBuffer cb) {
         if (cb == null || !cb.isDirect()) {
             return;
@@ -1094,9 +1096,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public void close() throws IOException {
         super.close();
         if (fileChannel != null) {
-            if (getByteBuffer() != null) {
-                closeDirectBuffer(getByteBuffer());
-            }
+            // tobi commented out since it causes a crash in JDK21
+//            if (getByteBuffer() != null && getByteBuffer().isDirect()) {
+//                closeDirectBuffer(getByteBuffer());
+//            }
             fileChannel.close();
             fileChannel = null;
         }
@@ -1196,7 +1199,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             rewindFlag = false;
         }
     }
-
 
     /**
      * Indicates that this timestamp has wrapped around from most positive to
