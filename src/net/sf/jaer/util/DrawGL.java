@@ -284,7 +284,7 @@ public final class DrawGL {
      */
     public static Rectangle2D drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
         if (getTextRenderer() == null || getTextRenderer().getFont().getSize() != fontSize) {
-            setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false));
+            setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true));
         }
         getTextRenderer().begin3DRendering();
         getTextRenderer().setColor(color);
