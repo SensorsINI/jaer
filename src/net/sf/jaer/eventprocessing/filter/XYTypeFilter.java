@@ -416,9 +416,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
                 gl.glLineWidth(2f);
                 gl.glBegin(GL.GL_LINE_LOOP);
                 gl.glVertex2i(startX, startY);
-                gl.glVertex2i(endX, startY);
-                gl.glVertex2i(endX, endY);
-                gl.glVertex2i(startX, endY);
+                gl.glVertex2i(endX+1, startY);
+                gl.glVertex2i(endX+1, endY+1);
+                gl.glVertex2i(startX, endY+1);
                 gl.glEnd();
             } else {
                 for (SelectionRectangle r : selectionList) {
@@ -447,9 +447,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         }
         gl.glPushMatrix();
         gl.glColor3fv(c, 0);
-        gl.glLineWidth(lineWidth);
-        gl.glTranslatef(-.5f, -.5f, 0);
+        gl.glLineWidth(4);
+//        gl.glTranslatef(-.5f, -.5f, 0);
         gl.glBegin(GL.GL_LINE_LOOP);
+//        System.out.println("selection="+selection.toString());
         gl.glVertex2f(selection.x, selection.y);
         gl.glVertex2f(selection.x + selection.width, selection.y);
         gl.glVertex2f(selection.x + selection.width, selection.y + selection.height);
@@ -478,7 +479,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if ((startPoint == null) || canvas.getPixelFromMouseEvent(e).equals(startPoint)) {
+        if ((startPoint == null)) {
             return;
         }
         selection = getSelection(e); // TODO sets and returns same object, not really good behavior
@@ -486,9 +487,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
             selectionList.add(selection);
         }
         setStartX(startx);
-        setEndX(endx);
+        setEndX(endx-1);
         setStartY(starty);
-        setEndY(endy);
+        setEndY(endy-1);
         selecting = false;
 
     }
@@ -519,8 +520,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         endPoint = p;
         startx = min(startPoint.x, endPoint.x);
         starty = min(startPoint.y, endPoint.y);
-        endx = max(startPoint.x, endPoint.x);
-        endy = max(startPoint.y, endPoint.y);
+        endx = max(startPoint.x, endPoint.x)+1;
+        endy = max(startPoint.y, endPoint.y)+1;
         int w = endx - startx;
         int h = endy - starty;
         selection = new SelectionRectangle(startx, starty, w, h);
@@ -641,7 +642,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         }
 
         public boolean contains(BasicEvent e) {
-            return contains(e.x, e.y);
+//            return contains(e.x, e.y);
+            return (e.x>=x && e.x<x+width) && (e.y>=y && e.y<y+height);
         }
 
         public int getNumPixels() {
@@ -658,6 +660,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
             gl.glVertex2i(x, y + height);
             gl.glEnd();
         }
+        
     }
 
     synchronized public void doEraseSelections() {
