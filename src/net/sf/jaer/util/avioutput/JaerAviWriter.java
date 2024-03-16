@@ -65,6 +65,10 @@ public class JaerAviWriter extends AbstractAviWriter {
         }
 
         if (isRecordingActive() && isWriteEnabled() && writeFrameNowFlag) {
+            if(!chip.getAeViewer().isActiveRenderingEnabled()){
+                chip.getAeViewer().setActiveRenderingEnabled(true);
+                showPlainMessageDialogInSwingThread("Set active rendering enabled (View/View/Filtering options) to ensure that each frame is painted", "Active rendering enabled");
+            }
             GL2 gl = drawable.getGL().getGL2();
             BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
             int timecode = chip.getAeViewer().getAePlayer().getTime();
@@ -72,6 +76,8 @@ public class JaerAviWriter extends AbstractAviWriter {
             writeFrameNowFlag=false; // TODO move to super
         }
     }
+    
+    
 
     /**
      * @return the showTimeFactor
