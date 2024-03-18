@@ -826,7 +826,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             putChipClassPrefs();
         }
         /*
-             * appendCopy scroll arrows to menu
+             * appendCopyOfEventReferences scroll arrows to menu
              * arguments are: items to show, scrolling interval,
              * froozen items top, frozen items bottom
          */
@@ -905,8 +905,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Sets the device class, e.g. DVS127, from the fully qualified class name
      * which is provided by the menu item itself.
      *
-     * @param deviceClass the Class of the AEChip to appendCopy to the AEChip
-     * menu
+     * @param deviceClass the Class of the AEChip to appendCopyOfEventReferences to the AEChip
+ menu
      */
     public void setAeChipClass(Class deviceClass) {
         //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
@@ -1036,6 +1036,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             viewMenu.add(chip.getRenderer().getColorModeMenu(),colorModeSelectionMenuLocation);
             
             fadingMI.setAction(chip.getRenderer().toggleFadingAction);
+            slidingMI.setAction(chip.getRenderer().toggleSlidingWindowAction);
             acccumulateImageEnabledCheckBoxMenuItem.setAction(chip.getRenderer().toggleAccumulationAction);
             increaseContrastMenuItem.setAction(chip.getRenderer().increaseContrastAction);
             decreaseContrastMenuItem.setAction(chip.getRenderer().decreaseContrastAction);
@@ -1178,7 +1179,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             interfaceMenu.add(new JSeparator());
             interfaceAlreadyOpen = true;
             log.info(String.format("Added open device %s", chip.getHardwareInterface().toString()));
-            // don't appendCopy action listener because we are already selected as interface
+            // don't appendCopyOfEventReferences action listener because we are already selected as interface
         }
         ButtonGroup bg = new ButtonGroup();
 
@@ -1200,7 +1201,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))) {
                 // if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
-                // then appendCopy a menu item to select this interface.
+                // then appendCopyOfEventReferences a menu item to select this interface.
                 String menuText = String.format("%s (#%d)", hw.toString(), i);
                 log.info(String.format("Adding menu item for %s", menuText));
                 interfaceButton = new JRadioButtonMenuItem(menuText);
@@ -2692,6 +2693,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         acccumulateImageEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         resetAccumulationMenuItem = new javax.swing.JMenuItem();
         fadingMI = new javax.swing.JCheckBoxMenuItem();
+        slidingMI = new javax.swing.JCheckBoxMenuItem();
         viewIgnorePolarityCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator18 = new javax.swing.JPopupMenu.Separator();
         zoomInMenuItem = new javax.swing.JMenuItem();
@@ -3208,6 +3210,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fadingMI.setText("Fading");
         fadingMI.setToolTipText("Controls if previous DVS events fade away according to color scale or frames are just last slice");
         viewMenu.add(fadingMI);
+
+        slidingMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        slidingMI.setText("Sliding window");
+        slidingMI.setToolTipText("Controls if previous DVS events fade away according to color scale or frames are just last slice");
+        viewMenu.add(slidingMI);
 
         viewIgnorePolarityCheckBoxMenuItem.setText("Ignore cell type");
         viewIgnorePolarityCheckBoxMenuItem.setToolTipText("Throws away cells type for rendering");
@@ -4029,7 +4036,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     //                    statLabel.setFont(statLabel.getFont().deriveFont(16f));
     //                    statLabel.setToolTipText("Type \"1\" to update interval statistics");
     //                    statFrame.getContentPane().setLayout(new BorderLayout());
-    //                    statFrame.getContentPane().appendCopy(statLabel, BorderLayout.CENTER);
+    //                    statFrame.getContentPane().appendCopyOfEventReferences(statLabel, BorderLayout.CENTER);
     //                    statFrame.pack();
     //                }
     //                String s = " dt=" + fmt.format(dtSec) + "s, freq=" + fmt.format(freqHz) + " Hz ";
@@ -4071,7 +4078,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_formWindowClosing
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
-            // TODO appendCopy your handling code here:
+            // TODO appendCopyOfEventReferences your handling code here:
 	}//GEN-LAST:event_refreshInterfaceMenuItemActionPerformed
 
 	private void filtersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filtersToggleButtonActionPerformed
@@ -4710,13 +4717,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     String fn
                             = loggingFile.getName();
                     //                System.out.println("fn="+fn);
-                    // strip off .aedat to make it easier to appendCopy comment to filename
+                    // strip off .aedat to make it easier to appendCopyOfEventReferences comment to filename
                     int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
                     String base = fn;
                     if (extInd > 0) {
                         base = fn.substring(0, extInd); // maybe trying to save old .dat extension
                     }//                System.out.println("base="+base);
-                    // we'll appendCopy the extension back later
+                    // we'll appendCopyOfEventReferences the extension back later
                     chooser.setSelectedFile(new File(base));
                     //                chooser.setAccessory(new ResetFileButton(base,chooser));
                     chooser.setDialogType(JFileChooser.SAVE_DIALOG);
@@ -4724,15 +4731,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     //                Component[] comps=chooser.getComponents();
                     //                for(Component c:comps){
                     //                    if(c.getName().equals("buttonPanel")){
-                    //                        ((JPanel)c).appendCopy(new ResetFileButton(base,chooser));
+                    //                        ((JPanel)c).appendCopyOfEventReferences(new ResetFileButton(base,chooser));
                     //                    }
                     //                }
 //                                        JPanel commentsPanel=new JPanel();
 //                                        commentsPanel.setLayout(new BoxLayout(commentsPanel,BoxLayout.Y_AXIS));
 //                                        JTextField tf=new JTextField("");
 //                                        JLabel tfLabel=new JLabel("Optional comment");
-//                                        commentsPanel.appendCopy(tfLabel);
-//                                        commentsPanel.appendCopy(tf);
+//                                        commentsPanel.appendCopyOfEventReferences(tfLabel);
+//                                        commentsPanel.appendCopyOfEventReferences(tf);
 //                                        chooser.setAccessory(commentsPanel);
 
                     boolean savedIt = false;
@@ -4869,7 +4876,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * Adds item above separator/about
      *
-     * @param menuItem item to appendCopy
+     * @param menuItem item to appendCopyOfEventReferences
      * @see #removeHelpItem(javax.swing.JMenuItem)
      * @see #addHelpURLItem(java.lang.String, java.lang.String,
      * java.lang.String)
@@ -5508,7 +5515,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 	private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketOutputStreamMenuItemActionPerformed
-            // TODO appendCopy your handling code here:
+            // TODO appendCopyOfEventReferences your handling code here:
             if (socketOutputEnabled) {
                 closeAESocketClient();
                 setPlayMode(PlayMode.WAITING);
@@ -5761,7 +5768,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_viewActiveRenderingEnabledMenuItemActionPerformed
 
     private void skipPacketsRenderingCheckBoxMenuItemStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
-        fixSkipPacketsRenderingMenuItems();        // TODO appendCopy your handling code here:
+        fixSkipPacketsRenderingMenuItems();        // TODO appendCopyOfEventReferences your handling code here:
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
 
     private void jogBackwardsMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jogBackwardsMIActionPerformed
@@ -6226,7 +6233,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
         }
-        // otherwise appendCopy just before Help menu
+        // otherwise appendCopyOfEventReferences just before Help menu
         boolean didit = false;
         for (int i = 0; i < n; i++) {
             JMenu m = b.getMenu(i);
@@ -6235,7 +6242,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 didit = true;
             }
         }
-        if (!didit) { // if no help menu, appendCopy to end
+        if (!didit) { // if no help menu, appendCopyOfEventReferences to end
             b.add(menu, -1);
         }
     }
@@ -6451,6 +6458,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem setMarkOutMI;
     private javax.swing.JButton showConsoleOutputButton;
     private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
+    private javax.swing.JCheckBoxMenuItem slidingMI;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JTextField statusTextField;
     private javax.swing.JCheckBoxMenuItem syncEnabledCheckBoxMenuItem;

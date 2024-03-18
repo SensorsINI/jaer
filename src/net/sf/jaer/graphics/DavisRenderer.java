@@ -18,6 +18,8 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
+import java.util.Collection;
+import java.util.Collections;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
@@ -142,11 +144,11 @@ public class DavisRenderer extends AEChipRenderer {
         if (chip instanceof DavisChip) {
             contrastController = new DavisVideoContrastController((DavisChip) chip);
             contrastController.getSupport().addPropertyChangeListener(this);
+            // when contrast controller properties change, inform this so this can pass on to the chip
         } else {
             log.warning("cannot make a DavisVideoContrastController for this chip because it does not extend DavisChip");
         }
-        // when contrast controller properties change, inform this so this can pass on to the chip
-    }
+    } // constructor
 
     /**
      * Overridden to make gray buffer special for DAVIS cameras
@@ -165,7 +167,7 @@ public class DavisRenderer extends AEChipRenderer {
         if (madebuffer || (value != grayValue) || true) {
             log.info("Resetting grayBuffer for colorMode=" + colorMode.name());
             grayBuffer.rewind();
-            int alpha = (isDisplayFrames()||colorMode==ColorMode.HotCode) ? 0 : 1; // HotCode uses alpha channel to store events for count to map to hot code
+            int alpha = (isDisplayFrames() || colorMode == ColorMode.HotCode) ? 0 : 1; // HotCode uses alpha channel to store events for count to map to hot code
             float gray = colorMode.getBackgroundGrayLevel();
             for (int y = 0; y < textureWidth; y++) {
                 for (int x = 0; x < textureHeight; x++) {
@@ -231,8 +233,6 @@ public class DavisRenderer extends AEChipRenderer {
         super.setColorMode(colorMode);
     }
 
-
-
     /**
      * warning counter for some warnings
      */
@@ -268,6 +268,13 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     protected void renderApsDvsEvents(final EventPacket pkt) {
+        packet = pkt;
+        if (!(pkt.getEventPrototype() instanceof ApsDvsEvent)) {
+            if ((warningCount++ % DavisRenderer.WARNING_INTERVAL) == 0) {
+                log.warning("wrong input event class, got " + pkt.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
+            }
+            return;
+        }
         if (getChip() instanceof DavisBaseCamera) {
             computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
         }
@@ -283,62 +290,59 @@ public class DavisRenderer extends AEChipRenderer {
         }
 
         colorContrastAdditiveStep = computeColorContrastAdditiveStep();
+        final boolean displayEvents = isDisplayEvents();
+        final boolean displayFrames = isDisplayFrames();
+        final boolean backwards = pkt.getDurationUs() < 0;
 
+        resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
+        setSpecialCount(0);
         if (isFadingEnabled() && chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
             float fadeby = computeFadingFactor();
             float[] f = dvsEventsMap.array();
             float gray = getGrayValue();
-            for (int i = 0; i < f.length; i+=4) {// skip alpha channel
+            for (int i = 0; i < f.length; i += 4) {// skip alpha channel
                 f[i] = fadeToGray(f[i], fadeby, gray);
-                f[i+1] = fadeToGray(f[i+1], fadeby, gray);
-                f[i+2] = fadeToGray(f[i+2], fadeby, gray);
+                f[i + 1] = fadeToGray(f[i + 1], fadeby, gray);
+                f[i + 2] = fadeToGray(f[i + 2], fadeby, gray);
             }
         }
-        final ApsDvsEventPacket packetAPS = (ApsDvsEventPacket) pkt;
-        packet = packetAPS;
-
-        resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
-        setSpecialCount(0);
-
-        if (!(packetAPS.getEventPrototype() instanceof ApsDvsEvent)) {
-            if ((warningCount++ % DavisRenderer.WARNING_INTERVAL) == 0) {
-                log.warning("wrong input event class, got " + packetAPS.getEventPrototype() + " but we need to have " + ApsDvsEvent.class);
-            }
-            return;
+        if (isSlidingWindowEnabled()) {
+            slidingWindowPacketFifo.add(pkt);
         }
 
-        final boolean displayEvents = isDisplayEvents();
-        final boolean displayFrames = isDisplayFrames();
-        final boolean backwards = packetAPS.getDurationUs() < 0;
+        Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
+        for (EventPacket p : packets) {
+            final ApsDvsEventPacket packetAPS = (ApsDvsEventPacket) p;
 
-        final Iterator allItr = packetAPS.fullIterator();
+            final Iterator allItr = packetAPS.fullIterator();
 //        packetAPS.setTimeLimitEnabled(false);
-        while (allItr.hasNext()) {
-            // The iterator only iterates over the DVS events
-            final ApsDvsEvent e = (ApsDvsEvent) allItr.next();
+            while (allItr.hasNext()) {
+                // The iterator only iterates over the DVS events
+                final ApsDvsEvent e = (ApsDvsEvent) allItr.next();
 
-            if (e.isSpecial()) {
-                incrementSpecialCount(1);
+                if (e.isSpecial()) {
+                    incrementSpecialCount(1);
 //                continue; # don't skip them, render them to array with x and y address, maybe it is zero for external input events but maybe not in case of labeling events like noise
-            }
-
-            final int type = e.getType();
-            final boolean isAPSPixel = e.isApsData();
-
-            if (!isAPSPixel) {
-                if (displayEvents) {
-                    if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for
-                        // large pixels
-                        if ((e.x == xsel) && (e.y == ysel)) {
-                            playSpike(type);
-                        }
-                    }
-
-                    updateEventMaps(e);
                 }
-            } else if (!backwards && isAPSPixel && displayFrames) { // TODO need to handle single colorContrastAdditiveStep updates
-                // here
-                updateFrameBuffer(e);
+
+                final int type = e.getType();
+                final boolean isAPSPixel = e.isApsData();
+
+                if (!isAPSPixel) {
+                    if (displayEvents) {
+                        if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for
+                            // large pixels
+                            if ((e.x == xsel) && (e.y == ysel)) {
+                                playSpike(type);
+                            }
+                        }
+
+                        updateEventMaps(e);
+                    }
+                } else if (!backwards && isAPSPixel && displayFrames) { // TODO need to handle single colorContrastAdditiveStep updates
+                    // here
+                    updateFrameBuffer(e);
+                }
             }
         }
         if (renderedApsFrame) {
@@ -360,6 +364,20 @@ public class DavisRenderer extends AEChipRenderer {
         }
     }
 
+//    /** Adds a copy of all events to a new EventPacket and appends it to the end of the circular fifo for past packets
+//     * 
+//     * @param pkt 
+//     */
+//    @Override
+//    protected void addSlidingWindowPacket(EventPacket pkt) {
+//        if(pkt.getEventClass()!=slidi)
+//        ApsDvsEventPacket<ApsDvsEvent> packetCopy = new ApsDvsEventPacket(ApsDvsEvent.class);
+//        packetCopy.allocate(pkt.getSize());
+//        for(Object e:pkt){
+//            packetCopy.appendCopyOfEvent((ApsDvsEvent)e);
+//        }
+//        slidingWindowPacketFifo.add(packetCopy);
+//    }
     protected void renderPureDvsEvents(final EventPacket pkt) {
         if (resetAccumulationFlag || (!isAccumulateEnabled() && !isFadingEnabled())) {
             resetMaps();
@@ -379,36 +397,42 @@ public class DavisRenderer extends AEChipRenderer {
         }
         colorContrastAdditiveStep = computeColorContrastAdditiveStep();
 
-        packet = pkt;
+        if (isSlidingWindowEnabled()) {
+            slidingWindowPacketFifo.add(pkt);
+        }
 
         checkPixmapAllocation();
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
         setSpecialCount(0);
 
         final boolean displayEvents = isDisplayEvents();
+        packet = pkt;
 
-        final Iterator itr = packet.inputIterator();
-        while (itr.hasNext()) {
-            // The iterator only iterates over the DVS events
-            final PolarityEvent e = (PolarityEvent) itr.next();
+        Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
+        for (EventPacket p : packets) {
+            final Iterator itr = p.inputIterator();
+            while (itr.hasNext()) {
+                // The iterator only iterates over the DVS events
+                final PolarityEvent e = (PolarityEvent) itr.next();
 
-            if (e.isSpecial()) {
-                incrementSpecialCount(1);
+                if (e.isSpecial()) {
+                    incrementSpecialCount(1);
 //                continue; // don't skip rendering them
-            }
-
-            final int type = e.getType();
-
-            if (displayEvents) {
-                if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for large
-                    // pixels
-                    final int xs = xsel, ys = ysel;
-                    if ((e.x == xs) && (e.y == ys)) {
-                        playSpike(type);
-                    }
                 }
 
-                updateEventMaps(e);
+                final int type = e.getType();
+
+                if (displayEvents) {
+                    if ((xsel >= 0) && (ysel >= 0)) { // find correct mouse pixel interpretation to make sounds for large
+                        // pixels
+                        final int xs = xsel, ys = ysel;
+                        if ((e.x == xs) && (e.y == ys)) {
+                            playSpike(type);
+                        }
+                    }
+
+                    updateEventMaps(e);
+                }
             }
         }
         framesRenderedSinceApsFrame++;
@@ -453,7 +477,7 @@ public class DavisRenderer extends AEChipRenderer {
                 if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
                     nextHist.add(val);
                 } else {
-                    // randomly appendCopy histogram values to histogram depending on distance from center of image
+                    // randomly appendCopyOfEventReferences histogram values to histogram depending on distance from center of image
                     // to implement a simple form of center weighting of the histogram
                     float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY);
                     // d is zero at center, 1 at corners
@@ -558,8 +582,8 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case HotCode: {
-                    map[index + 3] = normalizeEvent(map[index+3]+colorContrastAdditiveStep); // use alpha channel for storing event count
-                    int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * map[index+3]));
+                    map[index + 3] = normalizeEvent(map[index + 3] + colorContrastAdditiveStep); // use alpha channel for storing event count
+                    int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * map[index + 3]));
 
                     if (ind < 0) {
                         ind = 0;

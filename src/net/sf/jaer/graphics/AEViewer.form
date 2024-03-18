@@ -411,6 +411,15 @@
                 <Property name="toolTipText" type="java.lang.String" value="Controls if previous DVS events fade away according to color scale or frames are just last slice"/>
               </Properties>
             </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="slidingMI">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Shift+Ctrl+P"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Sliding window"/>
+                <Property name="toolTipText" type="java.lang.String" value="Controls if previous DVS events fade away according to color scale or frames are just last slice"/>
+              </Properties>
+            </MenuItem>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewIgnorePolarityCheckBoxMenuItem">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Ignore cell type"/>
