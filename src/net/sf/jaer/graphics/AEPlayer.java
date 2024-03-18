@@ -396,6 +396,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         }
                     }
                     clearMarks();
+                    if(viewer.getChip().getRenderer()!=null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)){
+                        AEChipRenderer renderer=(AEChipRenderer)viewer.getChip().getRenderer();
+                        renderer.showRenderingModeTextOnAeViewer();
+                    }
                     getSupport().firePropertyChange(EVENT_FILEOPEN, null, file);
                 } catch (IOException e) {
                     exception = e;
