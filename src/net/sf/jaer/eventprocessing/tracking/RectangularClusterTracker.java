@@ -700,7 +700,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 fastClusterFinder.removeCluster(c1);
                 fastClusterFinder.removeCluster(c2);
 
-                // clusters.appendCopy(new Cluster(c1, c2)); // No good for cluster-class overriding!
+                // clusters.append(new Cluster(c1, c2)); // No good for cluster-class overriding!
                 clusters.add(createCluster(c1, c2));
 
                 // System.out.println("merged "+c1+" and "+c2);
@@ -875,7 +875,7 @@ public class RectangularClusterTracker extends EventFilter2D
             c.getLastPacketLocation().setLocation(c.location);
         }
 
-        // for each event, see which cluster it is closest to and appendCopy it to this cluster.
+        // for each event, see which cluster it is closest to and append it to this cluster.
         // if its too far from any cluster, make a new cluster if we have not jet
         // reached maxNumClusters
         // This will also update the Position, Mass, EventRate and AverageDistance
@@ -2282,7 +2282,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 return;
             }
             if (numEvents == previousNumEvents) {
-                return; // don't appendCopy point unless we had events that caused change in path (aside from prediction from
+                return; // don't append point unless we had events that caused change in path (aside from prediction from
                 // velocityPPT)
             }
             ClusterPathPoint p = createPoint(location.x, location.y, t);

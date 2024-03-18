@@ -157,7 +157,7 @@ public class DVS128StereoBoard extends DVS128 implements StereoChipInterface {
         @Override
         public AEPacketRaw reconstructRawPacket(EventPacket packet) {
             AEPacketRaw p = super.reconstructRawPacket(packet);
-            // we also need to appendCopy binocularity (eye) to raw events
+            // we also need to append binocularity (eye) to raw events
             for (int i = 0; i < packet.getSize(); i++) {
                 BinocularEvent be = (BinocularEvent) packet.getEvent(i);
                 if (be.eye == BinocularEvent.Eye.RIGHT) {

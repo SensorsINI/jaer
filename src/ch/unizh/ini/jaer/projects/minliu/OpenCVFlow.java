@@ -87,7 +87,7 @@ public class OpenCVFlow extends AbstractMotionFlow
         try {
             OpenCV.loadShared();   // search opencv native library with nu.pattern package.
             System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will appendCopy it automatically. 
+            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will append it automatically. 
         } catch (UnsatisfiedLinkError e) {
             System.err.println("Native code library failed to load.\n" + e);
             // System.exit(1);

@@ -368,8 +368,8 @@ public class ITDFilter extends EventFilter2D implements Observer, FrameAnnotater
         //        lastTimestamps0 = new ArrayList<LinkedList<Integer>>(32);
         //        lastTimestamps1 = new ArrayList<LinkedList<Integer>>(32);
         //        for (int k=0;k<32;k++) {
-        //            lastTimestamps0.appendCopy(new LinkedList<Integer>());
-        //            lastTimestamps1.appendCopy(new LinkedList<Integer>());
+        //            lastTimestamps0.append(new LinkedList<Integer>());
+        //            lastTimestamps1.append(new LinkedList<Integer>());
         //        }
 
         //AbsoluteLastTimestamp = new int[32][2];

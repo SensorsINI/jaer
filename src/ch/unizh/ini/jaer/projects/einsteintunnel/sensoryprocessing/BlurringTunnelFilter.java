@@ -1271,7 +1271,7 @@ public class BlurringTunnelFilter extends EventFilter2D implements FrameAnnotate
 		}
 
 		try {
-			// appendCopy events to the corresponding neuron
+			// append events to the corresponding neuron
 			for(int i=0; i<in.getSize(); i++){
 				BasicEvent ev = in.getEvent(i);
 				lastTime = ev.getTimestamp();

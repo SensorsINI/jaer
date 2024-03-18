@@ -302,7 +302,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                     list.add(new Splatt(-1, 0, .25f));
                     list.add(new Splatt(0, -1, .25f));
 //					if (isUseBalancedKernel()) {
-//						list.appendCopy(new Splatt(0, 0, -1));
+//						list.append(new Splatt(0, 0, -1));
 //					}
                     break;
                 case 2:
@@ -315,7 +315,7 @@ public final class CircularConvolutionFilter extends EventFilter2D implements Ob
                     list.add(new Splatt(-1, -1));
                     list.add(new Splatt(1, -1));
 //					if (isUseBalancedKernel()) {
-//						list.appendCopy(new Splatt(0, 0, -8));
+//						list.append(new Splatt(0, 0, -8));
 //					}
                     float f = 1f / list.size();
                     for (Splatt s : list) {

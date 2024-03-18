@@ -102,7 +102,7 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         filterChain = new FilterChain(chip);
 
         filterChain.add(labyrinthHardware);
-//        filterChain.appendCopy(handDetector);
+//        filterChain.append(handDetector);
         filterChain.add(tracker);
 
         setEnclosedFilterChain(filterChain);

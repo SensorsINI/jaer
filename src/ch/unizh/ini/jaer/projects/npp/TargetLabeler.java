@@ -407,12 +407,12 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 final int dt = nextTargets.getKey() - prevTargets.getKey();
                 nSamplesSinceLast++;
 //            for (Map.Entry<Integer, SimultaneouTargetLocations> nextTargets : targetLocations.entrySet()) { // for each existing set of targets by timestamp key list
-                // if no label at all for minTargetPointIntervalUs, then appendCopy copy of last labels up to maxTimeLastTargetLocationValidUs,
-                // then appendCopy null labels after that
+                // if no label at all for minTargetPointIntervalUs, then append copy of last labels up to maxTimeLastTargetLocationValidUs,
+                // then append null labels after that
                 // if multiple labels since last labels during this interval, then keep only last one
                 if (dt > minTargetPointIntervalUs) {
-                    int n = dt / minTargetPointIntervalUs;  // appendCopy this many total
-                    int tCopy = prevTargets.getKey() + maxTimeLastTargetLocationValidUs;  // appendCopy this many total
+                    int n = dt / minTargetPointIntervalUs;  // append this many total
+                    int tCopy = prevTargets.getKey() + maxTimeLastTargetLocationValidUs;  // append this many total
                     for (int i = 0; i < n; i++) {
                         int ts = prevTargets.getKey() + ((i + 1) * minTargetPointIntervalUs);
                         newTargets.put(ts, copyLocationsToNewTs(prevTargets.getValue(), ts, ts <= tCopy));
@@ -429,7 +429,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         int tFirstLabel = prevTargets != null ? prevTargets.getKey() : fileInputStream.getFirstTimestamp();
         int tLastLabel = fileInputStream.getLastTimestamp(); // TODO handle wrapped timestamp during recording
         int frameNumber = prevTargets != null ? prevTargets.getValue().get(0).frameNumber : -1;
-        int n = (tLastLabel - tFirstLabel) / minTargetPointIntervalUs;  // appendCopy this many total
+        int n = (tLastLabel - tFirstLabel) / minTargetPointIntervalUs;  // append this many total
         for (int i = 0; i < n; i++) {
             SimultaneouTargetLocations s = new SimultaneouTargetLocations();
             int ts = tFirstLabel + ((i + 1) * minTargetPointIntervalUs);
@@ -536,7 +536,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     lastTimestamp = e.timestamp;
                     // find next saved target location that is just before this time (lowerEntry)
                     if (shiftPressed && ctlPressed && !altPressed && (mousePoint != null)) { // specify (additional) target present
-                        // appendCopy a labeled location sample
+                        // append a labeled location sample
                         addSample(currentFrameNumber, e.timestamp, mousePoint, targetRadius * 2, targetRadius * 2, currentTargetTypeID, false);
                         log.info("added target sample " + lastAddedSample);
                         addedSample = true;
@@ -607,7 +607,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
         // start at the set of labels that has max timestamp equal to or less than event timestamp
         Map.Entry<Integer, SimultaneouTargetLocations> mostRecentTargetsBeforeThisEvent = targetLocations.floorEntry(timestamp);
         while (mostRecentTargetsBeforeThisEvent != null && mostRecentTargetsBeforeThisEvent.getKey() >= (timestamp - maxTimeLastTargetLocationValidUs)) {
-            // as long as the labels are within maxTimeLastTargetLocationValidUs, then appendCopy them to current targets
+            // as long as the labels are within maxTimeLastTargetLocationValidUs, then append them to current targets
             for (TargetLocation t : mostRecentTargetsBeforeThisEvent.getValue()) {
                 if ((t == null) || ((t != null) && ((timestamp - t.timestamp) > maxTimeLastTargetLocationValidUs))) {
                     targetLocation = null;
@@ -657,7 +657,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     public void setSelected(boolean yes) {
         super.setSelected(yes); // register/deregister mouse listeners
         if (yes) {
-            glCanvas.removeKeyListener(this); // only appendCopy ourselves once in case we were added on startup
+            glCanvas.removeKeyListener(this); // only append ourselves once in case we were added on startup
             glCanvas.addKeyListener(this);
         } else {
             glCanvas.removeKeyListener(this);

@@ -1050,7 +1050,7 @@ public class EvolutionaryThrottleController extends AbstractSlotCarController im
             resetMarkedSegments();
         }
 
-		// chooses next spot to appendCopy throttle, based on previous throttle throttleValues.
+		// chooses next spot to append throttle, based on previous throttle throttleValues.
         // The higher the previous throttle, the less likely to choose it.
         private int getNextThrottleBumpPoint() {
 			// do accept/reject sampling to getString next throttle bump center point, such that

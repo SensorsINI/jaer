@@ -1179,7 +1179,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             interfaceMenu.add(new JSeparator());
             interfaceAlreadyOpen = true;
             log.info(String.format("Added open device %s", chip.getHardwareInterface().toString()));
-            // don't appendCopyOfEventReferences action listener because we are already selected as interface
+            // don't appendOfEventReferences action listener because we are already selected as interface
         }
         ButtonGroup bg = new ButtonGroup();
 
@@ -1201,7 +1201,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((!UDPInterface.class.isInstance(hw) && !NetworkChip.class.isInstance(chip))
                     || (UDPInterface.class.isInstance(hw) && NetworkChip.class.isInstance(chip))) {
                 // if the chip is a normal AEChip with regular (not network) hardware interface, and the interface is not a network interface,
-                // then appendCopyOfEventReferences a menu item to select this interface.
+                // then appendOfEventReferences a menu item to select this interface.
                 String menuText = String.format("%s (#%d)", hw.toString(), i);
                 log.info(String.format("Adding menu item for %s", menuText));
                 interfaceButton = new JRadioButtonMenuItem(menuText);
@@ -4036,7 +4036,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     //                    statLabel.setFont(statLabel.getFont().deriveFont(16f));
     //                    statLabel.setToolTipText("Type \"1\" to update interval statistics");
     //                    statFrame.getContentPane().setLayout(new BorderLayout());
-    //                    statFrame.getContentPane().appendCopyOfEventReferences(statLabel, BorderLayout.CENTER);
+    //                    statFrame.getContentPane().appendOfEventReferences(statLabel, BorderLayout.CENTER);
     //                    statFrame.pack();
     //                }
     //                String s = " dt=" + fmt.format(dtSec) + "s, freq=" + fmt.format(freqHz) + " Hz ";
@@ -4078,7 +4078,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_formWindowClosing
 
 	private void refreshInterfaceMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_refreshInterfaceMenuItemActionPerformed
-            // TODO appendCopyOfEventReferences your handling code here:
+            // TODO appendOfEventReferences your handling code here:
 	}//GEN-LAST:event_refreshInterfaceMenuItemActionPerformed
 
 	private void filtersToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filtersToggleButtonActionPerformed
@@ -4717,13 +4717,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     String fn
                             = loggingFile.getName();
                     //                System.out.println("fn="+fn);
-                    // strip off .aedat to make it easier to appendCopyOfEventReferences comment to filename
+                    // strip off .aedat to make it easier to appendOfEventReferences comment to filename
                     int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
                     String base = fn;
                     if (extInd > 0) {
                         base = fn.substring(0, extInd); // maybe trying to save old .dat extension
                     }//                System.out.println("base="+base);
-                    // we'll appendCopyOfEventReferences the extension back later
+                    // we'll appendOfEventReferences the extension back later
                     chooser.setSelectedFile(new File(base));
                     //                chooser.setAccessory(new ResetFileButton(base,chooser));
                     chooser.setDialogType(JFileChooser.SAVE_DIALOG);
@@ -4731,15 +4731,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     //                Component[] comps=chooser.getComponents();
                     //                for(Component c:comps){
                     //                    if(c.getName().equals("buttonPanel")){
-                    //                        ((JPanel)c).appendCopyOfEventReferences(new ResetFileButton(base,chooser));
+                    //                        ((JPanel)c).appendOfEventReferences(new ResetFileButton(base,chooser));
                     //                    }
                     //                }
 //                                        JPanel commentsPanel=new JPanel();
 //                                        commentsPanel.setLayout(new BoxLayout(commentsPanel,BoxLayout.Y_AXIS));
 //                                        JTextField tf=new JTextField("");
 //                                        JLabel tfLabel=new JLabel("Optional comment");
-//                                        commentsPanel.appendCopyOfEventReferences(tfLabel);
-//                                        commentsPanel.appendCopyOfEventReferences(tf);
+//                                        commentsPanel.appendOfEventReferences(tfLabel);
+//                                        commentsPanel.appendOfEventReferences(tf);
 //                                        chooser.setAccessory(commentsPanel);
 
                     boolean savedIt = false;
@@ -5515,7 +5515,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
 
 	private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketOutputStreamMenuItemActionPerformed
-            // TODO appendCopyOfEventReferences your handling code here:
+            // TODO appendOfEventReferences your handling code here:
             if (socketOutputEnabled) {
                 closeAESocketClient();
                 setPlayMode(PlayMode.WAITING);
@@ -5768,7 +5768,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_viewActiveRenderingEnabledMenuItemActionPerformed
 
     private void skipPacketsRenderingCheckBoxMenuItemStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
-        fixSkipPacketsRenderingMenuItems();        // TODO appendCopyOfEventReferences your handling code here:
+        fixSkipPacketsRenderingMenuItems();        // TODO appendOfEventReferences your handling code here:
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemStateChanged
 
     private void jogBackwardsMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jogBackwardsMIActionPerformed
@@ -6233,7 +6233,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
         }
-        // otherwise appendCopyOfEventReferences just before Help menu
+        // otherwise appendOfEventReferences just before Help menu
         boolean didit = false;
         for (int i = 0; i < n; i++) {
             JMenu m = b.getMenu(i);
@@ -6242,7 +6242,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 didit = true;
             }
         }
-        if (!didit) { // if no help menu, appendCopyOfEventReferences to end
+        if (!didit) { // if no help menu, appendOfEventReferences to end
             b.add(menu, -1);
         }
     }

@@ -155,7 +155,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         super(chip);
         filterChain = new FilterChain(chip);
         chip.addObserver(this); // to get pixel array size updates
-        addObserver(this); // we appendCopy ourselves as observer so that our update() can be called during packet iteration periodically according to global FilterFrame update interval settting
+        addObserver(this); // we append ourselves as observer so that our update() can be called during packet iteration periodically according to global FilterFrame update interval settting
 
         try {
             cameraRotationEstimator = CameraRotationEstimator.valueOf(getString("positionComputer", "VORSensor"));
