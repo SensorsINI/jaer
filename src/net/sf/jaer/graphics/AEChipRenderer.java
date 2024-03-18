@@ -76,8 +76,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     // https://stackoverflow.com/questions/1963806/is-there-a-fixed-sized-queue-which-removes-excessive-elements
     // https://commons.apache.org/proper/commons-collections/apidocs/org/apache/commons/collections4/queue/CircularFifoQueue.html
 
- 
-
     public enum ColorMode {
 
         GrayLevel("Each event causes linear change in brightness", .5f),
@@ -722,6 +720,23 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
+     * Shows the color mode and its properties for a short time. Intended for
+     * use after opening a new file and playing it, to remind users about the
+     * current mode.
+     */
+    public void showRenderingModeTextOnAeViewer() {
+        if (chip.getAeViewer() != null) {
+            String s = String.format("Color Mode: %s", colorMode.toString());
+            if(fadingEnabled){
+                s+="; "+getFadingDescription();
+            }else if(slidingWindowEnabled){
+                s+="; "+getSlidingWindowDescription();
+            }
+            chip.getAeViewer().showActionText(s);
+        }
+    }
+
+    /**
      * set the color scale. 1 means a single event is full scale, 2 means a
      * single event is half scale, etc. only applies to some rendering methods.
      *
@@ -933,7 +948,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         this.fadingOrSlidingFrames = fadingOrSlidingFrames;
         log.info(String.format("Set fading or sliding frames to %d which multiples past frame by %.2f when fading, or renders %d past frames if slidingWindowEnabled", fadingOrSlidingFrames, computeFadingFactor(), fadingOrSlidingFrames));
         prefs.putInt("fadingFrames", fadingOrSlidingFrames);
-        slidingWindowPacketFifo=new SlidingWindowEventPacketFifo();
+        slidingWindowPacketFifo = new SlidingWindowEventPacketFifo();
     }
 
     /**
@@ -969,6 +984,11 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     private String getFadingDescription() {
         return String.format("Fading level %d with tau=%ss", getFadingOrSlidingFrames(), fmt.format(computeFadingTauS()));
+    }
+
+    private String getSlidingWindowDescription() {
+        float ms=(chip.getAeViewer().getAePlayer().getTimesliceUs()/1e6f)*getFadingOrSlidingFrames();
+        return String.format("Sliding window with %d frames (%ss)", getFadingOrSlidingFrames(), fmt.format(ms));
     }
 
     /**
@@ -1124,8 +1144,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             if (!isSlidingWindowEnabled()) {
                 showAction("Sliding window disabled");
             } else {
-                String s = String.format("Sliding window display with past %d frames", getFadingOrSlidingFrames());
-                showAction(s);
+                showAction(getSlidingWindowDescription());
             }
         }
 
@@ -1161,7 +1180,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             } else if (isFadingEnabled()) {
                 showAction(String.format("Lengthen fading to %s", getFadingDescription()));
             } else if (isSlidingWindowEnabled()) {
-                showAction(String.format("Lengthen sliding window to %d frames", getFadingOrSlidingFrames()));
+                showAction(String.format("Lengthen %s", getSlidingWindowDescription()));
             }
         }
     }
@@ -1196,13 +1215,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             } else if (isFadingEnabled()) {
                 showAction(String.format("Shorten fading to %s", getFadingDescription()));
             } else if (isSlidingWindowEnabled()) {
-                showAction(String.format("Shorten sliding window to %d frames", getFadingOrSlidingFrames()));
+                showAction(String.format("Shorten %s", getSlidingWindowDescription()));
             }
         }
     }
-    
-       /**
+
+    /**
      * A fifo to hold copies of recent event packets
+     *
      * @param <E> the type of events the packets hold
      */
     protected class SlidingWindowEventPacketFifo<E extends BasicEvent> extends CircularFifoQueue<EventPacket> {
@@ -1214,27 +1234,29 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             super(fadingOrSlidingFrames);
         }
 
-        /** Overrides super.add() make deep copies of all events to the 
-         * evicted packet from this FIFO, then puts this packet at the 
-         * tail of the FIFO, to be retrieved last when rendering.
+        /**
+         * Overrides super.add() make deep copies of all events to the evicted
+         * packet from this FIFO, then puts this packet at the tail of the FIFO,
+         * to be retrieved last when rendering.
          * <p>
-         * If the FIFO already has enough packets that one is evicted, then it is used,
-         * otherwise a new EventPacket of the correct type (EventPacket or ApsDvsEventPacket) is constructed
-         * and allocated to hold at least the number of events in the incoming packet.
-         * 
+         * If the FIFO already has enough packets that one is evicted, then it
+         * is used, otherwise a new EventPacket of the correct type (EventPacket
+         * or ApsDvsEventPacket) is constructed and allocated to hold at least
+         * the number of events in the incoming packet.
+         *
          * @param element the packet to add
-         * @return true always 
+         * @return true always
          */
         @Override
         public boolean add(EventPacket element) {
-            EventPacket packetCopy=null;
-            if(size()>=fadingOrSlidingFrames){
-                packetCopy=remove();
+            EventPacket packetCopy = null;
+            if (size() >= fadingOrSlidingFrames) {
+                packetCopy = remove();
                 packetCopy.clear();
-            }else{
-                if(element.getEventClass().isAssignableFrom(ApsDvsEvent.class)){
+            } else {
+                if (element.getEventClass().isAssignableFrom(ApsDvsEvent.class)) {
                     packetCopy = new ApsDvsEventPacket(ApsDvsEvent.class);
-                }else{
+                } else {
                     packetCopy = new EventPacket(element.getEventClass());
                 }
             }
@@ -1255,5 +1277,4 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 //        }
 //        slidingWindowPacketFifo.add(packetCopy);
 //    }
-
 }
