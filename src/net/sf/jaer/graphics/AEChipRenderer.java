@@ -189,6 +189,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
         setColorScale(prefs.getInt("colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
         slidingWindowPacketFifo = new SlidingWindowEventPacketFifo();
+        updateContrastActions();
 
         colorModeMenu = contructColorModeMenu();
         getSupport().addPropertyChangeListener(this);
@@ -727,10 +728,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     public void showRenderingModeTextOnAeViewer() {
         if (chip.getAeViewer() != null) {
             String s = String.format("Color Mode: %s", colorMode.toString());
-            if(fadingEnabled){
-                s+="; "+getFadingDescription();
-            }else if(slidingWindowEnabled){
-                s+="; "+getSlidingWindowDescription();
+            if (fadingEnabled) {
+                s += "; " + getFadingDescription();
+            } else if (slidingWindowEnabled) {
+                s += "; " + getSlidingWindowDescription();
             }
             chip.getAeViewer().showActionText(s);
         }
@@ -889,6 +890,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (fadingEnabled && slidingWindowEnabled) {
             toggleSlidingWindowAction.actionPerformed(null);
         }
+        updateContrastActions();
     }
 
     /**
@@ -917,6 +919,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             toggleFadingAction.actionPerformed(null);
         }
         slidingWindowPacketFifo.clear();
+        updateContrastActions();
     }
 
     /**
@@ -987,7 +990,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     private String getSlidingWindowDescription() {
-        float ms=(chip.getAeViewer().getAePlayer().getTimesliceUs()/1e6f)*getFadingOrSlidingFrames();
+        float ms = (chip.getAeViewer().getAePlayer().getTimesliceUs() / 1e6f) * getFadingOrSlidingFrames();
         return String.format("Sliding window with %d frames (%ss)", getFadingOrSlidingFrames(), fmt.format(ms));
     }
 
@@ -1030,6 +1033,19 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         return v;
     }
 
+    private void updateContrastActions() {
+        if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
+            increaseContrastAction.setName("Increase event contrast");
+            decreaseContrastAction.setName("Decrease event contrast");
+        } else if (isFadingEnabled()) {
+            increaseContrastAction.setName("Lengthen fading");
+            decreaseContrastAction.setName("Shorten fading");
+        } else if (isSlidingWindowEnabled()) {
+            increaseContrastAction.setName("Lengthen sliding window");
+            decreaseContrastAction.setName("Shorten sliding window");
+        }
+    }
+
     abstract public class MyAction extends AbstractAction {
 
         protected final String path = "/net/sf/jaer/graphics/icons/";
@@ -1060,6 +1076,15 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             if (chip.getAeViewer() != null && s != null) {
                 chip.getAeViewer().showActionText(s);
             }
+        }
+
+        /**
+         * Sets the name, which is the menu item string
+         *
+         * @param name
+         */
+        public void setName(String name) {
+            putValue(Action.NAME, name);
         }
     }
 
@@ -1094,7 +1119,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         public ToggleFadingAction() {
             super("Fade", "<html>Fade away display of past frames according to color scale."
-                    + "<p>To change the amount of fading,<br>  increase or decrease contrast with the UP and DOWN arrow keys.");
+                    + "<p>To change the amount of fading with the UP and DOWN arrow keys."
+                    + "<p>Ajust contrast of events by disabling <i>Fade</i> mode and using UP and DOWN arrow keys.");
             putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK));
             putValue(Action.SELECTED_KEY, isFadingEnabled());
         }
@@ -1113,6 +1139,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             } else {
                 float fadingTauS = computeFadingTauS();
                 showAction(getFadingDescription());
+                updateContrastActions();
             }
         }
 
