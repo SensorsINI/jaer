@@ -272,7 +272,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 //                if (t.equals(topic)) {
 ////                    log.info("topic matches " + t + "; adding this connection to myConnections. This message has definition " + conn.getMessageDefinition());
 //                    log.info("topic matches " + t + "; adding this connection to myConnections");
-//                    myConnections.appendCopy(conn);
+//                    myConnections.appendCopyOfEventReferences(conn);
 //                }
 //            }
 //
@@ -1618,7 +1618,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
                 }
                 return;
             }
-            appendCopy(event);
+            appendCopyOfEvent(event);
             lastTimestampPushed = event.timestamp;
         }
 
