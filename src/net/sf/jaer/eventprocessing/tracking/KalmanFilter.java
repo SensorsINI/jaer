@@ -124,7 +124,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater {//, P
         } else {
             return;
         }
-        //check if they have still support, if not appendCopy them to the zombie list.
+        //check if they have still support, if not append them to the zombie list.
         for (Cluster c : pruneList) {
             kalmans.remove(c);
             continue;

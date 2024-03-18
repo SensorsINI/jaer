@@ -204,7 +204,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         try {
             for (int i = startIndex; i < endIndex; i++) {
                 final E e = eventConstructor.newInstance();
-                // eventList.appendCopyOfEventReferences(e);
+                // eventList.appendOfEventReferences(e);
                 elementData[i] = e;
                 eventPrototype = e;
             }

@@ -88,14 +88,14 @@ public class DVS128StereoPair extends DVS128 implements StereoChipInterface {
 //        DisplayMethod m = new ChipRendererDisplayMethod(this.getCanvas()); // remove method that is incompatible with renderer
 //        getCanvas().addDisplayMethod(m);
 //        getCanvas().setDisplayMethod(m);
-//        getFilterChain().appendCopy(new StereoTranslateRotate(this));
-//        getFilterChain().appendCopy(new StereoVergenceFilter(this));
-//        getFilterChain().appendCopy(new GlobalDisparityFilter(this));
-//        getFilterChain().appendCopy(new GlobalDisparityFilter2(this));
-//        getFilterChain().appendCopy(new DisparityFilter(this));
-//        getFilterChain().appendCopy(new StereoClusterTracker(this));
-//        getFilterChain().appendCopy(new Batter(this));
-//        getRealTimeFilterChain().appendCopy(new Batter(this));
+//        getFilterChain().append(new StereoTranslateRotate(this));
+//        getFilterChain().append(new StereoVergenceFilter(this));
+//        getFilterChain().append(new GlobalDisparityFilter(this));
+//        getFilterChain().append(new GlobalDisparityFilter2(this));
+//        getFilterChain().append(new DisparityFilter(this));
+//        getFilterChain().append(new StereoClusterTracker(this));
+//        getFilterChain().append(new Batter(this));
+//        getRealTimeFilterChain().append(new Batter(this));
 //        if(filterFrame!=null) filterFrame.dispose();
 //        filterFrame=new FilterFrame(this);
     }
@@ -232,7 +232,7 @@ public class DVS128StereoPair extends DVS128 implements StereoChipInterface {
         @Override
         public AEPacketRaw reconstructRawPacket(EventPacket packet) {
             AEPacketRaw p = super.reconstructRawPacket(packet);
-            // we also need to appendCopy binocularity (eye) to raw events
+            // we also need to append binocularity (eye) to raw events
             for (int i = 0; i < packet.getSize(); i++) {
                 BinocularEvent be = (BinocularEvent) packet.getEvent(i);
                 if (be.eye == BinocularEvent.Eye.RIGHT) {

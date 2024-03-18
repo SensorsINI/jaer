@@ -212,7 +212,7 @@ public class FilterLaserline extends EventFilter2D implements FrameAnnotater {
                 } else {
                     // if not a special event
                     if (!freezeScoreFunction) {
-                        // appendCopy to histogram
+                        // append to histogram
                         if (ev.polarity == Polarity.On) {
                             onHist.addToData(ev.timestamp - lastTriggerTimestamp);
                         } else if (ev.polarity == Polarity.Off) {

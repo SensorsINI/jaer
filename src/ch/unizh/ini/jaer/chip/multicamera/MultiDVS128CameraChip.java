@@ -167,7 +167,7 @@ public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterfac
         @Override
         public AEPacketRaw reconstructRawPacket(EventPacket packet) {
             AEPacketRaw p = super.reconstructRawPacket(packet);
-            // we also need to appendCopy camera info to raw events
+            // we also need to append camera info to raw events
             for (int i = 0; i < packet.getSize(); i++) {
                 MultiCameraEvent mce = (MultiCameraEvent) packet.getEvent(i);
                 EventRaw event = p.getEvent(i);

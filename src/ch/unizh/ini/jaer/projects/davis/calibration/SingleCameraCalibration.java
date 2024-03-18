@@ -84,7 +84,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
 //            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 //            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
-            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will appendCopy it automatically.
+            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will append it automatically.
         } catch (UnsatisfiedLinkError e) {
             log.warning("Native OpenCV library failed to load.\n" + e + "\n See https://github.com/openpnp/opencv?tab=readme-ov-file to debug");
             // System.exit(1);

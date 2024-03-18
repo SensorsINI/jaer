@@ -84,7 +84,7 @@ public class CochleaTow4Ear extends CochleaChip implements Observer {
 
 		for (final DisplayMethod m : getCanvas().getDisplayMethods()) {
 			if ((m instanceof ChipRendererDisplayMethod) || (m instanceof SpaceTimeEventDisplayMethod)) {
-				// appendCopy labels on frame of chip for these xy chip displays
+				// append labels on frame of chip for these xy chip displays
 				m.addAnnotator(new FrameAnnotater() {
 					@Override
 					public void setAnnotationEnabled(final boolean yes) {

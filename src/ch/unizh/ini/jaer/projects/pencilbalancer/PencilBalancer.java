@@ -341,9 +341,9 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         polyEY = 0;
         polyFY = 0;
 
-        // appendCopy two "imaginary" events to filter, resulting in an initial vertical line
+        // append two "imaginary" events to filter, resulting in an initial vertical line
         float x, y;
-        // appendCopy point 64/0
+        // append point 64/0
         x = 64;
         y = 0;
         polyAX += (y * y);
@@ -359,7 +359,7 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
         polyEY += (-2.0 * x);
         polyFY += (x * x);
 
-        // appendCopy point 64/127
+        // append point 64/127
         x = 64;
         y = 127;
         polyAX += (y * y);

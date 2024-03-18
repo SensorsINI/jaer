@@ -276,7 +276,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater{
 		int sx = chip.getSizeX() - 1, sy = chip.getSizeY() - 1;
 		//int maxNumClusters=getMaxNumClusters();
 
-		// for each event, see which cluster it is closest to and appendCopy it to this cluster.
+		// for each event, see which cluster it is closest to and append it to this cluster.
 		// if its too far from any cluster, make a new cluster if we can
 		//        for(int i=0;i<n;i++){
 		for ( BasicEvent ev:ae ){
@@ -348,7 +348,7 @@ public class ParticleTracker extends EventFilter2D implements FrameAnnotater{
 					/***************************************************************************************************************/
 				} else{// existing cluster: new event of one or several existing cluster
 					listScanner = clusters.listIterator();
-					while ( listScanner.hasNext() ){ // appendCopy new event to cluster
+					while ( listScanner.hasNext() ){ // append new event to cluster
 						c = (Cluster)listScanner.next();
 						if ( ( c.last < (ev.timestamp - clusterUnsupportedLifetime) ) || ( c.last > ev.timestamp ) ){ //check if cluster is dead or if time has moved backwards
 							listScanner.remove();

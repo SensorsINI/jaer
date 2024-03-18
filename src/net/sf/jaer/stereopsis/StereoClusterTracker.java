@@ -410,7 +410,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 
 		private float updateDisparity(BinocularEvent event) {
 			float thisEventDisparity = 0;
-			// if we appendCopy events from each eye, moviing disparity and location according to each event, then a mismatch
+			// if we append events from each eye, moving disparity and location according to each event, then a mismatch
 			// in the number of events from each eye will putString cluster location closer to this eye; eventually the cluster center
 			// will move so far away from one eye that that eye's inputs will be outside the cluster
 			// and disparity tracking will be lost.

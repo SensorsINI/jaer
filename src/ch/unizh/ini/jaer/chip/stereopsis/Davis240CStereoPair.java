@@ -77,14 +77,14 @@ public class Davis240CStereoPair extends DavisBaseCamera implements StereoChipIn
         setSizeX(240);
         setSizeY(180);
 
-//        getFilterChain().appendCopy(new StereoTranslateRotate(this));
-//        getFilterChain().appendCopy(new StereoVergenceFilter(this));
-//        getFilterChain().appendCopy(new GlobalDisparityFilter(this));
-//        getFilterChain().appendCopy(new GlobalDisparityFilter2(this));
-//        getFilterChain().appendCopy(new DisparityFilter(this));
-//        getFilterChain().appendCopy(new StereoClusterTracker(this));
-//        getFilterChain().appendCopy(new Batter(this));
-//        getRealTimeFilterChain().appendCopy(new Batter(this));
+//        getFilterChain().append(new StereoTranslateRotate(this));
+//        getFilterChain().append(new StereoVergenceFilter(this));
+//        getFilterChain().append(new GlobalDisparityFilter(this));
+//        getFilterChain().append(new GlobalDisparityFilter2(this));
+//        getFilterChain().append(new DisparityFilter(this));
+//        getFilterChain().append(new StereoClusterTracker(this));
+//        getFilterChain().append(new Batter(this));
+//        getRealTimeFilterChain().append(new Batter(this));
 //        if(filterFrame!=null) filterFrame.dispose();
 //        filterFrame=new FilterFrame(this);
     }
@@ -187,7 +187,7 @@ public class Davis240CStereoPair extends DavisBaseCamera implements StereoChipIn
         @Override
         public AEPacketRaw reconstructRawPacket (EventPacket packet){
             AEPacketRaw p = super.reconstructRawPacket(packet);
-            // we also need to appendCopy binocularity (eye) to raw events
+            // we also need to append binocularity (eye) to raw events
             for ( int i = 0 ; i < packet.getSize() ; i++ ){
                 BinocularEvent be = (BinocularEvent)packet.getEvent(i);
                 if ( be.eye == BinocularEvent.Eye.RIGHT ){

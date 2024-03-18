@@ -1251,7 +1251,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 //        EventPacket<TypedEvent> packetCopy = new EventPacket();
 //        packetCopy.allocate(pkt.getSize());
 //        for (Object e : pkt) {
-//            packetCopy.appendCopyOfEvent((TypedEvent) e);
+//            packetCopy.appendOfEvent((TypedEvent) e);
 //        }
 //        slidingWindowPacketFifo.add(packetCopy);
 //    }

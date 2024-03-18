@@ -374,7 +374,7 @@ public class DavisRenderer extends AEChipRenderer {
 //        ApsDvsEventPacket<ApsDvsEvent> packetCopy = new ApsDvsEventPacket(ApsDvsEvent.class);
 //        packetCopy.allocate(pkt.getSize());
 //        for(Object e:pkt){
-//            packetCopy.appendCopyOfEvent((ApsDvsEvent)e);
+//            packetCopy.appendOfEvent((ApsDvsEvent)e);
 //        }
 //        slidingWindowPacketFifo.add(packetCopy);
 //    }
@@ -477,7 +477,7 @@ public class DavisRenderer extends AEChipRenderer {
                 if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
                     nextHist.add(val);
                 } else {
-                    // randomly appendCopyOfEventReferences histogram values to histogram depending on distance from center of image
+                    // randomly appendOfEventReferences histogram values to histogram depending on distance from center of image
                     // to implement a simple form of center weighting of the histogram
                     float d = (1 - Math.abs(((float) e.x - (sizeX / 2)) / sizeX)) + Math.abs(((float) e.y - (sizeY / 2)) / sizeY);
                     // d is zero at center, 1 at corners

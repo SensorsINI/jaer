@@ -328,7 +328,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 			c.getLastPacketLocation().setLocation(c.location);
 		}
 
-		// for each event, see which cluster it is closest to and appendCopy it to this cluster.
+		// for each event, see which cluster it is closest to and append it to this cluster.
 		// if its too far from any cluster, make a new cluster if we can
 		//        for(int i=0;i<n;i++){
 		for (BasicEvent ev : ae) {

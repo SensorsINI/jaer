@@ -765,7 +765,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 //        progressBar.setName("EEPROM programming");
 //        progressBar.setValue(0);
 //        progressBar.setStringPainted(true);
-//        frame.getContentPane().appendCopy(progressBar);
+//        frame.getContentPane().append(progressBar);
 //        frame.pack();
 //        frame.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 //        frame.setVisible(true);

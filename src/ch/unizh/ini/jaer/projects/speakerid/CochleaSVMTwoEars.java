@@ -454,7 +454,7 @@ public class CochleaSVMTwoEars extends ISIFilterTwoEars implements FrameAnnotate
         double[] prob_estimates = new double[model.nr_class];
         svm.svm_predict_probability(model, prob.x[prob.x.length - 1], prob_estimates); //use the loaded model to predict a new feature vector (prob.x) and write the probability estimates for each class into an array (prob_estimates)
         for (int i = 0; i < prob_estimates.length; i++) {
-            pred[i] = prob_estimates[i] * maxOfArray(prob_estimates) + pred[i] * Math.exp(-timeSinceLastPrediction / (getTauMS() * 1000));  //use the probaility for class(i) multiplied by the max probability and appendCopy some history to it multiplied by a decay
+            pred[i] = prob_estimates[i] * maxOfArray(prob_estimates) + pred[i] * Math.exp(-timeSinceLastPrediction / (getTauMS() * 1000));  //use the probaility for class(i) multiplied by the max probability and append some history to it multiplied by a decay
             values[i] = pred[i];
         }
         labeledClass = maxOfArrayIndex(pred);
