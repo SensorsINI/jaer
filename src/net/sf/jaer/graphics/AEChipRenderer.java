@@ -8,9 +8,10 @@ package net.sf.jaer.graphics;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.InputEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
@@ -29,7 +30,11 @@ import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.util.SpikeSound;
 import javax.swing.JRadioButtonMenuItem;
+import net.sf.jaer.event.ApsDvsEvent;
+import net.sf.jaer.event.ApsDvsEventPacket;
+import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.util.EngineeringFormat;
+import org.apache.commons.collections4.queue.CircularFifoQueue;
 
 /**
  * Superclass for classes that render DVS and other sensor/chip AEs to a memory
@@ -50,7 +55,12 @@ import net.sf.jaer.util.EngineeringFormat;
  */
 public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeListener {
 
+    protected boolean fadingEnabled = prefs.getBoolean("fadingEnabled", false);
+    protected boolean slidingWindowEnabled = prefs.getBoolean("slidingWindowEnabled", false);
+    protected int fadingOrSlidingFrames = prefs.getInt("fadingFrames", 4);
+
     public final ToggleFadingAction toggleFadingAction = new ToggleFadingAction();
+    public final ToggleSlidingWindowAction toggleSlidingWindowAction = new ToggleSlidingWindowAction();
     public final ToggleAccumulation toggleAccumulationAction = new ToggleAccumulation();
     public final IncreaseContrastAction increaseContrastAction = new IncreaseContrastAction();
     public final DecreaseContrastAction decreaseContrastAction = new DecreaseContrastAction();
@@ -62,8 +72,11 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     private JMenu colorModeMenu = null;
     private HashMap<ColorMode, JMenuItem> colorModeButtonMap = new HashMap();
 
-    private boolean fadingEnabled = prefs.getBoolean("fadingEnabled", false);
-    private int fadingFrames = prefs.getInt("fadingFrames", 4);
+    protected SlidingWindowEventPacketFifo slidingWindowPacketFifo = null; // used to store copies of past packets for rendering sliding window
+    // https://stackoverflow.com/questions/1963806/is-there-a-fixed-sized-queue-which-removes-excessive-elements
+    // https://commons.apache.org/proper/commons-collections/apidocs/org/apache/commons/collections4/queue/CircularFifoQueue.html
+
+ 
 
     public enum ColorMode {
 
@@ -177,6 +190,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             // System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
         }
         setColorScale(prefs.getInt("colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
+        slidingWindowPacketFifo = new SlidingWindowEventPacketFifo();
 
         colorModeMenu = contructColorModeMenu();
         getSupport().addPropertyChangeListener(this);
@@ -216,164 +230,162 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         resetSelectedPixelEventCount(); // init it for this packet
         boolean ignorePolarity = isIgnorePolarityEnabled();
         setSpecialCount(0);
+        if (isSlidingWindowEnabled()) {
+            slidingWindowPacketFifo.add(packet);
+        }
+        Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(packet);
+
         try {
-            if (packet.getNumCellTypes() > 2) {
-                checkTypeColors(packet.getNumCellTypes());
-                if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                    resetFrame(0);
-                    resetAccumulationFlag = false;
-                }
-                for (Object obj : packet) {
-                    BasicEvent e = (BasicEvent) obj;
-                    if (e.isSpecial()) {
-                        setSpecialCount(specialCount + 1); // TODO optimize special count increment
-                        continue;
-                    }
-                    int type = e.getType();
-                    if ((e.x == xsel) && (e.y == ysel)) {
-                        playSpike(type);
-                    }
-                    int ind = getPixMapIndex(e.x, e.y);
-                    // float[] f = fr[e.y][e.x];
-                    // setPixmapPosition(e.x, e.y);
-                    float[] c = typeColorRGBComponents[type];
-                    if ((obj instanceof OrientationEventInterface) && (((OrientationEventInterface) obj).isHasOrientation() == false)) {
-                        // if event is orientation event but orientation was not set, just draw as gray level
-                        f[ind] += colorContrastAdditiveStep; // if(f[0]>1f) f[0]=1f;
-                        f[ind + 1] += colorContrastAdditiveStep; // if(f[1]>1f) f[1]=1f;
-                        f[ind + 2] += colorContrastAdditiveStep; // if(f[2]>1f) f[2]=1f;
-                    } else {
-                        f[ind] += c[0] * colorContrastAdditiveStep; // if(f[0]>1f) f[0]=1f;
-                        f[ind + 1] += c[1] * colorContrastAdditiveStep; // if(f[1]>1f) f[1]=1f;
-                        f[ind + 2] += c[2] * colorContrastAdditiveStep; // if(f[2]>1f) f[2]=1f;
-                    }
-                }
-            } else {
-                switch (colorMode) {
-                    case GrayLevel:
-                        if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                            resetFrame(getGrayValue()); // also sets grayValue
-                            resetAccumulationFlag = false;
-                        }
-                        colorContrastAdditiveStep = 2f / (colorScale + 1);
-                        // colorScale=1,2,3; colorContrastAdditiveStep = 1, 1/2, 1/3, 1/4, ;
-                        // later type-grayValue gives -.5 or .5 for spike value, when
-                        // multipled gives steps of 1/2, 1/3, 1/4 to end up with 0 or 1 when colorScale=1 and you have
-                        // one event
-                        for (Object obj : packet) {
-                            BasicEvent e = (BasicEvent) obj;
-                            int type = e.getType();
-                            if (e.isSpecial()) {
-                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
-                                continue;
-                            }
-                            if ((e.x == xsel) && (e.y == ysel)) {
-                                playSpike(type);
-                            }
-                            int ind = getPixMapIndex(e.x, e.y);
-                            a = f[ind];
-                            if (!ignorePolarity) {
-                                a += colorContrastAdditiveStep * (type - grayValue); // type-.5 = -.5 or .5; colorContrastAdditiveStep*type= -.5, .5, (cs=1) or
-                                // -.25, .25 (cs=2) etc.
-                            } else {
-                                a += colorContrastAdditiveStep * (1 - grayValue); // type-.5 = -.5 or .5; colorContrastAdditiveStep*type= -.5, .5, (cs=1) or -.25,
-                                // .25 (cs=2) etc.
-                            }
-                            f[ind] = a;
-                            f[ind + 1] = a;
-                            f[ind + 2] = a;
-                        }
-                        break;
-                    case RedGreen:
-                        if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                            resetFrame(getGrayValue());
-                            resetAccumulationFlag = false;
-                        }
-                        colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
-                        for (Object obj : packet) {
-                            BasicEvent e = (BasicEvent) obj;
+            for (EventPacket pkt : packets) {
 
-                            int type = e.getType();
-                            if (e.isSpecial()) {
-                                setSpecialCount(specialCount + 1); // TODO optimate special count increment
-                                continue;
+                if (pkt.getNumCellTypes() > 2) {
+                    checkTypeColors(pkt.getNumCellTypes());
+                    if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
+                        resetFrame(0);
+                        resetAccumulationFlag = false;
+                    }
+                    for (Object obj : pkt) {
+                        BasicEvent e = (BasicEvent) obj;
+                        if (e.isSpecial()) {
+                            setSpecialCount(specialCount + 1); // TODO optimize special count increment
+                            continue;
+                        }
+                        int type = e.getType();
+                        if ((e.x == xsel) && (e.y == ysel)) {
+                            playSpike(type);
+                        }
+                        int ind = getPixMapIndex(e.x, e.y);
+                        // float[] f = fr[e.y][e.x];
+                        // setPixmapPosition(e.x, e.y);
+                        float[] c = typeColorRGBComponents[type];
+                        if ((obj instanceof OrientationEventInterface) && (((OrientationEventInterface) obj).isHasOrientation() == false)) {
+                            // if event is orientation event but orientation was not set, just draw as gray level
+                            f[ind] += colorContrastAdditiveStep; // if(f[0]>1f) f[0]=1f;
+                            f[ind + 1] += colorContrastAdditiveStep; // if(f[1]>1f) f[1]=1f;
+                            f[ind + 2] += colorContrastAdditiveStep; // if(f[2]>1f) f[2]=1f;
+                        } else {
+                            f[ind] += c[0] * colorContrastAdditiveStep; // if(f[0]>1f) f[0]=1f;
+                            f[ind + 1] += c[1] * colorContrastAdditiveStep; // if(f[1]>1f) f[1]=1f;
+                            f[ind + 2] += c[2] * colorContrastAdditiveStep; // if(f[2]>1f) f[2]=1f;
+                        }
+                    }
+                } else {
+                    switch (colorMode) {
+                        case GrayLevel:
+                            if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
+                                resetFrame(getGrayValue()); // also sets grayValue
+                                resetAccumulationFlag = false;
                             }
-                            // System.out.println("x: " + e.x + " y:" + e.y);
-                            if ((e.x == xsel) && (e.y == ysel)) {
-                                playSpike(type);
-                            }
-                            int ind = getPixMapIndex(e.x, e.y);
-                            f[ind + type] += colorContrastAdditiveStep;
-                        }
-                        break;
-                    case ColorTime:
-                        if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                            resetFrame(getGrayValue());
-                            resetAccumulationFlag = false;
-                        }
-                        if (numEvents == 0) {
-                            return;
-                        }
-                        int ts0 = packet.getFirstTimestamp();
-                        float dt = packet.getDurationUs();
-                        colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
-                        for (Object obj : packet) {
-                            BasicEvent e = (BasicEvent) obj;
+                            colorContrastAdditiveStep = 2f / (colorScale + 1);
+                            // colorScale=1,2,3; colorContrastAdditiveStep = 1, 1/2, 1/3, 1/4, ;
+                            // later type-grayValue gives -.5 or .5 for spike value, when
+                            // multipled gives steps of 1/2, 1/3, 1/4 to end up with 0 or 1 when colorScale=1 and you have
+                            // one event
 
-                            int type = e.getType();
-                            if (e.isSpecial()) {
-                                setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
-                                continue;
-                            }
-                            if ((e.x == xsel) && (e.y == ysel)) {
-                                playSpike(type);
-                            }
-                            int index = getPixMapIndex(e.x, e.y);
-                            int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
-                            if (ind < 0) {
-                                ind = 0;
-                            } else if (ind >= timeColors.length) {
-                                ind = timeColors.length - 1;
-                            }
-                            if (colorScale > 1) {
-                                for (int c = 0; c < 3; c++) {
-                                    f[index + c] += timeColors[ind][c] * colorContrastAdditiveStep;
+                            for (Object obj : pkt) {
+                                BasicEvent e = (BasicEvent) obj;
+                                int type = e.getType();
+                                if (e.isSpecial()) {
+                                    setSpecialCount(specialCount + 1); // TODO optimate special count increment
+                                    continue;
                                 }
-                            } else {
-                                f[index] = timeColors[ind][0];
-                                f[index + 1] = timeColors[ind][1];
-                                f[index + 2] = timeColors[ind][2];
+                                if ((e.x == xsel) && (e.y == ysel)) {
+                                    playSpike(type);
+                                }
+                                int ind = getPixMapIndex(e.x, e.y);
+                                a = f[ind];
+                                if (!ignorePolarity) {
+                                    a += colorContrastAdditiveStep * (type - grayValue); // type-.5 = -.5 or .5; colorContrastAdditiveStep*type= -.5, .5, (cs=1) or
+                                    // -.25, .25 (cs=2) etc.
+                                } else {
+                                    a += colorContrastAdditiveStep * (1 - grayValue); // type-.5 = -.5 or .5; colorContrastAdditiveStep*type= -.5, .5, (cs=1) or -.25,
+                                    // .25 (cs=2) etc.
+                                }
+                                f[ind] = a;
+                                f[ind + 1] = a;
+                                f[ind + 2] = a;
                             }
-                        }
-                        break;
-                    default:
-                        // rendering method unknown, reset to default value
-                        log.warning("colorMode " + colorMode + " unknown, reset to default value 0");
-                        setColorMode(ColorMode.GrayLevel);
+                            break;
+                        case RedGreen:
+                            if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
+                                resetFrame(getGrayValue());
+                                resetAccumulationFlag = false;
+                            }
+                            colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
+                            for (Object obj : pkt) {
+                                BasicEvent e = (BasicEvent) obj;
+
+                                int type = e.getType();
+                                if (e.isSpecial()) {
+                                    setSpecialCount(specialCount + 1); // TODO optimate special count increment
+                                    continue;
+                                }
+                                // System.out.println("x: " + e.x + " y:" + e.y);
+                                if ((e.x == xsel) && (e.y == ysel)) {
+                                    playSpike(type);
+                                }
+                                int ind = getPixMapIndex(e.x, e.y);
+                                f[ind + type] += colorContrastAdditiveStep;
+                            }
+                            break;
+                        case ColorTime:
+                            if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
+                                resetFrame(getGrayValue());
+                                resetAccumulationFlag = false;
+                            }
+                            if (numEvents == 0) {
+                                return;
+                            }
+                            int ts0 = pkt.getFirstTimestamp();
+                            float dt = pkt.getDurationUs();
+                            colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
+                            for (Object obj : pkt) {
+                                BasicEvent e = (BasicEvent) obj;
+
+                                int type = e.getType();
+                                if (e.isSpecial()) {
+                                    setSpecialCount(getSpecialCount() + 1); // TODO optimate special count increment
+                                    continue;
+                                }
+                                if ((e.x == xsel) && (e.y == ysel)) {
+                                    playSpike(type);
+                                }
+                                int index = getPixMapIndex(e.x, e.y);
+                                int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
+                                if (ind < 0) {
+                                    ind = 0;
+                                } else if (ind >= timeColors.length) {
+                                    ind = timeColors.length - 1;
+                                }
+                                if (colorScale > 1) {
+                                    for (int c = 0; c < 3; c++) {
+                                        f[index + c] += timeColors[ind][c] * colorContrastAdditiveStep;
+                                    }
+                                } else {
+                                    f[index] = timeColors[ind][0];
+                                    f[index + 1] = timeColors[ind][1];
+                                    f[index + 2] = timeColors[ind][2];
+                                }
+                            }
+                            break;
+                        default:
+                            // rendering method unknown, reset to default value
+                            log.warning("colorMode " + colorMode + " unknown, reset to default value 0");
+                            setColorMode(ColorMode.GrayLevel);
+                    }
                 }
+                fadeFrame();
             }
-            fadeFrame();
+
         } catch (ArrayIndexOutOfBoundsException e) {
             if ((chip.getFilterChain() != null)
                     && (chip.getFilterChain().getProcessingMode() != net.sf.jaer.eventprocessing.FilterChain.ProcessingMode.ACQUISITION)) { // only
-                // print
-                // if
-                // real-time
-                // mode
-                // has
-                // not
-                // invalidated
-                // the
-                // packet
-                // we
-                // are
-                // trying
-                // render
                 e.printStackTrace();
                 log.warning(e.toString() + ": ChipRenderer.render(), some event out of bounds for this chip type?");
             }
         }
         pixmap.rewind();
+
     }
 
     /**
@@ -808,15 +820,24 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     @Override
     public void propertyChange(PropertyChangeEvent pce) {
-//        log.info(pce.toString());
-        if (pce.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            resetFrame(grayValue);
-        } else if (pce.getPropertyName() == EVENT_COLOR_MODE_CHANGE) {
-            resetFrame(getGrayValue());
-        } else if (pce.getPropertyName() == EVENT_SET_GRAYLEVEL) {
-            resetFrame(getGrayValue());
-        } else if (pce.getPropertyName() == EVENT_SET_BACKGROUND) {
-            resetFrame(getGrayValue());
+        if (null != pce.getPropertyName())//        log.info(pce.toString());
+        {
+            switch (pce.getPropertyName()) {
+                case AEInputStream.EVENT_REWOUND:
+                    resetFrame(grayValue);
+                    break;
+                case EVENT_COLOR_MODE_CHANGE:
+                    resetFrame(getGrayValue());
+                    break;
+                case EVENT_SET_GRAYLEVEL:
+                    resetFrame(getGrayValue());
+                    break;
+                case EVENT_SET_BACKGROUND:
+                    resetFrame(getGrayValue());
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -845,9 +866,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @param fadingEnabled the fadingEnabled to set
      */
     public void setFadingEnabled(boolean fadingEnabled) {
+        boolean old = this.fadingEnabled;
         log.info(String.format("Set fading=%s", fadingEnabled));
         this.fadingEnabled = fadingEnabled;
         prefs.putBoolean("fadingEnabled", fadingEnabled);
+        getSupport().firePropertyChange("fadingEnabled", old, fadingEnabled);
+        if (fadingEnabled && slidingWindowEnabled) {
+            toggleSlidingWindowAction.actionPerformed(null);
+        }
     }
 
     /**
@@ -861,39 +887,68 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
-     * @return the fadingFrames
+     * Set true to make the rendering accumulate and fade or false if should
+     * just render last slice from gray level
+     *
+     * @param slidingWindowEnabled the fadingEnabled to set
      */
-    public int getFadingFrames() {
-        return fadingFrames;
+    synchronized public void setSlidingWindowEnabled(boolean slidingWindowEnabled) {
+        boolean old = this.slidingWindowEnabled;
+        log.info(String.format("Set slidingWindowEnabled=%s", slidingWindowEnabled));
+        this.slidingWindowEnabled = slidingWindowEnabled;
+        prefs.putBoolean("slidingWindowEnabled", slidingWindowEnabled);
+        getSupport().firePropertyChange("slidingWindowEnabled", old, slidingWindowEnabled);
+        if (slidingWindowEnabled && fadingEnabled) {
+            toggleFadingAction.actionPerformed(null);
+        }
+        slidingWindowPacketFifo.clear();
     }
 
     /**
-     * @param fadingFrames the fadingFrames to set
+     * Returns true if the rendering should accumulate and fade or false if just
+     * last slice is rendered
+     *
+     * @return the fadingEnabled
      */
-    public void setFadingFrames(int fadingFrames) {
-        if (fadingFrames < 1) {
-            fadingFrames = 1;
-        } else if (fadingFrames > 64) {
-            fadingFrames = 64;
+    public boolean isSlidingWindowEnabled() {
+        return slidingWindowEnabled;
+    }
+
+    /**
+     * @return the fadingOrSlidingFrames
+     */
+    public int getFadingOrSlidingFrames() {
+        return fadingOrSlidingFrames;
+    }
+
+    /**
+     * @param fadingOrSlidingFrames the fadingOrSlidingFrames to set
+     */
+    synchronized public void setFadingOrSlidingFrames(int fadingOrSlidingFrames) {
+        if (fadingOrSlidingFrames < 1) {
+            fadingOrSlidingFrames = 1;
+        } else if (fadingOrSlidingFrames > 64) {
+            fadingOrSlidingFrames = 64;
         }
-        this.fadingFrames = fadingFrames;
-        log.info(String.format("Set fading frames to %d which multiples past frame by %.2f", fadingFrames, computeFadingFactor()));
-        prefs.putInt("fadingFrames", fadingFrames);
+        this.fadingOrSlidingFrames = fadingOrSlidingFrames;
+        log.info(String.format("Set fading or sliding frames to %d which multiples past frame by %.2f when fading, or renders %d past frames if slidingWindowEnabled", fadingOrSlidingFrames, computeFadingFactor(), fadingOrSlidingFrames));
+        prefs.putInt("fadingFrames", fadingOrSlidingFrames);
+        slidingWindowPacketFifo=new SlidingWindowEventPacketFifo();
     }
 
     /**
      * Computes how much to fade the old rendering values
      *
      * @return 1 if fadingEnabled=false, otherwise how much to fade current
-     * values by, depending on fadingFrames. If fadingFrames=1, then previous
-     * frame is multiplied by 1-1/2=.5, if 2, then 1-1/3=.76, if 3, then
-     * 1-1/4=.75 etc.
+     * values by, depending on fadingOrSlidingFrames. If
+     * fadingOrSlidingFrames=1, then previous frame is multiplied by 1-1/2=.5,
+     * if 2, then 1-1/3=.76, if 3, then 1-1/4=.75 etc.
      */
     protected float computeFadingFactor() {
         if (!isFadingEnabled()) {
             return 1;
         }
-        float fadeTo = 1 - 1f / (fadingFrames + .25f); // TODO make it really depend on rendering rate
+        float fadeTo = 1 - 1f / (fadingOrSlidingFrames + .25f); // TODO make it really depend on rendering rate
         return fadeTo;
     }
 
@@ -913,7 +968,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     private String getFadingDescription() {
-        return String.format("Fading level %d with tau=%ss", getFadingFrames(), fmt.format(computeFadingTauS()));
+        return String.format("Fading level %d with tau=%ss", getFadingOrSlidingFrames(), fmt.format(computeFadingTauS()));
     }
 
     /**
@@ -1026,11 +1081,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            if (isFadingEnabled()) {
-                setFadingEnabled(false);
-            } else {
-                setFadingEnabled(true);
-            }
+            setFadingEnabled(!isFadingEnabled());
             putValue(Action.SELECTED_KEY, isFadingEnabled());
             showAction();
         }
@@ -1047,6 +1098,39 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     }
 
+    final public class ToggleSlidingWindowAction extends MyAction {
+
+        public ToggleSlidingWindowAction() {
+            super("Sliding Window", "<html>Frames are rendered using past <i>N</i> packets using a FIFO.<p>Adjust <i>N</i> by UP and DOWN arrow key."
+                    + "<p>Ajust contrast of events by disabling <i>Sliding Window</i> mode and using UP and DOWN arrow keys.");
+            putValue(ACCELERATOR_KEY,
+                    javax.swing.KeyStroke.getKeyStroke(
+                            java.awt.event.KeyEvent.VK_P,
+                            java.awt.event.InputEvent.CTRL_DOWN_MASK + java.awt.event.InputEvent.SHIFT_DOWN_MASK
+                    )
+            );
+            putValue(Action.SELECTED_KEY, isSlidingWindowEnabled());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setSlidingWindowEnabled(!isSlidingWindowEnabled());
+            putValue(Action.SELECTED_KEY, isSlidingWindowEnabled());
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (!isSlidingWindowEnabled()) {
+                showAction("Sliding window disabled");
+            } else {
+                String s = String.format("Sliding window display with past %d frames", getFadingOrSlidingFrames());
+                showAction(s);
+            }
+        }
+
+    }
+
     final public class IncreaseContrastAction extends MyAction {
 
         public IncreaseContrastAction() {
@@ -1058,9 +1142,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         @Override
         public void actionPerformed(ActionEvent e) {
             int modifiers = e.getModifiers();
-            if (isFadingEnabled()) {
+            if (isFadingEnabled() || isSlidingWindowEnabled()) {
                 if ((modifiers & ActionEvent.ALT_MASK) == 0) {
-                    setFadingFrames(getFadingFrames() - 1);
+                    setFadingOrSlidingFrames(getFadingOrSlidingFrames() + 1);
                 } else {
                     setColorScale(getColorScale() - 1);
                 }
@@ -1072,10 +1156,12 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         @Override
         protected void showAction() {
-            if (!isFadingEnabled()) {
+            if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
                 showAction(String.format("Increase DVS contrast to %d events full scale", getColorScale()));
-            } else {
-                showAction(String.format("Shorten fading to %s", getFadingDescription()));
+            } else if (isFadingEnabled()) {
+                showAction(String.format("Lengthen fading to %s", getFadingDescription()));
+            } else if (isSlidingWindowEnabled()) {
+                showAction(String.format("Lengthen sliding window to %d frames", getFadingOrSlidingFrames()));
             }
         }
     }
@@ -1083,7 +1169,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     final public class DecreaseContrastAction extends MyAction {
 
         public DecreaseContrastAction() {
-            super("Decrease contrast", "<html>Descrease constrast or lengthen fading of display <br>(or spin mouse wheel)<p>To modify contrast of each event (FS=XX),"
+            super("Decrease contrast", "<html>Descrease constrast or lengthen fading/sliding window of display <br>(or spin mouse wheel)<p>To modify contrast of each event (FS=XX),"
                     + "<br>disable fading (ctrl-p).");
             putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DOWN, 0));
         }
@@ -1091,9 +1177,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         @Override
         public void actionPerformed(ActionEvent e) {
             int modifiers = e.getModifiers();
-            if (isFadingEnabled()) {
+            if (isFadingEnabled() || isSlidingWindowEnabled()) {
                 if ((modifiers & ActionEvent.ALT_MASK) == 0) {
-                    setFadingFrames(getFadingFrames() + 1);
+                    setFadingOrSlidingFrames(getFadingOrSlidingFrames() - 1);
                 } else {
                     setColorScale(getColorScale() + 1);
                 }
@@ -1105,12 +1191,69 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         @Override
         protected void showAction() {
-            if (!isFadingEnabled()) {
+            if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
                 showAction(String.format("Decrease DVS contrast to %d events full scale", getColorScale()));
-            } else {
-                showAction(String.format("Lengthen fading to %s", getFadingDescription()));
+            } else if (isFadingEnabled()) {
+                showAction(String.format("Shorten fading to %s", getFadingDescription()));
+            } else if (isSlidingWindowEnabled()) {
+                showAction(String.format("Shorten sliding window to %d frames", getFadingOrSlidingFrames()));
             }
         }
     }
+    
+       /**
+     * A fifo to hold copies of recent event packets
+     * @param <E> the type of events the packets hold
+     */
+    protected class SlidingWindowEventPacketFifo<E extends BasicEvent> extends CircularFifoQueue<EventPacket> {
+
+        /**
+         * Make a new FIFO, sizing it to the sliding window number of frames
+         */
+        public SlidingWindowEventPacketFifo() {
+            super(fadingOrSlidingFrames);
+        }
+
+        /** Overrides super.add() make deep copies of all events to the 
+         * evicted packet from this FIFO, then puts this packet at the 
+         * tail of the FIFO, to be retrieved last when rendering.
+         * <p>
+         * If the FIFO already has enough packets that one is evicted, then it is used,
+         * otherwise a new EventPacket of the correct type (EventPacket or ApsDvsEventPacket) is constructed
+         * and allocated to hold at least the number of events in the incoming packet.
+         * 
+         * @param element the packet to add
+         * @return true always 
+         */
+        @Override
+        public boolean add(EventPacket element) {
+            EventPacket packetCopy=null;
+            if(size()>=fadingOrSlidingFrames){
+                packetCopy=remove();
+                packetCopy.clear();
+            }else{
+                if(element.getEventClass().isAssignableFrom(ApsDvsEvent.class)){
+                    packetCopy = new ApsDvsEventPacket(ApsDvsEvent.class);
+                }else{
+                    packetCopy = new EventPacket(element.getEventClass());
+                }
+            }
+            packetCopy.allocate(element.getSize());
+            for (Object e : element) {
+                packetCopy.appendCopyOfEvent((E) e);
+            }
+            return super.add(packetCopy);
+        }
+
+    }
+
+//    protected void addSlidingWindowPacket(EventPacket pkt) {
+//        EventPacket<TypedEvent> packetCopy = new EventPacket();
+//        packetCopy.allocate(pkt.getSize());
+//        for (Object e : pkt) {
+//            packetCopy.appendCopyOfEvent((TypedEvent) e);
+//        }
+//        slidingWindowPacketFifo.add(packetCopy);
+//    }
 
 }
