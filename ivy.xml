@@ -51,6 +51,9 @@ MA 02110-1301  USA
         <dependency org="commons-io" name="commons-io" rev="2.15.1"/>
         <!--https://mvnrepository.com/artifact/org.apache.commons/commons-text--> 
         <dependency org="org.apache.commons" name="commons-text" rev="1.11.0"/>
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
+        <dependency org="org.apache.commons" name="commons-collections4" rev="4.4"/>
+
 
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
         
@@ -162,7 +165,7 @@ MA 02110-1301  USA
         
         <dependency org="com.install4j" name="install4j-runtime" rev="10.0.6" />
         
-<!--         https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox 
+        <!--         https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox 
         https://stackoverflow.com/questions/5614206/buffered-randomaccessfile-java
         Used in TextFileInputStream
         
