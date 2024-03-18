@@ -204,7 +204,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         try {
             for (int i = startIndex; i < endIndex; i++) {
                 final E e = eventConstructor.newInstance();
-                // eventList.appendCopy(e);
+                // eventList.appendCopyOfEventReferences(e);
                 elementData[i] = e;
                 eventPrototype = e;
             }
@@ -656,11 +656,13 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * Adds the events from another packet to the events of this packet
+     * Adds the events from another packet to the events of this packet. 
+     * <b> Note that only the references are appended, not copies of the events.
+     * These references can be reused which invalidates your copy. </b>
      *
      * @param packet EventPacket to be added
      */
-    public void appendCopy(final EventPacket<E> packet) {
+    public void appendCopyOfEventReferences(final EventPacket<E> packet) {
         if (packet.getEventClass() != getEventClass()) {
             EventPacket.log.warning("Trying to merge packets that contain different events types");
         }
@@ -673,11 +675,11 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * Appends event. A copy of the event is appended to the end of the packet
+     * Appends event. A deep copy of the event is appended to the end of the packet. <b>This copy is a deep copy; all the fields are copied to a new event.<b>
      *
      * @param event the event reference to be copied from.
      */
-    public void appendCopy(final E event) {
+    public void appendCopyOfEvent(final E event) {
         if (size >= capacity) {
             enlargeCapacity();
         }
