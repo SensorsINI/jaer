@@ -35,6 +35,7 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -67,6 +68,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
     private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
     private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
+    private float analogDigitalClockScale = getFloat("analogDigitalClockScale", 1);
     private boolean date = getPrefs().getBoolean("Info.date", true);
     private boolean absoluteTime = getPrefs().getBoolean("Info.absoluteTime", true);
     private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
@@ -81,7 +83,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private long absoluteStartTimeMs = 0;
     volatile private long clockTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
     volatile private long updateTimeMs = 0; // volatile because this field accessed by filtering and rendering threads
-    volatile private long lastUpdateTimeMs=0; // DEBUG to look for nonmonotonic update times
+    volatile private long lastUpdateTimeMs = 0; // DEBUG to look for nonmonotonic update times
 //    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
     private boolean eventRate = getBoolean("eventRate", true);
@@ -158,7 +160,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 s = s + "\neventRateFilterTauMs=" + typedEventRateEstimator.getEventRateTauMs();
 
                 if (tobiLogger == null) {
-                    tobiLogger = new TobiLogger("Info", s,"csv");
+                    tobiLogger = new TobiLogger("Info", s, "csv");
                     tobiLogger.setFileCommentString(s);
                     tobiLogger.setColumnHeaderLine(INFO_FIELDS);
                 }
@@ -383,6 +385,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setEnclosedFilterChain(fc);
         setPropertyTooltip("analogClock", "show normal circular clock");
         setPropertyTooltip("digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
+        setPropertyTooltip("analogDigitalClockScale", "scale for drawing clock");
         setPropertyTooltip("date", "show date");
         setPropertyTooltip("absoluteTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
         setPropertyTooltip("showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
@@ -459,10 +462,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 // for large files, the relativeTimeInFileMs wraps around after 2G us and then every 4G us
                 long relativeTimeInFileMs = (msg.timestamp - dataFileTimestampStartTimeUs) / 1000;
                 updateTimeMs = computeDisplayTime(relativeTimeInFileMs);
-                if(updateTimeMs<lastUpdateTimeMs){
-                    log.warning(String.format("nonmonotonic update time, updateTimeMs=%,d, lastUpdateTimeMs=%,d",updateTimeMs,lastUpdateTimeMs));
+                if (updateTimeMs < lastUpdateTimeMs) {
+                    log.warning(String.format("nonmonotonic update time, updateTimeMs=%,d, lastUpdateTimeMs=%,d", updateTimeMs, lastUpdateTimeMs));
                 }
-                lastUpdateTimeMs=updateTimeMs;
+                lastUpdateTimeMs = updateTimeMs;
 //                long dt = (updateTimeMs - lastUpdateTime);
                 //        if (dt > eventRateFilter.getEventRateTauMs() * 2) {  // TODO hack to get around problem that sometimes the wrap preceeds the actual data
                 //            log.warning("not adding this RateHistory point because dt is too big, indicating a big wrap came too soon");
@@ -549,10 +552,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             dataFileTimestampStartTimeUs = in.getFirstTimestamp();
         }
         in = getEnclosedFilterChain().filterPacket(in);
-        
+
         if (xyTypeFilter.isFilterEnabled()) {
             this.nPixels = xyTypeFilter.getNumPixelsSelected();
-        }else{
+        } else {
             this.nPixels = getChip().getNumPixels();
         }
 
@@ -666,7 +669,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     }
 
     private void drawClock(GL2 gl, long t) {
-        final int radius = 20, hourLen = 10, minLen = 18, secLen = 19, msLen = 7;
+        final float radius = 20 * analogDigitalClockScale,
+                hourLen = 10 * analogDigitalClockScale,
+                minLen = 18 * analogDigitalClockScale,
+                secLen = 19 * analogDigitalClockScale,
+                msLen = 7 * analogDigitalClockScale;
         ZonedDateTime zdt = null;
         Instant instant = Instant.ofEpochMilli(t);
 
@@ -748,14 +755,26 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
 
         if (digitalClock) {
-            gl.glPushMatrix();
-            gl.glRasterPos3f(0, 0, 0);
-            GLUT glut = chip.getCanvas().getGlut();
+            String dateStr = null;
             if (date) {
-                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, dateTimeFormatter.format(zdt));
+                dateStr = dateTimeFormatter.format(zdt);
             } else {
-                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, timeFormat.format(zdt));
+                dateStr = timeFormat.format(zdt);
             }
+
+            gl.glPushMatrix();
+            TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12), true, true);
+            textRenderer.begin3DRendering();
+            textRenderer.setColor(1, 1, 1, 1);
+            textRenderer.draw3D(dateStr, 0, 0, 0, analogDigitalClockScale);
+            textRenderer.end3DRendering();
+//            gl.glRasterPos3f(0, 0, 0);
+//            GLUT glut = chip.getCanvas().getGlut();
+//            if (date) {
+//                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, dateTimeFormatter.format(zdt));
+//            } else {
+//                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, timeFormat.format(zdt));
+//            }
             gl.glPopMatrix();
         }
     }
@@ -799,7 +818,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             // and multiply by number of pixels to get string length in screen pixels.
             float sw = (glut.glutBitmapLength(font, s) / w) * sx;
             glut.glutBitmapString(font, s);
-            float rate=isEventRatePerPixel()? perPixelRate:totalRate;
+            float rate = isEventRatePerPixel() ? perPixelRate : totalRate;
             gl.glRectf(xpos + sw, bary + barh, xpos + sw + ((rate * sx) / getEventRateScaleMax()), bary);
         }
         gl.glPopMatrix();
@@ -1066,7 +1085,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public boolean isEventRatePerPixel() {
         return eventRatePerPixel;
-}
+    }
 
     /**
      * @param eventRatePerPixel the eventRatePerPixel to set
@@ -1074,6 +1093,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setEventRatePerPixel(boolean eventRatePerPixel) {
         this.eventRatePerPixel = eventRatePerPixel;
         putBoolean("eventRatePerPixel", eventRatePerPixel);
+    }
+
+    /**
+     * @return the analogDigitalClockScale
+     */
+    public float getAnalogDigitalClockScale() {
+        return analogDigitalClockScale;
+    }
+
+    /**
+     * @param analogDigitalClockScale the analogDigitalClockScale to set
+     */
+    public void setAnalogDigitalClockScale(float analogDigitalClockScale) {
+        this.analogDigitalClockScale = analogDigitalClockScale;
+        putFloat("analogDigitalClockScale", analogDigitalClockScale);
     }
 
 }
