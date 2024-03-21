@@ -201,7 +201,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     synchronized public void doStartRecordingAndSaveAs() {
-        if (outputContainer==OutputContainer.ImageSequence) {
+        if (outputContainer == OutputContainer.ImageSequence) {
             if (frameSequenceOutputFolder != null) {
                 JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "Folder " + frameSequenceOutputFolder + " is already opened for writing, close the recording first");
                 return;
@@ -235,7 +235,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                 try {
                     boolean isempty = isDirEmpty(selectedFile.toPath());
                     if (!isempty) {
-                        int r = JOptionPane.showConfirmDialog(getChip().getAeViewer().getFilterFrame(), "Folder " + selectedFile.toString() + " is not empty, write to it?");
+                        int r = JOptionPane.showConfirmDialog(getChip().getAeViewer().getFilterFrame(), "<html>Folder " + selectedFile.toString() + " is not empty, write to it?<p>It will overwrite existing frames.");
                         if (r != JOptionPane.OK_OPTION) {
                             return;
                         }
@@ -244,7 +244,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "<html>Could not mkdir folder " + selectedFile);
                     return;
                 }
-            } 
+            }
             if (!selectedFile.canWrite()) {
                 JOptionPane.showMessageDialog(getChip().getAeViewer().getFilterFrame(), "Cannot write to folder " + selectedFile);
                 return;
@@ -295,10 +295,9 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     break;
             }
             lastFileName = c.getSelectedFile().toString();
+            putString("lastFileName", lastFileName);
             File selectedFile = c.getSelectedFile();
 
-            lastFileName = selectedFile.toString();
-            putString("lastFileName", lastFileName);
 
             if (selectedFile.exists()) {
                 int r = JOptionPane.showConfirmDialog(getChip().getAeViewer().getFilterFrame(), "File " + selectedFile.toString() + " already exists, overwrite it?");
@@ -312,6 +311,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                 chip.getAeViewer().getAePlayer().rewind();
             }
         }
+        setWriteEnabled(true); // make sure write is enabled if user started a recording
+        setFramesWritten(0);
     }
 
     synchronized public void doFinishRecording() {
@@ -340,8 +341,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     /**
-     * Opens AVI or AnimatedGIF output stream and optionally the timecode file, and enable
-     * writing to this stream.
+     * Opens AVI or AnimatedGIF output stream and optionally the timecode file,
+     * and enable writing to this stream.
      *
      * @param f the file
      * @param additionalComments additional comments to be written to timecode
@@ -399,7 +400,6 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             log.warning("Cannot open timecode file: " + e.toString());
         }
         log.info("Opened output file " + f.toString() + " with format " + format);
-        setFramesWritten(0);
         getSupport().firePropertyChange("framesWritten", null, framesWritten);
         if (!isWriteOnlyWhenMousePressed()) {
             setWriteEnabled(true);
@@ -473,7 +473,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * @param timecode
      */
     protected void writeFrame(BufferedImage bufferedImage, int timecode) {
-        if ( getVideoOutputStream() == null){
+        if (getVideoOutputStream() == null) {
             return;
         }
         if (isWriteEnabled()) {
