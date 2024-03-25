@@ -55,8 +55,8 @@ import org.apache.commons.collections4.queue.CircularFifoQueue;
  */
 public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeListener {
 
-    protected boolean fadingEnabled = prefs.getBoolean("fadingEnabled", false);
-    protected boolean slidingWindowEnabled = prefs.getBoolean("slidingWindowEnabled", false);
+    protected boolean fadingEnabled = false; // prefs.getBoolean("fadingEnabled", false);
+    protected boolean slidingWindowEnabled = false;  // don't make it prefrence value, confusing for users.  prefs.getBoolean("slidingWindowEnabled", false);
     protected int fadingOrSlidingFrames = prefs.getInt("fadingFrames", 4);
 
     public final ToggleFadingAction toggleFadingAction = new ToggleFadingAction();
