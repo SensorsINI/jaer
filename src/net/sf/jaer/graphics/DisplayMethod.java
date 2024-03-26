@@ -24,6 +24,8 @@ import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import net.sf.jaer.util.DrawGL;
 import org.apache.commons.text.WordUtils;
@@ -33,7 +35,7 @@ import org.apache.commons.text.WordUtils;
  *
  * @author tobi
  */
-public abstract class DisplayMethod {
+public abstract class DisplayMethod  implements PropertyChangeListener {
 
     private ChipCanvas chipCanvas;
     protected GLUT glut; // GL extensions
@@ -265,5 +267,10 @@ public abstract class DisplayMethod {
      */
     public PropertyChangeSupport getSupport() {
         return support;
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        // does nothing by default
     }
 }
