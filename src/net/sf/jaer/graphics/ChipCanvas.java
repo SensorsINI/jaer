@@ -914,6 +914,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         } catch (final RuntimeException ie) {
             if (!(ie.getCause() instanceof InterruptedException)) {
                 log.warning(ie.toString());
+                ie.printStackTrace();
             }
         } finally {
 //                drawable.getContext().release();
