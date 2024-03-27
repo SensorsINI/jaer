@@ -333,6 +333,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      * rendered in front
      */
     private void pruneOldEventsAndFrames(final int t0, final int t1) {
+        log.fine(String.format("Pruning events and frames outside window t0=%,d, t1=%,d (t1-t0=%,d)", t0, t1, (t1 - t0)));
         if (eventList == null) {
             return;
         }
@@ -351,9 +352,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         ArrayList<BasicEvent> tmp = eventList;
         eventList = eventListTmp;
         eventListTmp = tmp;
-        if (!framesInTimeWindow.isEmpty() && framesInTimeWindow.peekFirst().timestampUs < t0) { // peekFirst gets the oldest frame
-            // if it is older than the oldest time in window, remove it
-            framesInTimeWindow.removeLast(); // prune frames outside the window
+        if (!framesInTimeWindow.isEmpty()) {
+            int tFrame = framesInTimeWindow.peekFirst().timestampUs;  // peekFirst gets the oldest frame
+            int dt = tFrame - t0;
+            if (dt < 0) {
+                // if it is older than the oldest time in window, remove it
+                log.fine(String.format("Removing old frames %s", framesInTimeWindow.peekFirst()));
+                framesInTimeWindow.removeFirst(); // prune frames outside the window
+            }
         }
 
     }
@@ -365,6 +371,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             displayFrames = frameRenderer.isDisplayFrames();
             displayEvents = frameRenderer.isDisplayEvents();
             displayAnnotation = frameRenderer.isDisplayAnnotation();
+            if (!displayFrames && !displayEvents) {
+                log.warning("Both frame and event display off, enabling events display so something shows");
+                frameRenderer.setDisplayEvents(true);
+            }
         }
         gl.glDepthMask(true);
         gl.glDepthFunc(GL.GL_GEQUAL);
@@ -376,6 +386,171 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         final float modelScale = 1f / 2; // everything is drawn at this scale
+        maybeRegenerateAxesDisplayList(gl, zmax, modelScale, dtS);
+
+//        gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
+//        gl.glPushMatrix();
+        gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
+        gl.glLoadIdentity();
+        gl.glPushMatrix();
+        ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
+
+//        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
+//        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
+        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
+        gl.glTranslatef(0, 0, -1 * zmax);
+        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+        gl.glRotatef(-getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+        gl.glTranslatef(0, 0, 1 * zmax);
+//        gl.glTranslatef(sx/2, sy/2, zmax);
+//        glu.gluPerspective(33, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, zmax*9);
+//        gl.glTranslatef(-sx/2, -sy/2, -zmax);
+//        glu.gluPerspective(30, (float)sx/sy, .1, timeWindowUs*1.1f);
+//        gl.glFrustumf(0,sx, 0, sy, .1f, timeWindowUs*20);
+//        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs * 10);
+//        gl.glTranslatef(sx, sy, 1);
+        checkGLError(gl, "setting projection");
+        gl.glDisable(GLLightingFunc.GL_LIGHTING);
+        gl.glShadeModel(GLLightingFunc.GL_SMOOTH);
+        gl.glDisable(GL.GL_BLEND);
+        gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
+        gl.glEnable(GL.GL_BLEND);
+        if (additiveColorEnabled) {
+            gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
+        } else {
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+        }
+        gl.glBlendEquation(GL.GL_FUNC_ADD);
+        checkGLError(gl, "setting blend function");
+
+        gl.glClearColor(0, 0, 0, 1);
+        gl.glClearDepthf(0);
+        gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        gl.glLoadIdentity();
+        gl.glTranslatef(0, 0, -zmax);
+        gl.glScalef(modelScale, modelScale, modelScale);
+        gl.glCallList(axesDisplayListId);
+
+        if (displayEvents) {
+//        getChipCanvas().setDefaultProjection(gl, drawable);
+            // draw points using shaders
+            gl.glUseProgram(shaderprogram);
+            gl.glValidateProgram(shaderprogram);
+//        pmvMatrix.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
+//        pmvMatrix.glLoadIdentity();
+//        pmvMatrix.glOrthof(-10, sx / zoom + 10, -10, sy / zoom + 10, 10, -10); // clip area has same aspect ratio as screen!
+//        pmvMatrix.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+//        pmvMatrix.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+//        pmvMatrix.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+//        pmvMatrix.glGetFloatv(GL2.GL_PROJECTION_MATRIX, proj);
+//        pmvMatrix.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+//        pmvMatrix.glLoadIdentity();
+//        pmvMatrix.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, mv);
+//        checkGLError(gl, "using shader program");
+            gl.glGetFloatv(GLMatrixFunc.GL_PROJECTION_MATRIX, proj);
+//        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+//        gl.glLoadIdentity();
+            gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, mv);
+            gl.glUniformMatrix4fv(idMv, 1, false, mv);
+            gl.glUniformMatrix4fv(idProj, 1, false, proj);
+
+            checkGLError(gl, "setting model/view matrix");
+
+            gl.glUniform1f(idt0, -zmax);
+            gl.glUniform1f(idt1, 0);
+            if (largePointSizeEnabled) {
+                pointSize = 12;
+            } else {
+                pointSize = 4;
+            }
+            gl.glUniform1f(idPointSize, pointSize);
+            checkGLError(gl, "setting dimensionless time limits t0 or t1 for event buffer rendering");
+
+            gl.glBindVertexArray(vao);
+//        gl.glEnableVertexAttribArray(polarity_vert);
+            gl.glEnableVertexAttribArray(v_vert);
+            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
+            gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.limit(), buffer, GL2ES2.GL_STREAM_DRAW);
+            checkGLError(gl, "binding vertex buffers");
+
+            // draw
+            gl.glDrawArrays(GL.GL_POINTS, 0, nEvents);
+            checkGLError(gl, "drawArrays");
+            gl.glBindVertexArray(0); // to use TextRenderers elsewhere; see http://forum.jogamp.org/TextRenderer-my-text-won-t-show-td4029291.html
+            gl.glUseProgram(0);
+            checkGLError(gl, "disable program");
+        }
+
+        if (displayFrames) { // render frames
+            int nFrames = 0;
+//            gl.glShadeModel(GL2.GL_FLAT);
+            DavisRenderer renderer = (DavisRenderer) chip.getRenderer();
+            final EventPacket packet = (EventPacket) renderer.getPacket();
+            int lastTimestamp = packet.getLastTimestamp();
+            for (FrameWithTime frame : framesInTimeWindow) {
+                final int frameDt = frame.timestampUs - lastTimestamp;
+                final float z = tfac * (frameDt);
+                log.fine(String.format("Frame %d has frameDt=%,dus (frame.timestampUs=%,d, lastTimestamp=%,d)", nFrames, frameDt, frame.timestampUs, lastTimestamp));
+                if (z < -zmax || z > 0) {
+                    log.warning(String.format("Frame has z=%f outside of range [0,%f]", z, -zmax));
+                }
+//                final int nx = chip.getSizeX(), ny = chip.getSizeY();
+//                float[] pb = frame.pixBuffer.array();
+//                for (int x = 0; x < nx; x++) {
+//                    for (int y = 0; y < ny; y++) {
+//                        final int idx = renderer.getPixMapIndex(x, y);
+//                        float gr = pb[idx];
+//                        gl.glColor4f(gr, gr, gr, framesAlpha);
+//                        gl.glBegin(GL.GL_TRIANGLES);
+//                        gl.glVertex3f(x, y, z);
+//                        gl.glVertex3f(x, y + 1, z);
+//                        gl.glVertex3f(x + 1, y + 1, z);
+//                        gl.glVertex3f(x + 1, y + 1, z);
+//                        gl.glVertex3f(x + 1, y, z);
+//                        gl.glVertex3f(x, y, z);
+//                        gl.glEnd();
+//                    }
+//                }
+//                checkGLError(gl, "after rendering frame");
+                gl.glBindTexture(GL.GL_TEXTURE_2D, 0); // use texture number 0 for all textures, otherwise causes problems in JOGL on MacOS
+                gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+                gl.glEnable(GL.GL_TEXTURE_2D);
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
+                final int nearestFilter = GL.GL_NEAREST;
+
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
+                gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_REPLACE);
+                gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, renderer.getWidth(), renderer.getHeight(), 0, GL.GL_RGBA, GL.GL_FLOAT, frame.pixBuffer.rewind());
+                {
+                    gl.glPushMatrix();
+                    gl.glTranslatef(0, 0, z); // translate frame to correct time point in z plane
+                    drawTexture(gl, renderer.getWidth(), renderer.getHeight());
+                    gl.glPopMatrix();
+                }
+                gl.glDisable(GL.GL_TEXTURE_2D);
+                getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
+                nFrames++;
+            }
+            log.fine(String.format("rendered %d texture APS frames", nFrames));
+        }
+
+//
+//        gl.glPopMatrix(); // pop out so that shader uses matrix without applying it twice
+//       gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
+//        gl.glPopMatrix();
+        gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
+        gl.glPopMatrix(); // pop out so that shader uses matrix without applying it twice
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        // re-enable depth sorting for everything else
+//        gl.glDepthMask(true);
+    }
+
+    protected void maybeRegenerateAxesDisplayList(GL2 gl, float zmax, final float modelScale, float dtS) {
         if (regenerateAxesDisplayList) {
             regenerateAxesDisplayList = false;
             if (axesDisplayListId > 0) {
@@ -391,7 +566,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
 //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 //        gl.glPushMatrix();
-            // axes
+// axes
             gl.glLineWidth(12);
             gl.glBegin(GL.GL_LINES);
 
@@ -460,136 +635,30 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
         }
-//        gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
-//        gl.glPushMatrix();
-        gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
-        gl.glLoadIdentity();
-        gl.glPushMatrix();
-        ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
+    }
 
-//        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
-//        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
-        gl.glTranslatef(0, 0, -1 * zmax);
-        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-        gl.glRotatef(-getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-        gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
-        gl.glTranslatef(0, 0, 1 * zmax);
-//        gl.glTranslatef(sx/2, sy/2, zmax);
-//        glu.gluPerspective(33, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, zmax*9);
-//        gl.glTranslatef(-sx/2, -sy/2, -zmax);
-//        glu.gluPerspective(30, (float)sx/sy, .1, timeWindowUs*1.1f);
-//        gl.glFrustumf(0,sx, 0, sy, .1f, timeWindowUs*20);
-//        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, .1f, timeWindowUs * 10);
-//        gl.glTranslatef(sx, sy, 1);
-        checkGLError(gl, "setting projection");
-        gl.glDisable(GLLightingFunc.GL_LIGHTING);
-        gl.glShadeModel(GLLightingFunc.GL_SMOOTH);
-        gl.glDisable(GL.GL_BLEND);
-        gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
-        gl.glEnable(GL.GL_BLEND);
-        if (additiveColorEnabled) {
-            gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
-        } else {
-            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-        }
-        gl.glBlendEquation(GL.GL_FUNC_ADD);
-        checkGLError(gl, "setting blend function");
+    /**
+     * Draws the current texture into the width and height of chip pixels
+     *
+     * @param gl
+     * @param width of texture (power of 2 larger than chip size)
+     * @param height of texture (larger than chip pixel array height)
+     */
+    protected void drawTexture(final GL2 gl, final int width, final int height) {
+        final double xRatio = (double) chip.getSizeX() / (double) width;
+        final double yRatio = (double) chip.getSizeY() / (double) height;
+        gl.glBegin(GL2.GL_POLYGON);
 
-        gl.glClearColor(0, 0, 0, 1);
-        gl.glClearDepthf(0);
-        gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+        gl.glTexCoord2d(0, 0);
+        gl.glVertex2d(0, 0);
+        gl.glTexCoord2d(xRatio, 0);
+        gl.glVertex2d(xRatio * width, 0);
+        gl.glTexCoord2d(xRatio, yRatio);
+        gl.glVertex2d(xRatio * width, yRatio * height);
+        gl.glTexCoord2d(0, yRatio);
+        gl.glVertex2d(0, yRatio * height);
 
-        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-        gl.glLoadIdentity();
-        gl.glTranslatef(0, 0, -zmax);
-        gl.glScalef(modelScale, modelScale, modelScale);
-        gl.glCallList(axesDisplayListId);
-
-//        getChipCanvas().setDefaultProjection(gl, drawable);
-        // draw points using shaders
-        gl.glUseProgram(shaderprogram);
-        gl.glValidateProgram(shaderprogram);
-//        pmvMatrix.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
-//        pmvMatrix.glLoadIdentity();
-//        pmvMatrix.glOrthof(-10, sx / zoom + 10, -10, sy / zoom + 10, 10, -10); // clip area has same aspect ratio as screen!
-//        pmvMatrix.glRotatef(getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
-//        pmvMatrix.glRotatef(getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-//        pmvMatrix.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
-//        pmvMatrix.glGetFloatv(GL2.GL_PROJECTION_MATRIX, proj);
-//        pmvMatrix.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-//        pmvMatrix.glLoadIdentity();
-//        pmvMatrix.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, mv);
-//        checkGLError(gl, "using shader program");
-        gl.glGetFloatv(GLMatrixFunc.GL_PROJECTION_MATRIX, proj);
-//        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-//        gl.glLoadIdentity();
-        gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, mv);
-        gl.glUniformMatrix4fv(idMv, 1, false, mv);
-        gl.glUniformMatrix4fv(idProj, 1, false, proj);
-
-        checkGLError(gl, "setting model/view matrix");
-
-        gl.glUniform1f(idt0, -zmax);
-        gl.glUniform1f(idt1, 0);
-        if (largePointSizeEnabled) {
-            pointSize = 12;
-        } else {
-            pointSize = 4;
-        }
-        gl.glUniform1f(idPointSize, pointSize);
-        checkGLError(gl, "setting dimensionless time limits t0 or t1 for event buffer rendering");
-
-        gl.glBindVertexArray(vao);
-//        gl.glEnableVertexAttribArray(polarity_vert);
-        gl.glEnableVertexAttribArray(v_vert);
-        gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
-        gl.glBufferData(GL.GL_ARRAY_BUFFER, buffer.limit(), buffer, GL2ES2.GL_STREAM_DRAW);
-        checkGLError(gl, "binding vertex buffers");
-
-        // draw
-        gl.glDrawArrays(GL.GL_POINTS, 0, nEvents);
-        checkGLError(gl, "drawArrays");
-        gl.glBindVertexArray(0); // to use TextRenderers elsewhere; see http://forum.jogamp.org/TextRenderer-my-text-won-t-show-td4029291.html
-        gl.glUseProgram(0);
-        checkGLError(gl, "disable program");
-
-        if (displayFrames) { // render frames
-            gl.glShadeModel(GL2.GL_FLAT);
-            for (FrameWithTime frame : framesInTimeWindow) {
-                final int nx = chip.getSizeX(), ny = chip.getSizeY();
-                DavisRenderer renderer = (DavisRenderer) chip.getRenderer();
-                float[] pb = frame.pixels.array();
-                final EventPacket packet = (EventPacket) chip.getLastData();
-                final float z = tfac * (frame.timestampUs - packet.getLastTimestamp());
-                for (int x = 0; x < nx; x++) {
-                    for (int y = 0; y < ny; y++) {
-                        final int idx = renderer.getPixMapIndex(x, y);
-                        float gr = pb[idx];
-                        gl.glColor4f(gr, gr, gr, framesAlpha);
-                        gl.glBegin(GL.GL_TRIANGLES);
-                        gl.glVertex3f(x, y, z);
-                        gl.glVertex3f(x, y + 1, z);
-                        gl.glVertex3f(x + 1, y + 1, z);
-                        gl.glVertex3f(x + 1, y + 1, z);
-                        gl.glVertex3f(x + 1, y, z);
-                        gl.glVertex3f(x, y, z);
-                        gl.glEnd();
-                    }
-                }
-                checkGLError(gl, "after rendering frame");
-            }
-        }
-
-//
-//        gl.glPopMatrix(); // pop out so that shader uses matrix without applying it twice
-//       gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
-//        gl.glPopMatrix();
-        gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
-        gl.glPopMatrix(); // pop out so that shader uses matrix without applying it twice
-        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-        // re-enable depth sorting for everything else
-//        gl.glDepthMask(true);
+        gl.glEnd();
     }
 
     boolean checkGLError(final GL2 gl, String msg) {
@@ -697,13 +766,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         setTransparencyMenuItem.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                String ret=JOptionPane.showInputDialog(String.format("New alpha value (currently %.2f",framesAlpha),String.format("%f", framesAlpha));
-                try{
-                    float v=Float.parseFloat(ret);
-                    if(v<.1 || v>1) return;
-                    framesAlpha=v;
+                String ret = JOptionPane.showInputDialog(String.format("New alpha value (currently %.2f", framesAlpha), String.format("%f", framesAlpha));
+                try {
+                    float v = Float.parseFloat(ret);
+                    if (v < .1 || v > 1) {
+                        return;
+                    }
+                    framesAlpha = v;
                     prefs.putFloat("framesAlpha", framesAlpha);
-                }catch(NumberFormatException e){
+                } catch (NumberFormatException e) {
                     log.warning(e.toString()); // TODO put in loop with cancel
                 }
             }
@@ -723,24 +794,28 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
         if (displayFrames && evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE) {
-            log.log(Level.FINE, "New frame event {0}", evt.toString());
             DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
 //            float[] pixmap = renderer.getPixmapArray();
             FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
             framesInTimeWindow.add(newFrame);
+            log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
         }
     }
 
     private class FrameWithTime {
 
-        FloatBuffer pixels;
+        FloatBuffer pixBuffer;
         int timestampUs;
 
         public FrameWithTime(FloatBuffer input, int timestampUs) {
-            this.pixels = FloatBuffer.allocate(input.limit());
+            this.pixBuffer = FloatBuffer.allocate(input.limit());
             input.rewind();
-            this.pixels.put(input);
+            this.pixBuffer.put(input);
             this.timestampUs = timestampUs;
+        }
+
+        public String toString() {
+            return String.format("Frame with end timestamp %,d", timestampUs);
         }
     }
 
