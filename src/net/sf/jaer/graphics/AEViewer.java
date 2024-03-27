@@ -1104,13 +1104,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // find display menu reference and fill it with display menu for this canvas
             int dispMethodsMenuIdx=0;
             for(Component c:viewMenu.getMenuComponents()){
+                dispMethodsMenuIdx++;
                 if(c==displayMethodMenu){
                     break;
                 }
             }
             viewMenu.remove(displayMethodMenu);
             displayMethodMenu = chipCanvas.getDisplayMethodMenu();
-            viewMenu.add(chipCanvas.getDisplayMethodMenu(),dispMethodsMenuIdx+1);
+            viewMenu.add(chipCanvas.getDisplayMethodMenu(),dispMethodsMenuIdx-1);
             viewMenu.invalidate();
         }
 
