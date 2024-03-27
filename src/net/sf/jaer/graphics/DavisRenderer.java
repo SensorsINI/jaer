@@ -130,6 +130,7 @@ public class DavisRenderer extends AEChipRenderer {
     private int framesRenderedSinceApsFrame = 0; // to deactivate frames after some time with none
     private static final int NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 360;
     private boolean renderedApsFrame = false;
+    private int lastTimestampFrameEndWeSentPropertyChangeFor=0; // saves the time we sent propertyChange for a new frame to not send it multiple times during pause if the packet has a frame end in it
 
     public DavisRenderer(final AEChip chip) {
         super(chip);
@@ -253,6 +254,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
+        packet=pkt;
         if (pkt.isEmpty()) {
             return;
         }
@@ -524,8 +526,10 @@ public class DavisRenderer extends AEChipRenderer {
         if ((contrastController != null) && (minValue != Float.MAX_VALUE) && (maxValue != Float.MIN_VALUE)) {
             contrastController.endFrame(minValue, maxValue, timestampFrameEnd);
         }
-
-        getSupport().firePropertyChange(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
+        if (timestampFrameEnd != lastTimestampFrameEndWeSentPropertyChangeFor) {
+            getSupport().firePropertyChange(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
+            lastTimestampFrameEndWeSentPropertyChangeFor=timestampFrameEnd;
+        }
     }
 
     /**
