@@ -48,6 +48,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.ChipCanvas.ClipArea;
 import net.sf.jaer.util.EngineeringFormat;
 
@@ -717,12 +718,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             chip.getRenderer().getSupport().removePropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
             framesInTimeWindow.clear(); // recover memory
         }
+        AEChip aeChip = (AEChip) chip;
         if (displayMenu == null) {
             return;
         }
-        AEChip aeChip = (AEChip) chip;
         AEViewer viewer = aeChip.getAeViewer();
         viewer.removeMenu(displayMenu);
+        if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
+            aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+        }
     }
 
     @Override
@@ -789,6 +793,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (chip.getRenderer() != null) {
             chip.getRenderer().getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
         }
+        if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
+            aeChip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+        }
     }
 
     @Override
@@ -799,6 +806,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
             framesInTimeWindow.add(newFrame);
             log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
+        } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
+            framesInTimeWindow.clear();
+            eventList.clear();
         }
     }
 
