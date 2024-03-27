@@ -1448,6 +1448,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             boolean old = getDavisConfig().isDisplayFrames();
             getDavisConfig().setCaptureFramesEnabled(!old);
             getDavisConfig().setDisplayFrames(!old);
+            ((DavisRenderer)getRenderer()).setDisplayFrames(!old);
             log.info("capturing and displaying frames = " + getDavisConfig().isCaptureFramesEnabled());
             davisDisplayMethod.showActionText("frames=" + getDavisConfig().isCaptureFramesEnabled());
             putValue(Action.SELECTED_KEY, true);
