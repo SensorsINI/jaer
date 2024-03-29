@@ -856,6 +856,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                         final float maxAngle = 180f;
                         setAngley((maxAngle * (screenX - (drawable.getWidth() / 2))) / drawable.getWidth());
                         setAnglex((maxAngle * (screenY - (drawable.getHeight() / 2))) / drawable.getHeight());
+                        log.fine(String.format("angleX=%6.1f deg, angleY=%6.1f",anglex,angley));
                     } else if (isZoomMode()) {
                         // System.out.print("z");
                     }

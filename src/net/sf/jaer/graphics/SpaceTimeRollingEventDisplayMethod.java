@@ -334,7 +334,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      * rendered in front
      */
     private void pruneOldEventsAndFrames(final int t0, final int t1) {
-        log.fine(String.format("Pruning events and frames outside window t0=%,d, t1=%,d (t1-t0=%,d)", t0, t1, (t1 - t0)));
+//        log.finer(String.format("Pruning events and frames outside window t0=%,d, t1=%,d (t1-t0=%,d)", t0, t1, (t1 - t0)));
         if (eventList == null) {
             return;
         }
@@ -353,15 +353,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         ArrayList<BasicEvent> tmp = eventList;
         eventList = eventListTmp;
         eventListTmp = tmp;
-        if (!framesInTimeWindow.isEmpty()) {
-            int tFrame = framesInTimeWindow.peekFirst().timestampUs;  // peekFirst gets the oldest frame
-            int dt = tFrame - t0;
-            if (dt < 0) {
-                // if it is older than the oldest time in window, remove it
-                log.fine(String.format("Removing old frames %s", framesInTimeWindow.peekFirst()));
-                framesInTimeWindow.removeFirst(); // prune frames outside the window
-            }
-        }
+
+        framesInTimeWindow.removeFramesOlderThan(t0);
 
     }
 
@@ -399,11 +392,18 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
 //        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
         gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
+        
+        // go to the end, -zmax
         gl.glTranslatef(0, 0, -1 * zmax);
+        
+        // rotate according to mouse
         gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
         gl.glRotatef(-getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
         gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
+        
+        // Now back again to where we started
         gl.glTranslatef(0, 0, 1 * zmax);
+        
 //        gl.glTranslatef(sx/2, sy/2, zmax);
 //        glu.gluPerspective(33, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, zmax*9);
 //        gl.glTranslatef(-sx/2, -sy/2, -zmax);
@@ -494,7 +494,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             for (FrameWithTime frame : framesInTimeWindow) {
                 final int frameDt = frame.timestampUs - lastTimestamp;
                 final float z = tfac * (frameDt);
-                log.fine(String.format("Frame %d has frameDt=%,dus (frame.timestampUs=%,d, lastTimestamp=%,d)", nFrames, frameDt, frame.timestampUs, lastTimestamp));
+//                log.finer(String.format("Frame %d has frameDt=%,dus (frame.timestampUs=%,d, lastTimestamp=%,d)", nFrames, frameDt, frame.timestampUs, lastTimestamp));
                 if (z < -zmax || z > 0) {
                     log.warning(String.format("Frame has z=%f outside of range [0,%f]", z, -zmax));
                 }
@@ -537,7 +537,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
                 nFrames++;
             }
-            log.fine(String.format("rendered %d texture APS frames", nFrames));
+//            log.fine(String.format("rendered %d texture APS frames", nFrames));
         }
 
 //
@@ -803,8 +803,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (displayFrames && evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE) {
             DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
 //            float[] pixmap = renderer.getPixmapArray();
-            FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
-            framesInTimeWindow.add(newFrame);
+//            FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
+            framesInTimeWindow.add(renderer.getPixBuffer(),renderer.getTimestampFrameEnd());
             log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             framesInTimeWindow.clear();
@@ -812,6 +812,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
     }
 
+    /**
+     * A frame pixel buffer along with the frame (end of exposure) time
+     */
     private class FrameWithTime {
 
         FloatBuffer pixBuffer;
@@ -829,7 +832,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
     }
 
+    /**
+     * List of frames currently displayed
+     */
     private class FramesInTimeWindow extends LinkedList<FrameWithTime> {
+
+        LinkedList<FrameWithTime> unusedFrames = new LinkedList();
 
         /**
          * Adds a new frame to tail of list, removing head (oldest) if it is
@@ -849,6 +857,44 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             super.add(newFrame); // add to tail of list
             return true;
+        }
+
+
+        /** Add a new frame based on pixbuffer input and the frame end timestamp
+         * 
+         * @param input the pix buffer from the renderer
+         * @param timestampUs
+         * @return true  
+         */
+        public boolean add(FloatBuffer input, int timestampUs) {
+            FrameWithTime fr=null;
+            if(unusedFrames.isEmpty())
+                fr=new FrameWithTime(input,timestampUs);
+            else{
+                fr=unusedFrames.pop();
+            }
+            input.rewind();
+            fr.pixBuffer.rewind();
+            fr.pixBuffer.put(input);
+            fr.timestampUs = timestampUs;
+            return add(fr);
+        }
+
+        /** Removes oldest frame if older than t0 time */
+        public boolean removeFramesOlderThan(int t0) {
+            if (isEmpty()) {
+                return false;
+            }
+            int tFrame = peekFirst().timestampUs;  // peekFirst gets the oldest frame
+            int dt = tFrame - t0;
+            if (dt < 0) {
+                // if it is older than the oldest time in window, remove it
+//                log.finest(String.format("Removing old frames %s", peekFirst()));
+                FrameWithTime removed=removeFirst(); // prune frames outside the window
+                unusedFrames.add(removed);
+                return true;
+            }
+            return false;
         }
     }
 
