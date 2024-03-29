@@ -41,6 +41,9 @@ import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
 import java.beans.PropertyChangeEvent;
 import java.util.LinkedList;
 import java.util.logging.Level;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import static javax.swing.Action.ACCELERATOR_KEY;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import net.sf.jaer.Description;
@@ -106,15 +109,18 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private final int aspectRatio = 4; // depth of 3d cube compared to max of x and y chip dimension
     private float pointSize = 4f;
 
+    private JMenu displayMenu = null;
+
     private boolean additiveColorEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.additiveColorEnabled", false);
     private boolean largePointSizeEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.largePointSizeEnabled", false);
 
     private boolean displayEvents = true;
     private boolean displayFrames = true;
-    private boolean displayAnnotation = false;
+//    private boolean displayAnnotation = false;
 
     final private FramesInTimeWindow framesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
     private float framesAlpha = prefs.getFloat("framesAlpha", .5f);
+    private boolean drawFramesOnOwnAxes = prefs.getBoolean("drawFramesOnOwnAxes", false);
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -364,7 +370,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             final DavisRenderer frameRenderer = (DavisRenderer) chip.getRenderer();
             displayFrames = frameRenderer.isDisplayFrames();
             displayEvents = frameRenderer.isDisplayEvents();
-            displayAnnotation = frameRenderer.isDisplayAnnotation();
+//            displayAnnotation = frameRenderer.isDisplayAnnotation();
             if (!displayFrames && !displayEvents) {
                 log.warning("Both frame and event display off, enabling events display so something shows");
                 frameRenderer.setDisplayEvents(true);
@@ -392,18 +398,18 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
 //        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
         gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
-        
+
         // go to the end, -zmax
         gl.glTranslatef(0, 0, -1 * zmax);
-        
+
         // rotate according to mouse
         gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
         gl.glRotatef(-getChipCanvas().getAngley(), 0, 1, 0); // rotate viewpoint by angle deg around the y axis
         gl.glTranslatef(getChipCanvas().getOrigin3dx(), getChipCanvas().getOrigin3dy(), 0);
-        
+
         // Now back again to where we started
         gl.glTranslatef(0, 0, 1 * zmax);
-        
+
 //        gl.glTranslatef(sx/2, sy/2, zmax);
 //        glu.gluPerspective(33, (float)drawable.getSurfaceWidth()/drawable.getSurfaceHeight(), .1, zmax*9);
 //        gl.glTranslatef(-sx/2, -sy/2, -zmax);
@@ -417,7 +423,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glDisable(GL.GL_BLEND);
         gl.glEnable(GL2ES1.GL_POINT_SMOOTH);
         gl.glEnable(GL.GL_BLEND);
-        if (additiveColorEnabled) {
+        if (isAdditiveColorEnabled()) {
             gl.glBlendFunc(GL.GL_ONE, GL.GL_ONE);
         } else {
             gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -462,7 +468,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
             gl.glUniform1f(idt0, -zmax);
             gl.glUniform1f(idt1, 0);
-            if (largePointSizeEnabled) {
+            if (isLargePointSizeEnabled()) {
                 pointSize = 12;
             } else {
                 pointSize = 4;
@@ -486,6 +492,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         if (displayFrames) { // render frames
+            gl.glPushMatrix();
+            if (isDrawFramesOnOwnAxes()) {
+                gl.glTranslatef(0, chip.getSizeY() * 1.2f, 0);
+                gl.glCallList(axesDisplayListId);
+            }
             int nFrames = 0;
 //            gl.glShadeModel(GL2.GL_FLAT);
             DavisRenderer renderer = (DavisRenderer) chip.getRenderer();
@@ -537,6 +548,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
                 nFrames++;
             }
+            gl.glPopMatrix();
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
         }
 
@@ -708,10 +720,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         return buffer.toString();
     }
 
-    private JMenu displayMenu = null;
-    JCheckBoxMenuItem additiveColorMenuItem = null, largePointsMenuItem = null;
-    JMenuItem setTransparencyMenuItem = null;
-
     @Override
     protected void onDeregistration() {
         if (chip.getRenderer() != null && chip.getRenderer() instanceof DavisRenderer) {
@@ -724,6 +732,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         AEViewer viewer = aeChip.getAeViewer();
         viewer.removeMenu(displayMenu);
+        displayMenu = null;
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
@@ -741,53 +750,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return;
         }
         displayMenu = new JMenu("3-D Display Options");
-        additiveColorMenuItem = new JCheckBoxMenuItem("Enable additive color");
-        additiveColorMenuItem.setToolTipText("Use additive color rather than blending for drawing event points");
-        additiveColorMenuItem.setSelected(additiveColorEnabled);
-        largePointsMenuItem = new JCheckBoxMenuItem("Enable large event points");
-        largePointsMenuItem.setToolTipText("make the event points larger (12 points) rather than the default (4 points) for better visibility with sparse event stream");
-        largePointsMenuItem.setSelected(largePointSizeEnabled);
-        setTransparencyMenuItem = new JMenuItem("Set frame tranparency");
-        setTransparencyMenuItem.setToolTipText("Set the alpha for drawing frames when not using additive color");
-//        setTransparencyMenuItem.setSelected(largePointSizeEnabled);
-
-        additiveColorMenuItem.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                additiveColorEnabled = additiveColorMenuItem.isSelected();
-                prefs.putBoolean("SpaceTimeRollingEventDisplayMethod.additiveColorEnabled", additiveColorEnabled);
-            }
-        });
-
-        largePointsMenuItem.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                largePointSizeEnabled = largePointsMenuItem.isSelected();
-                prefs.putBoolean("SpaceTimeRollingEventDisplayMethod.largePointSizeEnabled", largePointSizeEnabled);
-            }
-        });
-
-        setTransparencyMenuItem.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                String ret = JOptionPane.showInputDialog(String.format("New alpha value (currently %.2f", framesAlpha), String.format("%f", framesAlpha));
-                try {
-                    float v = Float.parseFloat(ret);
-                    if (v < .1 || v > 1) {
-                        return;
-                    }
-                    framesAlpha = v;
-                    prefs.putFloat("framesAlpha", framesAlpha);
-                } catch (NumberFormatException e) {
-                    log.warning(e.toString()); // TODO put in loop with cancel
-                }
-            }
-        });
-
-        displayMenu.add(additiveColorMenuItem);
-        displayMenu.add(largePointsMenuItem);
-        displayMenu.add(setTransparencyMenuItem);
-        displayMenu.getPopupMenu().setLightWeightPopupEnabled(false);
+        displayMenu.add(new JCheckBoxMenuItem(new ToggleLargePointsAction()));
+        displayMenu.add(new JCheckBoxMenuItem(new ToggleAdditiveColorAction()));
+        displayMenu.add(new JMenuItem(new SetTransparencyAction()));
+        displayMenu.add(new JCheckBoxMenuItem(new ToggleDrawFramesOnOwnAxesAction()));
         viewer.addMenu(displayMenu);
 
         if (chip.getRenderer() != null) {
@@ -804,12 +770,57 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
 //            float[] pixmap = renderer.getPixmapArray();
 //            FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
-            framesInTimeWindow.add(renderer.getPixBuffer(),renderer.getTimestampFrameEnd());
+            framesInTimeWindow.add(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
             log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             framesInTimeWindow.clear();
             eventList.clear();
         }
+    }
+
+    /**
+     * @return the drawFramesOnOwnAxes
+     */
+    public boolean isDrawFramesOnOwnAxes() {
+        return drawFramesOnOwnAxes;
+    }
+
+    /**
+     * @param drawFramesOnOwnAxes the drawFramesOnOwnAxes to set
+     */
+    public void setDrawFramesOnOwnAxes(boolean drawFramesOnOwnAxes) {
+        this.drawFramesOnOwnAxes = drawFramesOnOwnAxes;
+        prefs.putBoolean("drawFramesOnOwnAxes", drawFramesOnOwnAxes);
+    }
+
+    /**
+     * @return the additiveColorEnabled
+     */
+    public boolean isAdditiveColorEnabled() {
+        return additiveColorEnabled;
+    }
+
+    /**
+     * @param additiveColorEnabled the additiveColorEnabled to set
+     */
+    public void setAdditiveColorEnabled(boolean additiveColorEnabled) {
+        this.additiveColorEnabled = additiveColorEnabled;
+        prefs.putBoolean("additiveColorEnabled", additiveColorEnabled);
+    }
+
+    /**
+     * @return the largePointSizeEnabled
+     */
+    public boolean isLargePointSizeEnabled() {
+        return largePointSizeEnabled;
+    }
+
+    /**
+     * @param largePointSizeEnabled the largePointSizeEnabled to set
+     */
+    public void setLargePointSizeEnabled(boolean largePointSizeEnabled) {
+        this.largePointSizeEnabled = largePointSizeEnabled;
+        prefs.putBoolean("largePointSizeEnabled", largePointSizeEnabled);
     }
 
     /**
@@ -859,19 +870,19 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return true;
         }
 
-
-        /** Add a new frame based on pixbuffer input and the frame end timestamp
-         * 
+        /**
+         * Add a new frame based on pixbuffer input and the frame end timestamp
+         *
          * @param input the pix buffer from the renderer
          * @param timestampUs
-         * @return true  
+         * @return true
          */
         public boolean add(FloatBuffer input, int timestampUs) {
-            FrameWithTime fr=null;
-            if(unusedFrames.isEmpty())
-                fr=new FrameWithTime(input,timestampUs);
-            else{
-                fr=unusedFrames.pop();
+            FrameWithTime fr = null;
+            if (unusedFrames.isEmpty()) {
+                fr = new FrameWithTime(input, timestampUs);
+            } else {
+                fr = unusedFrames.pop();
             }
             input.rewind();
             fr.pixBuffer.rewind();
@@ -880,7 +891,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return add(fr);
         }
 
-        /** Removes oldest frame if older than t0 time */
+        /**
+         * Removes oldest frame if older than t0 time
+         */
         public boolean removeFramesOlderThan(int t0) {
             if (isEmpty()) {
                 return false;
@@ -890,11 +903,146 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             if (dt < 0) {
                 // if it is older than the oldest time in window, remove it
 //                log.finest(String.format("Removing old frames %s", peekFirst()));
-                FrameWithTime removed=removeFirst(); // prune frames outside the window
+                FrameWithTime removed = removeFirst(); // prune frames outside the window
                 unusedFrames.add(removed);
                 return true;
             }
             return false;
+        }
+    }
+
+    abstract public class MyAction extends AbstractAction {
+
+        public MyAction() {
+            super();
+        }
+
+        public MyAction(String name) {
+            putValue(Action.NAME, name);
+//            putValue(ACCELERATOR_KEY, javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+            putValue("hideActionText", "true");
+            putValue(Action.SHORT_DESCRIPTION, name);
+        }
+
+        public MyAction(String name, String tooltip) {
+            putValue(Action.NAME, name);
+            putValue("hideActionText", "true");
+            putValue(Action.SHORT_DESCRIPTION, tooltip);
+        }
+
+        protected void showAction() {
+            if (((AEChip) chip).getAeViewer() != null) {
+                ((AEChip) chip).getAeViewer().showActionText((String) getValue(Action.SHORT_DESCRIPTION));
+            }
+        }
+
+        protected void showAction(String s) {
+            if (((AEChip) chip).getAeViewer() != null && s != null) {
+                ((AEChip) chip).getAeViewer().showActionText(s);
+            }
+        }
+
+        /**
+         * Sets the name, which is the menu item string
+         *
+         * @param name
+         */
+        public void setName(String name) {
+            putValue(Action.NAME, name);
+        }
+    }
+
+    final public class ToggleLargePointsAction extends MyAction {
+
+        public ToggleLargePointsAction() {
+            super("Large points enabled", "<html>\"make the event points larger (12 points),<br> rather than the default (4 points) for better visibility with sparse event stream");
+            putValue(Action.SELECTED_KEY, isLargePointSizeEnabled());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setLargePointSizeEnabled(!isLargePointSizeEnabled());
+            putValue(Action.SELECTED_KEY, isLargePointSizeEnabled());
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (isLargePointSizeEnabled()) {
+                showAction("Small points enabled");
+            } else {
+                showAction("Large points enabled");
+            }
+        }
+    }
+
+    final public class ToggleAdditiveColorAction extends MyAction {
+
+        public ToggleAdditiveColorAction() {
+            super("Additive color enabled", "Use additive color rather than blending for drawing event points");
+            putValue(Action.SELECTED_KEY, isAdditiveColorEnabled());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setAdditiveColorEnabled(!isAdditiveColorEnabled());
+            putValue(Action.SELECTED_KEY, isAdditiveColorEnabled());
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (isAdditiveColorEnabled()) {
+                showAction("Additive color enabled");
+            } else {
+                showAction("Blending enabled");
+            }
+        }
+    }
+
+    final public class ToggleDrawFramesOnOwnAxesAction extends MyAction {
+
+        public ToggleDrawFramesOnOwnAxesAction() {
+            super("Shift frames vertically", "Draw the APS frames with a different set of axes");
+            putValue(Action.SELECTED_KEY, isDrawFramesOnOwnAxes());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setDrawFramesOnOwnAxes(!isDrawFramesOnOwnAxes());
+            putValue(Action.SELECTED_KEY, isDrawFramesOnOwnAxes());
+            showAction();
+        }
+    }
+
+    final public class SetTransparencyAction extends MyAction {
+
+        public SetTransparencyAction() {
+            super("Set transparency", String.format("Set frame tranparency alpha (currently %.2f)", framesAlpha));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            String ret = JOptionPane.showInputDialog(String.format("New alpha value (currently %.2f", framesAlpha), String.format("%f", framesAlpha));
+            if (ret == null) {
+                return;
+            }
+            try {
+                float v = Float.parseFloat(ret);
+                if (v < .1 || v > 1) {
+                    return;
+                }
+                framesAlpha = v;
+                prefs.putFloat("framesAlpha", framesAlpha);
+                putValue(Action.SHORT_DESCRIPTION, String.format("Set frame tranparency alpha (currently %.2f)", framesAlpha));
+            } catch (NumberFormatException e) {
+                log.warning(e.toString()); // TODO put in loop with cancel
+            }
+        }
+
+        @Override
+        protected void showAction() {
+            showAction(String.format("Set alpha=%.2f", framesAlpha));
         }
     }
 
