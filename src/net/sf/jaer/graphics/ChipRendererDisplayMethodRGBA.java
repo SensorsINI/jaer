@@ -290,7 +290,13 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         }
     }
 
-    private void drawPolygon(final GL2 gl, final int width, final int height) {
+    /** Draws the current texture into the width and height of chip pixels
+     * 
+     * @param gl
+     * @param width of chip pixel array
+     * @param height of chip pixel array
+     */
+    protected void drawPolygon(final GL2 gl, final int width, final int height) {
         final double xRatio = (double) chip.getSizeX() / (double) width;
         final double yRatio = (double) chip.getSizeY() / (double) height;
         gl.glBegin(GL2.GL_POLYGON);
