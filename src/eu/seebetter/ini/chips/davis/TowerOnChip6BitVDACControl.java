@@ -554,8 +554,8 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
     @Override
     public void storeState(final Hashtable<Object, Object> hashtable) {
         // System.out.println(" storeState "+pot);
-        hashtable.put(KEY_REFBITVALUE, new Integer(pot.getVdacBitValue()));
-        hashtable.put(KEY_REGBITVALUE, new Integer(pot.getBufferBitValue()));
+        hashtable.put(KEY_REFBITVALUE, pot.getVdacBitValue());
+        hashtable.put(KEY_REGBITVALUE, pot.getBufferBitValue());
 
     }
 
@@ -816,7 +816,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
                 @Override
                 public void actionPerformed(final ActionEvent e) {
                     try {
-                        setMethod.invoke(TowerOnChip6BitVDACControl.class, new Boolean(isSelected()));
+                        setMethod.invoke(TowerOnChip6BitVDACControl.class, isSelected());
                         setSelected(isSelected());
                     } catch (final Exception e2) {
                         e2.printStackTrace();

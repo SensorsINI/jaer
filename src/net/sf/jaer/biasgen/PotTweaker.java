@@ -448,7 +448,7 @@ public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeLis
     }
 
     public void storeState (Hashtable<Object,Object> hashtable){
-        hashtable.put(STATE_KEY,new Integer(slider.getValue()));
+        hashtable.put(STATE_KEY, slider.getValue());
     }
 
     @Override

@@ -555,8 +555,8 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
 
     public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
-        hashtable.put(KEY_REFBITVALUE, new Integer(pot.getRefBitValue()));
-        hashtable.put(KEY_REGBITVALUE, new Integer(pot.getRegBitValue()));
+        hashtable.put(KEY_REFBITVALUE, pot.getRefBitValue());
+        hashtable.put(KEY_REGBITVALUE, pot.getRegBitValue());
         hashtable.put(KEY_VOLTAGELEVEL, pot.getVoltageLevel());
         hashtable.put(KEY_OPERATINGMODE, pot.getOperatingMode());
 
@@ -807,7 +807,7 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
 
                 public void actionPerformed(ActionEvent e) {
                     try {
-                        setMethod.invoke(ShiftedSourceControlsCF.class, new Boolean(isSelected()));
+                        setMethod.invoke(ShiftedSourceControlsCF.class, Boolean.valueOf(isSelected()));
                         setSelected(isSelected());
                     } catch (Exception e2) {
                         e2.printStackTrace();

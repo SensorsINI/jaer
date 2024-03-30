@@ -68,7 +68,7 @@ public class Bins {
         }
         bins[diffIndex]=bins[diffIndex]+1;  // add Value to Bins
 
-        usedPairs.add(new Integer(diffIndex));
+        usedPairs.add(diffIndex);
         int overload=usedPairs.size()-numberOfPairs;
         if (overload>0){
             for (int j=0;j<overload;j++){

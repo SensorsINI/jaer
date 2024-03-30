@@ -38,24 +38,24 @@ public class HWP_RS232 extends HWPort {
 
 		Vector<PortAttribute> pa = new Vector<PortAttribute>();
 
-		pa.add(new PortAttribute(new Integer(3000000), "  3000000Bd"));
-		pa.add(new PortAttribute(new Integer(2764800), "  2764800Bd"));
-		pa.add(new PortAttribute(new Integer(2000000), "  2000000Bd"));
-		pa.add(new PortAttribute(new Integer(1843200), "  1843200Bd"));
-		pa.add(new PortAttribute(new Integer(1000000), "  1000000Bd"));
-		pa.add(new PortAttribute(new Integer( 921600), "    921600Bd"));
-		pa.add(new PortAttribute(new Integer( 500000), "    500000Bd"));
-		pa.add(new PortAttribute(new Integer( 460800), "    460800Bd"));
-		pa.add(new PortAttribute(new Integer( 250000), "    250000Bd"));
-		pa.add(new PortAttribute(new Integer( 230400), "    230400Bd"));
-		pa.add(new PortAttribute(new Integer( 115200), "    115200Bd"));
-		pa.add(new PortAttribute(new Integer(  57600), "      57600Bd"));
-		pa.add(new PortAttribute(new Integer(  38400), "      38400Bd"));
-		pa.add(new PortAttribute(new Integer(  19200), "      19200Bd"));
-		pa.add(new PortAttribute(new Integer(   9600), "        9600Bd"));
-		pa.add(new PortAttribute(new Integer(   2400), "        2400Bd"));
-		pa.add(new PortAttribute(new Integer(   1200), "        1200Bd"));
-		pa.add(new PortAttribute(new Integer(    300), "          300Bd"));
+		pa.add(new PortAttribute(3000000, "  3000000Bd"));
+		pa.add(new PortAttribute(2764800, "  2764800Bd"));
+		pa.add(new PortAttribute(2000000, "  2000000Bd"));
+		pa.add(new PortAttribute(1843200, "  1843200Bd"));
+		pa.add(new PortAttribute(1000000, "  1000000Bd"));
+		pa.add(new PortAttribute(921600, "    921600Bd"));
+		pa.add(new PortAttribute(500000, "    500000Bd"));
+		pa.add(new PortAttribute(460800, "    460800Bd"));
+		pa.add(new PortAttribute(250000, "    250000Bd"));
+		pa.add(new PortAttribute(230400, "    230400Bd"));
+		pa.add(new PortAttribute(115200, "    115200Bd"));
+		pa.add(new PortAttribute(57600, "      57600Bd"));
+		pa.add(new PortAttribute(38400, "      38400Bd"));
+		pa.add(new PortAttribute(19200, "      19200Bd"));
+		pa.add(new PortAttribute(9600, "        9600Bd"));
+		pa.add(new PortAttribute(2400, "        2400Bd"));
+		pa.add(new PortAttribute(1200, "        1200Bd"));
+		pa.add(new PortAttribute(300, "          300Bd"));
 		
 		return(pa);
 	}

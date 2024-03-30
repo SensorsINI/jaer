@@ -301,7 +301,7 @@ public abstract class AbstractMultiBitRegisterCP extends JPanel implements State
 	public void storeState(final Hashtable<Object, Object> hashtable) {
 		// System.out.println(" storeState "+pot);
 		if (reg != null) {
-			hashtable.put(STATE_KEY, new Integer(reg.getFullValue()));
+			hashtable.put(STATE_KEY, reg.getFullValue());
 		}
 	}
 

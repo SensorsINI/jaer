@@ -92,10 +92,10 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
         this.chip = chip;
         biasgen = (CochleaAMS1b.Biasgen) chip.getBiasgen();
         initComponents();
-        Integer value = new Integer(0);
-        Integer min = new Integer(0);
-        Integer max = new Integer(biasgen.scanner.nstages - 1);
-        Integer step = new Integer(1);
+        Integer value = 0;
+        Integer min = 0;
+        Integer max = biasgen.scanner.nstages - 1;
+        Integer step = 1;
         scannerChannelSpinnerModel = new SpinnerNumberModel(value, min, max, step);
         scanSpinner.setModel(scannerChannelSpinnerModel);
         scanSlider.setMinimum(0);

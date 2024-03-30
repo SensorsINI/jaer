@@ -429,17 +429,17 @@ public class MenuScroller {
     }
   }
 
-  /**
-   * Ensures that the <code>dispose</code> method of this MenuScroller is
-   * called when there are no more refrences to it.
-   * 
-   * @exception  Throwable if an error occurs.
-   * @see MenuScroller#dispose()
-   */
-  @Override
-  public void finalize() throws Throwable {
-    dispose();
-  }
+//  /**
+//   * Ensures that the <code>dispose</code> method of this MenuScroller is
+//   * called when there are no more refrences to it.
+//   * 
+//   * @exception  Throwable if an error occurs.
+//   * @see MenuScroller#dispose()
+//   */
+//  @Override
+//  public void finalize() throws Throwable {
+//    dispose();
+//  }
 
   private void refreshMenu() {
     if (menuItems != null && menuItems.length > 0) {

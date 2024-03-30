@@ -603,7 +603,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                         progressMonitor.setNote("Running garbage collection and finalization");
                         System.gc();
                         progressMonitor.setProgress(1);
-                        System.runFinalization();
                         progressMonitor.setProgress(2);
                         progressMonitor.close();
                         String s = String.format("<html>Imported %,d frames spanning t=[%,g]s<br>from %s. <p>Frame rate median %.1fHz. <p>GT flow starts %.3fs later than rosbag",

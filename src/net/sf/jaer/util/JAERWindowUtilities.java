@@ -57,7 +57,7 @@ public class JAERWindowUtilities {
         boolean resize = false; // set true if window is too big for screen
 
         if (resizingCountMap.get(frame) == null) {
-            resizingCountMap.put(frame, new Integer(0));
+            resizingCountMap.put(frame, 0);
         }
         int count = resizingCountMap.get(frame);
         if (++count >= STOP_TRYING_THRESHOLD) {

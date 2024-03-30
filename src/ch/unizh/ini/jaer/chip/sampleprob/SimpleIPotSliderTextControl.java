@@ -454,7 +454,7 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
 	@Override
 	public void storeState(final Hashtable<Object, Object> hashtable) {
 		// System.out.println(" storeState "+pot);
-		hashtable.put(STATE_KEY, new Integer(pot.getBitValue()));
+		hashtable.put(STATE_KEY, pot.getBitValue());
 	}
 
 	class MyStateEdit extends StateEdit {

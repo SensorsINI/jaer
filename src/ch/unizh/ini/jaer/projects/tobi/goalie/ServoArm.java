@@ -307,7 +307,8 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater/
     }
 
     @Override
-    protected void finalize() throws Throwable {
+    public synchronized void cleanup() {
+        super.cleanup(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
         closeHardware();
     }
 
@@ -1295,11 +1296,6 @@ public class ServoArm extends EventFilter2D implements Observer, FrameAnnotater/
 
         }
 
-        @Override
-        protected void finalize() throws Throwable {
-			// JAERViewer.GlobalDataViewer.removeDataSet("Actual Pos (StereoGoalie)");
-            // JAERViewer.GlobalDataViewer.removeDataSet("Desired Pos (StereoGoalie)");
-        }
     }
 
     public float getServoPulseFreqHz() {
