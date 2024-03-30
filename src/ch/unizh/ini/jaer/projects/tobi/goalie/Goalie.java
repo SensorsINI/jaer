@@ -810,10 +810,12 @@ public class Goalie extends EventFilter2D implements FrameAnnotater, Observer {
     }
 
     @Override
-    protected void finalize() throws Throwable {
+    public synchronized void cleanup() {
+        super.cleanup(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
         stopLogging();
     }
 
+    
     public int getMinPathPointsToUseVelocity() {
         return minPathPointsToUseVelocity;
     }

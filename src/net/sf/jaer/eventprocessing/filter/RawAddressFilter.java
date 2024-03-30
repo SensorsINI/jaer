@@ -72,7 +72,7 @@ public class RawAddressFilter {
      Fires a PropertyChangeEvent "filterEnabled"
      */
     synchronized public void setFilterEnabled(boolean enabled) {
-        support.firePropertyChange("filterEnabled",new Boolean(this.filterEnabled),new Boolean(enabled));
+        support.firePropertyChange("filterEnabled", this.filterEnabled, enabled);
         this.filterEnabled=enabled;
     }
     

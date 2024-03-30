@@ -211,8 +211,7 @@ public class Chip2D extends Chip {
     }
 
     /**
-     * Sets the preferrred DisplayMethod for this Chip2D. This method is the one
-     * intially used after startup.
+     * Stores the preferred DisplayMethod for this Chip2D.
      *
      * @param clazz the method.
      */
@@ -224,9 +223,6 @@ public class Chip2D extends Chip {
         // store the preferred method
         getPrefs().put(preferredDisplayMethodKey(), clazz.getName());
         log.info("set preferred diplay method to be " + clazz.getName());
-        if (getCanvas() != null) {
-            getCanvas().setDisplayMethod(clazz.getName());
-        }
     }
 
     /**

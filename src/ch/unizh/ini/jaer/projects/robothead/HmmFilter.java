@@ -116,7 +116,7 @@ public class HmmFilter extends EventFilter2D  {
 
                 // encode observation
                 actualObservationLeft = myHmm.getObservation(actualVectorLeft[0], actualVectorLeft[1], actualVectorLeft[2], actualVectorLeft[3], actualVectorLeft[4]);
-                this.observationBufferLeft.add(new Integer(actualObservationLeft));
+                this.observationBufferLeft.add(actualObservationLeft);
 
                 this.eventBuffer.add(actualEvents);  // and also add saved events to eventBuffer
                 //System.out.println(observationBufferLeft.size());
@@ -153,7 +153,7 @@ public class HmmFilter extends EventFilter2D  {
                 int counter = 0;
                 for (int a = 0; a < statesLeft[1].length; a++) {   // look for states belonging to sounds
                     if (statesLeft[1][a] > 0) {
-                        indSound.add(new Integer(a));
+                        indSound.add(a);
                     }
                     if (statesLeft[1][a] == 2) {
                         counter++;

@@ -164,7 +164,7 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
       // getString the new x,y location for an incoming event
     private boolean canCorrectIndex(BinocularEvent evin ){
         int ind = (evin.x)*y_size+(y_size-evin.y);
-        Integer newInd = (Integer)indexLookup.get(new Integer(ind));
+        Integer newInd = (Integer)indexLookup.get(Integer.valueOf(ind));
         if(newInd==null){
            // System.out.println ("correctIndex: error, newInd: x "+newInd);
            
@@ -185,7 +185,7 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
     // getString the new x,y location for an incoming event
     private boolean correctIndex(BinocularEvent evin, BinocularEvent evout){
         int ind = (evin.x)*y_size+(y_size-evin.y);
-        Integer newInd = (Integer)indexLookup.get(new Integer(ind));
+        Integer newInd = (Integer)indexLookup.get(Integer.valueOf(ind));
         if(newInd==null){
            // System.out.println ("correctIndex: error, newInd: x "+newInd);
             evout = null;
@@ -282,9 +282,9 @@ public class EpipolarRectification extends EventFilter2D implements Observer  {
           for(int i=0;i<old_ind.length;i++){
              // from matlab where indexes start at 1, so we remove 1
               if(old_ind[i]!=0){
-                  Integer newind = new Integer(new_ind[i]-1);
+                  Integer newind = new_ind[i]-1;
                   if(!alreadyIn.contains(newind)){
-                     indexLookup.put(new Integer(old_ind[i]-1), newind);
+                     indexLookup.put(old_ind[i]-1, newind);
                      alreadyIn.add(newind);
                   }
                 // int j = old_ind[i]-1;

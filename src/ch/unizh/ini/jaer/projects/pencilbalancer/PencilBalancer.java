@@ -480,8 +480,8 @@ public class PencilBalancer extends EventFilter2D implements FrameAnnotater, Obs
                 if (r.startsWith("-C")) {
 
                     try {
-                        float trueTablePositionXVolt = new Integer((r.substring(2, 7).trim()));
-                        float trueTablePositionYVolt = new Integer((r.substring(8, 13).trim()));
+                        float trueTablePositionXVolt = Integer.parseInt(r.substring(2, 7).trim());
+                        float trueTablePositionYVolt = Integer.parseInt(r.substring(8, 13).trim());
 
 //#define X_LEFT_END  		((float) 289.7)
 //#define X_RIGHT_END		((float) 15950.3)

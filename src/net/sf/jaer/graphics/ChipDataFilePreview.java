@@ -167,7 +167,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     ais.close();
                     ais = null;
                     System.gc(); // try to make memory mapped file GC'ed so that user can delete it
-                    System.runFinalization();
+//                    System.runFinalization();
                     // see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4715154
                     // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
                 }
@@ -185,7 +185,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                         hafir.closeResources();
                         hafir = null;
                         System.gc(); // try to make memory mapped file GC'ed so that user can delete it
-                        System.runFinalization();
+//                        System.runFinalization();
                     }
                     hafir = new Hdf5AedatFileInputReader(file, chip);
                     hafir.openDataset("/dvs/data");

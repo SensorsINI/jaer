@@ -846,7 +846,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     try {
                         int y = Integer.parseInt(
                                 tf.getText());
-                        w.invoke(clazz, new Integer(y)); // write int value
+                        w.invoke(clazz, y); // write int value
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
                     } catch (InvocationTargetException ite) {
@@ -922,8 +922,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                         } else if (code == KeyEvent.VK_DOWN) {
                             try {
                                 nval = initValue - 1;
-                                w.invoke(clazz, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(clazz, nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -960,8 +960,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 } else {
                                     nval = (int) Math.round(initValue * wheelFactor);
                                 }
-                                w.invoke(clazz, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(clazz, nval);
+                                tf.setText(Integer.toString(nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (Exception iae) {
@@ -978,8 +978,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 if (nval < 0) {
                                     nval = 0;
                                 }
-                                w.invoke(clazz, new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(clazz, nval);
+                                tf.setText(Integer.toString(nval));
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
                             } catch (Exception iae) {
@@ -1074,7 +1074,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //                    System.out.println(e);
                     try {
                         float y = Float.parseFloat(tf.getText());
-                        w.invoke(clazz, new Float(y));
+                        w.invoke(clazz, y);
                         Float x = (Float) r.invoke(clazz); // getString the value from the getter method to constrain it
                         nval = x.floatValue();
                         tf.setText(String.format("%.4f", nval));
@@ -1117,7 +1117,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                             } else {
                                 nval = (initValue * floatFactor);
                             }
-                            w.invoke(clazz, new Float(nval)); // setter the value
+                            w.invoke(clazz, nval); // setter the value
                             Float x = (Float) r.invoke(clazz); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
                             tf.setText(String.format("%.4f", nval));
@@ -1134,7 +1134,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                             } else {
                                 nval = (initValue / floatFactor);
                             }
-                            w.invoke(clazz, new Float(initValue / floatFactor));
+                            w.invoke(clazz, initValue / floatFactor);
                             Float x = (Float) r.invoke(clazz); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
                             tf.setText(String.format("%.4f", nval));
@@ -1170,7 +1170,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 } else {
                                     nval = (initValue * wheelFactor);
                                 }
-                                w.invoke(clazz, new Float(nval)); // setter the value
+                                w.invoke(clazz, nval); // setter the value
                                 Float x = (Float) r.invoke(clazz); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
                                 tf.setText(String.format("%.4f", nval));
@@ -1187,7 +1187,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                                 } else {
                                     nval = (initValue / wheelFactor);
                                 }
-                                w.invoke(clazz, new Float(initValue / wheelFactor));
+                                w.invoke(clazz, initValue / wheelFactor);
                                 Float x = (Float) r.invoke(clazz); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
                                 tf.setText(String.format("%.4f", nval));

@@ -403,7 +403,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     
     public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
-        hashtable.put(STATE_KEY, new Integer(pot.getBitValue()));
+        hashtable.put(STATE_KEY, pot.getBitValue());
     }
     
     class MyStateEdit extends StateEdit{

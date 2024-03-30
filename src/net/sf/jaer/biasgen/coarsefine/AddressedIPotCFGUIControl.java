@@ -661,8 +661,8 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     @Override
     public void storeState(Hashtable<Object, Object> hashtable) {
 //        System.out.println(" storeState "+pot);
-        hashtable.put(KEY_BITVALUE_COARSE, new Integer(pot.getCoarseBitValue()));
-        hashtable.put(KEY_BITVALUE_FINE, new Integer(pot.getFineBitValue()));
+        hashtable.put(KEY_BITVALUE_COARSE, pot.getCoarseBitValue());
+        hashtable.put(KEY_BITVALUE_FINE, pot.getFineBitValue());
         hashtable.put(KEY_SEX, pot.getSex()); // TODO assumes sex nonnull
         hashtable.put(KEY_CASCODENORMALTYPE, pot.getType());
         hashtable.put(KEY_CURRENTLEVEL, pot.getCurrentLevel());
@@ -901,7 +901,7 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     try {
-                        setMethod.invoke(AddressedIPotCFGUIControl.class, new Boolean(isSelected()));
+                        setMethod.invoke(AddressedIPotCFGUIControl.class, Boolean.valueOf(isSelected()));
                         setSelected(isSelected());
                     } catch (Exception e2) {
                         e2.printStackTrace();

@@ -514,7 +514,7 @@ public class JAERViewer {
             putValue(NAME, "Start logging");
             putValue(SHORT_DESCRIPTION, "Controls synchronized logging on all viewers");
             putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_L, 0));
-            putValue(MNEMONIC_KEY, new Integer(KeyEvent.VK_L));
+            putValue(MNEMONIC_KEY, KeyEvent.VK_L);
         }
 
         @Override

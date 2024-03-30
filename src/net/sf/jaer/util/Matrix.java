@@ -41,7 +41,7 @@ import java.util.logging.Logger;
 
  @author Janick Cardinale
  */
-public strictfp class Matrix {
+public class Matrix {
     
     static final Logger log=Logger.getLogger("net.sf.jaer");
     

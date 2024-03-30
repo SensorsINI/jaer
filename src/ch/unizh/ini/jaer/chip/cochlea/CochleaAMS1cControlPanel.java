@@ -75,10 +75,10 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
 
         initComponents();
         // scanner
-        Integer value = new Integer(0);
-        Integer min = new Integer(0);
-        Integer max = new Integer(getBiasgen().getScanner().nstages - 1);
-        Integer step = new Integer(1);
+        Integer value = 0;
+        Integer min = 0;
+        Integer max = getBiasgen().getScanner().nstages - 1;
+        Integer step = 1;
         scannerChannelSpinnerModel = new SpinnerNumberModel(value, min, max, step);
         scanSpinner.setModel(scannerChannelSpinnerModel);
         scanSlider.setMinimum(0);

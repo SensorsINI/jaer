@@ -980,7 +980,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         return;
                     }
                     try {
-                        w.invoke(filter, new Integer(slider.getValue())); // write int value
+                        w.invoke(filter, slider.getValue()); // write int value
                         ic.set(slider.getValue());
 //                        tf.setText(Integer.toString(slider.getValue()));
                     } catch (InvocationTargetException ite) {
@@ -1055,7 +1055,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     return;
                 }
                 currentValue = x.floatValue();
-                set(new Float(currentValue));
+                set(currentValue);
             } catch (Exception e) {
                 log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
@@ -1070,8 +1070,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     try {
                         int v = slider.getValue();
                         currentValue = minValue + ((maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum())));
-                        w.invoke(filter, new Float(currentValue)); // write int value
-                        fc.set(new Float(currentValue));
+                        w.invoke(filter, currentValue); // write int value
+                        fc.set(currentValue);
 
 //                        tf.setText(engFmt.format(currentValue));
                     } catch (InvocationTargetException ite) {
@@ -1154,7 +1154,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             log.warning("could not read original value: " + re.toString());
                         }
                         int y = format.parse(tf.getText()).intValue();
-                        newValue = new Integer(y);
+                        newValue = y;
                         w.invoke(filter, newValue); // write int value
                         firePropertyChange(PROPERTY_VALUE, oldValue, newValue);
                     } catch (ParseException pe) {
@@ -1177,7 +1177,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                     try {
                         oldValue = (Integer) r.invoke(filter);
-                        initValue = oldValue.intValue();
+                        initValue = oldValue;
 //                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
                         e.printStackTrace();
@@ -1197,8 +1197,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                     nval = Math.round(initValue * KEY_FACTOR);
                                 }
                                 
-                                w.invoke(filter, newValue = new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, newValue = nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1214,8 +1214,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                     nval = Math.round(initValue / KEY_FACTOR);
                                 }
                                 
-                                w.invoke(filter, newValue = new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, newValue = nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1228,8 +1228,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         if (code == KeyEvent.VK_UP) {
                             try {
                                 nval = initValue + 1;
-                                w.invoke(filter, newValue = new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, newValue = nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1239,8 +1239,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         } else if (code == KeyEvent.VK_DOWN) {
                             try {
                                 nval = initValue - 1;
-                                w.invoke(filter, newValue = new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, newValue = nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1253,7 +1253,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         try {
                             NumberFormat format = NumberFormat.getNumberInstance();
                             int y = format.parse(tf.getText()).intValue();
-                            w.invoke(filter, newValue = new Integer(y)); // write int value
+                            w.invoke(filter, newValue = y); // write int value
                             fixIntValue(tf, r);
                         } catch (ParseException pe) {
                             //Handle exception
@@ -1299,8 +1299,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = Math.round(initValue * WHEEL_FACTOR);
                                 }
-                                w.invoke(filter, newValue = new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, newValue = nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1315,8 +1315,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = Math.round(initValue / WHEEL_FACTOR);
                                 }
-                                w.invoke(filter, newValue = new Integer(nval));
-                                tf.setText(new Integer(nval).toString());
+                                w.invoke(filter, newValue = nval);
+                                tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
                             } catch (InvocationTargetException ite) {
                                 ite.printStackTrace();
@@ -1439,7 +1439,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                    System.out.println(e);
                     try {
                         float y = engFmt.parseFloat(tf.getText());
-                        w.invoke(filter, new Float(y));
+                        w.invoke(filter, y);
                         Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                         nval = x.floatValue();
                         tf.setText(engFmt.format(nval));
@@ -1482,7 +1482,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             } else {
                                 nval = (initValue * floatFactor);
                             }
-                            w.invoke(filter, new Float(nval)); // setter the value
+                            w.invoke(filter, nval); // setter the value
                             Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
                             tf.setText(engFmt.format(nval));
@@ -1499,7 +1499,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             } else {
                                 nval = (initValue / floatFactor);
                             }
-                            w.invoke(filter, new Float(initValue / floatFactor));
+                            w.invoke(filter, initValue / floatFactor);
                             Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
                             tf.setText(engFmt.format(nval));
@@ -1549,7 +1549,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = (initValue * WHEEL_FACTOR);
                                 }
-                                w.invoke(filter, new Float(nval)); // setter the value
+                                w.invoke(filter, nval); // setter the value
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
                                 tf.setText(engFmt.format(nval));
@@ -1566,7 +1566,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = (initValue / WHEEL_FACTOR);
                                 }
-                                w.invoke(filter, new Float(initValue / WHEEL_FACTOR));
+                                w.invoke(filter, initValue / WHEEL_FACTOR);
                                 Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
                                 tf.setText(engFmt.format(nval));
