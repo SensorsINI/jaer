@@ -28,6 +28,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author Christian/Tobi
  */
 public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
+    
+    private int warningCount=0;
+    private static final int WARNING_INTERVAL=10000;
 
 	protected DAViSFX3HardwareInterface(final Device device) {
 		super(device);
@@ -210,10 +213,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		}
 
 		private void checkMonotonicTimestamp() {
-			if (currentTimestamp <= lastTimestamp) {
+			if (currentTimestamp <= lastTimestamp && warningCount%WARNING_INTERVAL==0) {
 				CypressFX3.log.severe(toString() + ": non strictly-monotonic timestamp detected: lastTimestamp=" + lastTimestamp
 					+ ", currentTimestamp=" + currentTimestamp + ", difference=" + (lastTimestamp - currentTimestamp) + ".");
                         }
+                        warningCount++;
 		}
 
 		private void initFrame() {
@@ -290,7 +294,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 2: // External input (falling edge)
 									case 3: // External input (rising edge)
 									case 4: // External input (pulse)
-										CypressFX3.log.fine("External input event received.");
+										CypressFX3.log.finer("External input event received.");
 
 										// Check that the buffer has space for this event. Enlarge if needed.
 										if (ensureCapacity(buffer, eventCounter + 1)) {
@@ -301,7 +305,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 5: // IMU Start (6 axes)
-										CypressFX3.log.fine("IMU6 Start event received.");
+										CypressFX3.log.finest("IMU6 Start event received.");
 
 										imuCount = 0;
 										imuType = 0;
@@ -309,7 +313,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 7: // IMU End
-										CypressFX3.log.fine("IMU End event received.");
+										CypressFX3.log.finest("IMU End event received.");
 
 										if (imuCount == (2 * RetinaAEReader.IMU_DATA_LENGTH)) {
 											if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
@@ -319,39 +323,43 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 											}
 										}
 										else {
+                                                                                    if(warningCount%WARNING_INTERVAL==0){
 											CypressFX3.log.info(
 												"IMU End: failed to validate IMU sample count (" + imuCount + "), discarding samples.");
+                                                                                        warningCount++;
+                                                                                    }
 										}
 										break;
 
 									case 8: // APS Global Shutter Frame Start
-										CypressFX3.log.fine("APS GS Frame Start event received.");
+										CypressFX3.log.finest("APS GS Frame Start event received.");
 
 										initFrame();
 
 										break;
 
 									case 9: // APS Rolling Shutter Frame Start
-										CypressFX3.log.fine("APS RS Frame Start event received.");
+										CypressFX3.log.finest("APS RS Frame Start event received.");
 
 										initFrame();
 
 										break;
 
 									case 10: // APS Frame End
-										CypressFX3.log.fine("APS Frame End event received.");
+										CypressFX3.log.finest("APS Frame End event received.");
 
 										for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
-											if (apsCountX[j] != apsSizeX) {
+											if (apsCountX[j] != apsSizeX  && warningCount%WARNING_INTERVAL==0) {
 												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j]
 													+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 											}
+                                                                                        warningCount++;
 										}
 
 										break;
 
 									case 11: // APS Reset Column Start
-										CypressFX3.log.fine("APS Reset Column Start event received.");
+										CypressFX3.log.finest("APS Reset Column Start event received.");
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
 										apsCountY[apsCurrentReadoutType] = 0;
@@ -362,7 +370,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 12: // APS Signal Column Start
-										CypressFX3.log.fine("APS Signal Column Start event received.");
+										CypressFX3.log.finest("APS Signal Column Start event received.");
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_SIGNAL;
 										apsCountY[apsCurrentReadoutType] = 0;
@@ -373,13 +381,14 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 13: // APS Column End
-										CypressFX3.log.fine("APS Column End event received.");
+										CypressFX3.log.finest("APS Column End event received.");
 
-										if (apsCountY[apsCurrentReadoutType] != apsSizeY) {
+										if (apsCountY[apsCurrentReadoutType] != apsSizeY && warningCount%WARNING_INTERVAL==0) {
 											CypressFX3.log.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
 												+ apsCountY[apsCurrentReadoutType]
 												+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
-										}
+                                                                                        warningCount++;
+                                                                                }
 
 										apsCountX[apsCurrentReadoutType]++;
 
@@ -421,9 +430,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 							case 2: // X address, Polarity OFF
 							case 3: // X address, Polarity ON
 								// Check range conformity.
-								if (data >= dvsSizeX) {
+								if (data >= dvsSizeX && warningCount%WARNING_INTERVAL==0) {
 									CypressFX3.log.severe("DVS: X address out of range (0-" + (dvsSizeX - 1) + "): " + data + ".");
-									break; // Skip invalid event.
+									warningCount++;
+                                                                        break; // Skip invalid event.
 								}
 
 								// Check that the buffer has space for this event. Enlarge if needed.
@@ -692,7 +702,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								// Check monotonicity of timestamps.
 								checkMonotonicTimestamp();
 
-								CypressFX3.log.fine(
+								CypressFX3.log.finer(
 									String.format("Timestamp wrap event received on %s with multiplier of %d.", super.toString(), data));
 								break;
 
