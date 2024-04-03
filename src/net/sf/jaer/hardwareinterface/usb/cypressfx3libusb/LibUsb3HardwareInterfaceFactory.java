@@ -15,6 +15,8 @@ import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
 
+import net.sf.jaer.graphics.AEViewer;
+
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import org.usb4java.Context;
@@ -63,7 +65,18 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
         // HardwareInterfaces.
         addDeviceToMap(CypressFX3.VID, DVXplorerFX3HardwareInterface.PID_FX3, DVXplorerFX3HardwareInterface.class);
 
+<<<<<<< HEAD
         addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX3, DAViSFX3HardwareInterface.class);
+=======
+        if (Boolean.parseBoolean(System.getProperty("aer.mode.gaer"))) {
+            log.info("Loading GAER mode");
+            addDeviceToMap(CypressFX3.VID, SciDVSHardwareInterface.PID_FX3, SciDVSHardwareInterface.class);
+        } else {
+            addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX3, DAViSFX3HardwareInterface.class);
+            log.info("Loading normal AER mode");
+            
+        }
+>>>>>>> d25f84368 (property -Daer.mode.gaer now selects between GAER or normal AER)
 
         addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
 

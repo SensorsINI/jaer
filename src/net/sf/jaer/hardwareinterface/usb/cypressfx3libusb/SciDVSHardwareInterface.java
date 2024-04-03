@@ -27,9 +27,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  *
  * @author Christian/Tobi
  */
-public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
+public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 
-	protected DAViSFX3HardwareInterface(final Device device) {
+	protected SciDVSHardwareInterface(final Device device) {
 		super(device);
 	}
 
@@ -46,7 +46,12 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 6;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 4;
 	static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
+	//static public final int REQUIRED_LOGIC_REVISION_FX3 = 9912;
 	static public final int REQUIRED_LOGIC_REVISION_FX2 = 18;
+
+	static public final int GAER_GROUPADDR_WIDTH = 5;
+	static public final int GAER_ADDRY_WIDTH = 7;
+	static public final int GAER_EVENT_WIDTH = 4;
 
 	private boolean updatedRealClockValues = false;
 	public float logicClockFreq = 90.0f;
@@ -166,17 +171,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 		private int imuCount;
 		private byte imuTmpData;
 
+        private boolean DEBUGUSB = false;
+        //private boolean DEBUGUSB = true;
+
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 
-			if (getPID() == DAViSFX3HardwareInterface.PID_FX2) {
+			if (getPID() == SciDVSHardwareInterface.PID_FX2) {
 				// FX2 firmware now emulates the same interface as FX3 firmware, so we support it here too.
-				checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX2,
-					DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX2);
+				checkFirmwareLogic(SciDVSHardwareInterface.REQUIRED_FIRMWARE_VERSION_FX2,
+					SciDVSHardwareInterface.REQUIRED_LOGIC_REVISION_FX2);
 			}
 			else {
-				checkFirmwareLogic(DAViSFX3HardwareInterface.REQUIRED_FIRMWARE_VERSION_FX3,
-					DAViSFX3HardwareInterface.REQUIRED_LOGIC_REVISION_FX3);
+				checkFirmwareLogic(SciDVSHardwareInterface.REQUIRED_FIRMWARE_VERSION_FX3,
+					SciDVSHardwareInterface.REQUIRED_LOGIC_REVISION_FX3);
 			}
 
 			apsCountX = new short[RetinaAEReader.APS_READOUT_TYPES_NUM];
@@ -198,6 +206,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 			dvsSizeX = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 0);
 			dvsSizeY = spiConfigReceive(CypressFX3.FPGA_DVS, (short) 1);
+			//dvsSizeY = 128;
+			//dvsSizeX = 126;
 
 			dvsInvertXY = (spiConfigReceive(CypressFX3.FPGA_DVS, (short) 2) & 0x04) != 0;
 
@@ -216,8 +226,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                         }
 		}
 
-		private void initFrame() {
-			apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
+		private void initFrame() {apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
 			Arrays.fill(apsCountX, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
 			Arrays.fill(apsCountY, 0, RetinaAEReader.APS_READOUT_TYPES_NUM, (short) 0);
 		}
@@ -253,6 +262,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 				for (int i = 0; i < sBuf.limit(); i++) {
 					final short event = sBuf.get(i);
+				    if (DEBUGUSB) CypressFX3.log.info("here in the log received: 0x" + Integer.toHexString(event));
 
 					// Check if timestamp
 					if ((event & 0x8000) != 0) {
@@ -261,6 +271,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 						currentTimestamp = wrapAdd + (event & 0x7FFF);
 
 						// Check monotonicity of timestamps.
+				        if (DEBUGUSB) CypressFX3.log.info("it's a timestamp: 0x" + Integer.toHexString(currentTimestamp));
 						checkMonotonicTimestamp();
 					}
 					else {
@@ -271,6 +282,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 						switch (code) {
 							case 0: // Special event
+				                if (DEBUGUSB) CypressFX3.log.info("it's a special event");
 								switch (data) {
 									case 0: // Ignore this, but log it.
 										CypressFX3.log.severe("Caught special reserved event!");
@@ -291,6 +303,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									case 3: // External input (rising edge)
 									case 4: // External input (pulse)
 										CypressFX3.log.fine("External input event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an external input event");
 
 										// Check that the buffer has space for this event. Enlarge if needed.
 										if (ensureCapacity(buffer, eventCounter + 1)) {
@@ -302,6 +315,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 5: // IMU Start (6 axes)
 										CypressFX3.log.fine("IMU6 Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an IMU start");
 
 										imuCount = 0;
 										imuType = 0;
@@ -310,6 +324,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 7: // IMU End
 										CypressFX3.log.fine("IMU End event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an IMU end");
 
 										if (imuCount == (2 * RetinaAEReader.IMU_DATA_LENGTH)) {
 											if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
@@ -325,6 +340,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 8: // APS Global Shutter Frame Start
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS GS Frame Start");
 										CypressFX3.log.fine("APS GS Frame Start event received.");
 
 										initFrame();
@@ -333,6 +349,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 9: // APS Rolling Shutter Frame Start
 										CypressFX3.log.fine("APS RS Frame Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS RS Frame Start");
 
 										initFrame();
 
@@ -340,10 +357,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 10: // APS Frame End
 										CypressFX3.log.fine("APS Frame End event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Frame end");
 
 										for (int j = 0; j < RetinaAEReader.APS_READOUT_TYPES_NUM; j++) {
 											if (apsCountX[j] != apsSizeX) {
-												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j]
+												CypressFX3.log.severe("APS Frame End: wrong column count [" + j + " - " + apsCountX[j] + "/" + apsSizeX
 													+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 											}
 										}
@@ -352,6 +370,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 11: // APS Reset Column Start
 										CypressFX3.log.fine("APS Reset Column Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Reset Column Start");
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_RESET;
 										apsCountY[apsCurrentReadoutType] = 0;
@@ -363,6 +382,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 12: // APS Signal Column Start
 										CypressFX3.log.fine("APS Signal Column Start event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Signal Column Start");
 
 										apsCurrentReadoutType = RetinaAEReader.APS_READOUT_SIGNAL;
 										apsCountY[apsCurrentReadoutType] = 0;
@@ -374,10 +394,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 									case 13: // APS Column End
 										CypressFX3.log.fine("APS Column End event received.");
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Column End");
 
 										if (apsCountY[apsCurrentReadoutType] != apsSizeY) {
 											CypressFX3.log.severe("APS Column End: wrong row count [" + apsCurrentReadoutType + " - "
-												+ apsCountY[apsCurrentReadoutType]
+												+ apsCountY[apsCurrentReadoutType] + "/" + apsSizeY
 												+ "] detected. You might want to enable 'Ensure APS data transfer' under 'HW Configuration -> Chip Configuration' to improve this.");
 										}
 
@@ -386,23 +407,55 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 										break;
 
 									case 14: // APS Exposure Start
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Exposure Start");
 										// Ignore, exposure is calculated from frame timings.
 										break;
 
 									case 15: // APS Exposure End
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an APS Exposure End");
 										// Ignore, exposure is calculated from frame timings.
 										break;
 
 									case 16: // External generator (falling edge)
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an External Generator falling edge");
 										// Ignore, not supported.
 										break;
 
 									case 17: // External generator (rising edge)
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an External Generator rising edge");
 										// Ignore, not supported.
+										break;
+                                    case 32:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI0 is ON");
+										break;
+                                    case 33:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI1 is ON");
+										break;
+                                    case 34:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI2 is ON");
+										break;
+                                    case 35:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI3 is ON");
+										break;
+                                    case 48:	                         
+                                        // APS Exposure Information, ignore for now.
+				                        if (DEBUGUSB) CypressFX3.log.info("it's an Info Exposure");
+										break;
+                                    case 49:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI0 is OFF");
+										break;
+                                    case 50:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI1 is OFF");
+										break;
+                                    case 51:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI2 is OFF");
+										break;
+                                    case 52:	                         
+				                        if (DEBUGUSB) CypressFX3.log.info("it's info ROI3 is OFF");
 										break;
 
 									default:
-										CypressFX3.log.severe("Caught special event that can't be handled.");
+										CypressFX3.log.severe("Caught special event that can't be handled: " + data);
 										break;
 								}
 								break;
@@ -414,56 +467,81 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									break; // Skip invalid Y address (don't update lastY).
 								}
 
-								dvsLastY = data;
+								dvsLastY = dvsSizeY-1-data;
+				                if (DEBUGUSB) CypressFX3.log.info("it's a GAER Y address: 0x" + Integer.toHexString(data) + " (dec: " + data + ")");
 
 								break;
 
-							case 2: // X address, Polarity OFF
+							case 2: // GAER event
 							case 3: // X address, Polarity ON
+						        final byte groupAddr = (byte) ((event & 0x1F00) >>> 8);
+						        final byte onEvents = (byte) ((event & 0x00F0) >>> 4);
+						        final byte offEvents = (byte) (event & 0x000F);
+						        final byte allEvents = (byte) (event & 0x00FF);
+				                if (DEBUGUSB) CypressFX3.log.info("it's a GAER event, group address: 0x" + Integer.toHexString(groupAddr) + " (dec: " + groupAddr + ")" + " OFF events 0x" + Integer.toHexString(onEvents) + " OFF events 0x" + Integer.toHexString(offEvents));
+                                int dvsAddrOffsetX = (int) (groupAddr*4);
+
 								// Check range conformity.
-								if (data >= dvsSizeX) {
-									CypressFX3.log.severe("DVS: X address out of range (0-" + (dvsSizeX - 1) + "): " + data + ".");
+								if (dvsAddrOffsetX >= dvsSizeX) {
+									CypressFX3.log.severe("DVS: X address out of range (0-" + (dvsSizeX - 1) + "): groupAddr: " + groupAddr + ", addrY: " +  + dvsAddrOffsetX + ".");
 									break; // Skip invalid event.
 								}
+                                for(byte iter=0 ; iter < 2*GAER_EVENT_WIDTH; iter++) {
+                                    if((allEvents&(1<<iter)) != 0) {
+                                        byte polarity;
+                                        int addrX;
+                                        if(iter<GAER_EVENT_WIDTH) {
+                                            polarity = 0;
+                                            addrX= (int) (dvsAddrOffsetX+iter);
+                                        }
+                                        else {
+                                            polarity = 1;
+                                            addrX= (int) (dvsAddrOffsetX+iter-GAER_EVENT_WIDTH);
+                                        }
+				                        if (DEBUGUSB) CypressFX3.log.info("Event of polarity " + polarity + ". X address: " + addrX);
+                                            
 
-								// Check that the buffer has space for this event. Enlarge if needed.
-								if (ensureCapacity(buffer, eventCounter + 1)) {
-									// The X address comes out of the new logic such that the (0, 0) address
-									// is, as expected by most, in the lower left corner. Since the DAVIS240
-									// chip class data format assumes that this is still flipped, as in the
-									// old logic, we have to flip it here, so that the chip class extractor
-									// can flip it back. Backwards compatibility with recordings is the main
-									// motivation to do this hack.
-									// NOTE 09.2017: logic now uses upper left (CG format) as output.
+								        // Check that the buffer has space for this event. Enlarge if needed.
+								        if (ensureCapacity(buffer, eventCounter + 1)) {
+								        	// The X address comes out of the new logic such that the (0, 0) address
+								        	// is, as expected by most, in the lower left corner. Since the DAVIS240
+								        	// chip class data format assumes that this is still flipped, as in the
+								        	// old logic, we have to flip it here, so that the chip class extractor
+								        	// can flip it back. Backwards compatibility with recordings is the main
+								        	// motivation to do this hack.
+								        	// NOTE 09.2017: logic now uses upper left (CG format) as output.
 
-									// Invert polarity for PixelParade high gain pixels (DavisSense), because of
-									// negative gain from pre-amplifier.
-                                                                        // tobi commented out because it seems that array is now flipped horizontally (oct 2018)
-//                                                                       final byte polarity =code;
-//									final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data < 192))
-//										? ((byte) (~code))
-//										: (code);
-									final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data <= 16))
-										? ((byte) (~code))
-										: (code);
-									if (dvsInvertXY) {
-										buffer
-											.getAddresses()[eventCounter] = (((dvsSizeX - 1 - data) << DavisChip.YSHIFT) & DavisChip.YMASK)
-												| (((dvsSizeY - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
-												| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
-									}
-									else {
-										buffer.getAddresses()[eventCounter] = (((dvsSizeY - 1 - dvsLastY) << DavisChip.YSHIFT)
-											& DavisChip.YMASK) | (((dvsSizeX - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
-											| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
-									}
+								        	// Invert polarity for PixelParade high gain pixels (DavisSense), because of
+								        	// negative gain from pre-amplifier.
+                                                                                // tobi commented out because it seems that array is now flipped horizontally (oct 2018)
+//                                                                               final byte polarity =code;
+//								        	final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data < 192))
+//								        		? ((byte) (~code))
+//								        		: (code);
+								        	//final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data <= 16))
+								        	//	? ((byte) (~code))
+								        	//	: (code);
+								        	if (dvsInvertXY) {
+								        		buffer
+								        			.getAddresses()[eventCounter] = (((dvsSizeX - 1 - addrX) << DavisChip.YSHIFT) & DavisChip.YMASK)
+								        				| (((dvsSizeY - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
+								        				| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
+								        	}
+								        	else {
+								        		buffer.getAddresses()[eventCounter] = (((dvsSizeY - 1 - dvsLastY) << DavisChip.YSHIFT)
+								        			& DavisChip.YMASK) | (((dvsSizeX - 1 - addrX) << DavisChip.XSHIFT) & DavisChip.XMASK)
+								        			| (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
+								        	}
 
-									buffer.getTimestamps()[eventCounter++] = currentTimestamp;
-								}
+								        	buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+								        }
+                                    }
+                                }
 
 								break;
 
 							case 4: // APS ADC sample
+				                if (DEBUGUSB) CypressFX3.log.info("it's an APS ADC Sample");
 								// Let's check that apsCountY is not above the maximum. This could happen
 								// if start/end of column events are discarded (no wait on transfer stall).
 								if ((apsCountY[apsCurrentReadoutType] >= apsSizeY) || (apsCountX[apsCurrentReadoutType] >= apsSizeX)) {
@@ -491,7 +569,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 									yPos = apsCountY[apsCurrentReadoutType];
 								}
 
-								if (chipID == DAViSFX3HardwareInterface.CHIP_DAVISRGB) {
+								if (chipID == SciDVSHardwareInterface.CHIP_DAVISRGB) {
 									yPos += apsRGBPixelOffset;
 								}
 
@@ -505,6 +583,8 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								yPos = (apsInvertXY) ? (apsSizeX - 1 - yPos) : (apsSizeY - 1 - yPos);
 
 								apsCountY[apsCurrentReadoutType]++;
+
+				                if (DEBUGUSB) CypressFX3.log.info("yPos: "  + yPos + " xPos: " + xPos + " yCount: " + apsCountY[apsCurrentReadoutType] + " xCount: " + apsCountX[apsCurrentReadoutType] + " data: " + data);
 
 								// RGB support: first 320 pixels are even, then odd.
 								if (!apsRGBPixelOffsetDirection) { // Increasing
@@ -531,6 +611,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								break;
 
 							case 5: // Misc 8bit data.
+				                if (DEBUGUSB) CypressFX3.log.info("it's a Misc 8bit data");
 								final byte misc8Code = (byte) ((data & 0x0F00) >>> 8);
 								final byte misc8Data = (byte) (data & 0x00FF);
 
@@ -656,6 +737,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
 							case 6:  // Misc 11bit data.
 								final byte misc11Code = (byte) ((data & 0x0800) >> 11);
+				                if (DEBUGUSB) CypressFX3.log.info("it's a Misc 11bit data. code: " + misc11Code);
 
                                                         switch (misc11Code) {
                                                                     	case 0:	                         
@@ -684,6 +766,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								// to multiply it with the wrap counter,
 								// which is located in the data part of this
 								// event.
+				                if (DEBUGUSB) CypressFX3.log.info("it's a timestamp wrap");
 								wrapAdd += (0x8000L * data);
 
 								lastTimestamp = currentTimestamp;
@@ -697,7 +780,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 								break;
 
 							default:
-								CypressFX3.log.severe("Caught event that can't be handled.");
+								CypressFX3.log.severe("Caught event that can't be handled. code: " + code);
 								break;
 						}
 					}
