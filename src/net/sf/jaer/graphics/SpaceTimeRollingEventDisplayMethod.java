@@ -105,8 +105,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int timeWindowUs = 100000, t0;
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
-    private boolean regenerateAxesDisplayList = true;
-    private final int aspectRatio = 4; // depth of 3d cube compared to max of x and y chip dimension
+    private volatile boolean regenerateAxesDisplayList = true;
+    private float timeAspectRatio = prefs.getFloat("timeAspectRatio", 4); // depth of 3d cube compared to max of x and y chip dimension
     private float pointSize = 4f;
 
     private JMenu displayMenu = null;
@@ -121,6 +121,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     final private FramesInTimeWindow framesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
     private float framesAlpha = prefs.getFloat("framesAlpha", .5f);
     private boolean drawFramesOnOwnAxes = prefs.getBoolean("drawFramesOnOwnAxes", false);
+    private float frameEventSpacing = prefs.getFloat("frameEventSpacing", 1.2f);
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -296,7 +297,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             sx = chip.getSizeX();
             sy = chip.getSizeY();
             smax = chip.getMaxSize();
-            tfac = (float) (smax * aspectRatio) / timeWindowUs;
+            tfac = (float) (smax * getTimeAspectRatio()) / timeWindowUs;
 
             pruneOldEventsAndFrames(t0, t1);
             checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
@@ -315,7 +316,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
             checkGLError(gl, "set uniform t0 and t1");
         }
-        renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * aspectRatio);
+        renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
         displayStatusChangeText(drawable);
     }
 
@@ -396,8 +397,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
 
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
+        // determine the viewable area (that is not clipped to black).
+        // this is not the view project!  This is the model projection. See later for viewport setting for where we look from.
 //        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
+        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
 
         // go to the end, -zmax
         gl.glTranslatef(0, 0, -1 * zmax);
@@ -435,9 +438,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glClearDepthf(0);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
 
-        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        // act on view matrix (not projection). The view can change perspective
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW); 
         gl.glLoadIdentity();
-        gl.glTranslatef(0, 0, -zmax);
+        gl.glTranslatef(0, 0, -1.0f*zmax); // go to -zmax, which is zmax away from the volume that is from 0 to zmax (zmax is positive)
         gl.glScalef(modelScale, modelScale, modelScale);
         gl.glCallList(axesDisplayListId);
 
@@ -494,7 +498,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (displayFrames) { // render frames
             gl.glPushMatrix();
             if (isDrawFramesOnOwnAxes()) {
-                gl.glTranslatef(0, chip.getSizeY() * 1.2f, 0);
+                gl.glTranslatef(0, chip.getSizeY() * getFrameEventSpacing(), 0);
                 gl.glCallList(axesDisplayListId);
             }
             int nFrames = 0;
@@ -754,6 +758,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         displayMenu.add(new JCheckBoxMenuItem(new ToggleAdditiveColorAction()));
         displayMenu.add(new JMenuItem(new SetTransparencyAction()));
         displayMenu.add(new JCheckBoxMenuItem(new ToggleDrawFramesOnOwnAxesAction()));
+        displayMenu.add(new JMenuItem(new SetFrameEventSpacingAction()));
+        displayMenu.add(new JMenuItem(new SetTimeAspectRatioAction()));
         viewer.addMenu(displayMenu);
 
         if (chip.getRenderer() != null) {
@@ -821,6 +827,38 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     public void setLargePointSizeEnabled(boolean largePointSizeEnabled) {
         this.largePointSizeEnabled = largePointSizeEnabled;
         prefs.putBoolean("largePointSizeEnabled", largePointSizeEnabled);
+    }
+
+    /**
+     * @return the frameEventSpacing
+     */
+    public float getFrameEventSpacing() {
+        return frameEventSpacing;
+    }
+
+    /**
+     * @param frameEventSpacing the frameEventSpacing to set
+     */
+    public void setFrameEventSpacing(float frameEventSpacing) {
+        this.frameEventSpacing = frameEventSpacing;
+        prefs.putFloat("frameEventSpacing", frameEventSpacing);
+        regenerateAxesDisplayList = true;
+    }
+
+    /**
+     * @return the timeAspectRatio
+     */
+    public float getTimeAspectRatio() {
+        return timeAspectRatio;
+    }
+
+    /**
+     * @param timeAspectRatio the timeAspectRatio to set
+     */
+    public void setTimeAspectRatio(float timeAspectRatio) {
+        this.timeAspectRatio = timeAspectRatio;
+        prefs.putFloat("timeAspectRatio", timeAspectRatio);
+        regenerateAxesDisplayList = true;
     }
 
     /**
@@ -1043,6 +1081,60 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         @Override
         protected void showAction() {
             showAction(String.format("Set alpha=%.2f", framesAlpha));
+        }
+    }
+
+    final public class SetFrameEventSpacingAction extends MyAction {
+
+        public SetFrameEventSpacingAction() {
+            super("Set frame/event spacing", String.format("Set frame/event spacing as multiple of chip height (currently %.2f)", getFrameEventSpacing()));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            String ret = JOptionPane.showInputDialog(String.format("New frame/event spacing value (currently %.2f", getFrameEventSpacing()), String.format("%f", getFrameEventSpacing()));
+            if (ret == null) {
+                return;
+            }
+            try {
+                float v = Float.parseFloat(ret);
+                setFrameEventSpacing(v);
+                putValue(Action.SHORT_DESCRIPTION, String.format("Set frame/event spacing (currently %.2f)", getFrameEventSpacing()));
+            } catch (NumberFormatException e) {
+                log.warning(e.toString()); // TODO put in loop with cancel
+            }
+        }
+
+        @Override
+        protected void showAction() {
+            showAction(String.format("Set frame/event spacing=%.2f", getFrameEventSpacing()));
+        }
+    }
+
+    final public class SetTimeAspectRatioAction extends MyAction {
+
+        public SetTimeAspectRatioAction() {
+            super("Set time axis aspect ratio", String.format("Set aspect ratio of time axis relative to space axes (currently %.1f)", getTimeAspectRatio()));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            String ret = JOptionPane.showInputDialog(String.format("New aspect ratio of time axis relative to space axes (currently %.1f)", getTimeAspectRatio()), String.format("%f", getTimeAspectRatio()));
+            if (ret == null) {
+                return;
+            }
+            try {
+                float v = Float.parseFloat(ret);
+                setTimeAspectRatio(v);
+                putValue(Action.SHORT_DESCRIPTION, String.format("Set aspect ratio of time axis relative to space axes (currently %.1f)", getTimeAspectRatio()));
+            } catch (NumberFormatException e) {
+                log.warning(e.toString()); // TODO put in loop with cancel
+            }
+        }
+
+        @Override
+        protected void showAction() {
+            showAction(String.format("Set frame/event spacing=%.2f", getFrameEventSpacing()));
         }
     }
 
