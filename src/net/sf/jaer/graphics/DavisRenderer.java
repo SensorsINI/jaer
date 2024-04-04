@@ -130,7 +130,7 @@ public class DavisRenderer extends AEChipRenderer {
     private int framesRenderedSinceApsFrame = 0; // to deactivate frames after some time with none
     private static final int NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 360;
     private boolean renderedApsFrame = false;
-    private int lastTimestampFrameEndWeSentPropertyChangeFor=0; // saves the time we sent propertyChange for a new frame to not send it multiple times during pause if the packet has a frame end in it
+    private int lastTimestampFrameEndWeSentPropertyChangeFor = 0; // saves the time we sent propertyChange for a new frame to not send it multiple times during pause if the packet has a frame end in it
 
     public DavisRenderer(final AEChip chip) {
         super(chip);
@@ -254,7 +254,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
-        packet=pkt;
+        packet = pkt;
         if (pkt.isEmpty()) {
             return;
         }
@@ -347,21 +347,23 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
-        if (renderedApsFrame) {
-            framesRenderedSinceApsFrame = 0;
-        } else if (isDisplayFrames()) {
-            framesRenderedSinceApsFrame++;
-        }
-        if (framesRenderedSinceApsFrame > NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES) {
-            if (isDisplayFrames()) {
-                log.warning(String.format("No APS frames for last %,d>%,d NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES rendered frames, disabling frames",
-                        framesRenderedSinceApsFrame, NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES));
-                setDisplayFrames(false);
+        if (chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
+            if (renderedApsFrame) {
                 framesRenderedSinceApsFrame = 0;
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Disabled APS frame rendering because there appear to be no frames");
-                });
+            } else if (isDisplayFrames()) {
+                framesRenderedSinceApsFrame++;
+            }
+            if (framesRenderedSinceApsFrame > NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES) {
+                if (isDisplayFrames()) {
+                    log.warning(String.format("No APS frames for last %,d>%,d NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES rendered frames, disabling frames",
+                            framesRenderedSinceApsFrame, NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES));
+                    setDisplayFrames(false);
+                    framesRenderedSinceApsFrame = 0;
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(chip.getAeViewer(), "Disabled APS frame rendering because there appear to be no frames");
+                    });
 
+                }
             }
         }
     }
@@ -528,7 +530,7 @@ public class DavisRenderer extends AEChipRenderer {
         }
         if (timestampFrameEnd != lastTimestampFrameEndWeSentPropertyChangeFor) {
             getSupport().firePropertyChange(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, null, this);
-            lastTimestampFrameEndWeSentPropertyChangeFor=timestampFrameEnd;
+            lastTimestampFrameEndWeSentPropertyChangeFor = timestampFrameEnd;
         }
     }
 
