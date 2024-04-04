@@ -747,8 +747,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (colorScale < 1) {
             colorScale = 1;
         }
-        if (colorScale > 32) {
-            colorScale = 32;
+        if (colorScale > 256) {
+            colorScale = 256;
         }
         this.colorScale = colorScale;
         // we set eventContrast so that colorScale events takes us from .5 to 1, i.e., .5*(eventContrast^cs)=1, so eventContrast=2^(1/cs)
