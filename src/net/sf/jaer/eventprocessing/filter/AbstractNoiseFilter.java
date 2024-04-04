@@ -20,7 +20,9 @@ package net.sf.jaer.eventprocessing.filter;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import java.awt.Font;
 import java.beans.BeanDescriptor;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyDescriptor;
@@ -50,6 +52,7 @@ import net.sf.jaer.util.TobiLogger;
 public abstract class AbstractNoiseFilter extends EventFilter2D implements FrameAnnotater, RemoteControlled {
 
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
+    private int showFilteringStatisticsFontSize=getInt("showFilteringStatisticsFontSize",24);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
     /**
@@ -117,6 +120,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setEnclosedFilterChain(enclosedFilterChain);
 
         setPropertyTooltip(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+        setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "font size for statistics");
         setPropertyTooltip(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
         setPropertyTooltip(TT_FILT_CONTROL, "sigmaDistPixels", "Neighborhood radisu in pixels to consider for event support");
         setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
@@ -250,15 +254,18 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         }
         GL2 gl = drawable.getGL().getGL2();
         gl.glPushMatrix();
-        final GLUT glut = new GLUT();
+//        final GLUT glut = new GLUT();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, getAnnotationRasterYPosition(), 0);
+//        gl.glRasterPos3f(0, getAnnotationRasterYPosition(), 0);
         final float filteredOutPercent = 100 * (float) filteredOutEventCount / totalEventCount;
-        String s = null;
-        s = String.format("%s: filtered out %%%6.1f",
+        String s = String.format("%s: filtered out %%%6.1f",
                 infoString(),
                 filteredOutPercent);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, s);
+//        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, s);
+        TextRenderer tr=new TextRenderer(new Font("SansSerif", Font.PLAIN, getShowFilteringStatisticsFontSize()), true, true);
+        tr.begin3DRendering();
+        tr.draw3D(s, 0, getAnnotationRasterYPosition(), 0, .25f);
+        tr.end3DRendering();
         gl.glPopMatrix();
 
         noiseFilterControl.annotate(drawable);
@@ -607,6 +614,21 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         if (nfc != null) {
             getEnclosedFilterChain().remove(nfc);
         }
+    }
+
+    /**
+     * @return the showFilteringStatisticsFontSize
+     */
+    public int getShowFilteringStatisticsFontSize() {
+        return showFilteringStatisticsFontSize;
+    }
+
+    /**
+     * @param showFilteringStatisticsFontSize the showFilteringStatisticsFontSize to set
+     */
+    public void setShowFilteringStatisticsFontSize(int showFilteringStatisticsFontSize) {
+        this.showFilteringStatisticsFontSize = showFilteringStatisticsFontSize;
+        putInt("showFilteringStatisticsFontSize",showFilteringStatisticsFontSize);
     }
 
     /**
