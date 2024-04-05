@@ -81,10 +81,11 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     private boolean multiSelectionEnabled = prefs().getBoolean("multiSelectionEnabled", false);
     private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
     protected boolean showTypeFilteringText = getBoolean("showTypeFilteringText", true);
+    private boolean lockSelections = getBoolean("lockSelections", false);
 
     private boolean circularShapeFilter = getBoolean("circularShapeFilter", false);
     private int circularRadiusPixels = getInt("circularRadiusPixels", 50);
-    
+
     private Point circularShapeCenterPoint = (Point) getObject("circularShapeCenterPoint", null);
     private boolean circularShapeCenterSelecting = false;
 
@@ -111,6 +112,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         setPropertyTooltip(c, "circularRadiusPixels", "radius of circular selection");
         setPropertyTooltip(c, "circularShapeFilter", "filter in based on circular disk shape");
         setPropertyTooltip("invertSelection", "invert filtering to pass events outside selection");
+        setPropertyTooltip("lockSelections", "lock all selections to avoid inadvertent mouse selections");
         setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
         setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
 
@@ -406,7 +408,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
                 gl.glColor3f(0, 0, 1);
                 gl.glLineWidth(2f);
                 gl.glPushMatrix();
-                DrawGL.drawCross(gl, circularShapeCenterPoint.x, circularShapeCenterPoint.y, 10,0);
+                DrawGL.drawCross(gl, circularShapeCenterPoint.x, circularShapeCenterPoint.y, 10, 0);
                 gl.glPopMatrix();
                 gl.glPushMatrix();
                 DrawGL.drawCircle(gl, circularShapeCenterPoint.x, circularShapeCenterPoint.y, getCircularRadiusPixels(), 64);
@@ -416,9 +418,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
                 gl.glLineWidth(2f);
                 gl.glBegin(GL.GL_LINE_LOOP);
                 gl.glVertex2i(startX, startY);
-                gl.glVertex2i(endX+1, startY);
-                gl.glVertex2i(endX+1, endY+1);
-                gl.glVertex2i(startX, endY+1);
+                gl.glVertex2i(endX + 1, startY);
+                gl.glVertex2i(endX + 1, endY + 1);
+                gl.glVertex2i(startX, endY + 1);
                 gl.glEnd();
             } else {
                 for (SelectionRectangle r : selectionList) {
@@ -472,6 +474,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
         Point p = canvas.getPixelFromMouseEvent(e);
         startPoint = p;
         selecting = true;
@@ -479,6 +484,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
         if ((startPoint == null)) {
             return;
         }
@@ -487,9 +495,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
             selectionList.add(selection);
         }
         setStartX(startx);
-        setEndX(endx-1);
+        setEndX(endx - 1);
         setStartY(starty);
-        setEndY(endy-1);
+        setEndY(endy - 1);
         selecting = false;
 
     }
@@ -500,6 +508,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mouseExited(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
         selecting = false;
     }
 
@@ -509,6 +520,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
         if (startPoint == null) {
             return;
         }
@@ -520,8 +534,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         endPoint = p;
         startx = min(startPoint.x, endPoint.x);
         starty = min(startPoint.y, endPoint.y);
-        endx = max(startPoint.x, endPoint.x)+1;
-        endy = max(startPoint.y, endPoint.y)+1;
+        endx = max(startPoint.x, endPoint.x) + 1;
+        endy = max(startPoint.y, endPoint.y) + 1;
         int w = endx - startx;
         int h = endy - starty;
         selection = new SelectionRectangle(startx, starty, w, h);
@@ -643,7 +657,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
         public boolean contains(BasicEvent e) {
 //            return contains(e.x, e.y);
-            return (e.x>=x && e.x<x+width) && (e.y>=y && e.y<y+height);
+            return (e.x >= x && e.x < x + width) && (e.y >= y && e.y < y + height);
         }
 
         public int getNumPixels() {
@@ -660,7 +674,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
             gl.glVertex2i(x, y + height);
             gl.glEnd();
         }
-        
+
     }
 
     synchronized public void doEraseSelections() {
@@ -755,6 +769,21 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void setCircularRadiusPixels(int circularRadiusPixels) {
         this.circularRadiusPixels = circularRadiusPixels;
         putInt("circularRadiusPixels", circularRadiusPixels);
+    }
+
+    /**
+     * @return the lockSelections
+     */
+    public boolean isLockSelections() {
+        return lockSelections;
+    }
+
+    /**
+     * @param lockSelections the lockSelections to set
+     */
+    public void setLockSelections(boolean lockSelections) {
+        this.lockSelections = lockSelections;
+        putBoolean("lockSelections",lockSelections);
     }
 
     private static class SavedMultiSelection implements Serializable {
