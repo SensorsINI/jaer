@@ -72,6 +72,9 @@ public class AEChip extends Chip2D {
     protected AEViewer aeViewer = null;
     private boolean subSamplingEnabled = getPrefs().getBoolean("AEChip.subSamplingEnabled", false);
     private Class<? extends BasicEvent> eventClass = BasicEvent.class;
+    /** Full scale value for rendering events; chips can override to provide finer or coarser scale */
+    private int fullScaleForEventAccumulationRendering=32;
+    
     /**
      * List of default EventFilter2D filters
      */
@@ -545,5 +548,19 @@ public class AEChip extends Chip2D {
      */
     public int translateJaer3AddressToJaerAddress(int address) {
         return address;
+    }
+
+    /**
+     * @return the fullScaleForEventAccumulationRendering
+     */
+    public int getFullScaleForEventAccumulationRendering() {
+        return fullScaleForEventAccumulationRendering;
+    }
+
+    /**
+     * @param fullScaleForEventAccumulationRendering the fullScaleForEventAccumulationRendering to set
+     */
+    public void setFullScaleForEventAccumulationRendering(int fullScaleForEventAccumulationRendering) {
+        this.fullScaleForEventAccumulationRendering = fullScaleForEventAccumulationRendering;
     }
 }
