@@ -747,8 +747,8 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (colorScale < 1) {
             colorScale = 1;
         }
-        if (colorScale > 32) {
-            colorScale = 32;
+        if (colorScale > chip.getFullScaleForEventAccumulationRendering()) {
+            colorScale =  chip.getFullScaleForEventAccumulationRendering();
         }
         this.colorScale = colorScale;
         // we set eventContrast so that colorScale events takes us from .5 to 1, i.e., .5*(eventContrast^cs)=1, so eventContrast=2^(1/cs)
@@ -983,6 +983,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
         float tau = 1 / ((1 - computeFadingFactor()) * renderingFps);
         return tau;
+    }
+    
+    /** Return a general description of rendering mode
+     * 
+     * @return the string description
+     */
+    public String getDescription(){
+        return colorMode.toString()+" with full scale "+getColorScale()+" events";
     }
 
     private String getFadingDescription() {
