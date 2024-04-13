@@ -412,6 +412,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setName("AEViewer");
 
         initComponents();
+        setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
+
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_MAIN)).getImage());
 
         aePlayer = new AEPlayer(this);
@@ -804,7 +806,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         } finally {
                             setCursor(Cursor.getDefaultCursor());
                         }
-                    }catch (Exception e) {
+                    } catch (Exception e) {
                         log.log(Level.SEVERE, e.toString(), e);
                     }
                 });
@@ -905,8 +907,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Sets the device class, e.g. DVS127, from the fully qualified class name
      * which is provided by the menu item itself.
      *
-     * @param deviceClass the Class of the AEChip to appendCopyOfEventReferences to the AEChip
- menu
+     * @param deviceClass the Class of the AEChip to appendCopyOfEventReferences
+     * to the AEChip menu
      */
     public void setAeChipClass(Class deviceClass) {
         //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
@@ -1020,27 +1022,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     break;
                 }
             }
-            
+
             // add renderer actions
-            
             // TODO ugly, put the color mode menu at correct spot in View menu
-            int i=0,colorModeSelectionMenuLocation=0;
-            for(Component c:viewMenu.getMenuComponents()){
-                if(c==cyclePreviousColorRenderingMethodMenuItem){
-                    colorModeSelectionMenuLocation=i+1;
+            int i = 0, colorModeSelectionMenuLocation = 0;
+            for (Component c : viewMenu.getMenuComponents()) {
+                if (c == cyclePreviousColorRenderingMethodMenuItem) {
+                    colorModeSelectionMenuLocation = i + 1;
                     break;
                 }
                 i++;
             }
             chip.getRenderer().getColorModeMenu().setMnemonic('m');
-            viewMenu.add(chip.getRenderer().getColorModeMenu(),colorModeSelectionMenuLocation);
-            
+            viewMenu.add(chip.getRenderer().getColorModeMenu(), colorModeSelectionMenuLocation);
+
             fadingMI.setAction(chip.getRenderer().toggleFadingAction);
             slidingMI.setAction(chip.getRenderer().toggleSlidingWindowAction);
             acccumulateImageEnabledCheckBoxMenuItem.setAction(chip.getRenderer().toggleAccumulationAction);
             increaseContrastMenuItem.setAction(chip.getRenderer().increaseContrastAction);
             decreaseContrastMenuItem.setAction(chip.getRenderer().decreaseContrastAction);
-            
+
 //            // https://docs.oracle.com/javase/tutorial/uiswing/misc/keybinding.html
 //            // https://docs.oracle.com/javase/tutorial/uiswing/misc/keybinding.html#howto
 //            // https://stackoverflow.com/questions/1946232/can-multiple-accelerators-be-defined-for-a-jmenuitem 
@@ -1065,7 +1066,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 ////            im.put(altUp, im.get(KeyStroke.getKeyStroke("UP")));
 ////            imAnces.put(altUp, imAnces.get(KeyStroke.getKeyStroke("UP")));
 ////            am.put(altUp,chip.getRenderer().decreaseContrastAction);
-            
             getSupport().firePropertyChange(EVENT_CHIP, oldChip, getChip());
 
             chip.onRegistration();
@@ -1102,16 +1102,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             //        chipCanvas.getCanvas().invalidate();
             // find display menu reference and fill it with display menu for this canvas
-            int dispMethodsMenuIdx=0;
-            for(Component c:viewMenu.getMenuComponents()){
+            int dispMethodsMenuIdx = 0;
+            for (Component c : viewMenu.getMenuComponents()) {
                 dispMethodsMenuIdx++;
-                if(c==displayMethodMenu){
+                if (c == displayMethodMenu) {
                     break;
                 }
             }
             viewMenu.remove(displayMethodMenu);
             displayMethodMenu = chipCanvas.getDisplayMethodMenu();
-            viewMenu.add(chipCanvas.getDisplayMethodMenu(),dispMethodsMenuIdx-1);
+            viewMenu.add(chipCanvas.getDisplayMethodMenu(), dispMethodsMenuIdx - 1);
             viewMenu.invalidate();
         }
 
@@ -1125,6 +1125,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      * setInputFile() fires PropertyChange AEViewer.EVENT_FILEOPEN with the
      * oldFile and currentFile passed to listeners.
+     *
      * @param f
      */
     protected void setInputFile(File f) {
@@ -2684,6 +2685,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         decreaseContrastMenuItem = new javax.swing.JMenuItem();
         cycleNextColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
         cyclePreviousColorRenderingMethodMenuItem = new javax.swing.JMenuItem();
+        showRenderingModeMI = new javax.swing.JMenuItem();
         jSeparator4 = new javax.swing.JSeparator();
         cycleDisplayMethodButton = new javax.swing.JMenuItem();
         displayMethodMenu = new javax.swing.JMenu();
@@ -3143,6 +3145,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(cyclePreviousColorRenderingMethodMenuItem);
+
+        showRenderingModeMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_TAB, 0));
+        showRenderingModeMI.setText("Show rendering mode momentarily");
+        showRenderingModeMI.setToolTipText("Momentarily display the current rendering mode details");
+        showRenderingModeMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showRenderingModeMIActionPerformed(evt);
+            }
+        });
+        viewMenu.add(showRenderingModeMI);
         viewMenu.add(jSeparator4);
 
         cycleDisplayMethodButton.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_3, 0));
@@ -4098,9 +4110,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             ActionEvent ae = new ActionEvent(evt.getSource(), evt.getID(), evt.paramString());
 
             if (!(control || alt || shift)) {
-                if(rotation>0){
+                if (rotation > 0) {
                     getRenderer().decreaseContrastAction.actionPerformed(ae);
-                }else if(rotation<0){
+                } else if (rotation < 0) {
                     getRenderer().increaseContrastAction.actionPerformed(ae);
                 }
                 if (isPaused()) {
@@ -5853,6 +5865,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_cyclePreviousColorRenderingMethodMenuItemActionPerformed
 
+    private void showRenderingModeMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showRenderingModeMIActionPerformed
+        log.info(getRenderer().getDescription());
+        showActionText(getRenderer().getDescription());
+    }//GEN-LAST:event_showRenderingModeMIActionPerformed
+
     private ArrayList<LoggingLevelButton> loggingLevelRadioButtons = null;
     private final Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO, Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
     private final ButtonGroup loggingLevelButtonGroup = new ButtonGroup();
@@ -6458,6 +6475,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem setMarkInMI;
     private javax.swing.JMenuItem setMarkOutMI;
     private javax.swing.JButton showConsoleOutputButton;
+    private javax.swing.JMenuItem showRenderingModeMI;
     private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem slidingMI;
     private javax.swing.JPanel statisticsPanel;
