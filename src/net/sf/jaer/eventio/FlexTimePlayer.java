@@ -47,12 +47,14 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 
+
     public enum Method {
         ConstantEventNumber, AreaEventCount //, ConstantFrameDuration
     };
     protected Method method = null;
 
     private boolean showStatistics = getBoolean("showStatistics", true);
+    private int showStatisticsFontSize=getInt("showStatisticsFontSize",10);
     private boolean showSpeedo = getBoolean("showSpeedo", true);
 
     private int constantEventNumber = getInt("constantEventNumber", 10000);
@@ -108,6 +110,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         setPropertyTooltip("areaEventNumberSubsampling", "How many bits to shift x and y addresses for AreaEventCount method; determines the size of the areas.");
         setPropertyTooltip("automaticallyControlInputRate", "Automatically set input packet duration or time to control the number of left over events.");
         setPropertyTooltip("showStatistics", "Displays statistics: event count, packet duration and FPS and effective slomo or speedup factor");
+        setPropertyTooltip("showStatisticsFontSize", "Font size for statistics (default 10)");
         setPropertyTooltip("showSpeedo", "Displays speedometer");
         engFmt.setPrecision(2);
         outputPacket.allocate(constantEventNumber);
@@ -383,7 +386,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 
                 String s = String.format("FlexTime %,7d events, %5ss, %7sFPS, %13s", renderedEventCount, durStr, fpsStr, sloMoSummaryStr);
 
-                DrawGL.drawStringDropShadow(gl, 10, 0f, .5f, 0, Color.white, s);
+                DrawGL.drawStringDropShadow(gl, getShowStatisticsFontSize(), 0f, .5f, 0, Color.white, s);
             }
         }
         if (method == Method.AreaEventCount && showAreaCountAreasTemporarily) {
@@ -618,5 +621,20 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
     public void setShowSpeedo(boolean showSpeedo) {
         this.showSpeedo = showSpeedo;
         putBoolean("showSpeedo", showSpeedo);
+    }
+
+    /**
+     * @return the showStatisticsFontSize
+     */
+    public int getShowStatisticsFontSize() {
+        return showStatisticsFontSize;
+    }
+
+    /**
+     * @param showStatisticsFontSize the showStatisticsFontSize to set
+     */
+    public void setShowStatisticsFontSize(int showStatisticsFontSize) {
+        this.showStatisticsFontSize = showStatisticsFontSize;
+        putInt("showStatisticsFontSize",showStatisticsFontSize);
     }
 }
