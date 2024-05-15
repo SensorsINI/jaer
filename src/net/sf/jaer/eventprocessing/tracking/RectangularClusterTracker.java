@@ -3187,7 +3187,7 @@ public class RectangularClusterTracker extends EventFilter2D
      * @return max value for slider - text box can chooser larger value.
      */
     public float getMaxMixingFactor() {
-        return .02f;
+        return 0.2f;
     }
     // </editor-fold>
 
