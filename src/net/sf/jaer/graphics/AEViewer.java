@@ -381,6 +381,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Logger.getLogger("").addHandler(loggingHandler);
 
         log.info("AEViewer starting up...");
+        
+        // log prefs info to debug location of prefs
+        // unfortunately this returns null always, seems no way to find out
+//        log.info(String.format("Preferences storage is located at %s",System.getProperty("java.util.prefs.userRoot")));
 
         if (chipClassName == null) {
             aeChipClassName = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
