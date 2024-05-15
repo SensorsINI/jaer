@@ -135,6 +135,7 @@ public class RectangularClusterTracker extends EventFilter2D
     protected float thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
     protected int clusterMassDecayTauUs = getInt("clusterMassDecayTauUs", 10000);
     protected boolean enableClusterExitPurging = getBoolean("enableClusterExitPurging", true);
+    private boolean purgeIfClusterOverlapsBorder = getBoolean("purgeIfClusterOverlapsBorder", true);
     protected float velAngDiffDegToNotMerge = getFloat("velAngDiffDegToNotMerge", 60);
     protected boolean showClusterNumber = getBoolean("showClusterNumber", false);
     protected boolean showClusterEps = getBoolean("showClusterEps", false);
@@ -238,6 +239,7 @@ public class RectangularClusterTracker extends EventFilter2D
         final String sizing = "Sizing", mov = "Movement", life = "Lifetime", disp = "Display", global = TOOLTIP_GROUP_GLOBAL,
                 update = "Update", logg = "Logging", pi = "PI Controller";
         setPropertyTooltip(life, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
+        setPropertyTooltip(life, "purgeIfClusterOverlapsBorder", "purge any cluster that overlaps edge (if false, center must go outside border)");
         setPropertyTooltip(life, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
         setPropertyTooltip(life, "thresholdMassForVisibleCluster",
                 "Cluster needs this \"mass\" to be visible. Mass increments with each event and decays with e-folding time constant of clusterMassDecayTauUs. Use \"showAllClusters\" to diagnose fleeting clusters.");
@@ -1598,6 +1600,10 @@ public class RectangularClusterTracker extends EventFilter2D
         protected boolean hasHitEdge() {
             if (!enableClusterExitPurging) {
                 return false;
+            }
+            
+            if(isPurgeIfClusterOverlapsBorder()){
+                return isOverlappingBorder();
             }
 
             int lx = (int) location.x, ly = (int) location.y;
@@ -4225,5 +4231,20 @@ public class RectangularClusterTracker extends EventFilter2D
 //        double actOverReal=sqrt/realsqrt;
         return sqrt;
 
+    }
+
+    /**
+     * @return the purgeIfClusterOverlapsBorder
+     */
+    public boolean isPurgeIfClusterOverlapsBorder() {
+        return purgeIfClusterOverlapsBorder;
+    }
+
+    /**
+     * @param purgeIfClusterOverlapsBorder the purgeIfClusterOverlapsBorder to set
+     */
+    public void setPurgeIfClusterOverlapsBorder(boolean purgeIfClusterOverlapsBorder) {
+        this.purgeIfClusterOverlapsBorder = purgeIfClusterOverlapsBorder;
+        putBoolean("purgeIfClusterOverlapsBorder",purgeIfClusterOverlapsBorder);
     }
 }
