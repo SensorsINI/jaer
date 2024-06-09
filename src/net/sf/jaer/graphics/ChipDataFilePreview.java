@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.JFileChooser;
@@ -220,6 +221,7 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     ais.close();
                     ais = null;
                     System.gc();
+                    Thread.sleep(200);
                 }
                 if (deleteIt) {
                     deleteIt = false;
@@ -234,6 +236,9 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     }
                 }
             } catch (IOException e) {
+                log.warning(String.format("Caught %s",e.toString()));
+            } catch (InterruptedException ex) {
+                
             }
             return;
         }
