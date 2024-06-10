@@ -21,7 +21,6 @@ package ch.unizh.ini.jaer.projects.npp;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
-import eu.visualize.ini.convnet.DeepLearnCnnNetwork_HJ;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -498,10 +497,6 @@ public class DvsFramerROIGenerator extends DvsFramer implements FrameAnnotater {
         }
     }
 
-    @Override
-    public void setFromNetwork(DeepLearnCnnNetwork_HJ apsDvsNet) {
-        throw new UnsupportedOperationException("Not supported for heat map CNNs");
-    }
 
     /**
      * If ROIs exist, they are cleared
