@@ -59,6 +59,7 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
+import net.sf.jaer.util.YamlMatLoader;
 import nu.pattern.OpenCV;
 
 /**
@@ -74,11 +75,14 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         String jvmVersion = System.getProperty("sun.arch.data.model");
 
         try {
-            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
-            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            log.info("Loading openpnp OpenCV native libraries");
+            nu.pattern.OpenCV.loadShared(); // see https://github.com/openpnp/opencv?tab=readme-ov-file
+            
+//            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+//            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
             // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will appendCopy it automatically.
         } catch (UnsatisfiedLinkError e) {
-            System.err.println("Native code library failed to load.\n" + e);
+            log.warning("Native OpenCV library failed to load.\n" + e +"\n See https://github.com/openpnp/opencv?tab=readme-ov-file to debug");
             // System.exit(1);
         }
     }
@@ -297,7 +301,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         Mat img = input.reshape(0, sy);
         Mat undistortedImg = new Mat();
         try {
-            Imgproc.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
+            Calib3d.undistort(img, undistortedImg, cameraMatrix, distortionCoefs);
         } catch (RuntimeException e) {
             log.warning(e.toString());
             return src;
@@ -677,7 +681,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
         MatOfPoint2f dst = new MatOfPoint2f();
         MatOfPoint2f pixelArray = new MatOfPoint2f(fp); // make wide 2 channel matrix of source event x,y
-        Imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
+        Calib3d.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         isUndistortedAddressLUTgenerated = true;
         // get the camera matrix elements (focal lengths and principal point)
 //        DoubleIndexer k = getCameraMatrix().createIndexer();
@@ -873,7 +877,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 }
             };
             opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.WRITE);
-            storage.write(name, bdMat);
+            storage.writeObj(name, bdMat);
             storage.release();
 
             log.info("saved calibration as yaml in " + fn);
@@ -884,16 +888,18 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     public Mat deserializeMat(String dir, String name) {
         String fn = dirPath + File.separator + name + ".xml";
-        opencv_core.Mat bdMat = new opencv_core.Mat();
-
-        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
-        opencv_core.read(storage.get(name), bdMat);
-        storage.release();
-        if (bdMat.empty()) {
-            return null;
-        }
-        // convert to org.opencv.core.Mat to return; see https://github.com/bytedeco/javacpp/issues/38
-        org.opencv.core.Mat mat = new org.opencv.core.Mat(bdMat.address());
+        YamlMatLoader yamlMatLoader=new YamlMatLoader();
+        Mat mat=yamlMatLoader.getMatYml(name);
+//        opencv_core.Mat bdMat = new opencv_core.Mat();
+//
+//        opencv_core.FileStorage storage = new opencv_core.FileStorage(fn, opencv_core.FileStorage.READ);
+//        opencv_core.read(storage.get(name), bdMat);
+//        storage.release();
+//        if (bdMat.empty()) {
+//            return null;
+//        }
+//        // convert to org.opencv.core.Mat to return; see https://github.com/bytedeco/javacpp/issues/38
+//        org.opencv.core.Mat mat = new org.opencv.core.Mat(bdMat.address());
         return mat;
     }
 
@@ -1135,7 +1141,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
         MatOfPoint2f dst = new MatOfPoint2f();
         MatOfPoint2f pixelArray = new MatOfPoint2f(fp); // make wide 2 channel matrix of source event x,y
-        Imgproc.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
+        Calib3d.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
         // get the camera matrix elements (focal lengths and principal point)
 //        DoubleIndexer k = getCameraMatrix().createIndexer();
         float fx, fy, cx, cy;

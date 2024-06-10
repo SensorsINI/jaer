@@ -89,20 +89,29 @@ MA 02110-1301  USA
         </dependency>
         <!--TODO sort out opencv and javacv - seems to be multiple versions used in jaer-->
         <!--TODO the bytedeco wrapper on opencv (opencv_core) is needed in a few places -->
-        <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
+<!--        <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
             <artifact name="opencv" type="jar" ext="jar"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="macosx-x86_64"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="windows-x86_64"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="windows-x86"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="linux-x86_64"/>
             <artifact name="opencv" type="jar" ext="jar" m:classifier="linux-x86"/>
-        </dependency>
-        <!--following is for the official org.opencv.core classes from nu.pattern-->
-        <dependency org="org.openpnp" name="opencv" rev="3.2.0-1" />
+        </dependency>-->
+        
+        <!--following is for the official org.opencv.core classes from nu.pattern, forked to org.openpnp now
+        
+        It is important to read https://github.com/openpnp/opencv to see how the OpenCV native libraries must be loaded to the JVM!
+        
+        This OpenCV is used by SingleCameraCalibration at least.
+        
+        -->
+        <dependency org="org.openpnp" name="opencv" rev="4.8.1-0" />
+        <!--<dependency org="org.openpnp" name="opencv" rev="3.2.0-1" />-->
         <!--<dependency org="org.openpnp" name="opencv" rev="2.4.13-0" />-->
         <!--<dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.4.0-1.4" />-->
         <!--we use version 1.0 of javacv because the stereo matching opencv only has 3 arguments in existing code but later opencv has many more options-->
-        <dependency org="org.bytedeco" name="javacv" rev="1.0" />
+        <!--<dependency org="org.bytedeco" name="javacv" rev="1.0" />-->
+        <dependency org="org.bytedeco" name="javacv" rev="1.5.9" />
         
         <!--tensorflow has native libraries, but handled fine with this dependeny - see https://www.tensorflow.org/install/lang_java -->
         <!--if having trouble loading the DLL, you might have to downgrade locally to version 1.5.0-->
@@ -115,8 +124,8 @@ MA 02110-1301  USA
         <dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.15.0" />
         
         
-        <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns-->
-        <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.13" />
+        <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns. Also for reading OpenCV Mat files in YamlMatLoader -->
+        <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.17" />
 
         <!--mathematics, linear algebra and optimisation java library-->
         <dependency org="org.ojalgo" name="ojalgo" rev="44.0.0" />      

@@ -30,488 +30,141 @@
     <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
+    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,3,114,0,0,2,79"/>
   </AuxValues>
 
-  <Layout>
-    <DimensionLayout dim="0">
-      <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="jScrollPane1" pref="835" max="32767" attributes="0"/>
-      </Group>
-    </DimensionLayout>
-    <DimensionLayout dim="1">
-      <Group type="103" groupAlignment="0" attributes="0">
-          <Component id="jScrollPane1" pref="735" max="32767" attributes="0"/>
-      </Group>
-    </DimensionLayout>
-  </Layout>
+  <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout"/>
   <SubComponents>
-    <Container class="javax.swing.JScrollPane" name="jScrollPane1">
+    <Container class="javax.swing.JPanel" name="jPanel2">
+      <Constraints>
+        <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout" value="org.netbeans.modules.form.compat2.layouts.DesignBorderLayout$BorderConstraintsDescription">
+          <BorderConstraints direction="First"/>
+        </Constraint>
+      </Constraints>
 
-      <Layout class="org.netbeans.modules.form.compat2.layouts.support.JScrollPaneSupportLayout"/>
-      <SubComponents>
-        <Container class="javax.swing.JPanel" name="jPanel2">
-
-          <Layout>
-            <DimensionLayout dim="0">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="dvsPanel" min="-2" pref="789" max="-2" attributes="0"/>
-                          <Group type="102" attributes="0">
-                              <Component id="apsPanel" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                              <Component id="imuPanel" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                      </Group>
-                      <EmptySpace pref="2159" max="32767" attributes="0"/>
-                  </Group>
-              </Group>
-            </DimensionLayout>
-            <DimensionLayout dim="1">
-              <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="0" attributes="0">
+      <Layout>
+        <DimensionLayout dim="0">
+          <Group type="103" groupAlignment="0" attributes="0">
+              <Group type="102" alignment="0" attributes="0">
+                  <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Component id="dvsPanel" min="-2" pref="569" max="-2" attributes="0"/>
+                      <Group type="102" attributes="0">
                           <Component id="apsPanel" min="-2" max="-2" attributes="0"/>
-                          <Component id="imuPanel" alignment="0" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" attributes="0">
+                              <Component id="imuPanel" min="-2" max="-2" attributes="0"/>
+                              <Component id="toggleDualViewJB" min="-2" max="-2" attributes="0"/>
+                          </Group>
                       </Group>
-                      <EmptySpace max="-2" attributes="0"/>
-                      <Component id="dvsPanel" min="-2" pref="532" max="-2" attributes="0"/>
-                      <EmptySpace pref="158" max="32767" attributes="0"/>
                   </Group>
+                  <EmptySpace min="-2" pref="10" max="-2" attributes="0"/>
               </Group>
-            </DimensionLayout>
-          </Layout>
+          </Group>
+        </DimensionLayout>
+        <DimensionLayout dim="1">
+          <Group type="103" groupAlignment="0" attributes="0">
+              <Group type="102" alignment="0" attributes="0">
+                  <EmptySpace max="-2" attributes="0"/>
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Component id="apsPanel" min="-2" max="-2" attributes="0"/>
+                      <Group type="102" attributes="0">
+                          <Component id="toggleDualViewJB" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Component id="imuPanel" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+                  <EmptySpace min="-2" pref="27" max="-2" attributes="0"/>
+                  <Component id="dvsPanel" min="-2" pref="532" max="-2" attributes="0"/>
+                  <EmptySpace pref="158" max="32767" attributes="0"/>
+              </Group>
+          </Group>
+        </DimensionLayout>
+      </Layout>
+      <SubComponents>
+        <Container class="javax.swing.JPanel" name="dvsPanel">
+          <Properties>
+            <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+              <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
+                <TitledBorder title="DVS Events">
+                  <Font PropertyName="font" name="Tahoma" size="11" style="1"/>
+                </TitledBorder>
+              </Border>
+            </Property>
+            <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+              <Font name="Tahoma" size="11" style="1"/>
+            </Property>
+          </Properties>
+
+          <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout"/>
           <SubComponents>
-            <Container class="javax.swing.JPanel" name="dvsPanel">
+            <Component class="javax.swing.JCheckBox" name="displayEventsCheckBox">
               <Properties>
-                <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-                  <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                    <TitledBorder title="DVS">
-                      <Font PropertyName="font" name="Tahoma" size="11" style="1"/>
-                    </TitledBorder>
-                  </Border>
-                </Property>
-                <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-                  <Font name="Tahoma" size="11" style="1"/>
-                </Property>
+                <Property name="text" type="java.lang.String" value="Display events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables rendering of DVS events"/>
               </Properties>
-
-              <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout"/>
-              <SubComponents>
-                <Component class="javax.swing.JCheckBox" name="displayEventsCheckBox">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Display events"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables rendering of DVS events"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayEventsCheckBoxActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JRadioButton" name="dvsRedGrRB">
-                  <Properties>
-                    <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
-                      <ComponentRef name="dvsColorButGrp"/>
-                    </Property>
-                    <Property name="text" type="java.lang.String" value="Red/Green"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Show DVS events rendered as green (ON) and red (OFF) 2d histogram"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dvsRedGrRBActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JRadioButton" name="dvsGrayRB">
-                  <Properties>
-                    <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
-                      <ComponentRef name="dvsColorButGrp"/>
-                    </Property>
-                    <Property name="text" type="java.lang.String" value="Gray"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Show DVS events rendered as gray scale 2d histogram"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dvsGrayRBActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JLabel" name="dvsContLabel">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Contrast"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JSpinner" name="dvsContSp">
-                  <Properties>
-                    <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-                      <SpinnerModel initial="1" minimum="1" numberType="java.lang.Integer" stepSize="1" type="number"/>
-                    </Property>
-                    <Property name="toolTipText" type="java.lang.String" value="Rendering contrast  of DVS events (1 is default). This many events makes full scale color, either black/white or red/green."/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="dvsContSpStateChanged"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="captureEventsCB">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Capture events"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables capture of DVS events. Disabling capture turns off AER output of sensor."/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureEventsCBActionPerformed"/>
-                  </Events>
-                </Component>
-                <Container class="javax.swing.JPanel" name="bwPanel">
-                  <Properties>
-                    <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-                      <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
-                        <LineBorder/>
-                      </Border>
-                    </Property>
-                  </Properties>
-
-                  <Layout>
-                    <DimensionLayout dim="0">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" alignment="0" attributes="0">
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="bwEstimatePanel" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="32767" attributes="0"/>
-                          </Group>
-                          <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
-                              <Group type="102" attributes="0">
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="bandwidthTweaker" max="32767" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                              </Group>
-                          </Group>
-                      </Group>
-                    </DimensionLayout>
-                    <DimensionLayout dim="1">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" alignment="1" attributes="0">
-                              <EmptySpace pref="80" max="32767" attributes="0"/>
-                              <Component id="bwEstimatePanel" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                          </Group>
-                          <Group type="103" rootIndex="1" groupAlignment="0" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
-                                  <Component id="bandwidthTweaker" min="-2" pref="60" max="-2" attributes="0"/>
-                                  <EmptySpace pref="42" max="32767" attributes="0"/>
-                              </Group>
-                          </Group>
-                      </Group>
-                    </DimensionLayout>
-                  </Layout>
-                  <SubComponents>
-                    <Component class="net.sf.jaer.biasgen.PotTweaker" name="bandwidthTweaker">
-                      <Properties>
-                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjust the photoreceptor and source follower bandwidth by changing Pr and PRSf bias currents&#xa;&lt;p&gt;Limited to changing fine current value. For more control, adjust these currents directly."/>
-                        <Property name="lessDescription" type="java.lang.String" value="Slower"/>
-                        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[80, 30]"/>
-                        </Property>
-                        <Property name="moreDescription" type="java.lang.String" value="Faster"/>
-                        <Property name="name" type="java.lang.String" value="Adjusts pixel bandwidth" noResource="true"/>
-                        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[250, 47]"/>
-                        </Property>
-                        <Property name="tweakDescription" type="java.lang.String" value=""/>
-                      </Properties>
-                      <Events>
-                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="bandwidthTweakerStateChanged"/>
-                      </Events>
-                    </Component>
-                    <Container class="javax.swing.JPanel" name="bwEstimatePanel">
-
-                      <Layout>
-                        <DimensionLayout dim="0">
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace pref="147" max="32767" attributes="0"/>
-                                  <Component id="bwEstLabel" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="bwEstTF" min="-2" pref="354" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" pref="104" max="-2" attributes="0"/>
-                              </Group>
-                          </Group>
-                        </DimensionLayout>
-                        <DimensionLayout dim="1">
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Group type="103" groupAlignment="3" attributes="0">
-                                      <Component id="bwEstLabel" alignment="3" max="32767" attributes="0"/>
-                                      <Component id="bwEstTF" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                                  <EmptySpace max="-2" attributes="0"/>
-                              </Group>
-                          </Group>
-                        </DimensionLayout>
-                      </Layout>
-                      <SubComponents>
-                        <Component class="javax.swing.JLabel" name="bwEstLabel">
-                          <Properties>
-                            <Property name="text" type="java.lang.String" value="Estimated maximum pixel bandwidth"/>
-                            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent."/>
-                          </Properties>
-                        </Component>
-                        <Component class="javax.swing.JTextField" name="bwEstTF">
-                          <Properties>
-                            <Property name="editable" type="boolean" value="false"/>
-                            <Property name="columns" type="int" value="12"/>
-                            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent."/>
-                          </Properties>
-                          <Events>
-                            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="bwEstTFActionPerformed"/>
-                          </Events>
-                        </Component>
-                      </SubComponents>
-                    </Container>
-                  </SubComponents>
-                </Container>
-                <Container class="javax.swing.JPanel" name="thrPanel">
-                  <Properties>
-                    <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-                      <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
-                        <LineBorder/>
-                      </Border>
-                    </Property>
-                  </Properties>
-
-                  <Layout>
-                    <DimensionLayout dim="0">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" attributes="0">
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="thresholdTweaker" max="32767" attributes="0"/>
-                                  <Component id="onOffBalanceTweaker" alignment="0" max="32767" attributes="0"/>
-                                  <Group type="102" alignment="1" attributes="0">
-                                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
-                                      <Component id="jPanel4" min="-2" pref="731" max="-2" attributes="0"/>
-                                  </Group>
-                              </Group>
-                              <EmptySpace max="-2" attributes="0"/>
-                          </Group>
-                      </Group>
-                    </DimensionLayout>
-                    <DimensionLayout dim="1">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" alignment="0" attributes="0">
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="thresholdTweaker" min="-2" pref="63" max="-2" attributes="0"/>
-                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                              <Component id="onOffBalanceTweaker" min="-2" pref="63" max="-2" attributes="0"/>
-                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                              <Component id="jPanel4" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="32767" attributes="0"/>
-                          </Group>
-                      </Group>
-                    </DimensionLayout>
-                  </Layout>
-                  <SubComponents>
-                    <Component class="net.sf.jaer.biasgen.PotTweaker" name="thresholdTweaker">
-                      <Properties>
-                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjusts DVS event temporal contrast thresholds magnitude &lt;br&gt;&#xa;by changing current ratios diffOn/diff and diffOff/diff. &#xa;&lt;p&gt;Limited to only adjusting fine current value; &lt;br&gt;&#xa;when this limit is reached, user must manually change the coarse current value."/>
-                        <Property name="lessDescription" type="java.lang.String" value="Lower &amp; More events"/>
-                        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[80, 30]"/>
-                        </Property>
-                        <Property name="moreDescription" type="java.lang.String" value="Higher &amp;  Fewer events"/>
-                        <Property name="name" type="java.lang.String" value="Adjusts event threshold" noResource="true"/>
-                        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[250, 47]"/>
-                        </Property>
-                        <Property name="tweakDescription" type="java.lang.String" value=""/>
-                      </Properties>
-                      <Events>
-                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="thresholdTweakerStateChanged"/>
-                      </Events>
-                    </Component>
-                    <Component class="net.sf.jaer.biasgen.PotTweaker" name="onOffBalanceTweaker">
-                      <Properties>
-                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjusts DVS event temporal contrast thresholds balance&lt;br&gt;&#xa;by changing current ratios diffOn/diff and diffOff/diff. &#xa;&lt;p&gt;Limited to only adjusting fine current value; &lt;br&gt;&#xa;when this limit is reached, user must manually change the coarse current value."/>
-                        <Property name="lessDescription" type="java.lang.String" value="More Off events"/>
-                        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[80, 30]"/>
-                        </Property>
-                        <Property name="moreDescription" type="java.lang.String" value="More On events"/>
-                        <Property name="name" type="java.lang.String" value="Adjusts balance bewteen On and Off events" noResource="true"/>
-                        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[250, 47]"/>
-                        </Property>
-                        <Property name="tweakDescription" type="java.lang.String" value=""/>
-                      </Properties>
-                      <Events>
-                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="onOffBalanceTweakerStateChanged"/>
-                      </Events>
-                    </Component>
-                    <Container class="javax.swing.JPanel" name="jPanel4">
-
-                      <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout">
-                        <Property name="alignment" type="int" value="0"/>
-                      </Layout>
-                      <SubComponents>
-                        <Component class="javax.swing.JLabel" name="jLabel9">
-                          <Properties>
-                            <Property name="text" type="java.lang.String" value="Estimated DVS thresholds:"/>
-                            <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Displays computed values of DVS event temporal contrast thresholds&lt;br&gt; &#xa;based on paper&#xa;&lt;a href=&quot;https://ieeexplore.ieee.org/document/7962235&quot;&gt;Temperature and&#xa; Parasitic Photocurrent &lt;br&gt; Effects in Dynamic Vision Sensors, &lt;br&gt;Y Nozaki, T&#xa;Delbruck. &lt;br&gt;IEEE Trans. on Electron Devices, 2018&lt;/a&gt;"/>
-                          </Properties>
-                        </Component>
-                        <Component class="javax.swing.JLabel" name="jLabel7">
-                          <Properties>
-                            <Property name="text" type="java.lang.String" value="ON"/>
-                          </Properties>
-                        </Component>
-                        <Component class="javax.swing.JTextField" name="onThrTF">
-                          <Properties>
-                            <Property name="editable" type="boolean" value="false"/>
-                            <Property name="columns" type="int" value="12"/>
-                            <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
-                          </Properties>
-                        </Component>
-                        <Component class="javax.swing.JLabel" name="jLabel8">
-                          <Properties>
-                            <Property name="text" type="java.lang.String" value="OFF"/>
-                          </Properties>
-                        </Component>
-                        <Component class="javax.swing.JTextField" name="offThrTF">
-                          <Properties>
-                            <Property name="editable" type="boolean" value="false"/>
-                            <Property name="columns" type="int" value="12"/>
-                            <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
-                          </Properties>
-                          <Events>
-                            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offThrTFActionPerformed"/>
-                          </Events>
-                        </Component>
-                        <Component class="javax.swing.JLabel" name="jLabel10">
-                          <Properties>
-                            <Property name="text" type="java.lang.String" value="ON+OFF"/>
-                            <Property name="toolTipText" type="java.lang.String" value="difference ON to OFF thresholds (nominal balance)"/>
-                          </Properties>
-                        </Component>
-                        <Component class="javax.swing.JTextField" name="onMinusOffTF">
-                          <Properties>
-                            <Property name="editable" type="boolean" value="false"/>
-                            <Property name="columns" type="int" value="7"/>
-                          </Properties>
-                        </Component>
-                      </SubComponents>
-                    </Container>
-                  </SubComponents>
-                </Container>
-                <Container class="javax.swing.JPanel" name="refrPanel">
-                  <Properties>
-                    <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-                      <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
-                        <LineBorder/>
-                      </Border>
-                    </Property>
-                  </Properties>
-
-                  <Layout>
-                    <DimensionLayout dim="0">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" alignment="0" attributes="0">
-                              <EmptySpace min="-2" pref="0" max="-2" attributes="0"/>
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Component id="maxFiringRateTweaker" max="32767" attributes="0"/>
-                                  <Component id="refrEstimatePanel" max="32767" attributes="0"/>
-                              </Group>
-                              <EmptySpace max="-2" attributes="0"/>
-                          </Group>
-                      </Group>
-                    </DimensionLayout>
-                    <DimensionLayout dim="1">
-                      <Group type="103" groupAlignment="0" attributes="0">
-                          <Group type="102" attributes="0">
-                              <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
-                              <Component id="maxFiringRateTweaker" min="-2" pref="69" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="refrEstimatePanel" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="32767" attributes="0"/>
-                          </Group>
-                      </Group>
-                    </DimensionLayout>
-                  </Layout>
-                  <SubComponents>
-                    <Component class="net.sf.jaer.biasgen.PotTweaker" name="maxFiringRateTweaker">
-                      <Properties>
-                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjusts the refractory period after each event by changing Refr bias.&#xa;&lt;p&gt;This current sets the rate at which the reset switch voltage is recharged.&#xa;&lt;p&gt;Limited to changing fine current value. For more control, adjust these currents directly."/>
-                        <Property name="lessDescription" type="java.lang.String" value="Slower"/>
-                        <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[80, 30]"/>
-                        </Property>
-                        <Property name="moreDescription" type="java.lang.String" value="Faster"/>
-                        <Property name="name" type="java.lang.String" value="Adjusts maximum pixel firing rate (1/refactory period)" noResource="true"/>
-                        <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-                          <Dimension value="[250, 47]"/>
-                        </Property>
-                        <Property name="tweakDescription" type="java.lang.String" value=""/>
-                      </Properties>
-                      <Events>
-                        <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="maxFiringRateTweakerStateChanged"/>
-                      </Events>
-                    </Component>
-                    <Container class="javax.swing.JPanel" name="refrEstimatePanel">
-
-                      <Layout>
-                        <DimensionLayout dim="0">
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" attributes="0">
-                                  <EmptySpace min="229" pref="229" max="-2" attributes="0"/>
-                                  <Component id="refrPerLabel" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
-                                  <Component id="refrPerTF" min="-2" pref="348" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                              </Group>
-                          </Group>
-                        </DimensionLayout>
-                        <DimensionLayout dim="1">
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" attributes="0">
-                                  <EmptySpace min="8" pref="8" max="-2" attributes="0"/>
-                                  <Component id="refrPerLabel" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" attributes="0">
-                                  <EmptySpace min="5" pref="5" max="-2" attributes="0"/>
-                                  <Component id="refrPerTF" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                          </Group>
-                        </DimensionLayout>
-                      </Layout>
-                      <SubComponents>
-                        <Component class="javax.swing.JLabel" name="refrPerLabel">
-                          <Properties>
-                            <Property name="text" type="java.lang.String" value="Estimated refractory period"/>
-                          </Properties>
-                        </Component>
-                        <Component class="javax.swing.JTextField" name="refrPerTF">
-                          <Properties>
-                            <Property name="editable" type="boolean" value="false"/>
-                            <Property name="columns" type="int" value="12"/>
-                            <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
-                          </Properties>
-                          <Events>
-                            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="refrPerTFActionPerformed"/>
-                          </Events>
-                        </Component>
-                      </SubComponents>
-                    </Container>
-                  </SubComponents>
-                </Container>
-              </SubComponents>
-            </Container>
-            <Container class="javax.swing.JPanel" name="apsPanel">
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayEventsCheckBoxActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JRadioButton" name="dvsRedGrRB">
+              <Properties>
+                <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                  <ComponentRef name="dvsColorButGrp"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Red/Green"/>
+                <Property name="toolTipText" type="java.lang.String" value="Show DVS events rendered as green (ON) and red (OFF) 2d histogram"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dvsRedGrRBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JRadioButton" name="dvsGrayRB">
+              <Properties>
+                <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
+                  <ComponentRef name="dvsColorButGrp"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Gray"/>
+                <Property name="toolTipText" type="java.lang.String" value="Show DVS events rendered as gray scale 2d histogram"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dvsGrayRBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JLabel" name="dvsContLabel">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Contrast"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="dvsContSp">
+              <Properties>
+                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+                  <SpinnerModel initial="1" minimum="1" numberType="java.lang.Integer" stepSize="1" type="number"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="Rendering contrast  of DVS events (1 is default). This many events makes full scale color, either black/white or red/green."/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="dvsContSpStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="captureEventsCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Capture events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables capture of DVS events. Disabling capture turns off AER output of sensor."/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureEventsCBActionPerformed"/>
+              </Events>
+            </Component>
+            <Container class="javax.swing.JPanel" name="bwPanel">
               <Properties>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-                  <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                    <TitledBorder title="Image Sensor">
-                      <Font PropertyName="font" name="Tahoma" size="11" style="1"/>
-                    </TitledBorder>
+                  <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
+                    <LineBorder/>
                   </Border>
                 </Property>
-                <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
-                  <Font name="Tahoma" size="11" style="1"/>
+                <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[500, 139]"/>
                 </Property>
               </Properties>
 
@@ -519,342 +172,697 @@
                 <DimensionLayout dim="0">
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" attributes="0">
+                          <EmptySpace max="-2" attributes="0"/>
                           <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Group type="103" groupAlignment="1" max="-2" attributes="0">
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="edSp" max="32767" attributes="0"/>
-                                      </Group>
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <EmptySpace min="-2" pref="13" max="-2" attributes="0"/>
-                                          <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="fdSp" min="-2" pref="74" max="-2" attributes="0"/>
-                                      </Group>
-                                  </Group>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
-                                      <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" max="-2" attributes="0">
-                                      <Component id="fpsTF" pref="71" max="32767" attributes="0"/>
-                                      <Component id="exposMsTF" max="32767" attributes="0"/>
-                                  </Group>
-                              </Group>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="captureFramesCheckBox" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace max="-2" attributes="0"/>
-                                  <Component id="displayFramesCheckBox" min="-2" max="-2" attributes="0"/>
-                                  <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                  <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <Group type="102" alignment="0" attributes="0">
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <EmptySpace min="-2" pref="4" max="-2" attributes="0"/>
-                                          <Component id="jLabel6" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="contrastSp" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="autoContrastCB" min="-2" max="-2" attributes="0"/>
-                                      </Group>
-                                      <Group type="102" alignment="0" attributes="0">
-                                          <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace max="-2" attributes="0"/>
-                                          <Component id="autoshotThresholdSp" min="-2" pref="72" max="-2" attributes="0"/>
-                                      </Group>
-                                  </Group>
-                                  <EmptySpace type="separate" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="0" attributes="0">
-                                      <Component id="autoExpCB" min="-2" max="-2" attributes="0"/>
-                                      <Group type="102" attributes="0">
-                                          <Component id="glShutterCB" min="-2" max="-2" attributes="0"/>
-                                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
-                                          <Component id="histCB" min="-2" max="-2" attributes="0"/>
-                                      </Group>
-                                  </Group>
-                              </Group>
+                              <Component id="bwEstimatePanel" min="-2" pref="481" max="-2" attributes="0"/>
+                              <Component id="bandwidthTweaker" alignment="0" min="-2" pref="481" max="-2" attributes="0"/>
                           </Group>
-                          <EmptySpace max="32767" attributes="0"/>
+                          <EmptySpace pref="11" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
                 <DimensionLayout dim="1">
                   <Group type="103" groupAlignment="0" attributes="0">
-                      <Group type="102" alignment="0" attributes="0">
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Group type="102" attributes="0">
-                                  <EmptySpace min="-2" pref="4" max="-2" attributes="0"/>
-                                  <Group type="103" groupAlignment="3" attributes="0">
-                                      <Component id="captureFramesCheckBox" alignment="3" min="-2" max="-2" attributes="0"/>
-                                      <Component id="displayFramesCheckBox" alignment="3" min="-2" max="-2" attributes="0"/>
-                                  </Group>
-                              </Group>
-                              <Component id="snapshotButton" alignment="0" min="-2" max="-2" attributes="0"/>
-                          </Group>
+                      <Group type="102" alignment="1" attributes="0">
+                          <EmptySpace pref="24" max="32767" attributes="0"/>
+                          <Component id="bandwidthTweaker" min="-2" pref="73" max="-2" attributes="0"/>
                           <EmptySpace max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="3" attributes="0">
-                              <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="fdSp" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel4" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="fpsTF" alignment="3" min="-2" max="-2" attributes="0"/>
-                          </Group>
+                          <Component id="bwEstimatePanel" min="-2" max="-2" attributes="0"/>
                           <EmptySpace max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="3" attributes="0">
-                              <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="edSp" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="jLabel5" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="exposMsTF" alignment="3" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                          <EmptySpace max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="3" attributes="0">
-                              <Component id="jLabel3" alignment="3" min="-2" pref="14" max="-2" attributes="0"/>
-                              <Component id="autoshotThresholdSp" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="autoExpCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                          </Group>
-                          <EmptySpace max="-2" attributes="0"/>
-                          <Group type="103" groupAlignment="3" attributes="0">
-                              <Component id="jLabel6" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="contrastSp" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="autoContrastCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="histCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                              <Component id="glShutterCB" alignment="3" min="-2" max="-2" attributes="0"/>
-                          </Group>
                       </Group>
                   </Group>
                 </DimensionLayout>
               </Layout>
               <SubComponents>
-                <Component class="javax.swing.JLabel" name="jLabel1">
+                <Container class="javax.swing.JPanel" name="bwEstimatePanel">
+
+                  <Layout>
+                    <DimensionLayout dim="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <EmptySpace max="32767" attributes="0"/>
+                              <Component id="bwEstLabel" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="bwEstTF" min="-2" pref="276" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="182" max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                    </DimensionLayout>
+                    <DimensionLayout dim="1">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="bwEstLabel" alignment="3" max="32767" attributes="0"/>
+                                  <Component id="bwEstTF" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                    </DimensionLayout>
+                  </Layout>
+                  <SubComponents>
+                    <Component class="javax.swing.JLabel" name="bwEstLabel">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="Estimated maximum pixel bandwidth"/>
+                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent."/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JTextField" name="bwEstTF">
+                      <Properties>
+                        <Property name="editable" type="boolean" value="false"/>
+                        <Property name="columns" type="int" value="12"/>
+                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt; Estimated DVS cutoff frequency based solely on source follower bias current.&#xa;&lt;p&gt; Does not account for finite photoreceptor bandwidth either from photoreceptor bias or low photocurrent.&#xa;&lt;p&gt; Assumes source follower runs in subthreshold, so will only be valid for bias curreents below the specific current"/>
+                      </Properties>
+                    </Component>
+                  </SubComponents>
+                </Container>
+                <Component class="net.sf.jaer.biasgen.PotTweaker" name="bandwidthTweaker">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Target Frame rate (Hz)"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Set the target frame rate; actual rate will be displayed on right and depends on quantization and possible other delays"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JSpinner" name="fdSp">
-                  <Properties>
-                    <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-                      <SpinnerModel initial="0.0" minimum="0.0" numberType="java.lang.Float" stepSize="1.0" type="number"/>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjust the source follower bandwidth by changing PRSf bias current.&#xa;&lt;p&gt;&#xa;For minimum shot noise under low illumination, the photoreceptor bias should be large and the bandwidth should be limited&#xa;by the source follower buffer. See &lt;a href=&quot;https://arxiv.org/abs/2304.04019&quot;&gt;Optimal biasing and physical limits of DVS event noise&lt;/a&gt;. "/>
+                    <Property name="lessDescription" type="java.lang.String" value="Slower"/>
+                    <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[80, 30]"/>
                     </Property>
-                    <Property name="toolTipText" type="java.lang.String" value="Delay of starting new frame capture after last frame"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="fdSpStateChanged"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JLabel" name="jLabel2">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Exposure delay (ms)"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JSpinner" name="edSp">
-                  <Properties>
-                    <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-                      <SpinnerModel initial="0.0" numberType="java.lang.Float" stepSize="1.0" type="number"/>
+                    <Property name="moreDescription" type="java.lang.String" value="Faster"/>
+                    <Property name="name" type="java.lang.String" value="Adjusts maximum photoreceptor bandwidth" noResource="true"/>
+                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[250, 47]"/>
                     </Property>
-                    <Property name="toolTipText" type="java.lang.String" value="The exposure delay; affects actual exposure time"/>
+                    <Property name="tweakDescription" type="java.lang.String" value=""/>
                   </Properties>
                   <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="edSpStateChanged"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="autoExpCB">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Auto exposure"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Automatically set pixel exposure delay. See AutoExposureController panel for full parameter set."/>
-                    <Property name="horizontalAlignment" type="int" value="11"/>
-                    <Property name="horizontalTextPosition" type="int" value="2"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="autoExpCBActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JLabel" name="jLabel3">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Auto-Shot kevents/frame"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JLabel" name="jLabel4">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Actual frame rate (Hz)"/>
-                    <Property name="toolTipText" type="java.lang.String" value="The actual frame rate measured from camera event timing"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JLabel" name="jLabel5">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Expos. (ms)"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JTextField" name="fpsTF">
-                  <Properties>
-                    <Property name="editable" type="boolean" value="false"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Measured frame rate in Hz"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JTextField" name="exposMsTF">
-                  <Properties>
-                    <Property name="editable" type="boolean" value="false"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Measured exposure time in ms"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="exposMsTFActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JLabel" name="jLabel6">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Contrast"/>
-                  </Properties>
-                </Component>
-                <Component class="javax.swing.JSpinner" name="autoshotThresholdSp">
-                  <Properties>
-                    <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-                      <SpinnerModel initial="0" minimum="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
-                    </Property>
-                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Set non-zero to automatically trigger APS frame captures every this many thousand DVS events. &lt;br&gt;For better control of automatic frame capture,&lt;br&gt; including the use of pre-filtering of the DVS events, use the filter ApsDvsAutoShooter."/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="autoshotThresholdSpStateChanged"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JSpinner" name="contrastSp">
-                  <Properties>
-                    <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
-                      <SpinnerModel initial="1.0" maximum="5.0" minimum="0.2" numberType="java.lang.Float" stepSize="0.05" type="number"/>
-                    </Property>
-                    <Property name="toolTipText" type="java.lang.String" value="Sets rendering contrast gain (1 is default). See Video Control panel for full set of controls."/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="contrastSpStateChanged"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="autoContrastCB">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Auto contrast"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Uses DavisVideoContrastController to automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively"/>
-                    <Property name="horizontalAlignment" type="int" value="11"/>
-                    <Property name="horizontalTextPosition" type="int" value="2"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="autoContrastCBActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="displayFramesCheckBox">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Display Frames"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables display of APS imager output"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayFramesCheckBoxActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="histCB">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="histogram"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Display hisogram of captured pixel values from ADC (reset - signal values)"/>
-                    <Property name="horizontalAlignment" type="int" value="11"/>
-                    <Property name="horizontalTextPosition" type="int" value="2"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="histCBActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JButton" name="snapshotButton">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Take Snapshot"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Triggers a single frame capture to onscreen buffer"/>
-                  </Properties>
-                  <AccessibilityProperties>
-                    <Property name="AccessibleContext.accessibleName" type="java.lang.String" value="snapshotButton"/>
-                  </AccessibilityProperties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="snapshotButtonActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="captureFramesCheckBox">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Capture Frames"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables capture of APS imager output (turns on ADC state machine)"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureFramesCheckBoxActionPerformed"/>
-                  </Events>
-                </Component>
-                <Component class="javax.swing.JCheckBox" name="glShutterCB">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Global shutter"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enables global (synchronous) electronic shutter. Unchecked enables rolling shutter readout."/>
-                    <Property name="horizontalAlignment" type="int" value="11"/>
-                    <Property name="horizontalTextPosition" type="int" value="2"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="glShutterCBActionPerformed"/>
+                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="bandwidthTweakerStateChanged"/>
                   </Events>
                 </Component>
               </SubComponents>
             </Container>
-            <Container class="javax.swing.JPanel" name="imuPanel">
+            <Container class="javax.swing.JPanel" name="thrPanel">
               <Properties>
                 <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
-                  <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
-                    <TitledBorder title="IMU"/>
+                  <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
+                    <LineBorder/>
                   </Border>
                 </Property>
-                <Property name="toolTipText" type="java.lang.String" value="Controls for Inertial Measurement Unit (Gyro/Accelometer)"/>
+                <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[500, 202]"/>
+                </Property>
               </Properties>
 
               <Layout>
                 <DimensionLayout dim="0">
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="1" attributes="0">
-                          <EmptySpace max="32767" attributes="0"/>
-                          <Group type="103" groupAlignment="0" attributes="0">
-                              <Component id="imuVisibleCB" min="-2" max="-2" attributes="0"/>
-                              <Component id="imuEnabledCB" min="-2" max="-2" attributes="0"/>
-                          </Group>
                           <EmptySpace max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="1" attributes="0">
+                              <Group type="102" alignment="1" attributes="0">
+                                  <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                                  <Component id="jPanel4" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <Group type="102" alignment="0" attributes="0">
+                                  <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                                      <Component id="onOffBalanceTweaker" alignment="0" pref="472" max="32767" attributes="0"/>
+                                      <Component id="thresholdTweaker" alignment="0" max="32767" attributes="0"/>
+                                  </Group>
+                                  <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <EmptySpace min="-2" pref="231" max="-2" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
                 <DimensionLayout dim="1">
                   <Group type="103" groupAlignment="0" attributes="0">
                       <Group type="102" alignment="0" attributes="0">
-                          <Component id="imuEnabledCB" min="-2" pref="23" max="-2" attributes="0"/>
-                          <EmptySpace max="32767" attributes="0"/>
-                          <Component id="imuVisibleCB" min="-2" pref="23" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="thresholdTweaker" min="-2" pref="63" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Component id="onOffBalanceTweaker" min="-2" pref="63" max="-2" attributes="0"/>
+                          <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                          <Component id="jPanel4" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace pref="12" max="32767" attributes="0"/>
                       </Group>
                   </Group>
                 </DimensionLayout>
               </Layout>
               <SubComponents>
-                <Component class="javax.swing.JCheckBox" name="imuVisibleCB">
+                <Component class="net.sf.jaer.biasgen.PotTweaker" name="thresholdTweaker">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Display"/>
-                    <Property name="toolTipText" type="java.lang.String" value="show the IMU output if it is available"/>
-                    <Property name="horizontalTextPosition" type="int" value="10"/>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjusts DVS event temporal contrast thresholds magnitude &lt;br&gt;&#xa;by changing current ratios diffOn/diff and diffOff/diff. &#xa;&lt;p&gt;Limited to only adjusting fine current value; &lt;br&gt;&#xa;when this limit is reached, user must manually change the coarse current value."/>
+                    <Property name="lessDescription" type="java.lang.String" value="Lower &amp; More events"/>
+                    <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[80, 30]"/>
+                    </Property>
+                    <Property name="moreDescription" type="java.lang.String" value="Higher &amp;  Fewer events"/>
+                    <Property name="name" type="java.lang.String" value="Adjusts event threshold" noResource="true"/>
+                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[250, 47]"/>
+                    </Property>
+                    <Property name="tweakDescription" type="java.lang.String" value=""/>
                   </Properties>
                   <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="imuVisibleCBActionPerformed"/>
+                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="thresholdTweakerStateChanged"/>
                   </Events>
                 </Component>
-                <Component class="javax.swing.JCheckBox" name="imuEnabledCB">
+                <Component class="net.sf.jaer.biasgen.PotTweaker" name="onOffBalanceTweaker">
                   <Properties>
-                    <Property name="text" type="java.lang.String" value="Enable"/>
-                    <Property name="toolTipText" type="java.lang.String" value="show the IMU output if it is available"/>
-                    <Property name="horizontalTextPosition" type="int" value="10"/>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjusts DVS event temporal contrast thresholds balance&lt;br&gt;&#xa;by changing current ratios diffOn/diff and diffOff/diff. &#xa;&lt;p&gt;Limited to only adjusting fine current value; &lt;br&gt;&#xa;when this limit is reached, user must manually change the coarse current value."/>
+                    <Property name="lessDescription" type="java.lang.String" value="More Off events"/>
+                    <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[80, 30]"/>
+                    </Property>
+                    <Property name="moreDescription" type="java.lang.String" value="More On events"/>
+                    <Property name="name" type="java.lang.String" value="Adjusts balance bewteen On and Off events" noResource="true"/>
+                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[250, 47]"/>
+                    </Property>
+                    <Property name="tweakDescription" type="java.lang.String" value=""/>
                   </Properties>
                   <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="imuEnabledCBActionPerformed"/>
+                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="onOffBalanceTweakerStateChanged"/>
                   </Events>
                 </Component>
+                <Container class="javax.swing.JPanel" name="jPanel4">
+
+                  <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout">
+                    <Property name="alignment" type="int" value="0"/>
+                  </Layout>
+                  <SubComponents>
+                    <Component class="javax.swing.JLabel" name="jLabel9">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="Est. DVS thresholds:"/>
+                        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Displays computed values of DVS event temporal contrast thresholds&lt;br&gt; &#xa;based on paper&#xa;&lt;a href=&quot;https://ieeexplore.ieee.org/document/7962235&quot;&gt;Temperature and&#xa; Parasitic Photocurrent &lt;br&gt; Effects in Dynamic Vision Sensors, &lt;br&gt;Y Nozaki, T&#xa;Delbruck. &lt;br&gt;IEEE Trans. on Electron Devices, 2018&lt;/a&gt;"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JLabel" name="jLabel7">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="ON"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JTextField" name="onThrTF">
+                      <Properties>
+                        <Property name="editable" type="boolean" value="false"/>
+                        <Property name="columns" type="int" value="12"/>
+                        <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JLabel" name="jLabel8">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="OFF"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JTextField" name="offThrTF">
+                      <Properties>
+                        <Property name="editable" type="boolean" value="false"/>
+                        <Property name="columns" type="int" value="12"/>
+                        <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="offThrTFActionPerformed"/>
+                      </Events>
+                    </Component>
+                    <Component class="javax.swing.JLabel" name="jLabel10">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="ON+OFF"/>
+                        <Property name="toolTipText" type="java.lang.String" value="difference ON to OFF thresholds (nominal balance)"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JTextField" name="onMinusOffTF">
+                      <Properties>
+                        <Property name="editable" type="boolean" value="false"/>
+                        <Property name="columns" type="int" value="7"/>
+                      </Properties>
+                    </Component>
+                  </SubComponents>
+                </Container>
+              </SubComponents>
+            </Container>
+            <Container class="javax.swing.JPanel" name="refrPanel">
+              <Properties>
+                <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+                  <Border info="org.netbeans.modules.form.compat2.border.LineBorderInfo">
+                    <LineBorder/>
+                  </Border>
+                </Property>
+                <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                  <Dimension value="[500, 118]"/>
+                </Property>
+              </Properties>
+
+              <Layout>
+                <DimensionLayout dim="0">
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="102" alignment="0" attributes="0">
+                          <EmptySpace min="-2" pref="0" max="-2" attributes="0"/>
+                          <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                              <Component id="refrEstimatePanel" pref="481" max="32767" attributes="0"/>
+                              <Component id="maxFiringRateTweaker" max="32767" attributes="0"/>
+                          </Group>
+                          <EmptySpace pref="17" max="32767" attributes="0"/>
+                      </Group>
+                  </Group>
+                </DimensionLayout>
+                <DimensionLayout dim="1">
+                  <Group type="103" groupAlignment="0" attributes="0">
+                      <Group type="102" attributes="0">
+                          <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
+                          <Component id="maxFiringRateTweaker" min="-2" pref="69" max="-2" attributes="0"/>
+                          <EmptySpace max="-2" attributes="0"/>
+                          <Component id="refrEstimatePanel" min="-2" max="-2" attributes="0"/>
+                          <EmptySpace pref="9" max="32767" attributes="0"/>
+                      </Group>
+                  </Group>
+                </DimensionLayout>
+              </Layout>
+              <SubComponents>
+                <Component class="net.sf.jaer.biasgen.PotTweaker" name="maxFiringRateTweaker">
+                  <Properties>
+                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Adjusts the refractory period after each event by changing Refr bias.&#xa;&lt;p&gt;This current sets the rate at which the reset switch voltage is recharged.&#xa;&lt;p&gt;Limited to changing fine current value. For more control, adjust these currents directly."/>
+                    <Property name="lessDescription" type="java.lang.String" value="Slower"/>
+                    <Property name="minimumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[80, 30]"/>
+                    </Property>
+                    <Property name="moreDescription" type="java.lang.String" value="Faster"/>
+                    <Property name="name" type="java.lang.String" value="Adjusts maximum pixel firing rate (1/refactory period)" noResource="true"/>
+                    <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+                      <Dimension value="[250, 47]"/>
+                    </Property>
+                    <Property name="tweakDescription" type="java.lang.String" value=""/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="maxFiringRateTweakerStateChanged"/>
+                  </Events>
+                </Component>
+                <Container class="javax.swing.JPanel" name="refrEstimatePanel">
+
+                  <Layout>
+                    <DimensionLayout dim="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <EmptySpace max="32767" attributes="0"/>
+                              <Component id="refrPerLabel" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="5" max="-2" attributes="0"/>
+                              <Component id="refrPerTF" min="-2" pref="348" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                    </DimensionLayout>
+                    <DimensionLayout dim="1">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <EmptySpace min="8" pref="8" max="-2" attributes="0"/>
+                              <Component id="refrPerLabel" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="102" attributes="0">
+                              <EmptySpace min="5" pref="5" max="-2" attributes="0"/>
+                              <Component id="refrPerTF" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                    </DimensionLayout>
+                  </Layout>
+                  <SubComponents>
+                    <Component class="javax.swing.JLabel" name="refrPerLabel">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="Estimated refractory period"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JTextField" name="refrPerTF">
+                      <Properties>
+                        <Property name="editable" type="boolean" value="false"/>
+                        <Property name="columns" type="int" value="12"/>
+                        <Property name="toolTipText" type="java.lang.String" value="Estimated DVS  temporal contrast threshold  (log base e units)"/>
+                      </Properties>
+                      <Events>
+                        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="refrPerTFActionPerformed"/>
+                      </Events>
+                    </Component>
+                  </SubComponents>
+                </Container>
               </SubComponents>
             </Container>
           </SubComponents>
         </Container>
+        <Container class="javax.swing.JPanel" name="apsPanel">
+          <Properties>
+            <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+              <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
+                <TitledBorder title="Frames">
+                  <Font PropertyName="font" name="Tahoma" size="11" style="1"/>
+                </TitledBorder>
+              </Border>
+            </Property>
+            <Property name="font" type="java.awt.Font" editor="org.netbeans.beaninfo.editors.FontEditor">
+              <Font name="Tahoma" size="11" style="1"/>
+            </Property>
+          </Properties>
+
+          <Layout>
+            <DimensionLayout dim="0">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="edSp" max="32767" attributes="0"/>
+                                  </Group>
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <EmptySpace min="-2" pref="13" max="-2" attributes="0"/>
+                                      <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="fdSp" min="-2" pref="74" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="jLabel4" min="-2" max="-2" attributes="0"/>
+                                  <Component id="jLabel5" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                  <Component id="fpsTF" pref="71" max="32767" attributes="0"/>
+                                  <Component id="exposMsTF" max="32767" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <Group type="102" alignment="0" attributes="0">
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="captureFramesCheckBox" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="-2" attributes="0"/>
+                              <Component id="displayFramesCheckBox" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                              <Component id="snapshotButton" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <EmptySpace min="-2" pref="4" max="-2" attributes="0"/>
+                                      <Component id="jLabel6" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="contrastSp" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="autoContrastCB" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                                  <Group type="102" alignment="0" attributes="0">
+                                      <Component id="jLabel3" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="autoshotThresholdSp" min="-2" pref="72" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="autoExpCB" min="-2" max="-2" attributes="0"/>
+                                  <Group type="102" attributes="0">
+                                      <Component id="glShutterCB" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                                      <Component id="histCB" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
+                          </Group>
+                      </Group>
+                      <EmptySpace max="32767" attributes="0"/>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+            <DimensionLayout dim="1">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <EmptySpace min="-2" pref="4" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="3" attributes="0">
+                                  <Component id="captureFramesCheckBox" alignment="3" min="-2" max="-2" attributes="0"/>
+                                  <Component id="displayFramesCheckBox" alignment="3" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <Component id="snapshotButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="fdSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel4" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="fpsTF" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="edSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="jLabel5" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="exposMsTF" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="jLabel3" alignment="3" min="-2" pref="14" max="-2" attributes="0"/>
+                          <Component id="autoshotThresholdSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="autoExpCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="jLabel6" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="contrastSp" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="autoContrastCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="histCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="glShutterCB" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+          </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JLabel" name="jLabel1">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Target Frame rate (Hz)"/>
+                <Property name="toolTipText" type="java.lang.String" value="Set the target frame rate; actual rate will be displayed on right and depends on quantization and possible other delays"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="fdSp">
+              <Properties>
+                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+                  <SpinnerModel initial="0.0" minimum="0.0" numberType="java.lang.Float" stepSize="1.0" type="number"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="Delay of starting new frame capture after last frame"/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="fdSpStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel2">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Exposure delay (ms)"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="edSp">
+              <Properties>
+                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+                  <SpinnerModel initial="0.0" numberType="java.lang.Float" stepSize="1.0" type="number"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="The exposure delay; affects actual exposure time"/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="edSpStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="autoExpCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Auto exposure"/>
+                <Property name="toolTipText" type="java.lang.String" value="Automatically set pixel exposure delay. See AutoExposureController panel for full parameter set."/>
+                <Property name="horizontalAlignment" type="int" value="11"/>
+                <Property name="horizontalTextPosition" type="int" value="2"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="autoExpCBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel3">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Auto-Shot kevents/frame"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel4">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Actual frame rate (Hz)"/>
+                <Property name="toolTipText" type="java.lang.String" value="The actual frame rate measured from camera event timing"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel5">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Expos. (ms)"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JTextField" name="fpsTF">
+              <Properties>
+                <Property name="editable" type="boolean" value="false"/>
+                <Property name="toolTipText" type="java.lang.String" value="Measured frame rate in Hz"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JTextField" name="exposMsTF">
+              <Properties>
+                <Property name="editable" type="boolean" value="false"/>
+                <Property name="toolTipText" type="java.lang.String" value="Measured exposure time in ms"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="exposMsTFActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JLabel" name="jLabel6">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Contrast"/>
+              </Properties>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="autoshotThresholdSp">
+              <Properties>
+                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+                  <SpinnerModel initial="0" minimum="0" numberType="java.lang.Integer" stepSize="1" type="number"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Set non-zero to automatically trigger APS frame captures every this many thousand DVS events. &lt;br&gt;For better control of automatic frame capture,&lt;br&gt; including the use of pre-filtering of the DVS events, use the filter ApsDvsAutoShooter."/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="autoshotThresholdSpStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JSpinner" name="contrastSp">
+              <Properties>
+                <Property name="model" type="javax.swing.SpinnerModel" editor="org.netbeans.modules.form.editors2.SpinnerModelEditor">
+                  <SpinnerModel initial="1.0" maximum="5.0" minimum="0.2" numberType="java.lang.Float" stepSize="0.05" type="number"/>
+                </Property>
+                <Property name="toolTipText" type="java.lang.String" value="Sets rendering contrast gain (1 is default). See Video Control panel for full set of controls."/>
+              </Properties>
+              <Events>
+                <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="contrastSpStateChanged"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="autoContrastCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Auto contrast"/>
+                <Property name="toolTipText" type="java.lang.String" value="Uses DavisVideoContrastController to automatically set rendering contrast so that brightness (offset) and contrast (gain) scale min and max values to 0 and 1 respectively"/>
+                <Property name="horizontalAlignment" type="int" value="11"/>
+                <Property name="horizontalTextPosition" type="int" value="2"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="autoContrastCBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="displayFramesCheckBox">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Display Frames"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables display of APS imager output"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="displayFramesCheckBoxActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="histCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="histogram"/>
+                <Property name="toolTipText" type="java.lang.String" value="Display hisogram of captured pixel values from ADC (reset - signal values)"/>
+                <Property name="horizontalAlignment" type="int" value="11"/>
+                <Property name="horizontalTextPosition" type="int" value="2"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="histCBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JButton" name="snapshotButton">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Take Snapshot"/>
+                <Property name="toolTipText" type="java.lang.String" value="Triggers a single frame capture to onscreen buffer"/>
+              </Properties>
+              <AccessibilityProperties>
+                <Property name="AccessibleContext.accessibleName" type="java.lang.String" value="snapshotButton"/>
+              </AccessibilityProperties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="snapshotButtonActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="captureFramesCheckBox">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Capture Frames"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables capture of APS imager output (turns on ADC state machine)"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureFramesCheckBoxActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="glShutterCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Global shutter"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables global (synchronous) electronic shutter. Unchecked enables rolling shutter readout."/>
+                <Property name="horizontalAlignment" type="int" value="11"/>
+                <Property name="horizontalTextPosition" type="int" value="2"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="glShutterCBActionPerformed"/>
+              </Events>
+            </Component>
+          </SubComponents>
+        </Container>
+        <Container class="javax.swing.JPanel" name="imuPanel">
+          <Properties>
+            <Property name="border" type="javax.swing.border.Border" editor="org.netbeans.modules.form.editors2.BorderEditor">
+              <Border info="org.netbeans.modules.form.compat2.border.TitledBorderInfo">
+                <TitledBorder title="IMU"/>
+              </Border>
+            </Property>
+            <Property name="toolTipText" type="java.lang.String" value="Controls for Inertial Measurement Unit (Gyro/Accelometer)"/>
+          </Properties>
+
+          <Layout>
+            <DimensionLayout dim="0">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="1" attributes="0">
+                      <EmptySpace max="32767" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="imuVisibleCB" min="-2" max="-2" attributes="0"/>
+                          <Component id="imuEnabledCB" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace max="-2" attributes="0"/>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+            <DimensionLayout dim="1">
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <Component id="imuEnabledCB" min="-2" pref="23" max="-2" attributes="0"/>
+                      <EmptySpace max="32767" attributes="0"/>
+                      <Component id="imuVisibleCB" min="-2" pref="23" max="-2" attributes="0"/>
+                  </Group>
+              </Group>
+            </DimensionLayout>
+          </Layout>
+          <SubComponents>
+            <Component class="javax.swing.JCheckBox" name="imuVisibleCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Display"/>
+                <Property name="toolTipText" type="java.lang.String" value="show the IMU output if it is available"/>
+                <Property name="horizontalTextPosition" type="int" value="10"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="imuVisibleCBActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JCheckBox" name="imuEnabledCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Enable"/>
+                <Property name="toolTipText" type="java.lang.String" value="show the IMU output if it is available"/>
+                <Property name="horizontalTextPosition" type="int" value="10"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="imuEnabledCBActionPerformed"/>
+              </Events>
+            </Component>
+          </SubComponents>
+        </Container>
+        <Component class="javax.swing.JToggleButton" name="toggleDualViewJB">
+          <Properties>
+            <Property name="mnemonic" type="int" value="68"/>
+            <Property name="text" type="java.lang.String" value="Dual view"/>
+            <Property name="toolTipText" type="java.lang.String" value="Toggles dual view of user-friendly and low level bias currents (to learn effects)"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="toggleDualViewJBActionPerformed"/>
+          </Events>
+        </Component>
       </SubComponents>
     </Container>
   </SubComponents>

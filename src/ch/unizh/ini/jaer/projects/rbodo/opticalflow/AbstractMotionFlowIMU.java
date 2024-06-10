@@ -243,6 +243,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected static String imuTT = "IMU";
     protected static String smoothingTT = "Smoothing";
     protected static String motionFieldTT = "Motion field";
+    protected static String miscTT = "Misc.";
 
     protected SingleCameraCalibration cameraCalibration = null;
     int uidx;
@@ -266,6 +267,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     // for drawing GT flow at a point
     private volatile MotionOrientationEventInterface mouseVectorEvent = new ApsDvsMotionOrientationEvent();
     private volatile String mouseVectorString = null;
+    
+    private boolean warnNonmonotonicTimestamps=true;
 
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
@@ -350,6 +353,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(motionFieldTT, "displayMotionFieldUsingColor", "Shows motion field flow vectors in color; otherwise shown as monochrome color arrows");
         setPropertyTooltip(motionFieldTT, "motionFieldDiffusionEnabled", "Enables an event-driven diffusive averaging of motion field values");
         setPropertyTooltip(motionFieldTT, "decayTowardsZeroPeridiclly", "Decays motion field values periodically (with update interval of the time constant) towards zero velocity, i.e. enforce zero flow prior");
+        
+        setPropertyTooltip(miscTT, "warnNonmonotonicTimestamps", "Warn about nonmonotonic or other suspicious event timestamps");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
             log.log(Level.WARNING, "loggingFolder {0} doesn't exist or isn't a directory, defaulting to {1}", new Object[]{lf, lf});
@@ -1501,7 +1506,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         prevTs = ts;
         lastTs = lastTimesMap[e.x][e.y][e.type];
         if (ts < lastTs) {
-            log.warning(String.format("For event %s,%nnonmontoic timestamp ts=%,d < lastTs=%,d", e.toString(), ts, lastTs));
+            int dtMap=ts-lastTs;
+            log.warning(String.format("Nonmonotonic timestamp in pixel lastTimesMap:%n  For event %s,%n   nonmontoic timestamp ts=%,d < lastTs=%,d (dt=%,dus)", e.toString(), ts, lastTs,dtMap));
             return false;
         }
         lastTimesMap[x][y][type] = ts;
@@ -1521,7 +1527,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     protected synchronized boolean extractEventInfo(Object ein) {
         e = (PolarityEvent) ein;
 
-        if (isInvalidTimestamp(e)) {
+        if (warnNonmonotonicTimestamps && isInvalidTimestamp(e)) {
             return false;
         }
         ts = e.timestamp - timestampGapToBeRemoved;
@@ -2944,6 +2950,20 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     public void setDisplayGlobalMotionAngleHistogram(boolean displayGlobalMotionAngleHistogram) {
         this.displayGlobalMotionAngleHistogram = displayGlobalMotionAngleHistogram;
         putBoolean("displayGlobalMotionAngleHistogram", displayGlobalMotionAngleHistogram);
+    }
+
+    /**
+     * @return the warnNonmonotonicTimestamps
+     */
+    public boolean isWarnNonmonotonicTimestamps() {
+        return warnNonmonotonicTimestamps;
+    }
+
+    /**
+     * @param warnNonmonotonicTimestamps the warnNonmonotonicTimestamps to set
+     */
+    public void setWarnNonmonotonicTimestamps(boolean warnNonmonotonicTimestamps) {
+        this.warnNonmonotonicTimestamps = warnNonmonotonicTimestamps;
     }
 
 }

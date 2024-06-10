@@ -79,13 +79,13 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
         numInputTypes = 2;
         try {
             derivator = DerivativeEstimator.valueOf(getString("derivator", "CentralFiniteDifferenceFirstOrder"));
+            log.info(String.format("Set DerivativeEstimator to %s",derivator.toString()));
         } catch (IllegalArgumentException ex) {
             log.log(Level.WARNING, "bad preference {0} for preferred DerivativeEstimator, choosing default CentralFiniteDifferenceFirstOrder",
                     getString("derivator", "CentralFiniteDifferenceFirstOrder"));
             derivator = DerivativeEstimator.CentralFiniteDifferenceFirstOrder;
             putString("derivator", "CentralFiniteDifferenceFirstOrder");
         }
-        setDerivativeEstimator(derivator);
         setPropertyTooltip("Lucas Kanade", "thr", "threshold to discard events with too small intensity gradient"); // TODO describe typical value of thr and what exactly it tests
         setPropertyTooltip("Lucas Kanade", "secondTempDerivative", "Use second temporal derivative"); // TODO what does this parameter do exactly, and is it described in paper? If not remove it.
         setPropertyTooltip("Lucas Kanade", "drawCollectedEventsHistogramEnabled", "Draws the collected 2D event histogram on output of sensor to allow visualizing the data");
@@ -95,6 +95,13 @@ public class LucasKanadeFlow extends AbstractMotionFlow {
                 + "<li>CentralFiniteDifferenceSecondOrder: 2nd order centered derivative estimate"
                 + "<li>SavitzkyGolayFilter: Smoothed derivative estimate that estimates derivative by smoothing it in perpindicular direction</ul>");
     }
+
+    @Override
+    public void initFilter() {
+        super.initFilter(); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/OverriddenMethodBody
+        setDerivativeEstimator(derivator);
+    }
+    
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
