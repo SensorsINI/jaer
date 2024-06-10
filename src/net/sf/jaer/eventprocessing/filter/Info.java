@@ -35,7 +35,7 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
-import eu.seebetter.ini.chips.davis.DavisBaseCamera;
+import java.text.Format;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -65,7 +65,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     private AEFileInputStreamInterface aeFileInputStream = null; // current recorded file input stream
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
-    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
+//    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
+    private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss.SSS"); // tobi changed to show ms, not standard 10ms
     private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
     private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
     private float analogDigitalClockScale = getFloat("analogDigitalClockScale", 1);
