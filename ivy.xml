@@ -30,41 +30,11 @@ MA 02110-1301  USA
         <!--see https://jogamp.org/wiki/index.php/Maven-->
         <!--see http://search.maven.org to find libraries -->
         <!--following does not work, since the latest jogl doesn't have com.jogamp.opengl--> 
-        <!--https://repo1.maven.org/maven2/org/jogamp/gluegen/gluegen-rt/2.5.0/-->
-        <dependency org="org.jogamp.gluegen" name="gluegen-rt" rev="2.5.0" />
-        <dependency org="org.jogamp.gluegen" name="gluegen-rt-main" rev="2.5.0" />
-<!--        <dependency org="org.jogamp.gluegen" name="gluegen-rt" rev="2.5.0" >
-            include main jar
-            <artifact name="gluegen-rt" type="jar" ext="jar"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-linux-amd64"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-linux-i586"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-macosx-universal"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-solaris-amd64"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-solaris-i586"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-windows-amd64"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-windows-i586"/>
-            <artifact name="gluegen-rt" type="jar" ext="jar" m:classifier="natives-windows-amd64"/>
-        </dependency>-->
-        <!--https://repo1.maven.org/maven2/org/jogamp/jogl/jogl-all/2.5.0/-->
-        <!--<dependency org="org.jogamp.jogl" name="jogl-all" rev="2.5.0" />--> 
-        <dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.5.0" /> 
-        <!--<dependency org="org.jogamp.jogl" name="nativewindow" rev="2.5.0" />-->
-        <!--<dependency org="org.jogamp.jogl" name="newt" rev="2.5.0" />-->
-        <!--<dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.5.0" />--> 
-<!--        <dependency org="org.jogamp.jogl" name="jogl-all" rev="2.5.0" > 
-            include main jar
-            <artifact name="jogl-all" type="jar" ext="jar"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-linux-amd64"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-linux-i586"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-macosx-universal"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-solaris-amd64"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-solaris-i586"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-windows-amd64"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-windows-i586"/>
-            <artifact name="jogl-all" type="jar" ext="jar" m:classifier="natives-windows-amd64"/>
-        </dependency>-->
+        <!--<dependency org="org.jogamp.gluegen" name="gluegen-rt" rev="2.5.0" />-->
+        <!--        <dependency org="org.jogamp.gluegen" name="gluegen-rt-main" rev="2.5.0" />
+
+        <dependency org="org.jogamp.jogl" name="jogl-all-main" rev="2.5.0" /> -->
  
-        <!--        <dependency org="javax.xml.bind" name="jaxb-api" rev="2.3.1" />   need for java 14.0-->
         <dependency org="org.swinglabs" name="swing-layout" rev="1.0.3" />
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
         
@@ -78,9 +48,12 @@ MA 02110-1301  USA
         <dependency org="org.apache.directory.studio" name="org.apache.commons.io" rev="2.4" />
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-text -->
         <dependency org="org.apache.commons" name="commons-text" rev="1.8"/>
-
+        <!--javafx was moved out from java 11-->
+        <dependency org="org.openjfx" name="javafx" rev="17.0.9"/>
+            
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
         
+        <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
         
         <!--jblas is a matrix library for Java which uses existing high performance BLAS and LAPACK libraries like ATLAS -->
