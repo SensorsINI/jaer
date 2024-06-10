@@ -535,7 +535,8 @@ public class DavisRenderer extends AEChipRenderer {
                 map[index + 2] = c[2]; // if(f[2]>1f) f[2]=1f;
             }
 
-            final float alpha = map[index + 3] + (1.0f / (isFadingEnabled() ? 1 : colorScale));
+//            final float alpha = map[index + 3] + (1.0f / (isFadingEnabled() ? 1 : colorScale));
+            final float alpha = map[index + 3] + (1.0f / (colorScale));
             map[index + 3] += normalizeEvent(alpha);
         } else {
             switch (colorMode) {
