@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="10.0.6" transformSequenceNumber="10">
-  <directoryPresets config="./lib/libtensorflow_jni_gpu-1.15.0.jar" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="G:/Downloads/jaerinstallers" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - UZH-ETH Zurich" publisherWeb="https://jaerproject.org" version="2.0.3" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <directoryPresets config="C:/Users/tobid/Downloads/jaerinstallers" />
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="C:/Users/tobid/Downloads/jaerinstallers" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - UZH-ETH Zurich" publisherWeb="https://jaerproject.org" version="2.0.3" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./installers/install4j-custom-resources.utf8" />
     </languages>
@@ -16,7 +16,7 @@
       <mountPoint id="24" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file="." overwriteMode="2" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form">
+      <dirEntry mountPoint="24" file="." overwriteMode="2" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form,jaer-clone*">
         <exclude>
           <entry location=".classpath" />
           <entry location=".git" />
@@ -47,14 +47,6 @@
         </exclude>
       </dirEntry>
     </entries>
-    <components>
-      <component name="Base" id="45">
-        <description>The  components needed to run jAER and interface to sensors.</description>
-        <include all="true">
-          <entry defaultFileset="true" />
-        </include>
-      </component>
-    </components>
   </files>
   <launchers>
     <launcher name="jaer" id="25">
@@ -160,24 +152,6 @@ return console.askOkCancel(message, true);
                   <propertyName>allowSpacesOnUnix</propertyName>
                   <propertyName>validationScript</propertyName>
                   <propertyName>standardValidation</propertyName>
-                </externalParametrizationPropertyNames>
-              </formComponent>
-            </formComponents>
-          </screen>
-          <screen id="12" beanClass="com.install4j.runtime.beans.screens.ComponentsScreen" rollbackBarrierExitCode="0">
-            <formComponents>
-              <formComponent id="13" beanClass="com.install4j.runtime.beans.formcomponents.MultilineLabelComponent">
-                <serializedBean>
-                  <property name="labelText" type="string">${i18n:SelectComponentsLabel2}</property>
-                </serializedBean>
-                <visibilityScript>!context.isConsole()</visibilityScript>
-              </formComponent>
-              <formComponent id="14" beanClass="com.install4j.runtime.beans.formcomponents.ComponentSelectorComponent" useExternalParametrization="true" externalParametrizationName="Installation Components" externalParametrizationMode="include">
-                <serializedBean>
-                  <property name="fillVertical" type="boolean" value="true" />
-                </serializedBean>
-                <externalParametrizationPropertyNames>
-                  <propertyName>selectionChangedScript</propertyName>
                 </externalParametrizationPropertyNames>
               </formComponent>
             </formComponents>
@@ -538,8 +512,6 @@ return console.askYesNo(message, true);
     </windows>
   </mediaSets>
   <buildIds>
-    <mediaSet refId="38" />
-    <mediaSet refId="37" />
     <mediaSet refId="26" />
   </buildIds>
 </install4j>
