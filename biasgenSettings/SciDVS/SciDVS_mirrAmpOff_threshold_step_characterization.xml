@@ -82,7 +82,11 @@
                 <entry key="SciDVS.AddressedIPotCF.DiffBn.BitValueFine" value="144"/>
 =======
                 <entry key="SciDVS.AddressedIPotCF.DiffBn.BitValueFine" value="127"/>
+<<<<<<< HEAD
 >>>>>>> 14fbfc98e (added scidvs characterizationa and space observation biases)
+=======
+>>>>>>> a9b6234d5afdbf1a3dc0cc9ae5c90b5da569bfb5
+>>>>>>> 3a5e586c58eef38de3e4fe1d76b2a9c1ba5a290f
                 <entry key="SciDVS.AddressedIPotCF.DiffBn.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.DiffBn.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.DiffBn.Sex" value="N"/>
@@ -117,7 +121,11 @@
 =======
                 <entry key="SciDVS.AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
                 <entry key="SciDVS.AddressedIPotCF.OffBn.BitValueFine" value="28"/>
+<<<<<<< HEAD
 >>>>>>> 14fbfc98e (added scidvs characterizationa and space observation biases)
+=======
+>>>>>>> a9b6234d5afdbf1a3dc0cc9ae5c90b5da569bfb5
+>>>>>>> 3a5e586c58eef38de3e4fe1d76b2a9c1ba5a290f
                 <entry key="SciDVS.AddressedIPotCF.OffBn.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.OffBn.Sex" value="N"/>
@@ -127,7 +135,11 @@
                 <entry key="SciDVS.AddressedIPotCF.OnBn.BitValueFine" value="78"/>
 =======
                 <entry key="SciDVS.AddressedIPotCF.OnBn.BitValueFine" value="58"/>
+<<<<<<< HEAD
 >>>>>>> 14fbfc98e (added scidvs characterizationa and space observation biases)
+=======
+>>>>>>> a9b6234d5afdbf1a3dc0cc9ae5c90b5da569bfb5
+>>>>>>> 3a5e586c58eef38de3e4fe1d76b2a9c1ba5a290f
                 <entry key="SciDVS.AddressedIPotCF.OnBn.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.OnBn.Sex" value="N"/>
