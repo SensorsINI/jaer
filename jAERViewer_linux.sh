@@ -13,7 +13,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 java \
 -classpath "$DIR/dist/jAER.jar:$DIR/jars/*:$DIR/lib/*" \
 -splash:images/SplashScreen.png \
--Dsun.java2d.uiScale=2.0 \
+-Dsun.java2d.uiScale=1.0 \
 -Djogl.disable.openglcore -Djava.util.logging.config.file="$DIR/conf/Logging.properties" -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -D-Jsun.java2d.dpiaware=true \
 --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED \
 net.sf.jaer.JAERViewer "$@"
