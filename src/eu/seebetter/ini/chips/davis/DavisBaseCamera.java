@@ -34,6 +34,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import java.util.ArrayList;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -47,6 +48,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
@@ -121,6 +123,17 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         setEventExtractor(new DavisEventExtractor(this));
 
         davisDisplayMethod = new DavisDisplayMethod(this);
+        // find ChipRendererDisplayMethod and remove it
+        ArrayList<DisplayMethod> methods = getCanvas().getDisplayMethods();
+        DisplayMethod toRemove = null;
+        for (DisplayMethod m : methods) {
+            if (m instanceof ChipRendererDisplayMethod) {
+                toRemove = m;
+            }
+        }
+        if (toRemove != null) {
+            getCanvas().removeDisplayMethod(toRemove);
+        }
         getCanvas().addDisplayMethod(davisDisplayMethod);
         getCanvas().setDisplayMethod(davisDisplayMethod);
 
@@ -1448,7 +1461,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             boolean old = getDavisConfig().isDisplayFrames();
             getDavisConfig().setCaptureFramesEnabled(!old);
             getDavisConfig().setDisplayFrames(!old);
-            ((DavisRenderer)getRenderer()).setDisplayFrames(!old);
+            ((DavisRenderer) getRenderer()).setDisplayFrames(!old);
             log.info("capturing and displaying frames = " + getDavisConfig().isCaptureFramesEnabled());
             davisDisplayMethod.showActionText("frames=" + getDavisConfig().isCaptureFramesEnabled());
             putValue(Action.SELECTED_KEY, true);
