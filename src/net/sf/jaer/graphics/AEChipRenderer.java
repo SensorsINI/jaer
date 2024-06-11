@@ -1196,7 +1196,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         @Override
         public void actionPerformed(ActionEvent e) {
             int modifiers = e.getModifiers();
-            if (isFadingEnabled() || isSlidingWindowEnabled()) {
+            if (isFadingEnabled() || isSlidingWindowEnabled() || chip.getCanvas().getDisplayMethod() instanceof SpaceTimeRollingEventDisplayMethod) {
                 if ((modifiers & ActionEvent.ALT_MASK) == 0) {
                     setFadingOrSlidingFrames(getFadingOrSlidingFrames() + 1);
                 } else {
@@ -1231,7 +1231,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         @Override
         public void actionPerformed(ActionEvent e) {
             int modifiers = e.getModifiers();
-            if (isFadingEnabled() || isSlidingWindowEnabled()) {
+            if (isFadingEnabled() || isSlidingWindowEnabled()  || chip.getCanvas().getDisplayMethod() instanceof SpaceTimeRollingEventDisplayMethod ) {
                 if ((modifiers & ActionEvent.ALT_MASK) == 0) {
                     setFadingOrSlidingFrames(getFadingOrSlidingFrames() - 1);
                 } else {
