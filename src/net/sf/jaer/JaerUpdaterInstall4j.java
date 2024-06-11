@@ -19,7 +19,6 @@
 package net.sf.jaer;
 
 import com.install4j.api.context.UserCanceledException;
-import java.awt.Component;
 import java.io.IOException;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
@@ -27,6 +26,7 @@ import javax.swing.JOptionPane;
 import com.install4j.api.update.*;
 import com.install4j.api.launcher.Variables;
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.util.MessageWithLink;
 
 /**
@@ -38,7 +38,7 @@ import net.sf.jaer.util.MessageWithLink;
  */
 public class JaerUpdaterInstall4j {
 
-    public static final boolean DEBUG = false; // TODO remember to revert false for production version,  true to clone here to tmp folders that do not overwrite our own .git
+    public static final boolean DEBUG = false; // TODO Set true to always run update check; remember to revert false for production version\    private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final Preferences prefs = Preferences.userNodeForPackage(JaerUpdaterInstall4j.class);
     public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
@@ -46,8 +46,9 @@ public class JaerUpdaterInstall4j {
     public enum CheckFreq {
         Daily("days"), Weekly("weeks"), Monthly("months"), Never("never");
         public final String units;
-        CheckFreq(String units){
-            this.units=units;
+
+        CheckFreq(String units) {
+            this.units = units;
         }
     }
     public final String LAST_CHECK_TIME_KEY = "lastInstall4jCheckTime", CHECK_FREQ_KEY = "install4jCheckFreqKey";
@@ -67,36 +68,33 @@ public class JaerUpdaterInstall4j {
         int years = weeks / 52;
         log.info(String.format("%,d y, %,d m, %,d w, %,d d since last update check. Check frequency is %s", years, months, weeks, days, checkFreq.toString()));
         switch (checkFreq) {
-            case Daily:
+            case Daily ->
                 updateCheck(parent, days, checkFreq);
-                break;
-            case Weekly:
+            case Weekly ->
                 updateCheck(parent, weeks, checkFreq);
-                break;
-            case Monthly:
+            case Monthly ->
                 updateCheck(parent, months, checkFreq);
-                break;
         }
 
     }
 
     public CheckFreq getPreferredCheckFrequency() {
-        CheckFreq checkFreq=CheckFreq.Monthly;
-        try{
+        CheckFreq checkFreq = CheckFreq.Monthly;
+        try {
             checkFreq = CheckFreq.valueOf(prefs.get(CHECK_FREQ_KEY, CheckFreq.Monthly.toString()));
-        }catch(Exception e){
+        } catch (Exception e) {
             log.warning(e.toString());
         }
         return checkFreq;
     }
-    
-    public void storePreferredCheckFrequency(CheckFreq freq){
+
+    public void storePreferredCheckFrequency(CheckFreq freq) {
         prefs.put(CHECK_FREQ_KEY, freq.toString());
     }
-    
-    private void updateCheck(JFrame parent, int val, CheckFreq freq){
-        if(val<=0){
-            log.info(String.format("No update check needed (%d %s since last %s check)",val,freq.units,freq.toString()));
+
+    private void updateCheck(JFrame parent, int val, CheckFreq freq) {
+        if (!DEBUG && val <= 0) {
+            log.info(String.format("No update check needed (%d %s since last %s check)", val, freq.units, freq.toString()));
             return;
         }
         log.info(String.format("It has been %d %s since last check for %s check; checking for update", val, freq.units, freq.toString()));
@@ -106,12 +104,9 @@ public class JaerUpdaterInstall4j {
     /**
      * Check for possible release update
      *
-     * @param parent where to center result dialog
-     * @param interactive true to report that we cannot update because we
-     * are not running from installed release, false to not report this (for
-     * automatic checks)
      * @param parent the result dialog will be centered over this frame
-     * @param interactive true to show dialog on results, false for automatic checks where dialog only shows if there is one available
+     * @param interactive true to show dialog on results, false for automatic
+     * checks where dialog only shows if there is one available
      */
     public void checkForInstall4jReleaseUpdate(JFrame parent, boolean interactive) {
         // check if rujning from installed version of jaer (fails if running from git compiled jaer)
@@ -119,40 +114,79 @@ public class JaerUpdaterInstall4j {
         try {
             currentVersion = Variables.getCompilerVariable("sys.version");
         } catch (IOException e) {
-            // TODO not running in installation
             if (interactive) {
                 JOptionPane.showMessageDialog(parent, "<html> Could not determine current version. <p>To check for udpates, you need to install jAER with an install4j installer. <p>(Probably are you running from git compiled development environment): <p>" + e.toString(), "Version check error", JOptionPane.ERROR_MESSAGE);
             } else {
-                log.info(String.format("Could not determine current version of install4j release installation: %s; probably you are a developer who is running from git checkout",e.toString()));
+                log.info(String.format("Could not determine current version of install4j release installation: %s.\nProbably you are a developer who is running from git checkout", e.toString()));
             }
-            storeUpdateCheckTime();
-            return;
+            if (!DEBUG) {
+                return;
+            }
         }
 
-        String updateUrl = INSTALL4J_UPDATES_URL;
-        try {
-            UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(updateUrl, ApplicationDisplayMode.GUI);
-            if (updateDescriptor.getPossibleUpdateEntry() != null) {
-                // TODO an update is available, execute update downloader
-                UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
-                String updateVersion = updateDescriptorEntry.getNewVersion();
-                MessageWithLink msg= new MessageWithLink("<html>Current version: " + currentVersion + "<p> Update " + updateVersion
-                                + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
-                JaerUpdaterInstall4jDialog d=new JaerUpdaterInstall4jDialog(parent, this,msg);
-                d.setVisible(true);
-//                JOptionPane.showMessageDialog(parent,
-//                       msg,
-//                        "Update available", JOptionPane.INFORMATION_MESSAGE);
-//                JOptionPane.showMessageDialog(parent, "<html>Update " + updateVersion + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>", "Releases update check", JOptionPane.INFORMATION_MESSAGE);
-            } else if(interactive) {
-                MessageWithLink msg=new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion + "<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
-                JaerUpdaterInstall4jDialog d=new JaerUpdaterInstall4jDialog(parent, this,msg);
-                d.setVisible(true);
-//                JOptionPane.showMessageDialog(parent, msg, "No update available", JOptionPane.INFORMATION_MESSAGE);
+        if (interactive) { // interactive check runs in the Swing thread where the user has launched it
+            try {
+                UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(INSTALL4J_UPDATES_URL, ApplicationDisplayMode.GUI);
+                if (updateDescriptor.getPossibleUpdateEntry() != null) {
+                    // TODO an update is available, execute update downloader instead of just reporting update is available
+                    UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
+                    String updateVersion = updateDescriptorEntry.getNewVersion();
+                    MessageWithLink msg = new MessageWithLink("<html>Current version: " + currentVersion + "<p> Update " + updateVersion
+                            + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
+                    JaerUpdaterInstall4jDialog d = new JaerUpdaterInstall4jDialog(parent, this, msg);
+                    d.setVisible(true);
+                } else {
+                    MessageWithLink msg = new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion + "<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
+                    JaerUpdaterInstall4jDialog d = new JaerUpdaterInstall4jDialog(parent, this, msg);
+                    d.setVisible(true);
+                }
+                storeUpdateCheckTime();
+            } catch (IOException | UserCanceledException e) {
+                JOptionPane.showMessageDialog(parent, "Could not check for release update: " + e.toString(), "Update check error", JOptionPane.ERROR_MESSAGE);
             }
-            storeUpdateCheckTime();
-        } catch (IOException | UserCanceledException e) {
-            JOptionPane.showMessageDialog(parent, "Could not check for release update: " + e.toString(), "Update check error", JOptionPane.ERROR_MESSAGE);
+        } else { // noninteractive (automatic) checks run in separate thread and show result in Swing thread when done
+            log.info("starting background thread to check for updates");
+            BackgroundUpdateChecker updateChecker = new BackgroundUpdateChecker(parent, currentVersion, this);
+            Thread t = new Thread(updateChecker);
+            t.start();
+        }
+    }
+
+    private class BackgroundUpdateChecker implements Runnable {
+
+        final JFrame parent;
+        final String currentVersion;
+        final JaerUpdaterInstall4j updater;
+
+        public BackgroundUpdateChecker(JFrame parent, String currentVersion, JaerUpdaterInstall4j updater) {
+            this.parent = parent;
+            this.currentVersion = currentVersion;
+            this.updater = updater;
+        }
+
+        @Override
+        public void run() {
+            MessageWithLink msg = null;
+            try {
+                UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(INSTALL4J_UPDATES_URL, ApplicationDisplayMode.GUI);
+                if (updateDescriptor.getPossibleUpdateEntry() != null) {
+                    UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
+                    String updateVersion = updateDescriptorEntry.getNewVersion();
+                    msg = new MessageWithLink("<html>Current version: " + currentVersion + "<p> Update " + updateVersion
+                            + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
+                } else {
+                    msg = new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion + "<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
+                }
+                storeUpdateCheckTime();
+            } catch (IOException | UserCanceledException e) {
+                log.warning(String.format("Could not check for update: %s", e.toString()));
+            }
+            if (msg != null) {
+                JaerUpdaterInstall4jDialog d = new JaerUpdaterInstall4jDialog(parent, updater, msg);
+                SwingUtilities.invokeLater(() -> {
+                    d.setVisible(true);
+                });
+            }
         }
     }
 
