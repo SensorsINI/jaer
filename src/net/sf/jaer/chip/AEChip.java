@@ -151,7 +151,7 @@ public class AEChip extends Chip2D {
         // instancing there display methods does NOT add them to the menu automatically
 
         getCanvas().addDisplayMethod(new ChipRendererDisplayMethod(getCanvas()));
-        getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
+//        getCanvas().addDisplayMethod(new SpaceTimeEventDisplayMethod(getCanvas()));
         getCanvas().addDisplayMethod(new SpaceTimeRollingEventDisplayMethod(getCanvas()));
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
 
