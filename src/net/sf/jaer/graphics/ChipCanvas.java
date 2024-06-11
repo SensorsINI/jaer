@@ -427,7 +427,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     protected DisplayMethod displayMethod;
-    int currentDisplayMethodIndex = 0;
 
     /**
      * returns the current display method
@@ -442,10 +441,19 @@ public class ChipCanvas implements GLEventListener, Observer {
      * cycle to the next display method
      */
     public void cycleDisplayMethod() {
-        if (++currentDisplayMethodIndex >= getDisplayMethods().size()) {
-            currentDisplayMethodIndex = 0;
+        // find index of current display method
+        int idx=0;
+        for(DisplayMethod m:getDisplayMethods()){
+            if(m==getDisplayMethod()){
+                break;
+            }
+            idx++;
         }
-        setDisplayMethod(currentDisplayMethodIndex);
+        idx++;
+        if (idx >= getDisplayMethods().size()) {
+            idx = 0;
+        }
+        setDisplayMethod(idx);
     }
 
     /**
