@@ -97,6 +97,7 @@ public class Histogram3dDisplayMethod extends DisplayMethod implements DisplayMe
 
 				// now iterate over the frame (fr)
 				int ind=0;
+                                ChipCanvas.Zoom zoom=getChipCanvas().getZoom();
 				for (int x = zoom.getStartPoint().x; x < zoom.getEndPoint().x; x++){
 					for (int y = zoom.getStartPoint().y; y < zoom.getEndPoint().y; y++){
 						if((fr[ind]==gray) && (fr[ind+1]==gray) && (fr[ind+2]==gray)) {ind+=3; continue;}

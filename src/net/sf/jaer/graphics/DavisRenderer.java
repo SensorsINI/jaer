@@ -129,7 +129,7 @@ public class DavisRenderer extends AEChipRenderer {
 
     private int framesRenderedSinceApsFrame = 0; // to deactivate frames after some time with none
     private static final int NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 360;
-    private boolean renderedApsFrame = false;
+    protected boolean renderedApsFrame = false; // flag set true on start of frame to signal not to disable frame display automatically
     private int lastTimestampFrameEndWeSentPropertyChangeFor = 0; // saves the time we sent propertyChange for a new frame to not send it multiple times during pause if the packet has a frame end in it
 
     public DavisRenderer(final AEChip chip) {

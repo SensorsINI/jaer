@@ -143,7 +143,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * pixels
      */
     protected int xt, yt;
-    private ChipCanvas.Zoom zoom = new Zoom();
+    private ChipCanvas.Zoom zoom = createZoom();
     protected boolean zoomMode = false; // true while user is dragging zoom box
     // reused imageOpenGL for OpenGL image grab
     private BufferedImage imageOpenGL;
@@ -239,7 +239,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2ES2);
             final GLCapabilities caps = new GLCapabilities(glp);
             caps.setDoubleBuffered(true);// TODO debug true should be default
-            drawable = new GLCanvas(caps); 
+            drawable = new GLCanvas(caps);
             drawable.setAutoSwapBufferMode(true); // TODO debug
 //            if (SystemUtils.IS_OS_WINDOWS) {
 //                List<GLCapabilitiesImmutable> capsAvailable = GLDrawableFactory.getDesktopFactory()
@@ -442,9 +442,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void cycleDisplayMethod() {
         // find index of current display method
-        int idx=0;
-        for(DisplayMethod m:getDisplayMethods()){
-            if(m==getDisplayMethod()){
+        int idx = 0;
+        for (DisplayMethod m : getDisplayMethods()) {
+            if (m == getDisplayMethod()) {
                 break;
             }
             idx++;
@@ -533,7 +533,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void display(final GLAutoDrawable drawable) {
         final GL2 gl = drawable.getGL().getGL2();
         checkGLError(gl, glu, "start of display");
-
 
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
@@ -655,7 +654,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Point getMousePixel() {
         final Point mp = getCanvas().getMousePosition();
-        if(mp==null) return null;
+        if (mp == null) {
+            return null;
+        }
         return getChipPixelFromMousePoint(mp);
     }
 
@@ -677,7 +678,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Point getPixelFromMouseEvent(final MouseEvent evt) {
         final Point mp = evt.getPoint();
-        if(mp==null) return null;
+        if (mp == null) {
+            return null;
+        }
         return getChipPixelFromMousePoint(mp);
     }
 
@@ -687,10 +690,11 @@ public class ChipCanvas implements GLEventListener, Observer {
      * forum link</a>.
      *
      * @param mp a Point in ChipCanvas (i.e. screen) pixels.
-     * @return the AEChip pixel, clipped to the bounds of the AEChip, or null if not valid.
+     * @return the AEChip pixel, clipped to the bounds of the AEChip, or null if
+     * not valid.
      */
     public Point getChipPixelFromMousePoint(final Point mp) {
-        if(mp==null){
+        if (mp == null) {
             return null;
         }
         // May 2021, Tobi changed to use simpler clipArea object along with chip size.
@@ -864,7 +868,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                         final float maxAngle = 180f;
                         setAngley((maxAngle * (screenX - (drawable.getWidth() / 2))) / drawable.getWidth());
                         setAnglex((maxAngle * (screenY - (drawable.getHeight() / 2))) / drawable.getHeight());
-                        log.fine(String.format("angleX=%6.1f deg, angleY=%6.1f",anglex,angley));
+                        log.fine(String.format("angleX=%6.1f deg, angleY=%6.1f", anglex, angley));
                     } else if (isZoomMode()) {
                         // System.out.print("z");
                     }
@@ -882,7 +886,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                     } else {
                         mouseDragScreenCurrentPoint = e.getPoint();
                         mouseDragChipPixelCurrentPoint = getPixelFromMouseEvent(e);
-                        zoom.panto(); // pans clip area based on one set by mousePressed()
+                        getZoom().panto(); // pans clip area based on one set by mousePressed()
                     }
                 }
                 repaint(100);
@@ -1381,6 +1385,14 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public boolean isFillsVertically() {
         return fillsVertically;
+    }
+
+    /**
+     * Constructs a new Zoom for this instance. Used by DisplayMethods to create
+     * their own Zoom view that is preserved.
+     */
+    public Zoom createZoom() {
+        return new Zoom();
     }
 
     /**

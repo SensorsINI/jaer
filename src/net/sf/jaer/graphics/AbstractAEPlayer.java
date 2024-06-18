@@ -660,7 +660,7 @@ public abstract class AbstractAEPlayer {
     private final EngineeringFormat engFmt = new EngineeringFormat();
 
     private final String speedText(boolean faster) {
-        String fpsStr=isFlexTimeEnabled()?"":String.format(" (%s FPS)",engFmt.format(1e6f/getTimesliceUs()));
+        String fpsStr=isFlexTimeEnabled()?"":String.format(" (%sFPS)",engFmt.format(1e6f/getTimesliceUs()));
         return String.format("DVS accumulation %s to %s%s%s", faster ? "increased" : "reduced",
                 isFlexTimeEnabled() ? Integer.toString(getPacketSizeEvents()) : engFmt.format(1e-6f*getTimesliceUs()),
                 isFlexTimeEnabled() ? " events" : "s",

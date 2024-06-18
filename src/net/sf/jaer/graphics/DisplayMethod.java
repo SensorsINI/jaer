@@ -44,7 +44,6 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
     protected GLUT glut; // GL extensions
     protected GLU glu; // GL utilities
     protected Chip2D chip;
-    protected ChipCanvas.Zoom zoom;
     protected Logger log = Logger.getLogger("net.sf.jaer");
     private JMenuItem menuItem;
     private ArrayList<FrameAnnotater> annotators = new ArrayList<>();
@@ -66,7 +65,6 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
         glut = chipCanvas.glut;
         glu = chipCanvas.glu;
         chip = chipCanvas.getChip();
-        zoom = chipCanvas.getZoom();
     }
 
     /**

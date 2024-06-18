@@ -126,6 +126,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private float frameEventSpacing = prefs.getFloat("frameEventSpacing", 1.2f);
 
     private boolean displayDvsFrames = prefs.getBoolean("displayDvsFrames", false);
+    
+    private ChipCanvas.Zoom zoom=null;
+    private ChipCanvas.Zoom oldZoom=null;
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -134,6 +137,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
+        zoom=chipCanvas.createZoom();
     }
 
     private void installShaders(GL2 gl) throws IOException {
@@ -815,6 +819,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
+        getChipCanvas().setZoom(oldZoom);
     }
 
     @Override
@@ -846,6 +851,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
+        oldZoom=getChipCanvas().getZoom();
+        getChipCanvas().setZoom(zoom);
+        
     }
 
     @Override
