@@ -27,8 +27,10 @@ import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.prefs.Preferences;
 import net.sf.jaer.util.DrawGL;
 import org.apache.commons.text.WordUtils;
+import static org.apache.tools.ant.util.ScriptManager.javax;
 
 /**
  * A abstract class that displays AE data in a ChipCanvas using OpenGL.
@@ -37,6 +39,7 @@ import org.apache.commons.text.WordUtils;
  */
 public abstract class DisplayMethod  implements PropertyChangeListener {
 
+    protected Preferences prefs=Preferences.userNodeForPackage(DisplayMethod.class);
     private ChipCanvas chipCanvas;
     protected GLUT glut; // GL extensions
     protected GLU glu; // GL utilities
@@ -47,7 +50,7 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
     private ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
-    private final long statusChangeDisplayTimeMillis = 1000;
+    private int statusChangeDisplayTimeMillis = prefs.getInt("statusChangeDisplayTimeMillis", 1000);
     /**
      * Provides PropertyChangeSupport for all DisplayMethods
      */
@@ -190,12 +193,12 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
      * @param drawable the OpenGL context
      */
     protected void displayStatusChangeText(GLAutoDrawable drawable) {
-        if (statusChangeString == null) {
+        if (statusChangeString == null || statusChangeDisplayTimeMillis<=0) {
             return;
         }
         long now = System.currentTimeMillis();
         final int WRAP_LEN = 24;
-        if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis * (1 + (statusChangeString.length() / WRAP_LEN))) {
+        if ((now - statusChangeStartTimeMillis) > getStatusChangeDisplayTimeMillis() * (1 + (statusChangeString.length() / WRAP_LEN))) {
             statusChangeString = null;
             return;
         }
@@ -214,7 +217,7 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
             }
         }
 
-        int fontsize = Math.round(16*(chip.getSizeX()/346f)); // heuristic to scale font based on empirical estimate for DAVIS346
+        int fontsize = Math.round(8*(chip.getSizeX()/346f)); // heuristic to scale font based on empirical estimate for DAVIS346
         // if font is too small, then make a larger one and scale all the drawing
         float scale=1;
         if(fontsize<10){
@@ -272,5 +275,20 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // does nothing by default
+    }
+
+    /**
+     * @return the statusChangeDisplayTimeMillis
+     */
+    public int getStatusChangeDisplayTimeMillis() {
+        return statusChangeDisplayTimeMillis;
+    }
+
+    /**
+     * @param statusChangeDisplayTimeMillis the statusChangeDisplayTimeMillis to set
+     */
+    public void setStatusChangeDisplayTimeMillis(int statusChangeDisplayTimeMillis) {
+        this.statusChangeDisplayTimeMillis = statusChangeDisplayTimeMillis;
+        prefs.putInt("statusChangeDisplayTimeMillis", statusChangeDisplayTimeMillis);
     }
 }
