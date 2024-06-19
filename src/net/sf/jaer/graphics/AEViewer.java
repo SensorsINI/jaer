@@ -4229,7 +4229,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_increaseFrameRateMenuItemActionPerformed
 
 	private void cycleNextColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleNextColorRenderingMethodMenuItemActionPerformed
-            if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) && (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)) {
+            if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) /*&& (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)*/) {
                 getRenderer().cycleColorMode(true);
                 showActionText(String.format("DVS color mode %s", getRenderer().getColorMode().toString()));
             } else {
@@ -5861,7 +5861,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_formWindowOpened
 
     private void cyclePreviousColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cyclePreviousColorRenderingMethodMenuItemActionPerformed
-        if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) && (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)) {
+        if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) /*&& (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)*/) {
             getRenderer().cycleColorMode(false);
             showActionText(String.format("DVS color mode %s", getRenderer().getColorMode().toString()));
         } else {
