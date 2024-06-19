@@ -71,12 +71,14 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
     private float analogDigitalClockScale = getFloat("analogDigitalClockScale", 1);
     private boolean date = getPrefs().getBoolean("Info.date", true);
-    private boolean absoluteTime = getPrefs().getBoolean("Info.absoluteTime", true);
+    private boolean localTime = getPrefs().getBoolean("Info.localTime", true);
+    private boolean ignoreTimeZone = getPrefs().getBoolean("Info.ignoreTimeZone", false);
     private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
     private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
     private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
     private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
     private boolean showRateTrace = getBoolean("showRateTrace", true);
+    private boolean showFrameRateForConstantCountFrames = getBoolean("showFrameRateForConstantCountFrames", true);
     public final int MAX_SAMPLES = 1000; // to avoid running out of memory
     private int maxSamples = getInt("maxSamples", MAX_SAMPLES);
     private long dataFileTimestampStartTimeUs = 0;
@@ -119,8 +121,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      * time is applied.
      *
      * @param relativeTimeInFileMs the relative time in file in ms
-     * @return the absolute or relative time depending on absoluteTime switch,
-     * or the System.currentTimeMillis() if we are in live playback mode
+     * @return the absolute or relative time depending on localTime switch, or
+     * the System.currentTimeMillis() if we are in live playback mode
      */
     private long computeDisplayTime(long relativeTimeInFileMs) {
         long t;
@@ -129,7 +131,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         } else {
             t = relativeTimeInFileMs + wrappingCorrectionMs;
             t = (long) (t * timestampScaleFactor);
-            if (absoluteTime) {
+            if (localTime) {
                 t += absoluteStartTimeMs;
             }
             t = t + timeOffsetMs;
@@ -388,7 +390,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip("digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
         setPropertyTooltip("analogDigitalClockScale", "scale for drawing clock");
         setPropertyTooltip("date", "show date");
-        setPropertyTooltip("absoluteTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
+        setPropertyTooltip("localTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
+        setPropertyTooltip("ignoreTimeZone", "ignore the local time zone");
         setPropertyTooltip("showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
         setPropertyTooltip("timeOffsetMs", "add this time in ms to the displayed time");
         setPropertyTooltip("timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
@@ -678,10 +681,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         ZonedDateTime zdt = null;
         Instant instant = Instant.ofEpochMilli(t);
 
-        if (aeFileInputStream != null && aeFileInputStream.getZoneId() != null) {
-            zdt = ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
-        } else if (absoluteTime) {
+        if (localTime) {
             zdt = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
+        } else if (!ignoreTimeZone && aeFileInputStream != null && aeFileInputStream.getZoneId() != null) {
+            zdt = ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
         } else {
             zdt = ZonedDateTime.ofInstant(instant, ZoneId.of("GMT"));
         }
@@ -937,13 +940,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         getPrefs().putBoolean("Info.date", date);
     }
 
-    public boolean isAbsoluteTime() {
-        return absoluteTime;
+    public boolean isLocalTime() {
+        return localTime;
     }
 
-    public void setAbsoluteTime(boolean absoluteTime) {
-        this.absoluteTime = absoluteTime;
-        getPrefs().putBoolean("Info.absoluteTime", absoluteTime);
+    public void setLocalTime(boolean localTime) {
+        this.localTime = localTime;
+        getPrefs().putBoolean("Info.localTime", localTime);
     }
 
     public boolean isEventRate() {
@@ -1109,6 +1112,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setAnalogDigitalClockScale(float analogDigitalClockScale) {
         this.analogDigitalClockScale = analogDigitalClockScale;
         putFloat("analogDigitalClockScale", analogDigitalClockScale);
+    }
+
+    /**
+     * @return the ignoreTimeZone
+     */
+    public boolean isIgnoreTimeZone() {
+        return ignoreTimeZone;
+    }
+
+    /**
+     * @param ignoreTimeZone the ignoreTimeZone to set
+     */
+    public void setIgnoreTimeZone(boolean ignoreTimeZone) {
+        this.ignoreTimeZone = ignoreTimeZone;
+        putBoolean("Info.ignoreTimeZone", ignoreTimeZone);
     }
 
 }

@@ -389,6 +389,7 @@ public class DavisColorRenderer extends DavisRenderer {
 
 		if (e.isStartOfFrame()) {
 			startFrame(e.timestamp);
+                        renderedApsFrame = true;
 		}
 		else if ((!isAPSSpecialReadout && e.isResetRead()) || (isAPSSpecialReadout && e.isResetRead() && !isGlobalShutter())
 			|| (isAPSSpecialReadout && e.isSignalRead() && isGlobalShutter())) {
