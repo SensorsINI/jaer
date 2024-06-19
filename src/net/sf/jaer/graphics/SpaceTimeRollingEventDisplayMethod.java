@@ -112,8 +112,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private JMenu displayMenu = null;
 
-    private boolean additiveColorEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.additiveColorEnabled", false);
-    private boolean largePointSizeEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.largePointSizeEnabled", false);
+    private boolean additiveColorEnabled = prefs.getBoolean("additiveColorEnabled", false);
+    private boolean largePointSizeEnabled = prefs.getBoolean("largePointSizeEnabled", false);
 
     private boolean displayDvsEvents = true;
     private boolean displayApsFrames = true;
@@ -126,9 +126,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private float frameEventSpacing = prefs.getFloat("frameEventSpacing", 1.2f);
 
     private boolean displayDvsFrames = prefs.getBoolean("displayDvsFrames", false);
-    
-    private ChipCanvas.Zoom zoom=null;
-    private ChipCanvas.Zoom oldZoom=null;
+
+    private ChipCanvas.Zoom zoom = null;
+    private ChipCanvas.Zoom oldZoom = null;
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -137,7 +137,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
-        zoom=chipCanvas.createZoom();
+        zoom = chipCanvas.createZoom();
     }
 
     private void installShaders(GL2 gl) throws IOException {
@@ -520,6 +520,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glBindVertexArray(0); // to use TextRenderers elsewhere; see http://forum.jogamp.org/TextRenderer-my-text-won-t-show-td4029291.html
             gl.glUseProgram(0);
             checkGLError(gl, "disable program");
+
+            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+            gl.glColor3f(1, 1, 1);
+            gl.glRasterPos3f(sx * 1.05f, 0, -zmax / 4);
+            glut.glutBitmapString(font, "events");
         }
 
         if (displayApsFrames) { // render APS frames
@@ -583,7 +588,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
                 nFrames++;
             }
+            gl.glColor3f(1, 1, 1);
+            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 3);
+            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+            glut.glutBitmapString(font, "APS frames");
             gl.glPopMatrix();
+
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
         }
 
@@ -631,8 +641,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
                 nFrames++;
             }
+            gl.glColor3f(1, 1, 1);
+            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 4);
+            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+            glut.glutBitmapString(font, "DVS frames");
             gl.glPopMatrix();
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
+
         }
 
 //
@@ -721,7 +736,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glRasterPos3f(0, sy * 1.05f, 0);
             glut.glutBitmapString(font, "y=" + sy);
             w = glut.glutBitmapLength(font, "t=0");
-            gl.glRasterPos3f(-2 * w * modelScale, 0, 0);
+            gl.glRasterPos3f(-6 * w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
             gl.glColor3f(1f, 0, 0);
             String tMaxString = "t=" + engFmt.format(-dtS) + "s";
@@ -841,6 +856,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         displayMenu.add(new JMenuItem(new SetFrameEventSpacingAction()));
         displayMenu.add(new JSeparator());
         displayMenu.add(new JCheckBoxMenuItem(new ToggleLargePointsAction()));
+        displayMenu.add(new JSeparator());
         displayMenu.add(new JCheckBoxMenuItem(new ToggleAdditiveColorAction()));
         displayMenu.add(new JMenuItem(new SetTransparencyAction()));
         viewer.addMenu(displayMenu);
@@ -851,9 +867,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
-        oldZoom=getChipCanvas().getZoom();
+        oldZoom = getChipCanvas().getZoom();
         getChipCanvas().setZoom(zoom);
-        
+
     }
 
     @Override
