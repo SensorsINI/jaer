@@ -12,7 +12,6 @@
 package net.sf.jaer.graphics;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -32,18 +31,22 @@ import com.jogamp.opengl.GL2ES1;
 import com.jogamp.opengl.GL2ES2;
 import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.fixedfunc.GLLightingFunc;
 import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
 import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.DavisConfig;
 
 import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
+import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import static javax.swing.Action.ACCELERATOR_KEY;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JSeparator;
@@ -53,7 +56,6 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.graphics.ChipCanvas.ClipArea;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -129,6 +131,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private ChipCanvas.Zoom zoom = null;
     private ChipCanvas.Zoom oldZoom = null;
+
+    private TextRenderer textRenderer = null;
 
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
@@ -415,13 +419,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         final float modelScale = 1f / 2; // everything is drawn at this scale
         maybeRegenerateAxesDisplayList(gl, zmax, modelScale, dtS);
+        textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
 
 //        gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
 //        gl.glPushMatrix();
         gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
         gl.glLoadIdentity();
         gl.glPushMatrix();
-        ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
+        ChipCanvas.Zoom.ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
 
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
         // determine the viewable area (that is not clipped to black).
@@ -521,10 +526,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glUseProgram(0);
             checkGLError(gl, "disable program");
 
-            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(sx * 1.05f, 0, -zmax / 4);
-            glut.glutBitmapString(font, "events");
+            String s = "DVS events";
+            drawPlotLabel(s, gl, 1.05f, 0, .25f, zmax);
         }
 
         if (displayApsFrames) { // render APS frames
@@ -588,12 +591,19 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
                 nFrames++;
             }
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 3);
             final int font = GLUT.BITMAP_TIMES_ROMAN_24;
-            glut.glutBitmapString(font, "APS frames");
-            gl.glPopMatrix();
+            String s = "APS frames";
+            if (chip instanceof DavisChip davis) {
+                float fps = davis.getFrameRateHz();
+                float exp = davis.getMeasuredExposureMs();
+                s = String.format("APS frames (%s FPS, %ss exp)", engFmt.format(fps), engFmt.format(exp * 1e-3f));
+            }
+            drawPlotLabel(s, gl, 0, 1.05f, .25f, zmax);
 
+//            gl.glColor3f(1, 1, 1);
+//            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 3);
+//            glut.glutBitmapString(font, s);
+            gl.glPopMatrix();
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
         }
 
@@ -641,10 +651,23 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
                 nFrames++;
             }
-            gl.glColor3f(1, 1, 1);
-            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 4);
-            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
-            glut.glutBitmapString(font, "DVS frames");
+            AbstractAEPlayer player = ((AEChip) chip).getAeViewer().getAePlayer();
+            String s = "DVS events";
+            switch (player.getPlaybackMode()) {
+                case FixedPacketSize:
+                    int n = player.getPacketSizeEvents();
+                    s = String.format("DVS frames of %sev", engFmt.format(n));
+                    break;
+                case FixedTimeSlice:
+                    int us = player.getTimesliceUs();
+                    s = String.format("DVS frames of %ss", engFmt.format(us * 1e-6f));
+            }
+            drawPlotLabel(s, gl, 1, 1.05f, .25f, zmax);
+
+//            gl.glColor3f(1, 1, 1);
+//            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 4);
+//            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+//            glut.glutBitmapString(font, s);
             gl.glPopMatrix();
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
 
@@ -659,6 +682,33 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         // re-enable depth sorting for everything else
 //        gl.glDepthMask(true);
+    }
+
+    /**
+     * Plot a label along axis at position x,y,z relative to entire axis rotated
+     * along z direction (like the DVS events label)
+     *
+     * @param gl
+     * @param x 0-1
+     * @param y
+     * @param z
+     * @param zmax the max z in pixels
+     * @param s the string
+     * @throws GLException
+     */
+    private void drawPlotLabel(String s, GL2 gl, float x, float y, float z, float zmax) throws GLException {
+        gl.glPushMatrix();
+        textRenderer.begin3DRendering();
+        gl.glTranslatef(x * sx, y * sy, z * (-zmax));
+        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+        gl.glRotatef(-getChipCanvas().getAngley() + 90, 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+        textRenderer.draw3D(s, 0, 0, 0, 1.5f);
+        textRenderer.end3DRendering();
+        gl.glPopMatrix();
+//            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+//            gl.glColor3f(1, 1, 1);
+//            gl.glRasterPos3f(sx * 1.05f, 0, -zmax / 4);
+//            glut.glutBitmapString(font, s);
     }
 
     protected void maybeRegenerateAxesDisplayList(GL2 gl, float zmax, final float modelScale, float dtS) {
