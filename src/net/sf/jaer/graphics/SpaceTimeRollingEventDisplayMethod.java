@@ -600,7 +600,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 float exp = davis.getMeasuredExposureMs();
                 s = String.format("APS frames (%s FPS, %ss exp)", engFmt.format(fps), engFmt.format(exp * 1e-3f));
             }
-            drawPlotLabel(s, gl, 1, 1.05f, .25f, zmax, 90);
+            drawPlotLabel(s, gl, 1, 1.05f, .05f, zmax, 90);
 
 //            gl.glColor3f(1, 1, 1);
 //            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 3);
