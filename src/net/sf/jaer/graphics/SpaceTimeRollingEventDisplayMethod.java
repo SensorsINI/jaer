@@ -526,8 +526,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glUseProgram(0);
             checkGLError(gl, "disable program");
 
+            drawPlotLabel("Space", gl, .0f, .0f, -0.00f, zmax, 0);
+            drawPlotLabel("Time", gl, 1f, 0f, -0.00f, zmax, 90);
             String s = "DVS events";
-            drawPlotLabel(s, gl, 1.05f, 0, .25f, zmax);
+            drawPlotLabel(s, gl, 1.05f, 0, .25f, zmax, 90);
         }
 
         if (displayApsFrames) { // render APS frames
@@ -598,7 +600,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 float exp = davis.getMeasuredExposureMs();
                 s = String.format("APS frames (%s FPS, %ss exp)", engFmt.format(fps), engFmt.format(exp * 1e-3f));
             }
-            drawPlotLabel(s, gl, 0, 1.05f, .25f, zmax);
+            drawPlotLabel(s, gl, 1, 1.05f, .25f, zmax, 90);
 
 //            gl.glColor3f(1, 1, 1);
 //            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 3);
@@ -662,7 +664,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                     int us = player.getTimesliceUs();
                     s = String.format("DVS frames of %ss", engFmt.format(us * 1e-6f));
             }
-            drawPlotLabel(s, gl, 1, 1.05f, .25f, zmax);
+            drawPlotLabel(s, gl, 1, 1.05f, .25f, zmax, 90);
 
 //            gl.glColor3f(1, 1, 1);
 //            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 4);
@@ -688,20 +690,21 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      * Plot a label along axis at position x,y,z relative to entire axis rotated
      * along z direction (like the DVS events label)
      *
+     * @param s the string
      * @param gl
      * @param x 0-1
      * @param y
-     * @param z
-     * @param zmax the max z in pixels
-     * @param s the string
+     * @param z 0-1 along z
+     * @param zmax the max z in pixels (i.e max of width and height times aspect ratio)
+     * @param angleDeg the additional angle, 90 to lie along z axis, 0 to align with space axes
      * @throws GLException
      */
-    private void drawPlotLabel(String s, GL2 gl, float x, float y, float z, float zmax) throws GLException {
+    private void drawPlotLabel(String s, GL2 gl, float x, float y, float z, float zmax, float angleDeg) throws GLException {
         gl.glPushMatrix();
         textRenderer.begin3DRendering();
         gl.glTranslatef(x * sx, y * sy, z * (-zmax));
-        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-        gl.glRotatef(-getChipCanvas().getAngley() + 90, 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+//        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+        gl.glRotatef( angleDeg, 0, 1, 0); // rotate viewpoint by angle deg around the y axis
         textRenderer.draw3D(s, 0, 0, 0, 1.5f);
         textRenderer.end3DRendering();
         gl.glPopMatrix();
