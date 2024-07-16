@@ -144,6 +144,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     protected int xt, yt;
     private ChipCanvas.Zoom zoom = createZoom();
+    Zoom.ClipArea clipAreaDragStart = null;
     protected boolean zoomMode = false; // true while user is dragging zoom box
     // reused imageOpenGL for OpenGL image grab
     private BufferedImage imageOpenGL;
@@ -168,11 +169,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     private double ZCLIP = 1;
     private TextRenderer renderer = null;
 
-    /**
-     * The actual clipping box bounds for the default orthographic projection.
-     */
-    private final ClipArea clipArea = new ClipArea();
-    private ClipArea clipAreaDragStart = new ClipArea();
 
     private Point mouseDragScreenStartPoint = new Point(0, 0), mouseDragScreenCurrentPoint = new Point(0, 0),
             mouseDragChipPixelStartPoint = new Point(0, 0), mouseDragChipPixelCurrentPoint = new Point(0, 0);
@@ -699,8 +695,8 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         // May 2021, Tobi changed to use simpler clipArea object along with chip size.
         // Former method using all the matrices was just too cryptic to understand
-        int x = (int) ((mp.getX() / getScale()) + clipArea.left);
-        int y = (int) (((getCanvas().getHeight() - mp.getY()) / getScale()) + clipArea.bottom);
+        int x = (int) ((mp.getX() / getScale()) + getClipArea().left);
+        int y = (int) (((getCanvas().getHeight() - mp.getY()) / getScale()) + getClipArea().bottom);
 //        
         final Point p = new Point(x, y);
         if ((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1)))) {
@@ -841,7 +837,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                 public void mousePressed(final MouseEvent evt) {
                     mouseDragScreenStartPoint.setLocation(evt.getPoint());
                     mouseDragChipPixelStartPoint = getPixelFromMouseEvent(evt);
-                    clipAreaDragStart = new ClipArea(clipArea);
+                    Zoom dragStartZoom=new Zoom();
+                    Zoom.ClipArea clipAreaDragStart = dragStartZoom.clipArea;
                     origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
                 }
 
@@ -1031,42 +1028,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * Orthographic projection clipping area.
-     */
-    public class ClipArea {
-
-        /**
-         * This clipping area is around the chip size by a negative amount for
-         * left and bottom and a quantity larger than the chip size for the
-         * right and top.
-         */
-        public float left = 0, right = 0, bottom = 0, top = 0;
-
-        ClipArea(final float l, final float r, final float b, final float t) {
-            left = l;
-            right = r;
-            bottom = b;
-            top = t;
-        }
-
-        public ClipArea() {
-        }
-
-        public ClipArea(ClipArea c) {
-            left = c.left;
-            right = c.right;
-            bottom = c.bottom;
-            top = c.top;
-        }
-
-        @Override
-        public String toString() {
-            return "ClipArea{" + "left=" + left + ", right=" + right + ", bottom=" + bottom + ", top=" + top + '}';
-        }
-
-    }
-
-    /**
      * Returns the actual clipping area in model space (chip pixel) coordinates.
      * This clipping area is around the chip size by a negative amount for left
      * and bottom and a quantity larger than the chip size for the right and
@@ -1078,8 +1039,8 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @see #setDefaultProjection(com.jogamp.opengl.GL,
      * com.jogamp.opengl.GLAutoDrawable)
      */
-    public ClipArea getClipArea() {
-        return clipArea;
+    public Zoom.ClipArea getClipArea() {
+        return getZoom().clipArea;
     }
 
     /**
@@ -1167,10 +1128,10 @@ public class ChipCanvas implements GLEventListener, Observer {
             if (leftoverY <= 0) {
                 leftoverY = 1;
             }
-            clipArea.left = -lrborder;
-            clipArea.right = sx + lrborder;
-            clipArea.bottom = -leftoverY;
-            clipArea.top = sy + leftoverY;
+            getClipArea().left = -lrborder;
+            getClipArea().right = sx + lrborder;
+            getClipArea().bottom = -leftoverY;
+            getClipArea().top = sy + leftoverY;
             borders.leftRight = lrborder;
             borders.bottomTop = leftoverY;
             g.glOrtho(-lrborder, sx + lrborder, -leftoverY, (sy + leftoverY), ZCLIP, -ZCLIP); // clip area has same ar as screen!
@@ -1188,10 +1149,10 @@ public class ChipCanvas implements GLEventListener, Observer {
             if (leftoverX <= 0) {
                 leftoverX = 1;
             }
-            clipArea.left = -leftoverX;
-            clipArea.right = sx + leftoverX;
-            clipArea.bottom = -bbot;
-            clipArea.top = sy + btop;
+            getClipArea().left = -leftoverX;
+            getClipArea().right = sx + leftoverX;
+            getClipArea().bottom = -bbot;
+            getClipArea().top = sy + btop;
             borders.leftRight = leftoverX;
             borders.bottomTop = bbot + btop;
             g.glOrtho(-leftoverX, (sx + leftoverX), -bbot, sy + btop, ZCLIP, -ZCLIP);
@@ -1406,14 +1367,55 @@ public class ChipCanvas implements GLEventListener, Observer {
         private Point centerPoint = new Point();  // where in chip pixels the zoom is centered.
         float zoomFactor = 1; // >1 for zoom in, magnified
         private boolean zoomEnabled = false;
+        /**
+         * The actual clipping box bounds for the default orthographic
+         * projection.
+         */
+        final ClipArea clipArea = new ClipArea();
+
+        /**
+         * Orthographic projection clipping area.
+         */
+        public class ClipArea {
+
+            /**
+             * This clipping area is around the chip size by a negative amount
+             * for left and bottom and a quantity larger than the chip size for
+             * the right and top.
+             */
+            public float left = 0, right = 0, bottom = 0, top = 0;
+
+            ClipArea(final float l, final float r, final float b, final float t) {
+                left = l;
+                right = r;
+                bottom = b;
+                top = t;
+            }
+
+            public ClipArea() {
+            }
+
+            public ClipArea(ClipArea c) {
+                left = c.left;
+                right = c.right;
+                bottom = c.bottom;
+                top = c.top;
+            }
+
+            @Override
+            public String toString() {
+                return "ClipArea{" + "left=" + left + ", right=" + right + ", bottom=" + bottom + ", top=" + top + '}';
+            }
+
+        }
 
         private void setProjection(final GL2 gl) {
             gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
             gl.glLoadIdentity();
             gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
             gl.glLoadIdentity();
-            gl.glOrtho(clipArea.left, clipArea.right, clipArea.bottom, clipArea.top, ZCLIP, -ZCLIP); // clip area
-            setScale(drawable.getWidth() / (clipArea.right - clipArea.left));
+            gl.glOrtho(getClipArea().left, getClipArea().right, getClipArea().bottom, getClipArea().top, ZCLIP, -ZCLIP); // clip area
+            setScale(drawable.getWidth() / (getClipArea().right - getClipArea().left));
 //            log.info("set zoom projection with clipArea=" + clipArea);
         }
 
@@ -1442,28 +1444,28 @@ public class ChipCanvas implements GLEventListener, Observer {
                 }
 
                 // clip area width and height
-                double cw = (clipArea.right - clipArea.left), ch = (clipArea.top - clipArea.bottom);
+                double cw = (getClipArea().right - getClipArea().left), ch = (getClipArea().top - getClipArea().bottom);
                 // mouse location as fraction of clip area x and y
-                double fx = (mouseChipPixel.x - clipArea.left) / cw, fy = (mouseChipPixel.y - clipArea.bottom) / ch;
+                double fx = (mouseChipPixel.x - getClipArea().left) / cw, fy = (mouseChipPixel.y - getClipArea().bottom) / ch;
                 final double zfac = inout * (zoomStepRatio - 1); // inout+ gives like 0.051 
-                clipArea.left += fx * cw * zfac;  // move clipArea.left more positive to zoom in (inout>0), more negative to zoom out (input<0)
-                clipArea.right -= (1 - fx) * cw * zfac;
-                clipArea.bottom += fy * ch * zfac;
-                clipArea.top -= (1 - fy) * ch * zfac;
+                getClipArea().left += fx * cw * zfac;  // move getClipArea().left more positive to zoom in (inout>0), more negative to zoom out (input<0)
+                getClipArea().right -= (1 - fx) * cw * zfac;
+                getClipArea().bottom += fy * ch * zfac;
+                getClipArea().top -= (1 - fy) * ch * zfac;
                 // only bookkeeping, not used for zoom
                 zoomFactor *= inout == 0 ? 1 : (inout > 0 ? zoomStepRatio : 1 / zoomStepRatio);
-            } else { // inout==0, just pan to mouse
+            } else if(getClipArea()!=null) { // inout==0, just pan to mouse
                 // compute dx,dy for mouse since start, set clip area relative to starting clip area
                 float dx = mouseDragScreenCurrentPoint.x - mouseDragScreenStartPoint.x,
                         dy = mouseDragScreenCurrentPoint.y - mouseDragScreenStartPoint.y;
-                clipArea.left = clipAreaDragStart.left - dx / getScale();
-                clipArea.right = clipAreaDragStart.right - dx / getScale();
-                clipArea.bottom = clipAreaDragStart.bottom + dy / getScale(); // use + here because screen starts 0,0 at UL and chip uses 0,0 at LL
-                clipArea.top = clipAreaDragStart.top + dy / getScale();
+                getClipArea().left = clipAreaDragStart.left - dx / getScale();
+                getClipArea().right = clipAreaDragStart.right - dx / getScale();
+                getClipArea().bottom = clipAreaDragStart.bottom + dy / getScale(); // use + here because screen starts 0,0 at UL and chip uses 0,0 at LL
+                getClipArea().top = clipAreaDragStart.top + dy / getScale();
 //                System.out.printf("dx=%f dy=%f\n",dx,dy);
             }
             // only bookkeeping, not used for zoom
-            centerPoint.setLocation((clipArea.right - clipArea.left) / 2, (clipArea.top - clipArea.bottom) / 2);
+            centerPoint.setLocation((getClipArea().right - getClipArea().left) / 2, (getClipArea().top - getClipArea().bottom) / 2);
             setZoomEnabled(true);
         }
 
