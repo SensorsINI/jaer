@@ -22,6 +22,7 @@ import javax.swing.JTextField;
 
 import ch.unizh.ini.jaer.config.ConfigInt;
 import static ch.unizh.ini.jaer.config.spi.SPIConfigBit.REMOTE_CONTROL_CMD;
+import static ch.unizh.ini.jaer.config.spi.SPIConfigValue.log;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -86,7 +87,7 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
                 final int newVal = Integer.parseInt(e.getNewValue());
                 set(newVal);
             } catch (NumberFormatException ex) {
-                log.warning(String.format("Could not set new for key %s using new value %s: got %s",e.getKey(),e.getNewValue(),ex.toString()));
+                log.warning(String.format("Could not set new for key %s using new value %s: got %s", e.getKey(), e.getNewValue(), ex.toString()));
             }
         }
     }
@@ -151,6 +152,7 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
     private static class SPIConfigIntActions extends KeyAdapter implements ActionListener, FocusListener, MouseWheelListener {
 
         private final SPIConfigInt intConfig;
+        private final float FACTOR = (float) Math.pow(2, 0.25), SHIFTED_FACTOR = 2;
 
         SPIConfigIntActions(final SPIConfigInt intCfg) {
             intConfig = intCfg;
@@ -173,9 +175,22 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
         public void keyPressed(final KeyEvent e) {
             final boolean up = (e.getKeyCode() == KeyEvent.VK_UP);
             final boolean down = (e.getKeyCode() == KeyEvent.VK_DOWN);
-
+            final boolean shifted = (e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) == KeyEvent.SHIFT_DOWN_MASK;
+            log.info(String.format("up=%s down=%s shifted=%s", up, down, shifted));
             if (up || down) {
-                setValueAndUpdateGUI(intConfig.get() + (up ? 1 : -1));
+                int sign = up ? 1 : -1;
+                int oldValue = intConfig.get();
+                int newValue = oldValue;
+                float factor = shifted ? SHIFTED_FACTOR : FACTOR;
+                if (down) {
+                    factor = 1 / factor;
+                }
+                if (Math.abs(oldValue) < 8) {
+                    newValue = oldValue + sign;
+                } else {
+                    newValue = (int) Math.round(newValue * factor);
+                }
+                setValueAndUpdateGUI(newValue);
             }
         }
 
@@ -197,11 +212,26 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
         // MouseWheelListener interface
         @Override
-        public void mouseWheelMoved(final MouseWheelEvent evt) {
-            final int clicks = evt.getWheelRotation();
-
-            if (clicks != 0) {
-                setValueAndUpdateGUI(intConfig.get() - clicks);
+        public void mouseWheelMoved(final MouseWheelEvent e) {
+            final int clicks = e.getWheelRotation();
+            final boolean up = clicks<0;
+            final boolean down = clicks>0;
+            final boolean shifted = (e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) == KeyEvent.SHIFT_DOWN_MASK;
+            log.info(String.format("up=%s down=%s shifted=%s", up, down, shifted));
+            if (up || down) {
+                int sign = up ? 1 : -1;
+                int oldValue = intConfig.get();
+                int newValue = oldValue;
+                float factor = shifted ? SHIFTED_FACTOR : FACTOR;
+                if (down) {
+                    factor = 1 / factor;
+                }
+                if (Math.abs(oldValue) < 8) {
+                    newValue = oldValue + sign;
+                } else {
+                    newValue = (int) Math.round(newValue * factor);
+                }
+                setValueAndUpdateGUI(newValue);
             }
         }
     }
