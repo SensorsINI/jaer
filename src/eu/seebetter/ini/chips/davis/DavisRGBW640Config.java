@@ -19,7 +19,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
 /**
- * Base configuration for Davis356 (ApsDvs346) on Tower wafer designs
+ * Base configuration for CDAVIS
  *
  * @author tobi
  */

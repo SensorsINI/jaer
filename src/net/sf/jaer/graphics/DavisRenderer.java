@@ -568,7 +568,7 @@ public class DavisRenderer extends AEChipRenderer {
 
 //            final float alpha = map[index + 3] + (1.0f / (isFadingEnabled() ? 1 : colorScale));
             final float alpha = map[index + 3] + (1.0f / (colorScale));
-            map[index + 3] += normalizeEvent(alpha);
+            map[index + 3] += clip01(alpha);
         } else {
             switch (colorMode) {
                 case ColorTime: {
@@ -589,7 +589,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case HotCode: {
-                    map[index + 3] = normalizeEvent(map[index + 3] + colorContrastAdditiveStep); // use alpha channel for storing event count
+                    map[index + 3] = clip01(map[index + 3] + colorContrastAdditiveStep); // use alpha channel for storing event count
                     int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * map[index + 3]));
 
                     if (ind < 0) {
@@ -615,7 +615,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case GrayLevel: /*|| colorMode == ColorMode.Contrast*/ {
-                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  clip01(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
                         map[index] += colorContrastAdditiveStep;
                         map[index + 1] += colorContrastAdditiveStep;
@@ -628,7 +628,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case RedGreen: {
-                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  clip01(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
                         map[index + 1] += colorContrastAdditiveStep; // green up from black 0
                     } else {
@@ -637,7 +637,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 break;
                 case WhiteBackground: {
-                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  normalizeEvent(scale); // alpha
+                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  clip01(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
                         map[index + 1] += colorContrastAdditiveStep; // green up, others down
                         map[index] -= colorContrastAdditiveStep; // red up
@@ -953,7 +953,7 @@ public class DavisRenderer extends AEChipRenderer {
         return value;
     }
 
-    final protected float normalizeEvent(float value) {
+    final protected float clip01(float value) {
         if (value < 0) {
             value = 0;
         } else if (value > 1) {

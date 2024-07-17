@@ -906,22 +906,22 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
                     final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
 
-                    ApsDvsEvent.ColorFilter ColorFilter = ApsDvsEvent.ColorFilter.W;
+                    ApsDvsEvent.ColorFilter colorFilter = ApsDvsEvent.ColorFilter.W;
 
                     if ((y % 2) == 0) {
                         if ((x % 2) == 0) {
                             // Lower left.
-                            ColorFilter = colorFilterSequence[0];
+                            colorFilter = colorFilterSequence[0];
                         } else {
                             // Lower right.
-                            ColorFilter = colorFilterSequence[1];
+                            colorFilter = colorFilterSequence[1];
                         }
                     } else if ((x % 2) == 0) {
                         // Upper left.
-                        ColorFilter = colorFilterSequence[3];
+                        colorFilter = colorFilterSequence[3];
                     } else {
                         // Upper right.
-                        ColorFilter = colorFilterSequence[2];
+                        colorFilter = colorFilterSequence[2];
                     }
 
                     final boolean pixFirst = firstFrameAddress(x, y); // First event of frame (addresses get flipped)
@@ -968,7 +968,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             frameIntervalUs = timestamp - frameExposureStartTimestampUs;
                             frameExposureStartTimestampUs = timestamp;
                         }
-                    } else {
+                    } else { // CDAVIS
                         // Start of Frame (SOF)
                         // TODO: figure out exposure/interval for both GS and RS.
                         if (pixFirst && rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) { // RS
@@ -996,7 +996,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     e.y = y;
 
                     // APS COLOR SUPPORT.
-                    e.setColorFilter(ColorFilter);
+                    e.setColorFilter(colorFilter);
 
                     if (!isAPSSpecialReadout) {
                         // end of exposure, same for both
@@ -1008,10 +1008,12 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
                         if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
+                            frameExposureEndTimestampUs = timestamp;
+                            exposureDurationUs = timestamp - frameExposureStartTimestampUs;
 
                             increaseFrameCount(1);
                         }
-                    } else {
+                    } else { // special readout (CDAVIS)
                         // End of Frame (EOF)
                         // TODO: figure out exposure/interval for both GS and RS.
                         if (pixLast && rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
@@ -1021,6 +1023,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             // insert a new "end of frame" event not present in original data
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
+                            frameExposureEndTimestampUs = timestamp;
+                            exposureDurationUs = timestamp - frameExposureStartTimestampUs;
                             increaseFrameCount(1);
                         }
 
@@ -1031,6 +1035,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             // insert a new "end of frame" event not present in original data
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
+                            frameExposureEndTimestampUs = timestamp;
+                            exposureDurationUs = timestamp - frameExposureStartTimestampUs;
                             increaseFrameCount(1);
                         }
                     }

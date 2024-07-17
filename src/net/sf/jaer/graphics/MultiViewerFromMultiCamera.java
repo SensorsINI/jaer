@@ -245,7 +245,7 @@ public class MultiViewerFromMultiCamera extends DavisRenderer{
 //                    map[index + 2] = (float)camera/NumCam; 
 //                }   
 //                final float alpha = map[index + 3] + (1.0f / colorScale);
-//                map[index + 3] = normalizeEvent(alpha);
+//                map[index + 3] = clip01(alpha);
 //            }
 //        }
 //    }
