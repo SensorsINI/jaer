@@ -971,6 +971,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 e.printStackTrace();
             }
             add(slider);
+            add(Box.createHorizontalGlue());
 
             slider.addChangeListener(new ChangeListener() {
 
