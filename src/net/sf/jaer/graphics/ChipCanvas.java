@@ -838,7 +838,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                     mouseDragScreenStartPoint.setLocation(evt.getPoint());
                     mouseDragChipPixelStartPoint = getPixelFromMouseEvent(evt);
                     Zoom dragStartZoom=new Zoom();
-                    Zoom.ClipArea clipAreaDragStart = dragStartZoom.clipArea;
+                    clipAreaDragStart = dragStartZoom.clipArea;
                     origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
                 }
 

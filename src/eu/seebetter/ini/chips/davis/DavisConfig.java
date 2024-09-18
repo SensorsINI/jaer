@@ -757,7 +757,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     }
 
     /**
-     * Returns the exposure delay setting in float ms.
+     * Returns the exposure duration setting in float ms.
      *
      * @return value of exposure delay. It is quantized by apsExposure to be a
      * multiple of quantization.
@@ -918,7 +918,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                     updateHW(observable, getHardwareInterface());
                 }
             } catch (HardwareInterfaceException | IllegalStateException e) {
-                log.warning(String.format("Got %s",e.toString()));
+                log.warning(String.format("Got %s", e.toString()));
             }
         }
     }
@@ -1011,6 +1011,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         public boolean separateAPSByColor = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.separateAPSByColor", false);
         public boolean autoWhiteBalance = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.autoWhiteBalance", true);
         public boolean colorCorrection = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.colorCorrection", true);
+        private boolean monochrome = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.monochrome", true);
 
         private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
@@ -1199,6 +1200,21 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
             throw new RuntimeException("Cannot return a video contrast controller for the image output for the current renderer, which is "
                     + ((AEChip) getChip()).getRenderer());
+        }
+
+        /**
+         * @return the monochrome
+         */
+        public boolean isMonochrome() {
+            return monochrome;
+        }
+
+        /**
+         * @param monochrome the monochrome to set
+         */
+        public void setMonochrome(boolean monochrome) {
+            this.monochrome = monochrome;
+            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.monochrome", monochrome);
         }
     }
 

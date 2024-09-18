@@ -610,14 +610,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         return ignorePolarityEnabled;
     }
 
-    protected boolean isMethodMonochrome() {
-        if ((colorMode == ColorMode.GrayLevel) /*|| (colorMode == ColorMode.Contrast)*/) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     public boolean isStereoEnabled() {
         return stereoEnabled;
     }

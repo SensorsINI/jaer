@@ -17,6 +17,7 @@ import java.util.Random;
 import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
+import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.util.Collection;
 import java.util.Collections;
@@ -255,6 +256,7 @@ public class DavisRenderer extends AEChipRenderer {
                 }
             }
         }
+
         packet = pkt;
         if (pkt.isEmpty()) {
             return;
@@ -294,7 +296,6 @@ public class DavisRenderer extends AEChipRenderer {
 
         colorContrastAdditiveStep = computeColorContrastAdditiveStep();
         final boolean displayEvents = isDisplayEvents();
-        final boolean displayFrames = isDisplayFrames();
         final boolean backwards = pkt.getDurationUs() < 0;
 
         resetSelectedPixelEventCount(); // TODO fix locating pixel with xsel ysel
@@ -312,6 +313,8 @@ public class DavisRenderer extends AEChipRenderer {
         if (isSlidingWindowEnabled()) {
             slidingWindowPacketFifo.add(pkt);
         }
+
+        final boolean displayFrames = isDisplayFrames();
 
         Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
         for (EventPacket p : packets) {
@@ -355,7 +358,7 @@ public class DavisRenderer extends AEChipRenderer {
                 framesRenderedSinceApsFrame++;
             }
             if (framesRenderedSinceApsFrame > NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES) {
-                if (isDisplayFrames()) {
+                if (displayFrames) {
                     log.warning(String.format("No APS frames for last %,d>%,d NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES rendered frames, disabling frames",
                             framesRenderedSinceApsFrame, NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES));
                     setDisplayFrames(false);

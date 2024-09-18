@@ -35,8 +35,8 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  * @see ChipRendererDisplayMethod
  */
 public class DavisColorRenderer extends DavisRenderer {
-    // Special pixel arrangement, where DVS is only found once every four pixels, as in Chenghan Li CDAVIS
 
+    // Special pixel arrangement, where DVS is only found once every four pixels, as in Chenghan Li CDAVIS
     private final boolean isDVSQuarterOfAPS;
 
     // Color filter pattern arrangement.
@@ -545,7 +545,7 @@ public class DavisColorRenderer extends DavisRenderer {
         if (!isSeparateAPSByColor()) {
             final float[] image = pixBuffer.array();
 
-            if (isAutoWhiteBalance()) {
+            if (isAutoWhiteBalance() && !isMonochrome()) {
                 // Automatic white balance support.
                 final float WRGBtotal[] = new float[4];
                 final int WRGBcount[] = new int[4];
@@ -607,146 +607,176 @@ public class DavisColorRenderer extends DavisRenderer {
                 }
             }
 
-            // Color interpolation support.
-            for (int y = 0; y < chip.getSizeY(); y++) {
-                for (int x = 0; x < chip.getSizeX(); x++) {
-                    // What pixel am I? Get color information and color values on pixel
-                    // itself and all its neighbors to pass to interpolation function.
-
-                    // Copy right array over, so that we can modify values without impacting original.
-                    if ((y % 2) == 0) {
-                        if ((x % 2) == 0) {
-                            // Lower left.
-                            System.arraycopy(colors0, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                        } else {
-                            // Lower right.
-                            System.arraycopy(colors1, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                        }
-                    } else {
-                        if ((x % 2) == 0) {
-                            // Upper left.
-                            System.arraycopy(colors3, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                        } else {
-                            // Upper right.
-                            System.arraycopy(colors2, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                        }
-                    }
-
-                    // Handle borders, by setting color filter value to NULL for pixels outside image edge.
-                    if (y == 0) {
-                        colors[6] = null;
-                        colors[7] = null;
-                        colors[8] = null;
-                    } else if (y == (chip.getSizeY() - 1)) {
-                        colors[0] = null;
-                        colors[1] = null;
-                        colors[2] = null;
-                    }
-
-                    if (x == 0) {
-                        colors[0] = null;
-                        colors[3] = null;
-                        colors[6] = null;
-                    } else if (x == (chip.getSizeX() - 1)) {
-                        colors[2] = null;
-                        colors[5] = null;
-                        colors[8] = null;
-                    }
-
-                    // Color values for R/G/B channels are simply based on pixel position,
-                    // the color filter pattern doesn't matter here. To avoid getting invalid
-                    // pixel indexes and values when on image edges, we simply check that the
-                    // color value is not NULL for that pixel. If it is, we just set the
-                    // corresponding value to zero.
-                    int index = 0;
-
-                    if (colors[0] != null) {
-                        index = getPixMapIndex(x - 1, y + 1);
-                        valuesR[0] = image[index];
-                        valuesG[0] = image[index + 1];
-                        valuesB[0] = image[index + 2];
-                    }
-
-                    if (colors[1] != null) {
-                        index = getPixMapIndex(x, y + 1);
-                        valuesR[1] = image[index];
-                        valuesG[1] = image[index + 1];
-                        valuesB[1] = image[index + 2];
-                    }
-
-                    if (colors[2] != null) {
-                        index = getPixMapIndex(x + 1, y + 1);
-                        valuesR[2] = image[index];
-                        valuesG[2] = image[index + 1];
-                        valuesB[2] = image[index + 2];
-                    }
-
-                    if (colors[3] != null) {
-                        index = getPixMapIndex(x - 1, y);
-                        valuesR[3] = image[index];
-                        valuesG[3] = image[index + 1];
-                        valuesB[3] = image[index + 2];
-                    }
-
-                    if (colors[5] != null) {
-                        index = getPixMapIndex(x + 1, y);
-                        valuesR[5] = image[index];
-                        valuesG[5] = image[index + 1];
-                        valuesB[5] = image[index + 2];
-                    }
-
-                    if (colors[6] != null) {
-                        index = getPixMapIndex(x - 1, y - 1);
-                        valuesR[6] = image[index];
-                        valuesG[6] = image[index + 1];
-                        valuesB[6] = image[index + 2];
-                    }
-
-                    if (colors[7] != null) {
-                        index = getPixMapIndex(x, y - 1);
-                        valuesR[7] = image[index];
-                        valuesG[7] = image[index + 1];
-                        valuesB[7] = image[index + 2];
-                    }
-
-                    if (colors[8] != null) {
-                        index = getPixMapIndex(x + 1, y - 1);
-                        valuesR[8] = image[index];
-                        valuesG[8] = image[index + 1];
-                        valuesB[8] = image[index + 2];
-                    }
-
-                    // CENTER PIXEL (CURRENT). Can never be NULL.
-                    index = getPixMapIndex(x, y);
-                    valuesR[4] = image[index];
-                    valuesG[4] = image[index + 1];
-                    valuesB[4] = image[index + 2];
-
-                    // Call R/G/B generators for each pixel.
-                    image[index] = DavisColorRenderer.generateRForPixel(colors, valuesR);
-                    image[index + 1] = DavisColorRenderer.generateGForPixel(colors, valuesG);
-                    image[index + 2] = DavisColorRenderer.generateBForPixel(colors, valuesB);
-                }
-            }
-
-            if (isColorCorrection()) {
+            if (!isMonochrome()) {
+                // Color interpolation support.
                 for (int y = 0; y < chip.getSizeY(); y++) {
                     for (int x = 0; x < chip.getSizeX(); x++) {
-                        // Get current RGB values, since we modify them later on.
-                        final int index = getPixMapIndex(x, y);
+                        // What pixel am I? Get color information and color values on pixel
+                        // itself and all its neighbors to pass to interpolation function.
 
-                        final float R_original = image[index];
-                        final float G_original = image[index + 1];
-                        final float B_original = image[index + 2];
+                        // Copy right array over, so that we can modify values without impacting original.
+                        if ((y % 2) == 0) {
+                            if ((x % 2) == 0) {
+                                // Lower left.
+                                System.arraycopy(colors0, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
+                            } else {
+                                // Lower right.
+                                System.arraycopy(colors1, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
+                            }
+                        } else {
+                            if ((x % 2) == 0) {
+                                // Upper left.
+                                System.arraycopy(colors3, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
+                            } else {
+                                // Upper right.
+                                System.arraycopy(colors2, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
+                            }
+                        }
 
-                        image[index] = (colorCorrectionMatrix[0][0] * R_original) + (colorCorrectionMatrix[0][1] * G_original)
-                                + (colorCorrectionMatrix[0][2] * B_original) + colorCorrectionMatrix[0][3];
-                        image[index + 1] = (colorCorrectionMatrix[1][0] * R_original) + (colorCorrectionMatrix[1][1] * G_original)
-                                + (colorCorrectionMatrix[1][2] * B_original) + colorCorrectionMatrix[1][3];
-                        image[index + 2] = (colorCorrectionMatrix[2][0] * R_original) + (colorCorrectionMatrix[2][1] * G_original)
-                                + (colorCorrectionMatrix[2][2] * B_original) + colorCorrectionMatrix[2][3];
+                        // Handle borders, by setting color filter value to NULL for pixels outside image edge.
+                        if (y == 0) {
+                            colors[6] = null;
+                            colors[7] = null;
+                            colors[8] = null;
+                        } else if (y == (chip.getSizeY() - 1)) {
+                            colors[0] = null;
+                            colors[1] = null;
+                            colors[2] = null;
+                        }
+
+                        if (x == 0) {
+                            colors[0] = null;
+                            colors[3] = null;
+                            colors[6] = null;
+                        } else if (x == (chip.getSizeX() - 1)) {
+                            colors[2] = null;
+                            colors[5] = null;
+                            colors[8] = null;
+                        }
+
+                        // Color values for R/G/B channels are simply based on pixel position,
+                        // the color filter pattern doesn't matter here. To avoid getting invalid
+                        // pixel indexes and values when on image edges, we simply check that the
+                        // color value is not NULL for that pixel. If it is, we just set the
+                        // corresponding value to zero.
+                        int index = 0;
+
+                        if (colors[0] != null) {
+                            index = getPixMapIndex(x - 1, y + 1);
+                            valuesR[0] = image[index];
+                            valuesG[0] = image[index + 1];
+                            valuesB[0] = image[index + 2];
+                        }
+
+                        if (colors[1] != null) {
+                            index = getPixMapIndex(x, y + 1);
+                            valuesR[1] = image[index];
+                            valuesG[1] = image[index + 1];
+                            valuesB[1] = image[index + 2];
+                        }
+
+                        if (colors[2] != null) {
+                            index = getPixMapIndex(x + 1, y + 1);
+                            valuesR[2] = image[index];
+                            valuesG[2] = image[index + 1];
+                            valuesB[2] = image[index + 2];
+                        }
+
+                        if (colors[3] != null) {
+                            index = getPixMapIndex(x - 1, y);
+                            valuesR[3] = image[index];
+                            valuesG[3] = image[index + 1];
+                            valuesB[3] = image[index + 2];
+                        }
+
+                        if (colors[5] != null) {
+                            index = getPixMapIndex(x + 1, y);
+                            valuesR[5] = image[index];
+                            valuesG[5] = image[index + 1];
+                            valuesB[5] = image[index + 2];
+                        }
+
+                        if (colors[6] != null) {
+                            index = getPixMapIndex(x - 1, y - 1);
+                            valuesR[6] = image[index];
+                            valuesG[6] = image[index + 1];
+                            valuesB[6] = image[index + 2];
+                        }
+
+                        if (colors[7] != null) {
+                            index = getPixMapIndex(x, y - 1);
+                            valuesR[7] = image[index];
+                            valuesG[7] = image[index + 1];
+                            valuesB[7] = image[index + 2];
+                        }
+
+                        if (colors[8] != null) {
+                            index = getPixMapIndex(x + 1, y - 1);
+                            valuesR[8] = image[index];
+                            valuesG[8] = image[index + 1];
+                            valuesB[8] = image[index + 2];
+                        }
+
+                        // CENTER PIXEL (CURRENT). Can never be NULL.
+                        index = getPixMapIndex(x, y);
+                        valuesR[4] = image[index];
+                        valuesG[4] = image[index + 1];
+                        valuesB[4] = image[index + 2];
+
+                        // Call R/G/B generators for each pixel.
+                        image[index] = DavisColorRenderer.generateRForPixel(colors, valuesR);
+                        image[index + 1] = DavisColorRenderer.generateGForPixel(colors, valuesG);
+                        image[index + 2] = DavisColorRenderer.generateBForPixel(colors, valuesB);
                     }
                 }
+
+                if (isColorCorrection()) {
+                    for (int y = 0; y < chip.getSizeY(); y++) {
+                        for (int x = 0; x < chip.getSizeX(); x++) {
+                            // Get current RGB values, since we modify them later on.
+                            final int index = getPixMapIndex(x, y);
+
+                            final float R_original = image[index];
+                            final float G_original = image[index + 1];
+                            final float B_original = image[index + 2];
+
+                            image[index] = (colorCorrectionMatrix[0][0] * R_original) + (colorCorrectionMatrix[0][1] * G_original)
+                                    + (colorCorrectionMatrix[0][2] * B_original) + colorCorrectionMatrix[0][3];
+                            image[index + 1] = (colorCorrectionMatrix[1][0] * R_original) + (colorCorrectionMatrix[1][1] * G_original)
+                                    + (colorCorrectionMatrix[1][2] * B_original) + colorCorrectionMatrix[1][3];
+                            image[index + 2] = (colorCorrectionMatrix[2][0] * R_original) + (colorCorrectionMatrix[2][1] * G_original)
+                                    + (colorCorrectionMatrix[2][2] * B_original) + colorCorrectionMatrix[2][3];
+                        }
+                    }
+                }
+            } // end color processing
+            else if (isMonochrome() && !isSeparateAPSByColor()) {
+                for (int y = 0; y < chip.getSizeY(); y += 2) { // go to each quad of pixels
+                    for (int x = 0; x < chip.getSizeX(); x += 2) {
+                        // get the gray leval of each RGB pixel and average them
+                        float val1 = image[getPixMapIndex(x + 1, y)];
+                        float val2 = image[getPixMapIndex(x + 1, y + 1)];
+                        float val3 = image[getPixMapIndex(x, y + 1)];
+                        float gray = (val1 + val2 + val3) / 3; // use only APS pixels, not DAVIS white pixel APS value which is DDS and higher noise
+
+                        // now set the white pixel to average
+                        final int index = getPixMapIndex(x + 1, y);
+                        image[index] = gray;
+                        image[index + 1] = gray;
+                        image[index + 2] = gray;
+                        image[index + 3] = 1;
+//                        for (int xx = x; xx <= x + 1; xx++) {
+//                            for (int yy = y; yy <= y + 1; yy++) {
+//                                final int index = getPixMapIndex(xx, yy);
+//                                image[index] = gray;
+//                                image[index + 1] = gray;
+//                                image[index + 2] = gray;
+//                                image[index + 3] = 1; // alpha
+//                            }
+//                        }
+                    }
+                }
+
             }
         }
 
@@ -813,4 +843,12 @@ public class DavisColorRenderer extends DavisRenderer {
 
         return (blueSum / blueCount);
     }
+
+    /**
+     * Convenience method to check the VideoControl setting for this camera
+     */
+    public boolean isMonochrome() {
+        return ((DavisConfig) chip.getBiasgen()).getVideoControl().isMonochrome();
+    }
+
 }

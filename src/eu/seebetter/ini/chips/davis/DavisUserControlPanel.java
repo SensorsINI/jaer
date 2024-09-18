@@ -365,12 +365,12 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         jPanel1 = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
         dvsPanel = new javax.swing.JPanel();
+        captureEventsCB = new javax.swing.JCheckBox();
         displayEventsCheckBox = new javax.swing.JCheckBox();
         dvsRedGrRB = new javax.swing.JRadioButton();
         dvsGrayRB = new javax.swing.JRadioButton();
         dvsContLabel = new javax.swing.JLabel();
         dvsContSp = new javax.swing.JSpinner();
-        captureEventsCB = new javax.swing.JCheckBox();
         bwPanel = new javax.swing.JPanel();
         bwEstimatePanel = new javax.swing.JPanel();
         bwEstLabel = new javax.swing.JLabel();
@@ -433,6 +433,15 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         dvsPanel.setBorder(javax.swing.BorderFactory.createTitledBorder(null, "DVS Events", javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION, javax.swing.border.TitledBorder.DEFAULT_POSITION, new java.awt.Font("Tahoma", 1, 11))); // NOI18N
         dvsPanel.setFont(new java.awt.Font("Tahoma", 1, 11)); // NOI18N
 
+        captureEventsCB.setText("Capture events");
+        captureEventsCB.setToolTipText("Enables capture of DVS events. Disabling capture turns off AER output of sensor.");
+        captureEventsCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                captureEventsCBActionPerformed(evt);
+            }
+        });
+        dvsPanel.add(captureEventsCB);
+
         displayEventsCheckBox.setText("Display events");
         displayEventsCheckBox.setToolTipText("Enables rendering of DVS events");
         displayEventsCheckBox.addActionListener(new java.awt.event.ActionListener() {
@@ -473,15 +482,6 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             }
         });
         dvsPanel.add(dvsContSp);
-
-        captureEventsCB.setText("Capture events");
-        captureEventsCB.setToolTipText("Enables capture of DVS events. Disabling capture turns off AER output of sensor.");
-        captureEventsCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                captureEventsCBActionPerformed(evt);
-            }
-        });
-        dvsPanel.add(captureEventsCB);
 
         bwPanel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
         bwPanel.setPreferredSize(new java.awt.Dimension(500, 139));
@@ -1043,7 +1043,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     }//GEN-LAST:event_histCBActionPerformed
 
     private void displayFramesCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_displayFramesCheckBoxActionPerformed
-        // TODO add your handling code here:
+        getConfig().setDisplayFrames(displayFramesCheckBox.isSelected());
     }//GEN-LAST:event_displayFramesCheckBoxActionPerformed
 
     private void autoContrastCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_autoContrastCBActionPerformed
@@ -1153,7 +1153,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
     }//GEN-LAST:event_dvsRedGrRBActionPerformed
 
     private void displayEventsCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_displayEventsCheckBoxActionPerformed
-        // TODO add your handling code here:
+        getConfig().setDisplayEvents(displayEventsCheckBox.isSelected());
     }//GEN-LAST:event_displayEventsCheckBoxActionPerformed
 
 
