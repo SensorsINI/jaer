@@ -122,7 +122,7 @@ public class RectangularClusterTracker extends EventFilter2D
     // rendering of cluster velocities
     private boolean logDataEnabled = false;
     protected boolean showAllClusters = getBoolean("showAllClusters", false);
-    protected boolean useNearestCluster = getBoolean("useNearestCluster", false); // use the nearest cluster to an
+    protected boolean useNearestCluster = getBoolean("useNearestCluster", true); // use the nearest cluster to an
     // event, not the first containing
     // it
     protected float predictiveVelocityFactor = getFloat("predictiveVelocityFactor", 1);// making this M=10, for example,
@@ -236,12 +236,12 @@ public class RectangularClusterTracker extends EventFilter2D
      * class
      */
     protected void setTooltips() {
-        final String sizing = "Sizing", mov = "Movement", life = "Lifetime", disp = "Display", global = TOOLTIP_GROUP_GLOBAL,
-                update = "Update", logg = "Logging", pi = "PI Controller";
+        final String sizing = "2: Sizing", mov = "4: Movement", life = "3: Lifetime", disp = "Display", common = "1: Common",
+                update = "5: Update", logg = "7: Logging", pi = "6: PI Controller", options="8: Options";
         setPropertyTooltip(life, "enableClusterExitPurging", "enables rapid purging of clusters that hit edge of scene");
         setPropertyTooltip(life, "purgeIfClusterOverlapsBorder", "purge any cluster that overlaps edge (if false, center must go outside border)");
-        setPropertyTooltip(life, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
-        setPropertyTooltip(life, "thresholdMassForVisibleCluster",
+        setPropertyTooltip(common, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
+        setPropertyTooltip(common, "thresholdMassForVisibleCluster",
                 "Cluster needs this \"mass\" to be visible. Mass increments with each event and decays with e-folding time constant of clusterMassDecayTauUs. Use \"showAllClusters\" to diagnose fleeting clusters.");
         setPropertyTooltip(life, "thresholdVelocityForVisibleCluster",
                 "cluster must have at least this velocity in pixels/sec to become visible");
@@ -249,7 +249,7 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(life, "surroundInhibitionEnabled",
                 "Enabling this option causes events in the surround region to actively reduce the cluster mass, enabling tracking of only isolated features");
         setPropertyTooltip(life, "surroundInhibitionCost", "If above is checked: The negative weight of surrounding points");
-        setPropertyTooltip(mov, "mixingFactor",
+        setPropertyTooltip(common, "mixingFactor",
                 "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
         setPropertyTooltip(mov, "velocityPoints",
                 "the number of recent path points (one per packet of events) to use for velocity vector regression");
@@ -265,12 +265,12 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(mov, "initializeVelocityToAverage",
                 "initializes cluster velocity to moving average of cluster velocities; otherwise initialized to zero");
         setPropertyTooltip(sizing, "surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
-        setPropertyTooltip(sizing, "dynamicSizeEnabled", "size varies dynamically depending on cluster events");
+        setPropertyTooltip(common, "dynamicSizeEnabled", "size varies dynamically depending on cluster events");
         setPropertyTooltip(sizing, "dynamicAspectRatioEnabled", "aspect ratio of cluster depends on events");
         setPropertyTooltip(sizing, "dynamicAngleEnabled", "angle of cluster depends on events, otherwise angle is zero");
         setPropertyTooltip(sizing, "defaultClusterRadius", "default starting size of cluster as fraction of chip size");
         setPropertyTooltip(sizing, "aspectRatio", "default (or initial) aspect ratio, <1 is wide");
-        setPropertyTooltip(sizing, "clusterSize", "size (starting) in fraction of chip max size");
+        setPropertyTooltip(common, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip(sizing, "highwayPerspectiveEnabled",
                 "Cluster size depends on perspective location; mouse click defines horizon");
         setPropertyTooltip(sizing, "angleFollowsVelocity",
@@ -284,18 +284,17 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(disp, "colorClustersDifferentlyEnabled",
                 "each cluster gets assigned a random color, otherwise color indicates ages");
-        setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
-        setPropertyTooltip(disp, "showPaths", "shows the stored path points of each cluster");
+        setPropertyTooltip(common, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
-        setPropertyTooltip(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
-        setPropertyTooltip(disp, "showClusterVelocityVector", "draws velocity in using scaling velocityVectorScaling");
+        setPropertyTooltip(common, "showAllClusters", "shows all clusters, not just those with sufficient support");
+        setPropertyTooltip(common, "showClusterVelocityVector", "draws velocity in using scaling velocityVectorScaling");
         setPropertyTooltip(disp, "showClusterVelocity", "shows velocity vector as (vx,vy) in px/s");
         setPropertyTooltip(disp, "showClusterRadius", "draws cluster radius");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
         setPropertyTooltip(disp, "showClusterNumber", "shows cluster ID number");
-        setPropertyTooltip(disp, "showClusterMass", "shows cluster mass; mass is decaying measure of the rate of captured events");
-        setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors from pps to pixels in AEChip pixel space");
+        setPropertyTooltip(common, "showClusterMass", "shows cluster mass; mass is decaying measure of the rate of captured events");
+        setPropertyTooltip(common, "velocityVectorScaling", "scaling of drawn velocity vectors from pps to pixels in AEChip pixel space");
         setPropertyTooltip(update, "useOnePolarityOnlyEnabled", "use only one event polarity");
         setPropertyTooltip(update, "useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
         setPropertyTooltip(update, "growMergedSizeEnabled",
@@ -309,9 +308,9 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(logg, "loggingIntervalUs", "interval in us between logging cluster info to logging file");
         setPropertyTooltip(logg, "clusterLoggingMethod",
                 "method for logging cluster data: LogFrames logs at specified time intervals; LogClusters logs each valid cluster on its death");
-        setPropertyTooltip(global, "filterEventsEnabled",
+        setPropertyTooltip(options, "filterEventsEnabled",
                 "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
-        setPropertyTooltip(global, "maxNumClusters", "Sets the maximum potential number of clusters");
+        setPropertyTooltip(common, "maxNumClusters", "Sets the maximum potential number of clusters");
         setPropertyTooltip(pi, "smoothMove", "<html>Use the PI controller to update particle position and velocity"
                 + "<br>float errX = (event.x - location.x);\n"
                 + "				<br>float errY = (event.y - location.y);\n"
