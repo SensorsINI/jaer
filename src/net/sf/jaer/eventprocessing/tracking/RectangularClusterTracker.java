@@ -70,11 +70,6 @@ public class RectangularClusterTracker extends EventFilter2D
     // TODO delegate worker object to update the clusters (RectangularClusterTrackerDelegate)
     // public TelluridePatchExtractor TelluridePatchExtractor = new TelluridePatchExtractor();
 
-    /**
-     * scaling can't make cluster bigger or smaller than this ratio to default
-     * cluster size.
-     */
-    public static final float MAX_SCALE_RATIO = 2;
 
     /**
      * maximum and minimum allowed dynamic aspect ratio when dynamic
@@ -163,6 +158,12 @@ public class RectangularClusterTracker extends EventFilter2D
     private float smoothPosition = getFloat("smoothPosition", .001f);
     private float smoothIntegral = getFloat("smoothIntegral", .001f);
     private float surroundInhibitionCost = getFloat("surroundInhibitionCost", 1);
+
+     /**
+     * scaling can't make cluster bigger or smaller than this ratio to default
+     * cluster size.
+     */
+    private float maxSizeScaleRatio = getFloat("maxSizeScaleRatio",4);
 
     /**
      * The list of clusters (visible and invisible).
@@ -265,10 +266,11 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(mov, "initializeVelocityToAverage",
                 "initializes cluster velocity to moving average of cluster velocities; otherwise initialized to zero");
         setPropertyTooltip(sizing, "surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
+        setPropertyTooltip(sizing, "maxSizeScaleRatio", "The maximum size scaling relative to defaultClusterRadius (larger by maxSizeScaleRatio, smaller by 1/maxSizeScaleRatio");
         setPropertyTooltip(common, "dynamicSizeEnabled", "size varies dynamically depending on cluster events");
         setPropertyTooltip(sizing, "dynamicAspectRatioEnabled", "aspect ratio of cluster depends on events");
         setPropertyTooltip(sizing, "dynamicAngleEnabled", "angle of cluster depends on events, otherwise angle is zero");
-        setPropertyTooltip(sizing, "defaultClusterRadius", "default starting size of cluster as fraction of chip size");
+        setPropertyTooltip(sizing, "defaultClusterRadius", "default starting size of cluster in pixels");
         setPropertyTooltip(sizing, "aspectRatio", "default (or initial) aspect ratio, <1 is wide");
         setPropertyTooltip(common, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltip(sizing, "highwayPerspectiveEnabled",
@@ -712,7 +714,7 @@ public class RectangularClusterTracker extends EventFilter2D
         // another cluster.
         if (isHighwayPerspectiveEnabled()) {
             for (Cluster c : clusters) {
-                c.setRadius(defaultClusterRadius);
+                c.setRadius(defaultClusterRadius*chip.getMaxSize());
             }
         }
     }
@@ -826,6 +828,10 @@ public class RectangularClusterTracker extends EventFilter2D
         updateClusterLocations(t);
         updateClusterPaths(t);
         updateClusterMasses(t);
+        updateVisibilities(t);
+    }
+
+    private void updateVisibilities(int t) {
         visibleClusters.clear();
         for (Cluster c : clusters) {
             if (c.checkAndSetClusterVisibilityFlag(t)) {
@@ -1575,6 +1581,7 @@ public class RectangularClusterTracker extends EventFilter2D
                 // float dmass = normDistance <= 1 ? 1 : -1;
                 float dmass = normDistance <= 1 ? 1 : -surroundInhibitionCost;
                 mass = dmass + (mass * (float) Math.exp((float) (lastEventTimestamp - t) / clusterMassDecayTauUs));
+                if(mass<0) mass=0;
             } else {
                 boolean wasInfinite = Float.isInfinite(mass);
                 // don't worry about distance, just increment
@@ -1713,7 +1720,7 @@ public class RectangularClusterTracker extends EventFilter2D
             // TelluridePatchExtractor.setClusterID((int) hashCode());
             // TelluridePatchExtractor.printToFile();
             // //----------------------------------------------------------------//
-            if (isWasEverVisible()) {
+            if (isVisible()) {
                 gl.glColor3fv(rgb, 0);
                 gl.glLineWidth(BOX_LINE_WIDTH);
             } else {
@@ -1974,9 +1981,9 @@ public class RectangularClusterTracker extends EventFilter2D
             float oldr = radius;
             float newr = ((1 - mixingFactor) * oldr) + (dist * mixingFactor);
             float f;
-            if (newr > (f = defaultClusterRadius * MAX_SCALE_RATIO)) {
+            if (newr > (f = defaultClusterRadius * maxSizeScaleRatio)) {
                 newr = f;
-            } else if (newr < (f = defaultClusterRadius / MAX_SCALE_RATIO)) {
+            } else if (newr < (f = defaultClusterRadius / maxSizeScaleRatio)) {
                 newr = f;
             }
             setRadius(newr);
@@ -2208,11 +2215,10 @@ public class RectangularClusterTracker extends EventFilter2D
             // checking the MASS of the cluster to determine if its visible. However as far
             // as I see here this is not the case! Instead we check only for the number of Events this cluster has
             // gathered
-            if ((numEvents < thresholdMassForVisibleCluster)
-                    || ((numEvents > thresholdMassForVisibleCluster) && (getMassNow(t) < thresholdMassForVisibleCluster))) {
+            if (getMassNow(t) < thresholdMassForVisibleCluster) {
                 ret = false;
             }
-            if (useVelocity) {
+            if (useVelocity && thresholdVelocityForVisibleCluster>0) {
                 double speed = (sqrt((velocityPPT.x * velocityPPT.x) + (velocityPPT.y * velocityPPT.y)) * 1e6)
                         / AEConstants.TICK_DEFAULT_US; // speed is in pixels/sec
                 if (speed < thresholdVelocityForVisibleCluster) {
@@ -3370,7 +3376,7 @@ public class RectangularClusterTracker extends EventFilter2D
             clusterSize = 0;
         }
         float old = this.clusterSize;
-        defaultClusterRadius = Math.max(chip.getSizeX(), chip.getSizeY()) * clusterSize;
+        defaultClusterRadius = chip.getMaxSize() * clusterSize;
         this.clusterSize = clusterSize;
         for (Cluster c : clusters) {
             c.setRadius(defaultClusterRadius);
@@ -4175,14 +4181,14 @@ public class RectangularClusterTracker extends EventFilter2D
     // float distance;
     // }
     /**
-     * @return the defaultClusterRadius
+     * @return the defaultClusterRadius in pixels
      */
     public float getDefaultClusterRadius() {
         return defaultClusterRadius;
     }
 
     /**
-     * @param defaultClusterRadius the defaultClusterRadius to set
+     * @param defaultClusterRadius the defaultClusterRadius to set in pixels
      */
     public void setDefaultClusterRadius(float defaultClusterRadius) {
         this.defaultClusterRadius = defaultClusterRadius;
@@ -4245,5 +4251,20 @@ public class RectangularClusterTracker extends EventFilter2D
     public void setPurgeIfClusterOverlapsBorder(boolean purgeIfClusterOverlapsBorder) {
         this.purgeIfClusterOverlapsBorder = purgeIfClusterOverlapsBorder;
         putBoolean("purgeIfClusterOverlapsBorder",purgeIfClusterOverlapsBorder);
+    }
+
+    /**
+     * @return the maxSizeScaleRatio
+     */
+    public float getMaxSizeScaleRatio() {
+        return maxSizeScaleRatio;
+    }
+
+    /**
+     * @param maxSizeScaleRatio the maxSizeScaleRatio to set
+     */
+    public void setMaxSizeScaleRatio(float maxSizeScaleRatio) {
+        this.maxSizeScaleRatio = maxSizeScaleRatio;
+        putFloat("maxSizeScaleRatio",maxSizeScaleRatio);
     }
 }
