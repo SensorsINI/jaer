@@ -105,10 +105,18 @@ public class Chip2D extends Chip {
         }
     }
 
+    /** Get max of width and height
+     * 
+     * @return max dimension in pixels 
+     */
     public int getMaxSize() {
         return (int) Math.max(sizeX, sizeY);
     }
 
+   /** Get min of width and height
+     * 
+     * @return min dimension in pixels 
+     */
     public int getMinSize() {
         return (int) Math.min(sizeX, sizeY);
     }
