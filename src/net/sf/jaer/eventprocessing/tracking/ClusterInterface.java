@@ -63,6 +63,13 @@ public interface ClusterInterface {
      */
     public float getRadius();
 
+     /** Returns area in pixels.
+     *
+     * @return some measure of cluster area size.
+     */
+    public float getArea();
+
+    
     /** Returns measure of cluster 'mass' or importance.  This mass is increased by support (e.g. events) and decays away with lack of support.
      *
      * @return the mass measure.
