@@ -1241,7 +1241,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * average (mixed using mixingFactor) distance of events from cluster
          * center, a measure of actual cluster size.
          */
-        private float averageEventDistance, averageEventXDistance, averageEventYDistance;
+        private float averageEventDistance=0, averageEventXDistance=0, averageEventYDistance=0;
         /**
          * assigned to be the absolute number of the cluster that has been
          * created.
@@ -1528,14 +1528,19 @@ public class RectangularClusterTracker extends EventFilter2D
          * from center (m) and old value (1-m)
          */
         protected void updateAverageEventDistance(float m) {
-            if (Float.isNaN(averageEventDistance)) {
-                log.warning("distance is NaN");
-            }
             float m1 = 1 - m;
             //m is specified when calling this method, it is the mixing factor.
+            if(Float.isInfinite(distanceToLastEvent) || Float.isInfinite(xDistanceToLastEvent) || Float.isInfinite(yDistanceToLastEvent)){
+                log.warning("NaN distance to last event");
+                return;
+            }
             averageEventDistance = (m1 * averageEventDistance) + (m * distanceToLastEvent);
             averageEventXDistance = (m1 * averageEventXDistance) + (m * xDistanceToLastEvent);
             averageEventYDistance = (m1 * averageEventYDistance) + (m * yDistanceToLastEvent);
+            if (Float.isNaN(averageEventDistance)) {
+                log.warning(String.format("average event distance is NaN, resetting to radius %.1f px",radius));
+                averageEventDistance=radius;
+            }
         }
 
         protected void updateEventRate(BasicEvent event, float m) {
