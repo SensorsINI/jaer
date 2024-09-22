@@ -128,7 +128,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 	 * @return cluster that contains event within the cluster's radius, modfied by aspect ratio. null is returned if no cluster is close enough.
 	 */
 	@Override
-	public StereoCluster getFirstContainingCluster (BasicEvent event){
+	public StereoCluster findFirstContainingCluster (BasicEvent event){
 		if ( clusters.isEmpty () ){
 			return null;
 		}

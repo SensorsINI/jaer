@@ -991,7 +991,7 @@ public class RectangularClusterTracker extends EventFilter2D
      * @return closest cluster object (a cluster with a distance - that distance
      * is the distance between the given event and the returned cluster).
      */
-    protected Cluster getNearestCluster(BasicEvent event) { // TODO needs to account for the cluster angle
+    protected Cluster findNearestCluster(BasicEvent event) { // TODO needs to account for the cluster angle
         float minDistance = Float.MAX_VALUE;
         Cluster closest = null;
         float currentDistance = 0;
@@ -1036,7 +1036,7 @@ public class RectangularClusterTracker extends EventFilter2D
      * @return cluster that contains event within the cluster's radius, modfied
      * by aspect ratio. null is returned if no cluster is close enough.
      */
-    protected Cluster getFirstContainingCluster(BasicEvent event) {
+    protected Cluster findFirstContainingCluster(BasicEvent event) {
         float minDistance = Float.MAX_VALUE;
         Cluster closest = null;
         float currentDistance = 0;
@@ -1263,8 +1263,10 @@ public class RectangularClusterTracker extends EventFilter2D
         private boolean velocityValid = false; // used to flag invalid or uncomputable velocityPPT
         private boolean visibilityFlag = false; // this flag updated in updateClusterList
         protected float instantaneousISI; // ticks/event
-        protected float distanceToLastEvent = Float.POSITIVE_INFINITY;
-        protected float xDistanceToLastEvent = Float.POSITIVE_INFINITY, yDistanceToLastEvent = Float.POSITIVE_INFINITY;
+        
+        // distances to the last event that will move the cluster, initialized zero since first event defines initial cluster location
+        protected float distanceToLastEvent = 0;
+        protected float xDistanceToLastEvent = 0, yDistanceToLastEvent = 0;
 
         // public float tauMsVelocity=50; // LP filter time constant for velocityPPT change
         // private LowpassFilter velocityFilter=new LowpassFilter();
@@ -1415,6 +1417,11 @@ public class RectangularClusterTracker extends EventFilter2D
             angle = stronger.angle;
             cosAngle = stronger.cosAngle;
             sinAngle = stronger.sinAngle;
+            
+            distanceToLastEvent=(float)Math.min(one.distanceToLastEvent,two.distanceToLastEvent);
+            xDistanceToLastEvent=(float)Math.min(one.xDistanceToLastEvent,two.xDistanceToLastEvent);
+            yDistanceToLastEvent=(float)Math.min(one.yDistanceToLastEvent,two.yDistanceToLastEvent);
+            
             averageEventDistance = ((one.averageEventDistance * one.mass) + (two.averageEventDistance * two.mass)) / mass;
             averageEventXDistance = ((one.averageEventXDistance * one.mass) + (two.averageEventXDistance * two.mass)) / mass;
             averageEventYDistance = ((one.averageEventYDistance * one.mass) + (two.averageEventYDistance * two.mass)) / mass;
@@ -1531,7 +1538,7 @@ public class RectangularClusterTracker extends EventFilter2D
             float m1 = 1 - m;
             //m is specified when calling this method, it is the mixing factor.
             if(Float.isInfinite(distanceToLastEvent) || Float.isInfinite(xDistanceToLastEvent) || Float.isInfinite(yDistanceToLastEvent)){
-                log.warning("NaN distance to last event");
+                log.warning(String.format("NaN distance to last event, this cluster has only %d events so far",getNumEvents()));
                 return;
             }
             averageEventDistance = (m1 * averageEventDistance) + (m * distanceToLastEvent);
@@ -3050,9 +3057,9 @@ public class RectangularClusterTracker extends EventFilter2D
             c = grid[(e.x) >>> SUBSAMPLE_BY][(e.y) >>> SUBSAMPLE_BY];
             if (c == null) {
                 if (useNearestCluster) {
-                    c = getNearestCluster(e);
+                    c = findNearestCluster(e);
                 } else {
-                    c = getFirstContainingCluster(e); // find cluster that event falls within (or also within surround
+                    c = findFirstContainingCluster(e); // find cluster that event falls within (or also within surround
                     // if scaling enabled)
                 }
             }
