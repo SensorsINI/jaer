@@ -3,6 +3,7 @@
  * and open the template in the editor.
  */
 package com.inilabs.jaer.projects.inix.pantilt;
+import com.inilabs.jaer.projects.inix.tracker.*;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics2D;
@@ -12,6 +13,7 @@ import ch.unizh.ini.jaer.hardware.pantilt.*;
 import com.jogamp.opengl.GL;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -20,27 +22,33 @@ import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import com.inilabs.jaer.projects.inix.tracker.FlightTracker;
+
 /**
  * Demonstrates tracking object(s) and targeting them with the pan tilt unit. A laser pointer on the pan tilt
  * can show where it is aimed. Developed for Sardinia Capo Cacia Cognitive Neuromorphic Engineering Workshop, April 2008.
  * Includes a 4 point calibration based on an interactive GUI.
  * 
- * @author tobi, Ken Knoblauch
+ * @author tobi, Ken Knoblauch, rjd
  */
+
+//@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 @Description("Tracks a single moving object with the pan tilt unit")
-public class GimbalTracker extends EventFilter2D implements FrameAnnotater {
+public class GimbalController extends EventFilter2D implements FrameAnnotater {
 	RectangularClusterTracker tracker;
 	CalibratedPanTilt panTilt=null;
         Point2D.Float cluster0_xy = null;
 
-	public GimbalTracker(AEChip chip) {
+	public GimbalController(AEChip chip) {
 		super(chip);
 		FilterChain filterChain=new FilterChain(chip);
 		setEnclosedFilterChain(filterChain);
-		tracker=new RectangularClusterTracker(chip);
+		tracker=new FlightTracker(chip);
+//                tracker.getSupport().addPropertyChangeListener(this);
 		panTilt=new CalibratedPanTilt(chip);
+//                panTilt.getSupport().addPropertyChangeListener(this);
+                filterChain.add(tracker);
 		filterChain.add(panTilt);
-		filterChain.add(tracker);
 		setEnclosedFilterChain(filterChain);
 	}
 
