@@ -399,16 +399,16 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
          * @param event
          */
         @Override
-        protected void updatePosition(BasicEvent event, float m) {
+        protected void updatePosition(BasicEvent event) {
             if ((track == null) || !onlyFollowTrack) {
-                super.updatePosition(event, m);
+                super.updatePosition(event);
                 return;
             } else {
                 // move cluster, but only along the track
                 int dt = event.timestamp - lastUpdateTime;
                 Point2D.Float v = findClosestTrackSegmentVector(); // v is the segment vector pointing from this segment vertex to the next one
                 if (v == null) {
-                    super.updatePosition(event, m);
+                    super.updatePosition(event);
                     return;
                 }
                 float vnorm = (float) v.distance(0, 0);
@@ -424,8 +424,8 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
                 float ex = event.x - xpred;
                 float ey = event.y - ypred;
                 // project this error along the track by dotting the error with the segment unit vector, times the mixing factor
-                float proj = ((1 - relaxToTrackFactor) * m * ((v.x * ex) + (v.y * ey))) / vnorm;
-                float f = relaxToTrackFactor * m;
+                float proj = ((1 - relaxToTrackFactor) * mixingFactor * ((v.x * ex) + (v.y * ey))) / vnorm;
+                float f = relaxToTrackFactor * mixingFactor;
                 location.x = xpred + (proj * v.x) + (f * ex);
                 location.y = ypred + (proj * v.y) + (f * ey);
             }

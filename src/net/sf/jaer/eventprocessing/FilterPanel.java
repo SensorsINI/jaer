@@ -10,6 +10,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
@@ -28,10 +29,6 @@ import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.NumberFormat;
@@ -60,6 +57,7 @@ import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
+import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
@@ -235,6 +233,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     public FilterPanel(EventFilter f) {
 //        log.info("building FilterPanel for "+f);
+//        UIManager.getLookAndFeelDefaults()
+//                .put("defaultFont", new Font("Arial", Font.PLAIN, 11));
         this.setFilter(f);
         initComponents();
         Dimension d = enableResetControlsHelpPanel.getPreferredSize();
@@ -702,6 +702,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
+        if (f.isPropertyBold(label.getText())) {
+            label.setFont(label.getFont().deriveFont(Font.BOLD));
+        }
     }
 
     void addTip(EventFilter f, AbstractButton b) {
@@ -720,6 +723,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
+        if (f.isPropertyBold(label.getText())) {
+            label.setFont(label.getFont().deriveFont(Font.BOLD));
+        }
 
     }
 
@@ -731,6 +737,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             d.setSize(1000, d.getHeight());
             return d;
         }
+    }
+
+    private void setFontSizeStyle(final JComponent label) {
+        label.setFont(label.getFont().deriveFont(fontSize));
+        label.setFont(label.getFont().deriveFont(Font.PLAIN));
     }
 
     class EnumControl extends MyControl implements HasSetter {
@@ -755,12 +766,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
+            setFontSizeStyle(label);
             addTip(f, label);
             add(label);
 
             control = new JComboBox(c.getEnumConstants());
             control.setFont(control.getFont().deriveFont(fontSize));
+            control.setFont(control.getFont().deriveFont(Font.PLAIN));
 //            control.setHorizontalAlignment(SwingConstants.LEADING);
 
             add(label);
@@ -817,7 +829,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
+            setFontSizeStyle(label);
             addTip(f, label);
             add(label);
 
@@ -853,6 +865,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             });
         }
+
     }
     private final float KEY_FACTOR = (float) Math.sqrt(2), WHEEL_FACTOR = (float) Math.pow(2, 1. / 16); // factors to change by with arrow and mouse wheel
 
@@ -877,7 +890,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
             addTip(f, checkBox);
             add(checkBox);
-            checkBox.setFont(checkBox.getFont().deriveFont(fontSize));
+            setFontSizeStyle(checkBox);
 
 //            add(Box.createVerticalStrut(0));
             try {
@@ -1092,8 +1105,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         int initValue = 0, nval;
         final JTextField tf;
         String PROPERTY_VALUE = "value";
-        boolean signed=false;
-        
+        boolean signed = false;
+
         @Override
         public void set(Object o) {
             if (o instanceof Integer) {
@@ -1109,8 +1122,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             filter = f;
             write = w;
             read = r;
-            signed=isSigned(w);
-            
+            signed = isSigned(w);
+
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
@@ -1197,7 +1210,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = Math.round(initValue * KEY_FACTOR);
                                 }
-                                
+
                                 w.invoke(filter, newValue = nval);
                                 tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
@@ -1209,12 +1222,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         } else if (code == KeyEvent.VK_DOWN) {
                             try {
                                 nval = initValue;
-                                if ( nval == 0) {
+                                if (nval == 0) {
                                     nval = 0;
                                 } else {
                                     nval = Math.round(initValue / KEY_FACTOR);
                                 }
-                                
+
                                 w.invoke(filter, newValue = nval);
                                 tf.setText(Integer.toString(nval));
                                 fixIntValue(tf, r);
@@ -1288,7 +1301,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         e.printStackTrace();
                     }
                     int code = evt.getWheelRotation();
-                    
+
                     int mod = evt.getModifiers();
                     boolean shift = evt.isShiftDown();
                     if (!shift) {
@@ -1364,9 +1377,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     }
 
-
-    /** Annotation to indicate some number property is signed
-     * 
+    /**
+     * Annotation to indicate some number property is signed
+     *
      * @param m a method
      * @return true if annotated as signed
      */
@@ -1387,7 +1400,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         EventFilter filter;
         float initValue = 0, nval;
         final JTextField tf;
-        boolean signed=false;
+        boolean signed = false;
 
         @Override
         public void set(Object o) {
@@ -1406,13 +1419,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             filter = f;
             write = w;
             read = r;
-            signed=isSigned(w);
+            signed = isSigned(w);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
+            setFontSizeStyle(label);
             addTip(f, label);
             add(label);
             tf = new JTextField("", 10);

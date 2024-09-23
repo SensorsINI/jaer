@@ -353,8 +353,8 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
             }
 
             @Override
-            protected void updateAverageEventDistance(float m) {
-                super.updateAverageEventDistance(m);
+            protected void updateAverageEventDistance() {
+                super.updateAverageEventDistance();
                 if (getAverageEventXDistance() > maxRadiusPixels) {
                     maxRadiusPixels = getAverageEventXDistance();
                 }

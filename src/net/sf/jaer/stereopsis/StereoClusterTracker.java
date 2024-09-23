@@ -396,13 +396,13 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 		 * @param m
 		 */
 		@Override
-		protected void updatePosition(BasicEvent e, float m) {
+		protected void updatePosition(BasicEvent e) {
 			BinocularEvent event = (BinocularEvent) e;
-			float m1 = 1 - m;
+			float m1 = 1 - mixingFactor;
 			float d=event.eye==BinocularEvent.Eye.RIGHT?-disparity:disparity;
 
-			location.x = ((m1 * location.x) + (m * (event.x+(d/2))));
-			location.y = ((m1 * location.y) + (m * event.y));
+			location.x = ((m1 * location.x) + (mixingFactor * (event.x+(d/2))));
+			location.y = ((m1 * location.y) + (mixingFactor * event.y));
 
 		}
 
