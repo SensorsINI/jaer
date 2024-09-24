@@ -41,4 +41,9 @@ public class FlightTracker extends RectangularClusterTracker {
 
        
 	
+ //  convenience - getMass now is protected in RectangularClusterTracker      
+       public int getMassNow(int t) {
+           return getMassNow(t);
+       }
 }
+ 
