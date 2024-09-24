@@ -32,10 +32,10 @@ import com.inilabs.jaer.projects.inix.tracker.FlightTracker;
  * @author tobi, Ken Knoblauch, rjd
  */
 
-//@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-@Description("Tracks a single moving object with the pan tilt unit")
+@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Description("Selects, and tracks, a moving object with the DJI RS 4 Pro Gimbal")
 public class GimbalController extends EventFilter2D implements FrameAnnotater {
-	RectangularClusterTracker tracker;
+	FlightTracker tracker;
 	CalibratedPanTilt panTilt=null;
         Point2D.Float cluster0_xy = null;
 
@@ -45,10 +45,10 @@ public class GimbalController extends EventFilter2D implements FrameAnnotater {
 		setEnclosedFilterChain(filterChain);
 		tracker=new FlightTracker(chip);
 //                tracker.getSupport().addPropertyChangeListener(this);
-		panTilt=new CalibratedPanTilt(chip);
+//		panTilt=new CalibratedPanTilt(chip);
 //                panTilt.getSupport().addPropertyChangeListener(this);
                 filterChain.add(tracker);
-		filterChain.add(panTilt);
+//		filterChain.add(panTilt);
 		setEnclosedFilterChain(filterChain);
 	}
 

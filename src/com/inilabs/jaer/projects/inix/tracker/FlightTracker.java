@@ -30,36 +30,13 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 @Description("Tracks target(s) in flight.")
-public class FlightTracker extends RectangularClusterTracker implements FrameAnnotater {
-	RectangularClusterTracker tracker;
+
+public class FlightTracker extends RectangularClusterTracker {
+
+        
 	public FlightTracker(AEChip chip) {
 		super(chip);
-		tracker=new RectangularClusterTracker(chip);
-                tracker.getSupport().addPropertyChangeListener(this);
-	}
-
-	@Override
-	public void resetFilter() {
-		tracker.resetFilter();
-	}
-
-	@Override
-	public void initFilter() {
-		resetFilter();
-	}
-
-	public void annotate(float[][][] frame) {
-	}
-
-	public void annotate(Graphics2D g) {
-	}
-
-	@Override
-	public void annotate(GLAutoDrawable drawable) {
-		if(!isFilterEnabled()) {
-			return;
-		}
-		tracker.annotate(drawable);
+ //               getSupport().addPropertyChangeListener(this);
 	}
 
        
