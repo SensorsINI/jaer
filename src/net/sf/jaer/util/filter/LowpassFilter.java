@@ -60,7 +60,11 @@ public class LowpassFilter extends Filter {
         return "LP: " + (initialized? lastVal + "->" + lpVal:" (uninitialized)");
     }
 
-    /** Sets the internal value; used to initialize filter. If the filter is reset, then setting
+    /** Sets the internal value. Does not affect reset status. If the filter has been reset, then setting internal value has no effect since 
+     * the internal value is set anyhow when next value is input.
+     * 
+     * <p>
+     * If the filter is reset, then setting
      * internal value will update the last update time on the first application of the filter, since the last update time
      * is set to Integer.MAX_VALUE and is reset anytime the update time is less than the last update time.
     @param value the value 
