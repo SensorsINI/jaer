@@ -174,8 +174,8 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 					weightSum += weight;
 					avgxloc += (c.getLocation().x - c.getBirthLocation().x) * weight;
 					avgyloc += (c.getLocation().y - c.getBirthLocation().y) * weight;
-					avgxvel += c.getVelocityPPT().x * weight;
-					avgyvel += c.getVelocityPPT().y * weight;
+					avgxvel += c.velocity.x * weight;
+					avgyvel += c.velocity.y * weight;
 					ageSum += c.getLifetime() * weight;
 					nn++;
 					if ((oldestCluster == null) || (c.getBirthTime() < oldestCluster.getBirthTime())) {
