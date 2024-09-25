@@ -11,7 +11,7 @@
     <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
     <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
     <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
-    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,0,25,0,0,0,-22"/>
+    <AuxValue name="designerSize" type="java.awt.Dimension" value="-84,-19,0,5,115,114,0,18,106,97,118,97,46,97,119,116,46,68,105,109,101,110,115,105,111,110,65,-114,-39,-41,-84,95,68,20,2,0,2,73,0,6,104,101,105,103,104,116,73,0,5,119,105,100,116,104,120,112,0,0,0,21,0,0,0,-22"/>
   </AuxValues>
 
   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBoxLayout">
@@ -20,8 +20,8 @@
   <SubComponents>
     <Container class="javax.swing.JPanel" name="enableResetControlsHelpPanel">
       <Properties>
-        <Property name="toolTipText" type="java.lang.String" value="Generic controls for this EventFilter"/>
-        <Property name="alignmentX" type="float" value="1.0"/>
+        <Property name="toolTipText" type="java.lang.String" value="General controls for this EventFilter"/>
+        <Property name="alignmentX" type="float" value="0.0"/>
         <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
           <Dimension value="[100, 23]"/>
         </Property>
@@ -30,10 +30,8 @@
         <AuxValue name="JavaCodeGenerator_VariableModifier" type="java.lang.Integer" value="4"/>
       </AuxValues>
 
-      <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout">
-        <Property name="alignment" type="int" value="0"/>
-        <Property name="horizontalGap" type="int" value="2"/>
-        <Property name="verticalGap" type="int" value="2"/>
+      <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBoxLayout">
+        <Property name="axis" type="int" value="0"/>
       </Layout>
       <SubComponents>
         <Component class="javax.swing.JCheckBox" name="enabledCheckBox">
@@ -79,9 +77,6 @@
               <Insets value="[1, 5, 1, 5]"/>
             </Property>
           </Properties>
-          <BindingProperties>
-            <BindingProperty name="selected" source="Form" sourcePath="${controlsVisible}" target="showControlsToggleButton" targetPath="selected" updateStrategy="0" immediately="false"/>
-          </BindingProperties>
         </Component>
       </SubComponents>
     </Container>

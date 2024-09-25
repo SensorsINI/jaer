@@ -190,6 +190,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
         highlightTF = new javax.swing.JTextField();
+        hideOthersCB = new javax.swing.JCheckBox();
         mainMenuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         loadMenuItem = new javax.swing.JMenuItem();
@@ -314,6 +315,14 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         });
 
+        hideOthersCB.setText("Hide others");
+        hideOthersCB.setToolTipText("If selected, hides other properties, if not selected, just highlights the ones that match");
+        hideOthersCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                hideOthersCBActionPerformed(evt);
+            }
+        });
+
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
 
@@ -359,7 +368,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         viewMenu.add(customizeMenuItem);
 
-        highlightMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_H, java.awt.event.InputEvent.CTRL_MASK));
+        highlightMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_H, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         highlightMI.setMnemonic('h');
         highlightMI.setText("Highlight...");
         highlightMI.setToolTipText("focuses the highlight text field, to allow highlighting filters or properties");
@@ -408,7 +417,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeMenu.add(acquisitionModeMenuItem);
         modeMenu.add(jSeparator1);
 
-        measurePerformanceCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
+        measurePerformanceCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         measurePerformanceCheckBoxMenuItem.setMnemonic('p');
         measurePerformanceCheckBoxMenuItem.setText("Measure filter processing time");
         measurePerformanceCheckBoxMenuItem.setToolTipText("Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out.");
@@ -419,7 +428,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         modeMenu.add(measurePerformanceCheckBoxMenuItem);
 
-        resetPerformanceMeasurementMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
+        resetPerformanceMeasurementMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         resetPerformanceMeasurementMI.setMnemonic('s');
         resetPerformanceMeasurementMI.setText("Reset performance measurement statistics");
         resetPerformanceMeasurementMI.setToolTipText("Resets the statsitics after next processing cycle");
@@ -465,8 +474,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 .addContainerGap()
                 .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(highlightTF)
-                .addContainerGap())
+                .addComponent(highlightTF, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(hideOthersCB, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
             .addComponent(scrollPane)
             .addGroup(layout.createSequentialGroup()
                 .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -479,7 +490,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(highlightTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(highlightTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(hideOthersCB)))
                 .addGap(18, 18, 18)
                 .addComponent(scrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 476, Short.MAX_VALUE)
                 .addContainerGap())
@@ -524,7 +537,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             System.exit(0);
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
-        
+
 	private void measurePerformanceCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_measurePerformanceCheckBoxMenuItemActionPerformed
             filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
             if (measurePerformanceCheckBoxMenuItem.isSelected()) {
@@ -532,7 +545,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                     resetStatisticsButton = new JButton(new ResetPerformanceStatisticsAction());
                 }
                 toolBar1.add(resetStatisticsButton);
-                
+
             } else if (resetStatisticsButton != null) {
                 toolBar1.remove(resetStatisticsButton);
                 validate();
@@ -740,17 +753,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     private void highlightTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_highlightTFActionPerformed
         String s = highlightTF.getText();
-        if (s == null || s.isEmpty()) {
-            if (s == null) {
-                s = "";
-            }
-            FilterPanel p = getSelectedFilterPanel();
-            if (p == null) {
-                highlightFilters(s);
-            } else {
-                p.highlightProperties(s);
-            }
-        }
+        highlightOrShowOnly(s);
     }//GEN-LAST:event_highlightTFActionPerformed
 
     private FilterPanel getSelectedFilterPanel() {
@@ -783,16 +786,21 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private void highlightTFKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_highlightTFKeyPressed
         // incremental search
         String s = highlightTF.getText();
-        if (s == null || s.isEmpty()) {
-            return;
-        }
+        highlightOrShowOnly(s);
+    }//GEN-LAST:event_highlightTFKeyPressed
+
+    private void hideOthersCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideOthersCBActionPerformed
+        highlightOrShowOnly(highlightTF.getText());
+    }//GEN-LAST:event_hideOthersCBActionPerformed
+
+    private void highlightOrShowOnly(String s) {
         FilterPanel p = getSelectedFilterPanel();
         if (p == null) {
             highlightFilters(s);
         } else {
-            p.highlightProperties(s);
-        }        // TODO add your handling code here:
-    }//GEN-LAST:event_highlightTFKeyPressed
+            p.highlightProperties(s, hideOthersCB.isSelected());
+        }
+    }
 
     private void filterVisibleBiases(String string) {
         if ((string == null) || string.isEmpty()) {
@@ -841,8 +849,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     /**
      * Return the filter panel for the specified filter. This can be used when
-     * adding custom controls. The panel is returned even if it is within an enclosed FilterChain
-     * 
+     * adding custom controls. The panel is returned even if it is within an
+     * enclosed FilterChain
+     *
      * @param filt the filter to look for panel for
      * @return the panel, or null
      */
@@ -850,12 +859,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         for (FilterPanel p : filterPanels) {
             if (p.getFilter() == filt) {
                 return p;
-            }
-            // if the panel's filter has chain, then check if filt is one of these filters
-            else if(p.getFilter().getEnclosedFilterChain()!=null){
-                FilterChain c=p.getFilter().getEnclosedFilterChain();
-                for(EventFilter enclFilt:c){
-                    if(enclFilt==filt){ // we found the enclosed filter, now we need the panel for it
+            } // if the panel's filter has chain, then check if filt is one of these filters
+            else if (p.getFilter().getEnclosedFilterChain() != null) {
+                FilterChain c = p.getFilter().getEnclosedFilterChain();
+                for (EventFilter enclFilt : c) {
+                    if (enclFilt == filt) { // we found the enclosed filter, now we need the panel for it
                         return p.getEnclosedFilterPanel(enclFilt);
                     }
                 }
@@ -881,25 +889,26 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     private void highlightFilters(String s) {
 
-        for (EventFilter f : highlightedFilters) {
-            final FilterPanel filterPanelForFilter = getFilterPanelForFilter(f);
-            TitledBorder b = (TitledBorder) filterPanelForFilter.getBorder();
-            b.setTitleColor(Color.black);
-            filterPanelForFilter.repaint();
-        }
+//        for (EventFilter f : highlightedFilters) {
+//            final FilterPanel filterPanelForFilter = getFilterPanelForFilter(f);
+//            TitledBorder b = (TitledBorder) filterPanelForFilter.getBorder();
+//            b.setTitleColor(Color.black);
+//            filterPanelForFilter.repaint();
+//        }
         highlightedFilters.clear();
-        if (s.isEmpty()) {
-            return;
-        }
         for (EventFilter f : filterChain) {
-            if (f.getClass().getSimpleName().toLowerCase().contains(s.toLowerCase())) {
-                TitledBorder b = (TitledBorder) getFilterPanelForFilter(f).getBorder();
+            TitledBorder b = (TitledBorder) getFilterPanelForFilter(f).getBorder();
+            if (s == null || s.isEmpty()) {
+                b.setTitleColor(Color.black);
+            } else if (f.getClass().getSimpleName().toLowerCase().contains(s.toLowerCase())) {
                 b.setTitleColor(Color.red);
                 highlightedFilters.add(f);
-                getFilterPanelForFilter(f).repaint();
-
+            }else{
+                b.setTitleColor(Color.black);
             }
+            getFilterPanelForFilter(f).repaint();
         }
+        repaint();
     }
 
     class ResetPerformanceStatisticsAction extends AbstractAction {
@@ -927,6 +936,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JMenu fileMenu;
     protected javax.swing.JPanel filtersPanel;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JCheckBox hideOthersCB;
     private javax.swing.JMenuItem highlightMI;
     private javax.swing.JTextField highlightTF;
     private javax.swing.JLabel jLabel1;
