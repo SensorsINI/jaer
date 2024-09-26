@@ -10,6 +10,7 @@ import java.awt.geom.Point2D;
 
 import ch.unizh.ini.jaer.hardware.pantilt.*; 
 import com.jogamp.opengl.GL;
+import java.util.Observable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -32,7 +33,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 @Description("Tracks target(s) in flight.")
 
 public class FlightTracker extends RectangularClusterTracker {
-
+    RectangularClusterTracker.Cluster targetCluster = null;
+    float targetArealDensity = 1.0f ;
+    float targetWidth = 1.0f ;
         
 	public FlightTracker(AEChip chip) {
 		super(chip);
@@ -40,5 +43,42 @@ public class FlightTracker extends RectangularClusterTracker {
 	}
 
        
-	
+    @Override
+    public void update(Observable o, Object arg) {
+        if (o == this) {
+            UpdateMessage msg = (UpdateMessage) arg;
+            updateClusterList(msg.timestamp);
+            updateTargetParams();
+        }
+    }
+        
+    public void updateTargetParams() {
+        if(getNumClusters()>0) {
+          targetCluster=getClusters().get(0);
+          targetArealDensity = targetCluster.getMass()/targetCluster.getArea();
+          targetWidth = targetCluster.getRadius()*2f ;  // this is measure used for the cluster box
+        }
+        if ( targetCluster.getMass() > getThresholdMassForVisibleCluster() ) {
+            if (targetWidth > 20f ) {
+                setMixingFactor(0.001f);
+            }
+            else {
+                setMixingFactor(0.040f);   
+            }
+        }
+        else 
+        {
+            setMixingFactor(0.040f);    
+        }
+    }   
+    
+    public float getTargetArealDensity() {
+        return targetArealDensity;
+    }
+    
+    public float getTargetWidth() {
+        return targetWidth;
+    }
+    
+    
 }

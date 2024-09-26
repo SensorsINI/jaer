@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-package com.inilabs.jaer.projects.inix.pantilt;
+package com.inilabs.jaer.projects.inix.tracker;
 
 
 /**
