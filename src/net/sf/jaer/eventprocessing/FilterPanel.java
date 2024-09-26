@@ -63,6 +63,7 @@ import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import ncsa.hdf.view.ViewProperties;
 
 import net.sf.jaer.util.EngineeringFormat;
 
@@ -238,7 +239,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         this.setFilter(f);
         initComponents();
         Dimension d = enableResetControlsHelpPanel.getPreferredSize();
-        enableResetControlsHelpPanel.setMaximumSize(new Dimension(1000, d.height)); // keep from stretching
+        enableResetControlsHelpPanel.setMaximumSize(new Dimension(200, d.height)); // keep from stretching
         String cn = getFilter().getClass().getName();
         int lastdot = cn.lastIndexOf('.');
         String name = cn.substring(lastdot + 1);
@@ -247,7 +248,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         titledBorder.getBorderInsets(this).set(1, 1, 1, 1);
         setBorder(titledBorder);
         normalBorder = titledBorder.getBorder();
-        redLineBorder = BorderFactory.createLineBorder(Color.red, 3);
+        redLineBorder = BorderFactory.createLineBorder(Color.red, 1);
         enclosedFilterSelectedBorder = BorderFactory.createLineBorder(Color.orange, 3);
         enabledCheckBox.setSelected(getFilter().isFilterEnabled());
         addIntrospectedControls();
@@ -777,9 +778,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(label);
 
             control = new JComboBox(c.getEnumConstants());
+            control.setMaximumSize(new Dimension(100, 30));
             control.setFont(control.getFont().deriveFont(fontSize));
             control.setFont(control.getFont().deriveFont(Font.PLAIN));
-//            control.setHorizontalAlignment(SwingConstants.LEADING);
 
             add(label);
             add(control);
@@ -975,7 +976,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             tf = ic.tf;
             add(ic);
             slider = new JSlider(params.minIntValue, params.maxIntValue);
-            slider.setMaximumSize(new Dimension(300, 50));
+            slider.setMaximumSize(new Dimension(200, 50));
 
             try {
                 Integer x = (Integer) r.invoke(filter); // read int value
@@ -1739,6 +1740,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         showControlsToggleButton.setText("Controls");
         showControlsToggleButton.setToolTipText("Show filter parameters, hides other filters. Click again to see all filters.");
         showControlsToggleButton.setMargin(new java.awt.Insets(1, 5, 1, 5));
+        showControlsToggleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showControlsToggleButtonActionPerformed(evt);
+            }
+        });
         enableResetControlsHelpPanel.add(showControlsToggleButton);
 
         add(enableResetControlsHelpPanel);
@@ -1879,6 +1885,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         getFilter().setSelected(true);
     }//GEN-LAST:event_resetButtonActionPerformed
+
+    private void showControlsToggleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showControlsToggleButtonActionPerformed
+        setControlsVisible(showControlsToggleButton.isSelected());
+    }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     protected javax.swing.JPanel enableResetControlsHelpPanel;
@@ -2144,8 +2154,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 MyControl c = propertyControlMap.get(propName);
 //                System.out.println("highlighted " + propName);
                 if (c != null) {
-                    c.setBorder(redLineBorder); // highlight it
-                    c.repaint(300);
+                    if (!hideOthers) {
+                        c.setBorder(redLineBorder); // highlight it
+                        c.repaint(300);
+                    }
                     highlightedControls.add(c);
                 }
             } else { // no match, then hide it if hideOthers set, otherwise show it

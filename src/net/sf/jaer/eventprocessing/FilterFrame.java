@@ -182,15 +182,16 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         disableFilteringToggleButton = new javax.swing.JToggleButton();
         resetAllButton = new javax.swing.JButton();
         overviewButton = new javax.swing.JButton();
-        jPanel1 = new javax.swing.JPanel();
+        updateIntervalPanel = new javax.swing.JPanel();
         updateIntervalLabel = new javax.swing.JLabel();
         updateIntervalField = new javax.swing.JTextField();
-        jbuttonSelectFilt = new javax.swing.JButton();
-        jLabel1 = new javax.swing.JLabel();
-        scrollPane = new javax.swing.JScrollPane();
-        filtersPanel = new javax.swing.JPanel();
+        selectFiltersJB = new javax.swing.JButton();
+        jPanel1 = new javax.swing.JPanel();
+        tipLabel = new javax.swing.JLabel();
         highlightTF = new javax.swing.JTextField();
         hideOthersCB = new javax.swing.JCheckBox();
+        scrollPane = new javax.swing.JScrollPane();
+        filtersPanel = new javax.swing.JPanel();
         mainMenuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         loadMenuItem = new javax.swing.JMenuItem();
@@ -213,7 +214,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("FilterControl");
-        setMinimumSize(new java.awt.Dimension(150, 37));
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentMoved(java.awt.event.ComponentEvent evt) {
                 formComponentMoved(evt);
@@ -227,6 +227,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 formWindowClosed(evt);
             }
         });
+        getContentPane().setLayout(new javax.swing.BoxLayout(getContentPane(), javax.swing.BoxLayout.Y_AXIS));
+
+        toolBar1.setAlignmentX(0.0F);
 
         disableFilteringToggleButton.setText("Disable all");
         disableFilteringToggleButton.setToolTipText("Temporarily disables all filters");
@@ -261,44 +264,47 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         toolBar1.add(overviewButton);
 
-        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
+        updateIntervalPanel.setLayout(new javax.swing.BoxLayout(updateIntervalPanel, javax.swing.BoxLayout.LINE_AXIS));
 
-        updateIntervalLabel.setText("updateIntevalMs");
-        jPanel1.add(updateIntervalLabel);
+        updateIntervalLabel.setText("updateIntervalMs");
+        updateIntervalPanel.add(updateIntervalLabel);
 
         updateIntervalField.setColumns(8);
         updateIntervalField.setToolTipText("Sets the maximum update interval for filters that notify observers");
-        updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 2147483647));
+        updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 30));
         updateIntervalField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 updateIntervalFieldActionPerformed(evt);
             }
         });
-        jPanel1.add(updateIntervalField);
+        updateIntervalPanel.add(updateIntervalField);
 
-        toolBar1.add(jPanel1);
+        toolBar1.add(updateIntervalPanel);
 
-        jbuttonSelectFilt.setText("Select Filters...");
-        jbuttonSelectFilt.setToolTipText("Opens dialog to select loaded filters");
-        jbuttonSelectFilt.setFocusable(false);
-        jbuttonSelectFilt.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jbuttonSelectFilt.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        jbuttonSelectFilt.addActionListener(new java.awt.event.ActionListener() {
+        selectFiltersJB.setText("Select Filters...");
+        selectFiltersJB.setToolTipText("Opens dialog to select loaded filters");
+        selectFiltersJB.setFocusable(false);
+        selectFiltersJB.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        selectFiltersJB.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        selectFiltersJB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jbuttonSelectFiltActionPerformed(evt);
+                selectFiltersJBActionPerformed(evt);
             }
         });
-        toolBar1.add(jbuttonSelectFilt);
+        toolBar1.add(selectFiltersJB);
 
-        jLabel1.setText("<html>Enabled filters (check box selected) <br>are processed from top to bottom");
+        getContentPane().add(toolBar1);
 
-        filtersPanel.setMaximumSize(new java.awt.Dimension(0, 0));
-        filtersPanel.setMinimumSize(new java.awt.Dimension(100, 300));
-        filtersPanel.setLayout(new javax.swing.BoxLayout(filtersPanel, javax.swing.BoxLayout.Y_AXIS));
-        scrollPane.setViewportView(filtersPanel);
+        jPanel1.setAlignmentX(0.0F);
+        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.X_AXIS));
+
+        tipLabel.setText("<html>Enabled filters are <br>processed from top to bottom");
+        tipLabel.setMaximumSize(new java.awt.Dimension(300, 36));
+        jPanel1.add(tipLabel);
 
         highlightTF.setText("highlight...");
         highlightTF.setToolTipText("highlight filters/parameters");
+        highlightTF.setMaximumSize(new java.awt.Dimension(200, 30));
         highlightTF.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 highlightTFFocusGained(evt);
@@ -314,6 +320,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 highlightTFKeyPressed(evt);
             }
         });
+        jPanel1.add(highlightTF);
 
         hideOthersCB.setText("Hide others");
         hideOthersCB.setToolTipText("If selected, hides other properties, if not selected, just highlights the ones that match");
@@ -322,6 +329,20 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 hideOthersCBActionPerformed(evt);
             }
         });
+        jPanel1.add(hideOthersCB);
+
+        getContentPane().add(jPanel1);
+
+        scrollPane.setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        scrollPane.setAlignmentX(0.0F);
+        scrollPane.setPreferredSize(new java.awt.Dimension(300, 600));
+
+        filtersPanel.setLayout(new javax.swing.BoxLayout(filtersPanel, javax.swing.BoxLayout.Y_AXIS));
+        scrollPane.setViewportView(filtersPanel);
+
+        getContentPane().add(scrollPane);
+
+        mainMenuBar.setAlignmentX(0.0F);
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -465,38 +486,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         mainMenuBar.add(helpMenu);
 
         setJMenuBar(mainMenuBar);
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(highlightTF, javax.swing.GroupLayout.PREFERRED_SIZE, 160, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(hideOthersCB, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addComponent(scrollPane)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 218, Short.MAX_VALUE))
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(highlightTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(hideOthersCB)))
-                .addGap(18, 18, 18)
-                .addComponent(scrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 476, Short.MAX_VALUE)
-                .addContainerGap())
-        );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -736,10 +725,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
 	}//GEN-LAST:event_updateIntervalFieldActionPerformed
 
-	private void jbuttonSelectFiltActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbuttonSelectFiltActionPerformed
+	private void selectFiltersJBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectFiltersJBActionPerformed
 
             filterChain.customize();
-	}//GEN-LAST:event_jbuttonSelectFiltActionPerformed
+	}//GEN-LAST:event_selectFiltersJBActionPerformed
 
 	private void jaerFilterHelpMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jaerFilterHelpMIActionPerformed
             showInBrowser(JaerConstants.HELP_URL_JAER_HOME);
@@ -939,13 +928,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JCheckBox hideOthersCB;
     private javax.swing.JMenuItem highlightMI;
     private javax.swing.JTextField highlightTF;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JMenuItem jaerFilterHelpMI;
-    private javax.swing.JButton jbuttonSelectFilt;
     private javax.swing.JMenuItem loadMenuItem;
     private javax.swing.JMenuBar mainMenuBar;
     private javax.swing.JCheckBoxMenuItem measurePerformanceCheckBoxMenuItem;
@@ -958,9 +945,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
+    private javax.swing.JButton selectFiltersJB;
+    private javax.swing.JLabel tipLabel;
     private javax.swing.JToolBar toolBar1;
     private javax.swing.JTextField updateIntervalField;
     private javax.swing.JLabel updateIntervalLabel;
+    private javax.swing.JPanel updateIntervalPanel;
     private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables
 }
