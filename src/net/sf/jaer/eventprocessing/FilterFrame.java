@@ -182,14 +182,16 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         disableFilteringToggleButton = new javax.swing.JToggleButton();
         resetAllButton = new javax.swing.JButton();
         overviewButton = new javax.swing.JButton();
-        jPanel1 = new javax.swing.JPanel();
+        updateIntervalPanel = new javax.swing.JPanel();
         updateIntervalLabel = new javax.swing.JLabel();
         updateIntervalField = new javax.swing.JTextField();
-        jbuttonSelectFilt = new javax.swing.JButton();
-        jLabel1 = new javax.swing.JLabel();
+        selectFiltersJB = new javax.swing.JButton();
+        jPanel1 = new javax.swing.JPanel();
+        tipLabel = new javax.swing.JLabel();
+        highlightTF = new javax.swing.JTextField();
+        hideOthersCB = new javax.swing.JCheckBox();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
-        highlightTF = new javax.swing.JTextField();
         mainMenuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         loadMenuItem = new javax.swing.JMenuItem();
@@ -212,7 +214,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("FilterControl");
-        setMinimumSize(new java.awt.Dimension(150, 37));
         addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentMoved(java.awt.event.ComponentEvent evt) {
                 formComponentMoved(evt);
@@ -226,6 +227,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 formWindowClosed(evt);
             }
         });
+        getContentPane().setLayout(new javax.swing.BoxLayout(getContentPane(), javax.swing.BoxLayout.Y_AXIS));
+
+        toolBar1.setAlignmentX(0.0F);
 
         disableFilteringToggleButton.setText("Disable all");
         disableFilteringToggleButton.setToolTipText("Temporarily disables all filters");
@@ -260,44 +264,47 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         toolBar1.add(overviewButton);
 
-        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.LINE_AXIS));
+        updateIntervalPanel.setLayout(new javax.swing.BoxLayout(updateIntervalPanel, javax.swing.BoxLayout.LINE_AXIS));
 
-        updateIntervalLabel.setText("updateIntevalMs");
-        jPanel1.add(updateIntervalLabel);
+        updateIntervalLabel.setText("updateIntervalMs");
+        updateIntervalPanel.add(updateIntervalLabel);
 
         updateIntervalField.setColumns(8);
         updateIntervalField.setToolTipText("Sets the maximum update interval for filters that notify observers");
-        updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 2147483647));
+        updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 30));
         updateIntervalField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 updateIntervalFieldActionPerformed(evt);
             }
         });
-        jPanel1.add(updateIntervalField);
+        updateIntervalPanel.add(updateIntervalField);
 
-        toolBar1.add(jPanel1);
+        toolBar1.add(updateIntervalPanel);
 
-        jbuttonSelectFilt.setText("Select Filters...");
-        jbuttonSelectFilt.setToolTipText("Opens dialog to select loaded filters");
-        jbuttonSelectFilt.setFocusable(false);
-        jbuttonSelectFilt.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        jbuttonSelectFilt.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        jbuttonSelectFilt.addActionListener(new java.awt.event.ActionListener() {
+        selectFiltersJB.setText("Select Filters...");
+        selectFiltersJB.setToolTipText("Opens dialog to select loaded filters");
+        selectFiltersJB.setFocusable(false);
+        selectFiltersJB.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        selectFiltersJB.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        selectFiltersJB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jbuttonSelectFiltActionPerformed(evt);
+                selectFiltersJBActionPerformed(evt);
             }
         });
-        toolBar1.add(jbuttonSelectFilt);
+        toolBar1.add(selectFiltersJB);
 
-        jLabel1.setText("<html>Enabled filters (check box selected) <br>are processed from top to bottom");
+        getContentPane().add(toolBar1);
 
-        filtersPanel.setMaximumSize(new java.awt.Dimension(0, 0));
-        filtersPanel.setMinimumSize(new java.awt.Dimension(100, 300));
-        filtersPanel.setLayout(new javax.swing.BoxLayout(filtersPanel, javax.swing.BoxLayout.Y_AXIS));
-        scrollPane.setViewportView(filtersPanel);
+        jPanel1.setAlignmentX(0.0F);
+        jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.X_AXIS));
+
+        tipLabel.setText("<html>Enabled filters are <br>processed from top to bottom");
+        tipLabel.setMaximumSize(new java.awt.Dimension(300, 36));
+        jPanel1.add(tipLabel);
 
         highlightTF.setText("highlight...");
         highlightTF.setToolTipText("highlight filters/parameters");
+        highlightTF.setMaximumSize(new java.awt.Dimension(200, 30));
         highlightTF.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 highlightTFFocusGained(evt);
@@ -313,6 +320,29 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 highlightTFKeyPressed(evt);
             }
         });
+        jPanel1.add(highlightTF);
+
+        hideOthersCB.setText("Hide others");
+        hideOthersCB.setToolTipText("If selected, hides other properties, if not selected, just highlights the ones that match");
+        hideOthersCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                hideOthersCBActionPerformed(evt);
+            }
+        });
+        jPanel1.add(hideOthersCB);
+
+        getContentPane().add(jPanel1);
+
+        scrollPane.setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+        scrollPane.setAlignmentX(0.0F);
+        scrollPane.setPreferredSize(new java.awt.Dimension(300, 600));
+
+        filtersPanel.setLayout(new javax.swing.BoxLayout(filtersPanel, javax.swing.BoxLayout.Y_AXIS));
+        scrollPane.setViewportView(filtersPanel);
+
+        getContentPane().add(scrollPane);
+
+        mainMenuBar.setAlignmentX(0.0F);
 
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
@@ -359,7 +389,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         viewMenu.add(customizeMenuItem);
 
-        highlightMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_H, java.awt.event.InputEvent.CTRL_MASK));
+        highlightMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_H, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         highlightMI.setMnemonic('h');
         highlightMI.setText("Highlight...");
         highlightMI.setToolTipText("focuses the highlight text field, to allow highlighting filters or properties");
@@ -408,7 +438,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeMenu.add(acquisitionModeMenuItem);
         modeMenu.add(jSeparator1);
 
-        measurePerformanceCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_MASK));
+        measurePerformanceCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         measurePerformanceCheckBoxMenuItem.setMnemonic('p');
         measurePerformanceCheckBoxMenuItem.setText("Measure filter processing time");
         measurePerformanceCheckBoxMenuItem.setToolTipText("Enables instrumentation of filter performance. Filter processing time statistics are printed to System.out. They appear in netbeans IDE console, for example, but not in built-in jAER console, which does not show System.out.");
@@ -419,7 +449,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         modeMenu.add(measurePerformanceCheckBoxMenuItem);
 
-        resetPerformanceMeasurementMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_MASK));
+        resetPerformanceMeasurementMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_R, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         resetPerformanceMeasurementMI.setMnemonic('s');
         resetPerformanceMeasurementMI.setText("Reset performance measurement statistics");
         resetPerformanceMeasurementMI.setToolTipText("Resets the statsitics after next processing cycle");
@@ -456,34 +486,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         mainMenuBar.add(helpMenu);
 
         setJMenuBar(mainMenuBar);
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(highlightTF)
-                .addContainerGap())
-            .addComponent(scrollPane)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 218, Short.MAX_VALUE))
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addComponent(toolBar1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(highlightTF, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(18, 18, 18)
-                .addComponent(scrollPane, javax.swing.GroupLayout.DEFAULT_SIZE, 476, Short.MAX_VALUE)
-                .addContainerGap())
-        );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -524,7 +526,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             System.exit(0);
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
-        
+
 	private void measurePerformanceCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_measurePerformanceCheckBoxMenuItemActionPerformed
             filterChain.setMeasurePerformanceEnabled(measurePerformanceCheckBoxMenuItem.isSelected());
             if (measurePerformanceCheckBoxMenuItem.isSelected()) {
@@ -532,7 +534,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                     resetStatisticsButton = new JButton(new ResetPerformanceStatisticsAction());
                 }
                 toolBar1.add(resetStatisticsButton);
-                
+
             } else if (resetStatisticsButton != null) {
                 toolBar1.remove(resetStatisticsButton);
                 validate();
@@ -723,10 +725,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
 	}//GEN-LAST:event_updateIntervalFieldActionPerformed
 
-	private void jbuttonSelectFiltActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jbuttonSelectFiltActionPerformed
+	private void selectFiltersJBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_selectFiltersJBActionPerformed
 
             filterChain.customize();
-	}//GEN-LAST:event_jbuttonSelectFiltActionPerformed
+	}//GEN-LAST:event_selectFiltersJBActionPerformed
 
 	private void jaerFilterHelpMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jaerFilterHelpMIActionPerformed
             showInBrowser(JaerConstants.HELP_URL_JAER_HOME);
@@ -740,17 +742,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     private void highlightTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_highlightTFActionPerformed
         String s = highlightTF.getText();
-        if (s == null || s.isEmpty()) {
-            if (s == null) {
-                s = "";
-            }
-            FilterPanel p = getSelectedFilterPanel();
-            if (p == null) {
-                highlightFilters(s);
-            } else {
-                p.highlightProperties(s);
-            }
-        }
+        highlightOrShowOnly(s);
     }//GEN-LAST:event_highlightTFActionPerformed
 
     private FilterPanel getSelectedFilterPanel() {
@@ -783,16 +775,21 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private void highlightTFKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_highlightTFKeyPressed
         // incremental search
         String s = highlightTF.getText();
-        if (s == null || s.isEmpty()) {
-            return;
-        }
+        highlightOrShowOnly(s);
+    }//GEN-LAST:event_highlightTFKeyPressed
+
+    private void hideOthersCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideOthersCBActionPerformed
+        highlightOrShowOnly(highlightTF.getText());
+    }//GEN-LAST:event_hideOthersCBActionPerformed
+
+    private void highlightOrShowOnly(String s) {
         FilterPanel p = getSelectedFilterPanel();
         if (p == null) {
             highlightFilters(s);
         } else {
-            p.highlightProperties(s);
-        }        // TODO add your handling code here:
-    }//GEN-LAST:event_highlightTFKeyPressed
+            p.highlightProperties(s, hideOthersCB.isSelected());
+        }
+    }
 
     private void filterVisibleBiases(String string) {
         if ((string == null) || string.isEmpty()) {
@@ -841,8 +838,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     /**
      * Return the filter panel for the specified filter. This can be used when
-     * adding custom controls. The panel is returned even if it is within an enclosed FilterChain
-     * 
+     * adding custom controls. The panel is returned even if it is within an
+     * enclosed FilterChain
+     *
      * @param filt the filter to look for panel for
      * @return the panel, or null
      */
@@ -850,12 +848,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         for (FilterPanel p : filterPanels) {
             if (p.getFilter() == filt) {
                 return p;
-            }
-            // if the panel's filter has chain, then check if filt is one of these filters
-            else if(p.getFilter().getEnclosedFilterChain()!=null){
-                FilterChain c=p.getFilter().getEnclosedFilterChain();
-                for(EventFilter enclFilt:c){
-                    if(enclFilt==filt){ // we found the enclosed filter, now we need the panel for it
+            } // if the panel's filter has chain, then check if filt is one of these filters
+            else if (p.getFilter().getEnclosedFilterChain() != null) {
+                FilterChain c = p.getFilter().getEnclosedFilterChain();
+                for (EventFilter enclFilt : c) {
+                    if (enclFilt == filt) { // we found the enclosed filter, now we need the panel for it
                         return p.getEnclosedFilterPanel(enclFilt);
                     }
                 }
@@ -881,25 +878,26 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     private void highlightFilters(String s) {
 
-        for (EventFilter f : highlightedFilters) {
-            final FilterPanel filterPanelForFilter = getFilterPanelForFilter(f);
-            TitledBorder b = (TitledBorder) filterPanelForFilter.getBorder();
-            b.setTitleColor(Color.black);
-            filterPanelForFilter.repaint();
-        }
+//        for (EventFilter f : highlightedFilters) {
+//            final FilterPanel filterPanelForFilter = getFilterPanelForFilter(f);
+//            TitledBorder b = (TitledBorder) filterPanelForFilter.getBorder();
+//            b.setTitleColor(Color.black);
+//            filterPanelForFilter.repaint();
+//        }
         highlightedFilters.clear();
-        if (s.isEmpty()) {
-            return;
-        }
         for (EventFilter f : filterChain) {
-            if (f.getClass().getSimpleName().toLowerCase().contains(s.toLowerCase())) {
-                TitledBorder b = (TitledBorder) getFilterPanelForFilter(f).getBorder();
+            TitledBorder b = (TitledBorder) getFilterPanelForFilter(f).getBorder();
+            if (s == null || s.isEmpty()) {
+                b.setTitleColor(Color.black);
+            } else if (f.getClass().getSimpleName().toLowerCase().contains(s.toLowerCase())) {
                 b.setTitleColor(Color.red);
                 highlightedFilters.add(f);
-                getFilterPanelForFilter(f).repaint();
-
+            }else{
+                b.setTitleColor(Color.black);
             }
+            getFilterPanelForFilter(f).repaint();
         }
+        repaint();
     }
 
     class ResetPerformanceStatisticsAction extends AbstractAction {
@@ -927,15 +925,14 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JMenu fileMenu;
     protected javax.swing.JPanel filtersPanel;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JCheckBox hideOthersCB;
     private javax.swing.JMenuItem highlightMI;
     private javax.swing.JTextField highlightTF;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JMenuItem jaerFilterHelpMI;
-    private javax.swing.JButton jbuttonSelectFilt;
     private javax.swing.JMenuItem loadMenuItem;
     private javax.swing.JMenuBar mainMenuBar;
     private javax.swing.JCheckBoxMenuItem measurePerformanceCheckBoxMenuItem;
@@ -948,9 +945,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
+    private javax.swing.JButton selectFiltersJB;
+    private javax.swing.JLabel tipLabel;
     private javax.swing.JToolBar toolBar1;
     private javax.swing.JTextField updateIntervalField;
     private javax.swing.JLabel updateIntervalLabel;
+    private javax.swing.JPanel updateIntervalPanel;
     private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables
 }

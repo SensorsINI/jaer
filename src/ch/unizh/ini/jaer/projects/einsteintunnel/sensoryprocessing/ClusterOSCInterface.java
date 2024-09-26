@@ -76,10 +76,10 @@ public class ClusterOSCInterface {
         Object[] clusterPosY = { c.getLocation().y};
         OSCMessage msg3 = utils.new OSCMessage("/jAER/pos/y", clusterPosY);
 
-        Object[] clusterVelX = { c.getVelocityPPS().x};
+        Object[] clusterVelX = { c.getVelocity().x};
         OSCMessage msg4 = utils.new OSCMessage("/jAER/vel/x", clusterVelX);
 
-        Object[] clusterVelY = { c.getVelocityPPS().y};
+        Object[] clusterVelY = { c.getVelocity().y};
         OSCMessage msg5 = utils.new OSCMessage("/jAER/vel/y", clusterVelY);
 
         Object[] clusterMass = { c.mass};

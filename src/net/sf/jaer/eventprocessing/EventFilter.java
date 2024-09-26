@@ -111,7 +111,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * All filters can log to this logger
      */
     public static final Logger log = Logger.getLogger("net.sf.jaer");
- 
+
     /**
      * true if filter is enclosed by another filter
      */
@@ -558,11 +558,11 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Shows a information-type message dialog in Swing thread; safe to call
      * from event filter processing thread.
      *
-     * @param msg the string, can use HTML format for multiline or accenting. 
-     *      If string contains newline(s), these are automatically  converted to <br> in HTML format.
-     *      You can use MessageWithLink to include URL hyperlink.
+     * @param msg the string, can use HTML format for multiline or accenting. If
+     * string contains newline(s), these are automatically converted to <br> in
+     * HTML format. You can use MessageWithLink to include URL hyperlink.
      * @param title the dialog title, should be short
-     * 
+     *
      * @see MessageWithLink
      */
     protected void showPlainMessageDialogInSwingThread(final Object msg, final String title) {
@@ -570,8 +570,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             // outside swing thread, must do this
             @Override
             public void run() {
-                if ((msg instanceof String) && (((String)msg).contains("\n")) ) {
-                    String m = "<html>" + (String)msg;
+                if ((msg instanceof String) && (((String) msg).contains("\n"))) {
+                    String m = "<html>" + (String) msg;
                     String m2 = m.replaceAll("\n", "<br>");
                     JOptionPane.showMessageDialog(chip.getFilterFrame(), m2, title, JOptionPane.PLAIN_MESSAGE);
                 } else {
@@ -595,8 +595,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             // outside swing thread, must do this
             @Override
             public void run() {
-                if ((msg instanceof String) && (((String)msg).contains("\n")) ) {
-                    String m = "<html>" + (String)msg;
+                if ((msg instanceof String) && (((String) msg).contains("\n"))) {
+                    String m = "<html>" + (String) msg;
                     String m2 = m.replaceAll("\n", "<br>");
                     JOptionPane.showMessageDialog(chip.getFilterFrame(), m2, title, JOptionPane.WARNING_MESSAGE);
                 } else {
@@ -1213,11 +1213,44 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     }
 
     /**
+     * Convenience method to add properties to groups along with adding a tip
+     * for the property and marking the property as commonly used.
+     *
+     * @param groupName the property group name.
+     * @param propertyName the property name.
+     * @param tooltip the tip.
+     * @see #TOOLTIP_GROUP_GLOBAL
+     */
+    final public void setPropertyTooltipBold(String groupName, String propertyName, String tooltip) {
+        tooltipSupport.setPropertyTooltip(groupName, propertyName, tooltip);
+        tooltipSupport.markPropertyAsBold(propertyName);
+    }
+
+    /**
+     * Mark a property to be rendered in bold to make it easier to see
+     *
+     * @param propertyName
+     */
+    final public void markPropertyAsBold(String propertyName) {
+        tooltipSupport.markPropertyAsBold(propertyName);
+    }
+
+    /**
      * @return the tooltip for the property
      */
     @Override
     final public String getPropertyTooltip(String propertyName) {
         return tooltipSupport.getPropertyTooltip(propertyName);
+    }
+
+    /**
+     * Returns true if property is marked bold
+     *
+     * @param propertyName
+     * @return true if should be rendered bold
+     */
+    public boolean isPropertyBold(String propertyName) {
+        return tooltipSupport.isPropertyBold(propertyName);
     }
 
     /**

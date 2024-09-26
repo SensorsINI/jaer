@@ -54,7 +54,7 @@ public class RectangularClusterTrackerWithRedisClusterOutput extends Rectangular
 
     void sendData(Cluster c){
         Point2D.Float p=c.getLocation();
-        Point2D.Float v=c.getVelocityPPS();
+        Point2D.Float v=c.getVelocity();
         jedis.set("pos", Float.toString(p.x) + ';' + Float.toString(p.y));
         jedis.set("vel", Float.toString(v.x) + ';' + Float.toString(v.y));
     }

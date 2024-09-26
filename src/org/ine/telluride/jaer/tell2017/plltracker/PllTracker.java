@@ -5,17 +5,14 @@
  */
 package org.ine.telluride.jaer.tell2017.plltracker;
 
-import ch.ethz.hest.balgrist.microscopetracker.MicroscopeTrackerRCT;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.gl2.GLUT;
-import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.event.TypedEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 

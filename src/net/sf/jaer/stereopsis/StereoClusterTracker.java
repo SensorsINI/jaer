@@ -56,7 +56,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 	static final float TICK_SECONDS = 1e-6f;
 	private boolean playSounds = getBoolean("playSounds",false);
 	private float soundDispVelThr = getFloat ("soundDispVelThr",1000);
-	private float disparityMixingFactor=getFloat("disparityMixingFactor",mixingFactor);
+	private float disparityMixingFactor=getFloat("disparityMixingFactor",locationMixingFactor);
 	private boolean displayStereoClusterAnnotation=getBoolean("displayStereoClusterAnnotation",true);
 
 	/** Creates a new instance of StereoClusterTracker */
@@ -206,7 +206,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 			c.location3dm.z = p[2];
 
 			// update velocityPPT in 3d physical space
-			geom.compute3dVelocityMps (p,c.getDisparity (),c.getVelocityPPS ().x,c.getVelocityPPS ().y,c.disparityVelocity,v);
+			geom.compute3dVelocityMps (p,c.getDisparity (),c.getVelocity().x,c.getVelocity ().y,c.disparityVelocity,v);
 			c.velocity3dmps.x = v[0];
 			c.velocity3dmps.y = v[1];
 			c.velocity3dmps.z = v[2];
@@ -355,8 +355,8 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 			StereoCluster older = one.firstEventTimestamp < two.firstEventTimestamp ? one : two;
 			disparity = older.disparity;
 			disparityVelocity = older.disparityVelocity;  // don't forget the other fields!!!
-			velocityPPS=older.velocityPPS;
-			velocityPPT=older.velocityPPT;
+			velocity=older.velocity;
+			velocity=older.velocity;
                         lastStereoClusterUpdateTimestamp=older.lastStereoClusterUpdateTimestamp;
 
 		}
@@ -396,13 +396,13 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 		 * @param m
 		 */
 		@Override
-		protected void updatePosition(BasicEvent e, float m) {
+		protected void updatePosition(BasicEvent e) {
 			BinocularEvent event = (BinocularEvent) e;
-			float m1 = 1 - m;
+			float m1 = 1 - locationMixingFactor;
 			float d=event.eye==BinocularEvent.Eye.RIGHT?-disparity:disparity;
 
-			location.x = ((m1 * location.x) + (m * (event.x+(d/2))));
-			location.y = ((m1 * location.y) + (m * event.y));
+			location.x = ((m1 * location.x) + (locationMixingFactor * (event.x+(d/2))));
+			location.y = ((m1 * location.y) + (locationMixingFactor * event.y));
 
 		}
 
@@ -660,7 +660,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 					//                        gl.glBegin (GL2.GL_LINES);
 					//                        {
 					//                            gl.glVertex2i (x,y);
-					//                            gl.glVertex2f (x + c.getVelocityPPS ().x * getVelocityVectorScaling(),y + c.getVelocityPPS ().y * getVelocityVectorScaling());
+					//                            gl.glVertex2f (x + c.getVelocity ().x * getVelocityVectorScaling(),y + c.getVelocity ().y * getVelocityVectorScaling());
 					//                        }
 					//                        gl.glEnd ();
 					//                    }

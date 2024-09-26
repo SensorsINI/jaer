@@ -110,7 +110,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             setVelocityTauMs(30);
         }
         if (!isPreferenceStored("mixingFactor")) {
-            setMixingFactor(.016f);
+            setLocationMixingFactor(.016f);
         }
         if (!isPreferenceStored("showClusterVelocity")) {
             setShowClusterVelocity(true);
@@ -399,16 +399,16 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
          * @param event
          */
         @Override
-        protected void updatePosition(BasicEvent event, float m) {
+        protected void updatePosition(BasicEvent event) {
             if ((track == null) || !onlyFollowTrack) {
-                super.updatePosition(event, m);
+                super.updatePosition(event);
                 return;
             } else {
                 // move cluster, but only along the track
-                int dt = event.timestamp - lastUpdateTime;
+                int dt = event.timestamp - lastUpdateTimestamp;
                 Point2D.Float v = findClosestTrackSegmentVector(); // v is the segment vector pointing from this segment vertex to the next one
                 if (v == null) {
-                    super.updatePosition(event, m);
+                    super.updatePosition(event);
                     return;
                 }
                 float vnorm = (float) v.distance(0, 0);
@@ -424,8 +424,8 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
                 float ex = event.x - xpred;
                 float ey = event.y - ypred;
                 // project this error along the track by dotting the error with the segment unit vector, times the mixing factor
-                float proj = ((1 - relaxToTrackFactor) * m * ((v.x * ex) + (v.y * ey))) / vnorm;
-                float f = relaxToTrackFactor * m;
+                float proj = ((1 - relaxToTrackFactor) * locationMixingFactor * ((v.x * ex) + (v.y * ey))) / vnorm;
+                float f = relaxToTrackFactor * locationMixingFactor;
                 location.x = xpred + (proj * v.x) + (f * ex);
                 location.y = ypred + (proj * v.y) + (f * ey);
             }
@@ -571,10 +571,8 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             }
             Point2D.Float v = track.segmentVectors.get(segmentIdx);
             float vnorm = (float) v.distance(0, 0);
-            velocityPPS.x = (segmentSpeedSPS * v.x) / vnorm;
-            velocityPPS.y = (segmentSpeedSPS * v.x) / vnorm;
-            velocityPPT.x = velocityPPS.x / VELPPS_SCALING;
-            velocityPPT.y = velocityPPS.y / VELPPS_SCALING;
+            velocity.x = (segmentSpeedSPS * v.x) / vnorm;
+            velocity.y = (segmentSpeedSPS * v.x) / vnorm;
             setVelocityValid(true);
             setAngle((float) Math.atan2(v.y, v.x));
         }
@@ -746,7 +744,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             if ((segmentIdx == -1) || (track == null)) {
                 return;
             }
-            int dt = t - lastUpdateTime;
+            int dt = t - lastUpdateTimestamp;
             if (dt == 0) {
                 return;
             }
@@ -755,7 +753,7 @@ public class CarTracker extends RectangularClusterTracker implements FrameAnnota
             location.x += ds * v.x;
             location.y += ds * v.y;
             updateSegmentInfo(t);
-            lastUpdateTime = t;
+            lastUpdateTimestamp = t;
         }
 
         /**

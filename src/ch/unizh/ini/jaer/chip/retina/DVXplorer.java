@@ -741,6 +741,17 @@ public class DVXplorer extends AETemporalConstastRetina {
         dvxMenu.getPopupMenu().setLightWeightPopupEnabled(false);
         getAeViewer().addMenu(dvxMenu);
     }
+
+    @Override
+    public void onDeregistration() {
+        if (getAeViewer() == null) {
+            return;
+        }
+        super.onDeregistration(); 
+        getAeViewer().removeMenu(dvxMenu);
+    }
+    
+    
     
     /**
      * The event extractor for DVXplorer.
