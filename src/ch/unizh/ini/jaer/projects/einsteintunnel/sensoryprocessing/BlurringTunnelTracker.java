@@ -327,7 +327,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 Cluster clusterToSend = (Cluster) clusterItr.next();
                 if ((lastTimestamp - clusterToSend.firstUpdateTimestamp) > minClusterAge) {
                     clusterToSend.validForOSC = true;
-                    flowSum += clusterToSend.getVelocityPPS().x;
+                    flowSum += clusterToSend.getVelocity().x;
                     oscInterface1.sendCluster(clusterToSend);
                     oscInterface2.sendCluster(clusterToSend);
                 }
@@ -722,7 +722,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                 gl.glBegin(GL.GL_LINES);
                 {
                     gl.glVertex2i(x, y);
-                    gl.glVertex2f(x + (getVelocityPPT().x * VELOCITY_VECTOR_SCALING * velocityVectorScaling), y + (getVelocityPPT().y * VELOCITY_VECTOR_SCALING * velocityVectorScaling));
+                    gl.glVertex2f(x + (getVelocity().x * VELOCITY_VECTOR_SCALING * velocityVectorScaling), y + (getVelocity().y * VELOCITY_VECTOR_SCALING * velocityVectorScaling));
                 }
                 gl.glEnd();
             }
@@ -742,7 +742,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
 
             //annotate the cluster with the velocityPPT in pps
             if (showClusterVelocity) {
-                Point2D.Float velpps = getVelocityPPS();
+                Point2D.Float velpps = getVelocity();
                 chip.getCanvas().getGlut().glutBitmapString(font, String.format("%.0f,%.0f pps", velpps.x, velpps.y));
             }
 
@@ -761,18 +761,6 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          */
         private boolean hasHitEdge() {
             return hitEdge;
-        }
-
-        /**
-         * Cluster velocities in pixels/timestamp tick as a vector. Velocity
-         * values are set during cluster upate.
-         *
-         * @return the velocityPPT in pixels per timestamp tick.
-         * @see #getVelocityPPS()
-         */
-        @Override
-        public Point2D.Float getVelocityPPT() {
-            return velocityPPT;
         }
 
         /**
@@ -1194,7 +1182,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
          *
          */
         @Override
-        public Point2D.Float getVelocityPPS() {
+        public Point2D.Float getVelocity() {
             return velocityPPS;
             /* old method for velocities estimation is as follows
 			 * The velocities is instantaneously
@@ -1390,7 +1378,7 @@ public class BlurringTunnelTracker extends EventFilter2D implements FrameAnnotat
                     if (Math.abs(yVelocityPPT) < 1e-7) {
                         yVelocityPPT = 0;  // set velocities zero if it's under the precision of float type
                     }
-                    p.velocityPPT = new Point2D.Float((float) xVelocityPPT, (float) yVelocityPPT);
+                    p.velocity = new Point2D.Float((float) xVelocityPPT*1e6f, (float) yVelocityPPT*1e6f);
                 } else {
                     valid = false;
                 }

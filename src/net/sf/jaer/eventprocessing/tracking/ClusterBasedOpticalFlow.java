@@ -239,7 +239,7 @@ public class ClusterBasedOpticalFlow extends RectangularClusterTracker implement
 				 if ((y < 0) || (y >= grid[0].length)) {
 					 continue;
 				 }
-				 grid[x][y].update(c.getVelocityPPS(), c.getLastEventTimestamp());
+				 grid[x][y].update(c.getVelocity(), c.getLastEventTimestamp());
 				 int n = 0;
 				 float sx = 0, sy = 0;
 				 if (x > 0) {

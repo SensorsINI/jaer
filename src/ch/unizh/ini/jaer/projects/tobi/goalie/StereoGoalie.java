@@ -277,7 +277,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
             return x; // if ball is too far away, don't use ball velocityPPT
         }
         if (useVelocityForGoalie && ball.isVelocityValid() && (ball.getPath().size() >= minPathPointsToUseVelocity)) {
-            Point2D.Float v = ball.getVelocityPPS();
+            Point2D.Float v = ball.getVelocity();
             double v2 = (v.x * v.x) + v.y + v.y;
             if (v.y < 0 /*&& v2>MIN_BALL_SPEED_TO_USE_PPS2*/) {
                 // don't use vel unless ball is rolling towards goal
@@ -320,7 +320,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
             if (c.isVisible()) { // cluster must be visible
                 if (!useSoonest) {  // compute nearest cluster
                     if ((f = c.location.y) < minDistance) {
-                        if ((!useVelocityForGoalie) || (useVelocityForGoalie && (c.getVelocityPPS().y <= 0))) {
+                        if ((!useVelocityForGoalie) || (useVelocityForGoalie && (c.getVelocity().y <= 0))) {
                             // give closest ball unconditionally if not using ball velocityPPT
                             // but if using velocityPPT, then only give ball if it is moving towards goal
                             minDistance = f;
@@ -373,7 +373,7 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
             return Float.POSITIVE_INFINITY;
         }
         float y = cluster.location.y;
-        float dy = cluster.getVelocityPPS().y; // velocityPPT of cluster in pixels per second
+        float dy = cluster.getVelocity().y; // velocityPPT of cluster in pixels per second
         if (dy >= 0) {
             return Float.POSITIVE_INFINITY;
         }
@@ -754,8 +754,8 @@ public class StereoGoalie extends EventFilter2D implements FrameAnnotater, Obser
         if (ball != null) {
             ballx = ball.getLocation().x;
             bally = ball.getLocation().y;
-            ballvelx = ball.getVelocityPPS().x;
-            ballvely = ball.getVelocityPPS().y;
+            ballvelx = ball.getVelocity().x;
+            ballvely = ball.getVelocity().y;
         }
         loggingWriter.format("%d, %f, %f, %d, %d, %f, %f, %f, %d, %f, %d\n",
                 t,

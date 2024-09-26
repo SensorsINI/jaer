@@ -307,7 +307,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater {//, P
             //System.out.println("predicted P:");Matrix.print(Pp);
         }
 
-        private float mixingFactor = tracker.getMixingFactor();
+        private float mixingFactor = tracker.getLocationMixingFactor();
 
         private void updateVariances() {
             if (useDynamicVariances) {
