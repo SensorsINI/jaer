@@ -189,6 +189,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         jPanel1 = new javax.swing.JPanel();
         tipLabel = new javax.swing.JLabel();
         highlightTF = new javax.swing.JTextField();
+        clearFilterJB = new javax.swing.JButton();
         hideOthersCB = new javax.swing.JCheckBox();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
@@ -266,11 +267,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         updateIntervalPanel.setLayout(new javax.swing.BoxLayout(updateIntervalPanel, javax.swing.BoxLayout.LINE_AXIS));
 
-        updateIntervalLabel.setText("updateIntervalMs");
+        updateIntervalLabel.setText("Update interval (ms)");
         updateIntervalPanel.add(updateIntervalLabel);
 
         updateIntervalField.setColumns(8);
-        updateIntervalField.setToolTipText("Sets the maximum update interval for filters that notify observers");
+        updateIntervalField.setToolTipText("Sets the maximum update interval for filters that notify observers, e.g. RectangularClusterTracker");
         updateIntervalField.setMaximumSize(new java.awt.Dimension(50, 30));
         updateIntervalField.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -299,12 +300,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.X_AXIS));
 
         tipLabel.setText("<html>Enabled filters are <br>processed from top to bottom");
-        tipLabel.setMaximumSize(new java.awt.Dimension(300, 36));
+        tipLabel.setMaximumSize(new java.awt.Dimension(200, 36));
         jPanel1.add(tipLabel);
 
         highlightTF.setText("highlight...");
         highlightTF.setToolTipText("highlight filters/parameters");
-        highlightTF.setMaximumSize(new java.awt.Dimension(200, 30));
+        highlightTF.setMaximumSize(new java.awt.Dimension(100, 30));
         highlightTF.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 highlightTFFocusGained(evt);
@@ -321,6 +322,18 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         });
         jPanel1.add(highlightTF);
+
+        clearFilterJB.setText("x");
+        clearFilterJB.setToolTipText("Clear the highlights");
+        clearFilterJB.setAlignmentX(0.5F);
+        clearFilterJB.setIconTextGap(1);
+        clearFilterJB.setMargin(new java.awt.Insets(1, 1, 1, 1));
+        clearFilterJB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                clearFilterJBActionPerformed(evt);
+            }
+        });
+        jPanel1.add(clearFilterJB);
 
         hideOthersCB.setText("Hide others");
         hideOthersCB.setToolTipText("If selected, hides other properties, if not selected, just highlights the ones that match");
@@ -782,6 +795,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         highlightOrShowOnly(highlightTF.getText());
     }//GEN-LAST:event_hideOthersCBActionPerformed
 
+    private void clearFilterJBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterJBActionPerformed
+        highlightTF.setText(null);
+        highlightOrShowOnly(null);
+    }//GEN-LAST:event_clearFilterJBActionPerformed
+
     private void highlightOrShowOnly(String s) {
         FilterPanel p = getSelectedFilterPanel();
         if (p == null) {
@@ -919,6 +937,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JRadioButtonMenuItem acquisitionModeMenuItem;
+    private javax.swing.JButton clearFilterJB;
     private javax.swing.JMenuItem customizeMenuItem;
     private javax.swing.JToggleButton disableFilteringToggleButton;
     private javax.swing.JMenuItem exitMenuItem;

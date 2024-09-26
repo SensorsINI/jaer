@@ -249,13 +249,13 @@
           <SubComponents>
             <Component class="javax.swing.JLabel" name="updateIntervalLabel">
               <Properties>
-                <Property name="text" type="java.lang.String" value="updateIntervalMs"/>
+                <Property name="text" type="java.lang.String" value="Update interval (ms)"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JTextField" name="updateIntervalField">
               <Properties>
                 <Property name="columns" type="int" value="8"/>
-                <Property name="toolTipText" type="java.lang.String" value="Sets the maximum update interval for filters that notify observers"/>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the maximum update interval for filters that notify observers, e.g. RectangularClusterTracker"/>
                 <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                   <Dimension value="[50, 30]"/>
                 </Property>
@@ -293,7 +293,7 @@
           <Properties>
             <Property name="text" type="java.lang.String" value="&lt;html&gt;Enabled filters are &lt;br&gt;processed from top to bottom"/>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-              <Dimension value="[300, 36]"/>
+              <Dimension value="[200, 36]"/>
             </Property>
           </Properties>
         </Component>
@@ -302,13 +302,27 @@
             <Property name="text" type="java.lang.String" value="highlight..."/>
             <Property name="toolTipText" type="java.lang.String" value="highlight filters/parameters"/>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
-              <Dimension value="[200, 30]"/>
+              <Dimension value="[100, 30]"/>
             </Property>
           </Properties>
           <Events>
             <EventHandler event="focusGained" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="highlightTFFocusGained"/>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="highlightTFActionPerformed"/>
             <EventHandler event="keyPressed" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="highlightTFKeyPressed"/>
+          </Events>
+        </Component>
+        <Component class="javax.swing.JButton" name="clearFilterJB">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="x"/>
+            <Property name="toolTipText" type="java.lang.String" value="Clear the highlights"/>
+            <Property name="alignmentX" type="float" value="0.5"/>
+            <Property name="iconTextGap" type="int" value="1"/>
+            <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+              <Insets value="[1, 1, 1, 1]"/>
+            </Property>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearFilterJBActionPerformed"/>
           </Events>
         </Component>
         <Component class="javax.swing.JCheckBox" name="hideOthersCB">

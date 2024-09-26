@@ -215,11 +215,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     final float fontSize = 10f;
     private Border normalBorder, redLineBorder, enclosedFilterSelectedBorder;
     private TitledBorder titledBorder;
-    private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>(); // map from filter to property, to apply property change events to control
+    /** map from filter to property, to apply property change events to control */
+    private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>();
     protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
-    private HashMap<EventFilter, FilterPanel> enclosedFilterPanels = new HashMap(); // points from enclosed filter to its panel
-    private HashMap<String, Container> groupContainerMap = new HashMap(); // maps from key group name string to the panel holding the properties
-    private HashSet<String> populatedGroupSet = new HashSet(); // Set of all property groups that have at least one item in them
+    /** maps from enclosed filter to its panel */
+    private HashMap<EventFilter, FilterPanel> enclosedFilterPanels = new HashMap(); 
+    /** maps from key group name string to the panel holding the properties */
+    private HashMap<String, Container> groupContainerMap = new HashMap(); 
+    /** Set of all property groups that have at least one item in them */
+    private HashSet<String> populatedGroupSet = new HashSet();
+    /** Map from property to its control */
     private HashMap<String, MyControl> propertyControlMap = new HashMap();
     private JComponent ungroupedControls = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
@@ -686,7 +691,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         // now remove group containers that are not populated.
         for (String s : groupContainerMap.keySet()) {
             if (!populatedGroupSet.contains(s)) { // remove this group
-                log.info("Removing emtpy container " + s + " from " + filter.getClass().getSimpleName());
+//                log.info("Removing emtpy container " + s + " from " + filter.getClass().getSimpleName());
                 controls.remove(groupContainerMap.get(s));
                 remove(groupContainerMap.get(s));
             }
@@ -2139,6 +2144,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * @param hideOthers to hide other properties
      */
     public void highlightProperties(String s, boolean hideOthers) {
+        if (s == null) {
+            s = "";
+        }
         s = s.toLowerCase();
 //        System.out.println("\n************** \n searching for " + s + "\n");
         for (MyControl c : highlightedControls) {
@@ -2148,7 +2156,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 //        System.out.println("");
         highlightedControls.clear();
-
+        
+        
         for (String propName : propertyControlMap.keySet()) { // consider each property
             if ((s != null && !s.isEmpty()) && propName.toLowerCase().contains(s)) {
                 MyControl c = propertyControlMap.get(propName);
