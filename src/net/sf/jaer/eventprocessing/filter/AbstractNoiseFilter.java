@@ -119,14 +119,14 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         enclosedFilterChain.add(noiseFilterControl);
         setEnclosedFilterChain(enclosedFilterChain);
 
-        setPropertyTooltip(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+        setPropertyTooltipBold(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
         setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "font size for statistics");
-        setPropertyTooltip(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
+        setPropertyTooltipBold(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
         setPropertyTooltip(TT_FILT_CONTROL, "sigmaDistPixels", "Neighborhood radisu in pixels to consider for event support");
         setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter is automatically adapted with NoiseFilterControl algorithm (if filter adopts it for controlling itself).");
-        setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+        setPropertyTooltipBold(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip(TT_FILT_CONTROL, "antiCasualEnabled", "<html>Enable sending previous events that were filtered out if later event shows they were actually correlated (depends on filter if supported).<p>Note that timestamp will not be correct; event will inherit timestamp of current event to keep event stream monotonic in time.");
         getSupport().addPropertyChangeListener(this);
 //        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
