@@ -809,8 +809,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             control = new JComboBox(c.getEnumConstants());
             control.setMaximumSize(new Dimension(100, 30));
-            control.setFont(control.getFont().deriveFont(fontSize));
-            control.setFont(control.getFont().deriveFont(Font.PLAIN));
+            setFontSizeStyle(control);
 
             add(label);
             add(control);
@@ -1169,6 +1168,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(f, label);
             add(label);
+            setFontSizeStyle(label);
 
             tf = new JTextField("", 8);
             tf.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, Collections.EMPTY_SET);
