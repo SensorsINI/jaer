@@ -1521,10 +1521,6 @@ public class RectangularClusterTracker extends EventFilter2D
             location.x = (one.location.x * one.mass + two.location.x * two.mass) / (mass);
             location.y = (one.location.y * one.mass + two.location.y * two.mass) / (mass);
 
-            velocity.x = (one.velocity.x * one.mass + two.velocity.x * two.mass) / mass;
-            velocity.y = (one.velocity.y * one.mass + two.velocity.y * two.mass) / mass;
-            velFilterX.reset();
-            velFilterY.reset();
 
             angle = stronger.angle;
             cosAngle = stronger.cosAngle;
@@ -1540,6 +1536,12 @@ public class RectangularClusterTracker extends EventFilter2D
 
             lastEventTimestamp = one.lastEventTimestamp > two.lastEventTimestamp ? one.lastEventTimestamp : two.lastEventTimestamp;
             lastUpdateTimestamp = lastEventTimestamp;
+            velocity.x = (one.velocity.x * one.mass + two.velocity.x * two.mass) / mass;
+            velocity.y = (one.velocity.y * one.mass + two.velocity.y * two.mass) / mass;
+            // properly initialize the lowpass filters with new internal values and update times
+            velFilterX.set(velocity.x, lastEventTimestamp);
+            velFilterY.set(velocity.y, lastEventTimestamp);
+
             lastPacketLocation.x = stronger.location.x;
             lastPacketLocation.y = stronger.location.y;
             firstEventTimestamp = stronger.firstEventTimestamp; // make lifetime the oldest src cluster

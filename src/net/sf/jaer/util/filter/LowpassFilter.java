@@ -1,17 +1,20 @@
 package net.sf.jaer.util.filter;
 
 /**
-A first-order lowpass IIR filter. The first value filtered initializes the filter to the value and stores the first time as reference.
+ * A first-order lowpass IIR filter. The first value filtered initializes the
+ * filter to the value and stores the first time as reference.
  */
 public class LowpassFilter extends Filter {
 
-    /** Constructs a new LowpassFilter with default time constant.
-     * 
+    /**
+     * Constructs a new LowpassFilter with default time constant.
+     *
      */
     public LowpassFilter() {
     }
 
-    /** Constructs a new LowpassFilter filter with a specified RC time constant.
+    /**
+     * Constructs a new LowpassFilter filter with a specified RC time constant.
      *
      * @param tauMs the time constant in ms.
      */
@@ -19,14 +22,20 @@ public class LowpassFilter extends Filter {
         this();
         setTauMs(tauMs);
     }
-    /** The current state of the filter */
+    /**
+     * The current state of the filter
+     */
     protected float lpVal;
-    /** The last value */
+    /**
+     * The last value
+     */
     protected float lastVal = 0;
 
-    /** @param val the new input value
-    @param time the time in us - note units here, microseconds! If the time step since the last filter update is negative, then
-    * the time step is set to zero and the new time is used for the next update.
+    /**
+     * @param val the new input value
+     * @param time the time in us - note units here, microseconds! If the time
+     * step since the last filter update is negative, then the time step is set
+     * to zero and the new time is used for the next update.
      */
     @Override
     public float filter(float val, int time) {
@@ -57,24 +66,42 @@ public class LowpassFilter extends Filter {
     }
 
     public String toString() {
-        return "LP: " + (initialized? lastVal + "->" + lpVal:" (uninitialized)");
+        return "LP: " + (initialized ? lastVal + "->" + lpVal : " (uninitialized)");
     }
 
-    /** Sets the internal value. Does not affect reset status. If the filter has been reset, then setting internal value has no effect since 
-     * the internal value is set anyhow when next value is input.
-     * 
+    /**
+     * Sets the internal value. Does not affect reset status. If the filter has
+     * been reset, then setting internal value has no effect since the internal
+     * value is set anyhow when next value is input.
+     *
      * <p>
-     * If the filter is reset, then setting
-     * internal value will update the last update time on the first application of the filter, since the last update time
-     * is set to Integer.MAX_VALUE and is reset anytime the update time is less than the last update time.
-    @param value the value 
+     * If the filter is reset, then setting internal value will update the last
+     * update time on the first application of the filter, since the last update
+     * time is set to Integer.MAX_VALUE and is reset anytime the update time is
+     * less than the last update time.
+     *
+     * @param value the value
      */
     public void setInternalValue(float value) {
         lpVal = value;
     }
 
-    /** @return output of filter */
+    /**
+     * @return output of filter
+     */
     public float getValue() {
         return lpVal;
+    }
+
+    /**
+     * Sets the filter to have internal value and last timestamp, so that the
+     * next input is properly processed
+     *
+     * @param val
+     * @param timestamp
+     */
+    public void set(float val, int timestamp) {
+        lpVal = val;
+        lastTime=timestamp;
     }
 }
