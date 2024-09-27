@@ -303,22 +303,16 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         tipLabel.setMaximumSize(new java.awt.Dimension(200, 36));
         jPanel1.add(tipLabel);
 
-        highlightTF.setText("highlight...");
         highlightTF.setToolTipText("highlight filters/parameters");
         highlightTF.setMaximumSize(new java.awt.Dimension(100, 30));
-        highlightTF.addFocusListener(new java.awt.event.FocusAdapter() {
-            public void focusGained(java.awt.event.FocusEvent evt) {
-                highlightTFFocusGained(evt);
-            }
-        });
         highlightTF.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 highlightTFActionPerformed(evt);
             }
         });
         highlightTF.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyPressed(java.awt.event.KeyEvent evt) {
-                highlightTFKeyPressed(evt);
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                highlightTFKeyTyped(evt);
             }
         });
         jPanel1.add(highlightTF);
@@ -767,10 +761,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         return null;
     }
 
-    private void highlightTFFocusGained(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_highlightTFFocusGained
-        highlightTF.setText(null);
-    }//GEN-LAST:event_highlightTFFocusGained
-
     private void resetAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetAllButtonActionPerformed
         filterChain.reset();
     }//GEN-LAST:event_resetAllButtonActionPerformed
@@ -785,12 +775,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         highlightTF.requestFocusInWindow();
     }//GEN-LAST:event_highlightMIActionPerformed
 
-    private void highlightTFKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_highlightTFKeyPressed
-        // incremental search
-        String s = highlightTF.getText();
-        highlightOrShowOnly(s);
-    }//GEN-LAST:event_highlightTFKeyPressed
-
     private void hideOthersCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideOthersCBActionPerformed
         highlightOrShowOnly(highlightTF.getText());
     }//GEN-LAST:event_hideOthersCBActionPerformed
@@ -799,6 +783,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         highlightTF.setText(null);
         highlightOrShowOnly(null);
     }//GEN-LAST:event_clearFilterJBActionPerformed
+
+    private void highlightTFKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_highlightTFKeyTyped
+        // incremental search
+        String s = highlightTF.getText();
+        highlightOrShowOnly(s);
+    }//GEN-LAST:event_highlightTFKeyTyped
 
     private void highlightOrShowOnly(String s) {
         FilterPanel p = getSelectedFilterPanel();
@@ -910,7 +900,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             } else if (f.getClass().getSimpleName().toLowerCase().contains(s.toLowerCase())) {
                 b.setTitleColor(Color.red);
                 highlightedFilters.add(f);
-            }else{
+            } else {
                 b.setTitleColor(Color.black);
             }
             getFilterPanelForFilter(f).repaint();

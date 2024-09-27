@@ -210,22 +210,36 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private BeanInfo info;
     private PropertyDescriptor[] props;
     private Method[] methods;
-    private static Logger log = Logger.getLogger("net.sf.jaer");
+    private final static Logger log = Logger.getLogger("net.sf.jaer");
     private EventFilter filter = null;
     final float fontSize = 10f;
     private Border normalBorder, redLineBorder, enclosedFilterSelectedBorder;
     private TitledBorder titledBorder;
-    /** map from filter to property, to apply property change events to control */
-    private HashMap<String, HasSetter> setterMap = new HashMap<String, HasSetter>();
-    protected java.util.ArrayList<JComponent> controls = new ArrayList<JComponent>();
-    /** maps from enclosed filter to its panel */
-    private HashMap<EventFilter, FilterPanel> enclosedFilterPanels = new HashMap(); 
-    /** maps from key group name string to the panel holding the properties */
-    private HashMap<String, Container> groupContainerMap = new HashMap(); 
-    /** Set of all property groups that have at least one item in them */
-    private HashSet<String> populatedGroupSet = new HashSet();
-    /** Map from property to its control */
-    private HashMap<String, MyControl> propertyControlMap = new HashMap();
+    /**
+     * map from filter to property, to apply property change events to control
+     */
+    private final HashMap<String, HasSetter> setterMap = new HashMap<>();
+    protected final java.util.ArrayList<JComponent> controls = new ArrayList<>();
+    /**
+     * maps from enclosed filter to its panel
+     */
+    private final HashMap<EventFilter, FilterPanel> enclosedFilterPanels = new HashMap<>();
+    /**
+     * maps from key group name string to the panel holding the properties
+     */
+    private final HashMap<String, Container> groupContainerMap = new HashMap<>();
+    /**
+     * Maps from property name to the group container panel holding the property
+     */
+    private final HashMap<String, Container> propertyToGroupPanelMap = new HashMap<>();
+    /**
+     * Set of all property groups that have at least one item in them
+     */
+    private final HashSet<String> populatedGroupSet = new HashSet();
+    /**
+     * Map from property to its control
+     */
+    private final HashMap<String, MyControl> propertyControlMap = new HashMap();
     private JComponent ungroupedControls = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
     ArrayList<AbstractButton> doButList = new ArrayList();
@@ -304,12 +318,23 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //            }else{
             container.add(comp);
             populatedGroupSet.add(groupName); // add to list of populated groups
+            propertyToGroupPanelMap.put(propertyName, container);
 //            }
         } else {
             ungroupedControls.add(comp);
         }
         controls.add(comp);
         propertyControlMap.put(propertyName, comp);
+    }
+
+    /**
+     * Returns the group panel holding a property, or null
+     *
+     * @param propertyName
+     * @return the panel or null if none
+     */
+    private Container getGroupPanel(String propertyName) {
+        return propertyToGroupPanelMap.get(propertyName);
     }
 
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
@@ -2144,42 +2169,56 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * @param hideOthers to hide other properties
      */
     public void highlightProperties(String s, boolean hideOthers) {
+        // set all borders null and show everything
+        for (String propName : propertyControlMap.keySet()) {
+            MyControl c = propertyControlMap.get(propName);
+            if (c == null) {
+                continue;
+            }
+            c.setBorder(null);
+            c.setVisible(true);
+            c.invalidate();
+        }
+        if (!hideOthers) {
+            for (Container c : groupContainerMap.values()) {
+                c.setVisible(true);
+                c.invalidate();
+            }
+        }
+
+        highlightedControls.clear();
+        // if hideOthers, hide all groups and later only show those that match
+
         if (s == null) {
             s = "";
         }
-        s = s.toLowerCase();
-//        System.out.println("\n************** \n searching for " + s + "\n");
-        for (MyControl c : highlightedControls) {
-            c.setBorder(null);
-            c.repaint(300);
-//            System.out.println("cleared "+c);
-        }
-//        System.out.println("");
-        highlightedControls.clear();
-        
-        
-        for (String propName : propertyControlMap.keySet()) { // consider each property
-            if ((s != null && !s.isEmpty()) && propName.toLowerCase().contains(s)) {
-                MyControl c = propertyControlMap.get(propName);
-//                System.out.println("highlighted " + propName);
-                if (c != null) {
-                    if (!hideOthers) {
-                        c.setBorder(redLineBorder); // highlight it
-                        c.repaint(300);
-                    }
-                    highlightedControls.add(c);
-                }
-            } else { // no match, then hide it if hideOthers set, otherwise show it
-                MyControl c = propertyControlMap.get(propName);
-//                System.out.println("highlighted " + propName);
-                if (c != null) {
-                    if (s == null || s.isEmpty()) {
-                        c.setVisible(true);
-                    } else {
-                        c.setVisible(!hideOthers);
-                    }
+        if (!s.isEmpty()) {
+            if (hideOthers) {
+                for (Container c : groupContainerMap.values()) {
+                    c.setVisible(false);
                     c.invalidate();
                 }
+            }
+
+            s = s.toLowerCase();
+            for (String propName : propertyControlMap.keySet()) { // consider each property
+                MyControl c = propertyControlMap.get(propName);
+                if (c == null) {
+                    continue;
+                }
+                final boolean matches = propName.toLowerCase().contains(s);
+                if (matches) {
+                    log.info(String.format("Match: %s is in %s", s, propName));
+                    // if the highlight/filter string matches a property
+                    if (!hideOthers) { // if we are not filtering, then give property a red border
+                        c.setBorder(redLineBorder); // highlight it
+                        highlightedControls.add(c);
+                    }
+                    setGroupContainerWithPropertyVisible(propName, true);
+                } else if (hideOthers) { // no match, then hide it if hideOthers set, otherwise show it
+                    c.setVisible(false);
+                }
+                c.invalidate();
             }
         }
 
@@ -2211,4 +2250,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //        }
 //
 //    }
+    private void setGroupContainerWithPropertyVisible(String propName, boolean visible) {
+        Container groupContainer = getGroupPanel(propName);
+        if (groupContainer != null) {
+            groupContainer.setVisible(visible);
+        }
+    }
 }

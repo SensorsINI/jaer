@@ -299,16 +299,14 @@
         </Component>
         <Component class="javax.swing.JTextField" name="highlightTF">
           <Properties>
-            <Property name="text" type="java.lang.String" value="highlight..."/>
             <Property name="toolTipText" type="java.lang.String" value="highlight filters/parameters"/>
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[100, 30]"/>
             </Property>
           </Properties>
           <Events>
-            <EventHandler event="focusGained" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="highlightTFFocusGained"/>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="highlightTFActionPerformed"/>
-            <EventHandler event="keyPressed" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="highlightTFKeyPressed"/>
+            <EventHandler event="keyTyped" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="highlightTFKeyTyped"/>
           </Events>
         </Component>
         <Component class="javax.swing.JButton" name="clearFilterJB">
