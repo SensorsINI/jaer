@@ -36,7 +36,7 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
     /**
      * Set of properties that are commonly used bold rendered
      */
-    protected HashSet<String> propertiesThatAreBold = new HashSet();
+    protected HashSet<String> preferredProperties = new HashSet();
 
     /**
      * Developers can use setPropertyTooltip to add an optional tooltip for a
@@ -183,8 +183,8 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
      *
      * @param propertyName
      */
-    public void markPropertyAsBold(String propertyName) {
-        propertiesThatAreBold.add(propertyName);
+    public void markPropertyAsPreferred(String propertyName) {
+        preferredProperties.add(propertyName);
     }
 
     /**
@@ -192,8 +192,8 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
      *
      * @param propertyName
      */
-    public void unmarkPropertyAsBold(String propertyName) {
-        propertiesThatAreBold.remove(propertyName);
+    public void unmarkPropertyAsPreferred(String propertyName) {
+        preferredProperties.remove(propertyName);
     }
     
     /** Returns true if property is marked bold
@@ -201,7 +201,7 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
      * @param propertyName
      * @return true if should be rendered bold
      */
-    public boolean isPropertyBold(String propertyName){
-        return propertiesThatAreBold.contains(propertyName);
+    public boolean isPropertyPreferred(String propertyName){
+        return preferredProperties.contains(propertyName);
     }
 }

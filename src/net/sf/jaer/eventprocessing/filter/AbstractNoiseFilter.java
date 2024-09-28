@@ -23,13 +23,11 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Font;
-import java.beans.BeanDescriptor;
 import java.beans.PropertyChangeEvent;
-import java.beans.PropertyDescriptor;
-import java.beans.SimpleBeanInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -51,7 +49,7 @@ import net.sf.jaer.util.TobiLogger;
  */
 public abstract class AbstractNoiseFilter extends EventFilter2D implements FrameAnnotater, RemoteControlled {
 
-    protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
+    @Preferred protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
     private int showFilteringStatisticsFontSize=getInt("showFilteringStatisticsFontSize",24);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
@@ -68,7 +66,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /**
      * Used by some filters that implement this option
      */
-    protected boolean filterHotPixels = getBoolean("filterHotPixels", true);
+    @Preferred protected boolean filterHotPixels = getBoolean("filterHotPixels", true);
     protected boolean recordFilteredOutEvents = false;
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
@@ -82,12 +80,12 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /**
      * Correlation time in seconds
      */
-    protected float correlationTimeS = getFloat("correlationTimeS", 25e-3f);
+    @Preferred protected float correlationTimeS = getFloat("correlationTimeS", 25e-3f);
 
     /**
      * Neighborhood radius in pixels
      */
-    protected int sigmaDistPixels = getInt("sigmaDistPixels", 1);
+    @Preferred protected int sigmaDistPixels = getInt("sigmaDistPixels", 1);
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -95,13 +93,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * support. E.g. setting subSamplingShift to 1 quadruples range because both
      * x and y are shifted right by one bit
      */
-    protected int subsampleBy = getInt("subsampleBy", 0);
+    @Preferred protected int subsampleBy = getInt("subsampleBy", 0);
 
     /**
      * the time in timestamp ticks (1us at present) that a spike needs to be
      * supported by a prior event in the neighborhood by to pass through
      */
-    protected boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
+    @Preferred protected boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
 
     protected boolean antiCasualEnabled = getBoolean("antiCasualEnabled", false);
 
@@ -119,14 +117,14 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         enclosedFilterChain.add(noiseFilterControl);
         setEnclosedFilterChain(enclosedFilterChain);
 
-        setPropertyTooltipBold(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
+        setPropertyTooltip(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
         setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "font size for statistics");
-        setPropertyTooltipBold(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
+        setPropertyTooltip(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
         setPropertyTooltip(TT_FILT_CONTROL, "sigmaDistPixels", "Neighborhood radisu in pixels to consider for event support");
         setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter is automatically adapted with NoiseFilterControl algorithm (if filter adopts it for controlling itself).");
-        setPropertyTooltipBold(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+        setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip(TT_FILT_CONTROL, "antiCasualEnabled", "<html>Enable sending previous events that were filtered out if later event shows they were actually correlated (depends on filter if supported).<p>Note that timestamp will not be correct; event will inherit timestamp of current event to keep event stream monotonic in time.");
         getSupport().addPropertyChangeListener(this);
 //        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);

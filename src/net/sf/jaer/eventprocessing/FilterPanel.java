@@ -29,6 +29,8 @@ import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.NumberFormat;
@@ -57,13 +59,11 @@ import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
-import javax.swing.UIManager;
 import javax.swing.border.Border;
-import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import ncsa.hdf.view.ViewProperties;
+import net.sf.jaer.Preferred;
 
 import net.sf.jaer.util.EngineeringFormat;
 
@@ -529,6 +529,32 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //            }
             // next add enclosed Filter and enclosed FilterChain so they appear at top of list (they are processed first)
             for (PropertyDescriptor p : props) {
+                // determine if the property (field) is annotated as Preferred
+                // 
+                boolean preferred = false;
+                String propName = p.getName();
+                Class clz = getFilter().getClass();
+                Field field = null;
+                while (field == null && clz != null) // stop when we got field or reached top of class hierarchy
+                {
+                    try {
+                        field = clz.getDeclaredField(propName);
+                    } catch (NoSuchFieldException e) {
+                        // only get super-class when we couldn't find field
+                        clz = clz.getSuperclass();
+                    }
+                }
+                if (field != null) {
+                    Annotation annotation = field.getAnnotation(Preferred.class);
+                    if (annotation != null) {
+                        preferred = true;
+                    }
+                }
+                if (preferred) {
+                    filter.markPropertyAsPreferred(propName);
+                    log.fine(String.format("Marked %s as preferred by @Preferred annotation", propName));
+                }
+
                 Class c = p.getPropertyType();
                 if (p.getName().equals("enclosedFilter")) { //if(c==EventFilter2D.class){
                     // if type of property is an EventFilter, check if it has either an enclosed filter
@@ -734,7 +760,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
-        if (f.isPropertyBold(label.getText())) {
+        if (f.isPropertyPreferred(label.getText())) {
             label.setFont(label.getFont().deriveFont(Font.BOLD));
         }
     }
@@ -755,7 +781,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         label.setToolTipText(s);
         label.setForeground(Color.BLUE);
-        if (f.isPropertyBold(label.getText())) {
+        if (f.isPropertyPreferred(label.getText())) {
             label.setFont(label.getFont().deriveFont(Font.BOLD));
         }
 
@@ -1737,12 +1763,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
+        preferredPropertiesCB = new javax.swing.JCheckBox();
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
         enableResetControlsHelpPanel.setToolTipText("General controls for this EventFilter");
         enableResetControlsHelpPanel.setAlignmentX(0.0F);
-        enableResetControlsHelpPanel.setPreferredSize(new java.awt.Dimension(100, 23));
         enableResetControlsHelpPanel.setLayout(new javax.swing.BoxLayout(enableResetControlsHelpPanel, javax.swing.BoxLayout.X_AXIS));
 
         enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
@@ -1776,6 +1802,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
         });
         enableResetControlsHelpPanel.add(showControlsToggleButton);
+
+        preferredPropertiesCB.setText("Simple");
+        preferredPropertiesCB.setToolTipText("Only show Preferred properties (commonly used)");
+        preferredPropertiesCB.setMaximumSize(new java.awt.Dimension(100, 20));
+        preferredPropertiesCB.setPreferredSize(new java.awt.Dimension(80, 20));
+        preferredPropertiesCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                preferredPropertiesCBActionPerformed(evt);
+            }
+        });
+        enableResetControlsHelpPanel.add(preferredPropertiesCB);
 
         add(enableResetControlsHelpPanel);
     }// </editor-fold>//GEN-END:initComponents
@@ -1920,9 +1957,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         setControlsVisible(showControlsToggleButton.isSelected());
     }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
+    private void preferredPropertiesCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferredPropertiesCBActionPerformed
+        showOnlyPreferredProperties(preferredPropertiesCB.isSelected());
+    }//GEN-LAST:event_preferredPropertiesCBActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     protected javax.swing.JPanel enableResetControlsHelpPanel;
     protected javax.swing.JCheckBox enabledCheckBox;
+    private javax.swing.JCheckBox preferredPropertiesCB;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
     // End of variables declaration//GEN-END:variables
@@ -2163,12 +2205,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private ArrayList<MyControl> highlightedControls = new ArrayList();
 
     /**
-     * Highlights properties that match the string s
+     * Highlights properties that match the string s, or only shows the ones
+     * that match, depending on Hide others checkbox
      *
      * @param s the string to match for, lowercase matching
      * @param hideOthers to hide other properties
      */
-    public void highlightProperties(String s, boolean hideOthers) {
+    public void showPropertyHighlightsOrVisibility(String s, boolean hideOthers) {
         // set all borders null and show everything
         for (String propName : propertyControlMap.keySet()) {
             MyControl c = propertyControlMap.get(propName);
@@ -2235,6 +2278,24 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         repaint();
     }
 
+    private void showOnlyPreferredProperties(boolean selected) {
+        for (String propName : propertyControlMap.keySet()) {
+            MyControl c = propertyControlMap.get(propName);
+            if (c == null) {
+                continue;
+            }
+            if (selected && !filter.tooltipSupport.isPropertyPreferred(propName)) {
+                c.setVisible(false);
+            } else {
+                c.setVisible(true);
+            }
+            c.invalidate();
+        }
+        this.invalidate();
+        revalidate();
+        repaint();
+    }
+
 //    public class ShowControlsAction extends AbstractAction{
 //
 //        public ShowControlsAction() {
@@ -2256,4 +2317,5 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             groupContainer.setVisible(visible);
         }
     }
+
 }

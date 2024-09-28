@@ -37,6 +37,7 @@ import java.awt.Desktop;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -99,29 +100,29 @@ public class RectangularClusterTracker extends EventFilter2D
     /**
      * amount each event moves COM of cluster towards itself.
      */
-    protected float locationMixingFactor = getFloat("locationMixingFactor", 0.05f);
-    private boolean mixingFactorInverseWithEventRate = getBoolean("mixingFactorInverseWithEventRate", false);
+    @Preferred protected float locationMixingFactor = getFloat("locationMixingFactor", 0.05f);
+    @Preferred private boolean mixingFactorInverseWithEventRate = getBoolean("mixingFactorInverseWithEventRate", false);
 //    protected float velocityMixingFactor = getFloat("velocityMixingFactor", 0.001f);
     private boolean useEllipticalClusters = getBoolean("useEllipticalClusters", false);
     private boolean updateClustersOnlyFromEventsNearEdge = getBoolean("updateClustersOnlyFromEventsNearEdge", false);
     private float ellipticalClusterEdgeThickness = getFloat("ellipticalClusterEdgeThickness", .2f);
     private float surround = getFloat("surround", 2f);
-    private boolean dynamicSizeEnabled = getBoolean("dynamicSizeEnabled", false);
+    @Preferred private boolean dynamicSizeEnabled = getBoolean("dynamicSizeEnabled", false);
     private boolean dynamicAspectRatioEnabled = getBoolean("dynamicAspectRatioEnabled", false);
     private boolean dynamicAngleEnabled = getBoolean("dynamicAngleEnabled", false);
-    private boolean pathsEnabled = getBoolean("pathsEnabled", true);
-    private int pathLength = getInt("pathLength", 100);
-    private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
+    @Preferred private boolean pathsEnabled = getBoolean("pathsEnabled", true);
+    @Preferred private int pathLength = getInt("pathLength", 100);
+    @Preferred private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
     private boolean useOnePolarityOnlyEnabled = getBoolean("useOnePolarityOnlyEnabled", false);
     private boolean useOffPolarityOnlyEnabled = getBoolean("useOffPolarityOnlyEnabled", false);
-    private float aspectRatio = getFloat("aspectRatio", 1f);
-    private float clusterSize = getFloat("clusterSize", 0.1f);
-    protected boolean growMergedSizeEnabled = getBoolean("growMergedSizeEnabled", false);
-    protected boolean useVelocity = getBoolean("useVelocity", true); // enabling this enables both computation and
+    @Preferred private float aspectRatio = getFloat("aspectRatio", 1f);
+    @Preferred private float clusterSize = getFloat("clusterSize", 0.1f);
+    @Preferred protected boolean growMergedSizeEnabled = getBoolean("growMergedSizeEnabled", false);
+    @Preferred protected boolean useVelocity = getBoolean("useVelocity", true); // enabling this enables both computation and
     // rendering of cluster velocities
     private boolean logDataEnabled = false;
-    protected boolean showAllClusters = getBoolean("showAllClusters", false);
-    protected boolean useNearestCluster = getBoolean("useNearestCluster", true); // use the nearest cluster to an
+    @Preferred protected boolean showAllClusters = getBoolean("showAllClusters", false);
+    @Preferred protected boolean useNearestCluster = getBoolean("useNearestCluster", true); // use the nearest cluster to an
     // event, not the first containing
     // it
     protected float predictiveVelocityFactor = getFloat("predictiveVelocityFactor", 1);// making this M=10, for example,
@@ -131,26 +132,26 @@ public class RectangularClusterTracker extends EventFilter2D
     // up, etc.
     protected boolean highwayPerspectiveEnabled = getBoolean("highwayPerspectiveEnabled", false);
 
-    protected int thresholdMassForVisibleCluster = getInt("thresholdMassForVisibleCluster", 10);
-    protected int clusterMassDecayTauUs = getInt("clusterMassDecayTauUs", 10000);
+    @Preferred protected int thresholdMassForVisibleCluster = getInt("thresholdMassForVisibleCluster", 10);
+    @Preferred protected int clusterMassDecayTauUs = getInt("clusterMassDecayTauUs", 10000);
 
-    private boolean useEventRatePerPixelForVisibilty = getBoolean("useEventRatePerPixelForVisibilty", true);
-    private float eventRatePerPixelLowpassTauS = getFloat("eventRatePerPixelLowpassTauS", 0.1f);
-    private float thresholdEventRatePerPixelForVisibleClusterHz = getFloat("thresholdEventRatePerPixelForVisibleClusterHz", 10f);
+    @Preferred private boolean useEventRatePerPixelForVisibilty = getBoolean("useEventRatePerPixelForVisibilty", true);
+    @Preferred private float eventRatePerPixelLowpassTauS = getFloat("eventRatePerPixelLowpassTauS", 0.1f);
+    @Preferred private float thresholdEventRatePerPixelForVisibleClusterHz = getFloat("thresholdEventRatePerPixelForVisibleClusterHz", 10f);
 
     protected float thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
-    protected boolean enableClusterExitPurging = getBoolean("enableClusterExitPurging", true);
-    private boolean purgeIfClusterOverlapsBorder = getBoolean("purgeIfClusterOverlapsBorder", true);
+    @Preferred protected boolean enableClusterExitPurging = getBoolean("enableClusterExitPurging", true);
+    @Preferred private boolean purgeIfClusterOverlapsBorder = getBoolean("purgeIfClusterOverlapsBorder", true);
     protected float velAngDiffDegToNotMerge = getFloat("velAngDiffDegToNotMerge", 60);
-    protected boolean showClusterNumber = getBoolean("showClusterNumber", false);
+    @Preferred protected boolean showClusterNumber = getBoolean("showClusterNumber", false);
     protected boolean showClusterEps = getBoolean("showClusterEps", false);
-    protected boolean showClusterEpsPerPx = getBoolean("showClusterEpsPerPx", false);
-    private boolean showClusterRadius = getBoolean("showClusterRadius", false);
+    @Preferred protected boolean showClusterEpsPerPx = getBoolean("showClusterEpsPerPx", false);
+    @Preferred private boolean showClusterRadius = getBoolean("showClusterRadius", false);
     protected boolean showClusterVelocity = getBoolean("showClusterVelocity", false);
-    protected boolean showClusterVelocityVector = getBoolean("showClusterVelocityVector", false);
-    private boolean showClusterMass = getBoolean("showClusterMass", false);
+    @Preferred protected boolean showClusterVelocityVector = getBoolean("showClusterVelocityVector", false);
+    @Preferred private boolean showClusterMass = getBoolean("showClusterMass", false);
     private boolean showPaths = getBoolean("showPaths", true);
-    protected float velocityVectorScaling = getFloat("velocityVectorScaling", 1);
+    @Preferred protected float velocityVectorScaling = getFloat("velocityVectorScaling", 1);
     protected int loggingIntervalUs = getInt("loggingIntervalUs", 1000);
     private int logFrameNumber = 0;
 
@@ -164,16 +165,12 @@ public class RectangularClusterTracker extends EventFilter2D
     // that output events only
     // belong to clustera and point
     // to the clusters.
-    protected float velocityTauMs = getFloat("velocityTauMs", 100);
+    @Preferred protected float velocityTauMs = getFloat("velocityTauMs", 100);
     protected float frictionTauMs = getFloat("frictionTauMs", Float.NaN);
-    private int maxNumClusters = getInt("maxNumClusters", 10);
+    @Preferred private int maxNumClusters = getInt("maxNumClusters", 10);
     private boolean surroundInhibitionEnabled = getBoolean("surroundInhibitionEnabled", false);
     private boolean dontMergeEver = getBoolean("dontMergeEver", false);
     private boolean angleFollowsVelocity = getBoolean("angleFollowsVelocity", false);
-    public boolean smoothMove = getBoolean("smoothMove", false);
-    private float smoothWeight = getFloat("smoothWeight", 100);
-    private float smoothPosition = getFloat("smoothPosition", .001f);
-    private float smoothIntegral = getFloat("smoothIntegral", .001f);
     private float surroundInhibitionCost = getFloat("surroundInhibitionCost", 1);
 
     /**
@@ -268,17 +265,12 @@ public class RectangularClusterTracker extends EventFilter2D
                 disp = "8: Display",
                 update = "9:: Update",
                 logg = "Logging",
-                pi = "9: PI Controller",
                 options = "8: Options";
 
         setPropertyTooltipBold(common, "maxNumClusters", "Sets the maximum potential number of clusters");
-        setPropertyTooltipBold(common, "clusterSize", "size (starting) in fraction of chip max size");
-        setPropertyTooltip(common, "velocityVectorScaling", "scaling of drawn velocity vectors from pps to pixels in AEChip pixel space");
-        setPropertyTooltipBold(common, "eventRatePerPixelLowpassTauS", "time constant of cluster event rate lowpass filter in seconds");
-        setPropertyTooltipBold(common, "thresholdEventRatePerPixelForVisibleClusterHz", "clusters with average event rates in Hz per pixel above this are \"visible\"");
-        setPropertyTooltipBold(common, "locationMixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
-        setPropertyTooltipBold(common, "showAllClusters", "shows all clusters, not just those with sufficient support");
 
+        setPropertyTooltipBold(life, "eventRatePerPixelLowpassTauS", "time constant of cluster event rate lowpass filter in seconds");
+        setPropertyTooltipBold(life, "thresholdEventRatePerPixelForVisibleClusterHz", "clusters with average event rates in Hz per pixel above this are \"visible\"");
         setPropertyTooltipBold(life, "useEventRatePerPixelForVisibilty", "select this option to use normalized event rate per pixel rather than mass for visibility and lifetime");
         setPropertyTooltip(life, "clusterMassDecayTauUs", "time constant of exponential decay of \"mass\" of cluster between events (us)");
         setPropertyTooltip(life, "thresholdMassForVisibleCluster",
@@ -292,6 +284,7 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(life, "surroundInhibitionCost", "If above is checked: The negative weight of surrounding points");
 
 //        setPropertyTooltipBold(common, "velocityMixingFactor","how much cluster velocity is updated by each event, should equal to or smaller than locationMixingFactor");
+        setPropertyTooltipBold(mov, "locationMixingFactor", "how much cluster is moved towards an event, as a fraction of the distance from the cluster to the event");
         setPropertyTooltip(mov, "mixingFactorInverseWithEventRate", "<html>If selected, the locationMixingFactor decreases<br>when the event rate goes up, by a factor of<br>avgEventRateHzPerPx/thresholdEventRatePerPixelForVisibleClusterHz");
         setPropertyTooltip(mov, "velocityPoints",
                 "the number of recent path points (one per packet of events) to use for velocity vector regression");
@@ -310,6 +303,7 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(mov, "useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
         setPropertyTooltip(mov, "velocityInitialization", "Method to initialize cluster velocity vector");
 
+        setPropertyTooltipBold(sizing, "clusterSize", "size (starting) in fraction of chip max size");
         setPropertyTooltipBold(sizing, "aspectRatio", "default (or initial) aspect ratio, <1 is wide");
         setPropertyTooltipBold(sizing, "dynamicSizeEnabled", "size varies dynamically depending on cluster events");
         setPropertyTooltip(sizing, "surround", "the radius is expanded by this ratio to define events that pull radius of cluster");
@@ -327,6 +321,7 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(sizing, "updateClustersOnlyFromEventsNearEdge", "true only update circular clusters from events near cluster radius");
         setPropertyTooltip(sizing, "ellipticalClusterEdgeThickness", "thickness of elliptical cluster edge for updating it");
 
+        setPropertyTooltipBold(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
         setPropertyTooltipBold(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltipBold(disp, "showClusterEpsPerPx", "shows cluster events per second per pixel");
         setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
@@ -335,6 +330,7 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
         setPropertyTooltip(disp, "showClusterVelocityVector", "draws velocity in using scaling velocityVectorScaling");
+        setPropertyTooltip(disp, "velocityVectorScaling", "scaling of drawn velocity vectors from pps to pixels in AEChip pixel space");
         setPropertyTooltip(disp, "showClusterVelocity", "shows velocity vector as (vx,vy) in px/s");
         setPropertyTooltip(disp, "showClusterRadius", "draws cluster radius");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
@@ -358,23 +354,6 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(options, "filterEventsEnabled",
                 "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
 
-        setPropertyTooltip(pi, "smoothMove", "<html>Use the PI controller to update particle position and velocity"
-                + "<br>float errX = (event.x - location.x);\n"
-                + "				<br>float errY = (event.y - location.y);\n"
-                + "<br>"
-                + "				// float changerate=1/smoothWeight;\n"
-                + "				<br>m = m / smoothWeight;\n"
-                + "				<br>m1 = 1 - m;\n"
-                + "<br>"
-                + "				<br>velocity.x = (m1 * velocity.x) + (m * (errX));\n"
-                + "				<br>velocity.y = (m1 * velocity.y) + (m * (errY));\n"
-                + "<br>"
-                + "				<br>location.x = location.x + (velocity.x * smoothIntegral) + (errX * smoothPosition);\n"
-                + "				<br>location.y = location.y + (velocity.y * smoothIntegral) + (errX * smoothPosition);");
-        setPropertyTooltip(pi, "smoothWeight", "If smoothmove is checked, the 'weight' of a cluster");
-        setPropertyTooltip(pi, "smoothPosition", "Position Coefficient");
-        setPropertyTooltip(pi, "smoothIntegral", "Integral Coefficient");
-        // </editor-fold>
     }
 
     /**
@@ -2002,23 +1981,8 @@ public class RectangularClusterTracker extends EventFilter2D
             float prevX = location.x, prevY = location.y;
             float newX = event.x;
             float newY = event.y;
-            if (!smoothMove) {
                 location.x = ((m1 * location.x) + (effectiveMixingFactor * newX));
                 location.y = ((m1 * location.y) + (effectiveMixingFactor * newY));
-            } else { // Kalman filter type of update from Peter
-                float errX = (event.x - location.x);
-                float errY = (event.y - location.y);
-
-                // float changerate=1/smoothWeight;
-                final float m2 = effectiveMixingFactor / smoothWeight;
-                m1 = 1 - m2;
-
-                velocity.x = (m1 * velocity.x) + (m2 * (errX));
-                velocity.y = (m1 * velocity.y) + (m2 * (errY));
-
-                location.x = location.x + (velocity.x * smoothIntegral) + (errX * smoothPosition);
-                location.y = location.y + (velocity.y * smoothIntegral) + (errX * smoothPosition);
-            }
 
             // update velocity of cluster using last two locations
             float dt = 1e-6f * (event.timestamp - lastEventTimestamp);
@@ -4013,51 +3977,6 @@ public class RectangularClusterTracker extends EventFilter2D
     public void setUseEllipticalClusters(boolean useEllipticalClusters) {
         this.useEllipticalClusters = useEllipticalClusters;
         putBoolean("useEllipticalClusters", useEllipticalClusters);
-    }
-    // </editor-fold>
-
-    // ---- Smooth Settings ----
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SmoothMove--">
-    public boolean getSmoothMove() {
-        return smoothMove;
-    }
-
-    public void setSmoothMove(boolean v) {
-        this.smoothMove = v;
-        putBoolean("smoothMove", v);
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SmoothWeight--">
-    public float getSmoothWeight() {
-        return smoothWeight;
-    }
-
-    public void setSmoothWeight(float v) {
-        this.smoothWeight = v;
-        putFloat("smoothWeight", v);
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SmoothPosition--">
-    public float getSmoothPosition() {
-        return smoothPosition;
-    }
-
-    public void setSmoothPosition(float v) {
-        this.smoothPosition = v;
-        putFloat("smoothPosition", v);
-    }
-    // </editor-fold>
-
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --SmoothIntegral--">
-    public float getSmoothIntegral() {
-        return smoothIntegral;
-    }
-
-    public void setSmoothIntegral(float v) {
-        this.smoothIntegral = v;
-        putFloat("smoothIntegral", v);
     }
     // </editor-fold>
 

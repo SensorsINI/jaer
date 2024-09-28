@@ -9,6 +9,7 @@ import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -31,7 +32,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
-    private int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
+    @Preferred private int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
     private boolean filterAlternativePolarityShotNoiseEnabled = getBoolean("filterAlternativePolarityShotNoiseEnabled", false);
 //    protected boolean favorLines = getBoolean("favorLines", false);
     protected float shotNoiseCorrelationTimeS = getFloat("shotNoiseCorrelationTimeS", 1e-3f);
@@ -47,10 +48,10 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     public SpatioTemporalCorrelationFilter(AEChip chip) {
         super(chip);
-        setPropertyTooltipBold(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
+        setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
         setPropertyTooltip(TT_FILT_CONTROL, "favorLines", "add condition that events in 8-NNb must lie along line crossing pixel to pass");
         setPropertyTooltip(TT_FILT_CONTROL, "filterAlternativePolarityShotNoiseEnabled", "filter out events where ON follows OFF or vice versa within the time shotNoiseCorrelationTimeS, which is true for pure thermal noise with short refractory period. This test is applied after the correlation test.");
-        setPropertyTooltipBold(TT_FILT_CONTROL, "shotNoiseCorrelationTimeS", "The correlation time in seconds for shot noise test");
+        setPropertyTooltip(TT_FILT_CONTROL, "shotNoiseCorrelationTimeS", "The correlation time in seconds for shot noise test");
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 

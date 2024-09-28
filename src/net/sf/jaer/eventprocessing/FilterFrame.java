@@ -186,8 +186,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         updateIntervalLabel = new javax.swing.JLabel();
         updateIntervalField = new javax.swing.JTextField();
         selectFiltersJB = new javax.swing.JButton();
-        jPanel1 = new javax.swing.JPanel();
         tipLabel = new javax.swing.JLabel();
+        jPanel1 = new javax.swing.JPanel();
         highlightTF = new javax.swing.JTextField();
         clearFilterJB = new javax.swing.JButton();
         hideOthersCB = new javax.swing.JCheckBox();
@@ -296,12 +296,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         getContentPane().add(toolBar1);
 
+        tipLabel.setText("<html>Enabled filters are processed from top to bottom");
+        getContentPane().add(tipLabel);
+
         jPanel1.setAlignmentX(0.0F);
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.X_AXIS));
-
-        tipLabel.setText("<html>Enabled filters are <br>processed from top to bottom");
-        tipLabel.setMaximumSize(new java.awt.Dimension(200, 36));
-        jPanel1.add(tipLabel);
 
         highlightTF.setToolTipText("highlight filters/parameters");
         highlightTF.setMaximumSize(new java.awt.Dimension(100, 30));
@@ -795,7 +794,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         if (p == null) {
             highlightFilters(s);
         } else {
-            p.highlightProperties(s, hideOthersCB.isSelected());
+            p.showPropertyHighlightsOrVisibility(s, hideOthersCB.isSelected());
         }
     }
 
