@@ -54,21 +54,10 @@ public class FlightTracker extends RectangularClusterTracker {
         
     public void updateTargetParams() {
         if(getNumClusters()>0) {
+      // here we should rank the potential targets      
           targetCluster=getClusters().get(0);
-          targetArealDensity = targetCluster.getMass()/targetCluster.getArea();
-          targetWidth = targetCluster.getRadius()*2f ;  // this is measure used for the cluster box
-        }
-        if ( targetCluster.getMass() > getThresholdMassForVisibleCluster() ) {
-            if (targetWidth > 20f ) {
-                setMixingFactor(0.001f);
-            }
-            else {
-                setMixingFactor(0.040f);   
-            }
-        }
-        else 
-        {
-            setMixingFactor(0.040f);    
+      // here we should use the lowpassed radius as an estimate of distance (given expected drone size)    
+          targetWidth = targetCluster.getRadius()*2f ;  
         }
     }   
     
