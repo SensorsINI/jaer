@@ -191,6 +191,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         highlightTF = new javax.swing.JTextField();
         clearFilterJB = new javax.swing.JButton();
         hideOthersCB = new javax.swing.JCheckBox();
+        preferredPropertiesCB = new javax.swing.JCheckBox();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
         mainMenuBar = new javax.swing.JMenuBar();
@@ -336,6 +337,17 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         });
         jPanel1.add(hideOthersCB);
+
+        preferredPropertiesCB.setText("Simple");
+        preferredPropertiesCB.setToolTipText("Only show Preferred properties (commonly used)");
+        preferredPropertiesCB.setMaximumSize(new java.awt.Dimension(100, 20));
+        preferredPropertiesCB.setPreferredSize(new java.awt.Dimension(80, 20));
+        preferredPropertiesCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                preferredPropertiesCBActionPerformed(evt);
+            }
+        });
+        jPanel1.add(preferredPropertiesCB);
 
         getContentPane().add(jPanel1);
 
@@ -789,6 +801,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         highlightOrShowOnly(s);
     }//GEN-LAST:event_highlightTFKeyTyped
 
+    private void preferredPropertiesCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferredPropertiesCBActionPerformed
+        for (EventFilter f : filterChain) {
+            f.getFilterPanel().showOnlyPreferredProperties(preferredPropertiesCB.isSelected());
+        }
+    }//GEN-LAST:event_preferredPropertiesCBActionPerformed
+
     private void highlightOrShowOnly(String s) {
         FilterPanel p = getSelectedFilterPanel();
         if (p == null) {
@@ -947,6 +965,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.ButtonGroup modeButtonGroup;
     private javax.swing.JMenu modeMenu;
     private javax.swing.JButton overviewButton;
+    private javax.swing.JCheckBox preferredPropertiesCB;
     private javax.swing.JRadioButtonMenuItem renderingModeMenuItem;
     private javax.swing.JButton resetAllButton;
     private javax.swing.JMenuItem resetPerformanceMeasurementMI;
