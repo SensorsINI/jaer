@@ -784,7 +784,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if (f.isPropertyPreferred(label.getText())) {
             label.setFont(label.getFont().deriveFont(Font.BOLD));
         }
-
     }
 
     class MyControl extends JPanel {
@@ -950,9 +949,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             checkBox = new JCheckBox(name);
             checkBox.setAlignmentX(LEFT_ALIGNMENT);
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
+            setFontSizeStyle(checkBox);
             addTip(f, checkBox);
             add(checkBox);
-            setFontSizeStyle(checkBox);
 
 //            add(Box.createVerticalStrut(0));
             try {
@@ -1192,9 +1191,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
+            setFontSizeStyle(label);
             addTip(f, label);
             add(label);
-            setFontSizeStyle(label);
 
             tf = new JTextField("", 8);
             tf.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, Collections.EMPTY_SET);
