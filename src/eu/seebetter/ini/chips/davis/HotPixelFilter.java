@@ -16,17 +16,16 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
-import java.awt.Color;
 import java.awt.Font;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.util.DrawGL;
 
 /**
  * Cheaply suppresses (filters out) hot pixels from DVS; ie pixels that
@@ -40,16 +39,16 @@ import net.sf.jaer.util.DrawGL;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
-    private int numHotPixels = getInt("numHotPixels", 30);
+    @Preferred private int numHotPixels = getInt("numHotPixels", 30);
     private final HotPixelSet hotPixelSet = new HotPixelSet();
-    private boolean showHotPixels = getBoolean("showHotPixels", true);
+    @Preferred private boolean showHotPixels = getBoolean("showHotPixels", true);
     private boolean showHotPixelsNumber = getBoolean("showHotPixelsNumber", true);
     private int showHotPixelsFontSize = getInt("showHotPixelsFontSize", 36);
     private float showHotPixelsNumberYLocation = getFloat("showHotPixelsNumberYLocation", 0f);
     private float showHotPixelsAlpha = getFloat("showHotPixelsAlpha", .25f);
     private int showHotPixelsRadius = getInt("showHotPixelsRadius", 0);
     private CollectedAddresses collectedAddresses = null;
-    private int learnTimeMs = getInt("learnTimeMs", 20);
+    @Preferred private int learnTimeMs = getInt("learnTimeMs", 20);
     private boolean learnHotPixels = false, learningStarted = false;
     private int learningStartedTimestamp = 0;
     protected boolean use2DBooleanArray = getBoolean("use2DBooleanArray", false);
