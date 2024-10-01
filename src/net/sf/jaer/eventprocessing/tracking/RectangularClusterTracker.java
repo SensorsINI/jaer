@@ -138,10 +138,11 @@ public class RectangularClusterTracker extends EventFilter2D
     @Preferred private float eventRatePerPixelLowpassTauS = getFloat("eventRatePerPixelLowpassTauS", 0.1f);
     @Preferred private float thresholdEventRatePerPixelForVisibleClusterHz = getFloat("thresholdEventRatePerPixelForVisibleClusterHz", 10f);
 
-    protected float thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
+    @Preferred protected float thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
     @Preferred protected boolean enableClusterExitPurging = getBoolean("enableClusterExitPurging", true);
     @Preferred private boolean purgeIfClusterOverlapsBorder = getBoolean("purgeIfClusterOverlapsBorder", true);
     protected float velAngDiffDegToNotMerge = getFloat("velAngDiffDegToNotMerge", 60);
+    
     @Preferred protected boolean showClusterNumber = getBoolean("showClusterNumber", false);
     protected boolean showClusterEps = getBoolean("showClusterEps", false);
     @Preferred protected boolean showClusterEpsPerPx = getBoolean("showClusterEpsPerPx", false);
@@ -149,7 +150,7 @@ public class RectangularClusterTracker extends EventFilter2D
     protected boolean showClusterVelocity = getBoolean("showClusterVelocity", false);
     @Preferred protected boolean showClusterVelocityVector = getBoolean("showClusterVelocityVector", false);
     @Preferred private boolean showClusterMass = getBoolean("showClusterMass", false);
-    private boolean showPaths = getBoolean("showPaths", true);
+    @Preferred private boolean showPaths = getBoolean("showPaths", true);
     @Preferred protected float velocityVectorScaling = getFloat("velocityVectorScaling", 1);
     protected int loggingIntervalUs = getInt("loggingIntervalUs", 1000);
     private int logFrameNumber = 0;
