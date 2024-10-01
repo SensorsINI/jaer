@@ -1762,7 +1762,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
-        preferredPropertiesCB = new javax.swing.JCheckBox();
 
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.Y_AXIS));
 
@@ -1801,17 +1800,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
         });
         enableResetControlsHelpPanel.add(showControlsToggleButton);
-
-        preferredPropertiesCB.setText("Simple");
-        preferredPropertiesCB.setToolTipText("Only show Preferred properties (commonly used)");
-        preferredPropertiesCB.setMaximumSize(new java.awt.Dimension(100, 20));
-        preferredPropertiesCB.setPreferredSize(new java.awt.Dimension(80, 20));
-        preferredPropertiesCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                preferredPropertiesCBActionPerformed(evt);
-            }
-        });
-        enableResetControlsHelpPanel.add(preferredPropertiesCB);
 
         add(enableResetControlsHelpPanel);
     }// </editor-fold>//GEN-END:initComponents
@@ -1956,14 +1944,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         setControlsVisible(showControlsToggleButton.isSelected());
     }//GEN-LAST:event_showControlsToggleButtonActionPerformed
 
-    private void preferredPropertiesCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferredPropertiesCBActionPerformed
-        showOnlyPreferredProperties(preferredPropertiesCB.isSelected());
-    }//GEN-LAST:event_preferredPropertiesCBActionPerformed
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     protected javax.swing.JPanel enableResetControlsHelpPanel;
     protected javax.swing.JCheckBox enabledCheckBox;
-    private javax.swing.JCheckBox preferredPropertiesCB;
     private javax.swing.JButton resetButton;
     private javax.swing.JToggleButton showControlsToggleButton;
     // End of variables declaration//GEN-END:variables
@@ -2277,7 +2260,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         repaint();
     }
 
-    private void showOnlyPreferredProperties(boolean selected) {
+    /** Shows only Preferred properties
+     * 
+     * @param selected 
+     * @see net.sf.jaer.Preferred
+     */
+    public void showOnlyPreferredProperties(boolean selected) {
         for (String propName : propertyControlMap.keySet()) {
             MyControl c = propertyControlMap.get(propName);
             if (c == null) {
