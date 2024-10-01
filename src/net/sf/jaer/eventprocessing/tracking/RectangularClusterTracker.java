@@ -110,7 +110,6 @@ public class RectangularClusterTracker extends EventFilter2D
     @Preferred private boolean dynamicSizeEnabled = getBoolean("dynamicSizeEnabled", false);
     private boolean dynamicAspectRatioEnabled = getBoolean("dynamicAspectRatioEnabled", false);
     private boolean dynamicAngleEnabled = getBoolean("dynamicAngleEnabled", false);
-    @Preferred private boolean pathsEnabled = getBoolean("pathsEnabled", true);
     @Preferred private int pathLength = getInt("pathLength", 100);
     @Preferred private boolean colorClustersDifferentlyEnabled = getBoolean("colorClustersDifferentlyEnabled", false);
     private boolean useOnePolarityOnlyEnabled = getBoolean("useOnePolarityOnlyEnabled", false);
@@ -292,7 +291,6 @@ public class RectangularClusterTracker extends EventFilter2D
                 "lowpass filter time constant in ms for velocity updates; effectively limits acceleration");
         setPropertyTooltip(mov, "frictionTauMs",
                 "velocities decay towards zero with this time constant to mimic friction; set to NaN to disable friction");
-        setPropertyTooltip(mov, "pathsEnabled", "draw paths of clusters over some window");
         setPropertyTooltipBold(mov, "useVelocity", "uses measured cluster velocity to predict future position; vectors are scaled "
                 + String.format("%.1f pix/pix/s", (VELOCITY_VECTOR_SCALING / AEConstants.TICK_DEFAULT_US) * 1e-6));
         setPropertyTooltip(mov, "useNearestCluster", "event goes to nearest cluster, not to first (usually oldest) cluster containing it");
@@ -321,10 +319,11 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(sizing, "updateClustersOnlyFromEventsNearEdge", "true only update circular clusters from events near cluster radius");
         setPropertyTooltip(sizing, "ellipticalClusterEdgeThickness", "thickness of elliptical cluster edge for updating it");
 
+        setPropertyTooltip(disp, "pathsEnabled", "draw paths of clusters over some window");
+        setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltipBold(disp, "showAllClusters", "shows all clusters, not just those with sufficient support");
         setPropertyTooltipBold(disp, "showPaths", "shows the stored path points of each cluster");
         setPropertyTooltipBold(disp, "showClusterEpsPerPx", "shows cluster events per second per pixel");
-        setPropertyTooltip(disp, "pathLength", "paths are at most this many packets long");
         setPropertyTooltip(disp, "colorClustersDifferentlyEnabled",
                 "each cluster gets assigned a random color, otherwise color indicates ages");
         setPropertyTooltip(disp, "classifierEnabled", "colors clusters based on single size metric");
@@ -2341,7 +2340,7 @@ public class RectangularClusterTracker extends EventFilter2D
          * @param t current timestamp.
          */
         public void updatePath(int t) {
-            if (!pathsEnabled && !useVelocity) {
+            if (!showPaths && !useVelocity) {
                 return;
             }
             if (numEvents == previousNumEvents) {
@@ -3290,29 +3289,6 @@ public class RectangularClusterTracker extends EventFilter2D
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --PathsEnabled--">
-    /**
-     * @see #setPathsEnabled
-     */
-    public boolean isPathsEnabled() {
-        return pathsEnabled;
-    }
-
-    /**
-     * Enable cluster history paths. The path of each cluster is stored as a
-     * list of points at the end of each cluster list update. This option is
-     * required (and set true) if useVelocity is set true.
-     *
-     * @param pathsEnabled true to show the history of the cluster locations on
-     * each packet.
-     */
-    public void setPathsEnabled(boolean pathsEnabled) {
-        boolean old = this.pathsEnabled;
-        this.pathsEnabled = pathsEnabled;
-        getSupport().firePropertyChange("pathsEnabled", old, pathsEnabled);
-        putBoolean("pathsEnabled", pathsEnabled);
-    }
-    // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --DynamicSizeEnabled--">
     /**
@@ -3538,9 +3514,6 @@ public class RectangularClusterTracker extends EventFilter2D
      * @see #setPathsEnabled(boolean)
      */
     public void setUseVelocity(boolean useVelocity) {
-        if (useVelocity) {
-            setPathsEnabled(true);
-        }
         getSupport().firePropertyChange("useVelocity", this.useVelocity, useVelocity);
         this.useVelocity = useVelocity;
         putBoolean("useVelocity", useVelocity);
