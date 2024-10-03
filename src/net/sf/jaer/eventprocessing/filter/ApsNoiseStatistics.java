@@ -86,7 +86,6 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
         if ((chip.getCanvas() != null) && (chip.getCanvas().getCanvas() != null)) {
             canvas = chip.getCanvas();
             glCanvas = (GLCanvas) chip.getCanvas().getCanvas();
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
         }
         currentAddress = new int[chip.getNumCellTypes()];
         Arrays.fill(currentAddress, -1);
@@ -622,6 +621,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 if (!temporalNoiseEnabled || (selectionRectangle == null) || (means == null) || (vars == null)) {
                     return;
                 }
+                renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
                 renderer.setSmoothing(true);
                 final float x0 = chip.getSizeX() * PLOT_OFFSETS, y0 = chip.getSizeY() * PLOT_OFFSETS, x1 = chip.getSizeX() * (1 - PLOT_OFFSETS), y1 = chip.getSizeY() * (1 - PLOT_OFFSETS);
 
