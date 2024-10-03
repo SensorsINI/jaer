@@ -107,7 +107,6 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         onEventFilter.setEndType(1);
 
         tracker.setMaxNumClusters(100);
-        tracker.setPathsEnabled(true);
         tracker.setDontMergeEver(true);
         tracker.setHighwayPerspectiveEnabled(false);
         tracker.setColorClustersDifferentlyEnabled(false);
