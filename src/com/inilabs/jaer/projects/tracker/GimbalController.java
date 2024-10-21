@@ -75,7 +75,7 @@ public class GimbalController extends EventFilter2D implements FrameAnnotater {
 				float[] xy={p.x, p.y, 1};
 				try {
 					panTilt.setPanTiltVisualAim(p.x, p.y);
-				} catch(HardwareInterfaceException ex) {
+				} catch(Exception ex) {
 					log.warning(ex.toString());
 				}
 				panTilt.getPanTiltHardware().setLaserOn(true);

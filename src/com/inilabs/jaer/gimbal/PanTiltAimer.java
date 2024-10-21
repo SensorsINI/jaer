@@ -1,7 +1,6 @@
 
 package com.inilabs.jaer.gimbal;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -123,7 +122,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
      * interface is also constructed.
      * @param chip */
     public PanTiltAimer(AEChip chip) {
-        this(chip, PanTilt.getInstance(0));
+        this(chip, PanTilt.getInstance());
     }
     
     /** If a panTilt unit is already used by implementing classes it can be 
@@ -133,8 +132,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     public PanTiltAimer(AEChip chip, PanTilt pt) {
         super(chip);
         panTiltHardware = pt;
-        panTiltHardware.setPanServoNumber(panServoNumber);
-        panTiltHardware.setTiltServoNumber(tiltServoNumber);
         panTiltHardware.setJitterAmplitude(jitterAmplitude);
         panTiltHardware.setJitterFreqHz(jitterFreqHz);
         panTiltHardware.setJitterEnabled(jitterEnabled);
@@ -142,7 +139,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         panTiltHardware.setTiltInverted(invertTilt);
         panTiltHardware.setLimitOfPan(limitOfPan);
         panTiltHardware.setLimitOfTilt(limitOfTilt);
-        
         panTiltHardware.addPropertyChangeListener(this); //We want to know the current position of the panTilt as it changes
         
         // <editor-fold defaultstate="collapsed" desc="-- Property Tooltips --">
@@ -202,17 +198,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="GUI button --DisableServos--">
-    public void doDisableServos() {
-        if (panTiltHardware != null && panTiltHardware.getServoInterface() != null) {
-            try {
-                panTiltHardware.disableAllServos();
-            } catch (HardwareInterfaceException ex) {
-                log.warning(ex.toString());
-            }
-        }
-    }
-    // </editor-fold>
    
     @Override public void acquire() {
         getPanTiltHardware().acquire();
@@ -241,8 +226,6 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     @Override public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
         if (yes) {
-            panTiltHardware.setPanServoNumber(panServoNumber);
-            panTiltHardware.setTiltServoNumber(tiltServoNumber);
             panTiltHardware.setJitterAmplitude(jitterAmplitude);
             panTiltHardware.setJitterFreqHz(jitterFreqHz);
             panTiltHardware.setJitterEnabled(jitterEnabled);
@@ -253,11 +236,8 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         } else {
             try {
                 panTiltHardware.stopJitter();
-                if (panTiltHardware.getServoInterface() != null) {
-                    panTiltHardware.getServoInterface().disableAllServos();
-                }
                 panTiltHardware.close();
-            } catch (HardwareInterfaceException ex) {
+            } catch (Exception ex) {
                 log.warning(ex.toString());
             }
         }
@@ -279,21 +259,11 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
         return supportPanTilt;
     }
     
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ServoInterface--">
-    @Override public ServoInterface getServoInterface() {
-        return getPanTiltHardware().getServoInterface();
-    }
-    
-    @Override public void setServoInterface(ServoInterface servo) {
-        getPanTiltHardware().setServoInterface(servo);
-    }
-    // </editor-fold>
-    
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --PanTiltHardware--">
     public PanTilt getPanTiltHardware() {
         if(panTiltHardware == null) {
             log.warning("No Pan-Tilt Hardware found. Initialising new PanTilt");
-            panTiltHardware = PanTilt.getLastInstance();
+            panTiltHardware = PanTilt.getInstance();
         }
         return panTiltHardware;
     }
@@ -436,57 +406,14 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     }
     // </editor-fold>
     
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --TiltServoNumber--">
-    /** gets the Servo number of tilt
-     * @return TiltServoNumber */
-    public int getTiltServoNumber() {
-        return getPanTiltHardware().getTiltServoNumber();
-    }
-       
-    /** sets tilt ServoNumber
-     * @param tiltServoNumber the number to set for the servo */
-    public void setTiltServoNumber(int tiltServoNumber) {
-        if (tiltServoNumber < 0) {
-            tiltServoNumber = 0;
-        } else if (tiltServoNumber > 3) {
-            tiltServoNumber = 3;
-        }
-        int OldValue = getTiltServoNumber();
-        getPanTiltHardware().setTiltServoNumber(tiltServoNumber);
-        this.tiltServoNumber = tiltServoNumber;
-        putInt("tiltServoNumber", tiltServoNumber);
-        getSupport().firePropertyChange("tiltServoNumber",OldValue,tiltServoNumber);
-    }
-    // </editor-fold>
-    
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --PanServoNumber--">
-    /** gets the Servo number of pan
-     * @return PanServoNumber */
-    public int getPanServoNumber() {
-        return getPanTiltHardware().getPanServoNumber();
-    }
-    
-    /** sets pan ServoNumber
-     * @param panServoNumber the number to set for the servo */
-    public void setPanServoNumber(int panServoNumber) {
-        if (panServoNumber < 0) {
-            panServoNumber = 0;
-        } else if (panServoNumber > 3) {
-            panServoNumber = 3;
-        }
-        int OldValue = getPanServoNumber();
-        getPanTiltHardware().setPanServoNumber(panServoNumber);
-        this.panServoNumber = panServoNumber;
-        putInt("panServoNumber", panServoNumber);
-        getSupport().firePropertyChange("panServoNumber",OldValue,panServoNumber);
-    }
+
     // </editor-fold>
     
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --TiltInverted--">
     /** checks if tilt is inverted
      * @return tiltinverted */
     public boolean isTiltInverted() {
-        return getPanTiltHardware().isTiltInverted();
+        return getPanTiltHardware().getTiltInverted();
     }
       
     /** sets weather tilt is inverted
@@ -504,7 +431,7 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
     /** checks if pan is inverted
      * @return paninverted */
     public boolean isPanInverted() {
-        return getPanTiltHardware().isPanInverted();
+        return getPanTiltHardware().getPanInverted();
     }
     
     /** sets weather pan is inverted

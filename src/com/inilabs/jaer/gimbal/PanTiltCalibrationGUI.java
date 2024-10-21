@@ -5,7 +5,6 @@
  */
 package com.inilabs.jaer.gimbal;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -93,7 +92,7 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
         });
 
         statusLabel.setText("exception status");
-        statusLabel.setBorder(javax.swing.BorderFactory.createLineBorder(null));
+        statusLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         calibrationPanel.setBackground(new java.awt.Color(255, 255, 255));
         calibrationPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -226,7 +225,7 @@ public class PanTiltCalibrationGUI extends javax.swing.JFrame implements Excepti
             lastPanTilt.y = tilt;
             panTilt.setPanTiltValues(pan, tilt);
             statusLabel.setText(String.format("%.3f, %.3f", pan, tilt));
-        } catch (HardwareInterfaceException e) {
+        } catch (Exception e) {
             log.warning(e.toString());
         }
     }

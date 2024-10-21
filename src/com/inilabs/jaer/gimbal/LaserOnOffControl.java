@@ -1,12 +1,5 @@
 package com.inilabs.jaer.gimbal;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
-
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /**
  * Encapsulates control of the a laser pointer on/off state controlled via a SiLabsC8051F320_USBIO_ServoController
  * controller board. Port 2 on the board is used in open drain mode to sink the laser supply current to turn
@@ -18,4 +11,9 @@ import ch.unizh.ini.jaer.hardware.pantilt.*;
 public interface LaserOnOffControl {
     public void setLaserEnabled(boolean yes);
 }
+
+
+
+
+
 

@@ -4,6 +4,7 @@
  */
 package com.inilabs.jaer.gimbal;
 import ch.unizh.ini.jaer.hardware.pantilt.*;
+import com.inilabs.jaer.gimbal.CalibratedPanTilt;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics2D;
@@ -59,7 +60,7 @@ public class PanTiltTracker extends EventFilter2D implements FrameAnnotater {
 				float[] xy={p.x, p.y, 1};
 				try {
 					panTilt.setPanTiltVisualAim(p.x, p.y);
-				} catch(HardwareInterfaceException ex) {
+				} catch(Exception ex) {
 					log.warning(ex.toString());
 				}
 				panTilt.getPanTiltHardware().setLaserOn(true);

@@ -81,10 +81,10 @@ public interface PanTiltInterface {
     /** Sets the ServoInterface
      * @param servo the interface
      */
-     public void setServoInterface(ServoInterface servo);
+  //   public void setServoInterface(ServoInterface servo);
      
      /* Gets the current ServoInterface
       * @return the current ServoInterface
       */
-     public ServoInterface getServoInterface();
+   //  public ServoInterface getServoInterface();
 }

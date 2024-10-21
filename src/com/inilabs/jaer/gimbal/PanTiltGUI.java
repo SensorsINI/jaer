@@ -4,7 +4,6 @@
  * Created on April 21, 2008, 11:50 AM
  */
 package com.inilabs.jaer.gimbal;
-
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -15,7 +14,6 @@ import java.awt.geom.Point2D;
 import java.beans.PropertyChangeSupport;
 import java.util.logging.Logger;
 
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.ExceptionListener;
 
 /**
@@ -94,7 +92,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
         });
 
         statusLabel.setText("exception status");
-        statusLabel.setBorder(javax.swing.BorderFactory.createLineBorder(null));
+        statusLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         calibrationPanel.setBackground(new java.awt.Color(255, 255, 255));
         calibrationPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -249,7 +247,7 @@ public class PanTiltGUI extends javax.swing.JFrame implements ExceptionListener 
             lastPanTilt.y = tilt;
             panTilt.setPanTiltValues(pan, tilt);
             statusLabel.setText(String.format("%.3f, %.3f", pan, tilt));
-        } catch (HardwareInterfaceException e) {
+        } catch (Exception e) {
             log.warning(e.toString());
         }
     }

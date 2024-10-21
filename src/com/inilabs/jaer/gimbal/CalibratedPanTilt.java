@@ -4,7 +4,6 @@
  */
 package com.inilabs.jaer.gimbal;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -18,8 +17,12 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
-import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.ServoInterface;
+
+import com.inilabs.jaer.gimbal.PanTiltInterface;
+import com.inilabs.jaer.gimbal.LaserOnOffControl;
+import com.inilabs.jaer.gimbal.PanTilt;
+import com.inilabs.jaer.gimbal.PanTiltCalibrator;
+
 
 /**
  * This filter enables calibrated control of a pan tilt laser pointer. CalibratedPanTilt has a method to set the pan tilt
@@ -32,7 +35,7 @@ import net.sf.jaer.hardwareinterface.ServoInterface;
 public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, PanTiltInterface, LaserOnOffControl {
 
 	RectangularClusterTracker tracker;
-	private PanTilt panTiltHardware;
+	private PanTilt panTiltHardware = null;
 	private PanTiltCalibrator calibrator=new PanTiltCalibrator(this);
 
 	/** Constructs instance of the new 'filter' CalibratedPanTilt. The only time events are actually used
@@ -43,14 +46,14 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
 		super(chip);
 		tracker = new RectangularClusterTracker(chip);
 		setEnclosedFilter(tracker);
-		panTiltHardware = PanTilt.getLastInstance();
+		panTiltHardware = PanTilt.getInstance();
 	}
 
 	/** Sets the pan and tilt to aim at a particular calibrated x,y visual direction
      @param x the x pixel
      @param y the y pixel
 	 */
-	public void setPanTiltVisualAim(float x, float y) throws HardwareInterfaceException{
+	public void setPanTiltVisualAim(float x, float y) throws Exception{
 		float[] xy={x,y,1};
 		float[] pt=calibrator.getTransformedPanTiltFromXY(xy);
 		getPanTiltHardware().setPanTiltValues(pt[0], pt[1]);
@@ -81,7 +84,7 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
 				float tilt = pt[1];
 				try {
 					panTiltHardware.setPanTiltValues(pan, tilt);
-				} catch (HardwareInterfaceException e) {
+				} catch (Exception e) {
 					log.warning(e.toString());
 				}
 				panTiltHardware.setLaserOn(true);
@@ -161,6 +164,11 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
 		panTiltHardware=panTilt;
 	}
 
+                    public void setLaserOn(boolean yes) {
+                            panTiltHardware.setLaserOn(yes);
+                            }
+
+
 	@Override
 	public float getJitterAmplitude() {
 		return panTiltHardware.getJitterAmplitude();
@@ -223,29 +231,19 @@ public class CalibratedPanTilt extends EventFilter2D implements FrameAnnotater, 
      @param pan 0 to 1 value
      @param tilt 0 to 1 value
 	 */
-	@Override
-	public void setPanTiltValues(float pan, float tilt) throws HardwareInterfaceException {
+
+	public void setPanTiltValues(float pan, float tilt) {
 		getPanTiltHardware().setPanTiltValues(pan, tilt);
 	}
 
-	@Override
-	public void setServoInterface(ServoInterface servo) {
-		getPanTiltHardware().setServoInterface(servo);
-	}
-
-	@Override
-	public ServoInterface getServoInterface() {
-		return getPanTiltHardware().getServoInterface();
-	}
-
-	@Override
-	public void setLaserEnabled(boolean yes) {
-		getPanTiltHardware().setLaserEnabled(yes);
-	}
+	
 
 	public PanTiltCalibrator getCalibrator() {
 		return calibrator;
 	}
 
-
+                   public void setLaserEnabled(boolean yes) {
+		getPanTiltHardware().setLaserEnabled(yes);
+	}
+                   
 }

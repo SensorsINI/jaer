@@ -1,5 +1,5 @@
 package com.inilabs.jaer.gimbal;
-import ch.unizh.ini.jaer.hardware.pantilt.*;
+import com.inilabs.jaer.gimbal.CalibratedPanTilt;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -162,7 +162,7 @@ public class PanTiltCalibrator implements PropertyChangeListener, FrameAnnotater
 					try {
 						calibratedPanTilt.setPanTiltVisualAim(p.ret.x,p.ret.y);
 						//                        calibratedPanTilt.getPanTiltHardware().setPanTiltValues(p.pt.x, p.pt.y);
-					} catch(HardwareInterfaceException e) {
+					} catch(Exception e) {
 					}
 					try {
 						sleep(500);

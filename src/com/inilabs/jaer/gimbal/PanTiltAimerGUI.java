@@ -4,7 +4,7 @@
 
 package com.inilabs.jaer.gimbal;
 
-import ch.unizh.ini.jaer.hardware.pantilt.*;
+
 import ch.unizh.ini.jaer.hardware.pantilt.PanTiltAimer.Message;
 import java.awt.Color;
 import java.awt.Toolkit;
@@ -230,7 +230,7 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
         });
 
         statusLabel.setText("exception status");
-        statusLabel.setBorder(javax.swing.BorderFactory.createLineBorder(null));
+        statusLabel.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
         calibrationPanel.setBackground(new java.awt.Color(255, 255, 255));
         calibrationPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -651,12 +651,11 @@ public class PanTiltAimerGUI extends javax.swing.JFrame implements PropertyChang
     }//GEN-LAST:event_centerButActionPerformed
 
     private void relaxButActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_relaxButActionPerformed
-        if (panTilt != null && panTilt.getServoInterface() != null) {
+        if (panTilt != null ) {
             try {
                 panTilt.setJitterEnabled(false);
                 panTilt.stopFollow();
-                panTilt.getServoInterface().disableAllServos();
-            } catch (HardwareInterfaceException ex) {
+            } catch (Exception ex) {
                 log.warning(ex.toString());
             }
         }
