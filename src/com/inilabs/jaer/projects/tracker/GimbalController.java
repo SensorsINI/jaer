@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 package com.inilabs.jaer.projects.tracker;
-import com.inilabs.jaer.gimbal.CalibratedPanTilt;
+import com.inilabs.jaer.gimbal.CalibratedGimbal;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Graphics2D;
@@ -39,7 +39,7 @@ import net.sf.jaer.util.DrawGL;
 @Description("Selects, and tracks, a moving object with the DJI RS 4 Pro Gimbal")
 public class GimbalController extends EventFilter2D implements FrameAnnotater {
 	FlightTracker tracker;
-	CalibratedPanTilt panTilt=null;
+	CalibratedGimbal panTilt=null;
         Point2D.Float targetLocation = null;
         RectangularClusterTracker.Cluster targetCluster = null;
 
@@ -50,7 +50,7 @@ public class GimbalController extends EventFilter2D implements FrameAnnotater {
 		setEnclosedFilterChain(filterChain);
 		tracker=new FlightTracker(chip);
 //                tracker.getSupport().addPropertyChangeListener(this);
-		panTilt=new CalibratedPanTilt(chip);
+		panTilt=new CalibratedGimbal(chip);
 //                panTilt.getSupport().addPropertyChangeListener(this);
                 filterChain.add(tracker);
 		filterChain.add(panTilt);

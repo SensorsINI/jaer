@@ -19,7 +19,7 @@
 
     <!-- Test or run the module -->
     <target name="run" depends="build">
-        <java classname="com.inilabs.jaer.gimbal.PanTilt" fork="true" classpath="build/classes">
+        <java classname="com.inilabs.jaer.gimbal.Gimbal" fork="true" classpath="build/classes">
             <classpath refid="module.classpath"/>
         </java>
     </target>
