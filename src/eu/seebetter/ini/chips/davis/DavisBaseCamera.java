@@ -778,6 +778,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         // the special readout: signal then reset, as in CDAVIS.
         private final boolean isDavisNotCDavisReadout;
 
+        /** CDAVIS and DAVIS with RGB CFA event extractor
+         * 
+         * @param chip
+         * @param isDVSQuarterOfAPS true for CDAVIS, false for DAVIS
+         * @param isDVSColorFilter true if chip has CFA
+         * @param colorFilterSequence sequence of color filter colors
+         * @param isDavisNotCDavisReadout true for DAVIS, false for CDAVIS
+         */
         public DavisColorEventExtractor(final DavisBaseCamera chip, final boolean isDVSQuarterOfAPS, final boolean isDVSColorFilter,
                 final ColorFilter[] colorFilterSequence, final boolean isDavisNotCDavisReadout) {
             super(chip);
