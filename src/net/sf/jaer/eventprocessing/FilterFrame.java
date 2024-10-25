@@ -656,9 +656,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             FileInputStream fis = new FileInputStream(f);
             Preferences.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
             prefs.put("FilterFrame.lastFile", f.getCanonicalPath());
-            log.info("imported preferences from " + f);
+            log.info("imported preferences from " + f.toPath().toString());
             recentFiles.addFile(f);
             renewContents();
+            JOptionPane.showMessageDialog(rootPane, String.format("<html>Loaded Preferences from <br>\t%s<br>and reconstructed the entire FilterChain",f.toPath()));
         } catch (Exception e) {
             e.printStackTrace();
         }
