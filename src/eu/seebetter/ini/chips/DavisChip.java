@@ -72,8 +72,8 @@ abstract public class DavisChip extends AETemporalConstastRetina {
 	public DavisChip() {
 		addDefaultEventFilter(ApsDvsEventFilter.class);
 		addDefaultEventFilter(ApsFrameExtractor.class);
-		addDefaultEventFilter(FlexTimePlayer.class);
-		addDefaultEventFilter(DavisAutoShooter.class);
+//		addDefaultEventFilter(FlexTimePlayer.class);
+//		addDefaultEventFilter(DavisAutoShooter.class);
 		addDefaultEventFilter(DavisFrameAviWriter.class);
                 removeDefaultEventFilter(JaerAviWriter.class);
 		addDefaultEventFilter(JaerAviWriter.class);
