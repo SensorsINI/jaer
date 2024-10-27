@@ -44,6 +44,7 @@ import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
@@ -78,14 +79,14 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
     Point startPoint = null, endPoint = null, clickedPoint = null;
     // private GLUT glut = new GLUT();
     private Stats stats = new Stats();
-    private boolean rateEnabled = getBoolean("rateEnabled", true);
-    private boolean isiHistEnabled = getBoolean("isiHistEnabled", true);
+    @Preferred private boolean rateEnabled = getBoolean("rateEnabled", true);
+    @Preferred private boolean isiHistEnabled = getBoolean("isiHistEnabled", true);
     private float histogramOpacity = getFloat("histogramOpacity", .5f);
     private boolean showRateDistribution = getBoolean("showRateDistribution", false);
-    private boolean freqHistEnabled = getBoolean("freqHistEnabled", false);
+    @Preferred private boolean freqHistEnabled = getBoolean("freqHistEnabled", false);
     private boolean separateEventTypes = getBoolean("separateEventTypes", true);
-    private boolean logISIEnabled = getBoolean("logISIEnabled", true);
-    private boolean logProbEnabled = getBoolean("logProbEnabled", false);
+    @Preferred private boolean logISIEnabled = getBoolean("logISIEnabled", true);
+    @Preferred private boolean logProbEnabled = getBoolean("logProbEnabled", false);
     private boolean spikeSoundEnabled = getBoolean("spikeSoundEnabled", false);
     private boolean scaleHistogramsIncludingOverflow = getBoolean("scaleHistogramsIncludingOverflow", true);
     SpikeSound spikeSound = null;
@@ -274,15 +275,15 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         stats.setIsiMaxUs(isiMaxUs);
     }
 
-    public void setIsiAutoScalingEnabled(boolean isiAutoScalingEnabled) {
+    @Preferred public void setIsiAutoScalingEnabled(boolean isiAutoScalingEnabled) {
         stats.setIsiAutoScalingEnabled(isiAutoScalingEnabled);
     }
 
-    public boolean isIsiAutoScalingEnabled() {
+    @Preferred public boolean isIsiAutoScalingEnabled() {
         return stats.isIsiAutoScalingEnabled();
     }
 
-    public void setIndividualISIsEnabled(boolean individualISIsEnabled) {
+    @Preferred public void setIndividualISIsEnabled(boolean individualISIsEnabled) {
         stats.setIndividualISIsEnabled(individualISIsEnabled);
     }
 
@@ -302,7 +303,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         return stats.getIsiMaxUs();
     }
 
-    public void setShowAverageISIHistogram(boolean showAverageISIHistogram) {
+    @Preferred public void setShowAverageISIHistogram(boolean showAverageISIHistogram) {
         stats.setShowAverageISIHistogram(showAverageISIHistogram);
     }
 
@@ -310,7 +311,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         return stats.isShowAverageISIHistogram();
     }
 
-    public void setShowIndividualISIHistograms(boolean showIndividualISIHistograms) {
+    @Preferred public void setShowIndividualISIHistograms(boolean showIndividualISIHistograms) {
         stats.setShowIndividualISIHistograms(showIndividualISIHistograms);
     }
 
@@ -431,10 +432,10 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
         // private int[] bins = new int[isiNumBins];
         // private int lessCount = 0, moreCount = 0;
         // private int maxCount = 0;
-        private boolean isiAutoScalingEnabled = getBoolean("isiAutoScalingEnabled", false);
-        private boolean individualISIsEnabled = getBoolean("individualISIsEnabled", true);
-        private boolean showAverageISIHistogram = getBoolean("showAverageISIHistogram", true);
-        private boolean showIndividualISIHistograms = getBoolean("showIndividualISIHistograms", false);
+        @Preferred private boolean isiAutoScalingEnabled = getBoolean("isiAutoScalingEnabled", false);
+        @Preferred private boolean individualISIsEnabled = getBoolean("individualISIsEnabled", true);
+        @Preferred private boolean showAverageISIHistogram = getBoolean("showAverageISIHistogram", true);
+        @Preferred private boolean showIndividualISIHistograms = getBoolean("showIndividualISIHistograms", false);
         private boolean showLatencyHistogramToExternalInputEvents = getBoolean("showLatencyHistogramToExternalInputEvents", false);
         private int externalInputEventAddress = getInt("externalInputEventAddress", DavisChip.EXTERNAL_INPUT_EVENT_ADDR);
         private EventCountsAfterInputPinEvents eventCountAfterExternalPinEvents = new EventCountsAfterInputPinEvents();
