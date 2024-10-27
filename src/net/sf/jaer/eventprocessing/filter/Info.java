@@ -35,7 +35,6 @@ import net.sf.jaer.util.TobiLogger;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
-import java.text.Format;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -43,6 +42,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
@@ -67,20 +67,20 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
 //    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
     private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss.SSS"); // tobi changed to show ms, not standard 10ms
-    private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
-    private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
+    @Preferred private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
+    @Preferred private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
     private float analogDigitalClockScale = getFloat("analogDigitalClockScale", 1);
     private boolean date = getPrefs().getBoolean("Info.date", true);
     private boolean localTime = getPrefs().getBoolean("Info.localTime", true);
     private boolean ignoreTimeZone = getPrefs().getBoolean("Info.ignoreTimeZone", false);
     private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
     private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
-    private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
+    @Preferred private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
     private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
-    private boolean showRateTrace = getBoolean("showRateTrace", true);
+    @Preferred private boolean showRateTrace = getBoolean("showRateTrace", true);
     private boolean showFrameRateForConstantCountFrames = getBoolean("showFrameRateForConstantCountFrames", true);
     public final int MAX_SAMPLES = 1000; // to avoid running out of memory
-    private int maxSamples = getInt("maxSamples", MAX_SAMPLES);
+    @Preferred private int maxSamples = getInt("maxSamples", MAX_SAMPLES);
     private long dataFileTimestampStartTimeUs = 0;
     private long wrappingCorrectionMs = 0;
     private long absoluteStartTimeMs = 0;
@@ -89,8 +89,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     volatile private long lastUpdateTimeMs = 0; // DEBUG to look for nonmonotonic update times
 //    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
-    private boolean eventRate = getBoolean("eventRate", true);
-    private boolean eventRatePerPixel = getBoolean("eventRatePerPixel", false);
+    @Preferred private boolean eventRate = getBoolean("eventRate", true);
+    @Preferred private boolean eventRatePerPixel = getBoolean("eventRatePerPixel", false);
     private volatile boolean resetTimeEnabled = false;  // user for doResetTime
     private boolean resetTimeOnRewind = getBoolean("resetTimeOnRewind", false);
 
@@ -102,8 +102,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private String maxTimeString = "unknown";
     private boolean logStatistics = false;
     private TobiLogger tobiLogger = null;
-    private boolean showAccumulatedEventCount = getBoolean("showAccumulatedEventCount", true);
-    private boolean measureSparsity = getBoolean("measureSparsity", false);
+    @Preferred private boolean showAccumulatedEventCount = getBoolean("showAccumulatedEventCount", true);
+    @Preferred private boolean measureSparsity = getBoolean("measureSparsity", false);
     private boolean[][] sparsityMap = null;
     private DescriptiveStatistics sparsity = null;
     private double lastSparsity = Double.NaN;
@@ -386,29 +386,30 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         fc.add(xyTypeFilter);
         fc.add(typedEventRateEstimator);
         setEnclosedFilterChain(fc);
-        setPropertyTooltip("analogClock", "show normal circular clock");
-        setPropertyTooltip("digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
-        setPropertyTooltip("analogDigitalClockScale", "scale for drawing clock");
-        setPropertyTooltip("date", "show date");
-        setPropertyTooltip("localTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
-        setPropertyTooltip("ignoreTimeZone", "ignore the local time zone");
-        setPropertyTooltip("showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
-        setPropertyTooltip("timeOffsetMs", "add this time in ms to the displayed time");
-        setPropertyTooltip("timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
-        setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
-        setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
-        setPropertyTooltip("eventRate", "<html>shows average event rate;<br>in enclosed filter <i>TypedEventRateEstimator</i> set <i>measureIndividualTypesEnabled</i> to see ON/OFF stats");
-        setPropertyTooltip("eventRatePerPixel", "<html>sets rate bar to show average event rate per pixel (selected) or total (unselected).<br>Set <i>eventRateScaleMax</i> to scale bars.");
-        setPropertyTooltip("eventRateSigned", "uses signed event rate for ON positive and OFF negative");
-        setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
-        setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
-        setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
-        setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
-        setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
-        setPropertyTooltip("toggleLogStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
-        setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
-        setPropertyTooltip("resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
-        setPropertyTooltip("measureSparsity", "Report fraction of pixels with no events in last packet.");
+        String time="1: Time", rate="2: Rate", sparsity="3: Sparsity", logging="4: Logging";
+        setPropertyTooltip(time, "analogClock", "show normal circular clock");
+        setPropertyTooltip(time, "digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
+        setPropertyTooltip(time, "analogDigitalClockScale", "scale for drawing clock");
+        setPropertyTooltip(time, "date", "show date");
+        setPropertyTooltip(time, "localTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
+        setPropertyTooltip(time, "ignoreTimeZone", "ignore the local time zone");
+        setPropertyTooltip(time, "showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
+        setPropertyTooltip(time, "timeOffsetMs", "add this time in ms to the displayed time");
+        setPropertyTooltip(time, "timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
+        setPropertyTooltip(rate, "eventRateScaleMax", "scale event rates to this maximum");
+        setPropertyTooltip(time, "timeScaling", "shows time scaling relative to real time");
+        setPropertyTooltip(rate, "eventRate", "<html>shows average event rate;<br>in enclosed filter <i>TypedEventRateEstimator</i> set <i>measureIndividualTypesEnabled</i> to see ON/OFF stats");
+        setPropertyTooltip(rate, "eventRatePerPixel", "<html>sets rate bar to show average event rate per pixel (selected) or total (unselected).<br>Set <i>eventRateScaleMax</i> to scale bars.");
+        setPropertyTooltip(rate, "eventRateSigned", "uses signed event rate for ON positive and OFF negative");
+        setPropertyTooltip(rate, "eventRateTauMs", "lowpass time constant in ms for filtering event rate");
+        setPropertyTooltip(rate, "showRateTrace", "shows a historical trace of event rate");
+        setPropertyTooltip(rate, "maxSamples", "maximum number of samples before clearing rate history");
+        setPropertyTooltip(logging, "logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
+        setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip(logging, "toggleLogStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
+        setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip(time, "resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
+        setPropertyTooltip(sparsity, "measureSparsity", "Report fraction of pixels with no events in last packet.");
     }
     private boolean increaseWrappingCorrectionOnNextPacket = false;
 
