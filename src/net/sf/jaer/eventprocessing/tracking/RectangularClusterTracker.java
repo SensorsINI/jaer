@@ -4110,4 +4110,4 @@ public class RectangularClusterTracker extends EventFilter2D
         this.mixingFactorInverseWithEventRate = mixingFactorInverseWithEventRate;
         putBoolean("mixingFactorInverseWithEventRate", mixingFactorInverseWithEventRate);
     }
-}
+    }

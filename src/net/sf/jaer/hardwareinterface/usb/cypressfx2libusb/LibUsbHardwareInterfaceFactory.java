@@ -166,7 +166,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
             status = LibUsb.kernelDriverActive(devHandle, 0);
 
-            log.fine(String.format("probing libusb device with VID/PID 0x%x/0x%x to see if it maps to a compatible LibUsbHardwareInterface", vidPid.left, vidPid.right));
+            log.finer(String.format("probing libusb device with VID/PID 0x%x/0x%x to see if it maps to a compatible LibUsbHardwareInterface", vidPid.left, vidPid.right));
 
             LibUsb.close(devHandle);
 

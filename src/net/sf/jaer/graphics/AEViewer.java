@@ -698,7 +698,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final long dtCheck = System.currentTimeMillis() - lastInterfaceCheckTime;
 
         if (dtCheck < INTERFACE_CHECK_INTERVAL_MS) {
-            log.fine(String.format("Not checking for new devices because only %,d<%,d ms have elapsed since last check", dtCheck, INTERFACE_CHECK_INTERVAL_MS));
+            log.finer(String.format("Not checking for new devices because only %,d<%,d ms have elapsed since last check", dtCheck, INTERFACE_CHECK_INTERVAL_MS));
             return;
         }
         lastInterfaceCheckTime = System.currentTimeMillis();
