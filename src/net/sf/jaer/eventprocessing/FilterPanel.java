@@ -622,11 +622,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
                             for (EventFilter f : chain) {
                                 FilterPanel enclPanel = new FilterPanel(f);
+                                Dimension d=enclPanel.getPreferredSize();
+                                d.setSize(Integer.MAX_VALUE, d.getHeight()); // set height to preferred value, and width to max; see https://stackoverflow.com/questions/26596839/how-to-use-verticalglue-in-box-layout
+                                enclPanel.setMaximumSize(d); // extra space to bottom
                                 this.add(enclPanel);
                                 controls.add(enclPanel);
                                 enclosedFilterPanels.put(f, enclPanel);
                                 ((TitledBorder) enclPanel.getBorder()).setTitle("enclosed: " + f.getClass().getSimpleName());
                             }
+//                            this.add(Box.createVerticalGlue()); // make the properties stick to the enclosed filters
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
