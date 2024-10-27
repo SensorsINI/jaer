@@ -16,6 +16,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 import java.awt.Color;
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import net.sf.jaer.Preferred;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -43,7 +44,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     /**
      * Flag that freezes ROI selection
      */
-    protected boolean freezeRoi = getBoolean("freezeRoi", false);
+    @Preferred protected boolean freezeRoi = getBoolean("freezeRoi", false);
     private boolean multiROI = getBoolean("multiROI", false);
 
     // roiRects stuff
