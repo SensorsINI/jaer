@@ -245,6 +245,23 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     ArrayList<AbstractButton> doButList = new ArrayList();
 
     /**
+     * Flag to show simple view of only preferred properties
+     */
+    private boolean simple = false;
+
+    /**
+     * String that user enters into FilterFrame search box, set by FilterFrame
+     */
+    private String searchString = "";
+
+    private ArrayList<MyControl> highlightedControls = new ArrayList();
+
+    /**
+     * Flag set by FilterFrame that says only show the filtered property
+     */
+    private boolean hideOthers = false;
+
+    /**
      * Creates new form FilterPanel
      */
     public FilterPanel() {
@@ -546,6 +563,18 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
                 if (field != null) {
                     Annotation annotation = field.getAnnotation(Preferred.class);
+                    if (annotation != null) {
+                        preferred = true;
+                    }
+                }
+                if (p.getReadMethod() != null) {
+                    Annotation annotation = p.getReadMethod().getAnnotation(Preferred.class);
+                    if (annotation != null) {
+                        preferred = true;
+                    }
+                }
+                if (p.getWriteMethod() != null) {
+                    Annotation annotation = p.getWriteMethod().getAnnotation(Preferred.class);
                     if (annotation != null) {
                         preferred = true;
                     }
@@ -2184,74 +2213,85 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     }
 
-    private ArrayList<MyControl> highlightedControls = new ArrayList();
+    /**
+     * Returns true if the search string is blank and
+     * isShowOnlyPreferredProperties is true and property is preferred or if
+     * there is a match and !isShowOnlyPreferredProperties.
+     *
+     * @param propName
+     * @return
+     */
+    private boolean isPropertyVisible(String propName) {
+        if (getSearchString() == null || getSearchString().isBlank()) {
+            if (!isSimple()) {
+                return true;
+            }
+            return isPropertyPreferred(propName);
+        }
+        final boolean matches = propName.toLowerCase().contains(getSearchString());
+        return matches;
+    }
 
     /**
      * Highlights properties that match the string s, or only shows the ones
      * that match, depending on Hide others checkbox
      *
-     * @param s the string to match for, lowercase matching
+     * @param searchString the string to match for, lowercase matching
      * @param hideOthers to hide other properties
+     * @param simple boolean to show only preferred properties
      */
-    public void showPropertyHighlightsOrVisibility(String s, boolean hideOthers) {
-        // set all borders null and show everything
-        for (String propName : propertyControlMap.keySet()) {
-            MyControl c = propertyControlMap.get(propName);
-            if (c == null) {
-                continue;
-            }
-            c.setBorder(null);
-            c.setVisible(true);
-            c.invalidate();
-        }
-        if (!hideOthers) {
-            for (Container c : groupContainerMap.values()) {
-                c.setVisible(true);
-                c.invalidate();
-            }
-        }
-
-        highlightedControls.clear();
-        // if hideOthers, hide all groups and later only show those that match
-
-        if (s == null) {
-            s = "";
-        }
-        if (!s.isEmpty()) {
-            if (hideOthers) {
-                for (Container c : groupContainerMap.values()) {
-                    c.setVisible(false);
-                    c.invalidate();
-                }
-            }
-
-            s = s.toLowerCase();
-            for (String propName : propertyControlMap.keySet()) { // consider each property
+    public void showPropertyHighlightsOrVisibility(String searchString, boolean hideOthers, boolean simple) {
+        setSearchString(searchString);
+        setHideOthers(hideOthers);
+        setSimple(simple);
+        if (searchString.isBlank()) { // just show everything that should be shown
+            for (String propName : propertyControlMap.keySet()) {
                 MyControl c = propertyControlMap.get(propName);
                 if (c == null) {
                     continue;
                 }
-                final boolean matches = propName.toLowerCase().contains(s);
-                if (matches) {
-                    log.info(String.format("Match: %s is in %s", s, propName));
-                    // if the highlight/filter string matches a property
-                    if (!hideOthers) { // if we are not filtering, then give property a red border
+                c.setBorder(null);
+                c.setVisible(isPropertyVisible(propName));
+                c.invalidate();
+            }
+            for (Container c : groupContainerMap.values()) {
+                c.setVisible(true);
+                c.invalidate();
+            }
+        } else { // there is a search string, so set each property to either highlight or show, hiding others
+
+            highlightedControls.clear();
+            // if hideOthers, hide all groups and later only show those that match
+            for (Container c : groupContainerMap.values()) {
+                c.setVisible(false);
+            }
+
+            for (String propName : propertyControlMap.keySet()) { // consider each property
+                MyControl c = propertyControlMap.get(propName);
+                if (isHideOthers()) {
+                    if (isPropertyVisible(propName)) {
+                        log.fine(String.format("Showing match: %s is in %s", searchString, propName));
+                        highlightedControls.add(c);
+                        c.setVisible(true);
+                        setGroupContainerWithPropertyVisible(propName, true);
+                    } else { // no match, then hide it
+                        c.setVisible(false);
+                    }
+                } else { // highlight
+                    setGroupContainerWithPropertyVisible(propName, false);
+                    c.setVisible(true);
+                    setGroupContainerWithPropertyVisible(propName, true);
+                    if (isPropertyVisible(propName)) {
+                        log.fine(String.format("Hightlighting Match: %s is in %s", searchString, propName));
                         c.setBorder(redLineBorder); // highlight it
                         highlightedControls.add(c);
+                    } else { // no match, then hide it if hideOthers set, otherwise show it
+                        c.setBorder(null);
                     }
-                    setGroupContainerWithPropertyVisible(propName, true);
-                } else if (hideOthers) { // no match, then hide it if hideOthers set, otherwise show it
-                    c.setVisible(false);
                 }
                 c.invalidate();
             }
         }
-
-//        // invalidate parent FilterFrame
-//        Container c = getTopLevelAncestor();
-//        if (c != null) {
-//            c.invalidate();
-//        }
         for (Component c : groupContainerMap.values()) {
             c.invalidate();
         }
@@ -2260,49 +2300,66 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         repaint();
     }
 
-    /** Shows only Preferred properties
-     * 
-     * @param selected 
-     * @see net.sf.jaer.Preferred
+    /**
+     * Returns true if property is @Preferred
+     *
+     * @param propName
+     * @return false if propName==null or not preferred, else true
      */
-    public void showOnlyPreferredProperties(boolean selected) {
-        for (String propName : propertyControlMap.keySet()) {
-            MyControl c = propertyControlMap.get(propName);
-            if (c == null) {
-                continue;
-            }
-            if (selected && !filter.tooltipSupport.isPropertyPreferred(propName)) {
-                c.setVisible(false);
-            } else {
-                c.setVisible(true);
-            }
-            c.invalidate();
+    private boolean isPropertyPreferred(String propName) {
+        if (propName == null) {
+            return false;
         }
-        this.invalidate();
-        revalidate();
-        repaint();
+        return filter.tooltipSupport.isPropertyPreferred(propName);
     }
 
-//    public class ShowControlsAction extends AbstractAction{
-//
-//        public ShowControlsAction() {
-//            super("Show controls");
-//            putValue(SELECTED_KEY, "Hide controls");
-//            putValue(SHORT_DESCRIPTION,"Toggles visibility of controls of this EventFilter");
-//
-//        }
-//
-//        @Override
-//        public void actionPerformed(ActionEvent e) {
-//            setControlsVisible(enabled);
-//        }
-//
-//    }
     private void setGroupContainerWithPropertyVisible(String propName, boolean visible) {
         Container groupContainer = getGroupPanel(propName);
         if (groupContainer != null) {
             groupContainer.setVisible(visible);
         }
+    }
+
+    /**
+     * @return the simple
+     */
+    public boolean isSimple() {
+        return simple;
+    }
+
+    /**
+     * @return the hideOthers
+     */
+    public boolean isHideOthers() {
+        return hideOthers;
+    }
+
+    /**
+     * @param hideOthers the hideOthers to set
+     */
+    public void setHideOthers(boolean hideOthers) {
+        this.hideOthers = hideOthers;
+    }
+
+    /**
+     * @return the searchString
+     */
+    public String getSearchString() {
+        return searchString;
+    }
+
+    /**
+     * @param searchString the searchString to set
+     */
+    public void setSearchString(String searchString) {
+        this.searchString = searchString == null ? "" : searchString.toLowerCase();
+    }
+
+    /**
+     * @param showOnlyPreferredProperties the simple to set
+     */
+    public void setSimple(boolean showOnlyPreferredProperties) {
+        this.simple = showOnlyPreferredProperties;
     }
 
 }
