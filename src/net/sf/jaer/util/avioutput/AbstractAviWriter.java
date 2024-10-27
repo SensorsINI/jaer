@@ -17,15 +17,12 @@ import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
-import java.io.FilePermission;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.AccessControlException;
-import java.security.AccessController;
 import java.util.Date;
 import java.util.Iterator;
 import javax.imageio.ImageIO;
@@ -36,6 +33,7 @@ import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -58,7 +56,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
 
     // writers, both express our VideoFrameWriterInterface for handling
     private VideoFrameWriterInterface videoOutputStream = null;
-    protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
+    @Preferred protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected File frameSequenceOutputFolder = null;
 
     protected static String DEFAULT_FILENAME = "jAER";
@@ -69,14 +67,14 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     protected static final String TIMECODE_SUFFIX = "-timecode.txt";
     protected File timecodeFile = null;
     protected FileWriter timecodeWriter = null;
-    protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
-    private boolean rewindBeforeRecording = getBoolean("rewindBeforeRecording", true);
+    @Preferred protected boolean closeOnRewind = getBoolean("closeOnRewind", true);
+    @Preferred private boolean rewindBeforeRecording = getBoolean("rewindBeforeRecording", true);
     protected boolean ignoreRewinwdEventFlag = false; // used to signal to igmore first rewind event for closing file on rewind if rewindBeforeRecording=true
     private boolean chipPropertyChangeListenerAdded = false;
     protected int maxFrames = getInt("maxFrames", 0);
-    protected float compressionQuality = getFloat("compressionQuality", 0.9f);
+    @Preferred protected float compressionQuality = getFloat("compressionQuality", 0.9f);
     private String[] additionalComments = null;
-    private int frameRate = getInt("frameRate", 30);
+    @Preferred private int frameRate = getInt("frameRate", 30);
     private boolean writeOnlyWhenMousePressed = getBoolean("writeOnlyWhenMousePressed", false);
     protected volatile boolean writeEnabled = true;
 
@@ -578,7 +576,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      *
      * @param format the format to set
      */
-    public void setFormat(AVIOutputStream.VideoFormat format) {
+    @Preferred public void setFormat(AVIOutputStream.VideoFormat format) {
         this.format = format;
         putString("format", format.toString());
     }
