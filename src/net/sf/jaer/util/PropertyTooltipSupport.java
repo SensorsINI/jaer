@@ -196,12 +196,12 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
         preferredProperties.remove(propertyName);
     }
     
-    /** Returns true if property is marked bold
+    /** Returns true if property is marked @Preferred, or if there are no preferred properties
      * 
      * @param propertyName
      * @return true if should be rendered bold
      */
     public boolean isPropertyPreferred(String propertyName){
-        return preferredProperties.contains(propertyName);
+        return preferredProperties.contains(propertyName) || preferredProperties.isEmpty();
     }
 }
