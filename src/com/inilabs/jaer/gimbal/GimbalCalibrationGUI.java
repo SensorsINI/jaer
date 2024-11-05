@@ -26,7 +26,7 @@ public class GimbalCalibrationGUI extends javax.swing.JFrame implements Exceptio
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     Logger log = Logger.getLogger("net.sf.jaer");
-    private Gimbal panTilt;
+    private GimbalBase panTilt;
     private int w = 200,  h = 200,  x0 = 0,  y0 = 0;
     private Point2D.Float lastPanTilt = new Point2D.Float(0.5f, 0.5f);
     private Point lastMousePressLocation = new Point(w / 2, h / 2);
@@ -48,7 +48,7 @@ public class GimbalCalibrationGUI extends javax.swing.JFrame implements Exceptio
      * @param pt the pan tilt unit
      * @param calibrator that we give calibration points to and that provides calibration points to paint here
      */
-    public GimbalCalibrationGUI(Gimbal pt, GimbalCalibrator calibrator) {
+    public GimbalCalibrationGUI(GimbalBase pt, GimbalCalibrator calibrator) {
         this.calibrator=calibrator;
         panTilt = pt;
         initComponents();

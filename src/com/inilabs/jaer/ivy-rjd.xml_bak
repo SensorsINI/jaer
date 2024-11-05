@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright (C) 2024 rjd.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+MA 02110-1301  USA
+-->
+
+<ivy-module version="2.0">
+    <info organisation="com.inilabs" module="jaer" />
+
+    <!-- Define configurations -->
+    <configurations>
+        <conf name="default" visibility="public" />
+        <conf name="javafx" visibility="public" />
+    </configurations>
+
+    <!-- Declare dependencies -->
+    <dependencies>
+        <!-- JavaFX dependencies -->
+        <dependency org="org.openjfx" name="javafx-controls" rev="21.0.5" conf="javafx->default" />
+         <dependency org="org.openjfx" name="javafx-fxml" rev="21.0.5" conf="javafx->default" />
+          <dependency org="org.openjfx" name="javafx-swing" rev="21.0.5" conf="javafx->default" />
+             <dependency org="org.openjfx" name="javafx-base" rev="21.0.5" conf="javafx->default" />
+          
+          
+          <!-- https://mvnrepository.com/artifact/tel.schich/javacan-core -->
+           <dependency org="tel.schich" name="javacan-core" rev="3.5.0"/>
+           <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-api -->
+            <dependency org="org.slf4j" name="slf4j-api" rev="2.0.9"/>
+            <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
+           <dependency org="ch.qos.logback" name="logback-classic" rev="1.4.11"/>
+    </dependencies>
+</ivy-module>
+

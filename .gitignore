@@ -3,7 +3,7 @@
 /build
 /lib
 /ivy
-/jars unused/**
+/jars
 /dist/
 hs_err*.log
 nbproject/build-native.xml~
@@ -12,3 +12,6 @@ nbproject/build-native.xml~
 /install4j License key  2024-01-02 0834.txt
 exe*.tmp
 /JAERViewerRunning.txt
+/logs
+/native
+*.jar
