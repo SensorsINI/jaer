@@ -1,21 +1,15 @@
-.classpath
-.DS_Store
-.idea
-*.iml
-.ivy2
-*~
-Thumbs.db
-bin
-build
-lib
-ivy
-jars
-dist/
+/Thumbs.db
+/bin
+/build
+/lib
+/ivy
+/jars
+/dist/
 hs_err*.log
 nbproject/build-native.xml~
-exe4j-launcher/exe4j9/
-installers/
-install4j License key  2024-01-02 0834.txt
+/exe4j-launcher/exe4j9/
+/installers/
+/install4j License key  2024-01-02 0834.txt
 exe*.tmp
 /JAERViewerRunning.txt
 /logs
