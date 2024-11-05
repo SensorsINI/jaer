@@ -145,7 +145,6 @@ public class RectangularClusterTracker extends EventFilter2D
     protected boolean showClusterNumber = getBoolean("showClusterNumber", false);
     protected boolean showClusterEps = getBoolean("showClusterEps", false);
     protected boolean showClusterEpsPerPx = getBoolean("showClusterEpsPerPx", false);
-    private boolean showClusterMeasuredRadius = getBoolean("showClusterMeasuredRadius", false);
     private boolean showClusterRadius = getBoolean("showClusterRadius", false);
     protected boolean showClusterVelocity = getBoolean("showClusterVelocity", false);
     protected boolean showClusterVelocityVector = getBoolean("showClusterVelocityVector", false);
@@ -337,7 +336,6 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(disp, "classifierThreshold", "the boundary for cluster size classification in fractions of chip max dimension");
         setPropertyTooltip(disp, "showClusterVelocityVector", "draws velocity in using scaling velocityVectorScaling");
         setPropertyTooltip(disp, "showClusterVelocity", "shows velocity vector as (vx,vy) in px/s");
-        setPropertyTooltip(disp, "showClusterMeasuredRadius", "shows avg distance of events from cluster center");
         setPropertyTooltip(disp, "showClusterRadius", "draws cluster radius");
         setPropertyTooltip(disp, "showClusterEps", "shows cluster events per second");
         setPropertyTooltip(disp, "showClusterNumber", "shows cluster ID number");
@@ -1870,9 +1868,8 @@ public class RectangularClusterTracker extends EventFilter2D
             }
 
             // text annoations on clusters, setup
-          //  final int font = GLUT.BITMAP_HELVETICA_18;
-            final int font = GLUT.BITMAP_TIMES_ROMAN_24;  // for rjd's eyes
-            if (showClusterMass || showClusterEps || showClusterNumber || showClusterVelocity || showClusterEpsPerPx || showClusterMeasuredRadius ) {
+            final int font = GLUT.BITMAP_HELVETICA_18;
+            if (showClusterMass || showClusterEps || showClusterNumber || showClusterVelocity || showClusterEpsPerPx) {
 //                gl.glColor3f(1, 1, 1);
                 gl.glRasterPos3f(location.x, location.y, 0);
             }
@@ -1893,9 +1890,6 @@ public class RectangularClusterTracker extends EventFilter2D
             }
             if (showClusterNumber) {
                 cGLUT.glutBitmapString(font, String.format("#=%d ", hashCode())); // annotate the cluster with hash ID
-            }
-             if (showClusterMeasuredRadius) {
-                cGLUT.glutBitmapString(font, String.format("r=%s ", fmt.format(getAverageEventDistance())));
             }
             if (showClusterMass) {
                 cGLUT.glutBitmapString(font, String.format("m=%.1f ", getMassNow(lastUpdateTimestamp)));
@@ -2482,11 +2476,6 @@ public class RectangularClusterTracker extends EventFilter2D
         public float getMeasuredAverageEventRate() {
             return avgEventRateHz;
         }
-        
-        public float getAvgEventRateHzPerPx() {
-            return avgEventRateHzPerPx;
-        }
-        
 
         /**
          * Computes the size of the cluster based on average event distance and
@@ -3238,23 +3227,6 @@ public class RectangularClusterTracker extends EventFilter2D
     }
     // </editor-fold>
 
-    // <editor-fold defaultstate="collapsed" desc="getter/setter for --ShowClusterMeasuredRadius--">
-    /**
-     * @return the showClusterMeasuredRadius
-     */
-    public boolean isShowClusterMeasuredRadius() {
-        return showClusterMeasuredRadius;
-    }
-
-    /**
-     * @param showClusterMeasuredRadius the showClusterMeasuredRadius to set
-     */
-    public void setShowClusterMeasuredRadius(boolean showClusterMeasuredRadius) {
-        this.showClusterMeasuredRadius = showClusterMeasuredRadius;
-        putBoolean("showClustermeasuredRadius", showClusterMeasuredRadius);
-    }
-    // </editor-fold>
-    
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --ShowClusterRadius--">
     /**
      * @return the showClusterRadius
@@ -3271,9 +3243,6 @@ public class RectangularClusterTracker extends EventFilter2D
         putBoolean("showClusterRadius", showClusterRadius);
     }
     // </editor-fold>
-    
-    
-    
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --HighwayPerspectiveEnabled--">
     public boolean isHighwayPerspectiveEnabled() {

@@ -19,7 +19,7 @@ import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.FrameAnnotater;
 
 import com.inilabs.jaer.gimbal.LaserOnOffControl;
-import com.inilabs.jaer.gimbal.GimbalBase;
+import com.inilabs.jaer.gimbal.Gimbal;
 import com.inilabs.jaer.gimbal.GimbalCalibrator;
 import com.inilabs.jaer.gimbal.GimbalInterface;
 
@@ -35,7 +35,7 @@ import com.inilabs.jaer.gimbal.GimbalInterface;
 public class CalibratedGimbal extends EventFilter2DMouseAdaptor implements FrameAnnotater, GimbalInterface, LaserOnOffControl {
 
 	RectangularClusterTracker tracker;
-	private GimbalBase panTiltHardware = null;
+	private Gimbal panTiltHardware = null;
 	private GimbalCalibrator calibrator=new GimbalCalibrator(this);
                     
                     private String who = "";
@@ -49,7 +49,7 @@ public class CalibratedGimbal extends EventFilter2DMouseAdaptor implements Frame
                                         who = "CalibratedGimbal";
 		tracker = new RectangularClusterTracker(chip);
 		setEnclosedFilter(tracker);
-		panTiltHardware = GimbalBase.getInstance();
+		panTiltHardware = Gimbal.getInstance();
 	}
 
 	/** Sets the pan and tilt to aim at a particular calibrated x,y visual direction
@@ -159,11 +159,11 @@ public class CalibratedGimbal extends EventFilter2DMouseAdaptor implements Frame
 		calibrator.calibrate();
 	}
 
-	public GimbalBase getPanTiltHardware() {
+	public Gimbal getPanTiltHardware() {
 		return panTiltHardware;
 	}
 
-	public void setPanTiltHardware(GimbalBase panTilt) {
+	public void setPanTiltHardware(Gimbal panTilt) {
 		panTiltHardware=panTilt;
 	}
 
