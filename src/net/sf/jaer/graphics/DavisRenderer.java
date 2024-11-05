@@ -145,7 +145,6 @@ public class DavisRenderer extends AEChipRenderer {
 
         if (chip instanceof DavisChip) {
             contrastController = new DavisVideoContrastController((DavisChip) chip);
-            contrastController.getSupport().addPropertyChangeListener(this);
             // when contrast controller properties change, inform this so this can pass on to the chip
         } else {
             log.warning("cannot make a DavisVideoContrastController for this chip because it does not extend DavisChip");

@@ -28,7 +28,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  */
 @Description("CDAVIS APS-DVS camera with RGBW CFA color filter array and 640x480 APS pixels and 320x240 DAVIS pixels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
-public class DavisRGBW640 extends DavisBaseCamera {
+public class CDAVIS extends DavisBaseCamera {
 
     public static final short WIDTH_PIXELS = 640;
     public static final short HEIGHT_PIXELS = 480;
@@ -36,27 +36,28 @@ public class DavisRGBW640 extends DavisBaseCamera {
     public static final float[][] COLOR_CORRECTION = {{1.75f, -0.19f, -0.56f, 0.15f}, {-0.61f, 1.39f, 0.07f, 0.21f},
     {-0.42f, -1.13f, 2.45f, 0.18f}};
 
-    public DavisRGBW640() {
+    public CDAVIS() {
         setName("DavisRGBW640");
         setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640test6.xml");
-        setSizeX(DavisRGBW640.WIDTH_PIXELS);
-        setSizeY(DavisRGBW640.HEIGHT_PIXELS);
+        setSizeX(CDAVIS.WIDTH_PIXELS);
+        setSizeY(CDAVIS.HEIGHT_PIXELS);
         setPixelHeightUm(10);
         setPixelWidthUm(10); // subpixel size, APS pixel spacing
 
-        setEventExtractor(new DavisColorEventExtractor(this, true, false, DavisRGBW640.COLOR_FILTER, true));
+        setEventExtractor(new DavisColorEventExtractor(this, true, false, CDAVIS.COLOR_FILTER, false));
 
-        setBiasgen(davisConfig = new DavisRGBW640Config(this));
-
-        davisRenderer = new DavisColorRenderer(this, true, DavisRGBW640.COLOR_FILTER, true, DavisRGBW640.COLOR_CORRECTION);
+        davisRenderer = new DavisColorRenderer(this, true, CDAVIS.COLOR_FILTER, true, CDAVIS.COLOR_CORRECTION);
         davisRenderer.setMaxADC(DavisChip.MAX_ADC);
         setRenderer(davisRenderer);
+        
+        setBiasgen(davisConfig = new CDAVISConfig(this));
+
 
         setApsFirstPixelReadOut(new Point(0, 0));
         setApsLastPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
     }
 
-    public DavisRGBW640(final HardwareInterface hardwareInterface) {
+    public CDAVIS(final HardwareInterface hardwareInterface) {
         this();
         setHardwareInterface(hardwareInterface);
     }

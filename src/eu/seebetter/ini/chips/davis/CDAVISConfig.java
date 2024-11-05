@@ -23,8 +23,8 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
  *
  * @author tobi
  */
-public class DavisRGBW640Config extends DavisTowerBaseConfig {
-	public DavisRGBW640Config(final Chip chip) {
+public class CDAVISConfig extends DavisTowerBaseConfig {
+	public CDAVISConfig(final Chip chip) {
 		super(chip);
 		setName("DavisRGBW640Config");
 

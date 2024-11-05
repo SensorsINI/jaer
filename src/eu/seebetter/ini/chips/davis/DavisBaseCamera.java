@@ -80,19 +80,22 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
     protected final DavisDisplayMethod davisDisplayMethod;
     protected DavisConfig davisConfig;
-    protected DavisRenderer davisRenderer;
-    private final AutoExposureController autoExposureController;
+    protected DavisRenderer davisRenderer = null; // renderer is set by child subclasses of particular cameras
 
     private int autoshotThresholdEvents = getPrefs().getInt("DavisBaseCamera.autoshotThresholdEvents", 0);
     private boolean showImageHistogram = getPrefs().getBoolean("DavisBaseCamera.showImageHistogram", false);
-    
+
     // exposure variables
     private float exposureMeasuredMs;
-    protected int exposureDurationUs;
-    protected int frameExposureEndTimestampUs; // end of exposureControlRegister (first events of signal read)
-    protected int frameExposureStartTimestampUs; // timestamp of first sample from frame (first sample read after
-    
+    protected int exposureDurationUs; // measured or from register exposure time
+    protected int frameExposureEndTimestampUs; // first events of signal read
+    protected int frameExposureStartTimestampUs; // timestamp of first sample from frame
+
+    // readout variables
+    protected int frameReadoutStartTimestampUs;
+    protected int frameReadoutEndTimestampUs;
     protected int frameIntervalUs; // internal measured variable, set during rendering. Time between this frame and previous one
+
     private int frameCount;
     private float frameRateHz;
 
@@ -146,11 +149,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         davisConfig = null; // Biasgen is assigned in child classes. Needs X/Y sizes.
         setBiasgen(davisConfig);
-
-        davisRenderer = null; // Renderer is assigned in child classes. Needs X/Y sizes.
-        setRenderer(davisRenderer);
-
-        autoExposureController = new AutoExposureController(this);
 
         setApsFirstPixelReadOut(null); // FirstPixel Point assigned in child classes. Needs X/Y sizes.
         setApsLastPixelReadOut(null); // LastPixel Point assigned in child classes. Needs X/Y sizes.
@@ -594,7 +592,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
                         frameIntervalUs = timestamp - frameExposureStartTimestampUs;
                         frameExposureEndTimestampUs = timestamp;
-                        exposureDurationUs = timestamp - frameExposureStartTimestampUs;
+                        exposureDurationUs = (int) (davisConfig.getExposureDelayMs() * 1000);
                     }
 
                     final ApsDvsEvent e = nextApsDvsEvent(outItr);
@@ -618,7 +616,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
                         frameExposureEndTimestampUs = timestamp;
-                        exposureDurationUs = timestamp - frameExposureStartTimestampUs;
+                        if (rollingShutter) {
+                            exposureDurationUs = timestamp - frameExposureStartTimestampUs;
+                        } else {
+                            exposureDurationUs = (int) (davisConfig.getExposureDelayMs() * 1000);
+                        }
                         increaseFrameCount(1);
                     }
                 }
@@ -778,8 +780,9 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         // the special readout: signal then reset, as in CDAVIS.
         private final boolean isDavisNotCDavisReadout;
 
-        /** CDAVIS and DAVIS with RGB CFA event extractor
-         * 
+        /**
+         * CDAVIS and DAVIS with RGB CFA event extractor
+         *
          * @param chip
          * @param isDVSQuarterOfAPS true for CDAVIS, false for DAVIS
          * @param isDVSColorFilter true if chip has CFA
@@ -968,7 +971,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             break;
                     }
 
-                    if (!isDavisNotCDavisReadout) { //DAVIS
+                    if (isDavisNotCDavisReadout) { //DAVIS
                         if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
 
@@ -987,29 +990,33 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             frameExposureStartTimestampUs = timestamp;
                         }
                     } else { // CDAVIS
+                        // for CDAVIS in global shutter mode, we cannot read out events that measure the actual
+                        // transfer gate timing, therefore here we set the exposureDurationUs to the register value
                         // Start of Frame (SOF)
                         // TODO: figure out exposure/interval for both GS and RS.
-                        if (pixFirst && rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) { // RS
-                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
-                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
+                        if (pixFirst) {
+                            if (rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) { // RS
+                                createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
+                                createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOE, timestamp);
 
-                            frameIntervalUs = timestamp - frameExposureStartTimestampUs;
-                            frameExposureStartTimestampUs = timestamp; // TODO: incorrect, not exposure start!
+                                frameIntervalUs = timestamp - frameReadoutStartTimestampUs; // time from last frame
+                                frameReadoutStartTimestampUs = timestamp; // TODO: incorrect, not exposure start!
+                            }
+
+                            if (!rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) { // GS
+                                createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
+
+                                frameIntervalUs = timestamp - frameReadoutStartTimestampUs;
+                                frameReadoutStartTimestampUs = timestamp; // TODO: incorrect, not exposure start!
+                            }
                         }
 
-                        if (pixFirst && !rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) { // GS
-                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.SOF, timestamp);
-
-                            frameIntervalUs = timestamp - frameExposureStartTimestampUs;
-                            frameExposureStartTimestampUs = timestamp; // TODO: incorrect, not exposure start!
-                        }
-                        
-                        if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead) /*&& !rollingShutter*/) {
-                            // global shutter start of exposure (SOE)
-                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamp);
-                            frameExposureEndTimestampUs = timestamp;
-                            frameIntervalUs = frameExposureEndTimestampUs - frameExposureStartTimestampUs;
-                        }
+//                        if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead) /*&& !rollingShutter*/) {
+//                            // global shutter start of exposure (SOE)
+//                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamp);
+//                            frameExposureEndTimestampUs = timestamp;
+//                            frameIntervalUs = frameExposureEndTimestampUs - frameExposureStartTimestampUs;
+//                        }
                     }
 
                     final ApsDvsEvent e = nextApsDvsEvent(outItr);
@@ -1024,7 +1031,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     // APS COLOR SUPPORT.
                     e.setColorFilter(colorFilter);
 
-                    if (!isDavisNotCDavisReadout) {
+                    if (isDavisNotCDavisReadout) {
                         // end of exposure, same for both
                         if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
                             createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOE, timestamp);
@@ -1042,28 +1049,29 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     } else { // special readout (CDAVIS)
                         // End of Frame (EOF)
                         // TODO: figure out exposure/interval for both GS and RS.
-                        if (pixLast && rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
-                            // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and
-                            // we
-                            // are at last APS pixel, then write EOF event
-                            // insert a new "end of frame" event not present in original data
-                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
+                        if (pixLast) {
+                            frameReadoutEndTimestampUs = timestamp;
+                            if (rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
+                                // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and
+                                // we
+                                // are at last APS pixel, then write EOF event
+                                // insert a new "end of frame" event not present in original data
+                                createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
-                            frameExposureEndTimestampUs = timestamp;
-                            exposureDurationUs = timestamp - frameExposureStartTimestampUs;
-                            increaseFrameCount(1);
-                        }
+                                exposureDurationUs = (int) (davisConfig.getExposureDelayMs() * 1000);
+                                increaseFrameCount(1);
+                            }
 
-                        if (pixLast && !rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
-                            // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and
-                            // we
-                            // are at last APS pixel, then write EOF event
-                            // insert a new "end of frame" event not present in original data
-                            createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
+                            if (!rollingShutter && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
+                                // if we use ResetRead+SignalRead+C readout, OR, if we use ResetRead-SignalRead readout and
+                                // we
+                                // are at last APS pixel, then write EOF event
+                                // insert a new "end of frame" event not present in original data
+                                createApsFlagEvent(outItr, ApsDvsEvent.ReadoutType.EOF, timestamp);
 
-                            frameExposureEndTimestampUs = timestamp;
-                            exposureDurationUs = timestamp - frameExposureStartTimestampUs;
-                            increaseFrameCount(1);
+                                exposureDurationUs = (int) (davisConfig.getExposureDelayMs() * 1000);
+                                increaseFrameCount(1);
+                            }
                         }
                     }
                 }
@@ -1327,6 +1335,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     public void takeSnapshot() {
         // Use a multi-command to send enable and then disable in quickest possible
         // succession to the APS state machine.
+        getDavisConfig().setCaptureFramesEnabled(false);
+
         if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
             final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
             final SPIConfigSequence configSequence = fx3HwIntf.new SPIConfigSequence();
@@ -1437,7 +1447,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
      */
     @Override
     public AutoExposureController getAutoExposureController() {
-        return autoExposureController;
+        return davisConfig.getAutoExposureController();
     }
 
     @Override

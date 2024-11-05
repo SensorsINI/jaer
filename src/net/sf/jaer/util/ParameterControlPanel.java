@@ -48,130 +48,148 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 /**
- * A panel for a class that has Integer/Float/Boolean/String/enum getter/setter methods (bound properties).
-These methods are introspected and a set of controls are built for them. 
+ * A panel for a class that has Integer/Float/Boolean/String/enum getter/setter
+ * methods (bound properties). These methods are introspected and a set of
+ * controls are built for them.
  * <ul>
- * <li>Numerical properties (ints, floats, but not currently doubles) construct a JTextBox control that also allows changes from mouse wheel or arrow keys.
+ * <li>Numerical properties (ints, floats, but not currently doubles) construct
+ * a JTextBox control that also allows changes from mouse wheel or arrow keys.
  * <li> boolean properties construct a JCheckBox control.
  * <li> String properties construct a JTextField control.
- * <li> enum properties construct a JComboBox control, which all the possible enum constant values.
+ * <li> enum properties construct a JComboBox control, which all the possible
+ * enum constant values.
  * </ul>
  * <p>
- * If a class wants to automatically have the GUI controls reflect what the property state is, then it should
- * fire PropertyChangeEvent when the property changes. For example, an {@link Class} can implement a setter like this:
+ * If a class wants to automatically have the GUI controls reflect what the
+ * property state is, then it should fire PropertyChangeEvent when the property
+ * changes. For example, an {@link Class} can implement a setter like this:
  * <pre>
-public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
-    support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
-    this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
-    getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
-}
-</pre>
- * Here, <code>support</code> is a protected field of Class. The change event comes here and the appropriate automatically
- * generated control is modified.
+ * public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
+ * support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
+ * this.mapEventsToLearnedTopologyEnabled = mapEventsToLearnedTopologyEnabled;
+ * getPrefs().putBoolean("TopologyTracker.mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled);
+ * }
+ * </pre> Here, <code>support</code> is a protected field of Class. The change
+ * event comes here and the appropriate automatically generated control is
+ * modified.
  * <p>
- * Note that calling firePropertyChange as shown above will inform listeners <em>before</em> the property has actually been
- * changed (this.dt has not been set yet).
+ * Note that calling firePropertyChange as shown above will inform listeners
+ * <em>before</em> the property has actually been changed (this.dt has not been
+ * set yet).
  * <p>
- * A tooltip for the property can be installed using the Class setPropertyTooltip method, for example
+ * A tooltip for the property can be installed using the Class
+ * setPropertyTooltip method, for example
  * <pre>
  *         setPropertyTooltip("sizeClassificationEnabled", "Enables coloring cluster by size threshold");
- * </pre>
- * will install a tip for the property sizeClassificationEnabled.
+ * </pre> will install a tip for the property sizeClassificationEnabled.
  * <p>
  * <strong>Slider controls.</strong>
- * 
- * If you want a slider for an int or float property, then create getMin and getMax methods for the property, e.g., for
- * the property <code>dt</code>:
+ *
+ * If you want a slider for an int or float property, then create getMin and
+ * getMax methods for the property, e.g., for the property <code>dt</code>:
  * <pre>
-public int getDt() {
-return this.dt;
-}
-
-public void setDt(final int dt) {
-getPrefs().putInt("BackgroundActivityFilter.dt",dt);
-support.firePropertyChange("dt",this.dt,dt);
-this.dt = dt;
-}
-
-public int getMinDt(){
-return 10;
-}
-
-public int getMaxDt(){
-return 100000;
-}
-</pre>
+ * public int getDt() {
+ * return this.dt;
+ * }
+ *
+ * public void setDt(final int dt) {
+ * getPrefs().putInt("BackgroundActivityFilter.dt",dt);
+ * support.firePropertyChange("dt",this.dt,dt);
+ * this.dt = dt;
+ * }
+ *
+ * public int getMinDt(){
+ * return 10;
+ * }
+ *
+ * public int getMaxDt(){
+ * return 100000;
+ * }
+ * </pre>
  * <strong>Button control</strong>
  * <p>
- * To add a button control to a panel, implement a method starting with "do", e.g.
+ * To add a button control to a panel, implement a method starting with "do",
+ * e.g.
  * <pre>
  *     public void doSendParameters() {
-sendParameters();
-}
- * </pre>
- * This method will construct a button with label "SendParameters" which, when pressed, will call the method "doSendParameters".
+ * sendParameters();
+ * }
+ * </pre> This method will construct a button with label "SendParameters" which,
+ * when pressed, will call the method "doSendParameters".
  * <p>
  * <strong>
  * Grouping parameters.</strong>
  * <p>
- * Properties are normally sorted alphabetically, with button controls at the top. If you want to group parameters, use
- * the built in Class method {@link net.sf.jaer.eventprocessing.Class#addPropertyToGroup}. All properties of a given group are grouped together. Within
- * a group the parameters are sorted alphabetically, and the groups will also be sorted alphabetically and shown before
- * any ungrouped parameters. E.g., to Create groups "Sizing" and "Tracking" and add properties to each, do
+ * Properties are normally sorted alphabetically, with button controls at the
+ * top. If you want to group parameters, use the built in Class method
+ * {@link net.sf.jaer.eventprocessing.Class#addPropertyToGroup}. All properties
+ * of a given group are grouped together. Within a group the parameters are
+ * sorted alphabetically, and the groups will also be sorted alphabetically and
+ * shown before any ungrouped parameters. E.g., to Create groups "Sizing" and
+ * "Tracking" and add properties to each, do
  * <pre>
-addPropertyToGroup("Sizing", "clusterSize");
-addPropertyToGroup("Sizing", "aspectRatio");
-addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
-addPropertyToGroup("Tracking", "mixingFactor");
-addPropertyToGroup("Tracking", "velocityMixingFactor");
+ * addPropertyToGroup("Sizing", "clusterSize");
+ * addPropertyToGroup("Sizing", "aspectRatio");
+ * addPropertyToGroup("Sizing", "highwayPerspectiveEnabled");
+ * addPropertyToGroup("Tracking", "mixingFactor");
+ * addPropertyToGroup("Tracking", "velocityMixingFactor");
+ * </pre> Or, even simpler, if you have already defined tooltips for your
+ * properties, then you can use the overloaded
+ * {@link net.sf.jaer.eventprocessing.Class#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String) setPropertyTooltip}
+ * of {@link net.sf.jaer.eventprocessing.Class}, as shown next. Here two groups
+ * "Size" and "Timing" are defined and properties are added to each (or to
+ * neither for "multiOriOutputEnabled").
+ * <pre>
+ * final String size="Size", tim="Timing";
+ *
+ * setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
+ * setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
+ * setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
+ * setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
+ * setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
  * </pre>
- * Or, even simpler, if you have already defined tooltips for your properties, then
- * you can use the overloaded
- * {@link net.sf.jaer.eventprocessing.Class#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String) setPropertyTooltip} of
- * {@link net.sf.jaer.eventprocessing.Class},
- * as shown next. Here two groups "Size" and "Timing" are defined and properties are added to each (or to neither for "multiOriOutputEnabled").
- * <pre>
-final String size="Size", tim="Timing";
-
-setPropertyTooltip(disp,"showGlobalEnabled", "shows line of average orientation");
-setPropertyTooltip(tim,"minDtThreshold", "Coincidence time, events that pass this coincidence test are considerd for orientation output");
-setPropertyTooltip(tim,"dtRejectMultiplier", "reject delta times more than this factor times minDtThreshold to reduce noise");
-setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
-setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
-</pre>
  *
  *
- * @author  tobi
- * @see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String)
- *@see net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String, java.lang.String, java.lang.String)
+ * @author tobi
+ * @see
+ * net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String,
+ * java.lang.String)
+ * @see
+ * net.sf.jaer.eventprocessing.EventFilter#setPropertyTooltip(java.lang.String,
+ * java.lang.String, java.lang.String)
  */
 public class ParameterControlPanel extends javax.swing.JPanel implements PropertyChangeListener, Observer {
 
-    /** Handles Observable updates from the class we are handling.   If the class is an Observable, we will hear changes here if the class notifies its observers.
-     * These changes will set the introspected controls.
-     * 
-     * If the object has inner classes that generate the events then they will not be seen unless passed on by class.
-     @param o the observed object
-     @param arg any argument passed
+    /**
+     * Handles Observable updates from the class we are handling. If the class
+     * is an Observable, we will hear changes here if the class notifies its
+     * observers. These changes will set the introspected controls.
+     *
+     * If the object has inner classes that generate the events then they will
+     * not be seen unless passed on by class.
+     *
+     * @param o the observed object
+     * @param arg any argument passed
      */
     @Override
     public void update(Observable o, Object arg) {
 //        log.info("got update from object "+o+" with argument "+arg);
         // if we refresh any refresh, then refresh all controls displayed because we don't know which one should be updated
-        for(JComponent c:controls){
-            if(c instanceof HasSetGet){
-                HasSetGet gs=(HasSetGet)c;
+        for (JComponent c : controls) {
+            if (c instanceof HasSetGet) {
+                HasSetGet gs = (HasSetGet) c;
                 gs.refresh();
             }
         }
-        
+
     }
 
     private interface HasSetGet {
 
         void set(Object o);
+
         void refresh();
-        
+
     }
     private Object classObject = null;
     static final float ALIGNMENT = Component.LEFT_ALIGNMENT;
@@ -186,15 +204,20 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     private java.util.ArrayList<JComponent> controls = new ArrayList<>();
 //    private HashMap<String, Container> groupContainerMap = new HashMap();
 //    private JPanel inheritedPanel = null;
-    PropertyChangeSupport support=null;
+    PropertyChangeSupport support = null;
+
     public ParameterControlPanel() {
         initComponents();
     }
 
-    /** Builds a new panel around the Object f. Any properties of the Object (defined by matching <code>setX/getX</code> methods)
-     * are added to the panel. If the object implements {@link HasPropertyTooltips} then a tooltip is added for the property if the 
-     * {@link HasPropertyTooltips#getPropertyTooltip(java.lang.String) } returns a non-null String property.
-     * 
+    /**
+     * Builds a new panel around the Object f. Any properties of the Object
+     * (defined by matching <code>setX/getX</code> methods) are added to the
+     * panel. If the object implements {@link HasPropertyTooltips} then a
+     * tooltip is added for the property if the 
+     * {@link HasPropertyTooltips#getPropertyTooltip(java.lang.String) } returns
+     * a non-null String property.
+     *
      * @param obj the object
      */
     public ParameterControlPanel(Object obj) {
@@ -211,15 +234,15 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         redLineBorder = BorderFactory.createLineBorder(Color.red);
         addIntrospectedControls();
 //            add(new JPanel()); // to fill vertical space in GridLayout
-            add(Box.createVerticalGlue()); // to fill space at bottom - not needed
+        add(Box.createVerticalGlue()); // to fill space at bottom - not needed
         try {
             // when clazz fires a property change event, propertyChangeEvent is called here and we refresh all our controls
-            Method m=obj.getClass().getMethod("getPropertyChangeSupport", (Class[])null);
-            support=(PropertyChangeSupport)m.invoke(obj, (Object[]) null);
+            Method m = obj.getClass().getMethod("getPropertyChangeSupport", (Class[]) null);
+            support = (PropertyChangeSupport) m.invoke(obj, (Object[]) null);
             support.addPropertyChangeListener(this);
         } catch (Exception ex) {
-            
-        } 
+
+        }
 //            if(f instanceof PropertyChangeListener){
 //        ((PropertyChangeListener)f).getPropertyChangeSupport().addPropertyChangeListener(this);
 //                }
@@ -248,10 +271,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         JPanel control = null;
         try {
             info = Introspector.getBeanInfo(classObject.getClass());
-            
+
             // add refresh observer if the object is an Observable. Inner classes of classObject that generate updates will not be observed.
-            if(classObject instanceof Observable){
-                ((Observable)classObject).addObserver(this);
+            if (classObject instanceof Observable) {
+                ((Observable) classObject).addObserver(this);
             }
 
             // refresh properties (refresh/set methods for object)
@@ -305,11 +328,8 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 control.setLayout(new GridLayout(0, 3, 3, 3));
             }
 
-
             // next add all other properties that we can handle
             // these must be saved and then sorted in case there are property groups defined.
-
-
 //            ArrayList<Component> sortedControls=new ArrayList();
             for (PropertyDescriptor p : props) {
 //                System.out.println("clazz "+getClazz().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
@@ -393,10 +413,9 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         }
         return tip;
     }
-    
+
     void addTip(PropertyDescriptor p, JLabel label) {
 
-        
         label.setToolTipText(getTip(p));
         label.setForeground(Color.BLUE);
     }
@@ -425,7 +444,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
         @Override
         public void refresh() {
-              try {
+            try {
                 Object x = (Object) read.invoke(clazz);
                 if (x == null) {
                     log.warning("null Object returned from read method " + read);
@@ -435,12 +454,14 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             } catch (Exception e) {
                 log.warning("cannot access the field; is the class or method not public?");
                 e.printStackTrace();
-            }          
+            }
         }
-        
+
         public EnumControl(final Class<? extends Enum> c, final Object f, PropertyDescriptor p) {
             super();
             final String name = p.getName();
+            setName(name);
+
             final Method r = p.getReadMethod(), w = p.getWriteMethod();
 
             setterMap.put(name, this);
@@ -475,7 +496,6 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             });
         }
 
-
     }
 
     class StringControl extends JPanel implements HasSetGet {
@@ -496,6 +516,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         public StringControl(final Object f, PropertyDescriptor p) {
             super();
             final String name = p.getName();
+            setName(name);
             final Method r = p.getReadMethod(), w = p.getWriteMethod();
 
             setterMap.put(name, this);
@@ -533,7 +554,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
         @Override
         public void refresh() {
-             try {
+            try {
                 String x = (String) read.invoke(clazz);
                 if (x == null) {
                     log.warning("null String returned from read method " + read);
@@ -559,6 +580,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         public BooleanControl(final Object f, PropertyDescriptor p) {
             super();
             final String name = p.getName();
+            setName(name);
             final Method r = p.getReadMethod(), w = p.getWriteMethod();
 
             setterMap.put(name, this);
@@ -569,12 +591,12 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label=new JLabel(name);
+            JLabel label = new JLabel(name);
             label.setAlignmentX(ALIGNMENT);
             label.setHorizontalTextPosition(SwingConstants.LEFT);
             label.setFont(label.getFont().deriveFont(fontSize));
             add(label);
-            addTip(p,label);
+            addTip(p, label);
 
             checkBox = new JCheckBox();
             refresh();
@@ -611,7 +633,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
         @Override
         public void refresh() {
-              try {
+            try {
                 Boolean x = (Boolean) read.invoke(clazz);
                 if (x == null) {
                     log.warning("null Boolean returned from read method " + read);
@@ -642,10 +664,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 slider.setValue(b);
             }
         }
-        
+
         @Override
         public void refresh() {
-             try {
+            try {
                 Integer x = (Integer) read.invoke(clazz); // read int value
                 if (x == null) {
                     log.warning("null Integer returned from read method " + read);
@@ -656,12 +678,13 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             } catch (Exception e) {
                 log.warning("cannot access the field; is the class or method not public?");
                 e.printStackTrace();
-            }       
+            }
         }
 
         public IntSliderControl(final Object f, PropertyDescriptor p, SliderParams params) {
             super();
             final String name = p.getName();
+            setName(name);
             final Method r = p.getReadMethod(), w = p.getWriteMethod();
             setterMap.put(name, this);
             clazz = f;
@@ -720,10 +743,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 slider.setValue(sv);
             }
         }
-        
-         @Override
+
+        @Override
         public void refresh() {
-             try {
+            try {
                 Float x = (Float) read.invoke(clazz); // read int value
                 if (x == null) {
                     log.warning("null Float returned from read method " + read);
@@ -735,11 +758,13 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 log.warning("cannot access the field, is the class or method not public?");
                 e.printStackTrace();
             }
-         }
+        }
 
         public FloatSliderControl(final Object f, PropertyDescriptor p, SliderParams params) {
             super();
             final String name = p.getName();
+            setName(name);
+
             final Method r = p.getReadMethod(), w = p.getWriteMethod();
             setterMap.put(name, this);
             clazz = f;
@@ -780,7 +805,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 }
             });
         }
-      }
+    }
 
     class IntControl extends JPanel implements HasSetGet {
 
@@ -796,10 +821,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 tf.setText(b.toString());
             }
         }
-      
+
         @Override
         public void refresh() {
-             try {
+            try {
                 Integer x = (Integer) read.invoke(clazz); // read int value
                 if (x == null) {
                     log.warning("null Integer returned from read method " + read);
@@ -813,7 +838,6 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 e.printStackTrace();
             }
         }
-        
 
         public IntControl(final Object f, PropertyDescriptor p) {
             super();
@@ -1027,8 +1051,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 tf.setText(b.toString());
             }
         }
-        
-            
+
         public void refresh() {
             try {
                 Float x = (Float) read.invoke(clazz);
@@ -1041,13 +1064,14 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                 tf.setText(s);
             } catch (Exception e) {
                 e.printStackTrace();
-            } 
+            }
         }
-        
 
         public FloatControl(final Object f, PropertyDescriptor p) {
             super();
             final String name = p.getName();
+            setName(name);
+
             final Method r = p.getReadMethod(), w = p.getWriteMethod();
 
             setterMap.put(name, this);
@@ -1215,10 +1239,13 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         }
     }
 
-    /** Called when a class calls firePropertyChange. The PropertyChangeEvent should send the bound property name and the old and new values.
-    The GUI control is then updated by this method.
-    @param propertyChangeEvent contains the property that has changed, e.g. it would be called from a setter like this:
-     * with 
+    /**
+     * Called when a class calls firePropertyChange. The PropertyChangeEvent
+     * should send the bound property name and the old and new values. The GUI
+     * control is then updated by this method.
+     *
+     * @param propertyChangeEvent contains the property that has changed, e.g.
+     * it would be called from a setter like this: with
      * <code>support.firePropertyChange("mapEventsToLearnedTopologyEnabled", mapEventsToLearnedTopologyEnabled, this.mapEventsToLearnedTopologyEnabled);</code>
      */
     @Override
@@ -1227,10 +1254,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             {
                 // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
                 try {
-                    log.info("PropertyChangeEvent received from " +
-                            propertyChangeEvent.getSource() + " for property=" +
-                            propertyChangeEvent.getPropertyName() +
-                            " newValue=" + propertyChangeEvent.getNewValue());
+                    log.info("PropertyChangeEvent received from "
+                            + propertyChangeEvent.getSource() + " for property="
+                            + propertyChangeEvent.getPropertyName()
+                            + " newValue=" + propertyChangeEvent.getNewValue());
                     HasSetGet setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         log.warning("null setter for property named " + propertyChangeEvent.getPropertyName());
@@ -1256,10 +1283,10 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         }
     }
 
-    /** This method is called from within the constructor to
-     * initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is
-     * always regenerated by the Form Editor.
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
      */
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -1272,8 +1299,11 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
         return controlsVisible;
     }
 
-    /** Set visibility of individual clazz controls; hides other filters.
-     * @param visible true to show clazz parameter controls, false to hide this clazz's controls and to show all filters in chain.
+    /**
+     * Set visibility of individual clazz controls; hides other filters.
+     *
+     * @param visible true to show clazz parameter controls, false to hide this
+     * clazz's controls and to show all filters in chain.
      */
     public void setControlsVisible(boolean visible) {
         controlsVisible = visible;

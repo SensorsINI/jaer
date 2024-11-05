@@ -21,37 +21,26 @@ import net.sf.jaer.util.histogram.SimpleHistogram;
  */
 public class AutoExposureController extends Observable implements HasPropertyTooltips {
 
-    // TODO not implemented yet
     private final DavisBaseCamera davisChip;
+
     private boolean autoExposureEnabled;
     private float expDelta;
-    private float underOverFractionThreshold; // threshold for fraction of total pixels that are underexposed
-    // or overexposed
-    private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
-    SimpleHistogram hist = null;
-    SimpleHistogram.Statistics stats = null;
+    private float underOverFractionThreshold; // threshold for fraction of total pixels that are underexposed or overexposed
     private float lowBoundary;
     private float highBoundary;
     private boolean pidControllerEnabled;
     protected boolean centerWeighted;
     private boolean debuggingLogEnabled = false;
 
+    private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
+    SimpleHistogram hist = null;
+    SimpleHistogram.Statistics stats = null;
+
     public AutoExposureController(final DavisBaseCamera davisChip) {
         super();
         this.davisChip = davisChip;
-        autoExposureEnabled = davisChip.getPrefs().getBoolean("autoExposureEnabled", false);
-        expDelta = davisChip.getPrefs().getFloat("expDelta", 0.1F); // exposureControlRegister change if incorrectly
-        // exposed
-        underOverFractionThreshold = davisChip.getPrefs().getFloat("underOverFractionThreshold", 0.2F); // threshold for
-        // fraction of
-        // total pixels
-        // that are
-        // underexposed
-        debuggingLogEnabled = davisChip.getPrefs().getBoolean("AutoExposureController.debuggingLogEnabled", false);
-        lowBoundary = davisChip.getPrefs().getFloat("AutoExposureController.lowBoundary", 0.25F);
-        highBoundary = davisChip.getPrefs().getFloat("AutoExposureController.highBoundary", 0.75F);
-        pidControllerEnabled = davisChip.getPrefs().getBoolean("pidControllerEnabled", false);
-        centerWeighted = davisChip.getPrefs().getBoolean("centerWeighted", false);
+        loadPreferences();
+
         tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed");
         tooltipSupport.setPropertyTooltip("underOverFractionThreshold",
                 "fraction of pixel values under xor over exposed to trigger exposure change");
@@ -69,24 +58,6 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     @Override
     public String getPropertyTooltip(final String propertyName) {
         return tooltipSupport.getPropertyTooltip(propertyName);
-    }
-
-    public void setAutoExposureEnabled(final boolean yes) {
-        final boolean old = autoExposureEnabled;
-        autoExposureEnabled = yes;
-        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_AUTO_EXPOSURE_ENABLED, old, yes);
-        if (old != yes) {
-            setChanged();
-            notifyObservers();
-        }
-        davisChip.getPrefs().putBoolean("autoExposureEnabled", yes);
-        if (!yes && (stats != null)) {
-            stats.reset(); // ensure toggling enabled resets the maxBin stat
-        }
-    }
-
-    public boolean isAutoExposureEnabled() {
-        return autoExposureEnabled;
     }
 
     public void controlExposure() {
@@ -153,14 +124,38 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         }
     }
 
-    /**
-     * Gets by what relative amount the exposureControlRegister is changed on
-     * each frame if under or over exposed.
-     *
-     * @return the expDelta
-     */
-    public float getExpDelta() {
-        return expDelta;
+    public void storePreferences() {
+        davisChip.getPrefs().putFloat("expDelta", expDelta);
+        davisChip.getPrefs().putBoolean("autoExposureEnabled", autoExposureEnabled);
+        davisChip.getPrefs().putFloat("underOverFractionThreshold", underOverFractionThreshold);
+        davisChip.getPrefs().putFloat("AutoExposureController.lowBoundary", lowBoundary);
+        davisChip.getPrefs().putFloat("AutoExposureController.highBoundary", highBoundary);
+        davisChip.getPrefs().putBoolean("pidControllerEnabled", pidControllerEnabled);
+        davisChip.getPrefs().putBoolean("AutoExposureController.debuggingLogEnabled", debuggingLogEnabled);
+    }
+
+    final public void loadPreferences() {
+        setAutoExposureEnabled(davisChip.getPrefs().getBoolean("autoExposureEnabled", false));
+        setExpDelta(davisChip.getPrefs().getFloat("expDelta", 0.1F)); // exposureControlRegister change if incorrectly exposed
+        setUnderOverFractionThreshold(davisChip.getPrefs().getFloat("underOverFractionThreshold", 0.2F)); // threshold for fraction of total pixels that are underexposed
+        setDebuggingLogEnabled(davisChip.getPrefs().getBoolean("AutoExposureController.debuggingLogEnabled", false));
+        setLowBoundary(davisChip.getPrefs().getFloat("AutoExposureController.lowBoundary", 0.25F));
+        setHighBoundary(davisChip.getPrefs().getFloat("AutoExposureController.highBoundary", 0.75F));
+        setPidControllerEnabled(davisChip.getPrefs().getBoolean("pidControllerEnabled", false));
+        setCenterWeighted(davisChip.getPrefs().getBoolean("centerWeighted", false));
+    }
+
+    public void setAutoExposureEnabled(final boolean yes) {
+        final boolean old = autoExposureEnabled;
+        autoExposureEnabled = yes;
+        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_AUTO_EXPOSURE_ENABLED, old, yes);
+        if (old != yes) {
+            setChanged();
+            notifyObservers();
+        }
+        if (!yes && (stats != null)) {
+            stats.reset(); // ensure toggling enabled resets the maxBin stat
+        }
     }
 
     /**
@@ -170,8 +165,112 @@ public class AutoExposureController extends Observable implements HasPropertyToo
      * @param expDelta the expDelta to set
      */
     public void setExpDelta(final float expDelta) {
+        float old = this.expDelta;
         this.expDelta = expDelta;
-        davisChip.getPrefs().putFloat("expDelta", expDelta);
+        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_AUTO_EXP_DELTA, old, expDelta);
+        if (old != expDelta) {
+            setChanged();
+            notifyObservers();
+        }
+    }
+
+    /**
+     * Gets the fraction of pixel values that must be under xor over exposed to
+     * change exposureControlRegister automatically.
+     *
+     * @param underOverFractionThreshold the underOverFractionThreshold to set
+     */
+    public void setUnderOverFractionThreshold(final float underOverFractionThreshold) {
+        final float old = this.underOverFractionThreshold;
+        this.underOverFractionThreshold = underOverFractionThreshold;
+        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_UNDER_OVER_DELTA, old, underOverFractionThreshold);
+        if (old != underOverFractionThreshold) {
+            setChanged();
+            notifyObservers();
+        }
+    }
+
+    public void setLowBoundary(final float lowBoundary) {
+        final float old = this.lowBoundary;
+        this.lowBoundary = lowBoundary;
+        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_LOW_BOUNDARY, old, lowBoundary);
+        if (old != lowBoundary) {
+            setChanged();
+            notifyObservers();
+        }
+    }
+
+    public void setHighBoundary(final float highBoundary) {
+        final float old = this.highBoundary;
+        this.highBoundary = highBoundary;
+        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_HIGH_BOUNDARY, old, highBoundary);
+        if (old != highBoundary) {
+            setChanged();
+            notifyObservers();
+        }
+    }
+
+    /**
+     * @param pidControllerEnabled the pidControllerEnabled to set
+     */
+    public void setPidControllerEnabled(final boolean pidControllerEnabled) {
+        final boolean old = this.pidControllerEnabled;
+        this.pidControllerEnabled = pidControllerEnabled;
+        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_PID_CONTROLLER_ENABLED, old, pidControllerEnabled);
+        if (old != pidControllerEnabled) {
+            setChanged();
+            notifyObservers();
+        }
+    }
+
+    /**
+     * @param centerWeighted the centerWeighted to set
+     */
+    public void setCenterWeighted(final boolean centerWeighted) {
+        final boolean old = this.centerWeighted;
+        this.centerWeighted = centerWeighted;
+        davisChip.getSupport().firePropertyChange(DavisChip.PROPERTY_CENTER_WEIGHTED, old, centerWeighted);
+        if (old != centerWeighted) {
+            setChanged();
+            notifyObservers();
+        }
+    }
+
+    /**
+     * @param debuggingLogEnabled the debuggingLogEnabled to set
+     */
+    public void setDebuggingLogEnabled(boolean debuggingLogEnabled) {
+        final boolean old = this.debuggingLogEnabled;
+        this.debuggingLogEnabled = debuggingLogEnabled;
+    }
+
+    /**
+     * @return the centerWeighted
+     */
+    public boolean isCenterWeighted() {
+        return centerWeighted;
+    }
+
+    /**
+     * @return the debuggingLogEnabled
+     */
+    public boolean isDebuggingLogEnabled() {
+        return debuggingLogEnabled;
+    }
+
+    /**
+     * @return the pidControllerEnabled
+     */
+    public boolean isPidControllerEnabled() {
+        return pidControllerEnabled;
+    }
+
+    public float getHighBoundary() {
+        return highBoundary;
+    }
+
+    public float getLowBoundary() {
+        return lowBoundary;
     }
 
     /**
@@ -185,78 +284,17 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     }
 
     /**
-     * Gets the fraction of pixel values that must be under xor over exposed to
-     * change exposureControlRegister automatically.
+     * Gets by what relative amount the exposureControlRegister is changed on
+     * each frame if under or over exposed.
      *
-     * @param underOverFractionThreshold the underOverFractionThreshold to set
+     * @return the expDelta
      */
-    public void setUnderOverFractionThreshold(final float underOverFractionThreshold) {
-        this.underOverFractionThreshold = underOverFractionThreshold;
-        davisChip.getPrefs().putFloat("underOverFractionThreshold", underOverFractionThreshold);
+    public float getExpDelta() {
+        return expDelta;
     }
 
-    public float getLowBoundary() {
-        return lowBoundary;
-    }
-
-    public void setLowBoundary(final float lowBoundary) {
-        this.lowBoundary = lowBoundary;
-        davisChip.getPrefs().putFloat("AutoExposureController.lowBoundary", lowBoundary);
-    }
-
-    public float getHighBoundary() {
-        return highBoundary;
-    }
-
-    public void setHighBoundary(final float highBoundary) {
-        this.highBoundary = highBoundary;
-        davisChip.getPrefs().putFloat("AutoExposureController.highBoundary", highBoundary);
-    }
-
-    /**
-     * @return the pidControllerEnabled
-     */
-    public boolean isPidControllerEnabled() {
-        return pidControllerEnabled;
-    }
-
-    /**
-     * @param pidControllerEnabled the pidControllerEnabled to set
-     */
-    public void setPidControllerEnabled(final boolean pidControllerEnabled) {
-        this.pidControllerEnabled = pidControllerEnabled;
-        davisChip.getPrefs().putBoolean("pidControllerEnabled", pidControllerEnabled);
-    }
-
-    /**
-     * @return the centerWeighted
-     */
-    public boolean isCenterWeighted() {
-        return centerWeighted;
-    }
-
-    /**
-     * @param centerWeighted the centerWeighted to set
-     */
-    public void setCenterWeighted(final boolean centerWeighted) {
-        this.centerWeighted = centerWeighted;
-    }
-
-    /**
-     * @return the debuggingLogEnabled
-     */
-    public boolean isDebuggingLogEnabled() {
-        return debuggingLogEnabled;
-    }
-
-    /**
-     * @param debuggingLogEnabled the debuggingLogEnabled to set
-     */
-    public void setDebuggingLogEnabled(boolean debuggingLogEnabled) {
-        this.debuggingLogEnabled = debuggingLogEnabled;
-        if (davisChip != null) {
-            davisChip.getPrefs().putBoolean("AutoExposureController.debuggingLogEnabled", debuggingLogEnabled);
-        }
+    public boolean isAutoExposureEnabled() {
+        return autoExposureEnabled;
     }
 
 }

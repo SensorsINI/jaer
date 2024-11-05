@@ -769,7 +769,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
                 Class enclClass = Class.forName(enclClassName);
                 if (EventFilter.class.isAssignableFrom(enclClass)) {
                     prefs = getPrefsForEnclosedFilter(prefs, enclClassName);
-                    //log.info("This filter " + this.getClass() + " is enclosed in " + enclClass + " and has new Preferences node=" + prefs);
+                    log.finer("This filter " + this.getClass() + " is enclosed in " + enclClass + " and has new Preferences node=" + prefs);
                 }
             }
         } catch (ClassNotFoundException e) {
@@ -783,9 +783,11 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * enclosing filter class node
      */
     private Preferences getPrefsForEnclosedFilter(Preferences prefs, String enclClassName) {
+        final String prefsNodeName = prefs.absolutePath() + "/" + enclClassName.replace(".", "/");
         //        int clNaInd=enclClassName.lastIndexOf(".");
         //        enclClassName=enclClassName.substring(clNaInd,enclClassName.length());
-        prefs = Preferences.userRoot().node(prefs.absolutePath() + "/" + enclClassName.replace(".", "/"));
+        prefs = Preferences.userRoot().node(prefsNodeName);
+        log.finer(String.format("For enclosed class %s Got prefs node %s; prefs=%s",enclClassName,prefsNodeName,prefs.toString()));
         return prefs;
     }
 

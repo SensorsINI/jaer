@@ -38,11 +38,12 @@ abstract public class DAVIS240BaseCamera extends DavisBaseCamera {
 		setSizeX(DAVIS240BaseCamera.WIDTH_PIXELS);
 		setSizeY(DAVIS240BaseCamera.HEIGHT_PIXELS);
 
-		setBiasgen(davisConfig = new Davis240Config(this));
-
 		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
+		
+                setBiasgen(davisConfig = new Davis240Config(this));
+
 	}
 
 	/**

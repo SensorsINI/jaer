@@ -25,11 +25,11 @@ public class Davis640Color extends DavisBaseCamera {
 
 		setEventExtractor(new DavisColorEventExtractor(this, false, true, Davis640Color.COLOR_FILTER, false));
 
-		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
-
 		davisRenderer = new DavisColorRenderer(this, false, Davis640Color.COLOR_FILTER, false, Davis640Color.COLOR_CORRECTION);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
+
+		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
 
 		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
 		setApsLastPixelReadOut(new Point(0, 0));
