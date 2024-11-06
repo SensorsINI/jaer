@@ -3,7 +3,8 @@
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
 <project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
-        <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
+    
+     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
 
@@ -46,6 +47,12 @@
 
     </target>
     
+
+  <!-- Build jaer module -->
+    <target name="build-jaer">
+        <ant antfile="src/main/java/com/inilabs/jaer/build.xml" target="build-all"/>
+    </target>
+
 
     <target name="download-deps" depends="-load-ivy-tasks"
             description="Download dependent libraries.">
