@@ -218,7 +218,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             EVENT_PAUSED = "paused",
             EVENT_TIMESTAMPS_RESET = "timestampsReset",
             EVENT_CHECK_NONMONOTONIC_TIMESTAMPS = "checkNonMonotonicTimestamps",
-            EVENT_ACCUMULATE_ENABLED = "accumulateEnabled";
+            EVENT_ACCUMULATE_ENABLED = "accumulateEnabled",
+            EVENT_LOGGING_STARTED = "loggingStarted",
+            EVENT_LOGGING_STOPPED = "loggingStopped";
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     // note filenames cannot have spaces in them for browser to work easily, some problem with space encoding; %20 doesn't work as advertized.
@@ -4613,6 +4615,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 loggingStartTime = System.currentTimeMillis();
             }
             log.info("starting logging to " + loggingFile.getAbsolutePath());
+            getSupport().firePropertyChange(EVENT_LOGGING_STARTED, null, loggingFile);
+
             //            aemon.resetTimestamps();
 
         } catch (FileNotFoundException e) {
@@ -4845,6 +4849,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             }
             loggingEnabled = false;
+            getSupport().firePropertyChange(EVENT_LOGGING_STOPPED, null, loggingFile);
         }
 
         fixLoggingControls();
