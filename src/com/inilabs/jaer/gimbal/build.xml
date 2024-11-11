@@ -1,0 +1,26 @@
+<project name="gimbal" basedir="." default="build">
+    <!-- Set the classpath for compiling -->
+    <path id="module.classpath">
+        <fileset dir="../../../../lib">
+            <include name="**/*.jar"/>
+        </fileset>
+    </path>
+
+    <!-- Clean target -->
+    <target name="clean">
+        <delete dir="build"/>
+    </target>
+
+    <!-- Compile target -->
+    <target name="build" depends="clean">
+        <mkdir dir="build/classes"/>
+        <javac srcdir="src" destdir="build/classes" classpathref="module.classpath"/>
+    </target>
+
+    <!-- Test or run the module -->
+    <target name="run" depends="build">
+        <java classname="com.inilabs.jaer.gimbal.Gimbal" fork="true" classpath="build/classes">
+            <classpath refid="module.classpath"/>
+        </java>
+    </target>
+</project>
