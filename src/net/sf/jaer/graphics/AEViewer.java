@@ -286,8 +286,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private FrameRater frameRater = new FrameRater();
     ChipCanvas chipCanvas;
     volatile boolean loggingEnabled = false;
-    /** The file that AE data is currently being logged to. Note it can change when the user finally selects the file to save the data to.*/
-    private File loggingFile;
+    /** The file that AE data is currently being logged to. Note it can change when the user finally selects the file to save the data to. 
+     @see #startLogging(String,String)
+     */
+    private File loggingFile=null;
     AEFileOutputStream loggingOutputStream;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
@@ -4577,6 +4579,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (filename == null) {
             log.warning("tried to log to null filename, aborting");
             return null;
+        }
+        if(loggingFile!=null){
+            log.warning(String.format("Already logging to file %s",loggingFile.getAbsolutePath()));
+            return loggingFile;
         }
         if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION)
                 && !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
