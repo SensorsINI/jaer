@@ -186,7 +186,18 @@ public class JAERViewer {
                     } catch (IllegalArgumentException e2) {
                         log.warning("tried to store too many classes in last chip classes");
                     }
+                    log.info("saving possible open data logging");
+                    try {
+                        for (AEViewer v : viewers) {
+                            if(v.getLoggingFile()!=null){
+                                v.stopLogging(true);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warning(String.format("stopping logging, caught Exception %s",e.toString()));
+                    } 
                 }
+                
             }
         });
     }
