@@ -609,8 +609,9 @@ public class DavisColorRenderer extends DavisRenderer {
 
             if (!isMonochrome()) {
                 // Color interpolation support.
-                for (int y = 0; y < chip.getSizeY(); y++) {
-                    for (int x = 0; x < chip.getSizeX(); x++) {
+                final int sx=chip.getSizeX(), sy=chip.getSizeY();
+                for (int y = 0; y < sy; y++) {
+                    for (int x = 0; x < sx; x++) {
                         // What pixel am I? Get color information and color values on pixel
                         // itself and all its neighbors to pass to interpolation function.
 
@@ -638,7 +639,7 @@ public class DavisColorRenderer extends DavisRenderer {
                             colors[6] = null;
                             colors[7] = null;
                             colors[8] = null;
-                        } else if (y == (chip.getSizeY() - 1)) {
+                        } else if (y == (sy - 1)) {
                             colors[0] = null;
                             colors[1] = null;
                             colors[2] = null;
@@ -648,7 +649,7 @@ public class DavisColorRenderer extends DavisRenderer {
                             colors[0] = null;
                             colors[3] = null;
                             colors[6] = null;
-                        } else if (x == (chip.getSizeX() - 1)) {
+                        } else if (x == (sx - 1)) {
                             colors[2] = null;
                             colors[5] = null;
                             colors[8] = null;
