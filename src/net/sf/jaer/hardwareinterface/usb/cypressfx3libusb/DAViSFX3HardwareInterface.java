@@ -63,6 +63,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 	 */
 	@Override
 	public void startAEReader() throws HardwareInterfaceException {
+            log.info("starting AE reader thread");
 		setAeReader(new RetinaAEReader(this));
 		allocateAEBuffers();
 
