@@ -644,14 +644,17 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         if (deviceHandle != null) {
             try {
+                log.info("Doing USB reset on device before releasing it");
                 int status = LibUsb.resetDevice(deviceHandle); // add a reset after open according to https://stackoverflow.com/questions/39856832/libusb-get-string-descriptor-ascii-timeout-error
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("failed to reset device: " + LibUsb.errorName(status));
                 }
+                log.info("Releasing device handle");
                 status = LibUsb.releaseInterface(deviceHandle, 0);
                 if (status != LibUsb.SUCCESS) {
                     throw new HardwareInterfaceException("open(): failed to releaseInterface: " + LibUsb.errorName(status));
                 }
+                
                 LibUsb.close(deviceHandle);
             } catch (IllegalStateException | HardwareInterfaceException e) {
                 log.warning(String.format("Error releasing interface: %s", e.toString()));
@@ -1317,6 +1320,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         if (!isOpen()) {
             return;
         }
+        log.info(String.format("Setting event acquisition = %s",enable));
         // Start reader before sending data enable commands.
         setInEndpointEnabled(enable);
         if (enable) {
