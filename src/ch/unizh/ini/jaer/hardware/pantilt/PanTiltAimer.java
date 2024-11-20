@@ -98,6 +98,8 @@ public class PanTiltAimer extends EventFilter2D implements PanTiltInterface, Las
             
             this.PanValue = NewV[0];
             this.tiltValue = NewV[1];
+            setPanValue(NewV[0]);
+            setTiltValue(NewV[1]);
             support.firePropertyChange("panValue",OldV[0],this.PanValue);
             support.firePropertyChange("tiltValue",OldV[1],this.tiltValue);
             supportPanTilt.firePropertyChange("panTiltValues", OldV, NewV);

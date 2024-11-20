@@ -1,8 +1,0 @@
-<ivy-module version="2.0">
-    <info organisation="com.inilabs" module="gimbal" revision="1.0.0">
-        <dependencies>
-            <dependency org="org.openjfx" name="javafx-controls" rev="21.0.2"/>
-            <!-- Add other dependencies here -->
-        </dependencies>
-    </info>
-</ivy-module>
