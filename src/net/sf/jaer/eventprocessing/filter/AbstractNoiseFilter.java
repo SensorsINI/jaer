@@ -22,6 +22,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import eu.seebetter.ini.chips.davis.CDAVIS;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
@@ -128,6 +129,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setPropertyTooltip(TT_FILT_CONTROL, "antiCasualEnabled", "<html>Enable sending previous events that were filtered out if later event shows they were actually correlated (depends on filter if supported).<p>Note that timestamp will not be correct; event will inherit timestamp of current event to keep event stream monotonic in time.");
         getSupport().addPropertyChangeListener(this);
 //        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+        // special check for CDAVIS to ensure sigmaDistPixels is at least 2, since DVS pixels have half the resolution of APS pixels
+        if(chip instanceof CDAVIS && sigmaDistPixels<2){
+            log.warning(String.format("Chip is CDAVIS, setting sigmaDistPixels to 2"));
+            setSigmaDistPixels(2);
+        }
     }
 
     /**
@@ -345,8 +351,9 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     public void setSigmaDistPixels(int sigmaDistPixels) {
         int old = getSigmaDistPixels();
-        if (sigmaDistPixels < 1) {
-            sigmaDistPixels = 1;
+        int min=(chip instanceof CDAVIS?2:1);
+        if (sigmaDistPixels < min) {
+            sigmaDistPixels = min;
         } else if (sigmaDistPixels > 15) {
             sigmaDistPixels = 15;
         }
