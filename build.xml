@@ -49,9 +49,6 @@
     
 
   <!-- Build jaer module -->
-    <target name="build-jaer">
-        <ant antfile="src/main/java/com/inilabs/jaer/build.xml" target="build-all"/>
-    </target>
 
 
     <target name="download-deps" depends="-load-ivy-tasks"
