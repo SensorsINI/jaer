@@ -23,6 +23,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.CDAVIS;
+import java.awt.Color;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
@@ -38,6 +39,7 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -265,11 +267,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         String s = String.format("%s: filtered out %%%6.1f",
                 infoString(),
                 filteredOutPercent);
-//        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_12, s);
-        TextRenderer tr=new TextRenderer(new Font("SansSerif", Font.PLAIN, getShowFilteringStatisticsFontSize()), true, true);
-        tr.begin3DRendering();
-        tr.draw3D(s, 0, getAnnotationRasterYPosition(), 0, .25f);
-        tr.end3DRendering();
+        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, s);
         gl.glPopMatrix();
 
         noiseFilterControl.annotate(drawable);
