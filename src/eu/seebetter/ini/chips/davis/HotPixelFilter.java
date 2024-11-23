@@ -317,7 +317,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
     @Override
     public void annotate(final GLAutoDrawable drawable) {
         final GL2 gl = drawable.getGL().getGL2();
-        if (!showHotPixels) {
+        if (showHotPixels) {
             try {
                 gl.glEnable(GL.GL_BLEND);
                 gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
