@@ -1275,11 +1275,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(gl, 15, px + 4 + speed * ppsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(15, px + 4 + speed * ppsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
 
             if (showFilterName) {
-                DrawGL.drawString(gl, 18, 10, 10, 0, Color.white, getShortName());
+                DrawGL.drawString(18, 10, 10, 0, Color.white, getShortName());
             }
             gl.glPopMatrix();
 
@@ -1300,8 +1300,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //            gl.glRasterPos2i(2, 10);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
             gl.glPopMatrix();
-            DrawGL.drawString(gl, 13, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2 - 1, .5f, Color.black, globMotionString);
-            DrawGL.drawString(gl, 13, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, globMotionString); // drop shadow
+            DrawGL.drawString(13, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2 - 1, .5f, Color.black, globMotionString);
+            DrawGL.drawString(13, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, globMotionString); // drop shadow
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
             // draw quartiles statistics ellipse
@@ -1337,7 +1337,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 gl.glColor3f(1, 1, 1);
                 gl.glLineWidth(motionVectorLineWidthPixels);
                 motionFlowStatistics.getGlobalMotion().drawAngleHistogram(gl, chip.getSizeX() / 2);
-                DrawGL.drawString(gl, 10, 0, 0, .5f, Color.white, String.format("Angle dist. N=%,d", motionFlowStatistics.getGlobalMotion().globalMotionAngleFrequency.getSumFreq()));
+                DrawGL.drawString(10, 0, 0, .5f, Color.white, String.format("Angle dist. N=%,d", motionFlowStatistics.getGlobalMotion().globalMotionAngleFrequency.getSumFreq()));
                 gl.glPopMatrix();
             }
 
@@ -1427,8 +1427,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             gl.glPushMatrix();
             drawMotionVector(gl, mouseVectorEvent.getX() + 1, mouseVectorEvent.getY() - 1, mouseVectorEvent.getVelocity().x, mouseVectorEvent.getVelocity().y, new float[]{0, 0, 0, 1}, getMotionVectorLineWidthPixels() * 2);
             float[] c = drawMotionVector(gl, mouseVectorEvent.getX(), mouseVectorEvent.getY(), mouseVectorEvent.getVelocity().x, mouseVectorEvent.getVelocity().y, motionColor(mouseVectorEvent), getMotionVectorLineWidthPixels() * 2);
-            DrawGL.drawString(gl, 16, (float) mouseVectorEvent.getX() + 1, (float) mouseVectorEvent.getY() - 1 + 3, .5f, Color.black, mouseVectorString);
-            DrawGL.drawString(gl, 16, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
+            DrawGL.drawString(16, (float) mouseVectorEvent.getX() + 1, (float) mouseVectorEvent.getY() - 1 + 3, .5f, Color.black, mouseVectorString);
+            DrawGL.drawString(16, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
             gl.glPopMatrix();
         }
 

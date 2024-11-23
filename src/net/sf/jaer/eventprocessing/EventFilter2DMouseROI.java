@@ -157,7 +157,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
             gl.glVertex2f(r.x, r.y + r.height);
             gl.glEnd();
             gl.glPushAttrib(GL.GL_COLOR_BUFFER_BIT);
-            DrawGL.drawString(gl, 10, r.x, r.y, 0, Color.RED.darker(), Integer.toString(i));
+            DrawGL.drawString(10, r.x, r.y, 0, Color.RED.darker(), Integer.toString(i));
             gl.glPopAttrib();
             i++;
         }

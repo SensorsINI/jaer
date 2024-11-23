@@ -13,6 +13,7 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import net.sf.jaer.util.TextRendererScale;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Useful static methods for text rendering in the annotation of an EventFilter
@@ -74,35 +75,25 @@ public class MultilineAnnotationTextRenderer {
      * @param s the string to render.
      */
     public static void renderMultilineString(String s) {
-        if (rebuildRenderer || renderer == null) {
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
-            renderer.setColor(color);
-        }
         String[] lines = s.split("\n");
         if (lines == null) {
             return;
         }
 
         try {
-            renderer.begin3DRendering();
-            boolean first = true;
+            Rectangle2D r = null; // get bounds from first string rendered
             for (String l : lines) {
                 if (l == null) {
                     continue;
                 }
-                Rectangle2D r = renderer.getBounds(l);
-                if (!first) {
-                    yshift -= r.getHeight() * scale;
-                    l = "  " + l;
-                }
-                first = false;
-                renderer.draw3D(l, xposition, yshift, 0, scale);
+                r = DrawGL.drawString(fontSize, xposition, yshift, 0, color, l);
+                yshift -= r.getHeight() * scale;
+                l = "  " + l;
             }
-            renderer.end3DRendering();
         } catch (GLException e) {
             log.warning("caught " + e + " when trying to render text into the current OpenGL context");
         }
-        yshift -= additionalSpace;  // add additional space between multiline strings
+//        yshift -= additionalSpace;  // add additional space between multiline strings
     }
 
     /**

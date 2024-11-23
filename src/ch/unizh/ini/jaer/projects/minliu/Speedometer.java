@@ -171,7 +171,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     }
 
     private void drawString(GLAutoDrawable drawable, String s) throws GLException {
-        DrawGL.drawString(drawable, 24, 0.5f, .2f, .5f, Color.yellow, s);
+        DrawGL.drawString(24, 0.5f, .2f, .5f, Color.yellow, s);
     }
 
     private void drawCursor(GL2 gl, Point p, float[] color) {
