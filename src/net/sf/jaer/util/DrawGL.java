@@ -21,7 +21,6 @@ import java.awt.geom.Rectangle2D;
  */
 public final class DrawGL {
 
-    private static TextRenderer textRenderer = null;
     static final float RAD_TO_DEG = (float) (180 / Math.PI);
 
     /**
@@ -262,13 +261,13 @@ public final class DrawGL {
             fontSize *= 4;
             scale = .25f;
         }
-        setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true));
-        getTextRenderer().begin3DRendering();
-        getTextRenderer().setColor(color);
-        Rectangle2D r = getTextRenderer().getBounds(s);
+        TextRenderer textRenderer=new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+        textRenderer.begin3DRendering();
+        textRenderer.setColor(color);
+        Rectangle2D r = textRenderer.getBounds(s);
         r.setRect(r.getX(), r.getY(), r.getWidth() * scale, r.getHeight() * scale); // adjust bounds for actual drawing scale of text
-        getTextRenderer().draw3D(s, (int) (x - alignmentX * r.getWidth()), (int) (y), 0, scale);
-        getTextRenderer().end3DRendering();
+        textRenderer.draw3D(s, (int) (x - alignmentX * r.getWidth()), (int) (y), 0, scale);
+        textRenderer.end3DRendering();
         return r;
     }
 
@@ -363,23 +362,4 @@ public final class DrawGL {
         return r;
     }
 
-    /**
-     * Returns the text renderer if it has been initialized. These should only
-     * be initialized in the OpenGL rendering context.
-     *
-     * @return the textRenderer
-     */
-    public static TextRenderer getTextRenderer() {
-        return textRenderer;
-    }
-
-    /**
-     * Allows setting a text renderer for DrawGL, which might be useful for
-     * determining a scale, etc, before rendering.
-     *
-     * @param aTextRenderer the textRenderer to set
-     */
-    public static void setTextRenderer(TextRenderer aTextRenderer) {
-        textRenderer = aTextRenderer;
-    }
 }
