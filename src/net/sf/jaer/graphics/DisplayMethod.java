@@ -240,7 +240,7 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
 //            log.info(String.format("ypos=%.1f",ypos));
             float y = ypos;
             for (String sss : ss) {
-                DrawGL.drawStringDropShadow(gl, fontsize, xpos, y, .5f, Color.white, sss); // use alignment 0.5f to center, font size determined by chip pixels
+                DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, sss); // use alignment 0.5f to center, font size determined by chip pixels
                 y -= linespace;
             }
             gl.glPopMatrix();

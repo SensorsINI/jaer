@@ -322,6 +322,7 @@ public final class DrawGL {
         return r;
     }
 
+
     /**
      * Draws a string with drop shadow effect using TextRenderer.draw using
      * native GL coordinates, usually setup to represent pixels on AEChip
@@ -335,9 +336,30 @@ public final class DrawGL {
      * @param s the string to draw
      * @return the bounds of the text
      */
-    public static Rectangle2D drawStringDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+    public static Rectangle2D drawStringDropShadow(int fontSize, float x, float y, float alignmentX, Color color, String s) {
         drawString(fontSize, x + 1, y - 1, alignmentX, Color.black, s);
         Rectangle2D r = drawString(fontSize, x, y, alignmentX, color, s);
+        return r;
+    }
+
+
+    /**
+     * Draws a string with drop shadow effect using TextRenderer.draw using
+     * native GL coordinates, usually setup to represent pixels on AEChip
+     *
+     * @param gl the rendering context surface (not actually used)
+     * @param fontSize typically 12 to 36
+     * @param x x position (0 at left)
+     * @param y y position (0 at bottom)
+     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
+     * @param color, e.g. Color.red
+     * @param s the string to draw
+     * @return the bounds of the text
+     * @deprecated use the method that does not take GL object since it is not needed
+     */
+    @Deprecated
+    public static Rectangle2D drawStringDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+        Rectangle2D r = drawStringDropShadow(fontSize, x, y, alignmentX, color, s);
         return r;
     }
 

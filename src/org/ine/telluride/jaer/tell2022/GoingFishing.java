@@ -363,14 +363,14 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
             gl.glPushMatrix();
             gl.glColor3f(1, 0, 0);
             DrawGL.drawCross(gl, (float) rodTipLocation.getX(), (float) rodTipLocation.getY(), 6, 0);
-            DrawGL.drawStringDropShadow(gl, 12, 0, 0, 0, Color.red, "Tip");
+            DrawGL.drawStringDropShadow(12, 0, 0, 0, Color.red, "Tip");
             gl.glPopMatrix();
         }
         if (fishingPoolCenterLocation != null) {
             gl.glPushMatrix();
             gl.glColor3f(1, 0, 0);
             DrawGL.drawCross(gl, (float) fishingPoolCenterLocation.getX(), (float) fishingPoolCenterLocation.getY(), 6, 0);
-            DrawGL.drawStringDropShadow(gl, 12, 0, 0, 0, Color.red, "Center");
+            DrawGL.drawStringDropShadow(12, 0, 0, 0, Color.red, "Center");
             gl.glPopMatrix();
         }
         if (!isDisableServos()) { // draw rod pan/tilt
@@ -412,24 +412,24 @@ public class GoingFishing extends EventFilter2DMouseROI implements FrameAnnotate
                 gl.glPopMatrix();
             }
             gl.glPushMatrix();
-            DrawGL.drawStringDropShadow(gl, 12, adcStartX + adcLen1 + adcLen2 + 2, adcY, 0, Color.white, String.format("ADC: %d", lastAdcValue));
+            DrawGL.drawStringDropShadow(12, adcStartX + adcLen1 + adcLen2 + 2, adcY, 0, Color.white, String.format("ADC: %d", lastAdcValue));
             gl.glPopMatrix();
         } else {
             gl.glPushMatrix();
-            DrawGL.drawStringDropShadow(gl, 12, adcStartX, adcY, 0, Color.white, "ADC: N/A");
+            DrawGL.drawStringDropShadow(12, adcStartX, adcY, 0, Color.white, "ADC: N/A");
             gl.glPopMatrix();
         }
         gl.glPushMatrix();
         if (fishWasCaught) {
             gl.glColor3f(1, 1, 1);
-            DrawGL.drawStringDropShadow(gl, 36, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, "Caught!");
+            DrawGL.drawStringDropShadow(36, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, "Caught!");
         }
         final float statsY = 2 * chip.getSizeY() / 10;
         String s = String.format("Tries: %d, Success: %d (%.1f%%); thetaOffset=%.1f deg, delayMs=%d ms",
                 fishingResults.rodDipTotalCount, fishingResults.rodDipSuccessCount,
                 (100 * (float) fishingResults.rodDipSuccessCount / fishingResults.rodDipTotalCount),
                 learnedRodThetaOffsetDeg, learnedRodDipLeadLagMs);
-        DrawGL.drawStringDropShadow(gl, 10, adcStartX, statsY, 0, Color.white, s);
+        DrawGL.drawStringDropShadow(10, adcStartX, statsY, 0, Color.white, s);
 
         gl.glPopMatrix();
     }

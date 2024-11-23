@@ -386,7 +386,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 
                 String s = String.format("FlexTime %,7d events, %5ss, %7sFPS, %13s", renderedEventCount, durStr, fpsStr, sloMoSummaryStr);
 
-                DrawGL.drawStringDropShadow(gl, getShowStatisticsFontSize(), 0f, .5f, 0, Color.white, s);
+                DrawGL.drawStringDropShadow(getShowStatisticsFontSize(), 0f, .5f, 0, Color.white, s);
             }
         }
         if (method == Method.AreaEventCount && showAreaCountAreasTemporarily) {
@@ -426,7 +426,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
         }
         gl.glPushMatrix();
             gl.glTranslatef(0, radius * 2 + 6, 0); // clock center
-            DrawGL.drawStringDropShadow(gl,9, 0f, 0f, 0, Color.white, sloMoString);
+            DrawGL.drawStringDropShadow(9, 0f, 0f, 0, Color.white, sloMoString);
             gl.glTranslatef(0, -(radius * 2 + 6), 0); // clock center
         gl.glPopMatrix();;
         gl.glPushMatrix();
