@@ -226,7 +226,6 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
         GL2 gl = drawable.getGL().getGL2();
         // we want status display to fill about 1/2 of width of chip area, so choose font size appropriately.
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontsize), true, true);
-        DrawGL.setTextRenderer(renderer);
         try {
             gl.glPushMatrix();
             gl.glScalef(scale, scale, scale); // everything is scaled (maybe) down by this, e.g. 0.5 for DVS128
