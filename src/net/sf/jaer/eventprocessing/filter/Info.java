@@ -128,7 +128,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private int nPixels = 0; // to be either total pixels or set by XYTypeFilter ROI
 
     @Preferred
-    private int fontSize = getInt("fontSize", 14);
+    private int fontSize = getInt("fontSize", 8);
 
     public Info(AEChip chip) {
         super(chip);

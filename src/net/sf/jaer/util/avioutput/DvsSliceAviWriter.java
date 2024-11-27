@@ -1,7 +1,6 @@
 package net.sf.jaer.util.avioutput;
 
 import static net.sf.jaer.graphics.AEViewer.DEFAULT_CHIP_CLASS;
-import static net.sf.jaer.graphics.AEViewer.prefs;
 
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
@@ -844,7 +843,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (opt.getSet().isSet("aechip")) {
             chipname = opt.getSet().getOption("aechip").getResultValue(0);
         } else {
-            chipname = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+            chipname = chip.getAeViewer().prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
         }
         try {
             String className = chipClassesMap.get(chipname.toLowerCase());

@@ -33,7 +33,7 @@ public class MultilineAnnotationTextRenderer {
     private static float scale = .15f;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static Color color = Color.WHITE;
-    private static int fontSize = 24;
+    private static int fontSize = 9;
     private static boolean rebuildRenderer = true;
 
     /**

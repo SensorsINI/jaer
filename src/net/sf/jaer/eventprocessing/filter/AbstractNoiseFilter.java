@@ -53,7 +53,7 @@ import net.sf.jaer.util.TobiLogger;
 public abstract class AbstractNoiseFilter extends EventFilter2D implements FrameAnnotater, RemoteControlled {
 
     @Preferred protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
-    private int showFilteringStatisticsFontSize=getInt("showFilteringStatisticsFontSize",24);
+    private int showFilteringStatisticsFontSize=getInt("showFilteringStatisticsFontSize",9);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
     /**

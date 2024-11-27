@@ -29,7 +29,7 @@ import net.sf.jaer.util.DrawGL;
 public class JaerAviWriter extends AbstractAviWriter {
 
     @Preferred private boolean showTimeFactor = getBoolean("showTimeFactor", false);
-    private int fontSize = getInt("fontSize", 12);
+    private int fontSize = getInt("fontSize", 9);
     private float timeExpansionFactor = 1;
     
     private volatile boolean writeFrameNowFlag=false;

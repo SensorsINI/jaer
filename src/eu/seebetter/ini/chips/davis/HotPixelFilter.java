@@ -43,7 +43,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
     private final HotPixelSet hotPixelSet = new HotPixelSet();
     @Preferred private boolean showHotPixels = getBoolean("showHotPixels", true);
     private boolean showHotPixelsNumber = getBoolean("showHotPixelsNumber", true);
-    private int showHotPixelsFontSize = getInt("showHotPixelsFontSize", 36);
+    private int showHotPixelsFontSize = getInt("showHotPixelsFontSize", 12);
     private float showHotPixelsNumberYLocation = getFloat("showHotPixelsNumberYLocation", 0f);
     private float showHotPixelsAlpha = getFloat("showHotPixelsAlpha", .25f);
     private int showHotPixelsRadius = getInt("showHotPixelsRadius", 0);
@@ -124,7 +124,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
         void storePrefs(HotPixelFilter f) {
             try {
                 // Serialize to a byte array
-                f.putObject("HotPixelFilter.HotPixelSet", this);
+                f.putObject("HotPixelSet", this);
             } catch (final Exception e) {
                 e.printStackTrace();
             }
@@ -142,7 +142,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
         void loadPrefs(HotPixelFilter f) {
             try {
-                HotPixelSet hotPixelSet = (HotPixelSet) f.getObject("HotPixelFilter.HotPixelSet", new HotPixelSet());
+                HotPixelSet hotPixelSet = (HotPixelSet) f.getObject("HotPixelSet", new HotPixelSet());
                 if (hotPixelSet.isEmpty()) {
                     f.log.info("no hot pixels loaded");
                 } else {
