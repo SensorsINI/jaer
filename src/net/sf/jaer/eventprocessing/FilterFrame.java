@@ -65,6 +65,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     public static final String LAST_FILTER_SELECTED_KEY = "FilterFrame.lastFilterSelected";
     private JButton resetStatisticsButton = null;
     private Border selectedBorder = new LineBorder(Color.red);
+    private EventFilter.CopiedProps copiedProps = null;
 
     /**
      * Creates new form FilterFrame
@@ -118,10 +119,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 log.info("opening " + evt.getActionCommand());
                 try {
                     if ((f != null) && f.isFile()) {
-                        loadFile(f);
+                        importPrefs(f);
                     } else if ((f != null) && f.isDirectory()) {
                         prefs.put("FilterFrame.lastFile", f.getCanonicalPath());
-                        loadMenuItemActionPerformed(null);
+                        importPreferncesMIActionPerformed(null);
                     }
                 } catch (Exception fnf) {
                     fnf.printStackTrace();
@@ -199,8 +200,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         filtersPanel = new javax.swing.JPanel();
         mainMenuBar = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
-        loadMenuItem = new javax.swing.JMenuItem();
-        saveAsMenuItem = new javax.swing.JMenuItem();
+        importPreferncesMI = new javax.swing.JMenuItem();
+        exportPreferencesMI = new javax.swing.JMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         exitMenuItem = new javax.swing.JMenuItem();
         viewMenu = new javax.swing.JMenu();
@@ -385,22 +386,24 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         fileMenu.setMnemonic('f');
         fileMenu.setText("File");
 
-        loadMenuItem.setMnemonic('l');
-        loadMenuItem.setText("Load settings...");
-        loadMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        importPreferncesMI.setMnemonic('l');
+        importPreferncesMI.setText("Import preferences...");
+        importPreferncesMI.setToolTipText("Imports preferences for this entire filter chain attached to this AEChip");
+        importPreferncesMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                loadMenuItemActionPerformed(evt);
+                importPreferncesMIActionPerformed(evt);
             }
         });
-        fileMenu.add(loadMenuItem);
+        fileMenu.add(importPreferncesMI);
 
-        saveAsMenuItem.setText("Save settings as...");
-        saveAsMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        exportPreferencesMI.setText("Export preferences...");
+        exportPreferencesMI.setToolTipText("Exports preferences for this entire  filter chain attached to this AEChip");
+        exportPreferencesMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                saveAsMenuItemActionPerformed(evt);
+                exportPreferencesMIActionPerformed(evt);
             }
         });
-        fileMenu.add(saveAsMenuItem);
+        fileMenu.add(exportPreferencesMI);
         fileMenu.add(jSeparator2);
 
         exitMenuItem.setMnemonic('x');
@@ -602,6 +605,21 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     // list of individual filter panels
     protected ArrayList<PanelType> filterPanels = new ArrayList();
 
+    public void rebuildPanel(FilterPanel oldPanel) {
+        int idx = 0;
+        for (FilterPanel fp : filterPanels) {
+            if (oldPanel == fp) {
+                FilterPanel newPanel = new FilterPanel(oldPanel.getFilter(), this);
+                filtersPanel.remove(oldPanel);
+                filtersPanel.add(newPanel, idx);
+                filtersPanel.invalidate();
+                break;
+            }
+            idx++;
+        }
+        pack();
+    }
+
     /**
      * rebuilds the frame contents using the existing filters in the filterChain
      */
@@ -610,49 +628,19 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         filtersPanel.removeAll();
         int n = 0;
         int w = 100, h = 30;
-        //        log.info("rebuilding FilterFrame for chip="+chip);
-        //        if(true){ //(filterChain.size()<=MAX_ROWS){
-        //            filtersPanel.setLayout(new BoxLayout(filtersPanel,BoxLayout.Y_AXIS));
-        //            filtersPanel.removeAll();
         for (EventFilter2D f : filterChain) {
-            FilterPanel p = new FilterPanel(f);
+            FilterPanel p = new FilterPanel(f, this);
             filtersPanel.add(p);
             filterPanels.add((PanelType) p);
             n++;
             h += p.getHeight();
             w = p.getWidth();
         }
-        //            pack();
         pack();
-        //        else{
-        //            // multi column layout
-        //            scrollPane.removeAll();
-        //            scrollPane.setLayout(new BoxLayout(scrollPane, BoxLayout.X_AXIS));
-        //            int filterNumber=0;
-        //            JPanel panel=null;
-        //
-        //            for(EventFilter2D f:filterChain){
-        //                if(filterNumber%MAX_ROWS==0){
-        //                    panel=new JPanel();
-        //                    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        //                    scrollPane.add(panel);
-        //                }
-        //                FilterPanel p=new FilterPanel(f);
-        //                panel.add(p);
-        //                filterPanels.add(p);
-        ////                if((filterNumber+1)%MAX_ROWS==0){
-        ////                         pad last panel with box filler at botton
-        ////                        panel.add(Box.createVerticalGlue());
-        ////                        System.out.println("filterNumber="+filterNumber);
-        ////                }
-        //                filterNumber++;
-        //            }
-        //            pack();
-        //        }
     }
     File lastFile;
 
-	private void loadMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadMenuItemActionPerformed
+	private void importPreferncesMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_importPreferncesMIActionPerformed
             JFileChooser fileChooser = new JFileChooser();
             String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // TODO seems to be same as for biases, should default to filterSettings folder of jAER
             lastFile = new File(lastFilePath);
@@ -667,11 +655,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             int retValue = fileChooser.showOpenDialog(this);
             if (retValue == JFileChooser.APPROVE_OPTION) {
                 File f = fileChooser.getSelectedFile();
-                loadFile(f);
+                importPrefs(f);
             }
-	}//GEN-LAST:event_loadMenuItemActionPerformed
+	}//GEN-LAST:event_importPreferncesMIActionPerformed
 
-    public void loadFile(File f) {
+    public void importPrefs(File f) {
         try {
             FileInputStream fis = new FileInputStream(f);
             Preferences.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
@@ -695,7 +683,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         restoreFilterEnabledStateCheckBoxMenuItem.setSelected(restoreFilterEnabledStateEnabled);
     }
 
-	private void saveAsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveAsMenuItemActionPerformed
+	private void exportPreferencesMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exportPreferencesMIActionPerformed
             JFileChooser fileChooser = new JFileChooser();
             String lastFilePath = prefs.get("FilterFrame.lastFile", defaultFolder); // getString the last folder
             lastFile = new File(lastFilePath);
@@ -731,10 +719,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                         log.warning("no filters to export");
                         return;
                     }
-                    Preferences chipPrefs = filterChain.get(0).getPrefs(); // assume all filters have same prefs node (derived from chip class)
                     FileOutputStream fos = new FileOutputStream(file);
-                    chipPrefs.exportSubtree(fos);
-                    log.info("exported prefs subtree " + chipPrefs.absolutePath() + " to file " + file);
+                    chip.getPrefs().exportSubtree(fos);
+                    log.info("exported prefs subtree " + chip.getPrefs().absolutePath() + " to file " + file);
                     fos.close();
                     recentFiles.addFile(file);
                     prefs.put("FilterFrame.lastFile", file.getCanonicalPath());
@@ -742,7 +729,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                     e.printStackTrace();
                 }
             }
-	}//GEN-LAST:event_saveAsMenuItemActionPerformed
+	}//GEN-LAST:event_exportPreferencesMIActionPerformed
 
 	private void formComponentMoved(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentMoved
             //        JAERWindowUtilities.constrainFrameSizeToScreenSize(this);
@@ -810,6 +797,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private void clearFilterJBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearFilterJBActionPerformed
         highlightTF.setText("");
         highlightOrShowOnly("");
+        highlightTF.requestFocus();
     }//GEN-LAST:event_clearFilterJBActionPerformed
 
     private void highlightTFKeyTyped(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_highlightTFKeyTyped
@@ -990,6 +978,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JMenuItem customizeMenuItem;
     private javax.swing.JToggleButton disableFilteringToggleButton;
     private javax.swing.JMenuItem exitMenuItem;
+    private javax.swing.JMenuItem exportPreferencesMI;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JPanel filterJPanel;
     protected javax.swing.JPanel filtersPanel;
@@ -999,12 +988,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JMenuItem highlightMI;
     private javax.swing.JRadioButton highlightRB;
     private javax.swing.JTextField highlightTF;
+    private javax.swing.JMenuItem importPreferncesMI;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JMenuItem jaerFilterHelpMI;
-    private javax.swing.JMenuItem loadMenuItem;
     private javax.swing.JMenuBar mainMenuBar;
     private javax.swing.JCheckBoxMenuItem measurePerformanceCheckBoxMenuItem;
     private javax.swing.ButtonGroup modeButtonGroup;
@@ -1014,7 +1003,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JButton resetAllButton;
     private javax.swing.JMenuItem resetPerformanceMeasurementMI;
     private javax.swing.JCheckBoxMenuItem restoreFilterEnabledStateCheckBoxMenuItem;
-    private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JScrollPane scrollPane;
     private javax.swing.JButton selectFiltersJB;
     private javax.swing.JCheckBox simpleCB;
@@ -1025,4 +1013,18 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JPanel updateIntervalPanel;
     private javax.swing.JMenu viewMenu;
     // End of variables declaration//GEN-END:variables
+
+    /**
+     * @return the copiedProps
+     */
+    public EventFilter.CopiedProps getCopiedProps() {
+        return copiedProps;
+    }
+
+    /**
+     * @param copiedProps the copiedProps to set
+     */
+    public void setCopiedProps(EventFilter.CopiedProps copiedProps) {
+        this.copiedProps = copiedProps;
+    }
 }

@@ -737,6 +737,17 @@
             <Property name="toolTipText" type="java.lang.String" value="Specifies which AEChip class is used either for playback or live interfacnig to a device"/>
           </Properties>
           <SubComponents>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator3">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="renewChipMI">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Renew AEChip"/>
+                <Property name="toolTipText" type="java.lang.String" value="Construct new instance of selected AEChip"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="renewChipMIActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="deviceMenuSpparator">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="customizeDevicesMenuItem">

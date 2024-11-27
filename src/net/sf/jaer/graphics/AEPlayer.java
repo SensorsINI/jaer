@@ -86,7 +86,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         new FileDeleter(fileChooser, preview);
         fileChooser.addPropertyChangeListener(preview);
         fileChooser.setAccessory(preview);
-        String lastFilePath = AEViewer.prefs.get("AEViewer.lastFile", "");
+        String lastFilePath = this.viewer.prefs.get("AEViewer.lastFile", "");
         // get the last folder
         viewer.lastFile = new File(lastFilePath);
 //            fileChooser.setFileFilter(datFileFilter);
