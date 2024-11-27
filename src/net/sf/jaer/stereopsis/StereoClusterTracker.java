@@ -449,7 +449,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 			}
 			final float dy = event.y - location.y;
 			//            return Math.abs(dx)+Math.abs(dy);
-			return distanceMetric (dx,dy);
+			return (float)Math.sqrt(dx*dx+dy*dy);
 			//            dx*=dx;
 			//            dy*=dy;
 			//            float distance=(float)Math.sqrt(dx+dy);
@@ -465,7 +465,7 @@ public class StereoClusterTracker extends RectangularClusterTracker{
 		protected final float distanceTo (StereoCluster c){
 			float dx = c.location.x - location.x;
 			float dy = c.location.y - location.y;
-			return distanceMetric (dx,dy);
+			return (float)Math.sqrt(dx*dx+dy*dy);
 			//            if(dx<0)dx=-dx;
 			//            if(dy<0)dy=-dy;
 			//            dx*=dx;
