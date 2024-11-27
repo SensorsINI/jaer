@@ -27,6 +27,7 @@ import java.io.PrintWriter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import net.sf.jaer.JaerConstants;
 
 /**
  * Talks to serial port, e.g. for FTDI USB interfaces.
@@ -37,7 +38,7 @@ public class HyperTerminal extends javax.swing.JFrame
         implements SerialPortEventListener {
 
     final static String PORT_NAME_DEFAULT = "COM5";
-    Preferences prefs = Preferences.userNodeForPackage(HyperTerminal.class);
+    Preferences prefs = JaerConstants.PREFS_ROOT;
     static final Logger log = Logger.getLogger("net.sf.jaer");
     //public final static String portName= "/dev/ttyUSB0";
     public String portName = prefs.get("portName", PORT_NAME_DEFAULT);

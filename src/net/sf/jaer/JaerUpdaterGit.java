@@ -91,7 +91,7 @@ public class JaerUpdaterGit {
 
     public static final boolean DEBUG = false; // TODO remember to revert false for production version,  true to clone here to tmp folders that do not overwrite our own .git
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final Preferences prefs = Preferences.userNodeForPackage(JaerUpdaterGit.class);
+    private static final Preferences prefs = JaerConstants.PREFS_ROOT;
 
     public static void throwIoExceptionIfNoGit() throws IOException {
         File f = new File(".git");

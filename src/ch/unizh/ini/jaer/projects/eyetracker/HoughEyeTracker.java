@@ -35,7 +35,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
  *@author Damian Gisler
  */
 public class HoughEyeTracker extends EventFilter2D implements FrameAnnotater, Observer {
-//    Preferences prefs=Preferences.userNodeForPackage(HoughEyeTracker.class);
     short[][] accumulatorArray;
     boolean[][] eyeMaskArray;
     InvEllipseParameter[] irisBufferArray;

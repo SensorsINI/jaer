@@ -20,7 +20,6 @@ import net.sf.jaer.chip.AEChip;
  * @author  Peter Hess
  */
 public class StereoMatchingFrame extends javax.swing.JFrame {
-    static Preferences prefs = Preferences.userNodeForPackage(StereoMatchingFrame.class);
     static Logger log=Logger.getLogger("net.sf.jaer");
     AEChip chip;
     int maxDisp;

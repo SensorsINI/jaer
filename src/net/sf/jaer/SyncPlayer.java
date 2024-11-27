@@ -72,7 +72,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     // used to sync up viewers for playback
     int numPlayers = 0;
     private ArrayList<AEViewer> playingViewers = new ArrayList<AEViewer>();
-    static Preferences prefs = Preferences.userNodeForPackage(SyncPlayer.class);
+    static Preferences prefs;
 
     /**
      * Create new SyncPlayer
@@ -82,6 +82,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     public SyncPlayer(AEViewer viewer, JAERViewer outer) {
         super(viewer);
+        prefs=viewer.prefs;
         this.outer = outer;
     }
 

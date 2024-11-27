@@ -53,7 +53,7 @@ import net.sf.jaer.util.XMLFileFilter;
  */
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener {
 
-    static Preferences prefs = Preferences.userNodeForPackage(BiasgenFrame.class);
+    static Preferences prefs;
     static Logger log = Logger.getLogger("net.sf.jaer");
     private Biasgen biasgen;
     JPanel biasgenPanel = null;
@@ -65,7 +65,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     File currentFile = null;
     private boolean fileModified = false;
     Chip chip;
-    private boolean viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
+    private boolean viewFunctionalBiasesEnabled;
     private String defaultFolder = ""; // "/biasgenSettings is appended in importPreferencesDialog
 
     /**
@@ -74,6 +74,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
      * @param chip a chip with a biasgen
      */
     public BiasgenFrame(Chip chip) {
+        prefs=chip.getPrefs();
+        viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
         if (chip.getBiasgen() == null) {
             throw new RuntimeException("null biasgen while constructing BiasgenFrame");
         }

@@ -69,7 +69,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private int NBUFFERS = 100; // should match somehow the expected number of datagrams that come in a burst before the readPacket() method is called.
 
     // TODO If the remote host sends 16 bit timestamps, then a local unwrapping is done to extend the time range
-    private static Preferences prefs = Preferences.userNodeForPackage(AEUnicastInput.class);
+    private static Preferences prefs= net.sf.jaer.JaerConstants.PREFS_ROOT;
     private DatagramSocket datagramSocket = null;
     private boolean printedHost = false;
     private int port = prefs.getInt("AEUnicastInput.port", AENetworkInterfaceConstants.DATAGRAM_PORT);

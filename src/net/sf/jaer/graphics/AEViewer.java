@@ -268,7 +268,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
     volatile private PlayMode playMode = PlayMode.WAITING;
     /** The Preferences node for the AEViewer, which has it's own node in the preferences tree, below the package */
-    public Preferences prefs = prefs = Preferences.userNodeForPackage(AEViewer.class).node(getClass().getSimpleName());
+    public Preferences prefs = JaerConstants.PREFS_ROOT.node("AEViewer");
     static Logger log = Logger.getLogger("net.sf.jaer");
     //    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
     EventExtractor2D extractor = null;
@@ -322,15 +322,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public static String[] DEFAULT_CHIP_CLASS_NAMES = {
         DEFAULT_CHIP_CLASS,
-        //        DAVIS240B.class.getName(),
         DVS128.class.getName(),
         DAVIS240C.class.getName(),
-        Davis346blue.class.getName(),
         Davis346red.class.getName(),
         Davis346redColor.class.getName(),
-        //        Davis640.class.getName(),
+        Davis346blue.class.getName(),
         DVXplorer.class.getName(),
-        CochleaAMS1c.class.getName(),
+//        CochleaAMS1c.class.getName(),
         DVS640.class.getName(),
         DVS1280x720SD.class.getName()
     };

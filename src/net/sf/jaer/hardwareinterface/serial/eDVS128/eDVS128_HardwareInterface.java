@@ -21,6 +21,7 @@ import java.util.prefs.Preferences;
 
 import ch.unizh.ini.jaer.chip.retina.DVS128;
 import gnu.io.SerialPort;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -85,7 +86,7 @@ P          - enter reprogramming mode
 public class eDVS128_HardwareInterface implements HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface,
 	Observer/* , CommPortOwnershipListener */ {
 
-	private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_HardwareInterface.class);
+	private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE.node("eDVS128");
 	public PropertyChangeSupport support = new PropertyChangeSupport(this);
 	static Logger log = Logger.getLogger("net.sf.jaer");
 	private AEChip chip;

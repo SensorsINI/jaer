@@ -38,7 +38,7 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
     // the IPot is the master; it is an Observable that notifies Observers when its value changes.
     // thus if the slider changes the pot value, the pot calls us back here to update the appearance of the slider and of the
     // text field. likewise, if code changes the pot, the appearance here will automagically be updated.
-    static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
+    static Preferences prefs;
     static double log2 = Math.log(2.);
     static Logger log = Logger.getLogger("net.sf.jaer");
     IPot pot;
@@ -47,6 +47,8 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
     private boolean addedUndoListener=false;
    private long lastMouseWheelMovementTime=0;
     private final long minDtMsForWheelEditPost=500;
+    public boolean sliderEnabled=prefs.getBoolean("IPotGUIControl.sliderEnabled",true);
+    public boolean valueEnabled=prefs.getBoolean("IPotGUIControl.currentEnabled",true);
     
     // see java tuturial http://java.sun.com/docs/books/tutorial/uiswing/components/slider.html
     // and http://java.sun.com/docs/books/tutorial/uiswing/components/formattedtextfield.html
@@ -57,6 +59,7 @@ public class IPotSliderTextControl extends JPanel implements Observer, StateEdit
      */
     public IPotSliderTextControl(IPot pot) {
         this.pot = pot;
+        prefs=pot.getChip().getPrefs();
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent stateChanged event
         getInsets().set(0, 0, 0, 0);
         if (pot != null) {
@@ -432,21 +435,21 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         return this.valueTextField;
     }
     
-    public static boolean isCurrentEnabled() {
-        return IPotSliderTextControl.valueEnabled;
+    public boolean isCurrentEnabled() {
+        return this.valueEnabled;
     }
     
-    public static void setCurrentEnabled(final boolean currentEnabled) {
-        IPotSliderTextControl.valueEnabled = currentEnabled;
+    public void setCurrentEnabled(final boolean currentEnabled) {
+        this.valueEnabled = currentEnabled;
         prefs.putBoolean("IPotGUIControl.currentEnabled", currentEnabled);
     }
     
-    public static boolean isSliderEnabled() {
-        return IPotSliderTextControl.sliderEnabled;
+    public boolean isSliderEnabled() {
+        return this.sliderEnabled;
     }
     
-    public static void setSliderEnabled(final boolean sliderEnabled) {
-        IPotSliderTextControl.sliderEnabled = sliderEnabled;
+    public void setSliderEnabled(final boolean sliderEnabled) {
+        this.sliderEnabled = sliderEnabled;
         prefs.putBoolean("IPotGUIControl.sliderEnabled", sliderEnabled);
     }
     
@@ -461,8 +464,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
     }
     
-    public static boolean sliderEnabled=prefs.getBoolean("IPotGUIControl.sliderEnabled",true);
-    public static boolean valueEnabled=prefs.getBoolean("IPotGUIControl.currentEnabled",true);
     
     static String[] controlNames={"Type","Sex","Slider","BitValue","BitView"};
     

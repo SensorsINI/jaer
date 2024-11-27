@@ -50,7 +50,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     // tobi commented out DontResize because the filter frame was extending below the bottom of screen, making it awkward to control properties for deep implementations
     final int MAX_ROWS = 10; // max rows of filters, then wraps back to top
-    static Preferences prefs = Preferences.userNodeForPackage(FilterFrame.class);
+    static Preferences prefs;
     Logger log = Logger.getLogger("net.sf.jaer");
     AEChip chip;
     FilterChain filterChain;
@@ -65,13 +65,15 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     public static final String LAST_FILTER_SELECTED_KEY = "FilterFrame.lastFilterSelected";
     private JButton resetStatisticsButton = null;
     private Border selectedBorder = new LineBorder(Color.red);
-    private EventFilter.CopiedProps copiedProps = null;
+    
+    private static EventFilter.CopiedProps copiedProps = null; // static so we can copy between chips which get a new FilterPanel
 
     /**
      * Creates new form FilterFrame
      */
     public FilterFrame(AEChip chip) {
         this.chip = chip;
+        prefs=chip.getPrefs();
         this.filterChain = chip.getFilterChain();
         chip.setFilterFrame(this);
         setName("FilterFrame");
@@ -1017,14 +1019,14 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     /**
      * @return the copiedProps
      */
-    public EventFilter.CopiedProps getCopiedProps() {
+    public static EventFilter.CopiedProps getCopiedProps() {
         return copiedProps;
     }
 
     /**
      * @param copiedProps the copiedProps to set
      */
-    public void setCopiedProps(EventFilter.CopiedProps copiedProps) {
-        this.copiedProps = copiedProps;
+    public static void setCopiedProps(EventFilter.CopiedProps copiedProps) {
+        FilterFrame.copiedProps = copiedProps;
     }
 }

@@ -27,7 +27,6 @@ import net.sf.jaer.eventprocessing.EventFilter;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RawAddressFilter {
     
-    protected Preferences prefs=Preferences.userNodeForPackage(EventFilter.class);
     protected PropertyChangeSupport support=new PropertyChangeSupport(this);
     
     /** default true */

@@ -46,19 +46,19 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
      *
      */
     private static final long serialVersionUID = -1987171851823131804L;
-    static Preferences prefs = Preferences.userNodeForPackage(IPotSliderTextControl.class);
+    static Preferences prefs;
     static Logger log = Logger.getLogger("net.sf.jaer");
     static double ln2 = Math.log(2.);
     TowerOnChip6BitVDAC pot;
     StateEdit edit = null;
     UndoableEditSupport editSupport = new UndoableEditSupport();
     BiasgenFrame frame;
-    public static boolean sliderEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sliderEnabled", true);
-    public static boolean valueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.valueEnabled", true);
-    public static boolean bitValueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitValueEnabled", false);
-    public static boolean bitViewEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitViewEnabled", true);
-    public static boolean sexEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sexEnabled", true);
-    public static boolean typeEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.typeEnabled", true);
+    public static boolean sliderEnabled;
+    public static boolean valueEnabled;
+    public static boolean bitValueEnabled;
+    public static boolean bitViewEnabled ;
+    public static boolean sexEnabled;
+    public static boolean typeEnabled ;
     private boolean addedUndoListener = false;
     private boolean dontProcessRefSlider = false, dontProcessRegBiasSlider = false;
 
@@ -69,6 +69,14 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
      */
     public TowerOnChip6BitVDACControl(final TowerOnChip6BitVDAC pot) {
         this.pot = pot;
+        prefs = pot.getChip().getPrefs();
+        sliderEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sliderEnabled", true);
+        valueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.valueEnabled", true);
+        bitValueEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitValueEnabled", false);
+        bitViewEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.bitViewEnabled", true);
+        sexEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.sexEnabled", true);
+        typeEnabled = TowerOnChip6BitVDACControl.prefs.getBoolean("ConfigurableIPot.typeEnabled", true);
+
         initComponents(); // this has unfortunate byproduect of resetting pot value to 0... don't know how to prevent
         // stateChanged event
         dontProcessRegBiasSlider = true;
@@ -748,7 +756,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
     }
 
     public static boolean isSliderEnabled() {
-        return IPotSliderTextControl.sliderEnabled;
+        return sliderEnabled;
     }
 
     public static void setSliderEnabled(final boolean sliderEnabled) {

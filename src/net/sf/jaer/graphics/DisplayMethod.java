@@ -37,9 +37,9 @@ import static org.apache.tools.ant.util.ScriptManager.javax;
  *
  * @author tobi
  */
-public abstract class DisplayMethod  implements PropertyChangeListener {
+public abstract class DisplayMethod implements PropertyChangeListener {
 
-    protected Preferences prefs=Preferences.userNodeForPackage(DisplayMethod.class);
+    protected Preferences prefs;
     private ChipCanvas chipCanvas;
     protected GLUT glut; // GL extensions
     protected GLU glu; // GL utilities
@@ -49,7 +49,7 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
     private ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
-    private int statusChangeDisplayTimeMillis = prefs.getInt("statusChangeDisplayTimeMillis", 1000);
+    private int statusChangeDisplayTimeMillis;
     /**
      * Provides PropertyChangeSupport for all DisplayMethods
      */
@@ -62,6 +62,9 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
      */
     public DisplayMethod(ChipCanvas parent) {
         chipCanvas = parent;
+        prefs = parent.getChip().getPrefs();
+        statusChangeDisplayTimeMillis = prefs.getInt("statusChangeDisplayTimeMillis", 1000);
+
         glut = chipCanvas.glut;
         glu = chipCanvas.glu;
         chip = chipCanvas.getChip();
@@ -191,7 +194,7 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
      * @param drawable the OpenGL context
      */
     protected void displayStatusChangeText(GLAutoDrawable drawable) {
-        if (statusChangeString == null || statusChangeDisplayTimeMillis<=0) {
+        if (statusChangeString == null || statusChangeDisplayTimeMillis <= 0) {
             return;
         }
         long now = System.currentTimeMillis();
@@ -206,21 +209,21 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
         }
         String[] ss = s.split("\n");
         int nlines = ss.length;
-        int maxlenidx=Integer.MIN_VALUE;
-        int idx=0;
-        for(String sss:ss){
-            if(sss.length()>maxlenidx){
-                maxlenidx=idx;
+        int maxlenidx = Integer.MIN_VALUE;
+        int idx = 0;
+        for (String sss : ss) {
+            if (sss.length() > maxlenidx) {
+                maxlenidx = idx;
                 idx++;
             }
         }
 
-        int fontsize = Math.round(8*(chip.getSizeX()/346f)); // heuristic to scale font based on empirical estimate for DAVIS346
+        int fontsize = Math.round(8 * (chip.getSizeX() / 346f)); // heuristic to scale font based on empirical estimate for DAVIS346
         // if font is too small, then make a larger one and scale all the drawing
-        float scale=1;
-        if(fontsize<10){
-            fontsize*=2;
-            scale=.5f;
+        float scale = 1;
+        if (fontsize < 10) {
+            fontsize *= 2;
+            scale = .5f;
         }
 //        log.fine(String.format("Chose fontsize=%d and scale=%f for chip with %d horizontal pixels",fontsize,scale,chip.getSizeX()));
         GL2 gl = drawable.getGL().getGL2();
@@ -230,12 +233,12 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
             gl.glPushMatrix();
             gl.glScalef(scale, scale, scale); // everything is scaled (maybe) down by this, e.g. 0.5 for DVS128
             Rectangle2D r = renderer.getBounds(ss[maxlenidx]); // get bounds of max width string
-            float h1 = (float) (r.getHeight()*scale); // height of this line
+            float h1 = (float) (r.getHeight() * scale); // height of this line
             final float linespace = (float) (h1 * 1.3f); // line spacing as factor of line height
             float ht = (float) h1 * nlines; // total height of multiline string
-            float w = (float) (r.getWidth()*scale); // width of widest line
+            float w = (float) (r.getWidth() * scale); // width of widest line
             float ypos = (float) (chip.getSizeY() / 2 / scale) + (ht / 2);
-            float xpos = (float) (chip.getSizeX() / 2 )/scale; // xpos is center because alignment is 0.5 below
+            float xpos = (float) (chip.getSizeX() / 2) / scale; // xpos is center because alignment is 0.5 below
 //            log.info(String.format("ypos=%.1f",ypos));
             float y = ypos;
             for (String sss : ss) {
@@ -282,7 +285,8 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
     }
 
     /**
-     * @param statusChangeDisplayTimeMillis the statusChangeDisplayTimeMillis to set
+     * @param statusChangeDisplayTimeMillis the statusChangeDisplayTimeMillis to
+     * set
      */
     public void setStatusChangeDisplayTimeMillis(int statusChangeDisplayTimeMillis) {
         this.statusChangeDisplayTimeMillis = statusChangeDisplayTimeMillis;

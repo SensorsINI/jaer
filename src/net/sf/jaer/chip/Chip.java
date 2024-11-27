@@ -22,6 +22,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -124,18 +125,18 @@ public class Chip extends Observable {
             if (Preferences.userRoot().nodeExists(prefsNodeNameOriginal()) && !Preferences.userRoot().nodeExists(prefsNodeName())) {
                 setPrefs(Preferences.userRoot().node(prefsNodeNameOriginal())); // set prefs here based on actual class
 //                PreferencesMover.moveChipPreferences(getPrefs());
-                log.fine(String.format("Older and not newer Preference node %s for chip %s existed already, using it", prefs.absolutePath(), getClass().getName()));
+                log.warning(String.format("For chip %s, older prefs %s and not newer prefs %s existed, using older %s",  getClass().getSimpleName(), prefsNodeNameOriginal(), prefsNodeName(), prefs.absolutePath()));
             } else if (Preferences.userNodeForPackage(Chip.class).nodeExists(prefsNodeName())) {
                 setPrefs(Preferences.userRoot().node(prefsNodeName()));
-                log.fine(String.format("Chip-specific Preference node %s for chip %s exists, will use it", prefs.absolutePath(), getClass().getName()));
+                log.info(String.format("Chip-specific Preference node %s for chip %s exists, will use it", prefs.absolutePath(), getClass().getSimpleName()));
             } else {
-                log.fine(String.format("Making new Preference node %s for chip %s", prefsNodeName(), getClass().getName()));
                 setPrefs(Preferences.userRoot().node(prefsNodeName())); // set prefs here based on actual class
+                log.info(String.format("Mde new Preference node %s for chip %s", prefs.absolutePath(), getClass().getSimpleName()));
             }
         } catch (BackingStoreException ex) {
             log.warning(String.format("Got exception when checking if Preference node exists: %s", ex.toString()));
         }
-        defaultFirmwareBixFileForBlankDevice = getPrefs().get(DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE, null);
+        
         if (PreferencesMover.hasOldPreferences(this)) {
             log.warning(String.format("Chip %s has old style preferences", this.getClass().getSimpleName()));
             PreferencesMover.movePreferencesDialog(this);
@@ -147,6 +148,7 @@ public class Chip extends Observable {
         } catch (IOException e) {
             log.warning("couldn't make remote control for " + this + " : " + e);
         }
+        defaultFirmwareBixFileForBlankDevice = getPrefs().get(DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE, null);
     }
 
     /**
@@ -156,7 +158,7 @@ public class Chip extends Observable {
      * @return getClass().getPackageName().replace('.', '/')+"/"+getClass().getSimpleName(), e.g.,  chip eu.seebetter.ini.chips.davis.Davis346Blue
      */
     private String prefsNodeName() {
-        return getClass().getPackageName().replace('.', '/')+"/"+getClass().getSimpleName();
+        return JaerConstants.PREFS_ROOT_CHIPS.node(getClass().getSimpleName()).absolutePath();
     }
 
     /** The original preference node name for a Chip, which was the chip package, which contains typically many chips

@@ -21,7 +21,7 @@ import net.sf.jaer.biasgen.VDAC.VPot;
  */
 public final class CochleaAMS1cBasicPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
-    Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1cBasicPanel.class);
+    Preferences prefs;
     Logger log = Logger.getLogger("net.sf.jaer");
     CochleaAMS1c chip;
     private CochleaAMS1c.Biasgen biasgen;
@@ -55,6 +55,7 @@ public final class CochleaAMS1cBasicPanel extends javax.swing.JPanel implements 
      */
     public CochleaAMS1cBasicPanel(CochleaAMS1c chip) {
         this.chip = chip;
+        prefs=chip.getPrefs();
         biasgen = (CochleaAMS1c.Biasgen) chip.getBiasgen();
         initComponents();
         PotTweaker[] tweakers = {VgainTweaker, VqTweaker, NeuronVLeakTweaker, Vbias1Tweaker, Vbias2Tweaker};

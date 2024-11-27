@@ -46,12 +46,12 @@ public class AESocket implements AESocketSettings{
     private static int t0_ref = -1;
 
 
+    static Preferences prefs = net.sf.jaer.JaerConstants.PREFS_ROOT;
     private int receiveBufferSize=prefs.getInt("AESocket.receiveBufferSize",DEFAULT_RECEIVE_BUFFER_SIZE_BYTES);
     private int sendBufferSize=prefs.getInt("AESocket.sendBufferSize",DEFAULT_SEND_BUFFER_SIZE_BYTES);
     private int bufferedStreamSize=prefs.getInt("AESocket.bufferedStreamSize",DEFAULT_BUFFERED_STREAM_SIZE_BYTES);
     private boolean useBufferedStreams=prefs.getBoolean("AESocket.useBufferedStreams",true);
     private boolean flushPackets=prefs.getBoolean("AESocket.flushPackets",true);
-    static Preferences prefs = Preferences.userNodeForPackage(AESocket.class);
     private boolean sequenceNumberEnabled = prefs.getBoolean("AESocket.sequenceNumberEnabled",true);
     private boolean addressFirstEnabled = prefs.getBoolean("AESocket.addressFirstEnabled",true);
     private float timestampMultiplier = prefs.getFloat("AESocket.timestampMultiplier", DEFAULT_TIMESTAMP_MULTIPLIER);

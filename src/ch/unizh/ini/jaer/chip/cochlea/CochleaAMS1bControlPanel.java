@@ -44,7 +44,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Observer {
 
-    Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1bControlPanel.class);
+    Preferences prefs;
     Logger log = Logger.getLogger("net.sf.jaer");
     CochleaAMS1b chip;
     CochleaAMS1b.Biasgen biasgen;
@@ -90,6 +90,7 @@ public class CochleaAMS1bControlPanel extends javax.swing.JPanel implements Obse
      */
     public CochleaAMS1bControlPanel(CochleaAMS1b chip) {
         this.chip = chip;
+        prefs=chip.getPrefs();
         biasgen = (CochleaAMS1b.Biasgen) chip.getBiasgen();
         initComponents();
         Integer value = 0;

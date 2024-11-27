@@ -74,7 +74,7 @@ import net.sf.jaer.util.EngineeringFormat;
 public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements DisplayMethod3D {
 
     private EngineeringFormat engFmt = new EngineeringFormat();
-    static final Preferences prefs = Preferences.userNodeForPackage(SpaceTimeRollingEventDisplayMethod.class);
+    final Preferences prefs;
 
     private DavisDisplayConfigInterface config;
 //    private boolean displayEvents = true;
@@ -109,13 +109,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
     private volatile boolean regenerateAxesDisplayList = true;
-    private float timeAspectRatio = prefs.getFloat("timeAspectRatio", 4); // depth of 3d cube compared to max of x and y chip dimension
+    private float timeAspectRatio; // depth of 3d cube compared to max of x and y chip dimension
     private float pointSize = 4f;
 
     private JMenu displayMenu = null;
 
-    private boolean additiveColorEnabled = prefs.getBoolean("additiveColorEnabled", false);
-    private boolean largePointSizeEnabled = prefs.getBoolean("largePointSizeEnabled", false);
+    private boolean additiveColorEnabled;
+    private boolean largePointSizeEnabled;
 
     private boolean displayDvsEvents = true;
     private boolean displayApsFrames = true;
@@ -123,11 +123,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     final private FramesInTimeWindow apsFramesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
     final private FramesInTimeWindow dvsFramesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
-    private float framesAlpha = prefs.getFloat("framesAlpha", .5f);
-    private boolean drawFramesOnOwnAxes = prefs.getBoolean("drawFramesOnOwnAxes", false);
-    private float frameEventSpacing = prefs.getFloat("frameEventSpacing", 1.2f);
+    private float framesAlpha;
+    private boolean drawFramesOnOwnAxes;
+    private float frameEventSpacing;
 
-    private boolean displayDvsFrames = prefs.getBoolean("displayDvsFrames", false);
+    private boolean displayDvsFrames;
 
     private ChipCanvas.Zoom zoom = null;
     private ChipCanvas.Zoom oldZoom = null;
@@ -141,6 +141,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
+        prefs = chipCanvas.prefs;
+        drawFramesOnOwnAxes = prefs.getBoolean("drawFramesOnOwnAxes", false);
+        frameEventSpacing = prefs.getFloat("frameEventSpacing", 1.2f);
+        additiveColorEnabled = prefs.getBoolean("additiveColorEnabled", false);
+        largePointSizeEnabled = prefs.getBoolean("largePointSizeEnabled", false);
+        timeAspectRatio = prefs.getFloat("timeAspectRatio", 4); // depth of 3d cube compared to max of x and y chip dimension
+        displayDvsFrames = prefs.getBoolean("displayDvsFrames", false);
+        framesAlpha = prefs.getFloat("framesAlpha", .5f);
         zoom = chipCanvas.createZoom();
     }
 
@@ -695,8 +703,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      * @param x 0-1
      * @param y
      * @param z 0-1 along z
-     * @param zmax the max z in pixels (i.e max of width and height times aspect ratio)
-     * @param angleDeg the additional angle, 90 to lie along z axis, 0 to align with space axes
+     * @param zmax the max z in pixels (i.e max of width and height times aspect
+     * ratio)
+     * @param angleDeg the additional angle, 90 to lie along z axis, 0 to align
+     * with space axes
      * @throws GLException
      */
     private void drawPlotLabel(String s, GL2 gl, float x, float y, float z, float zmax, float angleDeg) throws GLException {
@@ -704,7 +714,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         textRenderer.begin3DRendering();
         gl.glTranslatef(x * sx, y * sy, z * (-zmax));
 //        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
-        gl.glRotatef( angleDeg, 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+        gl.glRotatef(angleDeg, 0, 1, 0); // rotate viewpoint by angle deg around the y axis
         textRenderer.draw3D(s, 0, 0, 0, 1.5f);
         textRenderer.end3DRendering();
         gl.glPopMatrix();

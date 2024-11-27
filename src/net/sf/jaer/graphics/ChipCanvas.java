@@ -96,7 +96,7 @@ import net.sf.jaer.graphics.AEViewer.PlayMode;
  */
 public class ChipCanvas implements GLEventListener, Observer {
 
-    protected Preferences prefs = Preferences.userNodeForPackage(ChipCanvas.class);
+    protected Preferences prefs; // set in constructor to be chip prefs
     /**
      * Default scaling from chip pixel to screen pixels
      */
@@ -127,7 +127,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * width and height of pixel array in canvas in screen pixels. these are
      * different than the actual canvas size
      */
-    protected int pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
+    protected int pwidth;
 
     /**
      * the number of screen pixels for one chip pixel.
@@ -155,7 +155,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     /**
      * border around drawn pixel array in screen pixels
      */
-    private int borderSpacePixels = prefs.getInt("borderSpacePixels", 20);
+    private int borderSpacePixels;
     /**
      * border in screen pixels when in 3d space-time rendering mode
      */
@@ -168,7 +168,6 @@ public class ChipCanvas implements GLEventListener, Observer {
     // chip fills drawable space
     private double ZCLIP = 1;
     private TextRenderer renderer = null;
-
 
     private Point mouseDragScreenStartPoint = new Point(0, 0), mouseDragScreenCurrentPoint = new Point(0, 0),
             mouseDragChipPixelStartPoint = new Point(0, 0), mouseDragChipPixelCurrentPoint = new Point(0, 0);
@@ -186,12 +185,13 @@ public class ChipCanvas implements GLEventListener, Observer {
     public ChipCanvas(final Chip2D chip) {
         this.chip = chip;
         this.prefs = chip.getPrefs();
+        borderSpacePixels = prefs.getInt("borderSpacePixels", 10);
         anglex = prefs.getFloat("ChipCanvas.anglex", 5);
         angley = prefs.getFloat("ChipCanvas.angley", 10);
         origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
-        prefs.getInt("borderSpacePixels", 20);
-
+        pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
+        
         // GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
         // GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that
         // used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
@@ -837,7 +837,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 public void mousePressed(final MouseEvent evt) {
                     mouseDragScreenStartPoint.setLocation(evt.getPoint());
                     mouseDragChipPixelStartPoint = getPixelFromMouseEvent(evt);
-                    Zoom dragStartZoom=new Zoom();
+                    Zoom dragStartZoom = new Zoom();
                     clipAreaDragStart = dragStartZoom.clipArea;
                     origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
                 }
@@ -1454,7 +1454,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 getClipArea().top -= (1 - fy) * ch * zfac;
                 // only bookkeeping, not used for zoom
                 zoomFactor *= inout == 0 ? 1 : (inout > 0 ? zoomStepRatio : 1 / zoomStepRatio);
-            } else if(getClipArea()!=null) { // inout==0, just pan to mouse
+            } else if (getClipArea() != null) { // inout==0, just pan to mouse
                 // compute dx,dy for mouse since start, set clip area relative to starting clip area
                 float dx = mouseDragScreenCurrentPoint.x - mouseDragScreenStartPoint.x,
                         dy = mouseDragScreenCurrentPoint.y - mouseDragScreenStartPoint.y;

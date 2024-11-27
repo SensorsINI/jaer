@@ -389,7 +389,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     synchronized public void contructPreferredFilters() {
         clear();
         ArrayList<String> classNames;
-        Preferences prefs = chip.getPrefs(); // Preferences.userNodeForPackage(chip.getClass()); // getString prefs for the Chip, not for the FilterChain class
+        Preferences prefs = chip.getPrefs(); 
         try {
             byte[] bytes = prefs.getByteArray(prefsKey(), null);
             if (bytes != null) {
