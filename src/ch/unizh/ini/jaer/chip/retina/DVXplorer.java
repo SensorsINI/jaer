@@ -985,7 +985,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         
         public DVXDisplayMethod(final DVXplorer chip) {
             super(chip.getCanvas());
-            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 70));
+            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 10));
         }
         
         @Override

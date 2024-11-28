@@ -881,13 +881,13 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     static String[] controlNames = {"Type", "Sex", "Slider"}; // TODO ,"BitValue","BitView"
     public static JMenu viewMenu;
 
-    static {
-        viewMenu = new JMenu("View options");
-        viewMenu.setMnemonic('V');
-        for (int i = 0; i < controlNames.length; i++) {
-            viewMenu.add(new VisibleSetter(controlNames[i])); // add a menu item to enable view of this class of information
-        }
-    }
+//    static {
+//        viewMenu = new JMenu("View options");
+//        viewMenu.setMnemonic('V');
+//        for (int i = 0; i < controlNames.length; i++) {
+//            viewMenu.add(new Visi    bleSetter(controlNames[i])); // add a menu item to enable view of this class of information
+//        }
+//    }
 
     /**
      * this inner static class updates the appearance of all instances of the

@@ -131,7 +131,7 @@ public class Chip extends Observable {
                 log.info(String.format("Chip-specific Preference node %s for chip %s exists, will use it", prefs.absolutePath(), getClass().getSimpleName()));
             } else {
                 setPrefs(Preferences.userRoot().node(prefsNodeName())); // set prefs here based on actual class
-                log.info(String.format("Mde new Preference node %s for chip %s", prefs.absolutePath(), getClass().getSimpleName()));
+                log.info(String.format("Made new Preference node %s for chip %s", prefs.absolutePath(), getClass().getSimpleName()));
             }
         } catch (BackingStoreException ex) {
             log.warning(String.format("Got exception when checking if Preference node exists: %s", ex.toString()));
@@ -139,7 +139,7 @@ public class Chip extends Observable {
         
         if (PreferencesMover.hasOldPreferences(this)) {
             log.warning(String.format("Chip %s has old style preferences", this.getClass().getSimpleName()));
-            PreferencesMover.movePreferencesDialog(this);
+            PreferencesMover.migratePreferencesDialog(null, this);
         }
 
         try {
@@ -157,7 +157,7 @@ public class Chip extends Observable {
      *
      * @return getClass().getPackageName().replace('.', '/')+"/"+getClass().getSimpleName(), e.g.,  chip eu.seebetter.ini.chips.davis.Davis346Blue
      */
-    private String prefsNodeName() {
+    public String prefsNodeName() {
         return JaerConstants.PREFS_ROOT_CHIPS.node(getClass().getSimpleName()).absolutePath();
     }
 
@@ -165,7 +165,7 @@ public class Chip extends Observable {
      * 
      * @return getClass().getPackageName().replace('.', '/'), e.g. chip eu.seebetter.ini.chips.davis
      */
-    private String prefsNodeNameOriginal() {
+    public String prefsNodeNameOriginal() {
         return getClass().getPackageName().replace('.', '/');
     }
 

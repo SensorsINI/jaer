@@ -158,7 +158,7 @@ public class Masterbias extends Observable implements BiasgenPreferences {
 	}
 
 	private String prefsKey() {
-		return biasgen.getChip().getClass().getSimpleName() + ".Masterbias.";
+		return "Masterbias.";
 	}
 
 	@Override

@@ -184,7 +184,7 @@ public class VPot extends Pot implements RemoteControlled {
      */
     @Override
     protected String prefsKey() {
-        return chip.prefsHeader() + ".VPot." + name;
+        return "VPot." + name;
     }
 
     public String processRemoteControlCommand(RemoteControlCommand command, String input) {

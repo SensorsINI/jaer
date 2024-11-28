@@ -477,6 +477,14 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         this.typeEnabled = typeEnabled;
         prefs.putBoolean("this.typeEnabled", typeEnabled);
     }
+    
+     public javax.swing.JPanel getSliderAndValuePanel() {
+        return sliderAndValuePanel;
+    }
+
+    public void setSliderAndValuePanel(javax.swing.JPanel sliderAndValuePanel) {
+        this.sliderAndValuePanel = sliderAndValuePanel;
+    }
 
     static ArrayList<PotGUIControl> allInstances = new ArrayList<PotGUIControl>();
 
@@ -487,58 +495,53 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
         }
     }
 
-    static String[] controlNames = {"Type", "Sex", "Slider", "BitValue", "BitView"};
-    public static JMenu viewMenu;
+//    static String[] controlNames = {"Type", "Sex", "Slider", "BitValue", "BitView"};
+//    public static JMenu viewMenu;
+//
+//    static {
+//        viewMenu = new JMenu("View options");
+//        viewMenu.setMnemonic('V');
+//        for (int i = 0; i < controlNames.length; i++) {
+//            viewMenu.add(new VisibleSetter(controlNames[i])); // add a menu item to enable view of this class of information
+//        }
+//    }
+//
+//    /**
+//     * this inner static class updates the appearance of all instances of the
+//     * control
+//     */
+//    static class VisibleSetter extends JCheckBoxMenuItem {
+//
+//        public String myName;
+//        Method setMethod, isSetMethod;
+//
+//        public VisibleSetter(String myName) {
+//            super(myName);
+//            this.myName = myName;
+//            try {
+//                Method[] ms=getClass().getDeclaredMethods();
+//                setMethod = getClass().getMethod("set" + myName + "Enabled", Boolean.TYPE);
+//                isSetMethod = getClass().getMethod("is" + myName + "Enabled");
+//                boolean isSel = (Boolean) isSetMethod.invoke(PotGUIControl.class);
+//                setSelected(isSel);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//            addActionListener(new ActionListener() {
+//                public void actionPerformed(ActionEvent e) {
+//                    try {
+//                        setMethod.invoke(IPotSliderTextControl.class, isSelected());
+//                        setSelected(isSelected());
+//                        ;
+//                    } catch (Exception e2) {
+//                        e2.printStackTrace();
+//                    }
+//                    PotGUIControl.revalidateAllInstances();
+//                }
+//            });
+//        }
+//    }
+//
 
-    static {
-        viewMenu = new JMenu("View options");
-        viewMenu.setMnemonic('V');
-        for (int i = 0; i < controlNames.length; i++) {
-            viewMenu.add(new VisibleSetter(controlNames[i])); // add a menu item to enable view of this class of information
-        }
-    }
-
-    /**
-     * this inner static class updates the appearance of all instances of the
-     * control
-     */
-    static class VisibleSetter extends JCheckBoxMenuItem {
-
-        public String myName;
-        Method setMethod, isSetMethod;
-
-        public VisibleSetter(String myName) {
-            super(myName);
-            this.myName = myName;
-            try {
-                setMethod = getClass().getMethod("set" + myName + "Enabled", Boolean.TYPE);
-                isSetMethod = getClass().getMethod("is" + myName + "Enabled");
-                boolean isSel = (Boolean) isSetMethod.invoke(PotGUIControl.class);
-                setSelected(isSel);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    try {
-                        setMethod.invoke(IPotSliderTextControl.class, isSelected());
-                        setSelected(isSelected());
-                        ;
-                    } catch (Exception e2) {
-                        e2.printStackTrace();
-                    }
-                    PotGUIControl.revalidateAllInstances();
-                }
-            });
-        }
-    }
-
-    public javax.swing.JPanel getSliderAndValuePanel() {
-        return sliderAndValuePanel;
-    }
-
-    public void setSliderAndValuePanel(javax.swing.JPanel sliderAndValuePanel) {
-        this.sliderAndValuePanel = sliderAndValuePanel;
-    }
 
 }

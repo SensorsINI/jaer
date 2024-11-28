@@ -32,6 +32,7 @@ import javax.swing.border.TitledBorder;
 import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.JAERWindowUtilities;
@@ -65,7 +66,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     public static final String LAST_FILTER_SELECTED_KEY = "FilterFrame.lastFilterSelected";
     private JButton resetStatisticsButton = null;
     private Border selectedBorder = new LineBorder(Color.red);
-    
+
     private static EventFilter.CopiedProps copiedProps = null; // static so we can copy between chips which get a new FilterPanel
 
     /**
@@ -73,7 +74,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
      */
     public FilterFrame(AEChip chip) {
         this.chip = chip;
-        prefs=chip.getPrefs();
+        prefs = chip.getPrefs();
         this.filterChain = chip.getFilterChain();
         chip.setFilterFrame(this);
         setName("FilterFrame");
@@ -658,6 +659,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             if (retValue == JFileChooser.APPROVE_OPTION) {
                 File f = fileChooser.getSelectedFile();
                 importPrefs(f);
+                if (PreferencesMover.hasOldPreferences(chip)) {
+                    PreferencesMover.migratePreferencesDialog(this, chip);
+                }
             }
 	}//GEN-LAST:event_importPreferncesMIActionPerformed
 
@@ -667,6 +671,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             Preferences.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
             prefs.put("FilterFrame.lastFile", f.getCanonicalPath());
             log.info("imported preferences from " + f.toPath().toString());
+
             recentFiles.addFile(f);
             renewContents();
             JOptionPane.showMessageDialog(rootPane, String.format("<html>Loaded Preferences from <br>\t%s<br>and reconstructed the entire FilterChain", f.toPath()));

@@ -23,6 +23,7 @@ import javax.swing.SwingUtilities;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
+import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
@@ -198,7 +199,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         storePreferences();
         try {
             String[] keys = prefs.keys();
-            String header=chip.prefsHeader()+".";
+            String header="";
             HashMap<String,String> removed=new HashMap(); // save the entries temporarily removed
             for (String k : keys) {
                 if (!k.startsWith(header)) {
@@ -235,6 +236,7 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
         log.info("importing preferences from InputStream=" + is + " to prefs=" + prefs);
         startBatchEdit();
         Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
+        
         loadPreferences();
         // the preference change listeners may not have been called by the time this endBatchEdit is called
         // therefore we start a thread to end the batch edit a bit later

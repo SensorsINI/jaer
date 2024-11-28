@@ -211,7 +211,7 @@ public class Chip2D extends Chip {
      * @return the key
      */
     private String preferredDisplayMethodKey() { // TODO shouldn't need this public method, should put display method inside chip not ChipCanvas maybe
-        String s = getClass() + ".preferredDisplayMethod";
+        String s = getClass().getSimpleName() + ".preferredDisplayMethod";
         if (s.length() > Preferences.MAX_KEY_LENGTH) {
             s = s.substring(s.length() - Preferences.MAX_KEY_LENGTH, s.length());
         }
