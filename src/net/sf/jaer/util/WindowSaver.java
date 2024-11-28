@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFrame;
@@ -128,6 +129,10 @@ public class WindowSaver implements AWTEventListener {
         if (w != DEFAULT_WIDTH | h != DEFAULT_HEIGHT) {
             resize = true;
         }
+        if(x!=0 || y!=0 || w!=DEFAULT_WIDTH || h!=DEFAULT_HEIGHT){
+            log.info(String.format("found non default window %s preferences x=%d y=%d w=%d h=%d",
+                    name,x,y,w,h));
+        }
         Dimension sd = Toolkit.getDefaultToolkit().getScreenSize();
 
         // determine the height of the windows taskbar by this roundabout proceedure
@@ -228,28 +233,28 @@ public class WindowSaver implements AWTEventListener {
 //        return Integer.parseInt(v);
 //    }
     /**
-     * Used to explicity save settings. Saves the x,y and width, height settings
+     * Used to explicitly save settings. Saves the x,y and width, height settings
      * of window in preferences.
      */
-    public void saveSettings() throws IOException {
+    public void saveSettings() throws IOException, BackingStoreException {
         StringBuilder sb = new StringBuilder();
-        sb.append("saved " + preferences + " for \n");
+        sb.append("saved window settings for \n");
         Iterator it = framemap.keySet().iterator();
         while (it.hasNext()) {
             String name = (String) it.next();
             JFrame frame = (JFrame) framemap.get(name);
             preferences.putInt(name + ".x", frame.getX());
-            sb.append(name + ".x=" + frame.getX() + " ");
+            sb.append(name + ".x=" + frame.getX() + "\n");
             preferences.putInt(name + ".y", frame.getY());
-            sb.append(name + ".y=" + frame.getY() + " ");
+            sb.append(name + ".y=" + frame.getY() + "\n");
             preferences.putInt(name + ".w", frame.getWidth());
-            sb.append(name + ".w=" + frame.getWidth() + " ");
+            sb.append(name + ".w=" + frame.getWidth() + "\n");
             preferences.putInt(name + ".h", frame.getHeight());
-            sb.append(name + ".h=" + frame.getHeight() + " ");
-            sb.append(" window " + name + "\n");
-
+            sb.append(name + ".h=" + frame.getHeight() + "\n");
+            sb.append("for window " + name);
         }
-//        log.info(sb.toString());
+        preferences.flush();
+        log.info(sb.toString());
     }
 
     /**
