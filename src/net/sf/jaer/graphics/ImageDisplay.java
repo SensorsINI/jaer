@@ -1551,7 +1551,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 if (windowSaver != null) {
                     try {
                         windowSaver.saveSettings();
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
