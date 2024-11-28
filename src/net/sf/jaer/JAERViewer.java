@@ -160,7 +160,7 @@ public class JAERViewer {
                 if (windowSaver != null) {
                     try {
                         windowSaver.saveSettings();
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
