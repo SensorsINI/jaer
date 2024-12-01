@@ -191,7 +191,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
-        
+
         // GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
         // GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that
         // used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
@@ -837,8 +837,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                 public void mousePressed(final MouseEvent evt) {
                     mouseDragScreenStartPoint.setLocation(evt.getPoint());
                     mouseDragChipPixelStartPoint = getPixelFromMouseEvent(evt);
-                    Zoom dragStartZoom = new Zoom();
-                    clipAreaDragStart = dragStartZoom.clipArea;
+                    if(clipAreaDragStart==null){
+                        clipAreaDragStart=new Zoom().clipArea;
+                    }
+                    clipAreaDragStart.set(getClipArea());
                     origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
                 }
 
@@ -856,6 +858,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 
             @Override
             public void mouseDragged(final MouseEvent e) {
+//                log.info(e.toString());
 //                                Point p=getPixelFromMouseEvent(e);
                 final int screenX = e.getX();
                 final int screenY = e.getY();
@@ -883,7 +886,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                     } else {
                         mouseDragScreenCurrentPoint = e.getPoint();
                         mouseDragChipPixelCurrentPoint = getPixelFromMouseEvent(e);
-                        getZoom().panto(); // pans clip area based on one set by mousePressed()
+                        getZoom().panto();// pans clip area based on one set by mousePressed()
                     }
                 }
                 repaint(100);
@@ -1402,9 +1405,18 @@ public class ChipCanvas implements GLEventListener, Observer {
                 top = c.top;
             }
 
+            public void set(ClipArea c) {
+                left = c.left;
+                right = c.right;
+                bottom = c.bottom;
+                top = c.top;
+            }
+
             @Override
             public String toString() {
-                return "ClipArea{" + "left=" + left + ", right=" + right + ", bottom=" + bottom + ", top=" + top + '}';
+                return String.format("ClipArea(l=%.1f, r=%.1f, t=%.1f, b=%.1f) w=%.1f h=%.1f",
+                        left, right, top, bottom, 
+                        right-left, top-bottom);
             }
 
         }
@@ -1455,6 +1467,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 // only bookkeeping, not used for zoom
                 zoomFactor *= inout == 0 ? 1 : (inout > 0 ? zoomStepRatio : 1 / zoomStepRatio);
             } else if (getClipArea() != null) { // inout==0, just pan to mouse
+                // TODO does not work, causes GL error
                 // compute dx,dy for mouse since start, set clip area relative to starting clip area
                 float dx = mouseDragScreenCurrentPoint.x - mouseDragScreenStartPoint.x,
                         dy = mouseDragScreenCurrentPoint.y - mouseDragScreenStartPoint.y;
