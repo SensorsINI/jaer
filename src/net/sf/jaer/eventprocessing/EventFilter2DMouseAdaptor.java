@@ -270,17 +270,18 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             return;
         }
         if (yes) {
+            MouseWheelListener[] listeners=glCanvas.getMouseWheelListeners();
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
             glCanvas.removeMouseWheelListener(this);
             glCanvas.addMouseListener(this);
             glCanvas.addMouseMotionListener(this);
-            glCanvas.addMouseWheelListener(this);
+//            glCanvas.addMouseWheelListener(this);  // tobi this seems somehow to remove effect of mouse wheel in the main AEViewer ImagePanel
 
         } else {
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
-            glCanvas.removeMouseWheelListener(this);
+//            glCanvas.removeMouseWheelListener(this);
         }
     }
 
