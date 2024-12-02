@@ -1031,7 +1031,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * Returns the actual clipping area in model space (chip pixel) coordinates.
+     * Returns the actual graphics output view clipping area in model space (chip pixel) coordinates.
      * This clipping area is around the chip size by a negative amount for left
      * and bottom and a quantity larger than the chip size for the right and
      * top.
@@ -1367,6 +1367,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         final double zoomStepRatio = Math.pow(2, 1. / 8);
         private Point startPoint = new Point();
         private Point endPoint = new Point();
+        /** Center point of view in pixels */
         private Point centerPoint = new Point();  // where in chip pixels the zoom is centered.
         float zoomFactor = 1; // >1 for zoom in, magnified
         private boolean zoomEnabled = false;
@@ -1414,11 +1415,15 @@ public class ChipCanvas implements GLEventListener, Observer {
 
             @Override
             public String toString() {
-                return String.format("ClipArea(l=%.1f, r=%.1f, t=%.1f, b=%.1f) w=%.1f h=%.1f",
-                        left, right, top, bottom, 
+                return String.format("ClipArea(left=%.1f, right=%.1f, bot=%.1f, top=%.1f) w=%.1f h=%.1f",
+                        left, right, bottom, top, 
                         right-left, top-bottom);
             }
 
+        }
+        
+        public String toString(){
+            return String.format("Zoom ClipArea=%s, centerPoint=%s",clipArea, centerPoint);
         }
 
         private void setProjection(final GL2 gl) {
@@ -1447,6 +1452,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             // center of screen
 
             if (inout != 0) {
+                log.fine(String.format("zooming in/out %d",inout));
                 final Point mouseChipPixel = getMousePixel();
                 // find the relative fraction of clip area that the 
                 // mouse position is in chip pixels and zoom clip area aournd that point
@@ -1478,8 +1484,9 @@ public class ChipCanvas implements GLEventListener, Observer {
 //                System.out.printf("dx=%f dy=%f\n",dx,dy);
             }
             // only bookkeeping, not used for zoom
-            centerPoint.setLocation((getClipArea().right - getClipArea().left) / 2, (getClipArea().top - getClipArea().bottom) / 2);
+            centerPoint.setLocation((getClipArea().right + getClipArea().left) / 2, (getClipArea().top + getClipArea().bottom) / 2);
             setZoomEnabled(true);
+            log.fine(String.format("Zoomed to %s",toString()));
         }
 
         private void zoomin() {
