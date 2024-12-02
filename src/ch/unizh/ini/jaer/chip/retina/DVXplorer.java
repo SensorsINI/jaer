@@ -929,7 +929,7 @@ public class DVXplorer extends AETemporalConstastRetina {
     
     final public class ToggleIMU extends DVXMenuAction {
         
-        public boolean isImuEnabled = true;
+        public boolean isImuEnabled = getPrefs().getBoolean("isImuEnabled", false);
 
         public ToggleIMU() {
             super("Toggle IMU",
@@ -947,6 +947,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
         
         public void setImuEnabled(boolean yes) {
+            getPrefs().putBoolean("isImuEnabled", yes);
             int param = yes? 1: 0;
             spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, param);
             spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, param);
@@ -956,7 +957,7 @@ public class DVXplorer extends AETemporalConstastRetina {
     
     final public class ToggleEventsAction extends DVXMenuAction {
         
-        public boolean isEventsEnabled = true;
+        public boolean isEventsEnabled = getPrefs().getBoolean("isEventsEnabled", true);
         
         public ToggleEventsAction() {
             super("ToggleEvents", "Toggle DAVIS event capture and display", "ToggleEvents");
@@ -974,6 +975,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
         
         public void setCaptureEvents(boolean yes) {
+            getPrefs().putBoolean("isEventsEnabled", yes);
             int param = yes? 1: 0;
             spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, param);
         }
