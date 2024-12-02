@@ -676,6 +676,10 @@ public class DVXplorer extends AETemporalConstastRetina {
     }
     
     public int spiConfigReceive(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr) {
+        if(fx3==null){
+            log.warning("null DVXplorerFX3HardwareInterface");
+            return -1;
+        }
         try {
             final int ret = fx3.spiConfigReceive(moduleAddr, paramAddr);
             return ret;
@@ -687,6 +691,10 @@ public class DVXplorer extends AETemporalConstastRetina {
     }
     
     public boolean spiConfigSend(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
+        if(fx3==null){
+            log.warning("null DVXplorerFX3HardwareInterface");
+            return false;
+        }
         try {
             fx3.spiConfigSend(moduleAddr, paramAddr, param);
             return true;
