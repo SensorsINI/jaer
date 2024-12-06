@@ -44,7 +44,8 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     /**
      * Flag that freezes ROI selection
      */
-    @Preferred protected boolean freezeRoi = getBoolean("freezeRoi", false);
+    @Preferred
+    protected boolean freezeRoi = getBoolean("freezeRoi", false);
     private boolean multiROI = getBoolean("multiROI", false);
 
     // roiRects stuff
@@ -122,7 +123,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         int sx = chip.getSizeX(), sy = chip.getSizeY();
         drawRois(gl, ROI_COLOR);
 
-        if (roiSelecting && roiStartPoint!=null && currentMousePoint!=null) {
+        if (roiSelecting && roiStartPoint != null && currentMousePoint != null) {
             gl.glPushMatrix();
             gl.glColor3fv(SELECT_COLOR, 0);
             gl.glLineWidth(3);
@@ -320,6 +321,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         Point p = getMousePixel(e);
         if (!freezeRoi) {
             startRoiSelection(e);
@@ -328,6 +332,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         if (freezeRoi || roiStartPoint == null) {
             return;
         }
@@ -338,6 +345,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         currentMousePoint = getMousePixel(e);
     }
 
@@ -352,6 +362,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         if (roiStartPoint == null) {
             return;
         }
@@ -364,6 +377,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         Point p = getMousePixel(e);
         clickedPoint = p;
     }
@@ -376,7 +392,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     /**
-     * @param freezeSelection the freezeSelection to set
+     * @param freezeRoi the freezeSelection to set
      */
     public void setFreezeRoi(boolean freezeRoi) {
         this.freezeRoi = freezeRoi;

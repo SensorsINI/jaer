@@ -38,6 +38,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -52,7 +53,7 @@ import net.sf.jaer.util.DrawGL;
  */
 @Description("Filters a region of interest (ROI) defined by x, y, and event type ranges")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener {
+public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnnotater, MouseListener, MouseMotionListener {
 
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
     private int startX = getInt("startX", 0);
@@ -561,42 +562,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
             circularShapeCenterPoint = new Point(clickedPoint);
             putObject("circularShapeCenterPoint", circularShapeCenterPoint);
         }
-    }
-
-// already handled by setSelected below
-//    @Override
-//    public synchronized void setFilterEnabled (boolean yes){
-//        super.setFilterEnabled(yes);
-//        if ( glCanvas == null ){
-//            return;
-//        }
-//        if ( yes ){
-//            glCanvas.addMouseListener(this);
-//            glCanvas.addMouseMotionListener(this);
-//
-//        } else{
-//            glCanvas.removeMouseListener(this);
-//            glCanvas.removeMouseMotionListener(this);
-//        }
-//    }
-    @Override
-    public void setSelected(boolean yes) {
-        super.setSelected(yes);
-        if (glCanvas == null) {
-            return;
-        }
-//          log.info("selected="+yes);
-        if (yes) {
-            glCanvas.removeMouseListener(this);
-            glCanvas.removeMouseMotionListener(this);
-            glCanvas.addMouseListener(this);
-            glCanvas.addMouseMotionListener(this);
-
-        } else {
-            glCanvas.removeMouseListener(this);
-            glCanvas.removeMouseMotionListener(this);
-        }
-
     }
 
     /**

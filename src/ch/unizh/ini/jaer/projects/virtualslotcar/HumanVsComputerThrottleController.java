@@ -1609,8 +1609,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      */
     private void drawThrottlePainter(GLAutoDrawable drawable) {
         if (isSelected() && (getTrack() != null) && (getTrack().getPointList() != null) && (currentProfile != null)) {
-            Point mp = glCanvas.getMousePosition();
-            Point p = canvas.getChipPixelFromMousePoint(mp);
+            Point p = canvas.getMousePixel();
             if (p == null) {
                 return;
             }

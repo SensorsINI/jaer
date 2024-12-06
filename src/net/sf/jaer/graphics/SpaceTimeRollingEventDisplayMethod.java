@@ -486,7 +486,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glCallList(axesDisplayListId);
 
         if (displayDvsEvents) {
-//        getChipCanvas().setDefaultProjection(gl, drawable);
+//        getChipCanvas().applyProjection(gl, drawable);
             // draw points using shaders
             gl.glUseProgram(shaderprogram);
             gl.glValidateProgram(shaderprogram);

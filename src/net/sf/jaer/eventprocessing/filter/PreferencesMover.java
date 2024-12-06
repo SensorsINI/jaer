@@ -20,18 +20,34 @@ package net.sf.jaer.eventprocessing.filter;
 
 import java.awt.Component;
 import java.awt.Cursor;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
+import java.util.prefs.InvalidPreferencesFormatException;
+import java.util.prefs.NodeChangeEvent;
+import java.util.prefs.NodeChangeListener;
+import java.util.prefs.PreferenceChangeEvent;
+import java.util.prefs.PreferenceChangeListener;
 import java.util.prefs.Preferences;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
+import org.w3c.dom.Element;
+
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.util.SubclassFinder;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.xml.sax.SAXException;
 
 /**
  * Moves Preferences from old scheme (pre Nov 2024, jaer 2.6.3) to new scheme
@@ -42,6 +58,7 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class PreferencesMover {
 
+    static PrefsListener listener = null;
     /**
      * This built in Logger should be used for logging, e.g. via log.info or
      * log.warn
@@ -50,6 +67,10 @@ public class PreferencesMover {
     protected static Logger log = Logger.getLogger("net.sf.jaer");
 
     static public class Result {
+
+        public Result() {
+            this(false, 0, 0, "No result");
+        }
 
         public Result(boolean movedSome, int movedCount, int notMovedCount, String msg) {
             this.movedCount = movedCount;
@@ -62,7 +83,7 @@ public class PreferencesMover {
         String msg;
     }
 
-    public static boolean hasOldPreferences(Chip chip) {
+    public static boolean hasOldChipPreferences(Chip chip) {
         try {
             Preferences prefs = chip.getPrefs();
             Preferences oldPrefs = Preferences.userNodeForPackage(chip.getClass());
@@ -81,13 +102,74 @@ public class PreferencesMover {
         return false;
     }
 
-    public static void migratePreferencesDialog(Component comp, Chip chip) {
+    static class PrefsListener implements NodeChangeListener, PreferenceChangeListener {
+
+        Preferences prefs;
+        ArrayList<PrefsListener> listeners = new ArrayList();
+
+        public PrefsListener(Preferences prefs) {
+            this.prefs = prefs;
+            prefs.addNodeChangeListener(this);
+            prefs.addPreferenceChangeListener(this);
+        }
+
+        @Override
+        public void childAdded(NodeChangeEvent evt) {
+            log.info(String.format("Child node %s added", evt.toString()));
+            Preferences newNode = (Preferences) evt.getChild();
+            PrefsListener l = new PrefsListener(newNode);
+            this.listeners.add(l);
+        }
+
+        @Override
+        public void childRemoved(NodeChangeEvent evt) {
+            log.info(evt.toString());
+        }
+
+        @Override
+        public void preferenceChange(PreferenceChangeEvent evt) {
+            log.info(evt.toString());
+        }
+
+    }
+
+    public static Document inspectPrefs(File fXmlFile) throws ParserConfigurationException, SAXException, IOException {
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+        Document doc = dBuilder.parse(fXmlFile);
+        doc.getDocumentElement().normalize();
+
+        System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
+        NodeList nList = doc.getChildNodes();
+        System.out.println("----------------------------");
+
+        for (int temp = 0; temp < nList.getLength(); temp++) {
+            Node nNode = nList.item(temp);
+            System.out.println("\nCurrent Element :" + nNode.getNodeName());
+            if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+                Element eElement = (Element) nNode;
+                eElement.getChildNodes();
+            }
+        }
+        return doc;
+    }
+
+    public static void immportPrefs(File file) throws BackingStoreException, IOException, InvalidPreferencesFormatException, ParserConfigurationException, SAXException {
+
+        Document doc=inspectPrefs(file);
+        Preferences prefs = Preferences.userRoot();
+        listener = new PrefsListener(prefs);
+        FileInputStream fis = new FileInputStream(file);
+        Preferences.importPreferences(fis);
+    }
+
+    public static void migratePreferencesDialog(Component comp, Chip chip, boolean doChipPrefs, boolean doFilterPrefs) {
         if (!SwingUtilities.isEventDispatchThread()) {
             log.warning("cannot invoke GUI outside GUI event dispatch thread");
             return;
         }
 
-        String msg = String.format("<html>%s has old-style flat preferences at %s,<br>migrate to new hierarchical scheme at %s?"
+        String dialogMsg = String.format("<html>Chip %s has old-style flat preferences at %s,<br>migrate to new hierarchical scheme at %s?"
                 + "<ul>"
                 + "<li>Choose <em>Yes</em> to (possibly) overrwrite existing chip preferences"
                 + "<li>Choose <em>No</em> to preserve existing chip preferences, but the imported preferences will not be used by the AEChip"
@@ -98,46 +180,79 @@ public class PreferencesMover {
         );
 
         int ret = JOptionPane.showConfirmDialog(comp,
-                msg,
+                dialogMsg,
                 "Migrate preferences?",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (ret == JOptionPane.YES_OPTION) {
-            if (comp != null) {
-                comp.setCursor(new Cursor(Cursor.WAIT_CURSOR));
-            }
-            Result[] result = PreferencesMover.migratePreferences(chip);
-            if (result[0].movedSome || result[1].movedSome) {
-                String resultMsg = String.format("<html>Successfully migrated:<p>%s<p>%s", result[0].msg, result[1].msg);
-                JOptionPane.showMessageDialog(comp, resultMsg);
-            } else {
-                String resultMsg = String.format("<html>Migration result:<ul><li>%s<li>%s</ul>"
-                        + "<p>Use <i>AEViewer</i> menu <i>AEChip/Renew AEChip</i> to see the results of migration in HW Configuraton",
-                        result[0].msg,
-                        result[1].msg);
-                JOptionPane.showMessageDialog(comp, msg, "Warning", JOptionPane.WARNING_MESSAGE);
+            try {
+                if (comp != null) {
+                    comp.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                }
+                Result chipResults = new Result(), filterResults = new Result();
+                String resultMsg = String.format("<html>Migration result:<ul>");
+                if (doChipPrefs) {
+                    chipResults = migrateChipPrefs(chip);
+                    resultMsg += "<li>" + chipResults.msg;
+                }
+                if (doFilterPrefs) {
+                    filterResults = migrateAllFilterPrefs(chip);
+                    resultMsg += "<li>" + filterResults.msg;
+                }
+                resultMsg += "</ul> <p>Use <i>AEViewer</i> menu <i>AEChip/Renew AEChip</i> to see the results of migration in HW Configuraton";
+                int status = JOptionPane.INFORMATION_MESSAGE;
+                if ((doChipPrefs && !chipResults.movedSome) || (doFilterPrefs && !filterResults.movedSome)) {
+                    status = JOptionPane.WARNING_MESSAGE;
+                }
+                JOptionPane.showMessageDialog(comp, resultMsg, "Migration result", status);
+            } catch (BackingStoreException ex) {
+                JOptionPane.showMessageDialog(comp, ex.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+            } finally {
+                if (comp != null) {
+                    comp.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                }
             }
         }
     }
 
-    public static Result[] migratePreferences(Chip chip) {
-        Preferences chipPrefs = chip.getPrefs();
-        Preferences oldChipPrefs = Preferences.userRoot().node(chip.prefsNodeNameOriginal());
-        Result[] results = new Result[2];
-        String result = null;
-        log.info(String.format("Migrating preferences %s to new node %s", oldChipPrefs.absolutePath(), chipPrefs.absolutePath()));
-        try {
-            results[0] = migrateChipPrefs(chip, oldChipPrefs, chipPrefs);
-            results[1] = migrateFilterPrefs(chip, oldChipPrefs, chipPrefs);
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.severe(e.toString());
-            results[0] = new Result(false, 0, 0, String.format(String.format("Error migrating: result=%s, Exception: %s", result, e.toString())));
-        }
-        return results;
+    public static void migrateAllPreferencesDialog(Component comp, Chip chip) {
+        migratePreferencesDialog(comp, chip, true, true);
     }
 
-    private static Result migrateChipPrefs(Chip chip, Preferences oldPrefs, Preferences newPrefs) throws BackingStoreException {
+    public static Result migrateEventFilterPrefsDialog(EventFilter filter) {
+        String dialogMsg = String.format("<html>Filter %s has old-style flat preferences at %s,<br>migrate to new hierarchical scheme at %s?"
+                + "<ul>"
+                + "<li>Choose <em>Yes</em> to (possibly) overrwrite existing filter preferences"
+                + "<li>Choose <em>No</em> to preserve existing filter preferences, but the imported preferences will not be used by the filter"
+                + "</ul>",
+                filter.getClass().getSimpleName(),
+                filter.getChip().prefsNodeNameOriginal(),
+                filter.getPrefs().absolutePath()
+        );
+
+        Component comp = filter.getFilterPanel() != null ? filter.getFilterPanel() : null;
+
+        int ret = JOptionPane.showConfirmDialog(comp,
+                dialogMsg,
+                "Migrate preferences?",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (ret == JOptionPane.YES_OPTION) {
+            try {
+                Result results = migrateEventFilterPrefs(filter);
+                int status = JOptionPane.INFORMATION_MESSAGE;
+                JOptionPane.showMessageDialog(filter.getFilterPanel(), results.msg, "Migration result", status);
+            } catch (BackingStoreException ex) {
+                JOptionPane.showMessageDialog(null, ex.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+                return new Result(false, 0, 0, ex.toString());
+            }
+        }
+        return new Result(false, 0, 0, "Cancelled");
+    }
+
+    private static Result migrateChipPrefs(Chip chip) throws BackingStoreException {
+        Preferences newPrefs = chip.getPrefs();
+        Preferences oldPrefs = Preferences.userRoot().node(chip.prefsNodeNameOriginal());
         log.info(String.format("Migrating chip %s Preference keys from %s to move to new node %s", chip.getClass().getSimpleName(), oldPrefs.absolutePath(), newPrefs.absolutePath()));
         String chipLeader = chip.getClass().getSimpleName() + ".";
         int movedCount = 0, notMovedCount = 0;
@@ -157,24 +272,62 @@ public class PreferencesMover {
                 }
             }
         }
-        Result result = null;
         if (movedCount > 0) {
             String msg = String.format("<html>Migrated %d AEChip %s Preference keys from <i>%s</i> to <i>%s</i>", movedCount, chip.getClass().getSimpleName(), oldPrefs.absolutePath(), newPrefs.absolutePath());
-            result = new Result(true, movedCount, notMovedCount, msg);
             log.info(msg);
+            return new Result(true, movedCount, notMovedCount, msg);
         } else {
             String msg = String.format("Failed to migrate %d Preference keys from %s to %s", movedCount, oldPrefs.absolutePath(), newPrefs.absolutePath());
-            result = new Result(false, movedCount, notMovedCount, msg);
+            log.info(msg);
+            return new Result(false, movedCount, notMovedCount, msg);
         }
-        return result;
     }
 
-    private static Result migrateFilterPrefs(Chip chip, Preferences oldPrefs, Preferences newPrefs) throws BackingStoreException {
-        Result result = null;
+    private static Result migrateEventFilterPrefs(EventFilter filter) throws BackingStoreException {
+        Preferences newPrefs = filter.getPrefs();
+        Preferences oldPrefs = Preferences.userRoot().node(filter.getChip().prefsNodeNameOriginal());
+        int movedCount = 0, notMovedCount = 0;
+        String keyStart = filter.getClass().getSimpleName() + ".";
+        for (String key : oldPrefs.keys()) {
+            log.finest(String.format("Checking key %s", key));
+
+            if (key.startsWith(keyStart)) {
+                log.fine(String.format("Key %s matches event filter key %s", key, keyStart));
+                String value = oldPrefs.get(key, null);
+                if (value != null) {
+                    String newKey = key.substring(key.indexOf(".") + 1);
+//                Preferences newChildNode = prefs.node(newNodeName);
+                    newPrefs.put(newKey, value);
+                    oldPrefs.remove(key);
+                    movedCount++;
+                    log.fine(String.format("Moved key=%s in %s to %s in %s", key, oldPrefs.absolutePath(), newKey, newPrefs));
+                } else {
+                    notMovedCount++;
+                    log.finer(String.format("Key %s did not start with %s", key, keyStart));
+                }
+            }
+        }
+        if (movedCount > 0) {
+            String msg = String.format("<html>Migrated %d EventFilter keys from %s to %s and left behind %d keys",
+                    movedCount,
+                    oldPrefs.absolutePath(),
+                    newPrefs.absolutePath(),
+                    notMovedCount);
+            log.info(msg);
+            return new Result(true, movedCount, notMovedCount, msg);
+        } else {
+            String msg = String.format("Migrated %d EventFilter preferences from <i>%s</i> to <i>%s</i>", movedCount, oldPrefs.absolutePath(), newPrefs.absolutePath());
+            return new Result(false, movedCount, notMovedCount, msg);
+        }
+
+    }
+
+    private static Result migrateAllFilterPrefs(Chip chip) throws BackingStoreException {
+        Preferences newPrefs = chip.getPrefs();
+        Preferences oldPrefs = Preferences.userRoot().node(chip.prefsNodeNameOriginal());
         log.info(String.format("Migrating chip %s EventFilter preferences from %s to move to new node %s", chip.getClass().getSimpleName(), oldPrefs.absolutePath(), newPrefs.absolutePath()));
         ArrayList<String> eventFilterClassNames = SubclassFinder.findSubclassesOf(EventFilter.class.getName());
         log.fine(String.format("Found %d subclasses of EventFilter", eventFilterClassNames.size()));
-        String chipLeader = chip.getClass().getSimpleName() + ".";
         int movedCount = 0, notMovedCount = 0;
         for (String key : oldPrefs.keys()) {
             log.finest(String.format("Checking key %s", key));
@@ -207,13 +360,11 @@ public class PreferencesMover {
                     oldPrefs.absolutePath(),
                     newPrefs.absolutePath(),
                     notMovedCount);
-            result = new Result(true, movedCount, notMovedCount, msg);
             log.info(msg);
+            return new Result(true, movedCount, notMovedCount, msg);
         } else {
             String msg = String.format("Migrated %d EventFilter preferences from <i>%s</i> to <i>%s</i>", movedCount, oldPrefs.absolutePath(), newPrefs.absolutePath());
-            result = new Result(true, movedCount, notMovedCount, msg);
+            return new Result(false, movedCount, notMovedCount, msg);
         }
-        return result;
     }
-
 }

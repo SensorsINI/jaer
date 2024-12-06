@@ -83,14 +83,11 @@ import java.util.logging.ConsoleHandler;
 
 import org.apache.commons.io.FileUtils;
 
-import ch.unizh.ini.jaer.chip.cochlea.CochleaAMS1c;
 import ch.unizh.ini.jaer.chip.retina.*;
 import eu.seebetter.ini.chips.davis.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import javax.swing.ActionMap;
-import javax.swing.InputMap;
-import javax.swing.KeyStroke;
+import java.awt.geom.Point2D;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -151,7 +148,6 @@ import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter;
-import org.apache.commons.lang3.ClassUtils;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
@@ -2715,7 +2711,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator18 = new javax.swing.JPopupMenu.Separator();
         zoomInMenuItem = new javax.swing.JMenuItem();
         zoomOutMenuItem = new javax.swing.JMenuItem();
-        zoomCenterMenuItem = new javax.swing.JMenuItem();
         unzoomMenuItem = new javax.swing.JMenuItem();
         graphicsSubMenu = new javax.swing.JMenu();
         viewActiveRenderingEnabledMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -3274,16 +3269,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         viewMenu.add(zoomOutMenuItem);
-
-        zoomCenterMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_END, 0));
-        zoomCenterMenuItem.setText("Center display here");
-        zoomCenterMenuItem.setToolTipText("Centers display on mouse point");
-        zoomCenterMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                zoomCenterMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(zoomCenterMenuItem);
 
         unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         unzoomMenuItem.setText("Unzoom");
@@ -4146,9 +4131,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             } else if (control && !(shift || alt)) {
                 if (rotation > 0) {
-                    chipCanvas.zoomOut(); // wheel down
+                    chipCanvas.zoomOutAround(evt); // wheel down
                 } else if (rotation < 0) {
-                    chipCanvas.zoomIn(); //wheel up
+                    chipCanvas.zoomInAround(evt); //wheel up
                 }
                 if (isPaused()) {
                     interruptViewloop();
@@ -5333,22 +5318,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_refreshInterfaceMenuItemComponentShown
 
 	private void zoomInMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomInMenuItemActionPerformed
-            chip.getCanvas().zoomIn();
+            chip.getCanvas().zoomInAround(null);
             if (isPaused())
                 interruptViewloop();
 	}//GEN-LAST:event_zoomInMenuItemActionPerformed
 
 	private void zoomOutMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomOutMenuItemActionPerformed
-            chip.getCanvas().zoomOut();
+            chip.getCanvas().zoomOutAround(null);
             if (isPaused())
                 interruptViewloop();
 	}//GEN-LAST:event_zoomOutMenuItemActionPerformed
-
-	private void zoomCenterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zoomCenterMenuItemActionPerformed
-            chip.getCanvas().zoomCenter();
-            if (isPaused())
-                interruptViewloop();
-	}//GEN-LAST:event_zoomCenterMenuItemActionPerformed
 
 	private void showConsoleOutputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_showConsoleOutputButtonActionPerformed
             //    log.info("opening logging output window");
@@ -6417,6 +6396,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setJaerUpdaterFrame(JaerUpdaterFrame jaerUpdaterFrame) {
         this.jaerUpdaterFrame = jaerUpdaterFrame;
     }
+    
+    /** Zoom around a particular point, with a zoom ratio. Can be used by EventFilter that manipulates the view.
+     * 
+     * @param pixel the pixel to center
+     * @param zoomRatio the zoom ratio, 1 for unzoomed, >1 for zoomed in by some factor
+     */
+    public void zoomTo(Point2D pixel, int zoomFactor){
+        
+    }
+    
+    /** Remove any zoom */
+    public void unzoom(){
+        if(getChip().getCanvas()!=null){
+            getChip().getCanvas().getZoom().setZoomEnabled(false);
+        }
+        
+    }
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -6556,7 +6552,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem viewStepBackwardsMI;
     private javax.swing.JMenuItem viewStepForwardsMI;
     private javax.swing.JMenuItem zeroTimestampsMenuItem;
-    private javax.swing.JMenuItem zoomCenterMenuItem;
     private javax.swing.JMenuItem zoomInMenuItem;
     private javax.swing.JMenuItem zoomOutMenuItem;
     // End of variables declaration//GEN-END:variables

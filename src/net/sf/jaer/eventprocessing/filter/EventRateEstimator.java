@@ -9,6 +9,7 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -145,9 +146,10 @@ public class EventRateEstimator extends EventFilter2D {
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getSource() instanceof AEChip) {
+        if (evt.getSource() instanceof Chip && evt.getPropertyName()==Chip.EVENT_HARDWARE_CHANGE) {
             biasChanged = true;
             biasChangedTimeMs = System.currentTimeMillis();
+            log.info(String.format("bias change: pausing biasChangedTimeS=%.2fs",biasChangePauseS));
         }
     }
 

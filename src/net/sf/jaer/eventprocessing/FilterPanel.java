@@ -68,8 +68,8 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import net.sf.jaer.Preferred;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import static net.sf.jaer.eventprocessing.FilterFrame.prefs;
+import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.XMLFileFilter;
@@ -2066,7 +2066,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 
         repaint();
-        getFilter().setSelected(yes);
+        // getFilter().setSelected(yes); // filter is only "selected" when the controls are made visible, so that mouse listeners are only active when the panel controls are visible
     }//GEN-LAST:event_enabledCheckBoxActionPerformed
 
     private void resetButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetButtonActionPerformed
@@ -2577,6 +2577,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if (retValue == JFileChooser.APPROVE_OPTION) {
             File f = fileChooser.getSelectedFile();
             filter.importPrefs(f);
+        }
+        if(PreferencesMover.hasOldChipPreferences(filter.getChip())){
+            PreferencesMover.migrateEventFilterPrefsDialog(filter);
         }
 
     }

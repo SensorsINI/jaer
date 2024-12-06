@@ -555,7 +555,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             }
             return aeRaw;
         } catch (EOFException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             log.info(String.format("Got EOFException on %s: %s",player.getAEInputStream().getFile(),e.toString()));
             cancelJog();
             setDirectionForwards(true);

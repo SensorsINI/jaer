@@ -198,8 +198,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             return;
         }
         if (isSelected() && showCrossHairCursor) {
-            Point mp = glCanvas.getMousePosition();
-            Point p = chipCanvas.getChipPixelFromMousePoint(mp);
+            Point p = chipCanvas.getMousePixel();
             if (p == null) {
                 return;
             }

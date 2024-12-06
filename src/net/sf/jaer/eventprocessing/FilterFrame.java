@@ -659,8 +659,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             if (retValue == JFileChooser.APPROVE_OPTION) {
                 File f = fileChooser.getSelectedFile();
                 importPrefs(f);
-                if (PreferencesMover.hasOldPreferences(chip)) {
-                    PreferencesMover.migratePreferencesDialog(this, chip);
+                if (PreferencesMover.hasOldChipPreferences(chip)) {
+                    PreferencesMover.migrateAllPreferencesDialog(this, chip);
                 }
             }
 	}//GEN-LAST:event_importPreferncesMIActionPerformed

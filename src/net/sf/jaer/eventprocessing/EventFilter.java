@@ -32,15 +32,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.Serializable;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.logging.Level;
 import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
-import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
@@ -719,8 +716,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void importPrefs(File file) {
         try {
-            FileInputStream fis = new FileInputStream(file);
-            Preferences.importPreferences(fis);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
+            PreferencesMover.immportPrefs(file);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
             log.info("imported preferences from " + file.toPath().toString());
             chip.getFilterFrame().renewContents();
             JOptionPane.showMessageDialog(chip.getFilterFrame(), String.format("<html>Loaded Preferences from <br>\t%s<br>and reconstructed the entire FilterChain", file.toPath()));
@@ -880,7 +876,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         } else {
             log.fine(String.format("Chip %s prefs node for %s is %s", chipName, getClass().getSimpleName(), prefs.absolutePath()));
         }
-        if (PreferencesMover.hasOldPreferences(chip)) {
+        if (PreferencesMover.hasOldChipPreferences(chip)) {
             log.warning(String.format("Chip %s has old style preferences", chip.getClass().getSimpleName()));
         }
         return prefs;

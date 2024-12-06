@@ -71,7 +71,7 @@ public class JAERViewer {
      * Root preferences object for jAER
      *
      */
-    protected static Preferences prefs;
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT;
     /**
      * Root Logger
      *
@@ -651,7 +651,6 @@ public class JAERViewer {
         log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."
                 + " \nThe current value of java.util.logging.config.file is " + System.getProperty("java.util.logging.config.file")
                 + "\nEdit this file to configure logging." + "\nThe value of java.io.tmpdir is " + System.getProperty("java.io.tmpdir"));
-        prefs = JaerConstants.PREFS_ROOT;
         log.info("Preferences come from root located at " + prefs.absolutePath());
         Logger root = log;
         while (root.getParent() != null) {

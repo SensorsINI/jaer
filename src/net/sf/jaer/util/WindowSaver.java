@@ -76,10 +76,10 @@ public class WindowSaver implements AWTEventListener {
      * Creates a new instance of WindowSaver.
      *
      * @param o the object for which to save
-     * @param preferences the user preferences to save to
+     * @param preferences the user preferences to save to, in node "WindowSaver"
      */
     public WindowSaver(Object o, Preferences preferences) {
-        this.preferences = preferences;
+        this.preferences = preferences.node("WindowSaver");
     }
 
     /**

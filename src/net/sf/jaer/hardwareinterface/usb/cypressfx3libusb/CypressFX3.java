@@ -40,6 +40,7 @@ import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -809,6 +810,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // System.out.println(String.format("SPI Config sent with modAddr=%d, paramAddr=%d, value=%d.\n", moduleAddr,
         // paramAddr, param));
         sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, configBytes);
+        getChip().getSupport().firePropertyChange(Chip.EVENT_HARDWARE_CHANGE, false, true);
 //                
 //		int returnedParam = 0;
 //
