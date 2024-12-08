@@ -440,7 +440,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         // determine the viewable area (that is not clipped to black).
         // this is not the view project!  This is the model projection. See later for viewport setting for where we look from.
 //        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
+        gl.glFrustumf(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
 
         // go to the end, -zmax
         gl.glTranslatef(0, 0, -1 * zmax);

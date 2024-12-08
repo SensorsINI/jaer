@@ -1819,7 +1819,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         log.warning("while acquiring data caught " + e.toString());
                         if (aemon != null) {
                             aemon.close(); // TODO check if this is OK -tobi
-                        }//                                e.printStackTrace();
+                        }
                         nullifyHardware();
 //                        stopMe();
 
@@ -3801,7 +3801,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 "AEChip error", JOptionPane.INFORMATION_MESSAGE);
 
                     } catch (Exception e) {
-                        e.printStackTrace();
+//                        e.printStackTrace();
                         JOptionPane.showMessageDialog(this,
                                 String.format("Error setting AEChip to  %s: got exception %s", cn, e.toString()),
                                 "AEChip error", JOptionPane.ERROR_MESSAGE);
@@ -4482,8 +4482,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     biasgen = chip.getBiasgen();
                 } catch (Exception e) {
                     StringWriter writer = new StringWriter();
-                    PrintWriter printWriter = new PrintWriter(writer);
-                    e.printStackTrace(printWriter);
+//                    PrintWriter printWriter = new PrintWriter(writer);
+//                    e.printStackTrace(printWriter);
 
                     log.warning("Caught exception when trying to set up Biasgen: " + e.toString() + " - Stacktrace: " + writer.toString());
                 }
@@ -6073,7 +6073,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             } catch (IOException e) {
                 log.warning(e.toString());
-                e.printStackTrace();
+//                e.printStackTrace();
             } catch (InterruptedException ex) {
                 log.warning("opening dropped file " + draggedFile + " interrupted");
             }

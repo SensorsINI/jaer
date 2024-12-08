@@ -1008,7 +1008,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     open();
                 } catch (final HardwareInterfaceException e) {
                     // TODO Auto-generated catch block
-                    e.printStackTrace();
+                    log.warning(e.toString());
                 }
             }
 
@@ -1232,7 +1232,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 getChip().getFilterChain().filterPacket(realTimePacket);
             } catch (final Exception e) {
                 CypressFX3.log.warning(e.toString() + ": disabling all filters");
-                e.printStackTrace();
+//                e.printStackTrace();
                 for (final EventFilter f : getChip().getFilterChain()) {
                     f.setFilterEnabled(false);
                 }
