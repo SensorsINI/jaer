@@ -9,7 +9,7 @@
     <import file="nbproject/build-impl.xml"/>
 
     <target name="-do-clean" depends="init,clean-ivy">
-        <delete dir="${build.dir}"/>
+        <delete dir="${build.dir}" failonerror="false"/>
     </target>
     <!--
             https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
