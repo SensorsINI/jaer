@@ -5,7 +5,6 @@
  *Copyright September 28, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Date;
@@ -28,14 +27,12 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
-import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 
-import com.jogamp.opengl.util.awt.TextRenderer;
-import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
+import java.awt.Insets;
 import java.awt.geom.Rectangle2D;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -779,10 +776,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         GL2 gl = drawable.getGL().getGL2();
         // positioning of rate bars depends on num types and display size
-        ChipCanvas.Borders borders = chip.getCanvas().getBorders();
+        Insets borders = chip.getCanvas().getBorderInsets();
 
         // get screen width in screen pixels, subtract borders in screen pixels to find width of drawn chip area in screen pixels
-        float /*h = drawable.getHeight(), */ w = drawable.getSurfaceWidth() - (2 * borders.leftRight * chip.getCanvas().getScale());
+        float  w = drawable.getSurfaceWidth() - (2 * borders.left * chip.getCanvas().getScale());
         int ntypes = typedEventRateEstimator.getNumCellTypes();
         final int sx = chip.getSizeX(), sy = chip.getSizeY();
         final float yorig = .9f * sy, xpos = 0, ystep = Math.max(.03f * sy, 6), barh = .03f * sy;
