@@ -1,5 +1,6 @@
 package net.sf.jaer.chip;
 
+import java.awt.Point;
 import java.lang.reflect.Constructor;
 import java.util.prefs.Preferences;
 
@@ -105,17 +106,28 @@ public class Chip2D extends Chip {
         }
     }
 
-    /** Get max of width and height
-     * 
-     * @return max dimension in pixels 
+    /**
+     * Returns center pixel of array
+     *
+     * @return
+     */
+    public Point getCenterPixel() {
+        return new Point(getSizeX() / 2, getSizeY() / 2);
+    }
+
+    /**
+     * Get max of width and height
+     *
+     * @return max dimension in pixels
      */
     public int getMaxSize() {
         return (int) Math.max(sizeX, sizeY);
     }
 
-   /** Get min of width and height
-     * 
-     * @return min dimension in pixels 
+    /**
+     * Get min of width and height
+     *
+     * @return min dimension in pixels
      */
     public int getMinSize() {
         return (int) Math.min(sizeX, sizeY);
@@ -257,4 +269,5 @@ public class Chip2D extends Chip {
         }
 
     }
+
 }

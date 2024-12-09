@@ -76,7 +76,7 @@ public abstract class DisplayMethod implements PropertyChangeListener {
      * pixels (address by 1 increments), and sets the origin to the lower left
      * corner of the screen with coordinates increase upwards and to right.
      *
-     * @param drawable the drawable passed in.
+     * @param drawable the glCanvas passed in.
      * @return the context to draw in.
      *
      */
@@ -148,7 +148,7 @@ public abstract class DisplayMethod implements PropertyChangeListener {
     }
 
     /**
-     * removes an annotator to the drawn canvas.
+     * removes an annotator to the drawn glCanvas.
      *
      * @param annotator the object that will annotate the displayed data
      */
