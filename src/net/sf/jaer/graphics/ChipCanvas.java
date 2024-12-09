@@ -24,10 +24,7 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Observable;
 import java.util.Observer;
@@ -39,21 +36,15 @@ import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JRadioButtonMenuItem;
 
-import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 
-import org.apache.commons.lang3.SystemUtils;
-
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLCapabilities;
-import com.jogamp.opengl.GLCapabilitiesImmutable;
-import com.jogamp.opengl.GLContext;
-import com.jogamp.opengl.GLDrawableFactory;
 import com.jogamp.opengl.GLEventListener;
 import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.GLProfile;
@@ -81,11 +72,11 @@ import net.sf.jaer.graphics.AEViewer.PlayMode;
  * page-flipping BufferStrategy to eliminate tearing by flipping pages on
  * monitor refresh.
  * <p>
- * The graphics context is obtained here in the component and its origin is the
- * LL corner. The context is translated to center the rendering in the Canvas.
- * This canvas can use OpenGL to render, and it can either actively or passively
- * render.
- * <p>
+ The graphics context is obtained here in the component and its origin is the
+ LL corner. The context is translated to center the rendering in the Canvas.
+ This glCanvas can use OpenGL to render, and it can either actively or passively
+ render.
+ <p>
  * If 3-d event rendering is enabled, the raw events are painted out in
  * space-time, with time axis defined by duration from first to last event in
  * the packet.
@@ -113,15 +104,15 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected float angley;
     private Chip2D chip;
     protected final int colorScale = 255;
-    protected GLCanvas drawable;
+    protected GLCanvas glCanvas;
     protected GLU glu; // instance this if we need glu calls on context
     protected GLUT glut = null;
     protected Logger log = Logger.getLogger("net.sf.jaer");
     private float origin3dx;
     private float origin3dy;
     /**
-     * defines the minimum canvas size in pixels; used when chip size has not
-     * been set to non zero value
+     * defines the minimum glCanvas size in pixels; used when chip size has not
+ been set to non zero value
      */
     public static final int MIN_DIMENSION = 70;
     /**
@@ -130,25 +121,20 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     protected int pwidth;
 
-    /**
-     * the number of screen pixels for one chip pixel.
-     *
-     * @see #getScale()
-     */
-    private float zoomedScreenPixelsPerChipPixelScale = 1;
-    /**
-     * The unzoomed scale, multiplied by scaling of zoom to result in
-     * zoomedScreenPixelsPerChipPixelScale. Set in
-     */
-    private float unzoomedScreenPixelsPerChipPixelScale = 1;
     protected static final Color selectedPixelColor = Color.blue;
     protected GLUquadric selectedQuad;
     public BufferStrategy strategy;
     /**
-     * the translation of the actual chip drawing area in the canvas, in screen
-     * pixels
+     * the translation of the actual chip drawing area in the glCanvas, in screen
+ pixels
      */
-    protected int xt, yt;
+    protected int xt,
+
+    /**
+     * the translation of the actual chip drawing area in the glCanvas, in screen
+ pixels
+     */
+    yt;
     private ChipCanvas.Zoom zoom = createZoom();
     // reused imageOpenGL for OpenGL image grab
     private BufferedImage imageOpenGL;
@@ -163,16 +149,16 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     protected final int BORDER3D = 70;
     /**
-     * Insets of the drawn chip canvas in the window
+     * Insets of the drawn chip glCanvas in the window
      */
     private Insets insets = new Insets(borderSpacePixels, borderSpacePixels, borderSpacePixels, borderSpacePixels);
     private boolean fillsHorizontally = false, fillsVertically = false; // filled in in the reshape method to show how
-    // chip fills drawable space
+    // chip fills glCanvas space
     private float ZCLIP = 1;
     private TextRenderer renderer = null;
 
-    private Point mouseDragScreenStartPoint = null, mouseDragScreenCurrentPoint = null;
-    private Point2D.Float mdStPx = null; // screen press px, arb origin
+    private Point mdStPt = null; // start point of drag in screen coordinates
+    private Point2D.Float dragLastPx = null; // start point of drag in px, arb origin
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
 
     /**
@@ -194,36 +180,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
 
-        // GraphicsEnvironment ge=GraphicsEnvironment.getLocalGraphicsEnvironment();
-        // GraphicsDevice[] gs=ge.getScreenDevices(); // TODO it could be that remote session doesn't show screen that
-        // used to be used. Should check that we are not offscreen. Otherwise registy edit is required to show window!
-        //
-        // if(gs!=null&&gs.length>0) {
-        // if(gs.length>1){
-        // log.info("There are "+gs.length+" GraphicsDevice's found; using first one which is "+gs[0].getIDstring());
-        // }
-        // GraphicsDevice gd=gs[0];
-        // GraphicsConfiguration[] gc=gd.getConfigurations(); // TODO this call takes >10s on windows 7 x64 w510 lenovo
-        // with nvidia graphics!
-        // if(gc!=null&&gc.length>0) {
-        // if(gc.length>1){
-        // log.info("There are "+gc.length+" GraphicsConfiguration's found; using first one which is "+gc[0].toString());
-        // }
-        // }
-        // }
-        //
-        // // design capabilities of opengl canvas
-        // GLCapabilities caps = new GLCapabilities();
-        //
-        // caps.setAlphaBits(8);
-        /*
-         * caps.setDoubleBuffered(true);
-         * caps.setHardwareAccelerated(true);
-         * caps.setRedBits(8);
-         * caps.setGreenBits(8);
-         * caps.setBlueBits(8);
-         */
-        // make the canvas
+        // make the glCanvas
         try {
 //            final GLProfile glp = GLProfile.getMaxProgrammable(true);//GLProfile.getDefault(); //getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
@@ -236,9 +193,9 @@ public class ChipCanvas implements GLEventListener, Observer {
             final GLProfile glp = GLProfile.getDefault();
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2ES2);
             final GLCapabilities caps = new GLCapabilities(glp);
-            caps.setDoubleBuffered(true);// TODO debug true should be default
-            drawable = new GLCanvas(caps);
-            drawable.setAutoSwapBufferMode(true); // TODO debug
+            caps.setDoubleBuffered(true);
+            glCanvas = new GLCanvas(caps);
+            glCanvas.setAutoSwapBufferMode(true);
 //            if (SystemUtils.IS_OS_WINDOWS) {
 //                List<GLCapabilitiesImmutable> capsAvailable = GLDrawableFactory.getDesktopFactory()
 //                        .getAvailableCapabilities(null);
@@ -256,12 +213,12 @@ public class ChipCanvas implements GLEventListener, Observer {
 //                    }
 //                }
 //
-//                drawable = new GLCanvas(chosenGLCaps);
+//                glCanvas = new GLCanvas(chosenGLCaps);
 //            } else {
-//                drawable = new GLCanvas();
+//                glCanvas = new GLCanvas();
 //            }
 
-            if (drawable == null) {
+            if (glCanvas == null) {
                 // Failed to init OpenGL, exit system!
                 System.exit(1);
             }
@@ -289,48 +246,33 @@ public class ChipCanvas implements GLEventListener, Observer {
                     + "the jAER JOGL native libraries are built for 32-bit JVMs.");
             throw err;
         }
-        drawable.setLocale(Locale.US); // to avoid problems with other language support in JOGL
-        drawable.setVisible(true);
+        glCanvas.setLocale(Locale.US); // to avoid problems with other language support in JOGL
+        glCanvas.setVisible(true);
         // will always getString invalid operation here
-        // checkGLError(drawable.getGL(),glu,"before add event listener");
-        // add us as listeners for the canvas. then when the display wants to redraw display() will be called. or we can
-        // call drawable.display();
-        drawable.addGLEventListener(this);
-        drawable.setSize(200, 200); // set a size explicitly here
+        // checkGLError(glCanvas.getGL(),glu,"before add event listener");
+        // add us as listeners for the glCanvas. then when the display wants to redraw display() will be called. or we can
+        // call glCanvas.display();
+        glCanvas.addGLEventListener(this);
+        glCanvas.setSize(200, 200); // set a size explicitly here
         initComponents();
         chip.addObserver(this);
 
-        // if this canvas was constructed from a chip, then fill the display methods from that chip's ChipCanvas, if it
+        // if this glCanvas was constructed from a chip, then fill the display methods from that chip's ChipCanvas, if it
         // exists and has them
         if (displayMethods.isEmpty() && (chip.getCanvas() != null) && (chip.getCanvas().getDisplayMethod() != null)) {
             displayMethods.add(chip.getCanvas().getDisplayMethod());
         }
 
-//        if (System.getProperty("os.name").startsWith("Windows")) {
-//            // TODO tobi added to try to use shared context on windows, to address problems with opening multiple canvases (e.g. multiple AEViewers)
-//            // opening 2nd instance, or even creating live file preview in AE file open dialog, often causes JOGL to bomb with
-//            // complaints about non availablility of the desired GLProfile.
-//            // On Linux systems, using the shared context below with Intel graphics causes an immediate native exception.
-//            if (drawable != null && JAERViewer.sharedDrawable != null) {
-//                drawable.setSharedAutoDrawable(JAERViewer.sharedDrawable); // drawable might be null if AEChip is created outside of normal context of AEViewer
-//            }
-//        }
-        // between all viewers and file open dialog
-        // previews.
-        // TODO we now get under windows this exception:
-        // com.jogamp.opengl.GLException: AWT-EventQueue-0: WindowsWGLContex.createContextImpl ctx !ARB but ARB is
-        // used, profile > GL2 requested (OpenGL >= 3.0.1). Requested: GLProfile[GL4bc/GL4bc.hw], current: 1.1 (Compat
-        // profile, hardware) - 1.1.0
-        if (drawable != null) {
-            log.info("GLCanvas=" + drawable.toString());
-            if (drawable.getContext() != null) {
-                log.info("GLCanvas has GLContext=" + drawable.getContext().toString());
+        if (glCanvas != null) {
+            log.info("GLCanvas=" + glCanvas.toString());
+            if (glCanvas.getContext() != null) {
+                log.info("GLCanvas has GLContext=" + glCanvas.getContext().toString());
             }
         }
 
-        drawable.setFocusable(true);
+        glCanvas.setFocusable(true);
         // for debugging bug where context was grabbed by getMousePoint and not released
-//                drawable.addFocusListener(new FocusListener() {
+//                glCanvas.addFocusListener(new FocusListener() {
 //
 //                    @Override
 //                    public void focusGained(FocusEvent e) {
@@ -361,12 +303,12 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * the list of display methods for this canvas
+     * the list of display methods for this glCanvas
      */
     private ArrayList<DisplayMethod> displayMethods = new ArrayList<DisplayMethod>();
 
     /**
-     * adds a display method to this canvas
+     * adds a display method to this glCanvas
      *
      * @param m the method
      */
@@ -375,7 +317,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             return;
         }
         getDisplayMethods().add(m);
-        displayMethodMenu.getPopupMenu().setLightWeightPopupEnabled(false); // canvas is heavyweight so we need this to
+        displayMethodMenu.getPopupMenu().setLightWeightPopupEnabled(false); // glCanvas is heavyweight so we need this to
         // make menu popup show
         final JRadioButtonMenuItem mi = new JRadioButtonMenuItem(m.getDescription());
         m.setMenuItem(mi);
@@ -522,6 +464,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     @Override
     public void display(final GLAutoDrawable drawable) {
         final GL2 gl = drawable.getGL().getGL2();
+        gl.glViewport(0, 0, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+
         checkGLError(gl, glu, "start of display");
 
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
@@ -530,8 +474,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         checkGLError(gl, glu, "before setting projection");
         // gl.glPushMatrix(); // don't push so that mouse selection has correct matrices
-        getZoom().computeProjection(drawable);
-        getZoom().applyZoomProjection(gl);
+
+        getZoom().applyProjection(gl);
         checkGLError(gl, glu, "after setting projection, before displayMethod");
         final DisplayMethod m = getDisplayMethod();
         if (m == null) {
@@ -540,8 +484,8 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
             gl.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             m.display(drawable);
-//                drawable.swapBuffers();
-//                drawable.swapBuffers();
+//                glCanvas.swapBuffers();
+//                glCanvas.swapBuffers();
         }
         // checkGLError(gl, glu, "after " + getDisplayMethod() + ".display()");
         checkGLError(gl, glu, "after DisplayMethod.display()");
@@ -564,7 +508,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         gl.glFlush();
         // gl.glPopMatrix();
         checkGLError(gl, glu, "after display");
-        // drawable.swapBuffers(); // don't use, very slow and autoswapbuffers is set
+        // glCanvas.swapBuffers(); // don't use, very slow and autoswapbuffers is set
         // zoom.drawZoomBox(gl);
         if (grabNextImageEnabled) {
             grabImage(drawable);
@@ -602,7 +546,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @return the actual drawing Canvas.
      */
     public Canvas getCanvas() {
-        return drawable;
+        return glCanvas;
     }
 
     /**
@@ -614,7 +558,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @return scale in screen pixels/chip pixel.
      */
     public float getScale() {
-        return zoomedScreenPixelsPerChipPixelScale;
+        return getZoom().getClipArea().getScale();
     }
 
     /**
@@ -711,13 +655,13 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        final double wcoord[] = new double[3];// wx, wy, wz;// returned xyz coords
 //        // this method depends on current GL context being the one that is used for rendering.
 //        // the display method should not push/pop the matrix stacks!!
-////        synchronized (drawable.getTreeLock()) {
+////        synchronized (glCanvas.getTreeLock()) {
 //        try {
 //            if (hasAppleRetinaDisplay()) {
 //                mp.x *= 2;
 //                mp.y *= 2;
 //            }
-//            final int ret = drawable.getContext().makeCurrent();
+//            final int ret = glCanvas.getContext().makeCurrent();
 //            if (ret != GLContext.CONTEXT_CURRENT) {
 //                throw new GLException("couldn't make context current");
 //            }
@@ -727,7 +671,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //            final double projmatrix[] = new double[16];
 //            int realy = 0;// GL y coord pos
 //            // set up a floatbuffer to get the depth buffer value of the mouse position
-//            final GL2 gl = drawable.getContext().getGL().getGL2();
+//            final GL2 gl = glCanvas.getContext().getGL().getGL2();
 //            checkGLError(gl, glu, "before getting mouse point");
 //            gl.glGetIntegerv(GL.GL_VIEWPORT, viewport, 0);
 //            gl.glGetDoublev(GLMatrixFunc.GL_MODELVIEW_MATRIX, mvmatrix, 0);
@@ -758,8 +702,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 //        } catch (final GLException e) {
 //            log.warning("couldn't make GL context current, mouse position meaningless: " + e.toString());
 //        } finally {
-//            if (drawable.getContext().isCurrent()) {
-//                drawable.getContext().release();
+//            if (glCanvas.getContext().isCurrent()) {
+//                glCanvas.getContext().release();
 //            }
 //        }
 //        return null;
@@ -776,7 +720,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     @Override
     public void init(final GLAutoDrawable drawable) {
-        // drawable.setGL(new DebugGL(drawable.getGL()));
+        // glCanvas.setGL(new DebugGL(glCanvas.getGL()));
         GL2 gl = null;
         try {
             gl = drawable.getGL().getGL2();
@@ -808,14 +752,15 @@ public class ChipCanvas implements GLEventListener, Observer {
         gl.glColor3f(1, 1, 1);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "Initialized display");
         checkGLError(gl, glu, "after init");
+        getZoom().getClipArea(); // todo computes bounds on first access
 
     }
 
     protected void initComponents() {
         if (getRenderer() != null) {
-            // all mouse listeners here
-            drawable.addMouseListener(new ZoomMouseClickedPressedListener());
-            drawable.addMouseMotionListener(new ZoomPanMouseListener());
+            final ZoomMouseAdaptor zoomMouseAdaptor = new ZoomMouseAdaptor();
+            glCanvas.addMouseListener(zoomMouseAdaptor);
+            glCanvas.addMouseMotionListener(zoomMouseAdaptor);
         }
     }
 
@@ -832,10 +777,10 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @see #display(com.jogamp.opengl.GLAutoDrawable)
      */
     public void paintFrame() {
-//        synchronized (drawable.getTreeLock()) {
+//        synchronized (glCanvas.getTreeLock()) {
         try {
-//                drawable.getContext().makeCurrent();
-            drawable.display(); // we call the drawable's display method that ends up calling us back via our local
+//                glCanvas.getContext().makeCurrent();
+            glCanvas.display(); // we call the glCanvas's display method that ends up calling us back via our local
             // display(GLAutoDrawable)!! very important to get this right
         } catch (final GLException e) {
             if (!(e.getCause() instanceof InterruptedException)) {
@@ -847,7 +792,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 ie.printStackTrace();
             }
         } finally {
-//                drawable.getContext().release();
+//                glCanvas.getContext().release();
         }
 //        }
     }
@@ -855,20 +800,24 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void removeGLEventListener(final GLEventListener listener) {
     }
 
-    /**
-     * calls repaint on the drawable
-     */
-    public void repaint() {
-        drawable.repaint();
+    public void addGLEventListener(final GLEventListener listener) {
+        System.out.println("addGLEventListener(" + listener + ")");
     }
 
     /**
-     * calls repaint on the drawable
+     * calls repaint on the glCanvas
+     */
+    public void repaint() {
+        glCanvas.repaint();
+    }
+
+    /**
+     * calls repaint on the glCanvas
      *
      * @param tm time to repaint within, in ms
      */
     public void repaint(final long tm) {
-        drawable.repaint(tm);
+        glCanvas.repaint(tm);
     }
 
     /**
@@ -878,50 +827,40 @@ public class ChipCanvas implements GLEventListener, Observer {
      * area.
      */
     @Override
-    public void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width,
-            final int height) {
+    public void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width, final int height) {
         final GL2 gl = drawable.getGL().getGL2();
-        checkGLError(gl, glu, "at start of reshape");
-
-        gl.glLoadIdentity();
-        final int chipSizeX = chip.getSizeX();
-        final int chipSizeY = chip.getSizeY();
-        float newscale;
-        final float border = 0; // getBorderSpacePixels()*(float)height/width;
-        if (chipSizeY > chipSizeX) {
-            // chip is tall and skinny, so set scaleChipPixels2ScreenPixels by frame height/chip height
-            newscale = (height - border) / chipSizeY;
-            fillsVertically = true;
-            fillsHorizontally = false;
-            if ((newscale * chipSizeX) > width) { // unless it runs into left/right, then set to fill width
-                newscale = (width - border) / chipSizeX;
-                fillsHorizontally = true;
-                fillsVertically = false;
-            }
-        } else {
-            // chip is square or squat, so set scaleChipPixels2ScreenPixels by frame width / chip width
-            newscale = (width - border) / chipSizeX;
-            fillsHorizontally = true;
-            fillsVertically = false;
-            if ((newscale * chipSizeY) > height) {// unless it runs into top/bottom, then set to fill height
-                newscale = (height - border) / chipSizeY;
-                fillsVertically = true;
-                fillsHorizontally = false;
-            }
-        }
-        checkGLError(gl, glu, "before setDefaultProjection in reshape");
-//        applyProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the
-        // drawable area
+        getZoom().applyProjection(gl);
         gl.glViewport(0, 0, width, height);
+//        checkGLError(gl, glu, "at start of reshape");
+//
+//        gl.glLoadIdentity();
+//        final int chipSizeX = chip.getSizeX();
+//        final int chipSizeY = chip.getSizeY();
+//        float newscale;
+//        final float border = 0; // getBorderSpacePixels()*(float)height/width;
+//        if (chipSizeY > chipSizeX) {
+//            // chip is tall and skinny, so set scaleChipPixels2ScreenPixels by frame height/chip height
+//            newscale = (height - border) / chipSizeY;
+//            fillsVertically = true;
+//            fillsHorizontally = false;
+//            if ((newscale * chipSizeX) > width) { // unless it runs into left/right, then set to fill width
+////                newscale = (width - border) / chipSizeX;
+//                fillsHorizontally = true;
+//                fillsVertically = false;
+//            }
+//        } else {
+//            // chip is square or squat, so set scaleChipPixels2ScreenPixels by frame width / chip width
+//            newscale = (width - border) / chipSizeX;
+//            fillsHorizontally = true;
+//            fillsVertically = false;
+//            if ((newscale * chipSizeY) > height) {// unless it runs into top/bottom, then set to fill height
+////                newscale = (height - border) / chipSizeY;
+//                fillsVertically = true;
+//                fillsHorizontally = false;
+//            }
+//        }
+//        checkGLError(gl, glu, "before setDefaultProjection in reshape");
         repaint();
-    }
-
-    protected String scalePrefsKey() {
-        if (chip == null) {
-            return "ChipCanvas.j2dScale";
-        } else {
-            return "ChipCanvas.j2dScale" + chip.getClass().getSimpleName();
-        }
     }
 
     protected void set3dOrigin(final int x, final int y) {
@@ -933,6 +872,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     /**
      * angle in degrees around x axis of 3d display
+     *
+     * @param anglex
      */
     public void setAnglex(final float anglex) {
         this.anglex = anglex;
@@ -941,6 +882,8 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     /**
      * angle in degrees around y axis of 3d display
+     *
+     * @param angley
      */
     public void setAngley(final float angley) {
         this.angley = angley;
@@ -1003,14 +946,13 @@ public class ChipCanvas implements GLEventListener, Observer {
 //    public Borders getBorders() {
 //        return borders;
 //    }
-
 //    /**
 //     * Sets the projection matrix so that we get an orthographic projection that
-//     * is the size of the canvas with z volume -ZCLIP to ZCLIP padded with extra
+//     * is the size of the glCanvas with z volume -ZCLIP to ZCLIP padded with extra
 //     * space around the sides.
 //     *
 //     * @param g the GL context
-//     * @param d the GLAutoDrawable canvas
+//     * @param d the GLAutoDrawable glCanvas
 //     */
 //    protected void applyProjection(final GL2 g, final GLAutoDrawable d) {
 //        /*
@@ -1022,7 +964,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //         * GLdouble far)
 //         */
 //        checkGLError(g, glu, "at start of setDefaultProjection");
-//        final int w = drawable.getWidth(), h = drawable.getHeight(); // w,h of screen
+//        final int w = glCanvas.getWidth(), h = glCanvas.getHeight(); // w,h of screen
 //
 //        final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
 //
@@ -1145,7 +1087,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * Sets the border around the drawn pixel canvas.
+     * Sets the border around the drawn pixel glCanvas.
      *
      * @param borderSpacePixels in screen pixels.
      */
@@ -1201,7 +1143,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * Chip fills drawable horizontally.
+     * Chip fills glCanvas horizontally.
      *
      * @return the fillsHorizontally
      */
@@ -1210,7 +1152,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * Chip fills drawable vertically.
+     * Chip fills glCanvas vertically.
      *
      * @return the fillsVertically
      */
@@ -1226,6 +1168,44 @@ public class ChipCanvas implements GLEventListener, Observer {
         return new Zoom();
     }
 
+    private class Vec extends Point2D.Float {
+
+        public Vec(float x, float y) {
+            super(x, y);
+        }
+
+        public Vec(Vec v) {
+            super(v.x, v.y);
+        }
+
+        public Vec add(Vec v) {
+            return new Vec(this.x + v.x, this.y + v.y);
+        }
+
+        public Vec add(float dx, float dy) {
+            return new Vec(this.x + dx, this.y + dy);
+        }
+
+        public Vec subtract(Vec v) {
+            return new Vec(this.x - v.x, this.y - v.y);
+        }
+
+        public boolean isNonZero() {
+            return Math.abs(x) >= 1 || Math.abs(y) >= 1;
+        }
+
+        public Vec clear() {
+            setLocation(0, 0);
+            return this;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Vec [%.1f,%.1f]", x, y);
+        }
+
+    }
+
     /**
      * Encapsulates zooming the view
      */
@@ -1233,128 +1213,136 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         final float ZOOM_STEP_RATIO = (float) Math.pow(2, 1. / 8);
         private float zoomFactor = 1; // >1 for zoom in, magnified, <1 but >0 for zoom out
-        private boolean zoomEnabled = false;
-        /**
-         * The translation from center point currently applied
-         */
-        private Point2D.Float panPx = new Point2D.Float(0, 0);
-
-        /**
-         * Temporary drag vector applied during drag
-         */
-        private Point dragPx = new Point(0, 0);
 
         /**
          * The actual clipping box bounds for the default orthographic
          * projection.
          */
         final ClipArea clipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
+        final ClipArea zoomedClipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
+
+        /**
+         * The translation from center point currently applied
+         */
+        private Vec panPx = new Vec(0, 0);
+
+        /**
+         * Temporary drag vector applied during drag
+         */
+        private Vec dragPx = new Vec(0, 0);
 
         /**
          * Orthographic projection clipping area.
          */
         public class ClipArea {
 
+            private boolean dirty = true;
+
+            private void setDirty() {
+                dirty = true;
+            }
+
+            private boolean isDirty() {
+                return dirty;
+            }
+
+            private void clearDirty() {
+                dirty = false;
+            }
+
+            /**
+             * the number of screen pixels for one chip pixel.
+             *
+             * @see #getScale()
+             */
+            private float zoomedScreenPixelsPerChipPixelScale = 1;
+            /**
+             * The unzoomed scale, multiplied by scaling of zoom to result in
+             * zoomedScreenPixelsPerChipPixelScale. Set in
+             */
+            private float unzoomedScreenPixelsPerChipPixelScale = 1;
+
             /**
              * This clipping area is around the chip size by a negative amount
              * for left and bottom and a quantity larger than the chip size for
              * the right and top.
              */
-            private float leftDefault = 0;
+            private float left = 0;
             /**
              * This clipping area is around the chip size by a negative amount
              * for left and bottom and a quantity larger than the chip size for
              * the right and top.
              */
-            private float rightDefault = 0;
+            private float right = 0;
             /**
              * This clipping area is around the chip size by a negative amount
              * for left and bottom and a quantity larger than the chip size for
              * the right and top.
              */
-            private float bottomDefault = 0;
+            private float bot = 0;
             /**
              * This clipping area is around the chip size by a negative amount
              * for left and bottom and a quantity larger than the chip size for
              * the right and top.
              */
-            private float topDefault = 0;
+            private float top = 0;
 
             /**
              * Center point of view in pixels
              */
-            private Point centerChipPixel = new Point();  // where in chip pixels the view is centered, e.g. could be corner of chip is center of display.
+            private final Point centerChipPixel = new Point();  // where in chip pixels the view is centered, e.g. could be corner of chip is center of display.
 
             private Point currentZoomChipPixel = null; // last chip pixel we zoomed around, this can be different from centerChipPixel
             // when we zoom, we want the pixel under mouse to not move
 
-            ClipArea(final float l, final float r, final float b, final float t) {
-                leftDefault = l;
-                rightDefault = r;
-                bottomDefault = b;
-                topDefault = t;
+            @Override
+            public String toString() {
+                return String.format("ClipArea  px=%s (w=%.1f h=%.1f, l=%.1f, r=%.1f, b=%.1f, t=%.1f)",
+                        currentZoomChipPixel,
+                        getWidth(), getHeight(), getLeft(), getRight(), getBottom(), getTop()
+                );
             }
 
-            public ClipArea() {
+            void set(float left, float right, float bottom, float top) {
+                this.left = left;
+                this.right = right;
+                this.bot = bottom;
+                this.top = top;
             }
 
-            public ClipArea(ClipArea c) {
-                leftDefault = c.leftDefault;
-                rightDefault = c.rightDefault;
-                bottomDefault = c.bottomDefault;
-                topDefault = c.topDefault;
-            }
-
-            public void set(ClipArea c) {
-                setLeft(c.getLeft());
-                setRight(c.getRight());
-                setBottom(c.getBottom());
-                setTop(c.getTop());
-            }
-
-            public void set(float left, float right, float bottom, float top) {
-                this.setLeft(left);
-                this.setRight(right);
-                this.setBottom(bottom);
-                this.setTop(top);
-            }
-
-            public void translateBy(float dx, float dy) {
+            void panFromCurrentBy(float dx, float dy) {
                 this.setLeft(this.getLeft() + dx);
                 this.setRight(this.getRight() + dx);
                 this.setBottom(this.getBottom() + dy);
                 this.setTop(this.getTop() + dy);
             }
 
-            public void translateBy(Point2D.Float p) {
-                this.setLeft(this.getLeft() + p.x);
-                this.setRight(this.getRight() + p.x);
-                this.setBottom(this.getBottom() + p.y);
-                this.setTop(this.getTop() + p.y);
+            void panFromCurrentBy(Vec p) {
+                ClipArea.this.panFromCurrentBy(-p.x, -p.y);
             }
 
             public float getWidth() {
-                return getRight() - getLeft();
+                return right - left;
             }
 
             public float getHeight() {
-                return getTop() - getBottom();
+                return top - bot;
             }
 
             public float getArea() {
                 return getWidth() * getHeight();
             }
 
-            private void computeProjection(GLAutoDrawable drawable) {
-                zoomAroundPoint(currentZoomChipPixel, zoomFactor);
+            private float getScale() {
+                return isZoomed() ? zoomedScreenPixelsPerChipPixelScale : unzoomedScreenPixelsPerChipPixelScale;
             }
 
             /**
              * Computes the tricky orthographic clip area for the view for
-             * un-zoomed projection
+             * unzoomed or zoomed projection
              */
-            private void computeUnzoomedClipAreaAndScale() {
-                if (drawable == null || chip == null) {
+            private void computeBounds() {
+                if (glCanvas == null || chip == null) {
                     log.severe("null drawable or chip");
                     return;
                 }
@@ -1362,10 +1350,13 @@ public class ChipCanvas implements GLEventListener, Observer {
                     log.warning("chip is not initialized yet");
                     return;
                 }
+                if (currentZoomChipPixel == null) {
+                    currentZoomChipPixel = new Point(chip.getCenterPixel());
+                }
                 // sets the clipping volume so that the volume is clipped
                 // according to whether the window is tall (ar>1)
                 // or wide (ar<1).
-                final int w = drawable.getWidth(), h = drawable.getHeight(); // w,h of screen
+                final int w = glCanvas.getWidth(), h = glCanvas.getHeight(); // w,h of screen
                 final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
                 float glScale = 1;
                 if (isFillsHorizontally()) { // tall, chip fills horizontally
@@ -1380,13 +1371,6 @@ public class ChipCanvas implements GLEventListener, Observer {
                         leftoverY = 1;
                     }
                     set(-lrborder, sx + lrborder, -leftoverY, sy + leftoverY);
-//            left = -lrborder;
-//            right = sx + lrborder;
-//            bottom = -leftoverY;
-//            top = sy + leftoverY;
-//                    borders.set(lrborder, leftoverY);
-//            borders.leftRight = lrborder;
-//            borders.bottomTop = leftoverY;
                 } else { // wide, chip fill vertically
                     glScale = ((float) h - (insets.top + insets.bottom)) / sy; // total scale from screen pixels chip pixels, one glScale is one chip pixel in screen pixels
                     float btop = insets.top / glScale; // b is generic border in chip pixels
@@ -1402,19 +1386,34 @@ public class ChipCanvas implements GLEventListener, Observer {
                         leftoverX = 1;
                     }
                     set(-leftoverX, sx + leftoverX, -bbot, sy + btop);
-//            left = -leftoverX;
-//            right = sx + leftoverX;
-//            bottom = -bbot;
-//            top = sy + btop;
-//                    borders.set(leftoverX, bbot + btop);
-//            borders.leftRight = leftoverX;
-//            borders.bottomTop = bbot + btop;
                 }
-//                translateBy(panTranslationFromCenter);
-                computeCenterPixel();
                 unzoomedScreenPixelsPerChipPixelScale = glScale;
-                computeScale();
-//                setScale(glScale); // set later in zoom
+
+                if (isZoomed()) {  // Inset no longer applied to view
+                    if (getArea() == 0) {
+                        log.warning("clip area has zera area, cannot zoom");
+                        return;
+                    }
+                    // find the relative fraction of clip area that the
+                    // mouse position is in chip pixels and zoom clip area aournd that point
+                    // clip area width and height in chip pixels
+                    float cw = getWidth(), ch = getHeight();
+                    // mouse location as fraction of clip area x and y
+                    float fx = (currentZoomChipPixel.x - left) / cw, fy = (currentZoomChipPixel.y - bot) / ch;
+                    float zfac1 = (zoomFactor - 1) / zoomFactor; // zfac=2 gives .5, zfac=.5 gives -1
+                    left = left + fx * cw * zfac1;  // move left more positive to zoom in (inout>0), more negative to zoom out (input<0)
+                    right = right - (1 - fx) * cw * zfac1;
+                    bot = bot + fy * ch * zfac1;
+                    top = top - (1 - fy) * ch * zfac1;
+                    log.fine(String.format("zoomed around frac pos [%.1f, %.1f]",fx,fy));
+                }
+                panFromCurrentBy(panPx.add(dragPx));
+                computeCenterPixel();
+                final float scalex = (float) w / (getWidth());
+                final float scaley = (float) h / getHeight();
+                zoomedScreenPixelsPerChipPixelScale = (scalex + scaley) / 2;
+                clearDirty();
+                log.fine(getZoom().toString());
             }
 
             /**
@@ -1423,47 +1422,17 @@ public class ChipCanvas implements GLEventListener, Observer {
              * @param chipPixel, if null zoom around middle of chip
              * @param zfac the absolute zoom factor
              */
-            private void zoomAroundPoint(Point chipPixel, float zfac) {
+            private void setZoomPointAndScale(Point chipPixel, float zfac) {
                 if (chipPixel == null) {
                     chipPixel = centerChipPixel;
                 }
                 this.currentZoomChipPixel = chipPixel;
-                computeUnzoomedClipAreaAndScale();
-                if (getArea() == 0) {
-                    log.warning("clip area has zera area, cannot zoom");
-                    return;
-                }
-//            setCenterPixel(mouseChipPixel);
                 setZoomFactor(zfac);
-                // find the relative fraction of clip area that the
-                // mouse position is in chip pixels and zoom clip area aournd that point
-                // clip area width and height in chip pixels
-                float cw = getWidth(), ch = getHeight();
-                // mouse location as fraction of clip area x and y
-                double fx = (chipPixel.x - getLeft()) / cw, fy = (chipPixel.y - getBottom()) / ch;
-                float zfac1 = (zfac - 1)/zfac; // inout+ gives like 0.051
-                setLeft((float) (getLeft() + fx * cw * zfac1));  // move left more positive to zoom in (inout>0), more negative to zoom out (input<0)
-                setRight((float) (getRight() - (1 - fx) * cw * zfac1));
-                setBottom((float) (getBottom() + fy * ch * zfac1));
-                setTop((float) (getTop() - (1 - fy) * ch * zfac1));
-//                setCenterPixel(mouseChipPixel);
-                computeCenterPixel();
-                computeScale();
+                getClipArea().setDirty();
             }
 
             private void computeScale() {
-                final int w = drawable.getWidth(); //, h = drawable.getHeight(); // w,h of screen
-                final float scalex = (float) w / (getRight() - getLeft());
-                final int h = drawable.getHeight(); //, h = drawable.getHeight(); // w,h of screen
-                final float scaley = (float) h / (getTop() - getBottom());
-                zoomedScreenPixelsPerChipPixelScale = (scalex + scaley) / 2;
-            }
 
-            @Override
-            public String toString() {
-                return String.format("ClipArea(w=%.1f h=%.1f, left=%.1f, right=%.1f, bot=%.1f, top=%.1f, translation=%s)",
-                        getWidth(), getHeight(), getLeft(), getRight(), getBottom(), getTop(),
-                        panPx);
             }
 
             private void computeCenterPixel() {
@@ -1474,98 +1443,98 @@ public class ChipCanvas implements GLEventListener, Observer {
              * @return the left
              */
             public float getLeft() {
-                return leftDefault - panPx.x - dragPx.x;
+                return left;
             }
 
             /**
              * @param left the left to set
              */
             public void setLeft(float left) {
-                this.leftDefault = left;
+                this.left = left;
             }
 
             /**
              * @return the right
              */
             public float getRight() {
-                return rightDefault - panPx.x - dragPx.x;
+                return right;
             }
 
             /**
              * @param right the right to set
              */
             public void setRight(float right) {
-                this.rightDefault = right;
+                this.right = right;
             }
 
             /**
              * @return the bottom
              */
             public float getBottom() {
-                return bottomDefault - panPx.y - dragPx.y;
+                return bot;
             }
 
             /**
              * @param bottom the bottom to set
              */
             public void setBottom(float bottom) {
-                this.bottomDefault = bottom;
+                this.bot = bottom;
             }
 
             /**
              * @return the top
              */
             public float getTop() {
-                return topDefault - panPx.y - dragPx.y;
+                return top;
             }
 
             /**
              * @param top the top to set
              */
             public void setTop(float top) {
-                this.topDefault = top;
+                this.top = top;
             }
 
         }
 
         public String toString() {
-            return String.format("Zoom: zoomFactor=%.2f, pan=%s, Zoom.ClipArea=%s", getZoomFactor(), panPx, getClipArea());
+            return String.format("Zoom: fact=%.2f, pan=%s, drag=%s, clipArea=%s", getZoomFactor(), panPx, dragPx, getClipArea());
         }
 
-        private void computeProjection(GLAutoDrawable drawable) {
-            getClipArea().computeProjection(drawable);
-        }
-
-        private void applyZoomProjection(final GL2 gl) {
+        private void applyProjection(final GL2 gl) {
+            if (getClipArea().isDirty()) {
+                getClipArea().computeBounds();
+            }
             checkGLError(gl, glu, "before applyZoomProjection");
 
             gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
             gl.glLoadIdentity();
             gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
             gl.glLoadIdentity();
+            // project applied depends on zoomed being set or not
             gl.glOrtho(getClipArea().getLeft(),
                     getClipArea().getRight(),
                     getClipArea().getBottom(),
                     getClipArea().getTop(),
                     ZCLIP, -ZCLIP); // clip area
             gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+
             checkGLError(gl, glu, "after applyZoomProjection");
         }
 
         /**
          * Zoom around mouseChipPixel with absolute zoom factor zfac
          *
-         * @param mouseChipPixel
+         * @param chipPixel
          * @param zfac the absolute zoom factor
          */
-        public void zoomAroundPoint(Point mouseChipPixel, float zfac) {
-            if (mouseChipPixel == null) {
+        public void zoomAroundPoint(Point chipPixel, float zfac) {
+            if (chipPixel == null) {
                 log.warning("null mouse point, will not zoom");
                 return;
             }
-            log.fine(String.format("zooming on %s with zoom factor %.1f", mouseChipPixel, zfac));
-            setZoomEnabled(this.getZoomFactor() != 1);
-            getClipArea().zoomAroundPoint(mouseChipPixel, zfac);
+            log.fine(String.format("zooming on %s with zoom factor %.1f", chipPixel, zfac));
+            getClipArea().setZoomPointAndScale(chipPixel, zfac);
         }
 
         /**
@@ -1600,26 +1569,28 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         private void unzoom() {
             log.fine("unzooming");
-            panPx.setLocation(0, 0);
-            dragPx.setLocation(0, 0);
+            panPx.clear();
+            dragPx.clear();
             setZoomFactor(1);
             set3dOrigin(0, 0);
-            setZoomEnabled(false);
+            getClipArea().setDirty();
         }
 
-        public boolean isZoomEnabled() {
-            return zoomEnabled;
-        }
-
-        public void setZoomEnabled(final boolean zoomEnabled) {
-            this.zoomEnabled = zoomEnabled;
+        /**
+         * If zoomed, then the border insets do not apply to view
+         *
+         * @return true if zoomFactor!=1
+         */
+        public boolean isZoomed() {
+            return Math.abs(zoomFactor - 1) > 1e-3; // account for possible rounding during zoom in/out
         }
 
         /**
          * @return the clipArea
          */
         public ClipArea getClipArea() {
-            return clipArea;
+            ClipArea area = isZoomed() ? zoomedClipArea : clipArea;
+            return area;
         }
 
         /**
@@ -1630,18 +1601,15 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
 
         /**
-         * @param zoomFactor the zoomFactor to set
+         * @param zoomFactor the zoomFactor to set, rounds close to 1 to 1
          */
         public void setZoomFactor(float zoomFactor) {
+            if (Math.abs(zoomFactor - 1) < 1e-3) {
+                zoomFactor = 1; // deal with rounding
+            }
             this.zoomFactor = zoomFactor;
-//            log.fine(String.format("zoomFactor=%.3f",
-//                    zoomFactor));
         }
 
-    }
-
-    public void addGLEventListener(final GLEventListener listener) {
-        System.out.println("addGLEventListener(" + listener + ")");
     }
 
     /**
@@ -1787,7 +1755,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * OpenGL, but is the upper right in Java's BufferedImage format.
      * This method should be called inside the rendering display method.
      *
-     * @param d the drawable we are drawing in.
+     * @param d the glCanvas we are drawing in.
      */
     void grabImage(final GLAutoDrawable d) {
         final GL2 gl = d.getGL().getGL2();
@@ -1859,27 +1827,9 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     @Override
     public void dispose(final GLAutoDrawable arg0) {
-        // TODO Auto-generated method stub
-
+        log.fine("disposing " + arg0);
     }
 
-    // /**
-    // * Returns the insets in pixels for the chip canvas inside the GLCanvas
-    // * @return the insets
-    // */
-    // public Insets getInsets() {
-    // return insets;
-    // }
-    //
-    // /**
-    // * Allows setting the insets for the canvas inside the GLCanvas
-    // *
-    // *
-    // * @param insets the insets to set, in pixels
-    // */
-    // public void setInsets(Insets insets) {
-    // this.insets = insets;
-    // }
     private static boolean checkedRetinaDisplay = false;
     private static boolean hasRetinaDisplayTrue = false;
 
@@ -1932,9 +1882,156 @@ public class ChipCanvas implements GLEventListener, Observer {
         this.annotationEnabled = annotationEnabled;
     }
 
-    private class ZoomPanMouseListener implements MouseMotionListener {
+//    private class ZoomPanMouseListener implements MouseMotionListener {
+//
+//        public ZoomPanMouseListener() {
+//        }
+//
+//        @Override
+//        public void mouseDragged(final MouseEvent e) { // handle panning
+//            final int screenX = e.getX();
+//            final int screenY = e.getY();
+//            final int but1mask = InputEvent.BUTTON1_DOWN_MASK, but3mask = InputEvent.BUTTON3_DOWN_MASK;
+//            if ((e.getModifiersEx() & but1mask) == but1mask) {
+//                if (is3DEnabled()) {
+//                    final float maxAngle = 180f;
+//                    setAngley((maxAngle * (screenX - (glCanvas.getWidth() / 2))) / glCanvas.getWidth());
+//                    setAnglex((maxAngle * (screenY - (glCanvas.getHeight() / 2))) / glCanvas.getHeight());
+//                    log.fine(String.format("angleX=%6.1f deg, angleY=%6.1f", anglex, angley));
+//                }
+//            } else if ((e.getModifiersEx() & but3mask) == but3mask) { // right mouse button drag
+//                if (is3DEnabled()) {
+//                    // mouse position x,y is in pixel coordinates in window glCanvas, but later on, the events will be
+//                    // drawn in
+//                    // chip coordinates (transformation applied). therefore here we set origin in pixel coordinates
+//                    // based on mouse
+//                    // position in window.
+//                    float dx = screenX - mdStPt.x;
+//                    float dy = screenY - mdStPt.y;
+//                    origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / glCanvas.getWidth());
+//                    origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / glCanvas.getHeight());
+//                } else { // normal pan
+//                    Point mPt = e.getPoint();
+//                    Point2D.Float mdpx = new Point2D.Float(mPt.x / getScale(),
+//                            -mPt.y / getScale()); // current px, arbitrary origin
+//                    float pxDx = mdpx.x - dragLastPx.x, pxDy = mdpx.y - dragLastPx.y;
+//                    dragPx = new Vec(pxDx, pxDy);
+//                    getClipArea().computeBounds();
+//                }
+//            }
+//            repaint();
+//        }
+//
+//        @Override
+//        public void mouseMoved(final MouseEvent e) {
+//        }
+//    }
+//    private class ZoomMouseClickedPressedListener extends MouseAdapter {
+//
+//        public ZoomMouseClickedPressedListener() {
+//        }
+//
+//        @Override
+//        public void mouseClicked(MouseEvent evt) {
+//            final Point p = getPixelFromMouseEvent(evt);
+//            if (evt.getButton() == 3) {
+//                if (wasMousePixelInsideChipBounds()) {
+//                    getRenderer().setXsel((short) p.x);
+//                    getRenderer().setYsel((short) p.y);
+//                } else {
+//                    getRenderer().setXsel((short) -1);
+//                    getRenderer().setYsel((short) -1);
+//                }
+//                log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
+//            }
+//        }
+//
+//        @Override
+//        public void mousePressed(final MouseEvent evt) {
+//            if (mdStPt == null) {
+//                mdStPt = new Point(evt.getPoint());
+//            } else {
+//                mdStPt.setLocation(evt.getPoint());
+//            }
+//            dragLastPx = new Vec(mdStPt.x / getScale(),
+//                    -mdStPt.y / getScale()); //getPixelUnclippedFromMouseEvent(evt);
+//            dragPx.clear();
+//            origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
+//            log.fine(getMousePixel().toString());
+//        }
+//
+//        @Override
+//        public void mouseReleased(final MouseEvent e) {
+//            if (is3DEnabled()) {
+//                log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
+//                        + getOrigin3dx() + " y=" + getOrigin3dy());
+//            } else if ((e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) == InputEvent.BUTTON3_DOWN_MASK) {
+//                // drag end
+//                panPx = new Vec(dragPx);
+//                dragPx.clear();
+//                getClipArea().computeBounds();
+//                log.fine(String.format("pan=%s, zoom=%s", panPx, zoom));
+//
+//            }
+//            repaint();
+//            log.fine(getMousePixel().toString());
+//        }
+//    }
+    private class ZoomMouseAdaptor extends MouseAdapter {
 
-        public ZoomPanMouseListener() {
+        boolean dragging = false;
+
+        @Override
+        public void mouseClicked(MouseEvent evt) {
+            final Point p = getPixelFromMouseEvent(evt);
+            if (evt.getButton() == MouseEvent.BUTTON3) {
+                if (wasMousePixelInsideChipBounds()) {
+                    getRenderer().setXsel((short) p.x);
+                    getRenderer().setYsel((short) p.y);
+                } else {
+                    getRenderer().setXsel((short) -1);
+                    getRenderer().setYsel((short) -1);
+                }
+                log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
+            } else {
+                log.fine("clicked pixel " + getPixelUnclippedFromMouseEvent(evt));
+            }
+        }
+
+        @Override
+        public void mousePressed(final MouseEvent evt) {
+            dragging = false;
+            if (evt.getButton() == MouseEvent.BUTTON3) {
+                dragging = true;
+
+                if (mdStPt == null) {
+                    mdStPt = new Point(evt.getPoint());
+                } else {
+                    mdStPt.setLocation(evt.getPoint());
+                }
+                dragLastPx = new Vec(mdStPt.x / getScale(),
+                        -mdStPt.y / getScale()); //getPixelUnclippedFromMouseEvent(evt);
+                getZoom().dragPx.clear();
+                origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
+                log.fine(getMousePixel().toString());
+            }
+            log.fine("pressed pixel " + getPixelUnclippedFromMouseEvent(evt));
+        }
+
+        @Override
+        public void mouseReleased(final MouseEvent evt) {
+            if (is3DEnabled()) {
+                log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
+                        + getOrigin3dx() + " y=" + getOrigin3dy());
+            } else if (dragging) {
+                // drag end
+                getZoom().panPx = new Vec(getZoom().panPx.add(getZoom().dragPx));
+                getZoom().dragPx.clear();
+                getClipArea().setDirty();
+                log.fine(String.format("pan=%s, zoom=%s", getZoom().panPx, zoom));
+            }
+            log.fine("released pixel " + getPixelUnclippedFromMouseEvent(evt));
+            repaint();
         }
 
         @Override
@@ -1945,88 +2042,32 @@ public class ChipCanvas implements GLEventListener, Observer {
             if ((e.getModifiersEx() & but1mask) == but1mask) {
                 if (is3DEnabled()) {
                     final float maxAngle = 180f;
-                    setAngley((maxAngle * (screenX - (drawable.getWidth() / 2))) / drawable.getWidth());
-                    setAnglex((maxAngle * (screenY - (drawable.getHeight() / 2))) / drawable.getHeight());
+                    setAngley((maxAngle * (screenX - (glCanvas.getWidth() / 2))) / glCanvas.getWidth());
+                    setAnglex((maxAngle * (screenY - (glCanvas.getHeight() / 2))) / glCanvas.getHeight());
                     log.fine(String.format("angleX=%6.1f deg, angleY=%6.1f", anglex, angley));
                 }
             } else if ((e.getModifiersEx() & but3mask) == but3mask) { // right mouse button drag
                 if (is3DEnabled()) {
-                    // mouse position x,y is in pixel coordinates in window canvas, but later on, the events will be
+                    // mouse position x,y is in pixel coordinates in window glCanvas, but later on, the events will be
                     // drawn in
                     // chip coordinates (transformation applied). therefore here we set origin in pixel coordinates
                     // based on mouse
                     // position in window.
-                    float dx = screenX - mouseDragScreenStartPoint.x;
-                    float dy = screenY - mouseDragScreenStartPoint.y;
-                    origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / drawable.getWidth());
-                    origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / drawable.getHeight());
+                    float dx = screenX - mdStPt.x;
+                    float dy = screenY - mdStPt.y;
+                    origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / glCanvas.getWidth());
+                    origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / glCanvas.getHeight());
                 } else { // normal pan
-                    Point mcPt = e.getPoint();
-                    Point2D.Float mdpx
-                            = new Point2D.Float(mcPt.x / getScale(), -mcPt.y / getScale()); // current px, arbitrary origin
-                    float pxDx = mdpx.x - mdStPx.x,
-                            pxDy = mdpx.y - mdStPx.y;
-                    getZoom().dragPx.setLocation(pxDx, pxDy);
-//                    getZoom().computeProjection(drawable);
-                    log.fine(String.format("currentPx=%s, dragPx=%s", getZoom().dragPx, getZoom().dragPx));
+                    Point mPt = e.getPoint();
+                    Point2D.Float mdpx = new Point2D.Float(mPt.x / getScale(),
+                            -mPt.y / getScale()); // current px, arbitrary origin
+                    float pxDx = mdpx.x - dragLastPx.x, pxDy = mdpx.y - dragLastPx.y;
+                    getZoom().dragPx = new Vec(pxDx, pxDy);
+                    getClipArea().setDirty();
                 }
             }
             repaint();
         }
 
-        @Override
-        public void mouseMoved(final MouseEvent e) {
-        }
     }
-
-    private class ZoomMouseClickedPressedListener extends MouseAdapter {
-
-        public ZoomMouseClickedPressedListener() {
-        }
-
-        @Override
-        public void mouseClicked(MouseEvent evt) {
-            final Point p = getPixelFromMouseEvent(evt);
-            if (evt.getButton() == 3) {
-                if (wasMousePixelInsideChipBounds()) {
-                    getRenderer().setXsel((short) p.x);
-                    getRenderer().setYsel((short) p.y);
-                } else {
-                    getRenderer().setXsel((short) -1);
-                    getRenderer().setYsel((short) -1);
-                }
-                log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
-            }
-        }
-
-        @Override
-        public void mousePressed(final MouseEvent evt) {
-            if (mouseDragScreenStartPoint == null) {
-                mouseDragScreenStartPoint = new Point(evt.getPoint());
-            } else {
-                mouseDragScreenStartPoint.setLocation(evt.getPoint());
-            }
-            mdStPx = new Point2D.Float(mouseDragScreenStartPoint.x / getScale(),
-                            -mouseDragScreenStartPoint.y / getScale()); //getPixelUnclippedFromMouseEvent(evt);
-            getZoom().dragPx.setLocation(0, 0);
-            origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
-        }
-
-        @Override
-        public void mouseReleased(final MouseEvent e) {
-            if (is3DEnabled()) {
-                log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
-                        + getOrigin3dx() + " y=" + getOrigin3dy());
-            } else {
-                // transfer drag to pan vector
-                Point2D.Float pan = getZoom().panPx;
-                pan.setLocation(pan.x + getZoom().dragPx.x,
-                        pan.y + getZoom().dragPx.y);
-                getZoom().dragPx.setLocation(0, 0);
-            }
-            repaint(100);
-            log.info(zoom.toString());
-        }
-    }
-
 }
