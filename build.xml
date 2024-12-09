@@ -4,13 +4,28 @@
 <!-- (If you delete it and reopen the project it will be recreated.) -->
 <project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
     
-     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
+    <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
-
+    
+    
     <target name="-do-clean" depends="init,clean-ivy">
         <delete dir="${build.dir}" failonerror="false"/>
     </target>
+    
+    <target name="remove-properties-datestamp">
+        <echo message="removing header datestamp from ${basedir}/nbproject/project.properties" />
+        <copy file="${basedir}/nbproject/project.properties" tofile="tmp.properties">
+            <filterchain>
+                <!--read all lines, but skip the automatic date stamp-->
+                <headfilter lines="-1" skip="1"/> 
+            </filterchain>
+        </copy>
+        <copy file="tmp.properties" tofile="${basedir}/nbproject/project.properties" />
+        <delete file="tmp.properties"/>
+
+    </target>
+
     <!--
             https://blog.alejandrocelaya.com/2014/02/22/dependency-management-in-java-projects-with-ant-and-ivy/ 
         https://ant.apache.org/ivy/ 
@@ -27,7 +42,7 @@
     <property name="ivy.settings.location" value="${basedir}/ivysettings.xml" />
     
     <target name="-check-ivy">
-    <echo message="ivy.lib=${ivy.lib}" />
+        <echo message="ivy.lib=${ivy.lib}" />
         <available file="${ivy.jar.file}" property="ivy.skip.download"/>
         <mkdir dir="${ivy.lib}"/>
     </target>
@@ -48,7 +63,7 @@
     </target>
     
 
-  <!-- Build jaer module -->
+    <!-- Build jaer module -->
 
 
     <target name="download-deps" depends="-load-ivy-tasks"
@@ -73,6 +88,8 @@
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
         </propertyfile>
+       
+        <antcall target="remove-properties-datestamp"/>
     </target>
 
     <target name="clean-deps" description="Clean downloaded libraries.">
@@ -92,9 +109,11 @@
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value=""/>
         </propertyfile>
+        <antcall target="remove-properties-datestamp"/>
+
     </target>
 
-<!--    <target name="-use-ivy-junit" depends="download-deps" unless="netbeans.home">
+    <!--    <target name="-use-ivy-junit" depends="download-deps" unless="netbeans.home">
         <property name="libs.junit_4.classpath" value="${ivy.lib}/junit-4.10.jar"/>
     </target>-->
     
