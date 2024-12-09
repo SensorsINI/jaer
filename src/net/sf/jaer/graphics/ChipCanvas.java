@@ -619,7 +619,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @return pixel x,y location (integer point) from MouseEvent. Accounts for
      * scaling and borders of chip display area. Can be outside chip boundaries.
      */
-    private Point getPixelUnclippedFromMouseEvent(final MouseEvent evt) {
+    private Point getPixelFromMouseEventUnclipped(final MouseEvent evt) {
         final Point mp = evt.getPoint();
         if (mp == null) {
             return null;
@@ -638,6 +638,8 @@ public class ChipCanvas implements GLEventListener, Observer {
      * valid.
      */
     private Point getPixelFromMousePoint(final Point mp) {
+        getZoom().computeMouseFrac(mp);
+
         if (mp == null) {
             return null;
         }
@@ -828,6 +830,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     @Override
     public void reshape(final GLAutoDrawable drawable, final int x, final int y, final int width, final int height) {
         final GL2 gl = drawable.getGL().getGL2();
+        getClipArea().setDirty();
         getZoom().applyProjection(gl);
         gl.glViewport(0, 0, width, height);
 //        checkGLError(gl, glu, "at start of reshape");
@@ -1218,7 +1221,7 @@ public class ChipCanvas implements GLEventListener, Observer {
          * projection.
          */
         final ClipArea clipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
-        final ClipArea zoomedClipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
+        ClipArea zoomedClipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
 
         /**
          * The translation from center point currently applied
@@ -1229,6 +1232,13 @@ public class ChipCanvas implements GLEventListener, Observer {
          * Temporary drag vector applied during drag
          */
         private Vec dragPx = new Vec(0, 0);
+
+        /**
+         * The most recent mouse location for zoom as fraction of drawable
+         * screen width and height. Computed on mouse event to get the current
+         * value from screen pixel location
+         */
+        private Vec mouseFrac = new Vec(.5f, .5f);
 
         /**
          * Orthographic projection clipping area.
@@ -1354,39 +1364,36 @@ public class ChipCanvas implements GLEventListener, Observer {
                 }
 
                 // get current drawable canvas and chip and clip dimensions, BEFORE we reset and compute the zoom
-                final int dw = glCanvas.getWidth(), dh = glCanvas.getHeight(); // w,h of screen
-                final int sx = chip.getSizeX(), sy = chip.getSizeY(); // chip size
-                float clipw = getWidth(), cliph = getHeight();
+                final int canw = glCanvas.getWidth(), canh = glCanvas.getHeight(); // w,h of screen
+                final float canar = (float) canw / canh;  // aspect ratio of canvas, width/height, final clip must have same AR
+                final int chw = chip.getSizeX(), chh = chip.getSizeY(); // chip size
 
-                // find the relative fraction of clip area that the
+                // find the CURRENT relative fraction of clip area that the
                 // mouse position is in chip pixels and zoom clip area aournd that point
                 // clip area width and height in chip pixels
-                // mouse location as fraction of clip area x and y.
+                // mouse location as fraction of clip/display area x and y.
                 // **** Important to do this before we manipulate the clip window!
-                float fx = .5f, fy = .5f;
-                if (clipw>0 && cliph>0) {
-                    fx = (currentZoomChipPixel.x - left) / clipw;
-                    fy = (currentZoomChipPixel.y - bot) / cliph;
-                }
+                // mouseFrac is computed in getPixelFromMousePoint
+                float fx = mouseFrac.x, fy = mouseFrac.y;
 
                 // compute the unzoomed and inset clip window first
                 float newscale;
-                if (sy > sx) {
+                if (chh > chw) {
                     // chip is tall and skinny, so set scaleChipPixels2ScreenPixels by frame height/chip height
-                    newscale = (dh - insets.top - insets.bottom) / sy;
+                    newscale = (canh - insets.top - insets.bottom) / chh;
                     fillsVertically = true;
                     fillsHorizontally = false;
-                    if ((newscale * sx) > dw) { // unless it runs into left/right, then set to fill width
+                    if ((newscale * chw) > canw) { // unless it runs into left/right, then set to fill width
 //                newscale = (width - border) / chipSizeX;
                         fillsHorizontally = true;
                         fillsVertically = false;
                     }
                 } else {
                     // chip is square or squat, so set scaleChipPixels2ScreenPixels by frame width / chip width
-                    newscale = (dw - insets.left - insets.right) / sx;
+                    newscale = (canw - insets.left - insets.right) / chw;
                     fillsHorizontally = true;
                     fillsVertically = false;
-                    if ((newscale * sy) > dh) {// unless it runs into top/bottom, then set to fill height
+                    if ((newscale * chh) > canh) {// unless it runs into top/bottom, then set to fill height
 //                newscale = (height - border) / chipSizeY;
                         fillsVertically = true;
                         fillsHorizontally = false;
@@ -1397,19 +1404,19 @@ public class ChipCanvas implements GLEventListener, Observer {
                 // or wide (ar<1).
                 float glScale;
                 if (isFillsHorizontally()) { // tall, chip fills horizontally
-                    glScale = ((float) dw - (insets.left + insets.right)) / sx; // chip pix to screen pix scaling in horizontal&vert direction,
+                    glScale = ((float) canw - (insets.left + insets.right)) / chw; // chip pix to screen pix scaling in horizontal&vert direction,
                     //  i.e. one glScale is one chip pixel in screen pixels
                     float lrborder = (insets.left + insets.right) / 2 / glScale; // l,r border in model coordinates
                     if (lrborder <= 0) {
                         lrborder = 1;
                     }
-                    float leftoverY = ((dh / glScale) - sy) / 2; // leftover y in model coordinates that makes up vertical border
+                    float leftoverY = ((canh / glScale) - chh) / 2; // leftover y in model coordinates that makes up vertical border
                     if (leftoverY <= 0) {
                         leftoverY = 1;
                     }
-                    set(-lrborder, sx + lrborder, -leftoverY, sy + leftoverY);
+                    set(-lrborder, chw + lrborder, -leftoverY, chh + leftoverY);
                 } else { // wide, chip fill vertically
-                    glScale = ((float) dh - (insets.top + insets.bottom)) / sy; // total scale from screen pixels chip pixels, one glScale is one chip pixel in screen pixels
+                    glScale = ((float) canh - (insets.top + insets.bottom)) / chh; // total scale from screen pixels chip pixels, one glScale is one chip pixel in screen pixels
                     float btop = insets.top / glScale; // b is generic border in chip pixels
                     float bbot = insets.bottom / glScale; // b is generic border in chip pixels
                     if (bbot <= .5f) {
@@ -1418,23 +1425,22 @@ public class ChipCanvas implements GLEventListener, Observer {
                     if (btop <= .5f) {
                         btop = 1;
                     }
-                    float leftoverX = ((dw / glScale) - sx) / 2; // total leftover x in model coordinates that makes up horizontal border
+                    float leftoverX = ((canw / glScale) - chw) / 2; // total leftover x in model coordinates that makes up horizontal border
                     if (leftoverX <= 0) {
                         leftoverX = 1;
                     }
-                    set(-leftoverX, sx + leftoverX, -bbot, sy + btop);
+                    set(-leftoverX, chw + leftoverX, -bbot, chh + btop);
                 }
                 unzoomedScreenPixelsPerChipPixelScale = glScale;
-
-                // now compute possible zoom around the mouse point
-                if (isZoomed()) {  // Inset no longer applied to view
+                if (isZoomed()) {  // zoomed view Inset no longer applied to view
+                    // the view should be zoomed so that after zoom fx and fy remain the same
                     if (getArea() == 0) {
                         log.warning("clip area has zera area, cannot zoom");
                         return;
                     }
                     // recompute width and height after unzoom above
-                    clipw = getWidth();
-                    cliph = getHeight();
+                    float clipw = getWidth();
+                    float cliph = getHeight();
 
                     float zfac1 = (zoomFactor - 1) / zoomFactor; // zfac=2 gives .5, zfac=.5 gives -1
                     left = left + fx * clipw * zfac1;  // move left more positive to zoom in (inout>0), more negative to zoom out (input<0)
@@ -1442,11 +1448,12 @@ public class ChipCanvas implements GLEventListener, Observer {
                     bot = bot + fy * cliph * zfac1;
                     top = top - (1 - fy) * cliph * zfac1;
                     log.fine(String.format("zoomed around frac pos [%.1f, %.1f]", fx, fy));
+//                    panFromCurrentBy(panPx.add(dragPx));
                 }
                 panFromCurrentBy(panPx.add(dragPx));
                 computeCenterPixel();
-                final float scalex = (float) dw / (getWidth());
-                final float scaley = (float) dh / getHeight();
+                final float scalex = (float) canw / (getWidth());
+                final float scaley = (float) canh / getHeight();
                 zoomedScreenPixelsPerChipPixelScale = (scalex + scaley) / 2;
                 clearDirty();
                 log.fine(getZoom().toString());
@@ -1609,7 +1616,8 @@ public class ChipCanvas implements GLEventListener, Observer {
             dragPx.clear();
             setZoomFactor(1);
             set3dOrigin(0, 0);
-            getClipArea().setDirty();
+            clipArea.computeBounds();
+            zoomedClipArea.computeBounds();
         }
 
         /**
@@ -1627,6 +1635,10 @@ public class ChipCanvas implements GLEventListener, Observer {
         public ClipArea getClipArea() {
             ClipArea area = isZoomed() ? zoomedClipArea : clipArea;
             return area;
+        }
+
+        private void computeMouseFrac(Point p) {
+            mouseFrac.setLocation((float) p.x / glCanvas.getWidth(), 1 - (float) p.y / glCanvas.getHeight());
         }
 
         /**
@@ -1935,7 +1947,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 }
                 log.info("Selected pixel x,y=" + getRenderer().getXsel() + "," + getRenderer().getYsel());
             } else {
-                log.fine("clicked pixel " + getPixelUnclippedFromMouseEvent(evt));
+                log.fine("clicked pixel " + getPixelFromMouseEventUnclipped(evt));
             }
         }
 
@@ -1956,7 +1968,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
                 log.fine(getMousePixel().toString());
             }
-            log.fine("pressed pixel " + getPixelUnclippedFromMouseEvent(evt));
+            log.fine("pressed pixel " + getPixelFromMouseEventUnclipped(evt));
         }
 
         @Override
@@ -1971,7 +1983,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                 getClipArea().setDirty();
                 log.fine(String.format("pan=%s, zoom=%s", getZoom().panPx, zoom));
             }
-            log.fine("released pixel " + getPixelUnclippedFromMouseEvent(evt));
+            log.fine("released pixel " + getPixelFromMouseEventUnclipped(evt));
             repaint();
         }
 
