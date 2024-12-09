@@ -100,7 +100,6 @@ public class JAERViewer {
     private SyncPlayer syncPlayer = null; // add a sync player once we have a viewer to assign it to
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
 
-
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode = false;
 
@@ -156,16 +155,8 @@ public class JAERViewer {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                log.info("JAERViewer shutdown hook - saving window settings");
-                if (windowSaver != null) {
-                    try {
-                        windowSaver.saveSettings();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
                 if ((viewers != null) && !viewers.isEmpty()) {
-                    log.info("saving list of AEViewer chip classes");
+                    System.out.println("saving list of AEViewer chip classes");
                     try {
 
                         ArrayList<String> viewerChipClassNames = new ArrayList<String>();
@@ -182,22 +173,31 @@ public class JAERViewer {
                         byte[] buf = bos.toByteArray();
                         prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        System.err.println(String.format("could not store class names: %s", e.toString()));
                     } catch (IllegalArgumentException e2) {
-                        log.warning("tried to store too many classes in last chip classes");
+                        System.err.println("tried to store too many classes in last chip classes? " + e2.toString());
                     }
-                    log.info("saving possible open data logging");
+                    System.out.println("saving possible open data logging");
                     try {
                         for (AEViewer v : viewers) {
-                            if(v.getLoggingFile()!=null){
+                            if (v.getLoggingFile() != null) {
                                 v.stopLogging(true);
                             }
                         }
                     } catch (Exception e) {
-                        log.warning(String.format("stopping logging, caught Exception %s",e.toString()));
-                    } 
+                        System.err.println(String.format("stopping logging, caught Exception %s", e.toString()));
+                    }
                 }
-                
+
+                System.out.println("JAERViewer shutdown hook - saving window settings");
+                if (windowSaver != null) {
+                    try {
+                        windowSaver.saveSettings();
+                    } catch (Exception e) {
+                        System.err.println(String.format("could not save window settings: %s", e.toString()));
+                    }
+                }
+
             }
         });
     }
@@ -317,10 +317,10 @@ public class JAERViewer {
     }
 
     public void addViewer(AEViewer viewer) {
-        if(syncPlayer==null){
-            syncPlayer=new SyncPlayer(viewer, this);
-            log.info("added "+syncPlayer+" to first viewer "+this);
-        } 
+        if (syncPlayer == null) {
+            syncPlayer = new SyncPlayer(viewer, this);
+            log.info("added " + syncPlayer + " to first viewer " + this);
+        }
         getViewers().add(viewer);
         viewer.addWindowListener(new java.awt.event.WindowAdapter() {
 
@@ -658,7 +658,7 @@ public class JAERViewer {
         }
         log.info("logging configuration read from java.util.logging.config.file=" + System.getProperty("java.util.logging.config.file"));
         for (Handler h : root.getHandlers()) {
-            log.info(String.format("Handler %s logging with Level=%s",h,h.getLevel()));
+            log.info(String.format("Handler %s logging with Level=%s", h, h.getLevel()));
 //            if (h instanceof ConsoleHandler) {
 //                log.info("debug logging to console with Level=" + ((ConsoleHandler) h).getLevel());
 //            } else if (h instanceof FileHandler) {
