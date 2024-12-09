@@ -285,7 +285,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     File currentFile = null;
     private FrameRater frameRater = new FrameRater();
     ChipCanvas chipCanvas;
-    volatile boolean loggingEnabled = false;
+    private volatile boolean loggingEnabled = false, loggingPaused=false;
     /** The file that AE data is currently being logged to. Note it can change when the user finally selects the file to save the data to. 
      @see #startLogging(String,String)
      */
@@ -1631,7 +1631,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
 
                     // if we are logging data to disk do it here
-                    if (loggingEnabled) {
+                    if (isLoggingEnabled()  & !isLoggingPaused()) {
                         logPacket(rawPacket, cookedPacket);
                     }
 
@@ -1971,7 +1971,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 } catch (IOException e) {
                     log.log(Level.SEVERE, e.toString(), e);
 
-                    loggingEnabled = false;
+                    setLoggingEnabled(false);
                     try {
                         loggingOutputStream.close();
                     } catch (IOException e2) {
@@ -4493,7 +4493,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     synchronized public void toggleLogging() {
         if ((jaerViewer != null) && jaerViewer.isSyncEnabled() && (jaerViewer.getViewers().size() > 1)) {
             jaerViewer.toggleSynchronizedLogging();
-        } else if (loggingEnabled) {
+        } else if (isLoggingEnabled()) {
             stopLogging(true); // confirms filename dialog when flag true
         } else {
             startLogging();
@@ -4521,10 +4521,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     loggingMenuItem.setEnabled(true);
                 }
 
-                if (!loggingEnabled && (getPlayMode() == PlayMode.PLAYBACK)) {
+                if (!isLoggingEnabled() && (getPlayMode() == PlayMode.PLAYBACK)) {
                     loggingButton.setText("Start Re-logging");
                     loggingMenuItem.setText("Start re-logging data");
-                } else if (loggingEnabled) {
+                } else if (isLoggingEnabled()) {
                     loggingButton.setText("Stop logging");
                     loggingButton.setSelected(true);
                     loggingMenuItem.setText("Stop logging data");
@@ -4613,7 +4613,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 });
             }
-            loggingEnabled = true;
+            setLoggingEnabled(true);
 
             fixLoggingControls();
 
@@ -4722,7 +4722,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
         int retValue = JFileChooser.CANCEL_OPTION;
-        if (loggingEnabled) {
+        if (isLoggingEnabled()) {
             if (loggingButton.isSelected()) {
                 loggingButton.setSelected(false);
             }
@@ -4732,7 +4732,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             try {
                 log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + loggingFile);
                 synchronized (loggingOutputStream) {
-                    loggingEnabled = false;
+                    setLoggingEnabled(false);
                     loggingOutputStream.close();
                 }
                 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
@@ -4854,7 +4854,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
             }
-            loggingEnabled = false;
+            setLoggingEnabled(false);
             getSupport().firePropertyChange(EVENT_LOGGING_STOPPED, null, loggingFile);
         }
 
@@ -4862,6 +4862,46 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return loggingFile;
     }    // doesn't actually reset the test in the dialog'
 
+    
+    
+    /**
+     * Returns true if currently logging (recording data to file)
+     * 
+     * @return the loggingEnabled
+     */
+    public boolean isLoggingEnabled() {
+        return loggingEnabled;
+    }
+
+    /**
+     * Disables logging if it is enabled. Set true when logging is started. Users can disable during logging.
+     * Has no effect if logging is not started.
+     * 
+     * @param loggingEnabled the loggingEnabled to set
+     */
+    private void setLoggingEnabled(boolean loggingEnabled) {
+        this.loggingEnabled = loggingEnabled;
+    }
+
+    /**
+     * Returns true if logging is paused.
+     * 
+     * @return the loggingPaused
+     */
+    public boolean isLoggingPaused() {
+        return loggingPaused;
+    }
+
+    /**
+     * Pauses logging data if it is enabled. Users can disable before starting or during logging.
+     * Has no effect if logging is not started.
+     * 
+     * @param loggingPaused the loggingEnabled to set
+     */
+    private void setLoggingPaused(boolean loggingPaused) {
+        this.loggingPaused = loggingPaused;
+    }    
+    
     class ResetFileButton extends JButton {
 
         String fn;
@@ -6383,6 +6423,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setJaerUpdaterFrame(JaerUpdaterFrame jaerUpdaterFrame) {
         this.jaerUpdaterFrame = jaerUpdaterFrame;
     }
+
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
