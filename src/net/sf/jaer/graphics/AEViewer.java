@@ -5755,6 +5755,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             int newSpace = Integer.parseInt(borderString);
             if (newSpace != borderSpaceNow) {
                 chip.getCanvas().setBorderSpacePixels(newSpace);
+                setBorderSpaceMenuItem.setText(String.format("Set border space (currently %d)",newSpace));
+                repaint();
             }
         } catch (NumberFormatException e) {
             log.warning(e.toString());
@@ -6409,7 +6411,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /** Remove any zoom */
     public void unzoom(){
         if(getChip().getCanvas()!=null){
-            getChip().getCanvas().getZoom().setZoomEnabled(false);
+            getChip().getCanvas().unzoom();
+            repaint();
         }
         
     }
