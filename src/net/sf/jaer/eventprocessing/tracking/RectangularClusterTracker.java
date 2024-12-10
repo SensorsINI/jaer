@@ -419,9 +419,15 @@ public class RectangularClusterTracker extends EventFilter2D
 
         EventPacket filteredPacket = track(in);
 
+        zoomToTracked();
+
+        return filterEventsEnabled ? filteredPacket : in;
+    }
+
+    private void zoomToTracked() {
         if (isZoomOnTrackedCluster()) {
             AEViewer v = chip.getAeViewer();
-            if (getVisibleClusters().size() == 1) {
+            if (getVisibleClusters().size() > 0) {
                 Cluster c = getVisibleClusters().getFirst();
                 if (c != null) {
                     Point2D p2d = c.getLocation();
@@ -434,8 +440,6 @@ public class RectangularClusterTracker extends EventFilter2D
                 v.unzoom();
             }
         }
-
-        return filterEventsEnabled ? filteredPacket : in;
     }
 
     /**
@@ -3451,7 +3455,7 @@ public class RectangularClusterTracker extends EventFilter2D
         if (getChip().getAeViewer().isZoomed()) {
             getChip().getAeViewer().unzoom();
         }
-        zoomHUDObject=null;
+        zoomHUDObject = null;
     }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --UseOnePolarityOnlyEnabled--">
@@ -4312,9 +4316,26 @@ public class RectangularClusterTracker extends EventFilter2D
     private class ZoomHUDObject {
 
         Cluster c;
+        float r;
+        Point2D.Float p;
+        float x, y, ar;
+        int sx = chip.getSizeX(), sy = chip.getSizeY();
+        float chAR = (float) sy / sx; // chip AR, h/w
+        float frW = 1, frH = 1; // frame dims
+        float chSR = 3; // how large the chip frame is compared to cluster radius
+        float[] gray = {.7f, .7f, .7f};
 
         public ZoomHUDObject(Cluster c) {
             this.c = c;
+            if (c.getLocation() == null) {
+                return;
+            }
+            p = c.getLocation();
+            x = (float) p.getX();
+            y = (float) p.getY();
+            ar = c.getAspectRatio();
+            r = c.getRadius();
+
         }
 
         /**
@@ -4327,27 +4348,53 @@ public class RectangularClusterTracker extends EventFilter2D
                 return;
             }
             gl.glLineWidth(1);
-            float r = c.getRadius(), x = (float) p.getX(), y = (float) p.getY(), ar = c.getAspectRatio();
-            int sx = chip.getSizeX(), sy = chip.getSizeY();
-            float chAR = (float) sy / sx; // chip AR, h/w
-            float chSR = 3; // how large the chip frame is compared to cluster radius
-            float frW = r * chSR, frH = r * chSR * chAR; // frame dims
-            float cW = frW * (r * 2 / sx), cH = frH * ((r * 2 * ar) / sy);
-            float cX = x + frW * ((x - sx / 2) / sx), cY = y + frH * ((y - sy / 2) / sy);
-            float down = r * chSR;
+
+            frW = r * chSR;
+            frH = r * chSR * chAR; // frame dims
+
+            float down = r *ar * chSR;
+            drawFrame(gl, x, y, down, frW, frH);
+            for (Cluster c1 : getVisibleClusters()) {
+                drawCluster(gl, c1, down, frW, frH);
+            }
+        }
+
+        private void drawFrame(GL2 gl, float x, float y, float down, float frW, float frH) {
             gl.glColor3f(1, 1, 1);
             { // draw frame for chip
                 gl.glPushMatrix();
                 DrawGL.drawBox(gl, x, y - down, frW, frH, 0);
                 gl.glPopMatrix();
             }
-            Color color = c.getColor();
-            float[] rgb = color.getRGBColorComponents(null);
-            gl.glColor3fv(rgb, 0);
+        }
+
+        private void drawCluster(GL2 gl, Cluster c, float down, float frW, float frH) {
+            Point2D.Float p = c.getLocation();
+            if (p == null) {
+                return;
+            }
+            float x1=(float)p.getX(),y1=(float)p.getY();
+            float cW = frW * (r * 2 / sx), cH = frH * ((r * 2 * ar) / sy);
+            float cX = x + frW * ((x1 - sx / 2) / sx), cY = y + frH * ((y1 - sy / 2) / sy);
+//            if (c == this.c) {
+                Color color = c.getColor();
+                float[] rgb = color.getRGBColorComponents(null);
+                gl.glColor3fv(rgb, 0);
+//            } else {
+//                gl.glColor3fv(gray, 0);
+//            }
             { // draw cluster within frame
                 gl.glPushMatrix();
                 DrawGL.drawBox(gl, cX, cY - down, cW, cH, 0);
                 gl.glPopMatrix();
+            }
+            if (c == this.c) {  // draw circle around this special zoomed cluster
+                gl.glColor3f(1, 1, 1);
+                { // draw cluster within frame
+                    gl.glPushMatrix();
+                    DrawGL.drawCircle(gl, cX, cY - down, cW,12);
+                    gl.glPopMatrix();
+                }
             }
         }
     }
