@@ -45,10 +45,9 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.event.orientation.ApsDvsOrientationEvent;
-import net.sf.jaer.event.orientation.OrientationEventInterface;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -203,6 +202,10 @@ public class RectangularClusterTracker extends EventFilter2D
      */
     private float maxSizeScaleRatio = getFloat("maxSizeScaleRatio", 4);
 
+    private boolean zoomOnTrackedCluster = getBoolean("zoomOnTrackedCluster", false);
+    private boolean zoomHUD = getBoolean("zoomHUD", true);
+    private float zoomFactor = getFloat("zoomFactor", 2);
+
     /**
      * The list of clusters (visible and invisible).
      */
@@ -287,9 +290,9 @@ public class RectangularClusterTracker extends EventFilter2D
                 mov = "4: Movement",
                 merge = "5: Merging",
                 disp = "8: Display",
-                update = "9:: Update",
-                logg = "Logging",
-                options = "8: Options";
+                options = "9: Options",
+                logg = "A: Logging",
+                zoom = "B: zoom";
 
         setPropertyTooltipBold(common, "maxNumClusters", "Sets the maximum potential number of clusters");
 
@@ -380,6 +383,10 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(options, "filterEventsEnabled",
                 "<html>If disabled, input packet is unaltered. <p>If enabled, output packet contains RectangularClusterTrackerEvent, <br>events refer to containing cluster, and non-owned events are discarded.");
 
+        setPropertyTooltip(zoom, "zoomOnTrackedCluster", "sets AEViewer zoom to follow cluster");
+        setPropertyTooltip(zoom, "zoomFactor", "sets AEViewer zoom factor");
+        setPropertyTooltip(zoom, "zoomHUD", "show Heads Up Display for zoom to show context");
+
     }
 
     /**
@@ -411,6 +418,22 @@ public class RectangularClusterTracker extends EventFilter2D
         }
 
         EventPacket filteredPacket = track(in);
+
+        if (isZoomOnTrackedCluster()) {
+            AEViewer v = chip.getAeViewer();
+            if (getVisibleClusters().size() == 1) {
+                Cluster c = getVisibleClusters().getFirst();
+                if (c != null) {
+                    Point2D p2d = c.getLocation();
+                    Point p = new Point((int) p2d.getX(), (int) p2d.getY());
+                    v.zoomToCenter(p, getZoomFactor());
+                    zoomHUDObject = new ZoomHUDObject(c);
+                }
+            } else {
+                zoomHUDObject = null;
+                v.unzoom();
+            }
+        }
 
         return filterEventsEnabled ? filteredPacket : in;
     }
@@ -1379,6 +1402,10 @@ public class RectangularClusterTracker extends EventFilter2D
          */
         private float avgEventRateHzPerPx = 0;
         private float radius; // in chip chip pixels
+        /**
+         * Aspect ratio is height/width, i.e. >1 for vertical rectangle, <1 for
+         * horizontal rectangle
+         */
         protected float aspectRatio, radiusX, radiusY;
         protected LinkedList<ClusterPathPoint> path = new LinkedList<>();
 
@@ -2876,6 +2903,12 @@ public class RectangularClusterTracker extends EventFilter2D
         // </editor-fold>
 
         // <editor-fold defaultstate="collapsed" desc="getter-setter for --AspectRatio--">
+        /**
+         * Returns aspect ratio which is cluster height/width, i.e. >1 for
+         * vertical rectangle, <1 for horizontal rectangle @return aspect
+         *
+         * ratio, less than one for horizontal rectangular cluster
+         */
         public float getAspectRatio() {
             return aspectRatio;
         }
@@ -3050,6 +3083,9 @@ public class RectangularClusterTracker extends EventFilter2D
             log.warning("concurrent modification of cluster list while drawing " + clusters.size() + " clusters");
         } finally {
             gl.glPopMatrix();
+        }
+        if (isZoomHUD() && zoomHUDObject != null) {
+            zoomHUDObject.draw(gl);
         }
     }
 
@@ -3402,6 +3438,21 @@ public class RectangularClusterTracker extends EventFilter2D
         getSupport().firePropertyChange("filterEventsEnabled", old, filterEventsEnabled);
     }
     // </editor-fold>
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        if (!yes) {
+            unzoom();
+        }
+    }
+
+    private void unzoom() {
+        if (getChip().getAeViewer().isZoomed()) {
+            getChip().getAeViewer().unzoom();
+        }
+        zoomHUDObject=null;
+    }
 
     // <editor-fold defaultstate="collapsed" desc="getter/setter for --UseOnePolarityOnlyEnabled--">
     public boolean isUseOnePolarityOnlyEnabled() {
@@ -4208,5 +4259,96 @@ public class RectangularClusterTracker extends EventFilter2D
 //        this.fontSize = fontSize;
 //        putInt("fontSize", fontSize);
 //    }
+    /**
+     * @return the zoomOnTrackedCluster
+     */
+    public boolean isZoomOnTrackedCluster() {
+        return zoomOnTrackedCluster;
+    }
 
+    /**
+     * @param zoomOnTrackedCluster the zoomOnTrackedCluster to set
+     */
+    public void setZoomOnTrackedCluster(boolean zoomOnTrackedCluster) {
+        this.zoomOnTrackedCluster = zoomOnTrackedCluster;
+        putBoolean("zoomOnTrackedCluster", zoomOnTrackedCluster);
+        if (!zoomOnTrackedCluster) {
+            unzoom();
+        }
+    }
+
+    /**
+     * @return the zoomFactor
+     */
+    public float getZoomFactor() {
+        return zoomFactor;
+    }
+
+    /**
+     * @param zoomFactor the zoomFactor to set
+     */
+    public void setZoomFactor(float zoomFactor) {
+        this.zoomFactor = zoomFactor;
+        putFloat("zoomFactor", zoomFactor);
+    }
+
+    /**
+     * @return the zoomHUD
+     */
+    public boolean isZoomHUD() {
+        return zoomHUD;
+    }
+
+    /**
+     * @param zoomHUD the zoomHUD to set
+     */
+    public void setZoomHUD(boolean zoomHUD) {
+        this.zoomHUD = zoomHUD;
+        putBoolean("zoomHUD", zoomHUD);
+    }
+
+    private ZoomHUDObject zoomHUDObject = null;
+
+    private class ZoomHUDObject {
+
+        Cluster c;
+
+        public ZoomHUDObject(Cluster c) {
+            this.c = c;
+        }
+
+        /**
+         * Draw the HUD with frame for chip and smaller cluster for the object
+         * being zoomed
+         */
+        void draw(GL2 gl) {
+            Point2D.Float p = c.getLocation();
+            if (p == null) {
+                return;
+            }
+            gl.glLineWidth(1);
+            float r = c.getRadius(), x = (float) p.getX(), y = (float) p.getY(), ar = c.getAspectRatio();
+            int sx = chip.getSizeX(), sy = chip.getSizeY();
+            float chAR = (float) sy / sx; // chip AR, h/w
+            float chSR = 3; // how large the chip frame is compared to cluster radius
+            float frW = r * chSR, frH = r * chSR * chAR; // frame dims
+            float cW = frW * (r * 2 / sx), cH = frH * ((r * 2 * ar) / sy);
+            float cX = x + frW * ((x - sx / 2) / sx), cY = y + frH * ((y - sy / 2) / sy);
+            float down = r * chSR;
+            gl.glColor3f(1, 1, 1);
+            { // draw frame for chip
+                gl.glPushMatrix();
+                DrawGL.drawBox(gl, x, y - down, frW, frH, 0);
+                gl.glPopMatrix();
+            }
+            Color color = c.getColor();
+            float[] rgb = color.getRGBColorComponents(null);
+            gl.glColor3fv(rgb, 0);
+            { // draw cluster within frame
+                gl.glPushMatrix();
+                DrawGL.drawBox(gl, cX, cY - down, cW, cH, 0);
+                gl.glPopMatrix();
+            }
+        }
+    }
 }

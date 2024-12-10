@@ -1029,19 +1029,37 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     }
 
-    public void zoomInAround(MouseEvent evt) {
-        getZoom().zoomInAround(evt);
+    /**
+     * Zoom around mouseChipPixel with absolute zoom factor
+     *
+     * @param chipPixel
+     * @param zfac the absolute zoom factor
+     */
+    public void zoomAroundPoint(Point chipPixel, float zfac) {
+        getZoom().zoomAroundPoint(chipPixel, zfac);
+    }
+
+    public void zoomToCenter(Point chipPixel, float zfac) {
+        getZoom().zoomToCenter(chipPixel, zfac);
+    }
+
+    public void zoomInAround(Point p) {
+        getZoom().zoomInAround(p);
         repaint(100);
     }
 
-    public void zoomOutAround(MouseEvent evt) {
-        getZoom().zoomOutAround(evt);
+    public void zoomOutAround(Point p) {
+        getZoom().zoomOutAround(p);
         repaint(100);
     }
 
     public void unzoom() {
         getZoom().unzoom();
         repaint(100);
+    }
+
+    public boolean isZoomed() {
+        return getZoom().isZoomed();
     }
 
     @Override
@@ -1179,7 +1197,11 @@ public class ChipCanvas implements GLEventListener, Observer {
         public Vec(Vec v) {
             super(v.x, v.y);
         }
-
+        
+        public Vec(Point p){
+            super(p.x,p.y);
+        }
+        
         public Vec add(Vec v) {
             return new Vec(this.x + v.x, this.y + v.y);
         }
@@ -1241,6 +1263,23 @@ public class ChipCanvas implements GLEventListener, Observer {
         private Vec mouseFrac = new Vec(.5f, .5f);
 
         /**
+         * Center point of view in pixels
+         */
+        private final Point centerChipPixel = new Point();  // where in chip pixels the view is centered, e.g. could be corner of chip is center of display.
+
+        private Point currentZoomChipPixel = null; // last chip pixel we zoomed around, this can be different from centerChipPixel
+        // when we zoom, we want the pixel under mouse to not move
+
+        private void zoomToCenter(Point chipPixel, float zfac) {
+            zoomAroundPoint(getZoom().centerChipPixel, zfac);
+            getZoom().getClipArea().computeBounds();
+            Vec chPx=new Vec(chipPixel);
+            Vec cenPx=new Vec(getZoom().centerChipPixel);
+            Vec diff=cenPx.subtract(chPx);
+            getZoom().getClipArea().panFromCurrentBy(diff);
+        }
+
+        /**
          * Orthographic projection clipping area.
          */
         public class ClipArea {
@@ -1295,14 +1334,6 @@ public class ChipCanvas implements GLEventListener, Observer {
              * the right and top.
              */
             private float top = 0;
-
-            /**
-             * Center point of view in pixels
-             */
-            private final Point centerChipPixel = new Point();  // where in chip pixels the view is centered, e.g. could be corner of chip is center of display.
-
-            private Point currentZoomChipPixel = null; // last chip pixel we zoomed around, this can be different from centerChipPixel
-            // when we zoom, we want the pixel under mouse to not move
 
             @Override
             public String toString() {
@@ -1469,13 +1500,9 @@ public class ChipCanvas implements GLEventListener, Observer {
                 if (chipPixel == null) {
                     chipPixel = centerChipPixel;
                 }
-                this.currentZoomChipPixel = chipPixel;
+                currentZoomChipPixel = chipPixel;
                 setZoomFactor(zfac);
                 getClipArea().setDirty();
-            }
-
-            private void computeScale() {
-
             }
 
             private void computeCenterPixel() {
@@ -1592,21 +1619,21 @@ public class ChipCanvas implements GLEventListener, Observer {
             log.fine(String.format("new zoomFactor=%.2f", zoomFactor));
         }
 
-        private void zoomInAround(MouseEvent evt) {
+        private void zoomInAround(Point p) {
             changeZoomFactorByFactor(ZOOM_STEP_RATIO);
-            if (evt != null && evt.getPoint() != null) {
-                getZoom().zoomAroundPoint(getPixelFromMousePoint(evt.getPoint()), getZoomFactor());
+            if (p != null) {
+                getZoom().zoomAroundPoint(getPixelFromMousePoint(p), getZoomFactor());
             } else {
-                getZoom().zoomAroundPoint(getZoom().getClipArea().centerChipPixel, getZoomFactor());
+                getZoom().zoomAroundPoint(getZoom().centerChipPixel, getZoomFactor());
             }
         }
 
-        private void zoomOutAround(MouseEvent evt) {
+        private void zoomOutAround(Point p) {
             changeZoomFactorByFactor(1 / ZOOM_STEP_RATIO);
-            if (evt != null && evt.getPoint() != null) {
-                getZoom().zoomAroundPoint(getPixelFromMousePoint(evt.getPoint()), getZoomFactor());
+            if (p != null) {
+                getZoom().zoomAroundPoint(getPixelFromMousePoint(p), getZoomFactor());
             } else {
-                getZoom().zoomAroundPoint(getZoom().getClipArea().centerChipPixel, getZoomFactor());
+                getZoom().zoomAroundPoint(getZoom().centerChipPixel, getZoomFactor());
             }
         }
 

@@ -4131,9 +4131,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             } else if (control && !(shift || alt)) {
                 if (rotation > 0) {
-                    chipCanvas.zoomOutAround(evt); // wheel down
+                    chipCanvas.zoomOutAround(evt.getPoint()); // wheel down
                 } else if (rotation < 0) {
-                    chipCanvas.zoomInAround(evt); //wheel up
+                    chipCanvas.zoomInAround(evt.getPoint()); //wheel up
                 }
                 if (isPaused()) {
                     interruptViewloop();
@@ -6399,13 +6399,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         this.jaerUpdaterFrame = jaerUpdaterFrame;
     }
     
-    /** Zoom around a particular point, with a zoom ratio. Can be used by EventFilter that manipulates the view.
+    /** Zoom to center a particular point, with a zoom ratio. Can be used by EventFilter that manipulates the view.
      * 
      * @param pixel the pixel to center
-     * @param zoomRatio the zoom ratio, 1 for unzoomed, >1 for zoomed in by some factor
+     * @param zoomFactor the zoom ratio, 1 for unzoomed, >1 for zoomed in by some factor
      */
-    public void zoomTo(Point2D pixel, int zoomFactor){
-        
+    public void zoomToCenter(Point pixel, float zoomFactor){
+        getChip().getCanvas().zoomToCenter(pixel, zoomFactor);
     }
     
     /** Remove any zoom */
@@ -6414,7 +6414,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getChip().getCanvas().unzoom();
             repaint();
         }
-        
+    }
+    
+    public boolean isZoomed(){
+        if(getChip().getCanvas()!=null){
+            return getChip().getCanvas().isZoomed();
+        } else return false;
     }
 
 
