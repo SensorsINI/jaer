@@ -449,7 +449,7 @@
                   <KeyStroke key="Ctrl+EQUALS"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Zoom in"/>
-                <Property name="toolTipText" type="java.lang.String" value="Zooms in around mouse point. Also Ctl+mouse wheel"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms in around mouse point. Also Ctl+mouse wheel. Right click and drag to pan."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomInMenuItemActionPerformed"/>
@@ -461,7 +461,7 @@
                   <KeyStroke key="Ctrl+MINUS"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Zoom out"/>
-                <Property name="toolTipText" type="java.lang.String" value="Zooms out around mouse point. Also Ctl+mouse wheel"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms out around mouse point. Also Ctl+mouse wheel. Right click and drag to pan."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomOutMenuItemActionPerformed"/>
@@ -473,7 +473,7 @@
                   <KeyStroke key="Ctrl+0"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Unzoom"/>
-                <Property name="toolTipText" type="java.lang.String" value="Goes to default display zooming"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Default display zooming, with border (see View/Filtering options/Set border space...). &lt;p&gt; Right click and drag to pan. &lt;p&gt; Ctl+wheel to zoom."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="unzoomMenuItemActionPerformed"/>

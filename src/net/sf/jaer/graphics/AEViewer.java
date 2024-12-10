@@ -3252,7 +3252,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         zoomInMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         zoomInMenuItem.setText("Zoom in");
-        zoomInMenuItem.setToolTipText("Zooms in around mouse point. Also Ctl+mouse wheel");
+        zoomInMenuItem.setToolTipText("Zooms in around mouse point. Also Ctl+mouse wheel. Right click and drag to pan.");
         zoomInMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomInMenuItemActionPerformed(evt);
@@ -3262,7 +3262,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         zoomOutMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_MINUS, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         zoomOutMenuItem.setText("Zoom out");
-        zoomOutMenuItem.setToolTipText("Zooms out around mouse point. Also Ctl+mouse wheel");
+        zoomOutMenuItem.setToolTipText("Zooms out around mouse point. Also Ctl+mouse wheel. Right click and drag to pan.");
         zoomOutMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 zoomOutMenuItemActionPerformed(evt);
@@ -3272,7 +3272,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         unzoomMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_0, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         unzoomMenuItem.setText("Unzoom");
-        unzoomMenuItem.setToolTipText("Goes to default display zooming");
+        unzoomMenuItem.setToolTipText("<html>Default display zooming, with border (see View/Filtering options/Set border space...). <p> Right click and drag to pan. <p> Ctl+wheel to zoom.");
         unzoomMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 unzoomMenuItemActionPerformed(evt);
