@@ -24,6 +24,7 @@ import java.time.ZoneId;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
@@ -51,7 +52,6 @@ import net.sf.jaer.util.IndexFileFilter;
  */
 public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInterface {
 
-    boolean fileInputEnabled = false;
     JFileChooser fileChooser;
 
     /**
@@ -302,11 +302,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public synchronized void startPlayback(final File file) throws IOException, InterruptedException {
-        if(aeFileInputStream!=null){
-            try{
+        if (aeFileInputStream != null) {
+            try {
                 aeFileInputStream.close();
-            }catch(IOException e){
-                log.warning(String.format("Could not close existing file: %s",e.toString()));
+            } catch (IOException e) {
+                log.warning(String.format("Could not close existing file: %s", e.toString()));
             }
         }
         log.info("starting playback with file=" + file);
@@ -388,16 +388,19 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             viewer.getPlayMode();
                             if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
                                 viewer.stopSequencing();
-                            } else if(viewer.getPlayMode().equals(PlayMode.LIVE)) {
+                            } else if (viewer.getPlayMode().equals(PlayMode.LIVE)) {
                                 viewer.aemon.setEventAcquisitionEnabled(false);
                             }
                         } catch (HardwareInterfaceException e) {
                             e.printStackTrace();
                         }
                     }
-                    clearMarks();
-                    if(viewer.getChip().getRenderer()!=null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)){
-                        AEChipRenderer renderer=(AEChipRenderer)viewer.getChip().getRenderer();
+                    // update player and slider marks
+                    getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, aeFileInputStream.getMarkInPosition());
+                    getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, aeFileInputStream.getMarkOutPosition());
+
+                    if (viewer.getChip().getRenderer() != null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)) {
+                        AEChipRenderer renderer = (AEChipRenderer) viewer.getChip().getRenderer();
                         renderer.showRenderingModeTextOnAeViewer();
                     }
                     getSupport().firePropertyChange(EVENT_FILEOPEN, null, file);
@@ -556,7 +559,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return aeRaw;
         } catch (EOFException e) {
 //            e.printStackTrace();
-            log.info(String.format("Got EOFException on %s: %s",player.getAEInputStream().getFile(),e.toString()));
+            log.info(String.format("Got EOFException on %s: %s", player.getAEInputStream().getFile(), e.toString()));
             cancelJog();
             setDirectionForwards(true);
             try {

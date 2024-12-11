@@ -645,6 +645,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             aemon.close();
         }
 
+        if(aePlayer!=null){
+            aePlayer.stopPlayback();
+        }
+        
         if (aeServerSocket != null) {
             log.info("closing " + aeServerSocket);
             try {
@@ -1377,6 +1381,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
     }
+    
+    /** Sets a flag that rendering this current packet is skipped.
+     * Can be used by event filters to skip rendering if results are boring.
+     */
+    public void fastForward(){
+        viewLoop.fastForward=true;
+    }
 
     void fixBiasgenControls() {
 
@@ -1553,6 +1564,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         Graphics2D g = null;
         volatile boolean singleStepEnabled = false, doSingleStep = false;
+        volatile boolean fastForward = false; // flag set by fastForward() by e.g. EventFilter to skip packet rendering
         int numRawEvents, numFilteredEvents;
         private EngineeringFormat engFmt = new EngineeringFormat();
         private long beforeTime = 0, afterTime;
@@ -1585,6 +1597,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 setTitleAccordingToState();
                 fpsDelay(); // delay at start so all the below that breaks out of loop still has a delay to avoid CPU hog
+                // unless fastForward is set, in which case there is no delay
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
                     // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
                     // when the user unpauses via menu, we disable singleStepEnabled
@@ -1627,6 +1640,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         numEvents = cookedPacket.getSize();
 
                         cookedPacket = filterPacket(cookedPacket);
+                        if(fastForward){ // maybe a filter set this flag.
+                            // in fpsDelay we also skip the pause, and reset the fastForward flag
+                            continue;
+                        }
+                        
 
                     }
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
@@ -1945,7 +1963,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // filter events, do processing on them in rendering loop here
             if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
                 try {
-                    return filterChain.filterPacket(inputPacket);
+                    EventPacket p=filterChain.filterPacket(inputPacket);
+                    return p;
                 } catch (Exception e) {
                     log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
                     log.log(Level.SEVERE, e.toString(), e);
@@ -2575,6 +2594,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final void delayForDesiredFPS() {
             if (Thread.interrupted()) {
                 return; // clear the interrupt flag here to make sure we don't just pass through with no one clearing the flag
+            }
+            
+            if(viewLoop.fastForward){
+                viewLoop.fastForward=false;
+                takeAfter(); // count this packet for rendering speed measuurement
+                return;
             }
 
             delayMs = Math.round(desiredPeriodMs - ((float) lastdt / 1000000));
