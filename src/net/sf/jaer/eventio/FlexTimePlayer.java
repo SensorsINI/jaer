@@ -20,6 +20,7 @@ import java.util.logging.Level;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -47,17 +48,21 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
 
-
     public enum Method {
         ConstantEventNumber, AreaEventCount //, ConstantFrameDuration
     };
+    @Preferred
     protected Method method = null;
 
+    @Preferred
     private boolean showStatistics = getBoolean("showStatistics", true);
-    private int showStatisticsFontSize=getInt("showStatisticsFontSize",10);
+    private int showStatisticsFontSize = getInt("showStatisticsFontSize", 10);
+    @Preferred
     private boolean showSpeedo = getBoolean("showSpeedo", true);
 
+    @Preferred
     private int constantEventNumber = getInt("constantEventNumber", 10000);
+    @Preferred
     protected int constantFrameDurationUs = getInt("constantFrameDurationUs", 30000);
     protected int maxPacketDurationUs = getInt("maxPacketDurationUs", 0);
     protected int minPacketDurationUs = getInt("minPacketDurationUs", 0);
@@ -376,7 +381,7 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             float factor = isSlowMo ? -sloMoFactor : 1 / sloMoFactor; // factor is  negative<-1 for slow down,  positive >1 for speedup
             final String sloMoFactorStr = engFmt.format(Math.abs(factor));
             final String slomoTypeSlowdownSpeedupStr = isSlowMo ? "X slomo" : "X speedup";
-            final String sloMoSummaryStr=String.format("%7s %s", sloMoFactorStr,slomoTypeSlowdownSpeedupStr);
+            final String sloMoSummaryStr = String.format("%7s %s", sloMoFactorStr, slomoTypeSlowdownSpeedupStr);
 
             drawSpeedo(gl, factor, sloMoSummaryStr);
 
@@ -425,9 +430,9 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
             wheelQuad = glu.gluNewQuadric();
         }
         gl.glPushMatrix();
-            gl.glTranslatef(0, radius * 2 + 6, 0); // clock center
-            DrawGL.drawStringDropShadow(9, 0f, 0f, 0, Color.white, sloMoString);
-            gl.glTranslatef(0, -(radius * 2 + 6), 0); // clock center
+        gl.glTranslatef(0, radius * 2 + 6, 0); // clock center
+        DrawGL.drawStringDropShadow(9, 0f, 0f, 0, Color.white, sloMoString);
+        gl.glTranslatef(0, -(radius * 2 + 6), 0); // clock center
         gl.glPopMatrix();;
         gl.glPushMatrix();
         {
@@ -635,6 +640,6 @@ public class FlexTimePlayer extends EventFilter2D implements FrameAnnotater {
      */
     public void setShowStatisticsFontSize(int showStatisticsFontSize) {
         this.showStatisticsFontSize = showStatisticsFontSize;
-        putInt("showStatisticsFontSize",showStatisticsFontSize);
+        putInt("showStatisticsFontSize", showStatisticsFontSize);
     }
 }
