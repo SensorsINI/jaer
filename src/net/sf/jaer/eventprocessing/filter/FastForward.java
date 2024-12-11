@@ -28,6 +28,7 @@ import net.sf.jaer.graphics.AEViewer;
 
 /**
  * Allows skipping rendering of boring packets
+ *
  * @author tobid
  */
 @Description("<html>Allows skipping rendering of boring packets. <p>Rendering of the packet is skipped but all filters are processed."
@@ -36,13 +37,17 @@ import net.sf.jaer.graphics.AEViewer;
 @net.sf.jaer.DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class FastForward extends EventFilter2D {
 
-    private int eventCountThreshold = getInt("eventCountThreshold", 1000);
-    private long lastStatusTimeMs = System.currentTimeMillis();
-    private int skippedPacketCount=0;
+    private int eventCountThreshold = getInt("eventCountThreshold", 100);
+    private int displayOneOfThisManySkipped = getInt("displayOneOfThisManySkipped", 0);
+    private boolean scaleEventCountThresholdWithSliceDuration=getBoolean("scaleEventCountThresholdWithSliceDuration", false);
+    private long lastStatusTimeMs = 0;
+    private int skippedPacketCount = 0;
 
     public FastForward(AEChip chip) {
         super(chip);
         setPropertyTooltip("eventCountThreshold", "Skips rendering packets with fewer than this many events");
+        setPropertyTooltip("displayOneOfThisManySkipped", "<html>If 0 (default) skips rendering all packets with too few events.<p>If nonzero, then still rendering every this many skipped packets");
+        setPropertyTooltip("scaleEventCountThresholdWithSliceDuration", "<html>If set, then the eventCountThreshold <br>is scaled by the ratio of slice time to default 20ms");
     }
 
     @Override
@@ -52,25 +57,36 @@ public class FastForward extends EventFilter2D {
         }
 
         final int sizeNotFilteredOut = in.getSizeNotFilteredOut();
-        if (sizeNotFilteredOut < eventCountThreshold && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+        int threshold=eventCountThreshold;
+        if(scaleEventCountThresholdWithSliceDuration){
+            int dur=chip.getAeViewer().getAePlayer().getTimesliceUs();
+            threshold=(int)(threshold*(dur/20000f));
+        }
+        if (sizeNotFilteredOut < threshold && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
             skippedPacketCount++;
             long t = System.currentTimeMillis();
-            if (skippedPacketCount%100==0 || t - lastStatusTimeMs > 500 ) {
+            if (skippedPacketCount % 100 == 0 || t - lastStatusTimeMs > 500) {
                 log.info(String.format(">>> FastForward: %,d packets (only %,d filtered <%,d threshold events)",
                         skippedPacketCount,
-                        in.getSizeNotFilteredOut(), 
-                        eventCountThreshold));
+                        in.getSizeNotFilteredOut(),
+                        threshold));
                 lastStatusTimeMs = t;
             }
-            chip.getAeViewer().fastForward();
-        }else{
-            skippedPacketCount=0;
+            if(displayOneOfThisManySkipped==0){
+                chip.getAeViewer().fastForward();
+            }else if (skippedPacketCount % displayOneOfThisManySkipped != 0) {
+                chip.getAeViewer().fastForward();
+            }
+        } else {
+            skippedPacketCount = 0;
         }
         return in;
     }
 
     @Override
     public void resetFilter() {
+        skippedPacketCount=0;
+        lastStatusTimeMs = 0;
     }
 
     @Override
@@ -90,6 +106,36 @@ public class FastForward extends EventFilter2D {
     public void setEventCountThreshold(int eventCountThreshold) {
         this.eventCountThreshold = eventCountThreshold;
         putInt("eventCountThreshold", eventCountThreshold);
+    }
+
+    /**
+     * @return the displayOneOfThisManySkipped
+     */
+    public int getDisplayOneOfThisManySkipped() {
+        return displayOneOfThisManySkipped;
+    }
+
+    /**
+     * @param displayOneOfThisManySkipped the displayOneOfThisManySkipped to set
+     */
+    public void setDisplayOneOfThisManySkipped(int displayOneOfThisManySkipped) {
+        this.displayOneOfThisManySkipped = displayOneOfThisManySkipped;
+        putInt("displayOneOfThisManySkipped", displayOneOfThisManySkipped);
+    }
+
+    /**
+     * @return the scaleEventCountThresholdWithSliceDuration
+     */
+    public boolean isScaleEventCountThresholdWithSliceDuration() {
+        return scaleEventCountThresholdWithSliceDuration;
+    }
+
+    /**
+     * @param scaleEventCountThresholdWithSliceDuration the scaleEventCountThresholdWithSliceDuration to set
+     */
+    public void setScaleEventCountThresholdWithSliceDuration(boolean scaleEventCountThresholdWithSliceDuration) {
+        this.scaleEventCountThresholdWithSliceDuration = scaleEventCountThresholdWithSliceDuration;
+        putBoolean("scaleEventCountThresholdWithSliceDuration", scaleEventCountThresholdWithSliceDuration);
     }
 
 }
