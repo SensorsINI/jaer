@@ -88,7 +88,7 @@ public abstract class AbstractAEPlayer {
         this.viewer = viewer;
         support.addPropertyChangeListener(viewer);
         repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
-        jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 20);
+        jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 100);
     }
 
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
