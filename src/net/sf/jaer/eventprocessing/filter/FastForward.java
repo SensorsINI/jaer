@@ -27,15 +27,18 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.AEViewer;
 
 /**
- *
+ * Allows skipping rendering of boring packets
  * @author tobid
  */
-@Description("Allows skipping rendering of boring packets")
+@Description("<html>Allows skipping rendering of boring packets. <p>Rendering of the packet is skipped but all filters are processed."
+        + "<p>Event count is based on filtering up to FastForward location in FilterChain."
+        + "<p>Data is still logged to files.")
 @net.sf.jaer.DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class FastForward extends EventFilter2D {
 
     private int eventCountThreshold = getInt("eventCountThreshold", 1000);
     private long lastStatusTimeMs = System.currentTimeMillis();
+    private int skippedPacketCount=0;
 
     public FastForward(AEChip chip) {
         super(chip);
@@ -50,12 +53,18 @@ public class FastForward extends EventFilter2D {
 
         final int sizeNotFilteredOut = in.getSizeNotFilteredOut();
         if (sizeNotFilteredOut < eventCountThreshold && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+            skippedPacketCount++;
             long t = System.currentTimeMillis();
-            if (t - lastStatusTimeMs > 1000) {
-                log.info(String.format("packet only has %,d filtered events, fastForward", in.getSizeNotFilteredOut()));
+            if (skippedPacketCount%100==0 || t - lastStatusTimeMs > 500 ) {
+                log.info(String.format(">>> FastForward: %,d packets (only %,d filtered <%,d threshold events)",
+                        skippedPacketCount,
+                        in.getSizeNotFilteredOut(), 
+                        eventCountThreshold));
                 lastStatusTimeMs = t;
             }
             chip.getAeViewer().fastForward();
+        }else{
+            skippedPacketCount=0;
         }
         return in;
     }
