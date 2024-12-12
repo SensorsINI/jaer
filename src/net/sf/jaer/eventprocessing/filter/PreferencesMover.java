@@ -88,12 +88,17 @@ public class PreferencesMover {
             Preferences prefs = chip.getPrefs();
             Preferences oldPrefs = Preferences.userNodeForPackage(chip.getClass());
             boolean hasOldPref = false;
+            String lastkey=null;
             for (String s : oldPrefs.keys()) {
                 if (s.startsWith(chip.getClass().getSimpleName() + ".")) {
-                    log.fine(String.format("found old-style preference key %s for chip %s in prefs %s", s, chip.getClass().getSimpleName(), oldPrefs.absolutePath()));
+                    log.finer(String.format("found old-style preference key %s for chip %s in prefs %s", s, chip.getClass().getSimpleName(), oldPrefs.absolutePath()));
                     hasOldPref = true;
+                    lastkey=s;
                     break;
                 }
+            }
+            if (hasOldPref) {
+                log.info(String.format("found old-style preference key %s for chip %s in old-style prefs node %s", lastkey, chip.getClass().getSimpleName(), oldPrefs.absolutePath()));
             }
             return hasOldPref;
         } catch (BackingStoreException ex) {
@@ -156,7 +161,7 @@ public class PreferencesMover {
 
     public static void immportPrefs(File file) throws BackingStoreException, IOException, InvalidPreferencesFormatException, ParserConfigurationException, SAXException {
 
-        Document doc=inspectPrefs(file);
+        Document doc = inspectPrefs(file);
         Preferences prefs = Preferences.userRoot();
         listener = new PrefsListener(prefs);
         FileInputStream fis = new FileInputStream(file);
@@ -307,16 +312,22 @@ public class PreferencesMover {
                 }
             }
         }
+        StringBuilder sb=new StringBuilder();
+        for(String childNodeName:oldPrefs.childrenNames()){
+            sb.append(childNodeName).append(", ");
+        }
         if (movedCount > 0) {
-            String msg = String.format("<html>Migrated %d EventFilter keys from %s to %s and left behind %d keys",
+            String msg = String.format("<html>Migrated %d EventFilter keys from %s to %s and left behind %d keys.<p>Did <b>not</b> migrate %d child nodes named <br><i>%s</i>.<p>These nodes might contain enclosed filter preferences. These will need migration by manual XML editing.",
                     movedCount,
                     oldPrefs.absolutePath(),
                     newPrefs.absolutePath(),
-                    notMovedCount);
+                    notMovedCount, 
+                    oldPrefs.childrenNames().length,
+                    sb.toString());
             log.info(msg);
             return new Result(true, movedCount, notMovedCount, msg);
         } else {
-            String msg = String.format("Migrated %d EventFilter preferences from <i>%s</i> to <i>%s</i>", movedCount, oldPrefs.absolutePath(), newPrefs.absolutePath());
+            String msg = String.format("<html>Migrated %d EventFilter preferences from <i>%s</i> to <i>%s</i>", movedCount, oldPrefs.absolutePath(), newPrefs.absolutePath());
             return new Result(false, movedCount, notMovedCount, msg);
         }
 
@@ -329,9 +340,9 @@ public class PreferencesMover {
         ArrayList<String> eventFilterClassNames = SubclassFinder.findSubclassesOf(EventFilter.class.getName());
         log.fine(String.format("Found %d subclasses of EventFilter", eventFilterClassNames.size()));
         int movedCount = 0, notMovedCount = 0;
-        String childNames="Child nodes: ";
-        for(String childNodeName:oldPrefs.childrenNames()){
-            childNames+=childNodeName+", ";
+        String childNames = "Child nodes: ";
+        for (String childNodeName : oldPrefs.childrenNames()) {
+            childNames += childNodeName + ", ";
         }
         log.info(childNames);
         for (String key : oldPrefs.keys()) { // TODO add sub nodes
