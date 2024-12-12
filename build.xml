@@ -4,11 +4,19 @@
 <!-- (If you delete it and reopen the project it will be recreated.) -->
 <project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
     
+
     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
     <description>Builds, tests, and runs the project jAER</description>
     <import file="nbproject/build-impl.xml"/>
     
-    
+    <!--Override default to replace target with release -->
+<!--    <target depends="init,deps-jar,-pre-pre-compile" name="-do-compile-single">
+        <fail unless="javac.includes">Must select some files in the IDE or set javac.includes</fail>
+        <j2seproject3:force-recompile/>
+        <j2seproject3:javac excludes="" gensrcdir="${build.generated.sources.dir}" includes="${javac.includes}, module-info.java" sourcepath="${src.dir}"/>
+    </target>-->
+
+
     <target name="-do-clean" depends="init,clean-ivy">
         <delete dir="${build.dir}" failonerror="false"/>
     </target>
@@ -62,7 +70,13 @@
 
     </target>
     
+    <target name="-post-init">
+        <!--<antcall target="remove-properties-datestamp"/>-->
+    </target>
 
+    <target name="-post-compile">
+        <!--<antcall target="remove-properties-datestamp"/>-->
+    </target>
     <!-- Build jaer module -->
 
 
@@ -89,7 +103,7 @@
             <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
         </propertyfile>
        
-        <antcall target="remove-properties-datestamp"/>
+        <!--<antcall target="remove-properties-datestamp"/>-->
     </target>
 
     <target name="clean-deps" description="Clean downloaded libraries.">
@@ -109,7 +123,7 @@
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value=""/>
         </propertyfile>
-        <antcall target="remove-properties-datestamp"/>
+        <!--        <antcall target="remove-properties-datestamp"/>-->
 
     </target>
 
