@@ -42,6 +42,7 @@ public class FastForward extends EventFilter2D {
     private boolean scaleEventCountThresholdWithSliceDuration=getBoolean("scaleEventCountThresholdWithSliceDuration", false);
     private long lastStatusTimeMs = 0;
     private int skippedPacketCount = 0;
+    private int lastTimestampShown=0;
 
     public FastForward(AEChip chip) {
         super(chip);
@@ -66,7 +67,9 @@ public class FastForward extends EventFilter2D {
             skippedPacketCount++;
             long t = System.currentTimeMillis();
             if (skippedPacketCount % 100 == 0 || t - lastStatusTimeMs > 500) {
-                log.info(String.format(">>> FastForward: %,d packets (only %,d filtered <%,d threshold events)",
+                float timeSkippedS=1e-6f*(in.getLastTimestamp()-lastTimestampShown);
+                log.info(String.format(">>> FF %.2fs, %,d packets (only %,d filtered <%,d threshold events)",
+                        timeSkippedS,
                         skippedPacketCount,
                         in.getSizeNotFilteredOut(),
                         threshold));
@@ -79,6 +82,7 @@ public class FastForward extends EventFilter2D {
             }
         } else {
             skippedPacketCount = 0;
+            lastTimestampShown=in.getLastTimestamp();
         }
         return in;
     }
