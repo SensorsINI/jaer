@@ -3039,6 +3039,11 @@ public class RectangularClusterTracker extends EventFilter2D
         initialAngle = 0;
     }
 
+    /** Comes here with call to maybeCallUpdateObservers
+     * 
+     * @param o source of update
+     * @param arg the message from EventFilter2D with the timestamp of update
+     */
     @Override
     public void update(Observable o, Object arg) {
         if (o == this) {
