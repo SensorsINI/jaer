@@ -787,9 +787,15 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * Constructs the prefs node for this EventFilter. It is based on the Chip
      * preferences node if the chip exists, otherwise on the EventFilter class
-     * package. If the filter is enclosed, then the node includes the package of
-     * the enclosing filter class so that enclosed filters take in
+     * package. If the filter is enclosed, then the node is named for the enclosed filter (this one) as a 
+     * child of the enclosing filter node.
+     * 
+     * This way, filters that are enclosed have
      * individualized preferences depending on where they are enclosed.
+     * 
+     * Example: Info filter encloses TypedEventRateEstimator filter and is a filter for Davis346Red chip, 
+     * so we have jaer/chips/Davis346Red/Info/TypedEventRateEstimator
+     * 
      */
     private Preferences constructPrefsNode() {
         Preferences prefs;
