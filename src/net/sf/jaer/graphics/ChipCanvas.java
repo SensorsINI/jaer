@@ -148,16 +148,18 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     protected final int BORDER3D = 70;
     /**
-     * Insets of the drawn chip glCanvas in the window
+     * Insets of the drawn chip glCanvas in the window in screen (not chip)
+     * pixels
      */
-    private Insets insets = new Insets(borderSpacePixels, borderSpacePixels, borderSpacePixels, borderSpacePixels);
+    private Insets insets = new Insets(borderSpacePixels, borderSpacePixels, borderSpacePixels, borderSpacePixels),
+            insetsZero = new Insets(0, 0, 0, 0);
     private boolean fillsHorizontally = false, fillsVertically = false; // filled in in the reshape method to show how
     // chip fills glCanvas space
     private float ZCLIP = 1;
     private TextRenderer renderer = null;
 
     private Point mdStPt = null; // start point of drag in screen coordinates
-    private Point2D.Float dragLastPx = null; // start point of drag in px, arb origin
+    private Vec drStPx = null; // start point of drag in px, arb origin
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
 
     /**
@@ -185,10 +187,11 @@ public class ChipCanvas implements GLEventListener, Observer {
 //            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL3bc); // getMaxProgrammable(true);// FixedFunc(true);
-            log.info("Getting GLProfile with GLProfile.getDefault()\n If this throws access violotion outside the JVM, and in atio6axx.dll driver"
-                    + ", then it may be your AMD graphics driver."
-                    + "\n If you are running dual display on laptop, try starting with only main laptop display."
-                    + "\n Try to enable use of discrete Nvidia GPU.");
+            log.info("""
+                     Getting GLProfile with GLProfile.getDefault()
+                      If this throws access violotion outside the JVM, and in atio6axx.dll driver, then it may be your AMD graphics driver.
+                      If you are running dual display on laptop, try starting with only main laptop display.
+                      Try to enable use of discrete Nvidia GPU.""");
             final GLProfile glp = GLProfile.getDefault();
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2ES2);
             final GLCapabilities caps = new GLCapabilities(glp);
@@ -650,7 +653,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 //
         final Point p = new Point(x, y);
         mouseWasInsideChipBounds = !((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1))));
-//        log.fine(String.format("chip pixel=%s", p));
+        log.fine(String.format("chip pixel=%s mouseFrac=%s", p, getZoom().mouseFrac));
         return p;
 
 //        final double wcoord[] = new double[3];// wx, wy, wz;// returned xyz coords
@@ -1036,32 +1039,67 @@ public class ChipCanvas implements GLEventListener, Observer {
      * @param zfac the absolute zoom factor
      */
     public void zoomAroundPoint(Point chipPixel, float zfac) {
-        getZoom().zoomAroundPoint(chipPixel, zfac);
+        getZoom().setZoomAroundPoint(chipPixel, zfac);
     }
 
+    /**
+     * Zoom up so that chipPixel is centered in the view by some factor.
+     *
+     * @param chipPixel
+     * @param zfac
+     */
     public void zoomToCenter(Point chipPixel, float zfac) {
         getZoom().zoomToCenter(chipPixel, zfac);
     }
 
+    /**
+     * Zoom in around a point p so that this point remains at same position in
+     * the screen canvas
+     *
+     * @param p
+     */
     public void zoomInAround(Point p) {
         getZoom().zoomInAround(p);
         repaint(100);
     }
 
+    /**
+     * Zoom out around a point p so that this point remains at same position in
+     * the screen canvas
+     *
+     * @param p
+     */
     public void zoomOutAround(Point p) {
         getZoom().zoomOutAround(p);
         repaint(100);
     }
 
+    /**
+     * Clear all zooms to go to default view, with borders around the chip.
+     *
+     */
     public void unzoom() {
         getZoom().unzoom();
         repaint(100);
     }
 
+    /**
+     * Returns true if the view has been changed from default view
+     * magnification.
+     *
+     * @return
+     */
     public boolean isZoomed() {
         return getZoom().isZoomed();
     }
 
+    /**
+     * Updates the chip renderer and other internal parameters of the chip.
+     *
+     * @param o the source chip
+     * @param arg the update argument, used to respond to Chip2D.EVENT_SIZEX
+     * etc.
+     */
     @Override
     public void update(final Observable o, final Object arg) {
         // if observable is a chip object and arg is a string size property then set a new scaleChipPixels2ScreenPixels
@@ -1107,7 +1145,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
-     * Sets the border around the drawn pixel glCanvas.
+     * Sets the border around the drawn pixel glCanvas. Adds more space at top
+     * for DAVIS frame update bar.
      *
      * @param borderSpacePixels in screen pixels.
      */
@@ -1141,7 +1180,7 @@ public class ChipCanvas implements GLEventListener, Observer {
      *
      * @param p a Point
      */
-    void clipPoint(final Point p) {
+    public void clipPoint(final Point p) {
         if (p.x < 0) {
             p.x = 0;
         } else if (p.x > (getChip().getSizeX() - 1)) {
@@ -1197,11 +1236,11 @@ public class ChipCanvas implements GLEventListener, Observer {
         public Vec(Vec v) {
             super(v.x, v.y);
         }
-        
-        public Vec(Point p){
-            super(p.x,p.y);
+
+        public Vec(Point p) {
+            super(p.x, p.y);
         }
-        
+
         public Vec add(Vec v) {
             return new Vec(this.x + v.x, this.y + v.y);
         }
@@ -1225,7 +1264,11 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         @Override
         public String toString() {
-            return String.format("Vec [%.1f,%.1f]", x, y);
+            return String.format("Vec [%.2f,%.2f]", x, y);
+        }
+
+        private Vec negate() {
+            return new Vec(-this.x, -this.y);
         }
 
     }
@@ -1236,14 +1279,14 @@ public class ChipCanvas implements GLEventListener, Observer {
     public class Zoom {
 
         final float ZOOM_STEP_RATIO = (float) Math.pow(2, 1. / 8);
-        private float zoomFactor = 1; // >1 for zoom in, magnified, <1 but >0 for zoom out
+        private float zoomFactor = 1, previousZoomFactor = 1; // >1 for zoom in, magnified, <1 but >0 for zoom out
 
         /**
          * The actual clipping box bounds for the default orthographic
          * projection.
          */
         final ClipArea clipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
-        ClipArea zoomedClipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
+//        ClipArea zoomedClipArea = new ClipArea(); // invalid at first, need to run computeUnzoomedClipAreaAndScale before using
 
         /**
          * The translation from center point currently applied
@@ -1260,7 +1303,13 @@ public class ChipCanvas implements GLEventListener, Observer {
          * screen width and height. Computed on mouse event to get the current
          * value from screen pixel location
          */
-        private Vec mouseFrac = new Vec(.5f, .5f);
+        private final Vec mouseFrac = new Vec(.5f, .5f);
+
+        /**
+         * Flag set true to freeze the pan into the zoom clip window, so that
+         * zooming around a point makes sense
+         */
+        private boolean erasePan = false;
 
         /**
          * Center point of view in pixels
@@ -1271,16 +1320,27 @@ public class ChipCanvas implements GLEventListener, Observer {
         // when we zoom, we want the pixel under mouse to not move
 
         private void zoomToCenter(Point chipPixel, float zfac) {
-            zoomAroundPoint(getZoom().centerChipPixel, zfac);
+            unzoom();
+            setZoomAroundPoint(getZoom().centerChipPixel, zfac);
             getZoom().getClipArea().computeBounds();
-            Vec chPx=new Vec(chipPixel);
-            Vec cenPx=new Vec(getZoom().centerChipPixel);
-            Vec diff=cenPx.subtract(chPx);
+            Vec chPx = new Vec(chipPixel);
+            Vec cenPx = new Vec(getZoom().centerChipPixel);
+            Vec diff = cenPx.subtract(chPx);
             getZoom().getClipArea().panFromCurrentBy(diff);
         }
 
         /**
-         * Orthographic projection clipping area.
+         * Orthographic projection clipping area. The left, right, bottom, top
+         * are the chip pixel coordinates at the corresponding edges of the
+         * display. If there is space outside the chip on the left, for example,
+         * left will be negative. If there is space on the right, then right
+         * will be greater than the chip dim. If the view is zoomed up on part
+         * of the chip, the l,r,b,t values will be inside the chip dimensions.
+         * The aspect ratio of width/height of ClipArea must match the AR of the
+         * drawable area.
+         *
+         * If the view is unzoomed, there is default insets space on each
+         * border.
          */
         public class ClipArea {
 
@@ -1306,7 +1366,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             private float zoomedScreenPixelsPerChipPixelScale = 1;
             /**
              * The unzoomed scale, multiplied by scaling of zoom to result in
-             * zoomedScreenPixelsPerChipPixelScale. Set in
+             * zoomedScreenPixelsPerChipPixelScale.
              */
             private float unzoomedScreenPixelsPerChipPixelScale = 1;
 
@@ -1394,11 +1454,30 @@ public class ChipCanvas implements GLEventListener, Observer {
                     currentZoomChipPixel = new Point(chip.getCenterPixel());
                 }
 
-                // get current drawable canvas and chip and clip dimensions, BEFORE we reset and compute the zoom
-                final int canw = glCanvas.getWidth(), canh = glCanvas.getHeight(); // w,h of screen
-                final float canar = (float) canw / canh;  // aspect ratio of canvas, width/height, final clip must have same AR
-                final int chw = chip.getSizeX(), chh = chip.getSizeY(); // chip size
+                if (getClipArea().isDirty()) {
+                    Vec totalPan=panPx.add(dragPx);
+                    panFromCurrentBy(totalPan.negate());
+                    if (!isZoomed()) {
+                        computeUnzoomedBounds();
+                    } else {
+                        computeAdditionalZoom();
+                    }
+                    panFromCurrentBy(totalPan);
+                    computeCenterPixel();
+                    final float scalex = (float) glCanvas.getWidth() / (getWidth());
+                    final float scaley = (float) glCanvas.getHeight() / getHeight();
+                    zoomedScreenPixelsPerChipPixelScale = (scalex + scaley) / 2;
+                    clearDirty();
+                }
+                log.fine(getZoom().toString());
+            }
 
+            private void computeAdditionalZoom() {
+                final float zoomChangedFactor = zoomFactor / previousZoomFactor;
+                if (Math.abs(zoomChangedFactor - 1) < 1e-2) {
+                    return;
+                }
+                // zoomed view Inset no longer applied to view
                 // find the CURRENT relative fraction of clip area that the
                 // mouse position is in chip pixels and zoom clip area aournd that point
                 // clip area width and height in chip pixels
@@ -1407,11 +1486,40 @@ public class ChipCanvas implements GLEventListener, Observer {
                 // mouseFrac is computed in getPixelFromMousePoint
                 float fx = mouseFrac.x, fy = mouseFrac.y;
 
-                // compute the unzoomed and inset clip window first
+// the view should be zoomed so that after zoom fx and fy remain the same
+                if (getArea() == 0) {
+                    log.warning("clip area has zera area, cannot zoom");
+                    return;
+                }
+                // recompute width and height after unzoom above
+
+                // compute the actual (unzoomed) clip width and height including insets.
+                float clipw = getWidth() + insets.left + insets.right;
+                float cliph = getHeight() + insets.bottom + insets.top;
+
+//                float zfac1 = (zoomFactor - 1) / zoomFactor; // zfac=2 gives .5, zfac=.5 gives -1
+                float zfac1 = (zoomChangedFactor - 1) / zoomChangedFactor; // zfac=2 gives .5, zfac=.5 gives -1
+
+                // Now tricky part, change the boundaries so that 
+                // the mouseFrac pixel stays at same fractional position on screen
+                left = left + fx * clipw * zfac1;  // move left more positive to zoom in (inout>0), more negative to zoom out (input<0)
+                right = right - (1 - fx) * clipw * zfac1;
+                bot = bot + fy * cliph * zfac1;
+                top = top - (1 - fy) * cliph * zfac1;
+
+                previousZoomFactor = zoomFactor;
+                log.fine(String.format("zoomed around frac pos [%.2f, %.2f]", fx, fy));
+//                    panFromCurrentBy(panPx.add(dragPx));
+            }
+
+            private void computeUnzoomedBounds() {
+                final int canw = glCanvas.getWidth(), canh = glCanvas.getHeight(); // w,h of screen
+                final int chw = chip.getSizeX(), chh = chip.getSizeY(); // chip size
+                // compute the unzoomed with insets clip window first
                 float newscale;
                 if (chh > chw) {
                     // chip is tall and skinny, so set scaleChipPixels2ScreenPixels by frame height/chip height
-                    newscale = (canh - insets.top - insets.bottom) / chh;
+                    newscale = (float) (canh - insets.top - insets.bottom) / chh;
                     fillsVertically = true;
                     fillsHorizontally = false;
                     if ((newscale * chw) > canw) { // unless it runs into left/right, then set to fill width
@@ -1421,7 +1529,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                     }
                 } else {
                     // chip is square or squat, so set scaleChipPixels2ScreenPixels by frame width / chip width
-                    newscale = (canw - insets.left - insets.right) / chw;
+                    newscale = (float) (canw - insets.left - insets.right) / chw;
                     fillsHorizontally = true;
                     fillsVertically = false;
                     if ((newscale * chh) > canh) {// unless it runs into top/bottom, then set to fill height
@@ -1463,31 +1571,7 @@ public class ChipCanvas implements GLEventListener, Observer {
                     set(-leftoverX, chw + leftoverX, -bbot, chh + btop);
                 }
                 unzoomedScreenPixelsPerChipPixelScale = glScale;
-                if (isZoomed()) {  // zoomed view Inset no longer applied to view
-                    // the view should be zoomed so that after zoom fx and fy remain the same
-                    if (getArea() == 0) {
-                        log.warning("clip area has zera area, cannot zoom");
-                        return;
-                    }
-                    // recompute width and height after unzoom above
-                    float clipw = getWidth();
-                    float cliph = getHeight();
-
-                    float zfac1 = (zoomFactor - 1) / zoomFactor; // zfac=2 gives .5, zfac=.5 gives -1
-                    left = left + fx * clipw * zfac1;  // move left more positive to zoom in (inout>0), more negative to zoom out (input<0)
-                    right = right - (1 - fx) * clipw * zfac1;
-                    bot = bot + fy * cliph * zfac1;
-                    top = top - (1 - fy) * cliph * zfac1;
-                    log.fine(String.format("zoomed around frac pos [%.1f, %.1f]", fx, fy));
-//                    panFromCurrentBy(panPx.add(dragPx));
-                }
-                panFromCurrentBy(panPx.add(dragPx));
-                computeCenterPixel();
-                final float scalex = (float) canw / (getWidth());
-                final float scaley = (float) canh / getHeight();
-                zoomedScreenPixelsPerChipPixelScale = (scalex + scaley) / 2;
-                clearDirty();
-                log.fine(getZoom().toString());
+                // at this point the clip window is exactly the default unzoomed view, it has borders either on l/r or b/t
             }
 
             /**
@@ -1593,18 +1677,26 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
 
         /**
-         * Zoom around mouseChipPixel with absolute zoom factor zfac
+         * Sets the point and scale for subsequent zoom around mouseChipPixel
+         * with absolute zoom factor zfac
          *
          * @param chipPixel
          * @param zfac the absolute zoom factor
+         *
          */
-        public void zoomAroundPoint(Point chipPixel, float zfac) {
+        private void setZoomAroundPoint(Point chipPixel, float zfac) {
             if (chipPixel == null) {
                 log.warning("null mouse point, will not zoom");
                 return;
             }
             log.fine(String.format("zooming on %s with zoom factor %.1f", chipPixel, zfac));
+
             getClipArea().setZoomPointAndScale(chipPixel, zfac);
+        }
+
+        private void clearPan() {
+            panPx.clear();
+            dragPx.clear();
         }
 
         /**
@@ -1622,29 +1714,30 @@ public class ChipCanvas implements GLEventListener, Observer {
         private void zoomInAround(Point p) {
             changeZoomFactorByFactor(ZOOM_STEP_RATIO);
             if (p != null) {
-                getZoom().zoomAroundPoint(getPixelFromMousePoint(p), getZoomFactor());
+                getZoom().setZoomAroundPoint(getPixelFromMousePoint(p), getZoomFactor());
             } else {
-                getZoom().zoomAroundPoint(getZoom().centerChipPixel, getZoomFactor());
+                getZoom().setZoomAroundPoint(getZoom().centerChipPixel, getZoomFactor());
             }
         }
 
         private void zoomOutAround(Point p) {
             changeZoomFactorByFactor(1 / ZOOM_STEP_RATIO);
             if (p != null) {
-                getZoom().zoomAroundPoint(getPixelFromMousePoint(p), getZoomFactor());
+                getZoom().setZoomAroundPoint(getPixelFromMousePoint(p), getZoomFactor());
             } else {
-                getZoom().zoomAroundPoint(getZoom().centerChipPixel, getZoomFactor());
+                getZoom().setZoomAroundPoint(getZoom().centerChipPixel, getZoomFactor());
             }
         }
 
         private void unzoom() {
             log.fine("unzooming");
-            panPx.clear();
-            dragPx.clear();
+            clearPan();
             setZoomFactor(1);
+            getZoom().previousZoomFactor=1;
             set3dOrigin(0, 0);
+            clipArea.setDirty();
             clipArea.computeBounds();
-            zoomedClipArea.computeBounds();
+//            zoomedClipArea.computeBounds();
         }
 
         /**
@@ -1660,7 +1753,7 @@ public class ChipCanvas implements GLEventListener, Observer {
          * @return the clipArea
          */
         public ClipArea getClipArea() {
-            ClipArea area = isZoomed() ? zoomedClipArea : clipArea;
+            ClipArea area = clipArea; //isZoomed() ? zoomedClipArea : clipArea;
             return area;
         }
 
@@ -1983,16 +2076,16 @@ public class ChipCanvas implements GLEventListener, Observer {
             dragging = false;
             if (evt.getButton() == MouseEvent.BUTTON3) {
                 dragging = true;
+                origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
 
                 if (mdStPt == null) {
                     mdStPt = new Point(evt.getPoint());
                 } else {
                     mdStPt.setLocation(evt.getPoint());
                 }
-                dragLastPx = new Vec(mdStPt.x / getScale(),
+                drStPx = new Vec(mdStPt.x / getScale(),
                         -mdStPt.y / getScale()); //getPixelUnclippedFromMouseEvent(evt);
                 getZoom().dragPx.clear();
-                origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
                 log.fine(getMousePixel().toString());
             }
             log.fine("pressed pixel " + getPixelFromMouseEventUnclipped(evt));
@@ -2000,6 +2093,7 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         @Override
         public void mouseReleased(final MouseEvent evt) {
+            dragging=false;
             if (is3DEnabled()) {
                 log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
                         + getOrigin3dx() + " y=" + getOrigin3dy());
@@ -2040,10 +2134,13 @@ public class ChipCanvas implements GLEventListener, Observer {
                     origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / glCanvas.getHeight());
                 } else { // normal pan
                     Point mPt = e.getPoint();
-                    Point2D.Float mdpx = new Point2D.Float(mPt.x / getScale(),
-                            -mPt.y / getScale()); // current px, arbitrary origin
-                    float pxDx = mdpx.x - dragLastPx.x, pxDy = mdpx.y - dragLastPx.y;
-                    getZoom().dragPx = new Vec(pxDx, pxDy);
+//                    Point2D.Float mdpx = new Point2D.Float(mPt.x / getScale(),
+//                            -mPt.y / getScale()); // current px, arbitrary origin
+                    Vec dr=new Vec(mPt.x/getScale(),-mPt.y/getScale()); // drag in chip px is flipped vertically from screen drag
+                    
+//                    float pxDx = mdpx.x - dragLastPx.x, pxDy = mdpx.y - dragLastPx.y;
+//                    getZoom().dragPx = new Vec(pxDx, pxDy);
+                    getZoom().dragPx = dr.subtract(drStPx);
                     getClipArea().setDirty();
                 }
             }
