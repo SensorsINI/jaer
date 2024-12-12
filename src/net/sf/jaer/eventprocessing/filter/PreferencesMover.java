@@ -256,7 +256,7 @@ public class PreferencesMover {
         log.info(String.format("Migrating chip %s Preference keys from %s to move to new node %s", chip.getClass().getSimpleName(), oldPrefs.absolutePath(), newPrefs.absolutePath()));
         String chipLeader = chip.getClass().getSimpleName() + ".";
         int movedCount = 0, notMovedCount = 0;
-        for (String key : oldPrefs.keys()) {
+        for (String key : oldPrefs.keys()) { // TODO add sub nodes
             if (key.startsWith(chipLeader)) {
                 String value = oldPrefs.get(key, null);
                 if (value != null) {
@@ -288,7 +288,7 @@ public class PreferencesMover {
         Preferences oldPrefs = Preferences.userRoot().node(filter.getChip().prefsNodeNameOriginal());
         int movedCount = 0, notMovedCount = 0;
         String keyStart = filter.getClass().getSimpleName() + ".";
-        for (String key : oldPrefs.keys()) {
+        for (String key : oldPrefs.keys()) { // TODO add sub nodes
             log.finest(String.format("Checking key %s", key));
 
             if (key.startsWith(keyStart)) {
@@ -329,7 +329,12 @@ public class PreferencesMover {
         ArrayList<String> eventFilterClassNames = SubclassFinder.findSubclassesOf(EventFilter.class.getName());
         log.fine(String.format("Found %d subclasses of EventFilter", eventFilterClassNames.size()));
         int movedCount = 0, notMovedCount = 0;
-        for (String key : oldPrefs.keys()) {
+        String childNames="Child nodes: ";
+        for(String childNodeName:oldPrefs.childrenNames()){
+            childNames+=childNodeName+", ";
+        }
+        log.info(childNames);
+        for (String key : oldPrefs.keys()) { // TODO add sub nodes
             log.finest(String.format("Checking key %s", key));
             for (String eventFilterClassName : eventFilterClassNames) {
                 String eventFilterSimpleName = eventFilterClassName.substring(eventFilterClassName.lastIndexOf('.'));
