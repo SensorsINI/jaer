@@ -327,7 +327,7 @@ public class PreferencesMover {
             log.info(msg);
             return new Result(true, movedCount, notMovedCount, msg);
         } else {
-            String msg = String.format("<html>Migrated %d EventFilter preferences from <i>%s</i> to <i>%s</i>", movedCount, oldPrefs.absolutePath(), newPrefs.absolutePath());
+            String msg = String.format("<html>Did not find any keys matching filter <i>%s</i> to migrate from <i>%s</i> to <i>%s</i>", filter.getClass().getSimpleName(), oldPrefs.absolutePath(), newPrefs.absolutePath());
             return new Result(false, movedCount, notMovedCount, msg);
         }
 
@@ -340,11 +340,6 @@ public class PreferencesMover {
         ArrayList<String> eventFilterClassNames = SubclassFinder.findSubclassesOf(EventFilter.class.getName());
         log.fine(String.format("Found %d subclasses of EventFilter", eventFilterClassNames.size()));
         int movedCount = 0, notMovedCount = 0;
-        String childNames = "Child nodes: ";
-        for (String childNodeName : oldPrefs.childrenNames()) {
-            childNames += childNodeName + ", ";
-        }
-        log.info(childNames);
         for (String key : oldPrefs.keys()) { // TODO add sub nodes
             log.finest(String.format("Checking key %s", key));
             for (String eventFilterClassName : eventFilterClassNames) {
@@ -370,6 +365,10 @@ public class PreferencesMover {
                 }
             }
         }
+        StringBuilder sb=new StringBuilder();
+        for(String childNodeName:oldPrefs.childrenNames()){
+            sb.append(childNodeName).append(", ");
+        }
         if (movedCount > 0) {
             String msg = String.format("<html>Migrated %d EventFilter keys from %s to %s and left behind %d keys",
                     movedCount,
@@ -379,7 +378,7 @@ public class PreferencesMover {
             log.info(msg);
             return new Result(true, movedCount, notMovedCount, msg);
         } else {
-            String msg = String.format("Migrated %d EventFilter preferences from <i>%s</i> to <i>%s</i>", movedCount, oldPrefs.absolutePath(), newPrefs.absolutePath());
+            String msg = String.format("<html>Did not find any keys for chip <i>%s</i> to migrate from <i>%s</i> to <i>%s</i>", chip.getClass().getSimpleName(),oldPrefs.absolutePath(), newPrefs.absolutePath());
             return new Result(false, movedCount, notMovedCount, msg);
         }
     }
