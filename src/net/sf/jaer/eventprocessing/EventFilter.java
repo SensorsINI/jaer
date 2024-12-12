@@ -876,15 +876,15 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             }
         }
         boolean isEnclosed = enclosingClass != getClass();
-        String chipName = (aeChipClass == null ? "null" : aeChipClass.getSimpleName());
+        String chipName = (aeChipClass == null ? "(unknown)" : aeChipClass.getSimpleName());
         if (isEnclosed) {
             log.fine(String.format("Chip %s prefs node for %s enclosed in %s is %s", chipName, getClass().getSimpleName(), enclosingClass.getSimpleName(), prefs.absolutePath()));
         } else {
             log.fine(String.format("Chip %s prefs node for %s is %s", chipName, getClass().getSimpleName(), prefs.absolutePath()));
         }
-        if (PreferencesMover.hasOldChipPreferences(chip)) {
-            log.warning(String.format("Chip %s has old style preferences", chip.getClass().getSimpleName()));
-        }
+//        if (PreferencesMover.hasOldChipPreferences(chip)) {
+//            log.warning(String.format("Chip %s has old style preferences", chip.getClass().getSimpleName()));
+//        }
         return prefs;
     }
 
