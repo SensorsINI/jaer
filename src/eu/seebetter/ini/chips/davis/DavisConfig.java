@@ -956,7 +956,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         }
     }
 
-    /**  sends complete configuration information to multiple shift registers and off chip DACs */
+    /**
+     * sends complete configuration information to multiple shift registers and
+     * off chip DACs
+     */
     public void sendConfiguration() throws HardwareInterfaceException {
         if (!isOpen()) {
             open();
@@ -1219,7 +1222,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
             if (getContrastContoller() != null) { // might not exist until constructor is finished
                 getContrastContoller().loadPrefences();
-            }else{
+            } else {
                 log.warning("Could not load preferences for null ContrastController");
             }
         }
