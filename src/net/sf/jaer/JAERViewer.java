@@ -50,6 +50,8 @@ import net.sf.jaer.util.WindowSaver;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.JoglVersion;
 import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.prefs.BackingStoreException;
 
 /**
  * Used to show multiple chips simultaneously in separate instances of
@@ -172,10 +174,13 @@ public class JAERViewer {
                         // Get the bytes of the serialized object
                         byte[] buf = bos.toByteArray();
                         prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
+                        prefs.flush();
                     } catch (IOException e) {
                         System.err.println(String.format("could not store class names: %s", e.toString()));
                     } catch (IllegalArgumentException e2) {
                         System.err.println("tried to store too many classes in last chip classes? " + e2.toString());
+                    } catch (BackingStoreException ex) {
+                        System.err.println("could not flush the preferences holding AEChip class names: "+ex.toString());
                     }
                     System.out.println("saving possible open data logging");
                     try {
