@@ -945,7 +945,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
     }
 
-    private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", 8192);
+    private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", 65536);
 
     /**
      * sets the buffer size for the aereader thread. optimal size depends on
