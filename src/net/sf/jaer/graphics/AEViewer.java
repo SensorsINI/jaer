@@ -4611,8 +4611,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("tried to log to null filename, aborting");
             return null;
         }
-        
-        if (loggingEnabled && loggingFile!=null) {
+
+        if (loggingEnabled && loggingFile != null) {
             log.warning(String.format("Already logging to file %s", loggingFile.getAbsolutePath()));
             return loggingFile;
         }
@@ -4850,11 +4850,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         chooser.setDialogTitle("Couldn't save file there, try again");
                                     }
                                 } else {
-                                    log.info(String.format("Moving temporary file %s to final location %s",loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
-                                    savedIt = true;
-                                    FileUtils.moveFile(loggingFile, newFile);
-
+                                    log.info(String.format("(Please wait) moving temporary file %s to final location %s", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
+                                    try {
+                                        FileUtils.moveFile(loggingFile, newFile);
+                                    } catch (IOException e) {
+                                        log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", loggingFile, newFile, e.toString()));
+                                        continue;
+                                    }
                                     loggingFile = newFile;
+                                    savedIt = true;
                                 }
                             }
                         } else {
@@ -4873,7 +4877,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
             } catch (IOException e) {
-                log.log(Level.WARNING, "In trying save a logging output file, caught: " + e.toString(), e);
+                String msg = "In trying save a logging output file, got exception: " + e.toString();
+                JOptionPane.showMessageDialog(this, msg, "Error saving file", JOptionPane.ERROR_MESSAGE);
+                log.log(Level.WARNING, msg, e);
             }
 
             if ((retValue == JFileChooser.APPROVE_OPTION) && isLoggingPlaybackImmediatelyEnabled()) {
