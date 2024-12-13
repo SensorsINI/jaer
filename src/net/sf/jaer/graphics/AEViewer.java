@@ -2603,7 +2603,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (viewLoop.fastForward) {
                 viewLoop.fastForward = false;
                 takeAfter(); // count this packet for rendering speed measuurement
-                return;
+                if (playMode != PlayMode.LIVE) {
+                    return;
+                }
             }
 
             delayMs = Math.round(desiredPeriodMs - ((float) lastdt / 1000000));
@@ -4856,7 +4858,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         Exception exception = null;
                                     };
                                     final Result result = new Result();
-                                    final File newFinalFile=new File(newFile.getAbsolutePath());
+                                    final File newFinalFile = new File(newFile.getAbsolutePath());
                                     Thread t = new Thread() {
                                         public void run() {
                                             try {
