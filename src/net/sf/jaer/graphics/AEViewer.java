@@ -4851,14 +4851,39 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     }
                                 } else {
                                     log.info(String.format("(Please wait) moving temporary file %s to final location %s", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
-                                    try {
-                                        FileUtils.moveFile(loggingFile, newFile);
-                                    } catch (IOException e) {
-                                        log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", loggingFile, newFile, e.toString()));
-                                        continue;
+                                    class Result {
+
+                                        Exception exception = null;
+                                    };
+                                    final Result result = new Result();
+                                    final File newFinalFile=new File(newFile.getAbsolutePath());
+                                    Thread t = new Thread() {
+                                        public void run() {
+                                            try {
+                                                setCursor(new Cursor(Cursor.WAIT_CURSOR));
+                                                FileUtils.moveFile(loggingFile, newFinalFile);
+                                            } catch (IOException e) {
+                                                log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", loggingFile, newFinalFile, e.toString()));
+                                                result.exception = e;
+                                            } finally {
+                                                setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                                            }
+                                        }
+                                    };
+                                    t.start();
+                                    StringBuilder sb = new StringBuilder("Still saving.");
+                                    while (t.isAlive()) {
+                                        try {
+                                            Thread.sleep(500);
+                                        } catch (InterruptedException e) {
+                                        }
+                                        sb.append(".");
+                                        log.info(sb.toString());
                                     }
-                                    loggingFile = newFile;
-                                    savedIt = true;
+                                    if (result.exception == null) {
+                                        savedIt = true;
+                                        loggingFile = newFile;
+                                    }
                                 }
                             }
                         } else {
