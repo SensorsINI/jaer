@@ -263,7 +263,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         WAITING, LIVE, PLAYBACK, SEQUENCING, REMOTE, FILTER_INPUT
     }
     volatile private PlayMode playMode = PlayMode.WAITING;
-    /** The Preferences node for the AEViewer, which has it's own node in the preferences tree, below the package */
+    /**
+     * The Preferences node for the AEViewer, which has it's own node in the
+     * preferences tree, below the package
+     */
     public Preferences prefs = JaerConstants.PREFS_ROOT.node("AEViewer");
     static Logger log = Logger.getLogger("net.sf.jaer");
     //    private PropertyChangeSupport support = new PropertyChangeSupport(this); // already has support as Componenent!!!
@@ -324,7 +327,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Davis346redColor.class.getName(),
         Davis346blue.class.getName(),
         DVXplorer.class.getName(),
-//        CochleaAMS1c.class.getName(),
+        //        CochleaAMS1c.class.getName(),
         DVS640.class.getName(),
         DVS1280x720SD.class.getName()
     };
@@ -645,10 +648,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             aemon.close();
         }
 
-        if(aePlayer!=null){
+        if (aePlayer != null) {
             aePlayer.stopPlayback();
         }
-        
+
         if (aeServerSocket != null) {
             log.info("closing " + aeServerSocket);
             try {
@@ -925,7 +928,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * to the AEChip menu
      */
     public void setAeChipClass(Class deviceClass) {
-        //        log.infox("AEViewer.setAeChipClass("+deviceClass+")");
+        log.fine("AEViewer.setAeChipClass(" + deviceClass + ")");
         try {
             if (filterFrame != null) {
                 filterFrame.dispose();
@@ -1096,6 +1099,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             IllegalArgumentException,
             ExceptionInInitializerError {
         try {
+            log.fine(String.format("Constructing instance AEChip using constructor %s", constructor));
             setChip(constructor.newInstance((java.lang.Object[]) null));
         } catch (Exception e) {
             log.log(Level.SEVERE, "AEViewer.constructChip exception " + e.getMessage(), e); // log stack trace
@@ -1381,12 +1385,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
 
     }
-    
-    /** Sets a flag that rendering this current packet is skipped.
-     * Can be used by event filters to skip rendering if results are boring.
+
+    /**
+     * Sets a flag that rendering this current packet is skipped. Can be used by
+     * event filters to skip rendering if results are boring.
      */
-    public void fastForward(){
-        viewLoop.fastForward=true;
+    public void fastForward() {
+        viewLoop.fastForward = true;
     }
 
     void fixBiasgenControls() {
@@ -1640,11 +1645,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         numEvents = cookedPacket.getSize();
 
                         cookedPacket = filterPacket(cookedPacket);
-                        if(fastForward){ // maybe a filter set this flag.
+                        if (fastForward) { // maybe a filter set this flag.
                             // in fpsDelay we also skip the pause, and reset the fastForward flag
                             continue;
                         }
-                        
 
                     }
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
@@ -1963,7 +1967,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // filter events, do processing on them in rendering loop here
             if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
                 try {
-                    EventPacket p=filterChain.filterPacket(inputPacket);
+                    EventPacket p = filterChain.filterPacket(inputPacket);
                     return p;
                 } catch (Exception e) {
                     log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
@@ -2595,9 +2599,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (Thread.interrupted()) {
                 return; // clear the interrupt flag here to make sure we don't just pass through with no one clearing the flag
             }
-            
-            if(viewLoop.fastForward){
-                viewLoop.fastForward=false;
+
+            if (viewLoop.fastForward) {
+                viewLoop.fastForward = false;
                 takeAfter(); // count this packet for rendering speed measuurement
                 return;
             }
@@ -4607,7 +4611,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("tried to log to null filename, aborting");
             return null;
         }
-        if (loggingFile != null) {
+        
+        if (loggingEnabled && loggingFile!=null) {
             log.warning(String.format("Already logging to file %s", loggingFile.getAbsolutePath()));
             return loggingFile;
         }
@@ -4809,12 +4814,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                             // we'll rename the logged data file to the selection
                             lastLoggingFolder = chooser.getCurrentDirectory();
+                            prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
 
                             boolean renamed = loggingFile.renameTo(newFile);
                             if (renamed) {
                                 // if successful, cool, save persistence
                                 savedIt = true;
-                                prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
                                 recentFiles.addFile(newFile);
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
                                 log.info("renamed logging file to " + newFile.getAbsolutePath());
@@ -4845,9 +4850,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         chooser.setDialogTitle("Couldn't save file there, try again");
                                     }
                                 } else {
+                                    log.info(String.format("Moving temporary file %s to final location %s",loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
+                                    savedIt = true;
                                     FileUtils.moveFile(loggingFile, newFile);
 
-                                    savedIt = true;
                                     loggingFile = newFile;
                                 }
                             }
@@ -5780,7 +5786,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             int newSpace = Integer.parseInt(borderString);
             if (newSpace != borderSpaceNow) {
                 chip.getCanvas().setBorderSpacePixels(newSpace);
-                setBorderSpaceMenuItem.setText(String.format("Set border space (currently %d)",newSpace));
+                setBorderSpaceMenuItem.setText(String.format("Set border space (currently %d)", newSpace));
                 repaint();
             }
         } catch (NumberFormatException e) {
@@ -6423,28 +6429,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setJaerUpdaterFrame(JaerUpdaterFrame jaerUpdaterFrame) {
         this.jaerUpdaterFrame = jaerUpdaterFrame;
     }
-    
-    /** Zoom to center a particular point, with a zoom ratio. Can be used by EventFilter that manipulates the view.
-     * 
+
+    /**
+     * Zoom to center a particular point, with a zoom ratio. Can be used by
+     * EventFilter that manipulates the view.
+     *
      * @param pixel the pixel to center
-     * @param zoomFactor the zoom ratio, 1 for unzoomed, >1 for zoomed in by some factor
+     * @param zoomFactor the zoom ratio, 1 for unzoomed, >1 for zoomed in by
+     * some factor
      */
-    public void zoomToCenter(Point pixel, float zoomFactor){
+    public void zoomToCenter(Point pixel, float zoomFactor) {
         getChip().getCanvas().zoomToCenter(pixel, zoomFactor);
     }
-    
-    /** Remove any zoom */
-    public void unzoom(){
-        if(getChip().getCanvas()!=null){
+
+    /**
+     * Remove any zoom
+     */
+    public void unzoom() {
+        if (getChip().getCanvas() != null) {
             getChip().getCanvas().unzoom();
             repaint();
         }
     }
-    
-    public boolean isZoomed(){
-        if(getChip().getCanvas()!=null){
+
+    public boolean isZoomed() {
+        if (getChip().getCanvas() != null) {
             return getChip().getCanvas().isZoomed();
-        } else return false;
+        } else {
+            return false;
+        }
     }
 
 
