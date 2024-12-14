@@ -63,10 +63,10 @@ public class FastForward extends EventFilter2D {
             int dur=chip.getAeViewer().getAePlayer().getTimesliceUs();
             threshold=(int)(threshold*(dur/20000f));
         }
-        if (sizeNotFilteredOut < threshold /*&& chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK*/) {
+        if (sizeNotFilteredOut < threshold && chip.getAeViewer().getPlayMode() != AEViewer.PlayMode.WAITING) {
             skippedPacketCount++;
             long t = System.currentTimeMillis();
-            if (/*skippedPacketCount % 1000 == 0 ||*/ t - lastStatusTimeMs > 1000) {
+            if (/*skippedPacketCount % 1000 == 0 ||*/ t - lastStatusTimeMs > 1000 ) {
                 float timeSkippedS=1e-6f*(in.getLastTimestamp()-lastTimestampShown);
                 log.info(String.format(">>> FF %.2fs, %,d packets (only %,d filtered <%,d threshold events)",
                         timeSkippedS,
