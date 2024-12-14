@@ -66,6 +66,8 @@ public class PreferencesMover {
      */
     protected static Logger log = Logger.getLogger("net.sf.jaer");
 
+    public record OldPrefsCheckResult(boolean hasOldPrefs, String message) {};
+
     static public class Result {
 
         public Result() {
@@ -83,28 +85,69 @@ public class PreferencesMover {
         String msg;
     }
 
-    public static boolean hasOldChipPreferences(Chip chip) {
+    public static OldPrefsCheckResult hasOldChipPreferences(Chip chip) {
         try {
             Preferences prefs = chip.getPrefs();
             Preferences oldPrefs = Preferences.userNodeForPackage(chip.getClass());
             boolean hasOldPref = false;
-            String lastkey=null;
+            String lastkey = null;
             for (String s : oldPrefs.keys()) {
                 if (s.startsWith(chip.getClass().getSimpleName() + ".")) {
                     log.finer(String.format("found old-style preference key %s for chip %s in prefs %s", s, chip.getClass().getSimpleName(), oldPrefs.absolutePath()));
                     hasOldPref = true;
-                    lastkey=s;
+                    lastkey = s;
                     break;
                 }
             }
+            String resultString;
+
             if (hasOldPref) {
-                log.info(String.format("found old-style preference key %s for chip %s in old-style prefs node %s", lastkey, chip.getClass().getSimpleName(), oldPrefs.absolutePath()));
+                resultString = String.format("found old-style preference key %s for chip %s in old-style prefs node %s", lastkey, chip.getClass().getSimpleName(), oldPrefs.absolutePath());
+            } else {
+                resultString = String.format(
+                        "Found no keys in %s for chip %s",
+                        oldPrefs, chip.getClass().getSimpleName());
             }
-            return hasOldPref;
+            log.info(resultString);
+            return new OldPrefsCheckResult(hasOldPref, resultString);
         } catch (BackingStoreException ex) {
-            Logger.getLogger(PreferencesMover.class.getName()).log(Level.SEVERE, null, ex);
+            log.severe(ex.toString());
+            return new OldPrefsCheckResult(false, ex.toString());
         }
-        return false;
+    }
+
+    public static OldPrefsCheckResult hasOldChipFilterPreferences(EventFilter filter) {
+        try {
+            Chip chip = filter.getChip();
+            Preferences prefs = chip.getPrefs();
+            Preferences oldPrefs = Preferences.userNodeForPackage(chip.getClass());
+            final String filterSimpleName = filter.getClass().getSimpleName();
+            final String chipSimpleName = chip.getClass().getSimpleName();
+            boolean hasOldPref = false;
+            String lastkey = null;
+            for (String s : oldPrefs.keys()) {
+                if (s.startsWith(filterSimpleName + ".")) {
+                    log.finer(String.format("found old-style preference key %s for filter %s for chip %s in prefs %s",
+                            s, filterSimpleName, chipSimpleName, oldPrefs.absolutePath()));
+                    hasOldPref = true;
+                    lastkey = s;
+                    break;
+                }
+            }
+            String resultString;
+            if (hasOldPref) {
+                resultString = String.format("found old-style preference key %s for filter %s / chip %s in old-style prefs node %s", lastkey, filterSimpleName, chipSimpleName, oldPrefs.absolutePath());
+            } else {
+                resultString = String.format(
+                        "Found no keys in %s for filter %s",
+                        oldPrefs, filterSimpleName);
+            }
+            log.info(resultString);
+            return new OldPrefsCheckResult(hasOldPref, resultString);
+        } catch (BackingStoreException ex) {
+            log.severe(ex.toString());
+            return new OldPrefsCheckResult(false, ex.toString());
+        }
     }
 
     static class PrefsListener implements NodeChangeListener, PreferenceChangeListener {
@@ -168,17 +211,18 @@ public class PreferencesMover {
         Preferences.importPreferences(fis);
     }
 
-    public static void migratePreferencesDialog(Component comp, Chip chip, boolean doChipPrefs, boolean doFilterPrefs) {
+    public static void migratePreferencesDialog(Component comp, Chip chip, boolean doChipPrefs, boolean doFilterPrefs, String message) {
         if (!SwingUtilities.isEventDispatchThread()) {
             log.warning("cannot invoke GUI outside GUI event dispatch thread");
             return;
         }
 
-        String dialogMsg = String.format("<html>Chip %s has old-style flat preferences at %s,<br>migrate to new hierarchical scheme at %s?"
+        String dialogMsg = String.format("<html>%s<p>Chip %s has old-style flat preferences at %s,<br>migrate to new hierarchical scheme at %s?"
                 + "<ul>"
                 + "<li>Choose <em>Yes</em> to (possibly) overrwrite existing chip preferences"
                 + "<li>Choose <em>No</em> to preserve existing chip preferences, but the imported preferences will not be used by the AEChip"
                 + "</ul>",
+                message,
                 chip.getClass().getSimpleName(),
                 chip.prefsNodeNameOriginal(),
                 chip.getPrefs().absolutePath()
@@ -220,8 +264,8 @@ public class PreferencesMover {
         }
     }
 
-    public static void migrateAllPreferencesDialog(Component comp, Chip chip) {
-        migratePreferencesDialog(comp, chip, true, true);
+    public static void migrateAllPreferencesDialog(Component comp, Chip chip, String message) {
+        migratePreferencesDialog(comp, chip, true, true, message);
     }
 
     public static Result migrateEventFilterPrefsDialog(EventFilter filter) {
@@ -239,7 +283,7 @@ public class PreferencesMover {
 
         int ret = JOptionPane.showConfirmDialog(comp,
                 dialogMsg,
-                "Migrate preferences?",
+                "Migrate filter preferences?",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE);
         if (ret == JOptionPane.YES_OPTION) {
@@ -288,47 +332,63 @@ public class PreferencesMover {
         }
     }
 
-    private static Result migrateEventFilterPrefs(EventFilter filter) throws BackingStoreException {
-        Preferences newPrefs = filter.getPrefs();
-        Preferences oldPrefs = Preferences.userRoot().node(filter.getChip().prefsNodeNameOriginal());
+    record MoveResult(int movedCount, int notMovedCount, String[] kids) {
+
+    }
+
+    private static MoveResult moveFilterKeys(EventFilter filter, Preferences oldNode, Preferences newPrefs) throws BackingStoreException {
         int movedCount = 0, notMovedCount = 0;
+        String[] kids = oldNode.childrenNames();
+        String[] keys = oldNode.keys();
         String keyStart = filter.getClass().getSimpleName() + ".";
-        for (String key : oldPrefs.keys()) { // TODO add sub nodes
+        log.fine(String.format("moving keys for node %s with %d keys and %d kids", oldNode.absolutePath(), keys.length, kids.length));
+        for (String key : keys) { // TODO add sub nodes
             log.finest(String.format("Checking key %s", key));
 
             if (key.startsWith(keyStart)) {
                 log.fine(String.format("Key %s matches event filter key %s", key, keyStart));
-                String value = oldPrefs.get(key, null);
+                String value = oldNode.get(key, null);
                 if (value != null) {
                     String newKey = key.substring(key.indexOf(".") + 1);
 //                Preferences newChildNode = prefs.node(newNodeName);
                     newPrefs.put(newKey, value);
-                    oldPrefs.remove(key);
+                    oldNode.remove(key);
                     movedCount++;
-                    log.fine(String.format("Moved key=%s in %s to %s in %s", key, oldPrefs.absolutePath(), newKey, newPrefs));
-                } else {
-                    notMovedCount++;
-                    log.finer(String.format("Key %s did not start with %s", key, keyStart));
+                    log.fine(String.format("Moved key=%s in %s to %s in %s", key, oldNode.absolutePath(), newKey, newPrefs));
                 }
+            } else {
+                notMovedCount++;
+                log.finer(String.format("Key %s did not start with %s", key, keyStart));
             }
         }
-        StringBuilder sb=new StringBuilder();
-        for(String childNodeName:oldPrefs.childrenNames()){
-            sb.append(childNodeName).append(", ");
+        ArrayList<MoveResult> childResults = new ArrayList<>();
+        for (String childNodeName : kids) {
+            Preferences childNode = oldNode.node(childNodeName);
+            MoveResult childResult = moveFilterKeys(filter, childNode, newPrefs);
+            movedCount += childResult.movedCount;
+            notMovedCount += childResult.notMovedCount;
         }
-        if (movedCount > 0) {
-            String msg = String.format("<html>Migrated %d EventFilter keys from %s to %s and left behind %d keys.<p>Did <b>not</b> migrate %d child nodes named <br><i>%s</i>.<p>These nodes might contain enclosed filter preferences. These will need migration by manual XML editing.",
-                    movedCount,
+        MoveResult moveResult = new MoveResult(movedCount, notMovedCount, oldNode.childrenNames());
+        return moveResult;
+    }
+
+    private static Result migrateEventFilterPrefs(EventFilter filter) throws BackingStoreException {
+        Preferences newPrefs = filter.getPrefs();
+        Preferences oldPrefs = Preferences.userRoot().node(filter.getChip().prefsNodeNameOriginal());
+        MoveResult moveResult = moveFilterKeys(filter, oldPrefs, newPrefs);
+
+        if (moveResult.movedCount > 0) {
+            String msg = String.format("<html>Migrated %d EventFilter keys from %s to %s and left behind %d keys.",
+                    moveResult.movedCount,
                     oldPrefs.absolutePath(),
                     newPrefs.absolutePath(),
-                    notMovedCount, 
-                    oldPrefs.childrenNames().length,
-                    sb.toString());
+                    moveResult.notMovedCount,
+                    oldPrefs.childrenNames().length);
             log.info(msg);
-            return new Result(true, movedCount, notMovedCount, msg);
+            return new Result(true, moveResult.movedCount, moveResult.notMovedCount, msg);
         } else {
             String msg = String.format("<html>Did not find any keys matching filter <i>%s</i> to migrate from <i>%s</i> to <i>%s</i>", filter.getClass().getSimpleName(), oldPrefs.absolutePath(), newPrefs.absolutePath());
-            return new Result(false, movedCount, notMovedCount, msg);
+            return new Result(false, moveResult.movedCount, moveResult.notMovedCount, msg);
         }
 
     }
@@ -365,8 +425,8 @@ public class PreferencesMover {
                 }
             }
         }
-        StringBuilder sb=new StringBuilder();
-        for(String childNodeName:oldPrefs.childrenNames()){
+        StringBuilder sb = new StringBuilder();
+        for (String childNodeName : oldPrefs.childrenNames()) {
             sb.append(childNodeName).append(", ");
         }
         if (movedCount > 0) {
@@ -378,7 +438,7 @@ public class PreferencesMover {
             log.info(msg);
             return new Result(true, movedCount, notMovedCount, msg);
         } else {
-            String msg = String.format("<html>Did not find any keys for chip <i>%s</i> to migrate from <i>%s</i> to <i>%s</i>", chip.getClass().getSimpleName(),oldPrefs.absolutePath(), newPrefs.absolutePath());
+            String msg = String.format("<html>Did not find any keys for chip <i>%s</i> to migrate from <i>%s</i> to <i>%s</i>", chip.getClass().getSimpleName(), oldPrefs.absolutePath(), newPrefs.absolutePath());
             return new Result(false, movedCount, notMovedCount, msg);
         }
     }
