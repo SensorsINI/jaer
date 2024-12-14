@@ -269,7 +269,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             return;
         }
         if (yes) {
-            MouseWheelListener[] listeners=glCanvas.getMouseWheelListeners();
+            MouseWheelListener[] listeners = glCanvas.getMouseWheelListeners();
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
             glCanvas.removeMouseWheelListener(this);
@@ -282,6 +282,18 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             glCanvas.removeMouseMotionListener(this);
 //            glCanvas.removeMouseWheelListener(this);
         }
+    }
+
+    /**
+     * Use this method to prevent mouse processing when the filter is not
+     * selected or the enclosing filter is not enabled or not selected
+     *
+     * @return true if the filter is not enabled or the directly enclosing
+     * filter is not selected
+     */
+    protected boolean isDontProcessMouse() {
+        return !isFilterEnabled()
+                || (isEnclosed() && getEnclosingFilter() != null && (!getEnclosingFilter().isFilterEnabled() || !getEnclosingFilter().isSelected()));
     }
 
     @Override
