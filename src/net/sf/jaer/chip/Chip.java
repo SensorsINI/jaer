@@ -49,9 +49,11 @@ public class Chip extends Observable {
      * Preferences key for blank device filename
      */
     public static final String DEFAULT_FIRMWARE_BIX_FILE_FOR_BLANK_DEVICE = "CypressFX2Blank.defaultFirmwareBixFileForBlankDevice";
-    
-    /** Fired when biases or other hardware changes
-     * @see #getSupport() 
+
+    /**
+     * Fired when biases or other hardware changes
+     *
+     * @see #getSupport()
      */
     public static final String EVENT_HARDWARE_CHANGE = "EVENT_HARDWARE_CHANGE";
     /**
@@ -167,9 +169,12 @@ public class Chip extends Observable {
             log.warning(String.format("Got exception when checking if Preference node exists: %s", ex.toString()));
         }
 
-        if (PreferencesMover.hasOldChipPreferences(this)) {
-            log.warning(String.format("Chip %s has old style preferences", this.getClass().getSimpleName()));
-            PreferencesMover.migrateAllPreferencesDialog(null, this);
+        PreferencesMover.OldPrefsCheckResult result = PreferencesMover.hasOldChipPreferences(this);
+        if (result.hasOldPrefs()) {
+            log.warning(result.message());
+            PreferencesMover.migratePreferencesDialog(null,this,true,false,result.message());
+        } else {
+            log.fine(result.message());
         }
 
         try {
