@@ -72,7 +72,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
 
     @Override
     synchronized public void mouseClicked(MouseEvent e) {
-        if (!isSelected()) {
+        if (isDontProcessMouse()) {
             return;
         }
         if (e == null || e.getPoint() == null || getMousePixel(e) == null) {
