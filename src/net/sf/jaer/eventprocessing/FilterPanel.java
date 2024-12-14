@@ -2578,8 +2578,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             File f = fileChooser.getSelectedFile();
             filter.importPrefs(f);
         }
-        if(PreferencesMover.hasOldChipPreferences(filter.getChip())){
+        PreferencesMover.OldPrefsCheckResult result = PreferencesMover.hasOldChipFilterPreferences(filter);
+        if (result.hasOldPrefs()) {
+            log.warning(result.message());
             PreferencesMover.migrateEventFilterPrefsDialog(filter);
+        } else {
+            log.fine(result.message());
         }
 
     }
