@@ -27,7 +27,7 @@ public class CDAVISConfig extends DavisTowerBaseConfig {
 
     public CDAVISConfig(final Chip chip) {
         super(chip);
-        setName("DavisRGBW640Config");
+        setName("CDAVISConfig");
 
         ipots = new AddressedIPotArray(this);
 
