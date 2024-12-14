@@ -292,7 +292,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
      * filter is not selected
      */
     protected boolean isDontProcessMouse() {
-        return !isFilterEnabled()
+        return !isFilterEnabled() || !isSelected()
                 || (isEnclosed() && getEnclosingFilter() != null && (!getEnclosingFilter().isFilterEnabled() || !getEnclosingFilter().isSelected()));
     }
 
