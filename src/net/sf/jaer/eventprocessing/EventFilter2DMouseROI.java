@@ -321,6 +321,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
             return;
         }
@@ -332,6 +335,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
             return;
         }
@@ -345,6 +351,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
             return;
         }
@@ -362,6 +371,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
             return;
         }
@@ -377,6 +389,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
             return;
         }
