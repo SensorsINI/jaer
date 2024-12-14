@@ -274,8 +274,12 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         setCurrentFile(f);
         setFileModified(false);
         recentFiles.addFile(f);
-        if (PreferencesMover.hasOldChipPreferences(chip)) {
-            PreferencesMover.migrateAllPreferencesDialog(this, chip);
+        PreferencesMover.OldPrefsCheckResult result=PreferencesMover.hasOldChipPreferences(chip);
+        if (result.hasOldPrefs()) {
+            log.warning(result.message());
+            PreferencesMover.migratePreferencesDialog(this,chip,true,false,result.message());
+        }else{
+            log.fine(result.message());
         }
     }
 
