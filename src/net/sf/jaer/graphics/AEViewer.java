@@ -4859,16 +4859,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     };
                                     final Result result = new Result();
                                     final File newFinalFile = new File(newFile.getAbsolutePath());
+                                    setCursor(new Cursor(Cursor.WAIT_CURSOR));
                                     Thread t = new Thread() {
                                         public void run() {
                                             try {
-                                                setCursor(new Cursor(Cursor.WAIT_CURSOR));
                                                 FileUtils.moveFile(loggingFile, newFinalFile);
                                             } catch (IOException e) {
                                                 log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", loggingFile, newFinalFile, e.toString()));
                                                 result.exception = e;
                                             } finally {
-                                                setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                                             }
                                         }
                                     };
@@ -4883,12 +4882,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         log.info(sb.toString());
                                     }
                                     if (result.exception == null) {
-                                        log.info("done saving "+newFinalFile.getAbsolutePath());
+                                        log.info("done saving " + newFinalFile.getAbsolutePath());
                                         savedIt = true;
                                         loggingFile = newFile;
-                                    }else{
-                                        log.severe(String.format("Could not save %s: %s",newFinalFile,result.exception));
+                                    } else {
+                                        log.severe(String.format("Could not save %s: %s", newFinalFile, result.exception));
                                     }
+                                    setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                                 }
                             }
                         } else {
