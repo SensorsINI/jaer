@@ -68,18 +68,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
     private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss.SSS"); // tobi changed to show ms, not standard 10ms
     @Preferred
-    private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
+    private boolean analogClock = getPrefs().getBoolean("analogClock", true);
     @Preferred
-    private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
+    private boolean digitalClock = getPrefs().getBoolean("digitalClock", true);
     private float analogDigitalClockScale = getFloat("analogDigitalClockScale", 1);
-    private boolean date = getPrefs().getBoolean("Info.date", true);
-    private boolean localTime = getPrefs().getBoolean("Info.localTime", true);
-    private boolean ignoreTimeZone = getPrefs().getBoolean("Info.ignoreTimeZone", false);
-    private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
-    private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
+    private boolean date = getPrefs().getBoolean("date", true);
+    private boolean localTime = getPrefs().getBoolean("localTime", true);
+    private boolean ignoreTimeZone = getPrefs().getBoolean("ignoreTimeZone", false);
+    private int timeOffsetMs = getPrefs().getInt("timeOffsetMs", 0);
+    private float timestampScaleFactor = getPrefs().getFloat("timestampScaleFactor", 1);
     @Preferred
-    private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
-    private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
+    private float eventRateScaleMax = getPrefs().getFloat("eventRateScaleMax", 1e5f);
+    private boolean timeScaling = getPrefs().getBoolean("timeScaling", true);
     @Preferred
     private boolean showRateTrace = getBoolean("showRateTrace", true);
     private boolean showFrameRateForConstantCountFrames = getBoolean("showFrameRateForConstantCountFrames", true);
@@ -897,7 +897,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setAnalogClock(boolean analogClock) {
         this.analogClock = analogClock;
-        getPrefs().putBoolean("Info.analogClock", analogClock);
+        getPrefs().putBoolean("analogClock", analogClock);
     }
 
     public boolean isDigitalClock() {
@@ -906,7 +906,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setDigitalClock(boolean digitalClock) {
         this.digitalClock = digitalClock;
-        getPrefs().putBoolean("Info.digitalClock", digitalClock);
+        getPrefs().putBoolean("digitalClock", digitalClock);
     }
 
     public boolean isDate() {
@@ -915,7 +915,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setDate(boolean date) {
         this.date = date;
-        getPrefs().putBoolean("Info.date", date);
+        getPrefs().putBoolean("date", date);
     }
 
     public boolean isLocalTime() {
@@ -924,7 +924,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setLocalTime(boolean localTime) {
         this.localTime = localTime;
-        getPrefs().putBoolean("Info.localTime", localTime);
+        getPrefs().putBoolean("localTime", localTime);
     }
 
     public boolean isEventRate() {
@@ -954,7 +954,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setTimeOffsetMs(int timeOffsetMs) {
         this.timeOffsetMs = timeOffsetMs;
-        getPrefs().putInt("Info.timeOffsetMs", timeOffsetMs);
+        getPrefs().putInt("timeOffsetMs", timeOffsetMs);
     }
 
     public float getTimestampScaleFactor() {
@@ -963,7 +963,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setTimestampScaleFactor(float timestampScaleFactor) {
         this.timestampScaleFactor = timestampScaleFactor;
-        getPrefs().putFloat("Info.timestampScaleFactor", timestampScaleFactor);
+        getPrefs().putFloat("timestampScaleFactor", timestampScaleFactor);
     }
 
     /**
@@ -978,7 +978,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setEventRateScaleMax(float eventRateScaleMax) {
         this.eventRateScaleMax = eventRateScaleMax;
-        getPrefs().putFloat("Info.eventRateScaleMax", eventRateScaleMax);
+        getPrefs().putFloat("eventRateScaleMax", eventRateScaleMax);
         maxRateString = engFmt.format(eventRateScaleMax);
     }
 
@@ -994,7 +994,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setTimeScaling(boolean timeScaling) {
         this.timeScaling = timeScaling;
-        getPrefs().putBoolean("Info.timeScaling", timeScaling);
+        getPrefs().putBoolean("timeScaling", timeScaling);
     }
 
     /**
@@ -1104,7 +1104,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setIgnoreTimeZone(boolean ignoreTimeZone) {
         this.ignoreTimeZone = ignoreTimeZone;
-        putBoolean("Info.ignoreTimeZone", ignoreTimeZone);
+        putBoolean("ignoreTimeZone", ignoreTimeZone);
     }
 
     /**
