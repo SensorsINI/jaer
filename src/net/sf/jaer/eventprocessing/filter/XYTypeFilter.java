@@ -478,14 +478,21 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         if (lockSelections) {
             return;
         }
+        if (isDontProcessMouse()) {
+            return;
+        }
         Point p = canvas.getPixelFromMouseEvent(e);
         startPoint = p;
         selecting = true;
     }
 
+
     @Override
     public void mouseReleased(MouseEvent e) {
         if (lockSelections) {
+            return;
+        }
+        if (isDontProcessMouse()) {
             return;
         }
         if ((startPoint == null)) {
@@ -525,6 +532,9 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
             return;
         }
         if (startPoint == null) {
+            return;
+        }
+        if (isDontProcessMouse()) {
             return;
         }
         getSelection(e);
@@ -748,7 +758,7 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
      */
     public void setLockSelections(boolean lockSelections) {
         this.lockSelections = lockSelections;
-        putBoolean("lockSelections",lockSelections);
+        putBoolean("lockSelections", lockSelections);
     }
 
     private static class SavedMultiSelection implements Serializable {
