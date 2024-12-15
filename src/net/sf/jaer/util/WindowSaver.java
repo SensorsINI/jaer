@@ -17,6 +17,7 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
@@ -122,8 +123,8 @@ public class WindowSaver implements AWTEventListener {
         final String name = frame.getTitle().replaceAll(" ", "");
 
         // screen UL corner is 0,0
-        int x = preferences.getInt(name + ".x", 0);
-        int y = preferences.getInt(name + ".y", 0); // UL corner
+        int x = preferences.getInt(name + ".x", 10);
+        int y = preferences.getInt(name + ".y", 10); // UL corner
         int w = preferences.getInt(name + ".w", DEFAULT_WIDTH);
         int h = preferences.getInt(name + ".h", DEFAULT_HEIGHT);
         if (w != DEFAULT_WIDTH | h != DEFAULT_HEIGHT) {
@@ -175,8 +176,8 @@ public class WindowSaver implements AWTEventListener {
             log.info("window x origin is <0, moving back to zero");
             x = 0;
         }
-        if (y < lowerInset) {
-            log.info("window y origin is < lowerInset, moving back to " + 0);
+        if (y < 0) {
+            log.info(String.format("window y origin=%d is < 0, moving back to 0",y));
             y = 0;
         }
         if (x + w > sd.width || y + h > sd.height) {
@@ -185,12 +186,12 @@ public class WindowSaver implements AWTEventListener {
             y=0;
         }
         if (h > sd.height - lowerInset) {
-            log.info("window height (" + h + ") is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT (" + (sd.height - WINDOWS_TASK_BAR_HEIGHT) + "), resizing height");
+            log.log(Level.INFO, "window height ({0}) is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT ({1}), resizing height", new Object[]{h, sd.height - WINDOWS_TASK_BAR_HEIGHT});
             h = sd.height - lowerInset;
             resize = true;
         }
         if (w > sd.width) {
-            log.info("window width (" + w + ") is bigger than screen width (" + (sd.width) + "), resizing height");
+            log.log(Level.INFO, "window width ({0}) is bigger than screen width ({1}), resizing height", new Object[]{w, sd.width});
             w = sd.width;
             resize = true;
         }
