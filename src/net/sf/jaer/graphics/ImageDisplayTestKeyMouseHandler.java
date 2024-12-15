@@ -40,13 +40,13 @@ import static net.sf.jaer.graphics.ImageDisplay.log;
                     } else if ((k == KeyEvent.VK_W) && ((e.getModifiersEx() & InputEvent.CTRL_DOWN_MASK) == InputEvent.CTRL_DOWN_MASK)) {
                         thread.interrupt();
                     } else if (k == KeyEvent.VK_UP) {
-                        disp.setSizeY(disp.getHeight() * 2); // UP arrow incrases vertical dimension
+                        disp.setSizeY(disp.getSizeY()* 2); // UP arrow incrases vertical dimension
                     } else if (k == KeyEvent.VK_DOWN) {
-                        disp.setSizeY(disp.getHeight() / 2);
+                        disp.setSizeY(disp.getSizeY() / 2);
                     } else if (k == KeyEvent.VK_RIGHT) {
-                        disp.setSizeX(disp.getWidth() * 2);
+                        disp.setSizeX(disp.getSizeX()* 2);
                     } else if (k == KeyEvent.VK_LEFT) {
-                        disp.setSizeX(disp.getWidth() / 2);
+                        disp.setSizeX(disp.getSizeX() / 2);
                     } else if (k == KeyEvent.VK_G) { // 'g' resets the frame to gray level 0.5f
                         disp.resetFrame(.5f);
                     } else if ((k == KeyEvent.VK_F) && ((e.getModifiersEx() & InputEvent.SHIFT_DOWN_MASK) == InputEvent.SHIFT_DOWN_MASK)) {
@@ -60,6 +60,7 @@ import static net.sf.jaer.graphics.ImageDisplay.log;
                         disp.setFontSize(newsize);
                         log.info("fontSize" + disp.getFontSize());
                     }
+                    disp.repaint();
                 }
             });
 
@@ -73,6 +74,7 @@ import static net.sf.jaer.graphics.ImageDisplay.log;
                             Point2D.Float p = disp.getMouseImagePosition(e); // save the mouse point in image coordinates
                             mousePoint.x = p.x;
                             mousePoint.y = p.y;
+                            disp.repaint();
                         }
                     }
             );
