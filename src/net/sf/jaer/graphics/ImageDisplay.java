@@ -258,7 +258,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * @param drawable the Open GL context.
      */
     @Override
-    public synchronized void display(GLAutoDrawable drawable) {
+    public void display(GLAutoDrawable drawable) {
         
         GL2 gl = getGL().getGL2();
         
@@ -464,7 +464,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * @param y
      * @param gray the gray value, in range 0-1.
      */
-    synchronized public void setPixmapGray(int x, int y, float gray) {
+    public void setPixmapGray(int x, int y, float gray) {
         if ((x < 0) || (x > sizeX) || (y < 0) || (y > sizeY)) {
             return;
         }
@@ -1463,7 +1463,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 float[] f; // get reference to pixmap array so we can set pixel values
                 int sx, sy, xx, yy;
                 while (!isInterrupted()) {
-                    log.fine("frame counter " + frameCounter);
+                    log.log(Level.FINE, "frame counter {0}", frameCounter);
                     disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
                     disp2.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
                     n = sizex * sizey;
