@@ -349,7 +349,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                 case DavisRenderer.EVENT_NEW_FRAME_AVAILBLE:
                     break;
                 default:
-                    log.warning(String.format("unknown PropertyChangeEvent name=%s, src=%s, evt=%s",evt.getPropertyName(),evt.getSource(),evt.toString()));
+                    log.fine(String.format("unknown PropertyChangeEvent name=%s, src=%s, evt=%s",evt.getPropertyName(),evt.getSource(),evt.toString()));
             }
         } catch (final Exception e) {
             DavisUserControlPanel.log.warning("responding to property change, caught " + e.toString());
