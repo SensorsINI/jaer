@@ -756,8 +756,6 @@ public class ChipCanvas implements GLEventListener, Observer {
         gl.glColor3f(1, 1, 1);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "Initialized display");
         checkGLError(gl, glu, "after init");
-        getZoom().getClipArea(); // todo computes bounds on first access
-
     }
 
     protected void initComponents() {
