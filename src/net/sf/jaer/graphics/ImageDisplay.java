@@ -4,7 +4,6 @@
  */
 package net.sf.jaer.graphics;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -37,19 +36,14 @@ import net.sf.jaer.JAERViewer;
 import net.sf.jaer.util.WindowSaver;
 
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.GraphicsConfiguration;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.nio.file.Paths;
 import java.util.Date;
 import java.util.logging.Level;
 import javax.imageio.ImageIO;
 import javax.swing.BoxLayout;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import net.sf.jaer.eventio.AEDataFile;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import static net.sf.jaer.graphics.ImageDisplay.log;
-import org.apache.commons.io.FilenameUtils;
 
 /**
  * OpenGL display of 2d data as color image. See the main method for example of
@@ -70,11 +64,11 @@ import org.apache.commons.io.FilenameUtils;
  *
  *     public static void main(String[] args) {
  *
-        * final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-        * JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
-        * frame.setPreferredSize(new Dimension(400, 400));  // set the window size
-        * frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
-        * int size = 200;  // used later to define image size
+ * final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+ * JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
+ * frame.setPreferredSize(new Dimension(400, 400));  // set the window size
+ * frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
+ * int size = 200;  // used later to define image size
  *
  *      disp.setSize(size,size); // set dimensions of image
  *
@@ -168,10 +162,10 @@ import org.apache.commons.io.FilenameUtils;
  */
 public class ImageDisplay extends GLJPanel implements GLEventListener {
 
-    private static Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
+    private static final Preferences prefs = Preferences.userNodeForPackage(ImageDisplay.class);
     static final Logger log = Logger.getLogger("net.sf.jaer");
     private int fontSize = 20;
-    private int sizeX = 0, sizeY = 0;
+    private int sizeX = 1, sizeY = 1;
     /**
      * The gray value. Default is 0.
      */
@@ -190,6 +184,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     private float borderPixels = BORDER_SPACE_PIXELS_DEFAULT;
     private boolean fillsVertically;
     private boolean fillsHorizontally;
+    private float glScale = 1; // set in setDefaultProjection
+
     private final float ZCLIP = 1;
     /**
      * The actual borders in model space around the chip area.
@@ -210,11 +206,12 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      */
     public ImageDisplay(GLCapabilitiesImmutable caps) {
         super(caps);
-
+        
         setLocale(java.util.Locale.US); // to avoid problems with other language support in JOGL
 
         // this.setSize(300,200);
         setVisible(true);
+//        setAutoSwapBufferMode(true);
 
         addGLEventListener(this);
         try {
@@ -222,7 +219,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 setSharedContext(JAERViewer.sharedDrawable.getContext());
             }
         } catch (GLException e) {
-            log.warning("While trying to set the shared context to the JAERViewer.sharedDrawable context, caught exception: " + e.toString());
+            log.log(Level.WARNING, "While trying to set the shared context to the JAERViewer.sharedDrawable context, caught exception: {0}", e.toString());
         }
 
     }
@@ -241,11 +238,11 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * @return a new ImageDisplay
      */
     public static ImageDisplay createOpenGLCanvas() {
-
         // design capabilities of opengl canvas
         GLCapabilities caps = new GLCapabilities(null);
         caps.setDoubleBuffered(true);
         caps.setHardwareAccelerated(true);
+//        caps.setSampleBuffers(true);
         caps.setAlphaBits(8);
         caps.setRedBits(8);
         caps.setGreenBits(8);
@@ -262,8 +259,9 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      */
     @Override
     public synchronized void display(GLAutoDrawable drawable) {
-
+        
         GL2 gl = getGL().getGL2();
+        
 //        gl.getContext().makeCurrent();
         checkGLError(gl, "before display in ID");
         if (reshapePending) {
@@ -271,8 +269,9 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             reshape(drawable, 0, 0, getWidth(), getHeight());
         }
         try {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
             gl.glClear(GL.GL_COLOR_BUFFER_BIT);
-            displayPixmap(drawable);
+            drawPixmap(drawable);
             drawText(gl);
             gl.glFlush();
         } catch (GLException e) {
@@ -283,6 +282,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
 
     /**
      * Called on initialization
+     *
+     * @param drawable
      */
     @Override
     public void init(GLAutoDrawable drawable) {
@@ -311,10 +312,6 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         gl.glRasterPos3f(0, 0, 0);
         gl.glColor3f(1, 1, 1);
 
-        if (textRenderer == null) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
-        }
-
         checkGLError(gl, "ImageDisplay, after init");
     }
 
@@ -323,7 +320,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      *
      * @param drawable
      */
-    synchronized private void displayPixmap(GLAutoDrawable drawable) {
+    synchronized private void drawPixmap(GLAutoDrawable drawable) {
         GL2 gl = drawable.getGL().getGL2();
         if (gl == null) {
             return;
@@ -334,26 +331,29 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         }
 
         checkGLError(gl, "before pixmap");
-        final int wi = drawable.getSurfaceWidth(), hi = drawable.getSurfaceHeight();
-        float scale = 1;
-        if (fillsVertically) {// tall chip, use chip height
-            scale = (hi - (2 * borderPixels)) / getSizeY();
-        } else if (fillsHorizontally) {
-            scale = (wi - (2 * borderPixels)) / getSizeX();
-        }
-
-        gl.glPixelZoom(scale, scale);
-        //        gl.glRasterPos2f(-.5f, -.5f); // to LL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
-        gl.glRasterPos2f(0, 0); // to LL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
-
-        checkPixmapAllocation();
+        final int swi=getSurfaceWidth(), shi=getSurfaceHeight();
+        final int wi = getWidth(), hi = getHeight();
+        // running on HighDPI display screen gives more surface pixels that canvas pixels.
+        // use this trick to scale the drawPixels correctly.
+        int highDPIScale=swi/wi;
+            
+        float scale = highDPIScale* glScale; 
         {
-            try {
-                pixmap.rewind();
-                gl.glDrawPixels(sizeX, sizeY, GL.GL_RGB, GL.GL_FLOAT, pixmap);
-            } catch (IndexOutOfBoundsException e) {
-                log.warning(e.toString());
+            gl.glPushMatrix();
+            gl.glPixelZoom(scale, scale);
+            //        gl.glRasterPos2f(-.5f, -.5f); // to LL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
+            gl.glRasterPos2f(0, 0); // to LL corner of chip, but must be inside viewport or else it is ignored, breaks on zoom     if (zoom.isZoomEnabled() == false) {
+
+            checkPixmapAllocation();
+            {
+                try {
+                    pixmap.rewind();
+                    gl.glDrawPixels(sizeX, sizeY, GL.GL_RGB, GL.GL_FLOAT, pixmap);
+                } catch (IndexOutOfBoundsException e) {
+                    log.warning(e.toString());
+                }
             }
+            gl.glPopMatrix();
         }
         //        FloatBuffer minMax=FloatBuffer.allocate(6);
         //        gl.glGetMinmax(GL.GL_MINMAX, true, GL.GL_RGB, GL.GL_FLOAT, minMax);
@@ -394,9 +394,9 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 String className = trace[2].getClassName();
                 String methodName = trace[2].getMethodName();
                 int lineNumber = trace[2].getLineNumber();
-                log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg + " at " + className + "." + methodName + " (line " + lineNumber + ")");
+                log.log(Level.WARNING, "GL error number {0} {1} : {2} at {3}.{4} (line {5})", new Object[]{error, glu.gluErrorString(error), msg, className, methodName, lineNumber});
             } else {
-                log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg);
+                log.log(Level.WARNING, "GL error number {0} {1} : {2}", new Object[]{error, glu.gluErrorString(error), msg});
             }
             error = g.glGetError();
         }
@@ -408,7 +408,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * the second pixel from the left in the bottom row (x=1,y=0). Pixel (0,1)
      * is at position starting at 3*(chip.getSizeX()).
      *
-     * @return the pixmap
+     * @return pixmap
      * @see #getPixmapArray() to return a float[] array
      */
     public FloatBuffer getPixmap() {
@@ -422,6 +422,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * (x=1,y=0). Pixel (0,1) is at position starting at 3*(chip.getSizeX()).
      *
      *
+     * @param pixmap
      */
     public void setPixmap(FloatBuffer pixmap) {
         this.pixmap = pixmap;
@@ -476,7 +477,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      *
      * @param x
      * @param y
-     * @param gray the gray change value, in range 0-1.
+     * @param grayChange the gray change value, in range 0-1.
      */
     synchronized public void changePixmapGrayValueBy(int x, int y, float grayChange) {
         setPixmapPosition(x, y);
@@ -531,7 +532,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     /**
      * Sets the whole pixmap array - a float[] of the kind R1,G1,B1,R2,G2,...
      *
-     * @param valueArray
+     * @param array
      */
     public void setPixmapArray(float[] array) {
         checkPixmapAllocation();
@@ -667,7 +668,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             }
             System.gc();
             if (n > 0) {
-//                log.info("allocating " + n + " floats for pixmap");
+                log.log(Level.FINE, "allocating {0} floats for pixmap", n);
                 pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
                 pixmap.rewind();
                 pixmap.limit(n);
@@ -702,7 +703,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      */
     @Override
     public synchronized void reshape(GLAutoDrawable drawable, int x, int y, int width, int height) {
-        super.reshape(x, y, width, height);
+//        super.reshape(x, y, width, height); // makes reshape loop that result in infinite size, reason unknown
         //        log.info("reshape ");
         GL2 gl = drawable.getGL().getGL2();
         gl.glLoadIdentity();
@@ -714,7 +715,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             fillsVertically = true;
             fillsHorizontally = false;
             if ((newscale * sizeX) > width) { // unless it runs into left/right, then set to fill width
-                newscale = (width - border) / sizeX;
+//                newscale = (width - border) / sizeX;
                 fillsHorizontally = true;
                 fillsVertically = false;
             }
@@ -724,14 +725,14 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
             fillsHorizontally = true;
             fillsVertically = false;
             if ((newscale * sizeY) > height) {// unless it runs into top/bottom, then set to fill height
-                newscale = (height - border) / sizeY;
+//                newscale = (height - border) / sizeY;
                 fillsVertically = true;
                 fillsHorizontally = false;
             }
         }
 //        log.info("height=" + height + " width=" + width + " fillsHorizontally=" + fillsHorizontally + " fillsVertically=" + fillsVertically + " newscale=" + newscale);
         setDefaultProjection(gl, drawable); // this sets orthographic projection so that chip pixels are scaled to the drawable area
-        gl.glViewport(0, 0, width, height);
+        gl.glViewport(0, 0, width, height); // already done before reshape according to GL javadoc
         repaint(1000);
     }
 
@@ -753,9 +754,9 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
          GLdouble far)
          */
         final int w = getWidth(), h = getHeight(); // w,h of screen
-        float glScale;
-        checkGLError(g, "before setDefaultProjection in ID");
+        checkGLError(g, "before setDefaultProjection in ImageDisplay");
         g.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
+//        g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         g.glLoadIdentity(); // very important to load identity matrix here so this works after first resize!!!
         // now we set the clipping volume so that the volume is clipped according to whether the window is tall (ar>1) or wide (ar<1).
 
@@ -799,7 +800,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
 //            log.info("b border=" + b + " pixels, bb border=" + bb + " pixels");
         }
         g.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-        checkGLError(g, "after setDefaultProjection");
+        checkGLError(g, "after setDefaultProjection in ImageDisplay");
     }
 
     /**
@@ -821,7 +822,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Returns the horizontal dimension of image; note this is source image size, not screen pixels which can be much larger.
+     * Returns the horizontal dimension of image; note this is source image
+     * size, not screen pixels which can be much larger.
      *
      * @return the sizeX
      */
@@ -830,7 +832,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Sets the image horizontal dimension; note this is source image size, not screen pixels which can be much larger..
+     * Sets the image horizontal dimension; note this is source image size, not
+     * screen pixels which can be much larger..
      *
      * @param sizeX the sizeX to set
      */
@@ -863,7 +866,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Returns the image height; note this is source image size, not screen pixels which can be much larger.
+     * Returns the image height; note this is source image size, not screen
+     * pixels which can be much larger.
      *
      * @return the sizeY
      */
@@ -872,7 +876,8 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
     }
 
     /**
-     * Sets the image height; note this is source image size, not screen pixels which can be much larger.
+     * Sets the image height; note this is source image size, not screen pixels
+     * which can be much larger.
      *
      * @param sizeY the sizeY to set
      */
@@ -1011,10 +1016,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * @param fontSize the fontSize to set, e.g 12. This is in points.
      */
     synchronized public void setFontSize(int fontSize) {
-        if (this.fontSize != fontSize) {
-            this.fontSize = fontSize;
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getFontSize()), true, true);
-        }
+        this.fontSize = fontSize;
     }
 
     //    /**
@@ -1106,7 +1108,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         if ((xLabel == null) && (yLabel == null) && (titleLabel == null) && (xticks == null) && (yticks == null) && legends.isEmpty()) {
             return;
         }
-
+        gl.glPushMatrix();
         textRenderer.setColor(textColor[0], textColor[1], textColor[2], 1);
 
         textRenderer.beginRendering(getWidth(), getHeight());
@@ -1161,6 +1163,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
         for (Legend legend : legends) {
             drawMultilineLegend(legend);
         }
+        gl.glPopMatrix();
         checkGLError(gl, "after text");
     }
 
@@ -1287,7 +1290,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      */
     private void drawMultilineLegend(Legend legend) {
         if (textRenderer == null) {
-            return;  // not visible yet, no init called
+            return;  // not visible yet, not displayed yet
         }
         final int additionalSpace = 2;
         String[] lines = legend.getLegendString().split("\n");
@@ -1342,7 +1345,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
      * @param filePath the File to save to
      */
     public void savePng(String filePath) throws IOException {
-        final BufferedImage theImage = new BufferedImage(getSizeX(),getSizeY(), BufferedImage.TYPE_INT_RGB);
+        final BufferedImage theImage = new BufferedImage(getSizeX(), getSizeY(), BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < getSizeY(); y++) {
             for (int x = 0; x < getSizeX(); x++) {
                 float[] rgb = getPixmapRGB(x, y);
@@ -1416,7 +1419,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
 
                 final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
                 final ImageDisplay disp2 = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-                int s = 0;
+                int s = 10;
                 disp.setPreferredSize(new Dimension(s, s));
                 disp2.setPreferredSize(new Dimension(s, s));
 //                JPanel p1=new JPanel(), p2=new JPanel();
@@ -1460,6 +1463,7 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                 float[] f; // get reference to pixmap array so we can set pixel values
                 int sx, sy, xx, yy;
                 while (!isInterrupted()) {
+                    log.fine("frame counter " + frameCounter);
                     disp.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
                     disp2.checkPixmapAllocation(); // make sure we have a pixmaps (not resally necessary since setting size will allocate pixmap
                     n = sizex * sizey;
@@ -1511,10 +1515,10 @@ public class ImageDisplay extends GLJPanel implements GLEventListener {
                     disp2.setTitleLabel("Frame " + (frameCounter++));
 
                     // ask for a repaint
-                    disp.repaint();
-                    disp2.repaint();
+                    disp.repaint(100);
+                    disp2.repaint(100);
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(1000);
                     } catch (InterruptedException e) {
                         interrupt();
                     }
