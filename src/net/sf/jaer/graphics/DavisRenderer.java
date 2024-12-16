@@ -129,7 +129,7 @@ public class DavisRenderer extends AEChipRenderer {
     private int dvsDownsamplingValue = 0, dvsDownsamplingCount = 0;
 
     private int framesRenderedSinceApsFrame = 0; // to deactivate frames after some time with none
-    private static final int NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 360;
+    private static int NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 2000;
     protected boolean renderedApsFrame = false; // flag set true on start of frame to signal not to disable frame display automatically
     private int lastTimestampFrameEndWeSentPropertyChangeFor = 0; // saves the time we sent propertyChange for a new frame to not send it multiple times during pause if the packet has a frame end in it
 
@@ -166,7 +166,7 @@ public class DavisRenderer extends AEChipRenderer {
             madebuffer = true;
         }
         if (madebuffer || (value != grayValue) || true) {
-            log.info("Resetting grayBuffer for colorMode=" + colorMode.name());
+            log.fine("Resetting grayBuffer for colorMode=" + colorMode.name());
             grayBuffer.rewind();
             // note below preserves transparency for DVS frame pixels with no events
             int alpha = (isDisplayFrames() || colorMode == ColorMode.HotCode || getChip().getCanvas().is3DEnabled()) ? 0 : 1; // HotCode uses alpha channel to store events for count to map to hot code
@@ -356,14 +356,18 @@ public class DavisRenderer extends AEChipRenderer {
             } else if (isDisplayFrames()) {
                 framesRenderedSinceApsFrame++;
             }
-            if (framesRenderedSinceApsFrame > NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES) {
+            if (NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES > 0 && framesRenderedSinceApsFrame > NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES) {
                 if (displayFrames) {
                     log.warning(String.format("No APS frames for last %,d>%,d NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES rendered frames, disabling frames",
                             framesRenderedSinceApsFrame, NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES));
-                    setDisplayFrames(false);
                     framesRenderedSinceApsFrame = 0;
+                    String msg = String.format("<html>Disable APS frame rendering because there have been no APS frames for last %,d rendered frames?<p>Selecting No option will disable check for frames", framesRenderedSinceApsFrame);
                     SwingUtilities.invokeLater(() -> {
-                        JOptionPane.showMessageDialog(chip.getAeViewer(), "Disabled APS frame rendering because there appear to be no frames");
+                        int ret = JOptionPane.showConfirmDialog(chip.getAeViewer(), msg, "Disable frames?", JOptionPane.YES_NO_OPTION);
+                        switch (ret) {
+                            case JOptionPane.YES_OPTION -> setDisplayFrames(false);
+                            case JOptionPane.NO_OPTION -> NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 0;
+                        }
                     });
 
                 }
