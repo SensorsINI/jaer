@@ -478,6 +478,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 }
             } catch (HardwareInterfaceException e) {
                 viewer.setPlayMode(AEViewer.PlayMode.WAITING);
+                log.warning(e.toString());
                 e.printStackTrace();
             } catch (IllegalStateException ise) {
                 log.warning(ise.toString());
