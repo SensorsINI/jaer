@@ -473,7 +473,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 }
 
                 viewer.aemon.setEventAcquisitionEnabled(true);
-                viewer.aemon.getChip().getBiasgen().sendConfiguration(viewer.aemon.getChip().getBiasgen());
+                if (viewer.aemon.getChip().getBiasgen() != null) {
+                    viewer.aemon.getChip().getBiasgen().sendConfiguration(viewer.aemon.getChip().getBiasgen());
+                }
             } catch (HardwareInterfaceException e) {
                 viewer.setPlayMode(AEViewer.PlayMode.WAITING);
                 e.printStackTrace();
