@@ -257,6 +257,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
      */
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (startPoint == null) {
             return;
         }
@@ -291,6 +294,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
      */
     @Override
     public void mouseMoved(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         currentMousePoint = getMousePoint(e);
         if (drawPtcLineWithMouse) {
             return;
@@ -303,6 +309,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
 
     @Override
     public void mouseExited(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         selecting = false;
         drawingPtcLine = false;
     }
@@ -318,6 +327,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
      */
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (startPoint == null) {
             return;
         }
@@ -339,6 +351,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
     @Override
     public void mouseClicked(MouseEvent e
     ) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         Point p = getMousePoint(e);
         clickedPoint = p;
     }
