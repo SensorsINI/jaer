@@ -184,9 +184,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         modeButtonGroup = new javax.swing.ButtonGroup();
         hideHighlightBG = new javax.swing.ButtonGroup();
         toolBar1 = new javax.swing.JToolBar();
+        overviewButton = new javax.swing.JButton();
         disableFilteringToggleButton = new javax.swing.JToggleButton();
         resetAllButton = new javax.swing.JButton();
-        overviewButton = new javax.swing.JButton();
         updateIntervalPanel = new javax.swing.JPanel();
         updateIntervalLabel = new javax.swing.JLabel();
         updateIntervalField = new javax.swing.JTextField();
@@ -240,6 +240,18 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         toolBar1.setAlignmentX(0.0F);
 
+        overviewButton.setText("Overview");
+        overviewButton.setToolTipText("Toggles overview of all filters in the FilterChain");
+        overviewButton.setFocusable(false);
+        overviewButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
+        overviewButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
+        overviewButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                overviewButtonActionPerformed(evt);
+            }
+        });
+        toolBar1.add(overviewButton);
+
         disableFilteringToggleButton.setText("Disable all");
         disableFilteringToggleButton.setToolTipText("Temporarily disables all filters");
         disableFilteringToggleButton.addActionListener(new java.awt.event.ActionListener() {
@@ -260,18 +272,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         });
         toolBar1.add(resetAllButton);
-
-        overviewButton.setText("Overview");
-        overviewButton.setToolTipText("Shows overview of all filters");
-        overviewButton.setFocusable(false);
-        overviewButton.setHorizontalTextPosition(javax.swing.SwingConstants.CENTER);
-        overviewButton.setVerticalTextPosition(javax.swing.SwingConstants.BOTTOM);
-        overviewButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                overviewButtonActionPerformed(evt);
-            }
-        });
-        toolBar1.add(overviewButton);
 
         updateIntervalPanel.setLayout(new javax.swing.BoxLayout(updateIntervalPanel, javax.swing.BoxLayout.LINE_AXIS));
 

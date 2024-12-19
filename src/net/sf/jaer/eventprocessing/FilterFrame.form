@@ -214,6 +214,18 @@
 
       <Layout class="org.netbeans.modules.form.compat2.layouts.DesignBoxLayout"/>
       <SubComponents>
+        <Component class="javax.swing.JButton" name="overviewButton">
+          <Properties>
+            <Property name="text" type="java.lang.String" value="Overview"/>
+            <Property name="toolTipText" type="java.lang.String" value="Toggles overview of all filters in the FilterChain"/>
+            <Property name="focusable" type="boolean" value="false"/>
+            <Property name="horizontalTextPosition" type="int" value="0"/>
+            <Property name="verticalTextPosition" type="int" value="3"/>
+          </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="overviewButtonActionPerformed"/>
+          </Events>
+        </Component>
         <Component class="javax.swing.JToggleButton" name="disableFilteringToggleButton">
           <Properties>
             <Property name="text" type="java.lang.String" value="Disable all"/>
@@ -233,18 +245,6 @@
           </Properties>
           <Events>
             <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="resetAllButtonActionPerformed"/>
-          </Events>
-        </Component>
-        <Component class="javax.swing.JButton" name="overviewButton">
-          <Properties>
-            <Property name="text" type="java.lang.String" value="Overview"/>
-            <Property name="toolTipText" type="java.lang.String" value="Shows overview of all filters"/>
-            <Property name="focusable" type="boolean" value="false"/>
-            <Property name="horizontalTextPosition" type="int" value="0"/>
-            <Property name="verticalTextPosition" type="int" value="3"/>
-          </Properties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="overviewButtonActionPerformed"/>
           </Events>
         </Component>
         <Container class="javax.swing.JPanel" name="updateIntervalPanel">

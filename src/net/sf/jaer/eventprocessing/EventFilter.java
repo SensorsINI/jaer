@@ -99,10 +99,70 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     private Preferences prefs = null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
 
-    /**
-     * Set of all preference values, filled by getXXX() method calls
+    /** Record of a property preferences information. 
+     * The key is the short name, e.g. "dt", the class is type of property. Class is the property type.
+     * The value is
+     * the actual current value in Preferences. defaultValue is the default value of property.
      */
-    protected HashMap<String, Class> preferencesMap = new HashMap();
+    public record PrefsKeyClassValueDefault(String key, Class type, Object value, Object defaultValue){};
+    
+    /**
+     * Map of all preference values, filled by getXXX() method calls. Key is
+     * preferences key, value PrefsKeyClassValueDefault.
+     * @see PrefsKeyClassValueDefault
+     */
+    protected HashMap<String, PrefsKeyClassValueDefault> preferencesMap = new HashMap();
+
+    /**
+     * Holds cleared values of properties that have been most recently cleared, for undo support and resetting panel values.
+     * These keys have the preferences header string stripped from them. 
+     * E.g. preference key "SpatioTemporalCorrelationFilter.dt" becomes "dt".
+     */
+    protected HashMap<String, PrefsKeyClassValueDefault> clearedProperties = new HashMap();
+
+    /**
+     * Returns list of non-default preference properties.
+     *
+     * @return a map of non-default value names
+     */
+    public HashMap<String,PrefsKeyClassValueDefault> getNonDefaultProperties() {
+        int count = 0;
+        ArrayList<String> keys = new ArrayList();
+        for (String k : preferencesMap.keySet()) {
+            keys.add(k);
+        }
+        HashMap<String,PrefsKeyClassValueDefault> nonDefaults=new HashMap();
+        for (String k : keys) {
+            if (getPrefs().get(k, null) != null) {
+                count++;
+                nonDefaults.put(k,preferencesMap.get(k));
+            }
+        }
+        return nonDefaults;
+    }
+
+    /**
+     * Clear all stored preferences that have been saved in preferencesMap by
+     * getXXX method calls.
+     * @return a HashMap<String,Object> of the cleared preferences. Can be used to reset the GUI values to the defaults.
+     */
+    public HashMap<String, PrefsKeyClassValueDefault> restoreDefaultPreferences() {
+        log.fine(String.format("Before clearing, cleared preferences had %d entries", clearedProperties.size()));
+        clearedProperties.clear();
+        int count = 0;
+        for (String k : preferencesMap.keySet()) {
+            String v = getPrefs().get(k, null);
+            if (v != null) {
+                String propName=k.substring(prefsKeyHeader().length());
+                PrefsKeyClassValueDefault defaultValue=preferencesMap.get(k);
+                clearedProperties.put(propName, defaultValue);
+                getPrefs().remove(k);
+                count++;
+            }
+        }
+        log.info(String.format("Restored %d preferences to default values", count));
+        return clearedProperties;
+    }
 
     /**
      * Provides change support, e.g. for enabled state. Filters can cause their
@@ -787,15 +847,16 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * Constructs the prefs node for this EventFilter. It is based on the Chip
      * preferences node if the chip exists, otherwise on the EventFilter class
-     * package. If the filter is enclosed, then the node is named for the enclosed filter (this one) as a 
-     * child of the enclosing filter node.
-     * 
-     * This way, filters that are enclosed have
-     * individualized preferences depending on where they are enclosed.
-     * 
-     * Example: Info filter encloses TypedEventRateEstimator filter and is a filter for Davis346Red chip, 
-     * so we have jaer/chips/Davis346Red/Info/TypedEventRateEstimator
-     * 
+     * package. If the filter is enclosed, then the node is named for the
+     * enclosed filter (this one) as a child of the enclosing filter node.
+     *
+     * This way, filters that are enclosed have individualized preferences
+     * depending on where they are enclosed.
+     *
+     * Example: Info filter encloses TypedEventRateEstimator filter and is a
+     * filter for Davis346Red chip, so we have
+     * jaer/chips/Davis346Red/Info/TypedEventRateEstimator
+     *
      */
     private Preferences constructPrefsNode() {
         Preferences prefs;
@@ -1025,8 +1086,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public Object getObject(String key, Object defObject) {
         try {
-            preferencesMap.put(key, Object.class);
             Object o = PrefObj.getObject(getPrefs(), prefsKeyHeader() + key);
+            preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Object.class, o, defObject));
             if (o == null) {
                 return defObject;
             }
@@ -1140,8 +1201,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return long value
      */
     public long getLong(String key, long def) {
-        preferencesMap.put(key, Long.TYPE);
-        return prefs.getLong(prefsKeyHeader() + key, def);
+        final long aLong = prefs.getLong(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Long.TYPE, aLong, def));
+        return aLong;
     }
 
     /**
@@ -1152,8 +1214,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return int value
      */
     public int getInt(String key, int def) {
-        preferencesMap.put(key, Integer.TYPE);
-        return prefs.getInt(prefsKeyHeader() + key, def);
+        final int aInt = prefs.getInt(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Integer.TYPE, aInt,def));
+        return aInt;
     }
 
     /**
@@ -1164,8 +1227,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return float value
      */
     public float getFloat(String key, float def) {
-        preferencesMap.put(key, Float.TYPE);
-        return prefs.getFloat(prefsKeyHeader() + key, def);
+        final float aFloat = prefs.getFloat(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Float.TYPE, aFloat, def));
+        return aFloat;
     }
 
     /**
@@ -1176,8 +1240,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return double value
      */
     public double getDouble(String key, double def) {
-        preferencesMap.put(key, Double.TYPE);
-        return prefs.getDouble(prefsKeyHeader() + key, def);
+        final double aDouble = prefs.getDouble(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Double.TYPE, aDouble, def));
+        return aDouble;
     }
 
     /**
@@ -1188,8 +1253,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return byte[] in preferences
      */
     public byte[] getByteArray(String key, byte[] def) {
-        preferencesMap.put(key, byte[].class);
-        return prefs.getByteArray(prefsKeyHeader() + key, def);
+        final byte[] byteArray = prefs.getByteArray(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, byte[].class, byteArray, def));
+        return byteArray;
     }
 
     /**
@@ -1200,7 +1266,6 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return float[] in preferences
      */
     public float[] getFloatArray(String key, float[] def) {
-        preferencesMap.put(key, float[].class);
         int length = prefs.getInt(prefsKeyHeader() + key + "Length", 0);
         if (def.length != length) {
             return def;
@@ -1209,6 +1274,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         for (int i = 0; i < length; i++) {
             outArray[i] = prefs.getFloat(prefsKeyHeader() + key + i, 0.0f);
         }
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, float[].class, outArray, def));
         return outArray;
     }
 
@@ -1220,8 +1286,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return boolean value
      */
     public boolean getBoolean(String key, boolean def) {
-        preferencesMap.put(key, Boolean.TYPE);
-        return prefs.getBoolean(prefsKeyHeader() + key, def);
+        final boolean aBoolean = prefs.getBoolean(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Boolean.TYPE, aBoolean, def));
+        return aBoolean;
     }
 
     /**
@@ -1232,8 +1299,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return string value
      */
     public String getString(String key, String def) {
-        preferencesMap.put(key, String.class);
-        return prefs.get(prefsKeyHeader() + key, def);
+        final String aString = prefs.get(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, String.class, aString, def));
+        return aString;
     }
     // </editor-fold>
 
