@@ -193,7 +193,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     private void clearSelection() {
-        roiRects.clear();
+        if (roiRects != null) {
+            roiRects.clear();
+        }
     }
 
     synchronized private void startRoiSelection(MouseEvent e) {
