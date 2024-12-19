@@ -1860,7 +1860,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
-        exportImportPanel1 = new javax.swing.JPanel();
+        copyPasteDefaultsPanel = new javax.swing.JPanel();
         filler2 = new javax.swing.Box.Filler(new java.awt.Dimension(10, 0), new java.awt.Dimension(10, 0), new java.awt.Dimension(30, 32767));
         copyB = new javax.swing.JButton();
         pasteB = new javax.swing.JButton();
@@ -1913,11 +1913,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         jPanel1.add(enableResetControlsHelpPanel);
 
-        exportImportPanel1.setMaximumSize(new java.awt.Dimension(129, 17));
-        exportImportPanel1.setMinimumSize(new java.awt.Dimension(98, 17));
-        exportImportPanel1.setPreferredSize(new java.awt.Dimension(98, 17));
-        exportImportPanel1.setLayout(new javax.swing.BoxLayout(exportImportPanel1, javax.swing.BoxLayout.X_AXIS));
-        exportImportPanel1.add(filler2);
+        copyPasteDefaultsPanel.setMaximumSize(new java.awt.Dimension(129, 17));
+        copyPasteDefaultsPanel.setMinimumSize(new java.awt.Dimension(129, 17));
+        copyPasteDefaultsPanel.setPreferredSize(new java.awt.Dimension(98, 17));
+        copyPasteDefaultsPanel.setLayout(new javax.swing.BoxLayout(copyPasteDefaultsPanel, javax.swing.BoxLayout.X_AXIS));
+        copyPasteDefaultsPanel.add(filler2);
 
         copyB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         copyB.setText("Copy");
@@ -1929,7 +1929,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 copyBActionPerformed(evt);
             }
         });
-        exportImportPanel1.add(copyB);
+        copyPasteDefaultsPanel.add(copyB);
 
         pasteB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         pasteB.setText("Paste");
@@ -1941,7 +1941,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 pasteBActionPerformed(evt);
             }
         });
-        exportImportPanel1.add(pasteB);
+        copyPasteDefaultsPanel.add(pasteB);
 
         defaultsB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         defaultsB.setText("Defaults");
@@ -1953,9 +1953,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 defaultsBActionPerformed(evt);
             }
         });
-        exportImportPanel1.add(defaultsB);
+        copyPasteDefaultsPanel.add(defaultsB);
 
-        jPanel1.add(exportImportPanel1);
+        jPanel1.add(copyPasteDefaultsPanel);
 
         exportImportPanel.setMaximumSize(new java.awt.Dimension(98, 17));
         exportImportPanel.setMinimumSize(new java.awt.Dimension(98, 17));
@@ -2235,12 +2235,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton copyB;
+    private javax.swing.JPanel copyPasteDefaultsPanel;
     private javax.swing.JButton defaultsB;
     protected javax.swing.JPanel enableResetControlsHelpPanel;
     protected javax.swing.JCheckBox enabledCheckBox;
     private javax.swing.JButton exportB;
     private javax.swing.JPanel exportImportPanel;
-    private javax.swing.JPanel exportImportPanel1;
     private javax.swing.Box.Filler filler1;
     private javax.swing.Box.Filler filler2;
     private javax.swing.JButton importB;
