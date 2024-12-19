@@ -240,16 +240,7 @@ public class RectangularClusterTracker extends EventFilter2D
     /**
      * The vanishing point for perspective object sizing
      */
-    private Point2D vanishingPoint = null;
-
-    {
-        float x = getFloat("vanishingPoint.x", Float.NaN), y = getFloat("vanishingPoint.y", Float.NaN);
-        if (Float.isNaN(x) || Float.isNaN(y)) {
-            setVanishingPoint(null);
-        } else {
-            vanishingPoint = new Point2D.Float(x, y);
-        }
-    }
+    private Point2D vanishingPoint = (Point2D)getObject("vanishingPoint", new Point2D.Float(Float.NaN,Float.NaN));
 
     /**
      * timestamp that is updated for each cluster that is updated
