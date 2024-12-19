@@ -401,7 +401,7 @@ public class BandpassIIREventFilter extends EventFilter2DMouseAdaptor implements
         if (display != null) {
             if (outputDisplay == null) {
                 outputDisplay = ImageDisplay.createOpenGLCanvas();
-                outputDisplay.setImageSize(chip.getSizeX(), chip.getSizeY());
+                outputDisplay.setImageSize(sx, sy);
                 outputDisplay.setGrayValue(0.5f);
                 new ImageKeyMouseHandler(outputDisplay, mousePoint, Thread.currentThread());
                 outputFrame = new JFrame("BandpassEventFilter");

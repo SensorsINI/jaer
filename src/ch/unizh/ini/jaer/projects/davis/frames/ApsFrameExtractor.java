@@ -68,7 +68,7 @@ import org.apache.commons.io.FilenameUtils;
  */
 @Description("Method to acquire a frame from a stream of APS sample events")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class ApsFrameExtractor extends EventFilter2DMouseAdaptor {
+public class ApsFrameExtractor extends EventFilter2DMouseROI {
 
     protected JFrame apsFrame = null;
     protected ImageDisplay apsDisplay; // actually draws the display

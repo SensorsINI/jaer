@@ -88,6 +88,7 @@ import eu.seebetter.ini.chips.davis.*;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.geom.Point2D;
+import javax.swing.SwingWorker;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -4741,6 +4742,151 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     }
 
+//    /** Currently not used, since it throws up dialogs within the doInBackground thread */
+//    class RecordingSaverWorker extends SwingWorker<Boolean, String> {
+//
+//        Component comp;
+//        File srcFile, newFile;
+//
+//        public RecordingSaverWorker(Component comp, File srcFile) {
+//            this.comp = comp;
+//            this.srcFile = srcFile;
+//        }
+//
+//        protected Boolean doInBackground() throws Exception {
+//            comp.setCursor(preResizeCursor);
+//            JFileChooser chooser = new JFileChooser();
+//            chooser.setCurrentDirectory(lastLoggingFolder);
+//            chooser.setFileFilter(new DATFileFilter());
+//            chooser.setDialogTitle("Save logged data");
+//
+//            String fn
+//                    = loggingFile.getName();
+//            //                System.out.println("fn="+fn);
+//            // strip off .aedat to make it easier to appendOfEventReferences comment to filename
+//            int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
+//            String base = fn;
+//            if (extInd > 0) {
+//                base = fn.substring(0, extInd); // maybe trying to save old .dat extension
+//            }
+//            chooser.setSelectedFile(new File(base));
+//            chooser.setDialogType(JFileChooser.SAVE_DIALOG);
+//            chooser.setMultiSelectionEnabled(false);
+//
+//            boolean savedIt = false;
+//            do {
+//                // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
+//                int retValue = chooser.showSaveDialog(AEViewer.this);
+//                if (retValue == JFileChooser.APPROVE_OPTION) {
+//                    File newFile = chooser.getSelectedFile();
+//                    // make sure filename ends with .aedat
+//                    if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
+//                        newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
+//                    }
+//                    // we'll rename the logged data file to the selection
+//                    lastLoggingFolder = chooser.getCurrentDirectory();
+//                    prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
+//
+//                    boolean renamed = loggingFile.renameTo(newFile);
+//                    if (renamed) {
+//                        // if successful, cool, save persistence
+//                        savedIt = true;
+//                        recentFiles.addFile(newFile);
+//                        loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
+//                        log.info("renamed logging file to " + newFile.getAbsolutePath());
+//                    } else {
+//                        // if this fails, it does not only mean that a file already exists,
+//                        // the failure reasons are platform dependent, for example on Linux
+//                        // this might fail if its a move across different file-systems, such
+//                        // as from /tmp to /home depending on configuration.
+//                        // so we check if the new file really exists, if it doesn't, we don't
+//                        // have to delete it or ask for overwrite confirmation, just use it.
+//                        if (newFile.exists()) {
+//                            int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+//                            if (overwrite == JOptionPane.OK_OPTION) {
+//                                // we need to delete the file
+//                                boolean deletedOld = newFile.delete();
+//                                if (deletedOld) {
+//                                    loggingFile.renameTo(newFile);
+//                                    savedIt = true;
+//                                    log.info("renamed logging file to " + newFile); // TODO something messed up
+//                                    // here with confirmed
+//                                    // overwrite of logging file
+//                                    loggingFile = newFile;
+//                                } else {
+//                                    log.warning("couldn't delete logging file " + newFile);
+//                                }
+//
+//                            } else {
+//                                chooser.setDialogTitle("Couldn't save file there, try again");
+//                            }
+//                        } else {
+//                            log.info(String.format("(Please wait) moving temporary file %s to final location %s", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
+//                            class Result {
+//
+//                                Exception exception = null;
+//                            }
+//                            final Result result = new Result();
+//                            final File newFinalFile = new File(newFile.getAbsolutePath());
+//                            setCursor(new Cursor(Cursor.WAIT_CURSOR));
+//                            Thread t = new Thread() {
+//                                public void run() {
+//                                    try {
+//                                        FileUtils.moveFile(loggingFile, newFinalFile);
+//                                    } catch (IOException e) {
+//                                        log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", loggingFile, newFinalFile, e.toString()));
+//                                        result.exception = e;
+//                                    } finally {
+//                                    }
+//                                }
+//                            };
+//
+////                            JOptionPane.showMessageDialog(getImagePanel(), "Moving recording to final location", "Moving recording", JOptionPane.INFORMATION_MESSAGE);
+//                            t.start();
+//                            StringBuilder sb = new StringBuilder("Saving..");
+//                            while (t.isAlive()) {
+//                                try {
+//                                    Thread.sleep(500);
+//                                } catch (InterruptedException e) {
+//                                }
+//                                sb.append(".");
+//                                log.info(sb.toString());
+//                                publish(sb.toString());
+//                            }
+//                            if (result.exception == null) {
+//                                log.info("done saving " + newFinalFile.getAbsolutePath());
+//                                savedIt = true;
+//                                loggingFile = newFile;
+//                            } else {
+//                                log.severe(String.format("Could not save %s: %s", newFinalFile, result.exception));
+//                            }
+//                            setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+//                        }
+//                    }
+//                } else {
+//                    // user hit cancel, delete logged data
+//                    boolean deleted = loggingFile.delete();
+//                    if (deleted) {
+//                        log.info("Deleted temporary logging file " + loggingFile);
+//                    } else {
+//                        log.warning("Couldn't delete temporary logging file " + loggingFile);
+//                    }
+//
+//                    savedIt = true;
+//                }
+//
+//            } while (savedIt == false); // keep trying until user is happy (unless they deleted some crucial data!)
+//            return true;
+//
+//        }
+//
+//        protected void done() {
+//            setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+//            JOptionPane.showMessageDialog(comp, "Saved " + newFile.getAbsolutePath());
+//        }
+//
+//    }
+
     /**
      * Stops logging and optionally opens file dialog for where to save file. If
      * number of AEViewers is more than one, dialog is also skipped since we may
@@ -4771,6 +4917,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
                 if (confirmFilename && !jaerViewer.isSyncEnabled()) {
+//                    new RecordingSaverWorker(this, loggingFile).execute();
                     JFileChooser chooser = new JFileChooser();
                     chooser.setCurrentDirectory(lastLoggingFolder);
                     chooser.setFileFilter(new DATFileFilter());
@@ -4818,7 +4965,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             lastLoggingFolder = chooser.getCurrentDirectory();
                             prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
 
+                            final StringBuilder sb2 = new StringBuilder("Moving recording..");
+                            final JOptionPane pane2 = new JOptionPane(sb2.toString(), JOptionPane.INFORMATION_MESSAGE);
+                            log.fine(String.format("Renaming (or moving) %s to %s....", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
+                            final JDialog dialog2 = pane2.createDialog(this, "Moving recording");
+                            // the line below is added to the example from the docs
+                            dialog2.setModal(false); // this says not to block background components
+                            dialog2.setVisible(true);
                             boolean renamed = loggingFile.renameTo(newFile);
+                            pane2.setMessage("<html>Done saving recording as<br> " + newFile.getAbsolutePath());
                             if (renamed) {
                                 // if successful, cool, save persistence
                                 savedIt = true;
@@ -4852,7 +5007,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         chooser.setDialogTitle("Couldn't save file there, try again");
                                     }
                                 } else {
-                                    log.info(String.format("(Please wait) moving temporary file %s to final location %s", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
+                                    log.info(String.format("Rename failed, trying FileUtils.moveFile. Please wait, moving temporary file %s to final location %s...", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
                                     class Result {
 
                                         Exception exception = null;
@@ -4871,22 +5026,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             }
                                         }
                                     };
+                                    final StringBuilder sb = new StringBuilder("Moving recording..");
+                                    final JOptionPane pane = new JOptionPane(sb.toString(), JOptionPane.INFORMATION_MESSAGE);
+                                    // Configure via set methods
+                                    final JDialog dialog = pane.createDialog(this, "Moving recording");
+                                    // the line below is added to the example from the docs
+                                    dialog.setModal(false); // this says not to block background components
+                                    dialog.setVisible(true);
                                     t.start();
-                                    StringBuilder sb = new StringBuilder("Saving..");
                                     while (t.isAlive()) {
                                         try {
-                                            Thread.sleep(500);
+                                            Thread.sleep(100);
                                         } catch (InterruptedException e) {
                                         }
                                         sb.append(".");
+                                        pane.setMessage(sb.toString());
                                         log.info(sb.toString());
                                     }
                                     if (result.exception == null) {
-                                        log.info("done saving " + newFinalFile.getAbsolutePath());
+                                        String s = "done saving " + newFinalFile.getAbsolutePath();
+                                        log.info(s);
+                                        sb.append("<p>").append(s);
+                                        pane.setMessage(sb.toString());
+
                                         savedIt = true;
                                         loggingFile = newFile;
                                     } else {
-                                        log.severe(String.format("Could not save %s: %s", newFinalFile, result.exception));
+                                        String s = String.format("Could not save %s: %s", newFinalFile, result.exception);
+                                        sb.append("<p>").append(s);
+                                        pane.setMessage(sb.toString());
+                                        log.severe(s);
                                     }
                                     setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
                                 }
