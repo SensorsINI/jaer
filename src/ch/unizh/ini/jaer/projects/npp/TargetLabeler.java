@@ -961,7 +961,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                 }
             }
             writer.close();
-            log.info("wrote locations to file " + f.getAbsolutePath());
+            log.info("wrote locations to file " + f.getCanonicalPath());
             if (f.getPath() != null) {
                 mapDataFilenameToTargetFilename.put(lastDataFilename, f.getPath());
             }
@@ -1009,7 +1009,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
                     sb.append(s + "\n");
                     s = reader.readLine();
                 }
-                log.info("header lines on " + f.getAbsolutePath() + " are\n" + sb.toString());
+                log.info("header lines on " + f.getCanonicalPath() + " are\n" + sb.toString());
                 Scanner scanner = new Scanner(reader);
                 while (scanner.hasNext()) {
                     try {
