@@ -762,7 +762,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             //                Preferences prefs=Preferences.userNodeForPackage(JAERViewer.class); // exports absolutely everything, which is not so good
             FileOutputStream fos = new FileOutputStream(file);
             prefs.exportSubtree(fos);
-            log.info("exported prefs subTree " + prefs.absolutePath() + " to file " + file.getAbsolutePath());
+            log.info("exported prefs subTree " + prefs.absolutePath() + " to file " + file.getCanonicalPath());
             fos.close();
         } catch (Exception e) {
             e.printStackTrace();
