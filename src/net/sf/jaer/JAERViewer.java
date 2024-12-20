@@ -472,8 +472,8 @@ public class JAERViewer {
                 for (AEViewer v : viewers) {
                     v.getRecentFiles().addFile(indexFile);
                 }
-                log.info("Saved index file " + indexFile.getAbsolutePath());
-//                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getAbsolutePath());
+                log.info("Saved index file " + indexFile.getCanonicalPath());
+//                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getCanonicalPath());
             }
         } catch (IOException e) {
             log.warning("creating index file " + indexFile);
