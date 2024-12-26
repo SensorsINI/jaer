@@ -210,7 +210,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
     void undo() {
         try {
-            //            System.out.println("biasgenFrame undo");
             undoManager.undo();
         } catch (CannotUndoException e) {
             Toolkit.getDefaultToolkit().beep();

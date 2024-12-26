@@ -478,7 +478,6 @@ public class SimpleIPotSliderTextControl extends JPanel implements Observer, Sta
         @Override
         protected void removeRedundantState() {
         }
-    ; // override this to actually get a state stored!!
     }
 
 	// Variables declaration - do not modify//GEN-BEGIN:variables

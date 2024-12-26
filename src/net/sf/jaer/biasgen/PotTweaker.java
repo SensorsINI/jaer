@@ -463,7 +463,6 @@ public class PotTweaker extends javax.swing.JPanel implements Observer,ChangeLis
             super(o,s);
         }
 
-        // overrides this to actually get a state stored!!
         protected void removeRedundantState (){
         }
     }

@@ -437,7 +437,6 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 
         protected void removeRedundantState() {
         }
-    ; // override this to actually get a state stored!!
     }
     
     

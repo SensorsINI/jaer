@@ -575,7 +575,7 @@ private void voltageLevelComboBoxActionPerformed(java.awt.event.ActionEvent evt)
         }
 
         protected void removeRedundantState() {
-        }// override this to actually get a state stored!!
+        }
     }
     private static EngineeringFormat engFormat = new EngineeringFormat();
 
