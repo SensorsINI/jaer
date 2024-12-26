@@ -1085,7 +1085,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             addTip(getFilter(), label);
             add(label);
 
-            control = new JComboBox(c.getEnumConstants());
+            control = new JComboBox(c.getEnumConstants()) {
+                /**
+                 * Do not fire if set by program.
+                 */
+                protected void fireActionEvent() {
+                    // if the mouse made the selection -> the comboBox has focus
+                    if (this.hasFocus()) {
+                        super.fireActionEvent();
+                    }
+                }
+            };
             control.setMaximumSize(new Dimension(100, 30));
             setFontSizeStyle(control);
 

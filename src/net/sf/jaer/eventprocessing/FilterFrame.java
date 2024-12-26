@@ -23,10 +23,10 @@ import java.util.prefs.Preferences;
 
 import javax.swing.AbstractAction;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
+import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
@@ -41,7 +41,6 @@ import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventprocessing.filter.PreferencesMover;
-import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.JAERWindowUtilities;
 import net.sf.jaer.util.RecentFiles;
@@ -187,6 +186,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         fixUndoRedo();
         undoButton.setHideActionText(true);
         redoButton.setHideActionText(true);
+        ToolTipManager toolTipManager = ToolTipManager.sharedInstance();
+        toolTipManager.setInitialDelay(100); // Set initial delay to 500 milliseconds
+        toolTipManager.setDismissDelay(2000); // Set dismiss delay to 2000 milliseconds
     }
 
     protected class MyUndoableEditListener
@@ -963,11 +965,12 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         final boolean canUndo = undoManager.canUndo(), canRedo = undoManager.canRedo();
         undoAction.setEnabled(canUndo);
         redoAction.setEnabled(canRedo);
-//        undoEditMenuItem.setEnabled(canUndo);
-//        redoEditMenuItem.setEnabled(canRedo);
-//        undoButton.setEnabled(canUndo);
-//        redoButton.setEnabled(canRedo);
-
+        if (canUndo) {
+            undoAction.putValue(AbstractAction.SHORT_DESCRIPTION, undoManager.getUndoPresentationName());
+        }
+        if (canRedo) {
+            redoAction.putValue(AbstractAction.SHORT_DESCRIPTION, undoManager.getRedoPresentationName());
+        }
     }
 
     void undo() {
