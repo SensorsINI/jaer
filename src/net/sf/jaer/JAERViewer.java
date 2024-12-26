@@ -158,7 +158,7 @@ public class JAERViewer {
             @Override
             public void run() {
                 if ((viewers != null) && !viewers.isEmpty()) {
-                    System.out.println("saving list of AEViewer chip classes");
+                    System.out.println("JAERViewer shutdown hook - saving list of AEViewer chip classes");
                     try {
 
                         ArrayList<String> viewerChipClassNames = new ArrayList<String>();
@@ -182,7 +182,7 @@ public class JAERViewer {
                     } catch (BackingStoreException ex) {
                         System.err.println("could not flush the preferences holding AEChip class names: "+ex.toString());
                     }
-                    System.out.println("saving possible open data logging");
+                    System.out.println("JAERViewer shutdown hook - saving possible open data logging");
                     try {
                         for (AEViewer v : viewers) {
                             if (v.getLoggingFile() != null) {
@@ -202,6 +202,7 @@ public class JAERViewer {
                         System.err.println(String.format("could not save window settings: %s", e.toString()));
                     }
                 }
+                System.out.println("JAERViewer shutdown hook - end of shutdown");
 
             }
         });
