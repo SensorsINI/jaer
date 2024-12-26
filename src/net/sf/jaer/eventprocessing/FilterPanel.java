@@ -15,6 +15,7 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
 import java.awt.SystemColor;
+import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -42,6 +43,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -68,6 +70,11 @@ import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.UndoableEditEvent;
+import javax.swing.event.UndoableEditListener;
+import javax.swing.undo.StateEdit;
+import javax.swing.undo.StateEditable;
+import javax.swing.undo.UndoableEditSupport;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.eventprocessing.EventFilter.PrefsKeyClassValueDefault;
 import static net.sf.jaer.eventprocessing.FilterFrame.prefs;
@@ -80,7 +87,7 @@ import net.sf.jaer.util.XMLFileFilter;
  * A panel for a filter that has Integer/Float/Boolean/String/enum getter/setter
  * methods (bound properties). These methods are introspected and a set of
  * controls are built for them. Enclosed filters and filter chains have panels
- * built for them that are enlosed inside the filter panel, hierarchically.
+ * built for them that are enclosed inside the filter panel, hierarchically.
  * <ul>
  * <li>Numerical properties (ints, floats, but not currently doubles) construct
  * a JTextBox control that also allows changes from mouse wheel or arrow keys.
@@ -91,9 +98,9 @@ import net.sf.jaer.util.XMLFileFilter;
  * </ul>
  * <p>
  * If a filter wants to automatically have the GUI controls reflect what the
- * property state is, then it should fire PropertyChangeEvent when the property
- * changes. For example, an {@link EventFilter} can implement a setter like
- * this:
+ * property currentState is, then it should fire PropertyChangeEvent when the
+ * property changes. For example, an {@link EventFilter} can implement a setter
+ * like this:
  * <pre>
  * public void setMapEventsToLearnedTopologyEnabled(boolean mapEventsToLearnedTopologyEnabled) {
  * support.firePropertyChange("mapEventsToLearnedTopologyEnabled", this.mapEventsToLearnedTopologyEnabled, mapEventsToLearnedTopologyEnabled); // property, old value, new value
@@ -106,7 +113,7 @@ import net.sf.jaer.util.XMLFileFilter;
  * <p>
  * Note that calling firePropertyChange as shown above will inform listeners
  * <em>before</em> the property has actually been changed (this.dt has not been
- * set yet).
+ * setUndoableState yet).
  * <p>
  * A tooltip for the property can be installed using the EventFilter
  * setPropertyTooltip method, for example
@@ -213,15 +220,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     private FilterFrame filterFrame = null;
 
-    private interface HasSetter {
-
-        /**
-         * Sets the GUI element to show the object
-         *
-         * @param o
-         */
-        void set(Object o);
-    }
     static final float LEFT_ALIGNMENT = Component.LEFT_ALIGNMENT;
     private BeanInfo info;
     private PropertyDescriptor[] props;
@@ -234,7 +232,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     /**
      * map from filter to property, to apply property change events to control
      */
-    private final HashMap<String, HasSetter> setterMap = new HashMap<>();
+    private final HashMap<String, MyControl> setterMap = new HashMap<>();
     /**
      * A list of all property controls
      */
@@ -269,18 +267,24 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private boolean simple = false;
 
     /**
-     * String that user enters into FilterFrame search box, set by FilterFrame
+     * String that user enters into FilterFrame search box, setUndoableState by
+     * FilterFrame
      */
     private String searchString = "";
 
-    /** Current highlight(s) */
+    /**
+     * Current highlight(s)
+     */
     private HashSet<MyControl> highlightedControls = new HashSet();
-    
-    /** Properties modified from default preference value */
+
+    /**
+     * Properties modified from default preference value
+     */
     private HashSet<MyControl> modifiedControls = new HashSet();
 
     /**
-     * Flag set by FilterFrame that says only show the filtered property
+     * Flag setUndoableState by FilterFrame that says only show the filtered
+     * property
      */
     private boolean hideOthers = false;
 
@@ -379,8 +383,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         highlightedControls.clear();
     }
-    
-    private void clearModifed(){
+
+    private void clearModifed() {
         for (MyControl c : modifiedControls) {
             c.setBorder(null);
         }
@@ -419,7 +423,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     private void highlightNonDefaultProperties() {
-        HashMap<String,PrefsKeyClassValueDefault> prefsMap=getFilter().getNonDefaultProperties();
+        HashMap<String, PrefsKeyClassValueDefault> prefsMap = getFilter().getNonDefaultProperties();
         for (var e : prefsMap.entrySet()) {
             MyControl c = propertyControlMap.get(e.getValue().key());
             if (c != null) {
@@ -430,10 +434,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
-        boolean wasSelected = getFilter().isSelected(); // restore the state in case filter is rebuilt
+        boolean wasSelected = getFilter().isSelected(); // restore the currentState in case filter is rebuilt
 
-        ungroupedControls = new MyControl();
         String u = "(Ungrouped)";
+        ungroupedControls = new MyContainer(u);
         ungroupedControls.setName(u);
         ungroupedControls.setBorder(new TitledBorder(u));
         ungroupedControls.setLayout(new BoxLayout(ungroupedControls, BoxLayout.Y_AXIS));
@@ -606,10 +610,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 //if at least one button then we show the actions panel
 //                buttons.setMinimumSize(new Dimension(0, 0));
                 buttons.setLayout(new GridLayout(0, 3, 3, 3));
-                JPanel butPanel = new MyControl();
+                String s = "Filter Actions";
+                JPanel butPanel = new MyContainer(s);
                 butPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
                 butPanel.add(buttons);
-                TitledBorder tb = new TitledBorder("Filter Actions");
+                TitledBorder tb = new TitledBorder(s);
                 tb.getBorderInsets(this).set(1, 1, 1, 1);
                 butPanel.setBorder(tb);
                 add(butPanel);
@@ -698,7 +703,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             for (EventFilter f : chain) {
                                 FilterPanel enclPanel = new FilterPanel(f, filterFrame);
                                 Dimension d = enclPanel.getPreferredSize();
-                                d.setSize(Integer.MAX_VALUE, d.getHeight()); // set height to preferred value, and width to max; see https://stackoverflow.com/questions/26596839/how-to-use-verticalglue-in-box-layout
+                                d.setSize(Integer.MAX_VALUE, d.getHeight()); // setUndoableState height to preferred value, and width to max; see https://stackoverflow.com/questions/26596839/how-to-use-verticalglue-in-box-layout
                                 enclPanel.setMaximumSize(d); // extra space to bottom
                                 this.add(enclPanel);
                                 controls.add(enclPanel);
@@ -726,7 +731,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 setList.addAll(groupSet);
                 Collections.sort(setList);
                 for (String s : setList) {
-                    JPanel groupPanel = new MyControl();
+                    JPanel groupPanel = new MyContainer(s);
                     groupPanel.setName(s);
                     groupPanel.setBorder(new TitledBorder(s));
                     groupPanel.setLayout(new BoxLayout(groupPanel, BoxLayout.Y_AXIS));
@@ -768,7 +773,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                     boolean hidden = filter.isPropertyHidden(p.getName());
                     if (hidden) {
-                        log.info("not constructing control for " + filter.getClass().getSimpleName() + " for hidden property " + p.getName());
+                        log.log(Level.INFO, "not constructing control for {0} for hidden property {1}", new Object[]{filter.getClass().getSimpleName(), p.getName()});
                         continue;
                     }
 
@@ -781,17 +786,17 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
                         SliderParams params;
                         if ((params = isSliderType(p, filter)) != null) {
-                            control = new IntSliderControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+                            control = new IntSliderControl(p.getName(), p, params);
                         } else {
-                            control = new IntControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            control = new IntControl(p.getName(), p);
                         }
                         myadd(control, name, inherited);
                     } else if ((c == Float.TYPE) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         SliderParams params;
                         if ((params = isSliderType(p, filter)) != null) {
-                            control = new FloatSliderControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod(), params);
+                            control = new FloatSliderControl(p.getName(), p, params);
                         } else {
-                            control = new FloatControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                            control = new FloatControl(p.getName(), p);
 
                         }
                         myadd(control, name, inherited);
@@ -806,7 +811,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             continue;
                         }
 
-                        control = new BooleanControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                        control = new BooleanControl(p.getName(), p);
                         myadd(control, name, inherited);
                     } else if ((c == String.class) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         if (p.getName().equals("filterEnabled")) {
@@ -815,13 +820,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         if (p.getName().equals("annotationEnabled")) {
                             continue;
                         }
-                        control = new StringControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                        control = new StringControl(p.getName(), p);
                         myadd(control, name, inherited);
                     } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
-                        control = new EnumControl(c, getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                        control = new EnumControl(p.getName(), p, c);
                         myadd(control, name, inherited);
                     } else if ((c != null) && ((c == Point2D.Float.class) || (c == Point2D.Double.class) || (c == Point2D.class)) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
-                        control = new Point2DControl(getFilter(), p.getName(), p.getWriteMethod(), p.getReadMethod());
+                        control = new Point2DControl(p.getName(), p);
                         myadd(control, name, inherited);
                     } else {
 //                    log.warning("unknown property type "+p.getPropertyType()+" for property "+p.getName());
@@ -893,17 +898,65 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
-    class MyControl extends JPanel {
+    class MyContainer extends JPanel {
 
+        String name;
+
+        MyContainer(String name) {
+            this.name = name;
+            setAlignmentX(LEFT_ALIGNMENT);
+            setAlignmentY(TOP_ALIGNMENT);
+        }
+    }
+
+    abstract class MyControl extends MyContainer implements StateEditable {
+
+        PropertyDescriptor p;
         /**
          * Read and write methods for the property
          */
         Method read = null;
         Method write = null;
+        private boolean addedUndoListener = false;
+        StateEdit edit = null;
+        Object currentState = null;
 
-        public MyControl() {
-            setAlignmentX(LEFT_ALIGNMENT);
-            setAlignmentY(TOP_ALIGNMENT);
+        public MyControl(String name, PropertyDescriptor p) {
+            super(name);
+            setterMap.put(name, this);
+            filter = getFilter();
+            this.p = p;
+            if (p != null) {
+                write = p.getWriteMethod();
+                read = p.getReadMethod();
+            }
+
+            addAncestorListener(new javax.swing.event.AncestorListener() {
+
+                public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
+                    if (addedUndoListener) {
+                        return;
+                    }
+                    addedUndoListener = true;
+                    if (evt.getComponent() instanceof Container) {
+                        Container anc = (Container) evt.getComponent();
+                        while (anc != null && anc instanceof Container) {
+                            if (anc instanceof UndoableEditListener) {
+                                getEditSupport().addUndoableEditListener((UndoableEditListener) anc);
+                                break;
+                            }
+                            anc = anc.getParent();
+                        }
+                    }
+                }
+
+                public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
+                }
+
+                public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
+                }
+
+            });
         }
 
         @Override
@@ -918,7 +971,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             invalidate();
             modifiedControls.add(this);
         }
-        
+
         public void highlightClearingOthers() {
             highlightModified();
             clearHighlights();
@@ -930,6 +983,85 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public void clearHighlight() {
             setBorder(null);
         }
+
+        abstract void setGuiState(Object o);
+
+        /**
+         * Subclasses should call super().setUndoableState()
+         */
+        public Object setUndoableState(Object o) {
+            if (o == null) {
+                log.warning("null object, will not set " + name);
+                return null;
+            }
+            try {
+                startEdit();
+                write.invoke(getFilter(), o); // might call property change listeners
+                Object ro = read.invoke(getFilter()); // constrain by writer
+                setCurrentState(ro);
+                setGuiState(o);
+                return ro;
+            } catch (IllegalAccessException | InvocationTargetException ex) {
+                Logger.getLogger(FilterPanel.class.getName()).log(Level.SEVERE, null, ex);
+            } finally {
+                endEdit();
+            }
+            return null;
+        }
+
+        public void setCurrentState(Object o) {
+            this.currentState = o;
+        }
+
+        private UndoableEditSupport getEditSupport() {
+            return getFilterFrame().editSupport;
+        }
+
+        /**
+         * Makes a new MyStateEdit and calls storeState()
+         */
+        void startEdit() {
+            edit = new MyStateEdit(this, name);
+        }
+
+        /**
+         * Ends the currentState edit and posts the edit to the
+         * UndoableEditSupport
+         */
+        void endEdit() {
+            if (edit != null) {
+                edit.end();
+            }
+            getEditSupport().postEdit(edit);
+        }
+
+        @Override
+        public void storeState(Hashtable<Object, Object> state) {
+            if (this.currentState == null) {
+                log.fine("null state, not puttting state to undoableedit");
+                return;
+            }
+            state.put("state", this.currentState);
+            log.fine(String.format("Stored %s state  %s", name, currentState));
+        }
+
+        /**
+         * Called by undo()
+         */
+        @Override
+        public void restoreState(Hashtable<?, ?> state) {
+            Object o = null;
+            try {
+                o = state.get("state");
+            } catch (NullPointerException e) {
+                log.warning("stored state is null, cannot restore");
+                return;
+            }
+            setCurrentState(o);
+            setGuiState(o);
+            log.fine(String.format("Restored %s to %s", name, o));
+        }
+
     }
 
     private void setFontSizeStyle(final JComponent label) {
@@ -937,29 +1069,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         label.setFont(label.getFont().deriveFont(Font.PLAIN));
     }
 
-    class EnumControl extends MyControl implements HasSetter {
+    class EnumControl extends MyControl {
 
         EventFilter filter;
         boolean initValue = false, nval;
         final JComboBox control;
 
-        @Override
-        public void set(Object o) {
-            control.setSelectedItem(o); // TODO handle string value
-        }
-
-        public EnumControl(final Class<? extends Enum> c, final EventFilter f, final String name, final Method w, final Method r) {
-            super();
-            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
-            filter = f;
-            write = w;
-            read = r;
+        public EnumControl(final String name, final PropertyDescriptor p, final Class<? extends Enum> c) {
+            super(name, p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
-            addTip(f, label);
+            addTip(getFilter(), label);
             add(label);
 
             control = new JComboBox(c.getEnumConstants());
@@ -971,12 +1094,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(Box.createHorizontalGlue());
 
             try {
-                Object x = r.invoke(filter);
+                Object x = read.invoke(getFilter());
                 if (x == null) {
-                    log.warning("null Object returned from read method " + r);
+                    log.warning("null Object returned from read method " + read);
                     return;
                 }
-                control.setSelectedItem(x);
+                setCurrentState(x);
+                setGuiState(x);
             } catch (Exception e) {
                 log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
@@ -987,41 +1111,34 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 public void actionPerformed(ActionEvent e) {
                     highlightClearingOthers();
                     try {
-                        w.invoke(filter, control.getSelectedItem());
+                        setUndoableState(control.getSelectedItem());
                     } catch (Exception e2) {
                         e2.printStackTrace();
                     }
                 }
             });
         }
+
+        @Override
+        void setGuiState(Object o) {
+            control.setSelectedItem(o); // TODO handle string value
+        }
     }
 
-    class StringControl extends MyControl implements HasSetter {
+    class StringControl extends MyControl {
 
         EventFilter filter;
         boolean initValue = false, nval;
         final JTextField textField;
 
-        @Override
-        public void set(Object o) {
-            if (o instanceof String) {
-                String b = (String) o;
-                textField.setText(b);
-            }
-        }
-
-        public StringControl(final EventFilter f, final String name, final Method w, final Method r) {
-            super();
-            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
-            filter = f;
-            write = w;
-            read = r;
+        public StringControl(final String name, final PropertyDescriptor p) {
+            super(name, p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
-            addTip(f, label);
+            addTip(getFilter(), label);
             add(label);
 
             textField = new JTextField(name);
@@ -1033,13 +1150,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(textField);
             add(Box.createHorizontalGlue());
             try {
-                String x = (String) r.invoke(filter);
+                String x = (String) read.invoke(getFilter());
                 if (x == null) {
-                    log.warning("null String returned from read method " + r);
+                    log.warning("null String returned from read method " + read);
                     return;
                 }
-                textField.setText(x);
-                textField.setToolTipText(x);
+                setCurrentState(x);
+                setGuiState(x);
             } catch (Exception e) {
                 log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
@@ -1050,7 +1167,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 public void actionPerformed(ActionEvent e) {
                     highlightClearingOthers();
                     try {
-                        w.invoke(filter, textField.getText());
+                        setUndoableState(textField.getText());
                     } catch (Exception e2) {
                         e2.printStackTrace();
                     }
@@ -1058,21 +1175,25 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             });
         }
 
+        @Override
+        void setGuiState(Object o) {
+            if (o instanceof String) {
+                String b = (String) o;
+                textField.setText(b);
+            }
+        }
+
     }
     private final float KEY_FACTOR = (float) Math.sqrt(2), WHEEL_FACTOR = (float) Math.pow(2, 1. / 16); // factors to change by with arrow and mouse wheel
 
-    class BooleanControl extends MyControl implements HasSetter {
+    class BooleanControl extends MyControl {
 
         EventFilter filter;
         boolean initValue = false, nval;
         final JCheckBox checkBox;
 
-        public BooleanControl(final EventFilter f, final String name, final Method w, final Method r) {
-            super();
-            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
-            filter = f;
-            write = w;
-            read = r;
+        public BooleanControl(final String name, PropertyDescriptor p) {
+            super(name, p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
@@ -1080,19 +1201,19 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             checkBox.setAlignmentX(LEFT_ALIGNMENT);
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
             setFontSizeStyle(checkBox);
-            addTip(f, checkBox);
+            addTip(getFilter(), checkBox);
             add(checkBox);
 
 //            add(Box.createVerticalStrut(0));
             try {
-                Boolean x = (Boolean) r.invoke(filter);
+                Boolean x = (Boolean) read.invoke(getFilter());
                 if (x == null) {
-                    log.warning("null Boolean returned from read method " + r);
+                    log.warning("null Boolean returned from read method " + read);
                     return;
                 }
                 initValue = x.booleanValue();
-                set(initValue);
-//                checkBox.setSelected(initValue);
+                setCurrentState(initValue);
+                setGuiState(currentState);
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
@@ -1104,23 +1225,24 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     highlightClearingOthers();
-                    try {
-                        w.invoke(filter, checkBox.isSelected());
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
-                    }
+                    setUndoableState(checkBox.isSelected());
                 }
             });
         }
 
         @Override
-        public void set(Object o) {
+        public Object setUndoableState(Object o) {
+            Object ro = super.setUndoableState(o);
+
+            return ro;
+        }
+
+        @Override
+        void setGuiState(Object o) {
             if (o instanceof Boolean) {
                 Boolean b = (Boolean) o;
                 checkBox.setSelected(b);
-                // check if we need to set toggle button for boolean control
+                // check if we need to setUndoableState toggle button for boolean control
                 for (AbstractButton but : doButList) {
                     if (but.getText().toLowerCase().equals(checkBox.getText().toLowerCase())) {
                         but.setSelected(b);
@@ -1136,10 +1258,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             }
         }
-
     }
 
-    class IntSliderControl extends MyControl implements HasSetter {
+    class IntSliderControl extends MyControl {
 
         EventFilter filter;
         int initValue = 0, nval;
@@ -1147,24 +1268,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         JTextField tf;
         private boolean sliderDontProcess = false;
 
-        @Override
-        public void set(Object o) {
-            if (o instanceof Integer) {
-                Integer b = (Integer) o;
-                slider.setValue(b);
-            }
-        }
-
-        public IntSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
-            super();
-            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
-            filter = f;
-            write = w;
-            read = r;
+        public IntSliderControl(final String name, final PropertyDescriptor p, final SliderParams params) {
+            super(name, p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 
-            final IntControl ic = new IntControl(f, name, w, r);
+            final IntControl ic = new IntControl(name, p);
 
             tf = ic.tf;
             add(ic);
@@ -1172,13 +1281,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             slider.setMaximumSize(new Dimension(200, 50));
 
             try {
-                Integer x = (Integer) r.invoke(filter); // read int value
+                Integer x = (Integer) read.invoke(getFilter()); // read int value
                 if (x == null) {
-                    log.warning("null Integer returned from read method " + r);
+                    log.warning("null Integer returned from read method " + read);
                     return;
                 }
                 initValue = x.intValue();
-                slider.setValue(initValue);
+                setCurrentState(initValue);
+                setGuiState(currentState);
             } catch (Exception e) {
                 log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
@@ -1186,23 +1296,27 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(slider);
             add(Box.createHorizontalGlue());
 
+            slider.addMouseListener(new MouseAdapter() {
+                public void mousePressed(java.awt.event.MouseEvent evt) {
+                    highlightClearingOthers();
+                    startEdit();
+                }
+
+                public void mouseReleased(java.awt.event.MouseEvent evt) {
+                    ic.setUndoableState(slider.getValue());
+                    endEdit();
+                }
+            }
+            );
+
             slider.addChangeListener(new ChangeListener() {
 
                 @Override
                 public void stateChanged(ChangeEvent e) {
-                    highlightClearingOthers();
                     if (sliderDontProcess) {
                         return;
                     }
-                    try {
-                        w.invoke(filter, slider.getValue()); // write int value
-                        ic.set(slider.getValue());
-//                        tf.setText(Integer.toString(slider.getValue()));
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
-                    }
+                    ic.setGuiState(slider.getValue());
                 }
             });
 
@@ -1213,15 +1327,23 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         return;
                     }
                     sliderDontProcess = true;
-                    slider.setValue((Integer) (pce.getNewValue()));
+                    setUndoableState((Integer) (pce.getNewValue()));
                     sliderDontProcess = false;
                 }
             });
 
         }
+
+        @Override
+        void setGuiState(Object o) {
+            if (o instanceof Integer) {
+                Integer b = (Integer) o;
+                slider.setValue(b);
+            }
+        }
     }
 
-    class FloatSliderControl extends MyControl implements HasSetter {
+    class FloatSliderControl extends MyControl {
 
         EventFilter filter;
         JSlider slider;
@@ -1231,29 +1353,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         boolean dontProcessEvent = false; // to avoid slider callback loops
         float minValue, maxValue, currentValue;
 
-        @Override
-        public void set(Object o) {
-            if (o instanceof Integer) {
-                Integer b = (Integer) o;
-                slider.setValue(b);
-                fc.set(b);
-            } else if (o instanceof Float) {
-                float f = (Float) o;
-                int sv = Math.round(((f - minValue) / (maxValue - minValue)) * (slider.getMaximum() - slider.getMinimum()));
-                slider.setValue(sv);
-            }
-        }
-
-        public FloatSliderControl(final EventFilter f, final String name, final Method w, final Method r, SliderParams params) {
-            super();
-            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
-            filter = f;
-            write = w;
-            read = r;
+        public FloatSliderControl(final String name, final PropertyDescriptor p, final SliderParams params) {
+            super(name, p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 
-            fc = new FloatControl(f, name, w, r);
+            fc = new FloatControl(name, p);
             add(fc);
             minValue = params.minFloatValue;
             maxValue = params.maxFloatValue;
@@ -1263,13 +1368,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             engFmt = new EngineeringFormat();
 
             try {
-                Float x = (Float) r.invoke(filter); // read int value
+                Float x = (Float) read.invoke(getFilter()); // read int value
                 if (x == null) {
-                    log.warning("null Float returned from read method " + r);
+                    log.warning("null Float returned from read method " + read);
                     return;
                 }
                 currentValue = x.floatValue();
-                set(currentValue);
+                setCurrentState(x);
+                setGuiState(x);
             } catch (Exception e) {
                 log.warning("cannot access the field named " + name + " is the class or method not public?");
                 e.printStackTrace();
@@ -1277,29 +1383,40 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(slider);
             add(Box.createHorizontalGlue());
 
-            slider.addChangeListener(new ChangeListener() {
-
-                @Override
-                public void stateChanged(ChangeEvent e) {
+            slider.addMouseListener(new MouseAdapter() {
+                public void mousePressed(java.awt.event.MouseEvent evt) {
                     highlightClearingOthers();
-                    try {
-                        int v = slider.getValue();
-                        currentValue = minValue + ((maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum())));
-                        w.invoke(filter, currentValue); // write int value
-                        fc.set(currentValue);
-
-//                        tf.setText(engFmt.format(currentValue));
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
-                    }
+                    startEdit();
                 }
+
+                public void mouseReleased(java.awt.event.MouseEvent evt) {
+                    currentValue = minValue + ((maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum())));
+                    fc.setUndoableState(currentValue);
+                    endEdit();
+                }
+            }
+            );
+            slider.addChangeListener((ChangeEvent e) -> {
+                currentValue = minValue + ((maxValue - minValue) * ((float) slider.getValue() / (slider.getMaximum() - slider.getMinimum())));
+                fc.setGuiState(currentValue);
             });
+        }
+
+        @Override
+        void setGuiState(Object o) {
+            if (o instanceof Integer) {
+                Integer b = (Integer) o;
+                slider.setValue(b);
+                fc.setUndoableState(b);
+            } else if (o instanceof Float) {
+                float f = (Float) o;
+                int sv = Math.round(((f - minValue) / (maxValue - minValue)) * (slider.getMaximum() - slider.getMinimum()));
+                slider.setValue(sv);
+            }
         }
     }
 
-    class IntControl extends MyControl implements HasSetter {
+    class IntControl extends MyControl {
 
         EventFilter filter;
         int initValue = 0, nval;
@@ -1307,29 +1424,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         String PROPERTY_VALUE = "value";
         boolean signed = false;
 
-        @Override
-        public void set(Object o) {
-            if (o instanceof Integer) {
-                Integer b = (Integer) o;
-                String s = NumberFormat.getIntegerInstance().format(b);
-                tf.setText(s);
-            } else if (o instanceof String) {
-                try {
-                    Integer i = Integer.parseInt((String) o);
-                    tf.setText((String) o);
-                } catch (NumberFormatException e) {
-                    log.warning(String.format("could not parse value %s", o));
-                }
-            }
-        }
-
-        public IntControl(final EventFilter f, final String name, final Method w, final Method r) {
-            super();
-            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
-            filter = f;
-            write = w;
-            read = r;
-            signed = isSigned(w);
+        public IntControl(final String name, final PropertyDescriptor p) {
+            super(name, p);
+            signed = isSigned(write);
 
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
@@ -1338,7 +1435,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             setFontSizeStyle(label);
-            addTip(f, label);
+            addTip(getFilter(), label);
             add(label);
 
             tf = new JTextField("", 8);
@@ -1348,14 +1445,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             tf.setMaximumSize(new Dimension(100, 50));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             try {
-                Integer x = (Integer) r.invoke(filter); // read int value
+                Integer x = (Integer) read.invoke(getFilter()); // read int value
                 if (x == null) {
-                    log.warning("null Integer returned from read method " + r);
+                    log.warning("null Integer returned from read method " + read);
                     return;
                 }
                 initValue = x.intValue();
-                set(initValue);
-//                fixIntValue(tf, r);
+                setCurrentState(initValue);
+                setGuiState(initValue);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -1370,22 +1467,18 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         NumberFormat format = NumberFormat.getNumberInstance();
                         Integer oldValue = null;
                         try {
-                            oldValue = (Integer) r.invoke(filter);
+                            oldValue = (Integer) read.invoke(getFilter());
                         } catch (Exception re) {
                             log.warning("could not read original value: " + re.toString());
                         }
                         int y = format.parse(tf.getText()).intValue();
                         newValue = y;
-                        w.invoke(filter, newValue); // write int value
+                        setUndoableState(newValue); // write int value
                         firePropertyChange(PROPERTY_VALUE, oldValue, newValue);
-                    } catch (ParseException pe) {
-                        //Handle exception
-                    } catch (NumberFormatException fe) {
+                    } catch (ParseException | NumberFormatException pe) {
                         tf.selectAll();
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
+                        tf.setBackground(Color.red);
+                        Toolkit.getDefaultToolkit().beep();
                     }
                 }
             });
@@ -1398,12 +1491,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     Integer oldValue = null;
 
                     try {
-                        oldValue = (Integer) r.invoke(filter);
+                        oldValue = (Integer) read.invoke(getFilter());
                         initValue = oldValue;
-//                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
+                    } catch (InvocationTargetException | IllegalAccessException e) {
                         e.printStackTrace();
                     }
                     int code = evt.getKeyCode();
@@ -1411,80 +1501,44 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     boolean shift = evt.isShiftDown();
                     if (!shift) {
                         if (code == KeyEvent.VK_UP) {
-                            try {
-                                nval = initValue;
-                                if (nval == 0) {
-                                    nval = 1;
-                                } else {
-                                    nval = Math.round(initValue * KEY_FACTOR);
-                                }
-
-                                w.invoke(filter, newValue = nval);
-                                tf.setText(Integer.toString(nval));
-                                fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            nval = initValue;
+                            if (nval == 0) {
+                                nval = 1;
+                            } else {
+                                nval = Math.round(initValue * KEY_FACTOR);
                             }
+                            if (nval == initValue) {
+                                nval++;
+                            }
+
+                            setUndoableState(nval);
                         } else if (code == KeyEvent.VK_DOWN) {
-                            try {
-                                nval = initValue;
-                                if (nval == 0) {
-                                    nval = 0;
-                                } else {
-                                    nval = Math.round(initValue / KEY_FACTOR);
-                                }
-
-                                w.invoke(filter, newValue = nval);
-                                tf.setText(Integer.toString(nval));
-                                fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            nval = initValue;
+                            if (nval == 0) {
+                                nval = 0;
+                            } else {
+                                nval = Math.round(initValue / KEY_FACTOR);
                             }
+
+                            setUndoableState(nval);
                         }
                     } else // shifted int control just incs or decs by 1
                     {
                         if (code == KeyEvent.VK_UP) {
-                            try {
-                                nval = initValue + 1;
-                                w.invoke(filter, newValue = nval);
-                                tf.setText(Integer.toString(nval));
-                                fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
-                            }
+                            nval = initValue + 1;
+                            setUndoableState(nval);
                         } else if (code == KeyEvent.VK_DOWN) {
-                            try {
-                                nval = initValue - 1;
-                                w.invoke(filter, newValue = nval);
-                                tf.setText(Integer.toString(nval));
-                                fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
-                            }
+                            nval = initValue - 1;
+                            setUndoableState(nval);
                         }
                     }
-                    if (evt.getKeyCode() == KeyEvent.VK_TAB) {// set this value, go to next component
+                    if (evt.getKeyCode() == KeyEvent.VK_TAB) {// setUndoableState this value, go to next component
                         try {
                             NumberFormat format = NumberFormat.getNumberInstance();
                             int y = format.parse(tf.getText()).intValue();
-                            w.invoke(filter, newValue = y); // write int value
-                            fixIntValue(tf, r);
-                        } catch (ParseException pe) {
-                            //Handle exception
-                        } catch (NumberFormatException fe) {
+                            setUndoableState(y);
+                        } catch (ParseException | NumberFormatException pe) {
                             tf.selectAll();
-                        } catch (InvocationTargetException ite) {
-                            ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
-                            iae.printStackTrace();
                         }
                         KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
                         manager.focusNextComponent();
@@ -1500,12 +1554,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     highlightClearingOthers();
                     Integer oldValue = null, newValue = null;
                     try {
-                        oldValue = (Integer) r.invoke(filter);
-                        initValue = oldValue.intValue();
-//                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
+                        oldValue = (Integer) read.invoke(getFilter());
+                        initValue = oldValue;
+                    } catch (InvocationTargetException | IllegalAccessException e) {
                         e.printStackTrace();
                     }
                     int code = evt.getWheelRotation();
@@ -1514,65 +1565,63 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     boolean shift = evt.isShiftDown();
                     if (!shift) {
                         if (code < 0) { // wheel up, increase value
-                            try {
-                                nval = initValue;
-                                if (Math.round(initValue * WHEEL_FACTOR) == initValue) {
-                                    nval++;
-                                } else {
-                                    nval = Math.round(initValue * WHEEL_FACTOR);
-                                }
-                                w.invoke(filter, newValue = nval);
-                                tf.setText(Integer.toString(nval));
-                                fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            nval = initValue;
+                            if (Math.round(initValue * WHEEL_FACTOR) == initValue) {
+                                nval++;
+                            } else {
+                                nval = Math.round(initValue * WHEEL_FACTOR);
                             }
+                            setUndoableState(nval);
                         } else if (code > 0) { // wheel down, decrease value
-                            try {
-                                nval = initValue;
-                                if (Math.round(initValue / WHEEL_FACTOR) == initValue) {
-                                    nval--;
-                                } else {
-                                    nval = Math.round(initValue / WHEEL_FACTOR);
-                                }
-                                w.invoke(filter, newValue = nval);
-                                tf.setText(Integer.toString(nval));
-                                fixIntValue(tf, r);
-                            } catch (InvocationTargetException ite) {
-                                ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
+                            nval = initValue;
+                            if (Math.round(initValue / WHEEL_FACTOR) == initValue) {
+                                nval--;
+                            } else {
+                                nval = Math.round(initValue / WHEEL_FACTOR);
                             }
+                            setUndoableState(nval);
                         }
                     }
                     firePropertyChange(PROPERTY_VALUE, oldValue, newValue);
                 }
             }
             );
-            tf.addFocusListener(
-                    new FocusListener() {
+            tf.addFocusListener(new FocusListener() {
 
                 @Override
-                public void focusGained(FocusEvent e
-                ) {
+                public void focusGained(FocusEvent e) {
                     tf.setSelectionStart(0);
                     tf.setSelectionEnd(tf.getText().length());
                 }
 
                 @Override
-                public void focusLost(FocusEvent e
-                ) {
+                public void focusLost(FocusEvent e) {
                 }
             }
             );
             setMaximumSize(getPreferredSize());
         }
+
+        @Override
+        void setGuiState(Object o) {
+            if (o instanceof Integer) {
+                Integer b = (Integer) o;
+                String s = NumberFormat.getIntegerInstance().format(b);
+                tf.setText(s);
+            } else if (o instanceof String) {
+                try {
+                    Integer i = Integer.parseInt((String) o);
+                    tf.setText((String) o);
+                } catch (NumberFormatException e) {
+                    log.warning(String.format("could not parse value %s", o));
+                }
+            }
+            tf.setBackground(Color.white);
+        }
     }
 
     void fixIntValue(JTextField tf, Method r) {
-        // set text to actual value
+        // setUndoableState text to actual value
         try {
             Integer x = (Integer) r.invoke(getFilter()); // read int value
 //            initValue=x.intValue();
@@ -1599,7 +1648,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
-    class FloatControl extends MyControl implements HasSetter {
+    class FloatControl extends MyControl {
 
         EngineeringFormat engFmt = new EngineeringFormat();
 //        final String format="%.6f";
@@ -1609,50 +1658,29 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         final JTextField tf;
         boolean signed = false;
 
-        @Override
-        public void set(Object o) {
-            if (o instanceof Float) {
-                Float b = (Float) o;
-                tf.setText(engFmt.format(b));
-            } else if (o instanceof Integer) {
-                int b = (Integer) o;
-                tf.setText(engFmt.format((float) b));
-            } else if (o instanceof String) {
-                try {
-                    Float v = Float.parseFloat((String) o);
-                    tf.setText((String) o);
-                } catch (NumberFormatException e) {
-                    log.warning(String.format("could not parse value %s", o));
-                }
-            }
-        }
-
-        public FloatControl(final EventFilter f, final String name, final Method w, final Method r) {
-            super();
-            setterMap.put(f.getClass().getSimpleName() + "." + name, this);
-            filter = f;
-            write = w;
-            read = r;
-            signed = isSigned(w);
+        public FloatControl(final String name, final PropertyDescriptor p) {
+            super(name, p);
+            signed = isSigned(write);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
-            addTip(f, label);
+            addTip(getFilter(), label);
             add(label);
             tf = new JTextField("", 10);
             tf.setMaximumSize(new Dimension(100, 50));
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
             try {
-                Float x = (Float) r.invoke(filter);
+                Float x = (Float) read.invoke(getFilter());
                 if (x == null) {
-                    log.warning("null Float returned from read method " + r);
+                    log.warning("null Float returned from read method " + read);
                     return;
                 }
-                initValue = x.floatValue();
-                tf.setText(engFmt.format(initValue));
+                initValue = x;
+                setCurrentState(initValue);
+                setGuiState(initValue);
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
@@ -1667,18 +1695,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     highlightClearingOthers();
                     try {
                         float y = engFmt.parseFloat(tf.getText());
-                        w.invoke(filter, y);
-                        Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                        nval = x.floatValue();
-                        tf.setText(engFmt.format(nval));
-                        tf.setBackground(Color.white);
+                        setUndoableState(y);
                     } catch (NumberFormatException fe) {
                         tf.selectAll();
                         tf.setBackground(Color.red);
-                    } catch (InvocationTargetException ite) {
-                        ite.printStackTrace();
-                    } catch (IllegalAccessException iae) {
-                        iae.printStackTrace();
                     }
                 }
             });
@@ -1688,9 +1708,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 public void keyPressed(java.awt.event.KeyEvent evt) {
                     highlightClearingOthers();
                     try {
-                        Float x = (Float) r.invoke(filter); // getString the value from the getter method
+                        Float x = (Float) read.invoke(getFilter()); // getString the value from the getter method
                         initValue = x.floatValue();
-//                        System.out.println("x="+x);
                     } catch (InvocationTargetException e) {
                         e.printStackTrace();
                     } catch (IllegalAccessException e) {
@@ -1704,22 +1723,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         floatFactor = 1 + ((WHEEL_FACTOR - 1) / 4);
                     }
                     if (code == KeyEvent.VK_UP) {
-                        try {
-                            nval = initValue;
-                            if (nval == 0) {
-                                nval = DEFAULT_REAL_VALUE;
-                            } else {
-                                nval = (initValue * floatFactor);
-                            }
-                            w.invoke(filter, nval); // setter the value
-                            Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
-                            nval = x.floatValue();
-                            tf.setText(engFmt.format(nval));
-                        } catch (InvocationTargetException ite) {
-                            ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
-                            iae.printStackTrace();
+                        nval = initValue;
+                        if (nval == 0) {
+                            nval = DEFAULT_REAL_VALUE;
+                        } else {
+                            nval = (initValue * floatFactor);
                         }
+                        setUndoableState(nval);
                     } else if (code == KeyEvent.VK_DOWN) {
                         try {
                             nval = initValue;
@@ -1728,20 +1738,18 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             } else {
                                 nval = (initValue / floatFactor);
                             }
-                            w.invoke(filter, initValue / floatFactor);
-                            Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
+                            write.invoke(getFilter(), initValue / floatFactor);
+                            Float x = (Float) read.invoke(getFilter()); // getString the value from the getter method to constrain it
                             nval = x.floatValue();
-                            tf.setText(engFmt.format(nval));
-                        } catch (InvocationTargetException ite) {
+                            setUndoableState(nval);
+                        } catch (InvocationTargetException | IllegalAccessException ite) {
                             ite.printStackTrace();
-                        } catch (IllegalAccessException iae) {
-                            iae.printStackTrace();
                         }
                     } else if (code == KeyEvent.VK_MINUS) { // negate the number
 //                        try {
 //                            nval = initValue;
-//                            w.invoke(filter, new Float(-initValue));
-//                            Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
+//                            w.invoke(getFilter(), new Float(-initValue));
+//                            Float x = (Float) r.invoke(getFilter()); // getString the value from the getter method to constrain it
 //                            nval = x.floatValue();
 //                            tf.setText(engFmt.format(nval));
 //                        } catch (InvocationTargetException ite) {
@@ -1759,12 +1767,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
                     highlightClearingOthers();
                     try {
-                        Float x = (Float) r.invoke(filter); // getString the value from the getter method
+                        Float x = (Float) read.invoke(getFilter()); // getString the value from the getter method
                         initValue = x.floatValue();
 //                        System.out.println("x="+x);
-                    } catch (InvocationTargetException e) {
-                        e.printStackTrace();
-                    } catch (IllegalAccessException e) {
+                    } catch (InvocationTargetException | IllegalAccessException e) {
                         e.printStackTrace();
                     }
                     int code = evt.getWheelRotation();
@@ -1779,14 +1785,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = (initValue * WHEEL_FACTOR);
                                 }
-                                w.invoke(filter, nval); // setter the value
-                                Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
+                                write.invoke(getFilter(), nval); // setter the value
+                                Float x = (Float) read.invoke(getFilter()); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
-                                tf.setText(engFmt.format(nval));
-                            } catch (InvocationTargetException ite) {
+                                setUndoableState(nval); // write int value
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
                             }
                         } else if (code > 0) {
                             try {
@@ -1796,14 +1800,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 } else {
                                     nval = (initValue / WHEEL_FACTOR);
                                 }
-                                w.invoke(filter, initValue / WHEEL_FACTOR);
-                                Float x = (Float) r.invoke(filter); // getString the value from the getter method to constrain it
+                                write.invoke(getFilter(), initValue / WHEEL_FACTOR);
+                                Float x = (Float) read.invoke(getFilter()); // getString the value from the getter method to constrain it
                                 nval = x.floatValue();
-                                tf.setText(engFmt.format(nval));
-                            } catch (InvocationTargetException ite) {
+                                setUndoableState(nval);
+                            } catch (InvocationTargetException | IllegalAccessException ite) {
                                 ite.printStackTrace();
-                            } catch (IllegalAccessException iae) {
-                                iae.printStackTrace();
                             }
                         }
                     }
@@ -1821,6 +1823,25 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 public void focusLost(FocusEvent e) {
                 }
             });
+        }
+
+        @Override
+        void setGuiState(Object o) {
+            if (o instanceof Float) {
+                Float b = (Float) o;
+                tf.setText(engFmt.format(b));
+            } else if (o instanceof Integer) {
+                int b = (Integer) o;
+                tf.setText(engFmt.format((float) b));
+            } else if (o instanceof String) {
+                try {
+                    Float v = Float.parseFloat((String) o);
+                    tf.setText((String) o);
+                } catch (NumberFormatException e) {
+                    log.warning(String.format("could not parse value %s", o));
+                }
+            }
+            tf.setBackground(Color.white);
         }
     }
 
@@ -1856,13 +1877,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     }
                 }
             } else {
-                // we need to find the control and set it appropriately. we don't need to set the property itself since this has already been done!
+                // we need to find the control and setUndoableState it appropriately. we don't need to setUndoableState the property itself since this has already been done!
                 try {
 //                    log.info("PropertyChangeEvent received from " +
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                    final HasSetter setter = setterMap.get(getFilter().getClass().getSimpleName() + "." + propertyChangeEvent.getPropertyName());
+                    final MyControl setter = setterMap.get(getFilter().getClass().getSimpleName() + "." + propertyChangeEvent.getPropertyName());
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
@@ -1871,16 +1892,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     } else {
 //                        log.info("setting "+setter.toString()+" to "+propertyChangeEvent.getNewValue());
                         if (SwingUtilities.isEventDispatchThread()) {
-                            setter.set(propertyChangeEvent.getNewValue());
+                            setter.setUndoableState(propertyChangeEvent.getNewValue());
                         } else {
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    try {
-                                        setter.set(propertyChangeEvent.getNewValue());
-                                    } catch (Exception e) {
-                                        log.warning("caught exception " + propertyChangeEvent.getNewValue() + " in property change:" + e.toString());
-                                    }
+                            SwingUtilities.invokeLater(() -> {
+                                try {
+                                    setter.setUndoableState(propertyChangeEvent.getNewValue());
+                                } catch (Exception e) {
+                                    log.log(Level.WARNING, "caught exception {0} in property change:{1}", new Object[]{propertyChangeEvent.getNewValue(), e.toString()});
                                 }
                             });
                         }
@@ -2082,7 +2100,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 FilterFrame<FilterPanel> ff = (FilterFrame) c;
                 for (FilterPanel f : ff.filterPanels) {
                     if (f == this) {  // for us and if !visible
-                        f.setVisible(true); // always set us visible in chain since we are the one being touched
+                        f.setVisible(true); // always setUndoableState us visible in chain since we are the one being touched
                         continue;
                     }
 
@@ -2157,7 +2175,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     /**
-     * @param filterFrame the filterFrame to set
+     * @param filterFrame the filterFrame to setUndoableState
      */
     final public void setFilterFrame(FilterFrame filterFrame) {
         this.filterFrame = filterFrame;
@@ -2274,13 +2292,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             MyControl control = propertyControlMap.get(k);
             if (control != null && (control.write != null)) {
                 EventFilter.PrefsKeyClassValueDefault prefsValue = clearedProperties.get(k);
-                Method writer = control.write;
                 try {
-                    writer.invoke(filter, prefsValue.defaultValue());
-                    if (control instanceof HasSetter) {
-                        HasSetter setter = (HasSetter) control;
-                        setter.set(prefsValue.defaultValue());
-                    }
+                    control.setUndoableState(prefsValue.defaultValue());
                     log.fine(String.format("restored %s to %s", k, prefsValue.defaultValue()));
                 } catch (Exception e) {
                     log.warning(String.format("could not set %s to %s: %s", k, prefsValue, e.toString()));
@@ -2336,13 +2349,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             isSliderType = true;
 //            log.info("property " + p.getName() + " for filter " + filter + " has min/max methods, constructing slider control for it");
             if (p.getPropertyType() == Integer.TYPE) {
-                int min = (Integer) minMethod.invoke(filter);
-                int max = (Integer) maxMethod.invoke(filter);
+                int min = (Integer) minMethod.invoke(getFilter());
+                int max = (Integer) maxMethod.invoke(getFilter());
                 params
                         = new SliderParams(Integer.class, min, max, 0, 0);
             } else if (p.getPropertyType() == Float.TYPE) {
-                float min = (Float) minMethod.invoke(filter);
-                float max = (Float) maxMethod.invoke(filter);
+                float min = (Float) minMethod.invoke(getFilter());
+                float max = (Float) maxMethod.invoke(getFilter());
                 params
                         = new SliderParams(Integer.class, 0, 0, min, max);
             }
@@ -2354,7 +2367,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
     }
 
-    class Point2DControl extends MyControl implements HasSetter {
+    class Point2DControl extends MyControl {
 
         EventFilter filter;
         Point2D.Float point;
@@ -2364,7 +2377,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         final JButton nullifyButton;
 
         @Override
-        final public void set(Object o) {
+        void setGuiState(Object o) {
             if (o == null) {
                 tfx.setText(null);
                 tfy.setText(null);
@@ -2394,9 +2407,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     float x = Float.parseFloat(tfx.getText());
                     float y = Float.parseFloat(tfy.getText());
                     point.setLocation(x, y);
-                    writeMethod.invoke(filter, point);
-                    point = (Point2D) readMethod.invoke(filter); // getString the value from the getter method to constrain it
-                    set(point);
+                    writeMethod.invoke(getFilter(), point); // maybe not needed with setUndoableState below
+                    point = (Point2D) readMethod.invoke(getFilter()); // getString the value from the getter method to constrain it
+                    setUndoableState(point);
                 } catch (NumberFormatException fe) {
                     tfx.selectAll();
                     tfy.selectAll();
@@ -2421,8 +2434,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 highlightClearingOthers();
                 try {
                     Object arg = null;
-                    writeMethod.invoke(filter, arg);
-                    set(null);
+                    writeMethod.invoke(getFilter(), arg);
+                    setUndoableState(null);
                 } catch (InvocationTargetException ite) {
                     ite.printStackTrace();
                 } catch (IllegalAccessException iae) {
@@ -2431,19 +2444,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             }
         }
 
-        public Point2DControl(final EventFilter f, final String name, final Method w, final Method r) {
-            super();
-            setterMap.put(name, this);
-            filter = f;
-            write = w;
-            read = r;
+        public Point2DControl(final String name, PropertyDescriptor p) {
+            super(name, p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
             JLabel label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(f, label);
+            addTip(getFilter(), label);
             add(label);
 
             tfx = new JTextField("", 10);
@@ -2459,12 +2468,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             nullifyButton.setToolTipText("Sets Point2D to null value");
 
             try {
-                Point2D p = (Point2D) r.invoke(filter);
-//                if (p == null) {
-//                    log.warning("null object returned from read method " + r);
-//                    return;
-//                }
-                set(p);
+                Point2D pt = (Point2D) read.invoke(getFilter());
+                setCurrentState(pt);
+                setGuiState(pt);
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             } catch (IllegalAccessException e) {
@@ -2477,8 +2483,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             add(tfy);
             add(nullifyButton);
 
-            tfx.addActionListener(new PointActionListener(r, w));
-            tfy.addActionListener(new PointActionListener(r, w));
+            tfx.addActionListener(new PointActionListener(read, write));
+            tfy.addActionListener(new PointActionListener(read, write));
             nullifyButton.addActionListener(new PointNullifyActionListener(write));
 
             tfx.addFocusListener(new FocusListener() {
@@ -2586,7 +2592,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 c.setVisible(true);
                 c.invalidate();
             }
-        } else { // there is a search string, so set each property to either highlightClearingOthers or show, hiding others
+        } else { // there is a search string, so setUndoableState each property to either highlightClearingOthers or show, hiding others
 
             highlightedControls.clear();
             // if hideOthers, hide all groups and later only show those that match
@@ -2613,7 +2619,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         log.fine(String.format("Hightlighting Match: %s is in %s", searchString, propName));
                         c.setBorder(redLineBorder); // highlightClearingOthers it
                         highlightedControls.add(c);
-                    } else { // no match, then hide it if hideOthers set, otherwise show it
+                    } else { // no match, then hide it if hideOthers setUndoableState, otherwise show it
                         c.setBorder(null);
                     }
                 }
@@ -2663,7 +2669,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     /**
-     * @param hideOthers the hideOthers to set
+     * @param hideOthers the hideOthers to setUndoableState
      */
     public void setHideOthers(boolean hideOthers) {
         this.hideOthers = hideOthers;
@@ -2677,14 +2683,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     /**
-     * @param searchString the searchString to set
+     * @param searchString the searchString to setUndoableState
      */
     public void setSearchString(String searchString) {
         this.searchString = searchString == null ? "" : searchString.toLowerCase();
     }
 
     /**
-     * @param showOnlyPreferredProperties the simple to set
+     * @param showOnlyPreferredProperties the simple to setUndoableState
      */
     public void setSimple(boolean showOnlyPreferredProperties) {
         this.simple = showOnlyPreferredProperties;
@@ -2761,6 +2767,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             log.fine(result.message());
         }
 
+    }
+
+    class MyStateEdit extends StateEdit {
+
+        public MyStateEdit(StateEditable o, String s) {
+            super(o, s);
+        }
+
+        protected void removeRedundantState() { // override this to actually get a currentState stored
+        }
+
+        public String toString() {
+            return String.format("StateEdit: object=%s, property=%s", this.object.getClass().getSimpleName(), this.undoRedoName);
+        }
     }
 
 }
