@@ -580,7 +580,7 @@ public class TowerOnChip6BitVDACControl extends javax.swing.JPanel implements Ob
 
         @Override
         protected void removeRedundantState() {
-        }// override this to actually get a state stored!!
+        }
     }
 
     private static EngineeringFormat engFormat = new EngineeringFormat();
