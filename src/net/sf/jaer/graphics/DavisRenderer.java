@@ -269,6 +269,7 @@ public class DavisRenderer extends AEChipRenderer {
         } else {
             renderPureDvsEvents(pkt);
         }
+        adaptRenderSkipping();
     }
 
     protected void renderApsDvsEvents(final EventPacket pkt) {
@@ -365,8 +366,10 @@ public class DavisRenderer extends AEChipRenderer {
                     SwingUtilities.invokeLater(() -> {
                         int ret = JOptionPane.showConfirmDialog(chip.getAeViewer(), msg, "Disable frames?", JOptionPane.YES_NO_OPTION);
                         switch (ret) {
-                            case JOptionPane.YES_OPTION -> setDisplayFrames(false);
-                            case JOptionPane.NO_OPTION -> NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 0;
+                            case JOptionPane.YES_OPTION ->
+                                setDisplayFrames(false);
+                            case JOptionPane.NO_OPTION ->
+                                NUM_RENDERED_FRAMES_WITH_NO_APS_FRAME_TO_DEACTIVATE_FRAMES = 0;
                         }
                     });
 
@@ -450,12 +453,16 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     private final Random random = new Random();
-
+   
     protected void updateFrameBuffer(final ApsDvsEvent e) {
         final float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
 
         if (e.isStartOfFrame()) {
+            // handle render skipping to not miss parts of frames
+            if (skipFrame()) {
+                return;
+            }
             startFrame(e.timestamp); // clear4sframe buffer contents, must be called first for each frame or contents will be erased
             renderedApsFrame = true;
         } else if (e.isResetRead()) {
@@ -1173,4 +1180,5 @@ public class DavisRenderer extends AEChipRenderer {
         }
 //        System.out.println("downsampling "+dvsDownsamplingValue);
     }
+   
 }

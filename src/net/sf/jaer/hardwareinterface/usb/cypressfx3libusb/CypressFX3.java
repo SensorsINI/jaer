@@ -1188,7 +1188,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 System.arraycopy(addresses, realTimeEventCounterStart, realTimeRawPacket.getAddresses(), 0, nevents);
                 System.arraycopy(timestamps, realTimeEventCounterStart, realTimeRawPacket.getTimestamps(), 0, nevents);
             } catch (final IndexOutOfBoundsException e) {
-                e.printStackTrace();
+                log.warning(String.format("Real time filtering, caught %s",e.toString()));
             }
             realTimeEventCounterStart = eventCounter;
             // System.out.println("RealTimeEventCounterStart: " +
@@ -1232,7 +1232,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 getChip().getFilterChain().filterPacket(realTimePacket);
             } catch (final Exception e) {
                 CypressFX3.log.warning(e.toString() + ": disabling all filters");
-//                e.printStackTrace();
                 for (final EventFilter f : getChip().getFilterChain()) {
                     f.setFilterEnabled(false);
                 }

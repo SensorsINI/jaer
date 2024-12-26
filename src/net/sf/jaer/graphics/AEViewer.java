@@ -298,9 +298,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     AEFileOutputStream loggingOutputStream;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
-    // number of packets to skip over rendering, used to speed up real time processing
-    private int skipPacketsRenderingNumberMax = prefs.getInt("AEViewer.skipPacketsRenderingNumber", 0), skipPacketsRenderingNumberCurrent = 0;
-    private int skipPacketsRenderingCount = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
+
     private DropTarget myDraggedFileDropTarget = null; // added back after losing somehow
     private File draggedFile;
     private boolean loggingPlaybackImmediatelyEnabled = prefs.getBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", false);
@@ -366,6 +364,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int aeFileInputStreamTimestampResetBitmask = prefs.getInt("AEViewer.aeFileInputStreamTimestampResetBitmask", 0);
     private AePlayerAdvancedControlsPanel playerControls;
     private static boolean showedSkippedPacketsRenderingWarning = false;
+    public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
 
     /**
      * Constructs a new AEViewer using a default AEChip.
@@ -543,7 +542,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         buildInterfaceMenu();
         buildDeviceMenu();
         // we need to do this after building device menu so that proper menu item radio button can be selected
-        cleanup(); // close sockets if they are open
+//        cleanup(); // close sockets if they are open
         setAeChipClass(aeChipClass);
 
         playerControlPanel.setVisible(false);
@@ -639,13 +638,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * for other classes, e.g. Chip classes that open sockets.
      */
     private void cleanup() {
+        log.fine("cleanup()");
         stopLogging(true); // in case logging, make sure we give chance to save file
         if (chip != null) {
-            log.info("Running .cleanup for " + chip);
+            log.fine("Running .cleanup for " + chip);
             chip.cleanup();
         }
         if ((aemon != null) && aemon.isOpen()) {
-            log.info("closing device " + aemon);
+            log.fine("closing device " + aemon);
             aemon.close();
         }
 
@@ -654,7 +654,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         if (aeServerSocket != null) {
-            log.info("closing " + aeServerSocket);
+            log.fine("closing " + aeServerSocket);
             try {
                 aeServerSocket.close();
             } catch (IOException e) {
@@ -662,21 +662,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         if (unicastInput != null) {
-            log.info("closing unicast input" + unicastInput);
+            log.fine("closing unicast input" + unicastInput);
             unicastInput.close();
         }
         if (unicastOutput != null) {
-            log.info("closing unicastOutput " + unicastOutput);
+            log.fine("closing unicastOutput " + unicastOutput);
             unicastOutput.close();
         }
         if (aeMulticastInput != null) {
-            log.info("closing aeMulticastInput " + aeMulticastInput);
+            log.fine("closing aeMulticastInput " + aeMulticastInput);
             aeMulticastInput.close();
         }
         if (aeMulticastOutput != null) {
-            log.info("closing multicastOutput " + aeMulticastOutput);
+            log.fine("closing multicastOutput " + aeMulticastOutput);
             aeMulticastOutput.close();
         }
+        log.fine("end of cleanup()");
 
     }
 
@@ -1519,7 +1520,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             } catch (Exception e) {
                 log.warning(e.getMessage() + " (Could some other process have the device open, e.g. flashy or caer?)");
-                log.log(Level.WARNING, e.toString(), e);
+                log.log(Level.FINE, e.toString(), e);
                 if (aemon != null) {
                     log.info("closing Monitor" + aemon);
                     aemon.close();
@@ -1575,7 +1576,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private EngineeringFormat engFmt = new EngineeringFormat();
         private long beforeTime = 0, afterTime;
         volatile boolean stop = false;
-        private LowpassFilter skipPacketsRenderingLowpassFilter = null;
         private AEPacketRaw emptyRawPacket;
         private EventPacket emptyCookedPacket;
 
@@ -1669,9 +1669,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 } // if (!isPaused() || isSingleStep())
 
-                adaptRenderSkipping(); // try to keep up with desired frame rate
-
-                if ((cookedPacket != null) && (skipPacketsRenderingCount-- <= 0)) {
+                if ((cookedPacket != null)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
                         renderPacket(cookedPacket);
@@ -1689,7 +1687,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     numFilteredEvents = cookedPacket.getSizeNotFilteredOut();
                     makeStatisticsLabel(cookedPacket);
-                    skipPacketsRenderingCount = skipPacketsRenderingCheckBoxMenuItem.isSelected() ? skipPacketsRenderingNumberCurrent : 0;
                 }
                 getFrameRater().takeAfter();
                 renderCount++;
@@ -1746,41 +1743,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          */
         public void stopThread() {
             stop = true;
-        }
-
-        private void adaptRenderSkipping() {
-            if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
-                skipPacketsRenderingNumberCurrent = 0;
-                return;
-            }
-            if ((renderer instanceof DavisRenderer) && ((DavisRenderer) renderer).isDisplayFrames()) {
-                return; // don't skip rendering frames since this will chop frames up and corrupt them
-            }
-            if (skipPacketsRenderingLowpassFilter == null) {
-                skipPacketsRenderingLowpassFilter = new LowpassFilter(frameRater.FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
-            }
-            int oldSkip = skipPacketsRenderingNumberCurrent;
-            int newSkip = oldSkip;
-
-            final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
-            final int desiredFrameRate = chip.getAeViewer().getDesiredFrameRate();
-            boolean skipMore = averageFPS < (int) (0.75f * desiredFrameRate);
-            boolean skipLess = averageFPS > (int) (0.25f * desiredFrameRate);
-            if (skipMore) {
-                newSkip = (Math.round((2 * skipPacketsRenderingNumberCurrent) + 1));
-                if (newSkip > skipPacketsRenderingNumberMax) {
-                    newSkip = skipPacketsRenderingNumberMax;
-                }
-            } else if (skipLess) {
-                newSkip = (int) (0.5f * skipPacketsRenderingNumberCurrent);
-                if (newSkip < 0) {
-                    newSkip = 0;
-                }
-            }
-            skipPacketsRenderingNumberCurrent = Math.round(skipPacketsRenderingLowpassFilter.filter(newSkip, (int) System.currentTimeMillis() * 1000));
-//            if (oldSkip != skipPacketsRenderingNumberCurrent) {
-//                log.info("now skipping rendering " + skipPacketsRenderingNumberCurrent + " packets");
-//            }
         }
 
         /**
@@ -2259,8 +2221,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 String frameRateString = String.format("%3.0f/%dfps,%2dms skip %d ",
                         fr.getAverageFPS(),
                         fr.getDesiredFPS(),
-                        fr.getLastDelayMs(),
-                        skipPacketsRenderingNumberCurrent);
+                        fr.getLastDelayMs(), getRenderer().getSkipFrameRenderingNumberCurrent());
 
                 String colorScaleString = (getRenderer().isAutoscaleEnabled() ? "AS=" : "FS=") + Integer.toString(cs);
 
@@ -2442,7 +2403,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //                }
         //            });
         //        } catch (Exception e) {
-        //            e.printStackTrace();
         //        }
     }
 
@@ -2478,8 +2438,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      */
     public class FrameRater {
-
-        public final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
 
         final int MAX_FPS = 1000;
         int desiredFPS = prefs.getInt("AEViewer.FrameRater.desiredFPS", getScreenRefreshRate());
@@ -2694,12 +2652,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         newViewerMenuItem = new javax.swing.JMenuItem();
         openMenuItem = new javax.swing.JMenuItem();
         closeMenuItem = new javax.swing.JMenuItem();
-        timestampResetBitmaskMenuItem = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JSeparator();
         loggingMenuItem = new javax.swing.JMenuItem();
         loggingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         loggingSetTimelimitMenuItem = new javax.swing.JMenuItem();
         logFilteredEventsCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         networkSeparator = new javax.swing.JSeparator();
         remoteMenu = new javax.swing.JMenu();
         openSocketInputStreamMenuItem = new javax.swing.JMenuItem();
@@ -2716,8 +2674,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openBlockingQueueInputMenuItem = new javax.swing.JCheckBoxMenuItem();
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        timestampResetBitmaskMenuItem = new javax.swing.JMenuItem();
         jSeparator16 = new javax.swing.JSeparator();
-        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         exitSeperator = new javax.swing.JSeparator();
         exitMenuItem = new javax.swing.JMenuItem();
         viewMenu = new javax.swing.JMenu();
@@ -2750,7 +2708,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator2 = new javax.swing.JSeparator();
         setFrameRateMenuItem = new javax.swing.JMenuItem();
         skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        setJogNCount = new javax.swing.JMenuItem();
         setBorderSpaceMenuItem = new javax.swing.JMenuItem();
         jSeparator27 = new javax.swing.JPopupMenu.Separator();
         enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -2767,6 +2724,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator10 = new javax.swing.JPopupMenu.Separator();
         jogForwardMI = new javax.swing.JMenuItem();
         jogBackwardsMI = new javax.swing.JMenuItem();
+        setJogNCount = new javax.swing.JMenuItem();
         jSeparator19 = new javax.swing.JPopupMenu.Separator();
         setMarkInMI = new javax.swing.JMenuItem();
         setMarkOutMI = new javax.swing.JMenuItem();
@@ -2970,16 +2928,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(closeMenuItem);
-
-        timestampResetBitmaskMenuItem.setMnemonic('t');
-        timestampResetBitmaskMenuItem.setText("dummy, set in constructor");
-        timestampResetBitmaskMenuItem.setToolTipText("Setting a bitmask here will memorize and subtract timestamps when address  & bitmask != 0");
-        timestampResetBitmaskMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                timestampResetBitmaskMenuItemActionPerformed(evt);
-            }
-        });
-        fileMenu.add(timestampResetBitmaskMenuItem);
         fileMenu.add(jSeparator8);
 
         loggingMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
@@ -3013,6 +2961,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(logFilteredEventsCheckBoxMenuItem);
+
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(true);
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setText("Check for non-monotonic time in input streams");
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setToolTipText("If enabled, nonmonotonic time stamps are checked for in input streams from file or network");
+        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem);
         fileMenu.add(networkSeparator);
 
         remoteMenu.setMnemonic('r');
@@ -3119,17 +3077,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(syncEnabledCheckBoxMenuItem);
-        fileMenu.add(jSeparator16);
 
-        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(true);
-        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setText("Check for non-monotonic time in input streams");
-        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setToolTipText("If enabled, nonmonotonic time stamps are checked for in input streams from file or network");
-        checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        timestampResetBitmaskMenuItem.setMnemonic('t');
+        timestampResetBitmaskMenuItem.setText("dummy, set in constructor");
+        timestampResetBitmaskMenuItem.setToolTipText("Setting a bitmask here will memorize and subtract timestamps when address  & bitmask != 0");
+        timestampResetBitmaskMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(evt);
+                timestampResetBitmaskMenuItemActionPerformed(evt);
             }
         });
-        fileMenu.add(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem);
+        fileMenu.add(timestampResetBitmaskMenuItem);
+        fileMenu.add(jSeparator16);
         fileMenu.add(exitSeperator);
 
         exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, 0));
@@ -3313,7 +3271,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(unzoomMenuItem);
 
         graphicsSubMenu.setMnemonic('g');
-        graphicsSubMenu.setText("View/Filtering options");
+        graphicsSubMenu.setText("View options");
 
         viewActiveRenderingEnabledMenuItem.setText("Active rendering enabled");
         viewActiveRenderingEnabledMenuItem.setToolTipText("Enables active display of each rendered frame if enabled.\nIf disabled, then  chipCanvas.repaint(1000 / frameRater.getDesiredFPS()) is called for repaint.");
@@ -3357,15 +3315,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         graphicsSubMenu.add(skipPacketsRenderingCheckBoxMenuItem);
-
-        setJogNCount.setText("Set jog N...");
-        setJogNCount.setToolTipText("Sets the size of jog for keyboard jog");
-        setJogNCount.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setJogNCountActionPerformed(evt);
-            }
-        });
-        graphicsSubMenu.add(setJogNCount);
 
         setBorderSpaceMenuItem.setText("Set border space...");
         setBorderSpaceMenuItem.setToolTipText("Set the border space around the chip canvas in pixels");
@@ -3483,6 +3432,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         playbackMenu.add(jogBackwardsMI);
+
+        setJogNCount.setText("Set jog N...");
+        setJogNCount.setToolTipText("Sets the size of jog for keyboard jog");
+        setJogNCount.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setJogNCountActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(setJogNCount);
         playbackMenu.add(jSeparator19);
 
         setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_OPEN_BRACKET, 0));
@@ -3802,7 +3760,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
 
     void fixSkipPacketsRenderingMenuItems() {
-        skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping (currently skipping maximum of " + skipPacketsRenderingNumberMax + " packets)...");
+        skipPacketsRenderingCheckBoxMenuItem.setText("<html>Enable adaptive render skipping<br>(currently skipping maximum of " + getRenderer().getSkipFrameRenderingNumberMax() + " frames)...");
     }
 
 	private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
@@ -3833,7 +3791,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 "AEChip error", JOptionPane.INFORMATION_MESSAGE);
 
                     } catch (Exception e) {
-//                        e.printStackTrace();
                         JOptionPane.showMessageDialog(this,
                                 String.format("Error setting AEChip to  %s: got exception %s", cn, e.toString()),
                                 "AEChip error", JOptionPane.ERROR_MESSAGE);
@@ -4886,7 +4843,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        }
 //
 //    }
-
     /**
      * Stops logging and optionally opens file dialog for where to save file. If
      * number of AEViewers is more than one, dialog is also skipped since we may
@@ -5582,6 +5538,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             viewLoop.stopThread();
             cleanup();
+            
+            dispose();
 
             System.exit(0);
 	}//GEN-LAST:event_exitMenuItemActionPerformed
@@ -6002,24 +5960,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void skipPacketsRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
         // come here when user wants to skip rendering except every n packets
         if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
-            skipPacketsRenderingNumberCurrent = 0;
+            getRenderer().setSkipFrameRenderingNumberMax(0);
             return;
         }
-        String s = "Maximum number of packets to skip over between rendering (currently " + skipPacketsRenderingNumberMax + ")";
+        String s = "Maximum number of packets to skip over between rendering (currently "
+                + getRenderer().getSkipFrameRenderingNumberMax() + ")";
         boolean gotIt = false;
         while (!gotIt) {
-            String retString = JOptionPane.showInputDialog(this, s, Integer.toString(skipPacketsRenderingNumberMax));
+            String retString = JOptionPane.showInputDialog(this, s, Integer.toString(getRenderer().getSkipFrameRenderingNumberMax()));
             if (retString == null) {
                 return;
             } // cancelled
             try {
-                skipPacketsRenderingNumberMax = Integer.parseInt(retString);
+                getRenderer().setSkipFrameRenderingNumberMax(Integer.parseInt(retString));
                 gotIt = true;
             } catch (NumberFormatException e) {
                 log.warning(e.toString());
             }
         }
-        prefs.putInt("AEViewer.skipPacketsRenderingNumber", skipPacketsRenderingNumberMax);
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
 
     private void viewRenderBlankFramesCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
@@ -6267,9 +6225,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
         } catch (UnsupportedFlavorException e) {
-            e.printStackTrace();
+            log.warning(String.format("Format not supported: %s", e.toString()));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.severe(String.format("IOException: %s", e.toString()));
         }
 
     }
@@ -6311,7 +6269,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             } catch (IOException e) {
                 log.warning(e.toString());
-//                e.printStackTrace();
             } catch (InterruptedException ex) {
                 log.warning("opening dropped file " + draggedFile + " interrupted");
             }
