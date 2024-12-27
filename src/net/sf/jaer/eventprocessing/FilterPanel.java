@@ -1140,12 +1140,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         EventFilter filter;
         boolean initValue = false, nval;
         final JTextField textField;
+        final JLabel label;
 
         public StringControl(final String name, final PropertyDescriptor p) {
             super(name, p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
-            final JLabel label = new JLabel(name);
+            label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
             addTip(getFilter(), label);
@@ -1190,6 +1191,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             if (o instanceof String) {
                 String b = (String) o;
                 textField.setText(b);
+                if (textField.hasFocus()) {
+                    label.setFont(label.getFont().deriveFont(Font.BOLD | Font.ITALIC));
+                }
             }
         }
 
@@ -1267,6 +1271,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     log.warning(String.format("could not parse value %s", o));
                 }
             }
+            if (checkBox.hasFocus()) {
+                checkBox.setFont(checkBox.getFont().deriveFont(Font.BOLD | Font.ITALIC));
+            }
+
         }
     }
 
@@ -1431,6 +1439,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         EventFilter filter;
         int initValue = 0, nval;
         final JTextField tf;
+        final JLabel label;
         String PROPERTY_VALUE = "value";
         boolean signed = false;
 
@@ -1441,7 +1450,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label = new JLabel(name);
+            label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             setFontSizeStyle(label);
@@ -1627,6 +1636,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             }
             tf.setBackground(Color.white);
+            if (tf.hasFocus()) {
+                tf.setFont(tf.getFont().deriveFont(Font.BOLD | Font.ITALIC));
+                label.setFont(label.getFont().deriveFont(Font.BOLD | Font.ITALIC));
+            }
         }
     }
 
@@ -1666,6 +1679,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         EventFilter filter;
         float initValue = 0, nval;
         final JTextField tf;
+        final JLabel label;
         boolean signed = false;
 
         public FloatControl(final String name, final PropertyDescriptor p) {
@@ -1674,7 +1688,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label = new JLabel(name);
+            label = new JLabel(name);
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
             addTip(getFilter(), label);
@@ -1852,6 +1866,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 }
             }
             tf.setBackground(Color.white);
+            if (tf.hasFocus()) {
+                tf.setFont(tf.getFont().deriveFont(Font.BOLD | Font.ITALIC));
+                label.setFont(label.getFont().deriveFont(Font.BOLD | Font.ITALIC));
+            }
         }
     }
 
