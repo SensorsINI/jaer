@@ -4923,6 +4923,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             final JOptionPane pane2 = new JOptionPane(sb2.toString(), JOptionPane.INFORMATION_MESSAGE);
                             log.fine(String.format("Renaming (or moving) %s to %s....", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
                             final JDialog dialog2 = pane2.createDialog(this, "Moving recording");
+                            if (Desktop.isDesktopSupported()) {
+                                final JButton showFileLocationButton = new JButton("Show folder");
+                                final File f = new File(newFile.getAbsolutePath());
+                                showFileLocationButton.addActionListener(new ActionListener() {
+                                    public void actionPerformed(ActionEvent e) {
+                                        try {
+                                            Desktop.getDesktop().open(lastLoggingFolder);
+                                        } catch (Exception ex) {
+                                            log.warning("Could not show file location: " + ex.toString());
+                                        }finally{
+                                            dialog2.dispose();
+                                        }
+                                    }
+                                });
+                                Object[] newOptions = {showFileLocationButton, "OK"};
+                                pane2.setOptions(newOptions);
+                            }
+
                             // the line below is added to the example from the docs
                             dialog2.setModal(false); // this says not to block background components
                             dialog2.setVisible(true);
@@ -5537,7 +5555,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             viewLoop.stopThread();
             cleanup();
-            
+
             dispose();
 
             System.exit(0);
