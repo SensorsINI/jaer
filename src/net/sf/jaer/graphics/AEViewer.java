@@ -190,9 +190,7 @@ import org.joda.time.format.PeriodFormatterBuilder;
  * }
  * }
  * }
- * </code></pre>
- * <p>
- *
+ * </code>
  * @author tobi
  */
 public class AEViewer extends javax.swing.JFrame implements PropertyChangeListener, DropTargetListener, ExceptionListener, RemoteControlled {
@@ -4930,6 +4928,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             dialog2.setVisible(true);
                             boolean renamed = loggingFile.renameTo(newFile);
                             pane2.setMessage("<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                            dialog2.pack();
                             if (renamed) {
                                 // if successful, cool, save persistence
                                 savedIt = true;
