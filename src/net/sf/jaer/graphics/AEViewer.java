@@ -46,7 +46,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -85,10 +84,10 @@ import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.retina.*;
 import eu.seebetter.ini.chips.davis.*;
+import java.awt.Container;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.awt.geom.Point2D;
-import javax.swing.SwingWorker;
+import javax.swing.AbstractButton;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -4841,6 +4840,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        }
 //
 //    }
+    private JButton findOkButton(Container container) {
+        for (Component c : container.getComponents()) {
+            log.fine("Component " + c);
+        }
+        for (Component c : container.getComponents()) {
+
+            if (c instanceof AbstractButton) {
+                if (((AbstractButton) c).getText().equals("OK")) {
+                    log.fine("found OK button");
+                    return (JButton) c;
+                }
+            } else if (c instanceof Container) {
+                log.fine("found container " + c);
+                return findOkButton((Container) c);
+            } else {
+                log.fine("some other component " + c);
+            }
+        }
+        return null;
+    }
+
     /**
      * Stops logging and optionally opens file dialog for where to save file. If
      * number of AEViewers is more than one, dialog is also skipped since we may
@@ -4923,6 +4943,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             final JOptionPane pane2 = new JOptionPane(sb2.toString(), JOptionPane.INFORMATION_MESSAGE);
                             log.fine(String.format("Renaming (or moving) %s to %s....", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
                             final JDialog dialog2 = pane2.createDialog(this, "Moving recording");
+                            dialog2.setAlwaysOnTop(true);
+                            final JButton okButton = new JButton("OK");
+                            okButton.addActionListener(new ActionListener() {
+                                public void actionPerformed(ActionEvent e) {
+                                    dialog2.dispose();
+                                }
+                            });
                             if (Desktop.isDesktopSupported()) {
                                 final JButton showFileLocationButton = new JButton("Show folder");
                                 final File f = new File(newFile.getAbsolutePath());
@@ -4932,21 +4959,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             Desktop.getDesktop().open(lastLoggingFolder);
                                         } catch (Exception ex) {
                                             log.warning("Could not show file location: " + ex.toString());
-                                        }finally{
+                                        } finally {
                                             dialog2.dispose();
                                         }
                                     }
                                 });
-                                Object[] newOptions = {showFileLocationButton, "OK"};
+
+                                Object[] newOptions = {showFileLocationButton, okButton};
                                 pane2.setOptions(newOptions);
                             }
 
                             // the line below is added to the example from the docs
                             dialog2.setModal(false); // this says not to block background components
+                            dialog2.setLocationRelativeTo(this);
+                            dialog2.pack();
                             dialog2.setVisible(true);
+//                            int tries=10;
+//                            while(!okButton.requestFocusInWindow() && tries-->0){
+//                                try{
+//                                    Thread.sleep(100);
+//                                }catch(InterruptedException e){}
+//                            }
+
                             boolean renamed = loggingFile.renameTo(newFile);
                             pane2.setMessage("<html>Done saving recording as<br> " + newFile.getAbsolutePath());
-                            dialog2.pack();
                             if (renamed) {
                                 // if successful, cool, save persistence
                                 savedIt = true;
