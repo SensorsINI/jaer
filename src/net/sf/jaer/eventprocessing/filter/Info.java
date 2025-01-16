@@ -45,6 +45,7 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -604,6 +605,19 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     }
                 }
             }
+        } else if (in.getEventPrototype() instanceof PolarityEvent) {
+            for (BasicEvent be : in) {
+                PolarityEvent e = (PolarityEvent) be;
+                accumulatedDVSEventCount++;
+                if (e.getPolarity() == Polarity.On) {
+                    accumulatedDVSOnEventCount++;
+                } else if (e.getPolarity() == Polarity.Off) {
+                    accumulatedDVSOffEventCount++;
+                }
+                if (measureSparsity) {
+                    sparsityMap[e.x][e.y] = true;
+                }
+            }
         } else {
             accumulatedDVSEventCount += in.getSize();
             if (measureSparsity) {
@@ -764,7 +778,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 } else {
                     dateStr = timeFormat.format(zdt);
                 }
-                DrawGL.drawString(fontSize, radius+2, 0, .5f, Color.white, dateStr);
+                DrawGL.drawString(fontSize, radius + 2, 0, .5f, Color.white, dateStr);
             }
         }
 
@@ -779,7 +793,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         Insets borders = chip.getCanvas().getBorderInsets();
 
         // get screen width in screen pixels, subtract borders in screen pixels to find width of drawn chip area in screen pixels
-        float  w = drawable.getSurfaceWidth() - (2 * borders.left * chip.getCanvas().getScale());
+        float w = drawable.getSurfaceWidth() - (2 * borders.left * chip.getCanvas().getScale());
         int ntypes = typedEventRateEstimator.getNumCellTypes();
         final int sx = chip.getSizeX(), sy = chip.getSizeY();
         final float yorig = .9f * sy, xpos = 0, ystep = Math.max(.03f * sy, 6), barh = .03f * sy;
