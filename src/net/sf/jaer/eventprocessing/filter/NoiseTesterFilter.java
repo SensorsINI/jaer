@@ -257,9 +257,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (!showFilteringStatistics) {
             return;
         }
-        if (textRenderer == null) {
-            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10));
-        }
+        textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getShowFilteringStatisticsFontSize()));
         final GLUT glut = new GLUT();
 
         GL2 gl = drawable.getGL().getGL2();
@@ -292,13 +290,17 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             s = String.format("NTF: Synthetic noise: CoV %s dec, Leak %sHz+/-%s jitter, Shot %sHz. %s", eng.format(noiseRateCoVDecades), eng.format(leakNoiseRateHz), eng.format(leakJitterFraction), eng.format(shotNoiseRateHz),
                     overlayString);
         }
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
+//        int font=GLUT.BITMAP_TIMES_ROMAN_24;
+        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, s);
+//        glut.glutBitmapString(font, s);
+//        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
         s = String.format("TPR=%s%% FPR=%s%% TNR=%s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
+//        glut.glutBitmapString(font, s);
+        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
+//        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
         s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
-        glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF")+10, 0, Color.white, s);
+//        glut.glutBitmapString(font, s);
         gl.glPopMatrix();
 
 //        nnbHistograms.draw(gl);  shows neighbor distributions, not informative
@@ -554,7 +556,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         if (isDisableAddingNoise()) {
-            signalAndNoisePacket=(EventPacket<PolarityEvent>)in; // just make the signal+noise packet be the input packet since there is already labeled noise there
+            signalAndNoisePacket = (EventPacket<PolarityEvent>) in; // just make the signal+noise packet be the input packet since there is already labeled noise there
             // the noise events are already in noiseList from above
         } else {
             noiseList.clear();
