@@ -209,7 +209,7 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     public synchronized void clearAnnotationMap() {
-        resetAnnotationFrame(0);
+        resetAnnotationFrame(getGrayValue());
     }
 
     @Override
