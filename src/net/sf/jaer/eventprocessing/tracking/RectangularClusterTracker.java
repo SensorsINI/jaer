@@ -4319,7 +4319,7 @@ public class RectangularClusterTracker extends EventFilter2D
         int sx = chip.getSizeX(), sy = chip.getSizeY();
         float chAR = (float) sy / sx; // chip AR, h/w
         float frW = 1, frH = 1; // frame dims
-        float chSR = 3; // how large the chip frame is compared to cluster radius
+        float chSR = 2; // how large the chip frame is compared to cluster radius
         float[] gray = {.7f, .7f, .7f};
 
         public ZoomHUDObject(Cluster c) {
@@ -4349,7 +4349,7 @@ public class RectangularClusterTracker extends EventFilter2D
             frW = r * chSR;
             frH = r * chSR * chAR; // frame dims
 
-            float down = r *ar * chSR;
+            float down = r * ar * chSR;
             drawFrame(gl, x, y, down, frW, frH);
             for (Cluster c1 : getVisibleClusters()) {
                 drawCluster(gl, c1, down, frW, frH);
