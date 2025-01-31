@@ -1974,7 +1974,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             // draw X at TPR / TNR point
             int L = 12;
-            gl.glColor4f(.8f, .8f, .2f, .5f); // must set color before raster position (raster position is like glVertex)
+            gl.glColor4f(.8f, .8f, .2f, 1f); // must set color before raster position (raster position is like glVertex)
             gl.glLineWidth(6);
             float x = (1 - TNR) * sx;
             float y = TPR * sy;
