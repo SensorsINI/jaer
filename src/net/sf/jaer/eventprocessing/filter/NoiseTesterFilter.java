@@ -1959,15 +1959,17 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glVertex2f(0, 0);
             gl.glVertex2f(sx, 0);
             gl.glEnd();
-            gl.glRasterPos3f(sx / 2 - 30, -10, 0);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "FPR");
+//            gl.glRasterPos3f(sx / 2 - 30, -10, 0);
+//            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "FPR");
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), sx/2, -10, .5f, Color.yellow, "FPR");
 //            gl.glPushMatrix();
 //            gl.glTranslatef(sx / 2, -10, 0);
 //            gl.glScalef(.1f, .1f, 1);
 //            glut.glutStrokeString(GLUT.STROKE_ROMAN, "FPR");
 //            gl.glPopMatrix();
-            gl.glRasterPos3f(-30, sy / 2, 0);
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "TPR");
+//            gl.glRasterPos3f(-30, sy / 2, 0);
+//            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "TPR");
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), -1, sy/2, 1, Color.yellow, "TPR");
             gl.glPopMatrix();
             for (ROCSample rocSample : rocHistoryList) {
                 rocSample.draw((gl));
@@ -2171,6 +2173,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         this.disableAddingNoise = disableAddingNoise;
         putBoolean("disableAddingNoise", disableAddingNoise);
         getSupport().firePropertyChange("disableAddingNoise", old, this.disableAddingNoise);
+        resetFilter(); // reset since this affects filter and can cause apparent deadlock
     }
 
 }
