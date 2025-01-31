@@ -2603,6 +2603,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * @param simple boolean to show only preferred properties
      */
     public void showPropertyHighlightsOrVisibility(String searchString, boolean hideOthers, boolean simple) {
+
         setSearchString(searchString);
         setHideOthers(hideOthers);
         setSimple(simple);
@@ -2656,6 +2657,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         for (Component c : groupContainerMap.values()) {
             c.invalidate();
+        }
+        // handle enclosed filters, but only filter them if the controls are visible
+        for (EventFilter f : enclosedFilterPanels.keySet()) {
+            if (f.isControlsVisible()) {
+                FilterPanel p = getEnclosedFilterPanel(f);
+                p.showPropertyHighlightsOrVisibility(searchString, hideOthers, simple);
+            }
         }
         this.invalidate();
         revalidate();
