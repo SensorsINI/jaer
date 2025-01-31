@@ -60,6 +60,7 @@ import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JFileChooser;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -89,10 +90,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private FilterChain chain;
 
     private boolean disableAddingNoise = getBoolean("disableAddingNoise", false);
-    private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
+    @Preferred private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     protected boolean photoreceptorNoiseSimulation = getBoolean("photoreceptorNoiseSimulation", true);
-    private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
-    private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
+    @Preferred private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
+    @Preferred private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
     private float leakJitterFraction = getFloat("leakJitterFraction", 0.1f); // fraction of interval to jitter leak events
     private float[] noiseRateArray = null;
     private float[] noiseRateIntervals = null; // stored by column, with y changing fastest
@@ -143,7 +144,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean overlayNegatives = getBoolean("overlayNegatives", false);
     private boolean overlayTP = getBoolean("overlayTP", false);
     private boolean overlayTN = getBoolean("overlayTN", false);
-    private boolean overlayFP = getBoolean("overlayFP", false);
+    @Preferred private boolean overlayFP = getBoolean("overlayFP", false);
     private boolean overlayFN = getBoolean("overlayFN", false);
     final float[] NOISE_COLOR = {1f, 0, 0, 1}, SIG_COLOR = {0, 1f, 0, 1};
     final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
@@ -152,7 +153,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean recordPureNoise = false;
     private boolean outputFilterStatistic = false;
 
-    private int rocHistoryLength = getInt("rocHistoryLength", 1);
+    @Preferred private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
@@ -171,9 +172,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public enum NoiseFilterEnum {
         None, BackgroundActivityFilter, DensityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, MLPNoiseFilter
     }
-    private NoiseFilterEnum selectedNoiseFilterEnum = null; // set in constructor to wrap with try/catch to handle renames by code changes
+    @Preferred private NoiseFilterEnum selectedNoiseFilterEnum = null; // set in constructor to wrap with try/catch to handle renames by code changes
 
-    private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
+    @Preferred private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse
     private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");
