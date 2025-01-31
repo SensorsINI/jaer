@@ -660,13 +660,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         private int binDim, nBinsX, nBinsY, nBinsTotal;
         private float entropyInput = 0, entropyFiltered = 0;
         private float entropyReduction;
-        private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
+        @Preferred private boolean adaptiveFilteringEnabled = getBoolean("adaptiveFilteringEnabled", false);
         private float entropyReductionHighLimit = getFloat("entropyReductionHighLimit", 1f);
         private float entropyReductionLowLimit = getFloat("entropyReductionLowLimit", .5f);
-        private float dtChangeFraction = getFloat("dtChangeFraction", 0.05f);
+        @Preferred private float dtChangeFraction = getFloat("dtChangeFraction", 0.05f);
         private TobiLogger tobiLogger = null;
         private final float LOG2_FACTOR = (float) (1 / Math.log(2));
-        private float controlIntervalS = getFloat("controlIntervalS", 0.1f);
+        @Preferred private float controlIntervalS = getFloat("controlIntervalS", 0.1f);
         private int lastControlActionTimestamp = Integer.MIN_VALUE, nextControlActionTimestep = lastControlActionTimestamp + (int) (1e6f * controlIntervalS), lastInputPacketTimestamp = Integer.MIN_VALUE;
         private boolean performControlOnNextPacket = false; // flag marked true when input packet last timestep is past the lastControlActionTimestamp
 
@@ -675,8 +675,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
             setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "enables adaptive control of dt to achieve a target entropy reduction between two limits");
             setPropertyTooltip(TT_ADAP, "entropyReductionLowLimit", "if entropy reduction from filtering is below this limit, decrease dt");
             setPropertyTooltip(TT_ADAP, "entropyReductionHighLimit", "if entropy reduction from filtering is above this limit, increase dt");
-            setPropertyTooltip(TT_ADAP, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
-            setPropertyTooltip(TT_ADAP, "dtChangeFraction", "fraction by which dt is increased/decreased per packet if entropyReduction is too low/high");
+            setPropertyTooltip(TT_ADAP, "dtChangeFraction", "fraction by which correlation time (dt) is increased/decreased per packet if entropyReduction is too low/high");
             setPropertyTooltip(TT_ADAP, "controlIntervalS", "minimum time interval in seconds between control actions (min for efficiency; control is only performed at most once per event packet)");
             setPropertyTooltip(TT_DISP, "showFilteringStatistics", "annotate display with statistics");
             setPropertyTooltip(TT_ADAP, "activityBinDimBits", "2^this is the size of rectangular blocks that histogram event activity for measuring entropy (structure) to evaluate effectiveness of filtering");
