@@ -33,18 +33,18 @@ import net.sf.jaer.util.RemoteControlCommand;
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 
     @Preferred
-    private int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
+    protected int numMustBeCorrelated = getInt("numMustBeCorrelated", 2);
     @Preferred
-    private boolean polaritiesMustMatch = getBoolean("polaritiesMustMatch", true);
+    protected boolean polaritiesMustMatch = getBoolean("polaritiesMustMatch", true);
     private boolean filterAlternativePolarityShotNoiseEnabled = getBoolean("filterAlternativePolarityShotNoiseEnabled", false);
 //    protected boolean favorLines = getBoolean("favorLines", false);
     protected float shotNoiseCorrelationTimeS = getFloat("shotNoiseCorrelationTimeS", 1e-3f);
     private int numShotNoiseTests = 0, numAlternatingPolarityShotNoiseEventsFilteredOut = 0;
 
-    private int sxm1; // size of chip minus 1
-    private int sym1;
-    private int ssx; // size of subsampled timestamp map
-    private int ssy;
+    protected int sxm1; // size of chip minus 1
+    protected int sym1;
+    protected int ssx; // size of subsampled timestamp map
+    protected int ssy;
 
     int[][] timestampImage; // timestamp image
     byte[][] polImage; // -1 is OFF +1 is ON, last event polarities according to getPolaritySignum
@@ -234,7 +234,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         return in;
     }
 
-    private void storeTimestampPolarity(final int x, final int y, BasicEvent e) {
+    protected void storeTimestampPolarity(final int x, final int y, BasicEvent e) {
         timestampImage[x][y] = e.timestamp;
         if (e instanceof PolarityEvent) {
             polImage[x][y] = (byte) ((PolarityEvent) e).getPolaritySignum();
@@ -242,7 +242,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     }
 
     @Override
-    public synchronized final void resetFilter() {
+    public synchronized void resetFilter() {
         super.resetFilter();
 //        log.info("resetting SpatioTemporalCorrelationFilter");
         if (timestampImage == null) {
@@ -255,13 +255,13 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         resetShotNoiseTestStats();
     }
 
-    private void resetShotNoiseTestStats() {
+    protected void resetShotNoiseTestStats() {
         numShotNoiseTests = 0;
         numAlternatingPolarityShotNoiseEventsFilteredOut = 0;
     }
 
     @Override
-    public final void initFilter() {
+    public void initFilter() {
         sxm1 = chip.getSizeX() - 1;
         sym1 = chip.getSizeY() - 1;
         ssx = sxm1 >> subsampleBy;
@@ -270,7 +270,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         resetFilter();
     }
 
-    private void allocateMaps(AEChip chip) {
+    protected void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (timestampImage == null || timestampImage.length != chip.getSizeX() >> subsampleBy)) {
             timestampImage = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
             polImage = new byte[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
