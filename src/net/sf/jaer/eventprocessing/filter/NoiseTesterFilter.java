@@ -33,15 +33,15 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
-import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
@@ -69,6 +69,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.filter.QuantizedSTCF;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
@@ -90,10 +91,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private FilterChain chain;
 
     private boolean disableAddingNoise = getBoolean("disableAddingNoise", false);
-    @Preferred private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
+    @Preferred
+    private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
     protected boolean photoreceptorNoiseSimulation = getBoolean("photoreceptorNoiseSimulation", true);
-    @Preferred private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
-    @Preferred private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
+    @Preferred
+    private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
+    @Preferred
+    private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
     private float leakJitterFraction = getFloat("leakJitterFraction", 0.1f); // fraction of interval to jitter leak events
     private float[] noiseRateArray = null;
     private float[] noiseRateIntervals = null; // stored by column, with y changing fastest
@@ -144,7 +148,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean overlayNegatives = getBoolean("overlayNegatives", false);
     private boolean overlayTP = getBoolean("overlayTP", false);
     private boolean overlayTN = getBoolean("overlayTN", false);
-    @Preferred private boolean overlayFP = getBoolean("overlayFP", false);
+    @Preferred
+    private boolean overlayFP = getBoolean("overlayFP", false);
     private boolean overlayFN = getBoolean("overlayFN", false);
     final float[] NOISE_COLOR = {1f, 0, 0, 1}, SIG_COLOR = {0, 1f, 0, 1};
     final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
@@ -153,7 +158,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean recordPureNoise = false;
     private boolean outputFilterStatistic = false;
 
-    @Preferred private int rocHistoryLength = getInt("rocHistoryLength", 1);
+    @Preferred
+    private int rocHistoryLength = getInt("rocHistoryLength", 1);
     private final int LIST_LENGTH = 10000;
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
@@ -167,14 +173,37 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public static final int POISSON_DIVIDER = 30;
 
     /**
-     * Add AbstractNoiseFilter here to include in NTF
+     * ******
+     * Defines the noise filters statically, which must be duplicated in the
+     * list in the enum that follows. This array is used in initFilter() to
+     * construct the filters
+     *
+     * @see #initFilter()
      */
-    public enum NoiseFilterEnum {
-        None, BackgroundActivityFilter, DensityFilter, SpatioTemporalCorrelationFilter, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, MLPNoiseFilter
-    }
-    @Preferred private NoiseFilterEnum selectedNoiseFilterEnum = null; // set in constructor to wrap with try/catch to handle renames by code changes
+//    public static Class[] noiseFilterClasses={BackgroundActivityFilter.class, DensityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, DoubleWindowFilter.class, OrderNBackgroundActivityFilter.class, MedianDtFilter.class, MLPNoiseFilter.class};
+    public static Class[] noiseFilterClasses = {BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
 
-    @Preferred private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
+    /**
+     * Also add the noise filters to this enum list in same order
+     *
+     * @see #initFilter()
+     */
+//    public enum NoiseFilterEnum {
+//        None, BackgroundActivityFilter, DensityFilter, SpatioTemporalCorrelationFilter, QuantizedSTCF, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, MLPNoiseFilter
+//    }
+
+    public enum NoiseFilterEnum {
+        None, BackgroundActivityFilter, SpatioTemporalCorrelationFilter, QuantizedSTCF, DoubleWindowFilter, MLPNoiseFilter
+    }
+
+    static {
+        assert (noiseFilterClasses.length == NoiseFilterEnum.values().length - 1);
+    }
+    @Preferred
+    private NoiseFilterEnum selectedNoiseFilterEnum = null; // set in constructor to wrap with try/catch to handle renames by code changes
+
+    @Preferred
+    private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse
     private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");
@@ -300,7 +329,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
 //        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
         s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
-        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF")+10, 0, Color.white, s);
+        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
 //        glut.glutBitmapString(font, s);
         gl.glPopMatrix();
 
@@ -1114,7 +1143,21 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void initFilter() {
         if (chain == null) {
             chain = new FilterChain(chip);
-            noiseFilters = new AbstractNoiseFilter[]{new BackgroundActivityFilter(chip), new DensityFilter(chip), new SpatioTemporalCorrelationFilter(chip), new DoubleWindowFilter(chip), new OrderNBackgroundActivityFilter((chip)), new MedianDtFilter(chip), new MLPNoiseFilter(chip)};
+
+            // construct the noise filters
+            noiseFilters = new AbstractNoiseFilter[noiseFilterClasses.length];
+            int i = 0;
+            for (Class cl : noiseFilterClasses) {
+                try {
+                    Constructor con = cl.getConstructor(AEChip.class);
+                    noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
+                    i++;
+                } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                    log.severe(String.format("Could not add instance of AbstractNoiseFilter %s", cl.getSimpleName()));
+                    Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+
             for (AbstractNoiseFilter n : noiseFilters) {
                 n.initFilter();
                 chain.add(n);
@@ -1961,7 +2004,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glEnd();
 //            gl.glRasterPos3f(sx / 2 - 30, -10, 0);
 //            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "FPR");
-            DrawGL.drawString(getShowFilteringStatisticsFontSize(), sx/2, -10, .5f, Color.yellow, "FPR");
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), sx / 2, -10, .5f, Color.yellow, "FPR");
 //            gl.glPushMatrix();
 //            gl.glTranslatef(sx / 2, -10, 0);
 //            gl.glScalef(.1f, .1f, 1);
@@ -1969,7 +2012,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //            gl.glPopMatrix();
 //            gl.glRasterPos3f(-30, sy / 2, 0);
 //            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "TPR");
-            DrawGL.drawString(getShowFilteringStatisticsFontSize(), -1, sy/2, 1, Color.yellow, "TPR");
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), -1, sy / 2, 1, Color.yellow, "TPR");
             gl.glPopMatrix();
             for (ROCSample rocSample : rocHistoryList) {
                 rocSample.draw((gl));
