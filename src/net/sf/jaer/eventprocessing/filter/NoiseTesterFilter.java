@@ -191,7 +191,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //    public enum NoiseFilterEnum {
 //        None, BackgroundActivityFilter, DensityFilter, SpatioTemporalCorrelationFilter, QuantizedSTCF, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, MLPNoiseFilter
 //    }
-
     public enum NoiseFilterEnum {
         None, BackgroundActivityFilter, SpatioTemporalCorrelationFilter, QuantizedSTCF, DoubleWindowFilter, MLPNoiseFilter
     }
@@ -1906,6 +1905,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private final int SAMPLE_INTERVAL_NO_CHANGE = 30;
         private int legendDisplayListId = 0;
         private ROCSample[] legendROCs = null;
+        private ROCSample avgRocSample = null; // avg over entire rocHistoryLength
 
         ROCSample createAbsolutePosition(float x, float y, float tau, boolean labeled) {
             return new ROCSample(x, y, tau, labeled);
@@ -1921,6 +1921,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             boolean labeled = false;
             final int SIZE = 2; // chip pixels
 
+            /**
+             * Create new sample
+             *
+             * @param x FPR *sx position on plot
+             * @param y TPR *sy position on plot in fraction of chip
+             * @param tau associated correlation time or threshold
+             * @param labeled true to label this sample, false for global values
+             * or last sample
+             */
             private ROCSample(float x, float y, float tau, boolean labeled) {
                 this.x = x;
                 this.y = y;
@@ -1958,6 +1967,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     || Math.abs(Math.log10(tau / lastTau)) > .1
                     || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
             rocHistoryList.add(rocHistory.createTprFpr(tpr, fpr, tau, labelIt));
+            float sumFpr = 0, sumTpr = 0;
+            for (ROCSample s : rocHistoryList) {
+                sumFpr += s.x;
+                sumTpr += s.y; // note in chip px units,  dumb I know
+            }
+            int n = rocHistoryList.size();
+            float avgFpr = sumFpr / n;
+            float avgTpr = sumTpr / n;
+            avgRocSample = new ROCSample(avgFpr, avgTpr, getCorrelationTimeS(), false);
 
             if (labelIt) {
                 lastTau = tau;
@@ -2017,15 +2035,30 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (ROCSample rocSample : rocHistoryList) {
                 rocSample.draw((gl));
             }
-            // draw X at TPR / TNR point
-            int L = 12;
-            gl.glColor4f(.8f, .8f, .2f, 1f); // must set color before raster position (raster position is like glVertex)
-            gl.glLineWidth(6);
+            // draw X for last packet TPR / TNR point
+            int L = 8;
+            gl.glColor4f(.8f, .8f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
+            gl.glLineWidth(4);
             float x = (1 - TNR) * sx;
             float y = TPR * sy;
             gl.glPushMatrix();
             DrawGL.drawCross(gl, x, y, L, 0);
             gl.glPopMatrix();
+            if (rocHistoryLength > 1) {
+                drawLegend(gl);
+            }
+
+            if (avgRocSample != null) {
+                // draw big thick X at avg ROC point
+                L = 12;
+                gl.glColor4f(.9f, .9f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
+                gl.glLineWidth(8);
+                x = avgRocSample.x;
+                y = avgRocSample.y;
+                gl.glPushMatrix();
+                DrawGL.drawCross(gl, x, y, L, (float)Math.PI/4);
+                gl.glPopMatrix();
+            }
             if (rocHistoryLength > 1) {
                 drawLegend(gl);
             }
