@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import javax.swing.JComponent;
 
 /**
  * Provides support for adding tooltips to object properties.
@@ -27,6 +28,14 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
      * group name.
      */
     protected HashMap<String, String> property2GroupMap = null;
+    
+     /**
+     * The key,value table of property group associations, maps from key
+     * property to value JComponent with the tooltip. The key the property name and the value is the
+     * JComponent.
+     */
+    public HashMap<String, JComponent> property2ComponentMap = new HashMap();
+    
     /**
      * The keys are the names of property groups, and the values are lists of
      * properties in the key's group.
@@ -80,6 +89,10 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
     public void setPropertyTooltip(String groupName, String propertyName, String tooltip) {
         setPropertyTooltip(propertyName.toLowerCase(), tooltip);
         addPropertyToGroup(groupName, propertyName.toLowerCase());
+        // Update the tooltip text if there is already component for this property
+        if(property2ComponentMap.containsKey(propertyName)){
+            property2ComponentMap.get(propertyName).setToolTipText(tooltip);
+        }
     }
 
     /**
