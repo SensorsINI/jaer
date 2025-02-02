@@ -875,6 +875,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if (f.isPropertyPreferred(label.getText())) {
             label.setFont(label.getFont().deriveFont(Font.BOLD));
         }
+        // add map from property name to label so we can change the tooltip dynamically
+        getFilter().tooltipSupport.property2ComponentMap.put(label.getText(), label);
     }
 
     void addTip(EventFilter f, AbstractButton b) {
@@ -884,6 +886,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
         b.setToolTipText(s);
         b.setForeground(Color.BLUE);
+        getFilter().tooltipSupport.property2ComponentMap.put(b.getText(), b);
     }
 
     void addTip(EventFilter f, JCheckBox label) {
@@ -896,6 +899,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if (f.isPropertyPreferred(label.getText())) {
             label.setFont(label.getFont().deriveFont(Font.BOLD));
         }
+        getFilter().tooltipSupport.property2ComponentMap.put(label.getText(), label);
     }
 
     class MyContainer extends JPanel {
