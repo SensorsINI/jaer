@@ -139,7 +139,7 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
                         final int deltaT = (ts - lastT);
 
                         boolean occupied = false;
-                        if (deltaT < dt && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                        if (deltaT < dt && deltaT>0 && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                             if (!polaritiesMustMatch || !hasPolarites) {
                                 ncorrelated++;
                                 occupied = true;
@@ -211,7 +211,7 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
                         final int deltaT = (ts - lastT);
 
 
-                        if (deltaT < dt && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                        if (deltaT < dt && deltaT>0 && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                             if (!polaritiesMustMatch || !hasPolarites) {
                                 ncorrelated++;
                             } else {
