@@ -116,7 +116,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     private NoiseFilterControl noiseFilterControl = null;
 
-    protected final String TT_FILT_CONTROL = "1. Denoising control", TT_DISP = "2. Display", TT_ADAP = "3. Adaptive Filtering";
+    protected final String TT_FILT_CONTROL = "1. Denoiser properties", TT_DISP = "2. Display", TT_ADAP = "3. Adaptive Filtering";
 
     public AbstractNoiseFilter(AEChip chip) {
         super(chip);
@@ -397,7 +397,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @param subsampleBy the number of bits, 0 means no subsampling, 1 means
      * cut event time map resolution by a factor of two in x and in y
      */
-    synchronized public void setSubsampleBy(int subsampleBy) {
+    public void setSubsampleBy(int subsampleBy) {
         int old = this.getSubsampleBy();
         if (subsampleBy < 0) {
             subsampleBy = 0;
