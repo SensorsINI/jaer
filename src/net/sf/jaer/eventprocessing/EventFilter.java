@@ -98,6 +98,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @see setEnclosed
      */
     private Preferences prefs = null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
+    
+    /** If true, FilterPanel does not show un-enabled enclosed filters */
+    protected boolean hideNonEnabledEnclosedFilters=false;
 
     /** Record of a property preferences information. 
      * The key is the short name, e.g. "dt", the class is type of property. Class is the property type.
@@ -209,6 +212,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Used by filterPacket to say whether to filter events; default false
      */
     protected boolean filterEnabled = false;
+    
+    /** Should controls be visible (true) or collapsed (false) in FilterPanel */
+    protected boolean controlsVisible = false;
+
     /**
      * Flags this EventFilter as "selected" for purposes of control
      */
@@ -263,6 +270,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         } catch (Exception e) {
             log.warning("Constructing prefs for " + this + ": " + e.getMessage() + " cause=" + e.getCause());
         }
+        hideProperty("hideNonEnabledEnclosedFilters");
     }
 
     /**
@@ -278,6 +286,13 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * is called. The AEViewer will also exist before initFilter is called.
      */
     abstract public void initFilter();
+    
+    /** Called by FilterFrame after all EventFilters has been placed into the FilterFrame.
+     * Subclasses can use to override default appearance of properties.
+     */ 
+    public void initGUI(){
+        
+    }
 
     /**
      * Clean up that should run when before filter is finalized, e.g. dispose of
@@ -342,6 +357,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param yes true to show controls, false to collapse them
      */
     public void setControlsVisible(boolean yes) {
+        this.controlsVisible=yes;
         FilterPanel p = getFilterPanel();
         if (p == null) {
             log.warning("FilterPanel for " + this + " is null; cannot set visibilty");
@@ -356,11 +372,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return true if expanded, false if null or collapsed.
      */
     public boolean isControlsVisible() {
-        FilterPanel p = getFilterPanel();
-        if (p == null) {
-            return false;
-        }
-        return p.isControlsVisible();
+        return this.controlsVisible;
     }
 
     /**
@@ -1527,6 +1539,21 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public boolean isPropertyHidden(String propertyName) {
         return hiddenProperties.contains(propertyName);
+    }
+    
+    /** Hides unselected (un-enabled) enclosed filters in the FilterPanel GUI. Used by NoiseTesterFilter, for example.
+     * 
+     * @param hide true to hide unselected filtes, false to show all.
+     */
+    public void setHideNonEnabledEnclosedFilters(boolean hide){
+        this.hideNonEnabledEnclosedFilters=hide;
+        if(getFilterPanel()!=null){
+            getFilterPanel().rebuildPanel();
+        }
+    }
+    
+    public boolean isHideNonEnabledEnclosedFilters(){
+        return hideNonEnabledEnclosedFilters;
     }
 
     public class CopiedProps {

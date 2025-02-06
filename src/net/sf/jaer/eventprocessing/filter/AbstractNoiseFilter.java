@@ -104,11 +104,10 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected int subsampleBy = getInt("subsampleBy", 0);
 
     /**
-     * the time in timestamp ticks (1us at present) that a spike needs to be
-     * supported by a prior event in the neighborhood by to pass through
+     * Let the first event since reset through the filter even if not supported by past events yet.
      */
     @Preferred
-    protected boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
+    protected boolean letFirstEventThrough = getBoolean("letFirstEventThrough", false);
 
     protected boolean antiCasualEnabled = getBoolean("antiCasualEnabled", false);
 
@@ -128,6 +127,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
         setPropertyTooltip(TT_DISP, "showFilteringStatistics", "Annotates screen with percentage of filtered out events, if filter implements this count");
         setPropertyTooltip(TT_DISP, "showFilteringStatisticsFontSize", "font size for statistics");
+        setPropertyTooltipBold(TT_FILT_CONTROL, "threshold", "Threshold for classifying event as signal event");
         setPropertyTooltip(TT_FILT_CONTROL, "correlationTimeS", "Correlation time for noise filters that use this parameter");
         String sigmaDistPixelsTooltip = "Neighborhood radisu in pixels to consider for event support";
         if (chip instanceof CDAVIS) {
@@ -139,7 +139,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
         setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter is automatically adapted with NoiseFilterControl algorithm (if filter adopts it for controlling itself).");
-        setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, let's first event through; if false, first event from each pixel is blocked");
+        setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, lets first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip(TT_FILT_CONTROL, "antiCasualEnabled", "<html>Enable sending previous events that were filtered out if later event shows they were actually correlated (depends on filter if supported).<p>Note that timestamp will not be correct; event will inherit timestamp of current event to keep event stream monotonic in time.");
         getSupport().addPropertyChangeListener(this);
 //        getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
@@ -977,5 +977,32 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         }
 
     } // NoiseFilterControl
+    
+    /** Return the classification threshold, typically the correlation time. By default this is getCorrelationTimeS
+     */
+    public float getThreshold(){
+        return getCorrelationTimeS();
+    }
+    /** Sets the classification threshold, by default setCorrelationTimeS(float s)
+     * 
+     * @param threshold
+     * @return 
+     */
+    public void setThreshold(float threshold){
+        setCorrelationTimeS(threshold);
+    }
+    /** Returns units of threshold
+     * 
+     * @return 
+     */
+    public String getThresholdUnits(){
+        return "s";
+    }
+    public float getMaxThreshold(){
+        return getMaxCorrelationTimeS();
+    }
+    public float getMinThreshold(){
+        return getMinCorrelationTimeS();
+    }
 
 }

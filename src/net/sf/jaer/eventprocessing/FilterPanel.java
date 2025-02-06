@@ -260,6 +260,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private JComponent ungroupedControls = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
     ArrayList<AbstractButton> doButList = new ArrayList();
+    JPanel butPanel = null;
 
     /**
      * Flag to show simple view of only preferred properties
@@ -296,11 +297,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     public FilterPanel(EventFilter f, FilterFrame filterFrame) {
-//        log.info("building FilterPanel for "+f);
-//        UIManager.getLookAndFeelDefaults()
-//                .put("defaultFont", new Font("Arial", Font.PLAIN, 11));
         setFilter(f);
         setFilterFrame(filterFrame);
+        filterFrame.filter2FilterPanelMap.put(f,this);
         initComponents();
         Dimension d = enableResetControlsHelpPanel.getPreferredSize();
         enableResetControlsHelpPanel.setMaximumSize(new Dimension(200, d.height)); // keep from stretching
@@ -401,7 +400,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         return propertyToGroupPanelMap.get(propertyName);
     }
 
-    private void rebuildPanel() {
+    /**
+     * Rebuild panel contents
+     */
+    public void rebuildPanel() {
         boolean wasSelected = getFilter().isSelected();
         clearPanel();
         buildPanel();
@@ -414,6 +416,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         for (Component c : controls) {
             remove(c);
         }
+
     }
 
     private void buildPanel() {
@@ -435,7 +438,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
         boolean wasSelected = getFilter().isSelected(); // restore the currentState in case filter is rebuilt
-
+        doButList.clear();
         String u = "(Ungrouped)";
         ungroupedControls = new MyContainer(u);
         ungroupedControls.setName(u);
@@ -611,7 +614,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                buttons.setMinimumSize(new Dimension(0, 0));
                 buttons.setLayout(new GridLayout(0, 3, 3, 3));
                 String s = "Filter Actions";
-                JPanel butPanel = new MyContainer(s);
+                butPanel = new MyContainer(s);
                 butPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
                 butPanel.add(buttons);
                 TitledBorder tb = new TitledBorder(s);
@@ -664,7 +667,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     log.finer(String.format("Marked %s as preferred by @Preferred annotation", propName));
                 }
 
-                Class c = p.getPropertyType();
+//                Class c = p.getPropertyType();
                 if (p.getName().equals("enclosedFilter")) { //if(c==EventFilter2D.class){
                     // if type of property is an EventFilter, check if it has either an enclosed filter
                     // or an enclosed filter chain. If so, construct FilterPanels for each of them.
@@ -701,7 +704,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         if (chain != null) {
 //                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
                             for (EventFilter f : chain) {
+                                
                                 FilterPanel enclPanel = new FilterPanel(f, filterFrame);
+                                if (f.isControlsVisible()) {
+                                    enclPanel.setControlsVisible(true);
+                                }
                                 Dimension d = enclPanel.getPreferredSize();
                                 d.setSize(Integer.MAX_VALUE, d.getHeight()); // setUndoableState height to preferred value, and width to max; see https://stackoverflow.com/questions/26596839/how-to-use-verticalglue-in-box-layout
                                 enclPanel.setMaximumSize(d); // extra space to bottom
@@ -709,6 +716,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 controls.add(enclPanel);
                                 enclosedFilterPanels.put(f, enclPanel);
                                 ((TitledBorder) enclPanel.getBorder()).setTitle("enclosed: " + f.getClass().getSimpleName());
+                                if (getFilter().isHideNonEnabledEnclosedFilters() && !f.isFilterEnabled()) {  
+                                    // if this filter is part of chain but not enabled, then don't show the panel if hideNonEnabledEnclosedFilters is true
+                                    enclPanel.setVisible(false);
+                                }
                             }
 //                            this.add(Box.createVerticalGlue()); // make the properties stick to the enclosed filters
                         }
@@ -748,7 +759,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             for (PropertyDescriptor p : props) {
 //                System.out.println("filter "+getFilter().getClass().getSimpleName()+" has property name="+p.getName()+" type="+p.getPropertyType());
 //                if(false){
-////                    System.out.println("prop "+p);
+                ////                    System.out.println("prop "+p);
 ////                    System.out.println("prop name="+p.getName());
 ////                    System.out.println("prop write method="+p.getWriteMethod());
 ////                    System.out.println("prop read method="+p.getReadMethod());
@@ -862,7 +873,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 
         setControlsVisible(wasSelected);
-//        System.out.println("added glue to "+this);
     }
 
     void addTip(EventFilter f, JLabel label) {
@@ -2098,10 +2108,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         add(jPanel1);
     }// </editor-fold>//GEN-END:initComponents
-    boolean controlsVisible = false;
 
     public boolean isControlsVisible() {
-        return controlsVisible;
+        return getFilter().isControlsVisible();
     }
 
     /**
@@ -2111,7 +2120,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * filter's controls and to show all filters in chain.
      */
     public void setControlsVisible(boolean visible) {
-        controlsVisible = visible;
+        getFilter().controlsVisible=visible;
         getFilter().setSelected(visible); // exposing controls 'selects' this filter
         setBorderActive(visible);
         for (JComponent p : controls) {
@@ -2130,28 +2139,29 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             if (c instanceof FilterFrame) {
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame<FilterPanel> ff = (FilterFrame) c;
-                for (FilterPanel f : ff.filterPanels) {
-                    if (f == this) {  // for us and if !visible
-                        f.setVisible(true); // always setUndoableState us visible in chain since we are the one being touched
+                for (FilterPanel fp : ff.filterPanels ) {
+                    if (fp == this) {  // for us and if !visible
+                        fp.setVisible(true); // always set us as visible in chain since we are the one being touched
                         continue;
                     }
 
-                    f.setVisible(!visible); // hide / show other filters
+                    fp.setVisible(!visible); // hide / show other filters
                 }
 
             }
-//            if (c instanceof Window) // Redundant
-//                ((Window) c).pack();
-
+        }
+        
+        // handle enclosed filters that are disabled and have parent enclosing filter that does not want to show them in GUI
+        if(getFilter().isEnclosed() && !getFilter().isFilterEnabled() && getFilter().getEnclosingFilter().isHideNonEnabledEnclosedFilters()){
+            setVisible(false);
+        }else{
+            setVisible(true);
         }
 
-        if (controlPanel != null) {
-            controlPanel.setVisible(visible);
+        if (additionalCustomControlsPanel != null) {
+            additionalCustomControlsPanel.setVisible(visible);
         }
 
-//        if (c instanceof Window) {
-//            ((Window) c).pack();
-//        }
         if (!getFilter().isEnclosed()) { // store last selected top level filter
             if (visible) {
                 getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, getFilter().getClass().toString());
@@ -2167,6 +2177,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         } else {
             showControlsToggleButton.setSelected(false);
             showControlsToggleButton.setText("Controls");
+        }
+        if (getFilterFrame() != null) {
+            getFilterFrame().updateHighlightedAndSimpleVisibilites();
         }
     }
 
@@ -2184,11 +2197,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             titledBorder.setBorder(normalBorder);
         }
 
-    }
-
-    void toggleControlsVisible() {
-        controlsVisible = !controlsVisible;
-        setControlsVisible(controlsVisible);
     }
 
     final public EventFilter getFilter() {
@@ -2549,18 +2557,18 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
 // Addition by Peter: Allow user to add custom filter controls
 //    ArrayList<JPanel> customControls=new ArrayList();
-    JPanel controlPanel;
+    JPanel additionalCustomControlsPanel;
 
     public void addCustomControls(JPanel control) {
-        if (controlPanel == null) {
-            controlPanel = new JPanel();
-            controlPanel.setAlignmentY(TOP_ALIGNMENT);
-            BoxLayout boxLayout = new BoxLayout(controlPanel, BoxLayout.Y_AXIS);
-            controlPanel.setLayout(boxLayout);
-            this.add(controlPanel);
+        if (additionalCustomControlsPanel == null) {
+            additionalCustomControlsPanel = new JPanel();
+            additionalCustomControlsPanel.setAlignmentY(TOP_ALIGNMENT);
+            BoxLayout boxLayout = new BoxLayout(additionalCustomControlsPanel, BoxLayout.Y_AXIS);
+            additionalCustomControlsPanel.setLayout(boxLayout);
+            this.add(additionalCustomControlsPanel);
         }
 
-        this.controlPanel.add(control);
+        this.additionalCustomControlsPanel.add(control);
 //        this.customControls.add(controls);
 
         setControlsVisible(true);
@@ -2571,9 +2579,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     public void removeCustomControls() {
 //        for (JPanel p:customControls)
 //            controls.remove(p);
-        if (controlPanel != null) {
-            controlPanel.removeAll();
-            controlPanel.repaint();
+        if (additionalCustomControlsPanel != null) {
+            additionalCustomControlsPanel.removeAll();
+            additionalCustomControlsPanel.repaint();
         }
 //        customControls.clear();
 

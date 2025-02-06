@@ -18,6 +18,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -81,6 +82,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     UndoableEditSupport editSupport = new UndoableEditSupport();
     UndoAction undoAction = new UndoAction();
     RedoAction redoAction = new RedoAction();
+    
+    protected HashMap<EventFilter,FilterPanel> filter2FilterPanelMap=new HashMap();
+    
 
     /**
      * Creates new form FilterFrame
@@ -92,6 +96,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         chip.setFilterFrame(this);
         setName("FilterFrame");
         initComponents();
+        simpleCB.setSelected(prefs.getBoolean("simpleMode",false));
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_FILTERS)).getImage());
 
 //        fileMenu.remove(prefsEditorMenuItem); // TODO tobi hack to work around leftover item in form that was edited outside of netbeans
@@ -189,6 +194,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         ToolTipManager toolTipManager = ToolTipManager.sharedInstance();
         toolTipManager.setInitialDelay(100); // Set initial delay to 500 milliseconds
         toolTipManager.setDismissDelay(2000); // Set dismiss delay to 2000 milliseconds
+        
+        // now call optional initGUI for each filter
+        for(EventFilter f:filterChain){
+            f.initGUI();
+        }
     }
 
     protected class MyUndoableEditListener
@@ -736,9 +746,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     /**
      * rebuilds the frame contents using the existing filters in the filterChain
      */
-    public void rebuildContents() {
+    final public void rebuildContents() {
         filterPanels.clear();
         filtersPanel.removeAll();
+        filter2FilterPanelMap.clear();
         int n = 0;
         int w = 100, h = 30;
         for (EventFilter2D f : filterChain) {
@@ -800,7 +811,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         return restoreFilterEnabledStateEnabled;
     }
 
-    public void setRestoreFilterEnabledStateEnabled(boolean restoreFilterEnabledStateEnabled) {
+    final public void setRestoreFilterEnabledStateEnabled(boolean restoreFilterEnabledStateEnabled) {
         this.restoreFilterEnabledStateEnabled = restoreFilterEnabledStateEnabled;
         prefs.putBoolean("FilterFrame.restoreFilterEnabledStateEnabled", restoreFilterEnabledStateEnabled);
         restoreFilterEnabledStateCheckBoxMenuItem.setSelected(restoreFilterEnabledStateEnabled);
@@ -930,27 +941,25 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     }//GEN-LAST:event_highlightTFKeyTyped
 
     private void simpleCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_simpleCBActionPerformed
-        for (FilterPanel p : filterPanels) {
-            if (p.isControlsVisible()) {
-                p.showPropertyHighlightsOrVisibility(highlightTF.getText(), hideOthersRB.isSelected(), simpleCB.isSelected());
-            }
-        }
+        prefs.putBoolean("simpleMode",simpleCB.isSelected());
+        updateHighlightedAndSimpleVisibilites();
     }//GEN-LAST:event_simpleCBActionPerformed
 
-    private void highlightRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_highlightRBActionPerformed
+    /** Updates visibility of controls */
+    public void updateHighlightedAndSimpleVisibilites() {
         for (FilterPanel p : filterPanels) {
             if (p.isControlsVisible()) {
                 p.showPropertyHighlightsOrVisibility(highlightTF.getText(), hideOthersRB.isSelected(), simpleCB.isSelected());
             }
         }
+    }
+
+    private void highlightRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_highlightRBActionPerformed
+        updateHighlightedAndSimpleVisibilites();
     }//GEN-LAST:event_highlightRBActionPerformed
 
     private void hideOthersRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideOthersRBActionPerformed
-        for (FilterPanel p : filterPanels) {
-            if (p.isControlsVisible()) {
-                p.showPropertyHighlightsOrVisibility(highlightTF.getText(), hideOthersRB.isSelected(), simpleCB.isSelected());
-            }
-        }
+        updateHighlightedAndSimpleVisibilites();
     }//GEN-LAST:event_hideOthersRBActionPerformed
 
     private void undoEditMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_undoEditMenuItemActionPerformed
@@ -961,7 +970,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         redo();
     }//GEN-LAST:event_redoEditMenuItemActionPerformed
 
-    void fixUndoRedo() {
+    final void fixUndoRedo() {
         final boolean canUndo = undoManager.canUndo(), canRedo = undoManager.canRedo();
         undoAction.setEnabled(canUndo);
         redoAction.setEnabled(canRedo);
@@ -1078,21 +1087,22 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
      * @return the panel, or null
      */
     public FilterPanel getFilterPanelForFilter(EventFilter filt) {
-        for (FilterPanel p : filterPanels) {
-            if (p.getFilter() == filt) {
-                return p;
-            } // if the panel's filter has chain, then check if filt is one of these filters
-            else if (p.getFilter().getEnclosedFilterChain() != null) {
-                FilterChain c = p.getFilter().getEnclosedFilterChain();
-                for (EventFilter enclFilt : c) {
-                    if (enclFilt == filt) { // we found the enclosed filter, now we need the panel for it
-                        return p.getEnclosedFilterPanel(enclFilt);
-                    }
-                }
-            }
-        }
-
-        return null;
+        return filter2FilterPanelMap.get(filt);
+//        for (FilterPanel p : filterPanels) {
+//            if (p.getFilter() == filt) {
+//                return p;
+//            } // if the panel's filter has chain, then check if filt is one of these filters
+//            else if (p.getFilter().getEnclosedFilterChain() != null) {
+//                FilterChain c = p.getFilter().getEnclosedFilterChain();
+//                for (EventFilter enclFilt : c) {
+//                    if (enclFilt == filt) { // we found the enclosed filter, now we need the panel for it
+//                        return p.getEnclosedFilterPanel(enclFilt);
+//                    }
+//                }
+//            }
+//        }
+//
+//        return null;
     }
 
     private void showInBrowser(String url) {

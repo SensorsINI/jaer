@@ -51,6 +51,7 @@ import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -69,7 +70,6 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.filter.QuantizedSTCF;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
@@ -196,10 +196,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     static {
-        assert (noiseFilterClasses.length == NoiseFilterEnum.values().length - 1);
+        assert (noiseFilterClasses.length == NoiseFilterEnum.values().length - 1) :
+                String.format("Number of AbstractNoiseFilter does not match number of NoiseFilterEnum");
     }
     @Preferred
     private NoiseFilterEnum selectedNoiseFilterEnum = null; // set in constructor to wrap with try/catch to handle renames by code changes
+    private HashMap<NoiseFilterEnum, AbstractNoiseFilter> noiseFilterEnum2NoiseFilterMap = new HashMap();
 
     @Preferred
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
@@ -244,6 +246,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay FN in green <br>(signal events incorrectly classified as noise)");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
         setPropertyTooltip(TT_DISP, "clearROCHistory", "Clears samples from display.");
+        setPropertyTooltip(TT_DISP, "clearSavedRocHistories", "Clears roc histories");
+        setPropertyTooltip(TT_DISP, "saveRocHistory", "Saves current ROC points to be displayed");
+
+        setHideNonEnabledEnclosedFilters(true); // only show the enabled noise filter
+        if (selectedFilter != null) {
+            selectedFilter.setControlsVisible(true);
+        }
     }
 
     @Override
@@ -290,6 +299,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final GLUT glut = new GLUT();
 
         GL2 gl = drawable.getGL().getGL2();
+        for (NoiseFilterEnum k : rocHistoryHashMap.keySet()) {
+            ROCHistory rh = rocHistoryHashMap.get(k);
+            rh.drawSaved(gl, k);
+        }
         rocHistory.draw(gl);
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
@@ -451,7 +464,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        a.add(new PolarityEvent(4, (short) 0, (short) 0));
 //        a.add(new PolarityEvent(4, (short) 1, (short) 0));
 //        a.add(new PolarityEvent(4, (short) 2, (short) 0));
-////        a.add(new PolarityEvent(2, (short) 0, (short) 0));
+        ////        a.add(new PolarityEvent(2, (short) 0, (short) 0));
 ////        a.add(new PolarityEvent(10, (short) 0, (short) 0));
 //
 //        b.add(new PolarityEvent(2, (short) 0, (short) 0));
@@ -1150,10 +1163,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 try {
                     Constructor con = cl.getConstructor(AEChip.class);
                     noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
+                    try {
+                        NoiseFilterEnum nfEnum = NoiseFilterEnum.valueOf(cl.getSimpleName());
+                        noiseFilterEnum2NoiseFilterMap.put(nfEnum, noiseFilters[i]);
+                    } catch (IllegalArgumentException ex) {
+                        
+                        String s = String.format("There is no NoiseFilterEnum for AbstractNoiseFilter class \"%s\";\n NoiseFilterEnum values are\n ", cl.getName());
+                        for(NoiseFilterEnum e:NoiseFilterEnum.values()){
+                            s=s+e.toString()+"\n";
+                        }
+                        log.severe(s);
+                        throw new Error(s);
+                    }
                     i++;
                 } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                    log.severe(String.format("Could not add instance of AbstractNoiseFilter %s", cl.getSimpleName()));
-                    Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+                    String s = String.format("Could not construct instance of AbstractNoiseFilter %s;\ngot %s", cl.getSimpleName(), ex.toString());
+                    log.severe(s);
+                    throw new Error(s);
                 }
             }
 
@@ -1398,7 +1424,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putString("selectedNoiseFilter", selectedNoiseFilter.toString());
         selectedFilter = null;
         for (AbstractNoiseFilter n : noiseFilters) {
-            if (selectedNoiseFilter != null && n.getClass().getSimpleName().equals(selectedNoiseFilter.toString())) {
+            if (selectedNoiseFilter != null && n==noiseFilterEnum2NoiseFilterMap.get(selectedNoiseFilter)) {
                 log.info("setting " + n.getClass().getSimpleName() + " enabled");
                 n.initFilter();
                 n.setFilterEnabled(true);
@@ -1411,6 +1437,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
         rocHistory.reset();
+    }
+
+    @Override
+    public void initGUI() {
+        if (selectedFilter != null) {
+            selectedFilter.setControlsVisible(true);
+        }
     }
 
     private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: setNoiseFilterParameters <csvFilename> xx <shotNoiseRateHz> xx <leakNoiseRateHz> xx and specific to the filter\n";
@@ -1906,6 +1939,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private int legendDisplayListId = 0;
         private ROCSample[] legendROCs = null;
         private ROCSample avgRocSample = null; // avg over entire rocHistoryLength
+        private boolean fadedAndLabeled = false;
+        private NoiseFilterEnum noiseFilterEnum = null;
+
+        public String toString() {
+            return String.format("ROCHistory with %,d points", rocHistoryList.size());
+        }
 
         ROCSample createAbsolutePosition(float x, float y, float tau, boolean labeled) {
             return new ROCSample(x, y, tau, labeled);
@@ -1937,9 +1976,25 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 this.labeled = labeled;
             }
 
+            /**
+             * Draw point using color derived from tau correlation interval
+             * parameter
+             *
+             * @param gl
+             */
             private void draw(GL2 gl) {
                 float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
                 Color c = Color.getHSBColor(hue, 1f, hue);
+                draw(gl, c);
+            }
+
+            /**
+             * Draw point with a fixed color
+             *
+             * @param gl
+             * @param c the color
+             */
+            private void draw(GL2 gl, Color c) {
                 float[] rgb = c.getRGBComponents(null);
                 gl.glColor3fv(rgb, 0);
                 gl.glLineWidth(1);
@@ -1966,6 +2021,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             boolean labelIt = lastTau == null
                     || Math.abs(Math.log10(tau / lastTau)) > .1
                     || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
+            labelIt = false;// tobi removec this clutter
             rocHistoryList.add(rocHistory.createTprFpr(tpr, fpr, tau, labelIt));
             float sumFpr = 0, sumTpr = 0;
             for (ROCSample s : rocHistoryList) {
@@ -2007,10 +2063,57 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glPopMatrix();
         }
 
+        void drawSaved(GL2 gl, NoiseFilterEnum noiseFilterEnum) {
+            this.fadedAndLabeled = true;
+            this.noiseFilterEnum = noiseFilterEnum;
+            draw(gl);
+        }
+
         void draw(GL2 gl) {
             if (selectedFilter == null) {
                 return;
             }
+            drawAxes(gl);
+            // draw each sample as a square point
+            if (!fadedAndLabeled) {
+                for (ROCSample rocSample : rocHistoryList) {
+                    rocSample.draw(gl);
+                }
+            } else {
+                for (ROCSample rocSample : rocHistoryList) {
+                    rocSample.draw(gl, Color.white);
+                }
+            }
+
+            if (!fadedAndLabeled) { // if we are drawing most recent data, draw smaller X for last ROC point
+                // draw X for last packet TPR / TNR point
+                float x = (1 - TNR) * sx;
+                float y = TPR * sy;
+                gl.glColor4f(.8f, .8f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
+                gl.glLineWidth(4);
+                int L = 8;
+                gl.glPushMatrix();
+                DrawGL.drawCross(gl, x, y, L, 0);
+                gl.glPopMatrix();
+//                if (rocHistoryLength > 1) {
+//                    drawLegend(gl);
+//                }
+            }
+
+            if (avgRocSample != null) { // draw big thick X at avg ROC point
+                int L = 12;
+                gl.glColor4f(.9f, .9f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
+                gl.glLineWidth(8);
+                float x = avgRocSample.x;
+                float y = avgRocSample.y;
+                gl.glPushMatrix();
+                DrawGL.drawCross(gl, x, y, L, (float) Math.PI / 4);
+                gl.glPopMatrix();
+            }
+
+        }
+
+        private void drawAxes(GL2 gl) {
             // draw axes
             gl.glPushMatrix();
             gl.glColor4f(.8f, .8f, .2f, .5f); // must set color before raster position (raster position is like glVertex)
@@ -2032,37 +2135,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "TPR");
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), -1, sy / 2, 1, Color.yellow, "TPR");
             gl.glPopMatrix();
-            for (ROCSample rocSample : rocHistoryList) {
-                rocSample.draw((gl));
-            }
-            // draw X for last packet TPR / TNR point
-            int L = 8;
-            gl.glColor4f(.8f, .8f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
-            gl.glLineWidth(4);
-            float x = (1 - TNR) * sx;
-            float y = TPR * sy;
-            gl.glPushMatrix();
-            DrawGL.drawCross(gl, x, y, L, 0);
-            gl.glPopMatrix();
-            if (rocHistoryLength > 1) {
-                drawLegend(gl);
-            }
-
-            if (avgRocSample != null) {
-                // draw big thick X at avg ROC point
-                L = 12;
-                gl.glColor4f(.9f, .9f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
-                gl.glLineWidth(8);
-                x = avgRocSample.x;
-                y = avgRocSample.y;
-                gl.glPushMatrix();
-                DrawGL.drawCross(gl, x, y, L, (float)Math.PI/4);
-                gl.glPopMatrix();
-            }
-            if (rocHistoryLength > 1) {
-                drawLegend(gl);
-            }
         }
+
     }
 
     // recorded noise to be used as input
@@ -2215,8 +2289,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //         Noise signal Gaussian RMS value in log_e units, to be added as Gaussian source directly to log photoreceptor output signal
 //    """
 
-        Random r = new Random();
-
+//        Random r = new Random();
         float rate_per_bw = (shot_noise_rate_hz / f3db) / 2; // simulation data are on ON event rates, divide by 2 here to end up with correct total rate
         if (rate_per_bw > 0.5) {
 //        logger.warning(f'shot noise rate per hz of bandwidth is larger than 0.1 (rate_hz={shot_noise_rate_hz} Hz, 3dB bandwidth={f3db} Hz)');
@@ -2252,4 +2325,18 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         resetFilter(); // reset since this affects filter and can cause apparent deadlock
     }
 
+    /**
+     * array of saved roc samples for comparison to other ROC histories
+     */
+    private HashMap<NoiseFilterEnum, ROCHistory> rocHistoryHashMap = new HashMap();
+
+    public void doSaveRocHistory() {
+        rocHistoryHashMap.put(selectedNoiseFilterEnum, rocHistory);
+        rocHistory = new ROCHistory();
+
+    }
+
+    public void doClearSavedRocHistories() {
+        rocHistoryHashMap.clear();
+    }
 }
