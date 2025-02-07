@@ -78,7 +78,7 @@ import net.sf.jaer.util.DrawGL;
 /**
  * Filter for testing noise filters
  *
- * @author Tobi Delbruck, Shasha Guo, Oct-Jan 2020
+ * @author Tobi Delbruck, Shasha Guo, Oct-Jan 2020-2025
  */
 @Description("Tests background BA denoising filters by injecting known noise and measuring how much signal and noise is filtered")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
@@ -150,6 +150,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean overlayTN = getBoolean("overlayTN", false);
     @Preferred
     private boolean overlayFP = getBoolean("overlayFP", false);
+    @Preferred
     private boolean overlayFN = getBoolean("overlayFN", false);
     final float[] NOISE_COLOR = {1f, 0, 0, 1}, SIG_COLOR = {0, 1f, 0, 1};
     final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
@@ -222,7 +223,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         String denoiser = "0a. Denoisier algorithm";
         setPropertyTooltip(denoiser, "selectedNoiseFilterEnum", "Choose a noise filter to test");
-        
+
         String noise = "0b. Noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
@@ -232,7 +233,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
-        
+
         String out = "5. Output";
         setPropertyTooltip(out, "closeCsvFile", "Closes the output CSV spreadsheet data file.");
         setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
@@ -241,7 +242,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
         setPropertyTooltip(out, "outputFilterStatistic", "Output analyzable data of a filter.");
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
-        
+
         setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
         setPropertyTooltip(TT_DISP, "overlayNegatives", "<html><p>Overlay negatives (rejected input events)<p>FNs (green) are signal filtered out.<p>TNs (red) are noise filtered out.");
         setPropertyTooltip(TT_DISP, "overlayTP", "<html><p>Overlay TP in green <br>(signal events correctly classified)");
@@ -1171,10 +1172,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         NoiseFilterEnum nfEnum = NoiseFilterEnum.valueOf(cl.getSimpleName());
                         noiseFilterEnum2NoiseFilterMap.put(nfEnum, noiseFilters[i]);
                     } catch (IllegalArgumentException ex) {
-                        
+
                         String s = String.format("There is no NoiseFilterEnum for AbstractNoiseFilter class \"%s\";\n NoiseFilterEnum values are\n ", cl.getName());
-                        for(NoiseFilterEnum e:NoiseFilterEnum.values()){
-                            s=s+e.toString()+"\n";
+                        for (NoiseFilterEnum e : NoiseFilterEnum.values()) {
+                            s = s + e.toString() + "\n";
                         }
                         log.severe(s);
                         throw new Error(s);
@@ -1428,7 +1429,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putString("selectedNoiseFilter", selectedNoiseFilter.toString());
         selectedFilter = null;
         for (AbstractNoiseFilter n : noiseFilters) {
-            if (selectedNoiseFilter != null && n==noiseFilterEnum2NoiseFilterMap.get(selectedNoiseFilter)) {
+            if (selectedNoiseFilter != null && n == noiseFilterEnum2NoiseFilterMap.get(selectedNoiseFilter)) {
                 log.info("setting " + n.getClass().getSimpleName() + " enabled");
                 n.initFilter();
                 n.setFilterEnabled(true);
@@ -1617,7 +1618,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         rocHistory.reset();
     }
 
-    synchronized public void doClearROCHistory() {
+    @Preferred synchronized public void doClearROCHistory() {
         rocHistory.reset();
     }
 
@@ -2334,13 +2335,22 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     private HashMap<NoiseFilterEnum, ROCHistory> rocHistoryHashMap = new HashMap();
 
-    public void doSaveRocHistory() {
+    @Preferred public void doSaveRocHistory() {
         rocHistoryHashMap.put(selectedNoiseFilterEnum, rocHistory);
         rocHistory = new ROCHistory();
 
     }
 
-    public void doClearSavedRocHistories() {
+    @Preferred public void doClearSavedRocHistories() {
         rocHistoryHashMap.clear();
+    }
+    
+    @Override
+    public void setShowFilteringStatisticsFontSize(int size){
+        super.setShowFilteringStatisticsFontSize(size);
+        for(AbstractNoiseFilter f:noiseFilters){
+            f.setShowFilteringStatisticsFontSize(size);
+            
+        }
     }
 }
