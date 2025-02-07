@@ -253,6 +253,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * Set of all property groups that have at least one item in them
      */
     private final HashSet<String> populatedGroupSet = new HashSet();
+
+    /**
+     * Buttons to be shown in simple mode or not
+     */
+    private final HashSet<AbstractButton> preferredButtons = new HashSet(), notPreferredButtons = new HashSet();
+
     /**
      * Map from property name to its control
      */
@@ -260,7 +266,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private JComponent ungroupedControls = null;
     private float DEFAULT_REAL_VALUE = 0.01f; // value jumped to from zero on key or wheel up
     ArrayList<AbstractButton> doButList = new ArrayList();
-    JPanel butPanel = null;
+    MyContainer butPanel = null;
 
     /**
      * Flag to show simple view of only preferred properties
@@ -299,7 +305,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     public FilterPanel(EventFilter f, FilterFrame filterFrame) {
         setFilter(f);
         setFilterFrame(filterFrame);
-        filterFrame.filter2FilterPanelMap.put(f,this);
+        filterFrame.filter2FilterPanelMap.put(f, this);
         initComponents();
         Dimension d = enableResetControlsHelpPanel.getPreferredSize();
         enableResetControlsHelpPanel.setMaximumSize(new Dimension(200, d.height)); // keep from stretching
@@ -439,6 +445,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private void addIntrospectedControls() {
         boolean wasSelected = getFilter().isSelected(); // restore the currentState in case filter is rebuilt
         doButList.clear();
+        preferredButtons.clear();
+        notPreferredButtons.clear();
         String u = "(Ungrouped)";
         ungroupedControls = new MyContainer(u);
         ungroupedControls.setName(u);
@@ -460,6 +468,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             for (Method method : methods) {
                 // add a button XXX that calls doPressXXX on press and doReleaseXXX on release of button
+                AbstractButton prefButton = null;
                 if (method.getName().startsWith("doPress")
                         && (method.getParameterTypes().length == 0)
                         && (method.getReturnType() == void.class)) {
@@ -471,7 +480,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 && (releasedMethod.getReturnType() == void.class)) {
                             //found corresponding release method, add action listeners for press and release
                             numDoButtons++;
-                            JButton button = new JButton(method.getName().substring(7));
+                            final AbstractButton button = new JButton(method.getName().substring(7));
+                            prefButton = button;
                             button.setMargin(butInsets);
                             button.setFont(button.getFont().deriveFont(9f));
                             final EventFilter f = filter;
@@ -523,7 +533,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 && (toggleOffMethod.getReturnType() == void.class)) {
                             //found corresponding release method, add action listeners for toggle on and toggle off
                             numDoButtons++;
-                            final JToggleButton button = new JToggleButton(method.getName().substring(10));
+                            final AbstractButton button = new JToggleButton(method.getName().substring(10));
+                            prefButton = button;
                             button.setMargin(butInsets);
                             button.setFont(button.getFont().deriveFont(9f));
                             final EventFilter f = filter;
@@ -561,7 +572,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         && (method.getParameterTypes().length == 0)
                         && (method.getReturnType() == void.class)) {
                     numDoButtons++;
-                    JButton button = new JButton(method.getName().substring(2));
+                    final AbstractButton button = new JButton(method.getName().substring(2));
+                    prefButton = button;
                     button.setMargin(butInsets);
                     button.setFont(button.getFont().deriveFont(9f));
                     final EventFilter f = filter;
@@ -584,6 +596,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     addTip(f, button);
                     doButList.add(button);
                 }
+                // mark Preferred buttons
+                if (method.getName().startsWith("do")) {
+                    Annotation annotation = method.getAnnotation(Preferred.class);
+                    if (annotation != null) {
+                        preferredButtons.add(prefButton);
+                    } else {
+                        notPreferredButtons.add(prefButton);
+                    }
+                }
             }
 
             Comparator<AbstractButton> butComp = new Comparator<AbstractButton>() {
@@ -600,24 +621,12 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             Collections.sort(doButList, butComp);
             if (!doButList.isEmpty()) {
 
-                JPanel buttons = new JPanel() {
-                    @Override
-                    public Dimension getMaximumSize() {
-                        return getPreferredSize();
-                    }
-                };
+                butPanel = new MyContainer("Control buttons");
+                butPanel.setLayout(new GridLayout(0, 3, 3, 3));
                 for (AbstractButton b : doButList) {
-                    buttons.add(b);
+                    butPanel.add(b);
                 }
-
-                //if at least one button then we show the actions panel
-//                buttons.setMinimumSize(new Dimension(0, 0));
-                buttons.setLayout(new GridLayout(0, 3, 3, 3));
-                String s = "Filter Actions";
-                butPanel = new MyContainer(s);
-                butPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-                butPanel.add(buttons);
-                TitledBorder tb = new TitledBorder(s);
+                TitledBorder tb = new TitledBorder("Control buttons");
                 tb.getBorderInsets(this).set(1, 1, 1, 1);
                 butPanel.setBorder(tb);
                 add(butPanel);
@@ -704,7 +713,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         if (chain != null) {
 //                            log.info("EventFilter "+filter.getClass().getSimpleName()+" encloses filterChain "+chain);
                             for (EventFilter f : chain) {
-                                
+
                                 FilterPanel enclPanel = new FilterPanel(f, filterFrame);
                                 if (f.isControlsVisible()) {
                                     enclPanel.setControlsVisible(true);
@@ -716,7 +725,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 controls.add(enclPanel);
                                 enclosedFilterPanels.put(f, enclPanel);
                                 ((TitledBorder) enclPanel.getBorder()).setTitle("enclosed: " + f.getClass().getSimpleName());
-                                if (getFilter().isHideNonEnabledEnclosedFilters() && !f.isFilterEnabled()) {  
+                                if (getFilter().isHideNonEnabledEnclosedFilters() && !f.isFilterEnabled()) {
                                     // if this filter is part of chain but not enabled, then don't show the panel if hideNonEnabledEnclosedFilters is true
                                     enclPanel.setVisible(false);
                                 }
@@ -2120,7 +2129,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * filter's controls and to show all filters in chain.
      */
     public void setControlsVisible(boolean visible) {
-        getFilter().controlsVisible=visible;
+        getFilter().controlsVisible = visible;
         getFilter().setSelected(visible); // exposing controls 'selects' this filter
         setBorderActive(visible);
         for (JComponent p : controls) {
@@ -2139,7 +2148,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             if (c instanceof FilterFrame) {
                 // hide all filters except one that is being modified, *unless* we are an enclosed filter
                 FilterFrame<FilterPanel> ff = (FilterFrame) c;
-                for (FilterPanel fp : ff.filterPanels ) {
+                for (FilterPanel fp : ff.filterPanels) {
                     if (fp == this) {  // for us and if !visible
                         fp.setVisible(true); // always set us as visible in chain since we are the one being touched
                         continue;
@@ -2150,11 +2159,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             }
         }
-        
+
         // handle enclosed filters that are disabled and have parent enclosing filter that does not want to show them in GUI
-        if(getFilter().isEnclosed() && !getFilter().isFilterEnabled() && getFilter().getEnclosingFilter().isHideNonEnabledEnclosedFilters()){
+        if (getFilter().isEnclosed() && !getFilter().isFilterEnabled() && getFilter().getEnclosingFilter().isHideNonEnabledEnclosedFilters()) {
             setVisible(false);
-        }else{
+        } else {
             setVisible(true);
         }
 
@@ -2619,6 +2628,24 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         setSearchString(searchString);
         setHideOthers(hideOthers);
         setSimple(simple);
+        if (butPanel != null) {
+            if (simple && preferredButtons.isEmpty()) {
+                butPanel.setVisible(false);
+            } else {
+                butPanel.setVisible(true);
+                butPanel.removeAll();
+                for (AbstractButton b : doButList) {
+                    if (!simple) {
+                        butPanel.add(b);
+
+                    } else {
+                        if (preferredButtons.contains(b)) {
+                            butPanel.add(b);
+                        }
+                    }
+                }
+            }
+        }
         if (searchString.isBlank()) { // just show everything that should be shown
             for (String propName : propertyControlMap.keySet()) {
                 MyControl c = propertyControlMap.get(propName);
