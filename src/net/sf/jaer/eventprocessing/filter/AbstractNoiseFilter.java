@@ -54,6 +54,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     @Preferred
     protected boolean showFilteringStatistics = getBoolean("showFilteringStatistics", true);
+    @Preferred 
     private int showFilteringStatisticsFontSize = getInt("showFilteringStatisticsFontSize", 9);
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
