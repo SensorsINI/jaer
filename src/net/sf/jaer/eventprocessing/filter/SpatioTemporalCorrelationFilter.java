@@ -53,9 +53,9 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         super(chip);
         setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of 9 (3x3) neighbors (including our own event location) must have had event within past dt");
         setPropertyTooltip(TT_FILT_CONTROL, "polaritiesMustMatch", "the correlating events must have the same polarity");
-        setPropertyTooltip(TT_FILT_CONTROL, "favorLines", "add condition that events in 8-NNb must lie along line crossing pixel to pass");
+//        setPropertyTooltip(TT_FILT_CONTROL, "favorLines", "add condition that events in 8-NNb must lie along line crossing pixel to pass");
         setPropertyTooltip(TT_FILT_CONTROL, "filterAlternativePolarityShotNoiseEnabled", "filter out events where ON follows OFF or vice versa within the time shotNoiseCorrelationTimeS, which is true for pure thermal noise with short refractory period. This test is applied after the correlation test.");
-        setPropertyTooltip(TT_FILT_CONTROL, "shotNoiseCorrelationTimeS", "The correlation time in seconds for shot noise test");
+        setPropertyTooltip(TT_FILT_CONTROL, "shotNoiseCorrelationTimeS", "The correlation time in seconds for shot noise test; see filterAlternativePolarityShotNoiseEnabled");
         getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
     }
 
@@ -395,7 +395,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      *
      * @return true if noise event, false if signal
      */
-    private boolean testFilterOutShotNoiseOppositePolarity(int x, int y, BasicEvent e) {
+    protected boolean testFilterOutShotNoiseOppositePolarity(int x, int y, BasicEvent e) {
         if (!filterAlternativePolarityShotNoiseEnabled) {
             return false;
         }
