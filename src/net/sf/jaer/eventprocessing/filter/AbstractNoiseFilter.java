@@ -214,11 +214,15 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        resetCountsAndNegativeEvents();
+        in = getEnclosedFilterChain().filterPacket(in);  // TODO sublasses might not do adaptive denoising if super.filterPacket() is not called in them
+        return in;
+    }
+    
+    protected void resetCountsAndNegativeEvents(){
         getNegativeEvents().clear();
         filteredOutEventCount = 0;
         totalEventCount = 0;
-        in = getEnclosedFilterChain().filterPacket(in);
-        return in;
     }
 
     @Override
@@ -979,31 +983,31 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 
     } // NoiseFilterControl
     
-    /** Return the classification threshold, typically the correlation time. By default this is getCorrelationTimeS
-     */
-    public float getThreshold(){
-        return getCorrelationTimeS();
-    }
-    /** Sets the classification threshold, by default setCorrelationTimeS(float s)
-     * 
-     * @param threshold
-     * @return 
-     */
-    public void setThreshold(float threshold){
-        setCorrelationTimeS(threshold);
-    }
-    /** Returns units of threshold
-     * 
-     * @return 
-     */
-    public String getThresholdUnits(){
-        return "s";
-    }
-    public float getMaxThreshold(){
-        return getMaxCorrelationTimeS();
-    }
-    public float getMinThreshold(){
-        return getMinCorrelationTimeS();
-    }
+//    /** Return the classification threshold, typically the correlation time. By default this is getCorrelationTimeS
+//     */
+//    public float getThreshold(){
+//        return getCorrelationTimeS();
+//    }
+//    /** Sets the classification threshold, by default setCorrelationTimeS(float s)
+//     * 
+//     * @param threshold
+//     * @return 
+//     */
+//    public void setThreshold(float threshold){
+//        setCorrelationTimeS(threshold);
+//    }
+//    /** Returns units of threshold
+//     * 
+//     * @return 
+//     */
+//    public String getThresholdUnits(){
+//        return "s";
+//    }
+//    public float getMaxThreshold(){
+//        return getMaxCorrelationTimeS();
+//    }
+//    public float getMinThreshold(){
+//        return getMinCorrelationTimeS();
+//    }
 
 }
