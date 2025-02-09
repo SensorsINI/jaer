@@ -38,10 +38,12 @@ To make a new token, if needed, login to https://github.com/settings/tokens ,
 3. Open install4j project (jaer.install4j)
 4. Update version number there and save install4j project
 5. Do a complete clean and build to make sure classes are clean and all in jaer.jar
-6. Generate the installers from install4j
-7. Put the installers and checksums in new dropbox installers folder (the install4j build will do this automatically)
-8. Copy updates.xml to root folder and push it so install4j can check if there is an update available
-9. Maybe update splash screen image and push new png from photoshop
+6. Maybe update splash screen image and push new png from illustrator PDF at images/ folder SplashScreen.pdf.
+    Make sure there is a MacOS png at 1024x1024 or some other binary size.
+7. Generate the installers from install4j
+8. Put the installers and checksums in new dropbox installers folder (the install4j build will do this automatically)
+9. Copy updates.xml to root folder and push it so install4j can check if there is an update available
+
 10. Push a tag (see above) and generate the github release on github release 
 
 
