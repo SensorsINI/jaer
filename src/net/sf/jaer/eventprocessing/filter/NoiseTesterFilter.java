@@ -26,6 +26,7 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Font;
 import java.beans.PropertyChangeEvent;
@@ -60,7 +61,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.ComboBoxModel;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JFileChooser;
+import javax.swing.JList;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
@@ -83,6 +88,17 @@ import net.sf.jaer.util.DrawGL;
 @Description("Tests background BA denoising filters by injecting known noise and measuring how much signal and noise is filtered")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater, RemoteControlled {
+
+    /**
+     * ******
+     * Defines the noise filters statically. This array is used in initFilter()
+     * to construct the filters
+     *
+     * @see #initFilter()
+     */
+    public static Class[] noiseFilterClasses = {null, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
+    private AbstractNoiseFilter[] noiseFilters = null;
+    private AbstractNoiseFilter selectedNoiseFilter = null;
 
     public static final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
     public static final float MAX_TOTAL_NOISE_RATE_HZ = 50e6f;
@@ -137,9 +153,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
     private final Random random = new Random();
     private EventPacket<PolarityEvent> signalAndNoisePacket = null;
-//    private EventList<PolarityEvent> noiseList = new EventList();
-    private AbstractNoiseFilter[] noiseFilters = null;
-    private AbstractNoiseFilter selectedFilter = null;
     protected boolean resetCalled = true; // flag to reset on next event
 
 //    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
@@ -173,37 +186,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public static final int POISSON_DIVIDER = 30;
 
-    /**
-     * ******
-     * Defines the noise filters statically, which must be duplicated in the
-     * list in the enum that follows. This array is used in initFilter() to
-     * construct the filters
-     *
-     * @see #initFilter()
-     */
-//    public static Class[] noiseFilterClasses={BackgroundActivityFilter.class, DensityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, DoubleWindowFilter.class, OrderNBackgroundActivityFilter.class, MedianDtFilter.class, MLPNoiseFilter.class};
-    public static Class[] noiseFilterClasses = {BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
-
-    /**
-     * Also add the noise filters to this enum list in same order
-     *
-     * @see #initFilter()
-     */
-//    public enum NoiseFilterEnum {
-//        None, BackgroundActivityFilter, DensityFilter, SpatioTemporalCorrelationFilter, QuantizedSTCF, DoubleWindowFilter, OrderNBackgroundActivityFilter, MedianDtFilter, MLPNoiseFilter
-//    }
-    public enum NoiseFilterEnum {
-        None, BackgroundActivityFilter, SpatioTemporalCorrelationFilter, QuantizedSTCF, DoubleWindowFilter, MLPNoiseFilter
-    }
-
-    static {
-        assert (noiseFilterClasses.length == NoiseFilterEnum.values().length - 1) :
-                String.format("Number of AbstractNoiseFilter does not match number of NoiseFilterEnum");
-    }
-    @Preferred
-    private NoiseFilterEnum selectedNoiseFilterEnum = null; // set in constructor to wrap with try/catch to handle renames by code changes
-    private HashMap<NoiseFilterEnum, AbstractNoiseFilter> noiseFilterEnum2NoiseFilterMap = new HashMap();
-
     @Preferred
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
@@ -213,16 +195,43 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private final long MAX_FILTER_PROCESSING_TIME_MS = 500000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
 
+    @Preferred
+    private ComboBoxModel noiseFilterComboBoxModel = new DefaultComboBoxModel<Class<? extends AbstractNoiseFilter>>(noiseFilterClasses) {
+        @Override
+        public void setSelectedItem(Object noiseFilterClass) {
+            super.setSelectedItem(noiseFilterClass);
+            putString("selectedNoiseFilter", noiseFilterClass == null ? "(null)" : ((Class) noiseFilterClass).getName());
+            for (AbstractNoiseFilter n : noiseFilters) {
+                if (n == null) {
+                    selectedNoiseFilter = null;
+                    continue;
+                }
+                if (n.getClass() == noiseFilterClass) {
+                    selectedNoiseFilter = n;
+                    n.initFilter();
+                    n.setFilterEnabled(true);
+                    n.setControlsVisible(true);
+                } else {
+                    n.setFilterEnabled(false);
+                    n.setControlsVisible(false);
+                }
+            }
+            resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
+            rocHistory.reset();
+
+        }
+    };
+
+    public String getSelectedNoiseFilterName() {
+        return selectedNoiseFilter.getClass().getSimpleName();
+    }
+
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
 
-        try {
-            selectedNoiseFilterEnum = NoiseFilterEnum.valueOf(getString("selectedNoiseFilter", NoiseFilterEnum.BackgroundActivityFilter.toString())); //default is BAF
-        } catch (java.lang.IllegalArgumentException e) {
-            selectedNoiseFilterEnum = NoiseFilterEnum.BackgroundActivityFilter;
-        }
         String denoiser = "0a. Denoisier algorithm";
         setPropertyTooltip(denoiser, "selectedNoiseFilterEnum", "Choose a noise filter to test");
+        setPropertyTooltip(denoiser, "noiseFilterComboBoxModel", "Choose a noise filter to test");
 
         String noise = "0b. Noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
@@ -255,8 +264,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "saveRocHistory", "Saves current ROC points to be displayed");
 
         setHideNonEnabledEnclosedFilters(true); // only show the enabled noise filter
-        if (selectedFilter != null) {
-            selectedFilter.setControlsVisible(true);
+        if (selectedNoiseFilter != null) {
+            selectedNoiseFilter.setControlsVisible(true);
         }
     }
 
@@ -267,7 +276,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (yes) {
             resetFilter();
             for (EventFilter2D f : chain) {
-                if (selectedFilter != null && selectedFilter == f) {
+                if (selectedNoiseFilter != null && selectedNoiseFilter == f) {
                     f.setFilterEnabled(yes);
                 } else {
                     f.setSelected(!yes);
@@ -304,7 +313,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final GLUT glut = new GLUT();
 
         GL2 gl = drawable.getGL().getGL2();
-        for (NoiseFilterEnum k : rocHistoryHashMap.keySet()) {
+        for (AbstractNoiseFilter k : rocHistoryHashMap.keySet()) {
             ROCHistory rh = rocHistoryHashMap.get(k);
             rh.drawSaved(gl, k);
         }
@@ -573,6 +582,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // initialize filters with lastTimesMap to Poisson waiting times
             log.info("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
+                if (f == null) {
+                    continue;
+                }
                 f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
                 for (int[] i : lastPolMap) {
                     Arrays.fill(i, 0);
@@ -683,10 +695,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
             EventPacket<PolarityEvent> passedSignalAndNoisePacket = (EventPacket<PolarityEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
-            if (selectedFilter != null) {
+            if (selectedNoiseFilter != null) {
 
-                ArrayList<FilteredEventWithNNb> negativeList = selectedFilter.getNegativeEvents();
-                ArrayList<FilteredEventWithNNb> positiveList = selectedFilter.getPositiveEvents();
+                ArrayList<FilteredEventWithNNb> negativeList = selectedNoiseFilter.getNegativeEvents();
+                ArrayList<FilteredEventWithNNb> positiveList = selectedNoiseFilter.getPositiveEvents();
 
                 // make a list of the output packet, which has noise filtered out by selected filter
                 SignalAndNoiseList snlpassed = createEventList(passedSignalAndNoisePacket, false); // don't split events here
@@ -1165,21 +1177,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             noiseFilters = new AbstractNoiseFilter[noiseFilterClasses.length];
             int i = 0;
             for (Class cl : noiseFilterClasses) {
+                if (cl == null) {
+                    continue;
+                }
                 try {
                     Constructor con = cl.getConstructor(AEChip.class);
                     noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
-                    try {
-                        NoiseFilterEnum nfEnum = NoiseFilterEnum.valueOf(cl.getSimpleName());
-                        noiseFilterEnum2NoiseFilterMap.put(nfEnum, noiseFilters[i]);
-                    } catch (IllegalArgumentException ex) {
-
-                        String s = String.format("There is no NoiseFilterEnum for AbstractNoiseFilter class \"%s\";\n NoiseFilterEnum values are\n ", cl.getName());
-                        for (NoiseFilterEnum e : NoiseFilterEnum.values()) {
-                            s = s + e.toString() + "\n";
-                        }
-                        log.severe(s);
-                        throw new Error(s);
-                    }
                     i++;
                 } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                     String s = String.format("Could not construct instance of AbstractNoiseFilter %s;\ngot %s", cl.getSimpleName(), ex.toString());
@@ -1189,6 +1192,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
 
             for (AbstractNoiseFilter n : noiseFilters) {
+                if (n == null) {
+                    continue;
+                }
                 n.initFilter();
                 chain.add(n);
                 getSupport().addPropertyChangeListener(n);
@@ -1208,6 +1214,18 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 renderer = (DavisRenderer) chip.getRenderer();
             }
         }
+        String initialFilterName = getString("selectedNoiseFilter", SpatioTemporalCorrelationFilter.class.getName());
+        if (initialFilterName.equals("(null")) {
+            initialFilterName = null;
+        } else {
+            try {
+                Class c = Class.forName(initialFilterName);
+                noiseFilterComboBoxModel.setSelectedItem(c);
+            } catch (ClassNotFoundException ex) {
+                log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
+            }
+        }
+
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
 
@@ -1218,7 +1236,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         timestampImage = new int[sx + 1][sy + 1];
         leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
         signalAndNoisePacket = new EventPacket<>(ApsDvsEvent.class);
-        setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
+//        setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
         maybeCreateOrUpdateNoiseCoVArray();
         //        setAnnotateAlpha(annotateAlpha);
@@ -1414,40 +1432,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    /**
-     * @return the selectedNoiseFilter
-     */
-    public NoiseFilterEnum getSelectedNoiseFilterEnum() {
-        return selectedNoiseFilterEnum;
-    }
-
-    /**
-     * @param selectedNoiseFilter the selectedNoiseFilter to set
-     */
-    synchronized public void setSelectedNoiseFilterEnum(NoiseFilterEnum selectedNoiseFilter) {
-        this.selectedNoiseFilterEnum = selectedNoiseFilter;
-        putString("selectedNoiseFilter", selectedNoiseFilter.toString());
-        selectedFilter = null;
-        for (AbstractNoiseFilter n : noiseFilters) {
-            if (selectedNoiseFilter != null && n == noiseFilterEnum2NoiseFilterMap.get(selectedNoiseFilter)) {
-                log.info("setting " + n.getClass().getSimpleName() + " enabled");
-                n.initFilter();
-                n.setFilterEnabled(true);
-                n.setControlsVisible(true);
-                selectedFilter = n;
-            } else {
-                n.setFilterEnabled(false);
-                n.setControlsVisible(false);
-            }
-        }
-        resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
-        rocHistory.reset();
-    }
-
     @Override
     public void initGUI() {
-        if (selectedFilter != null) {
-            selectedFilter.setControlsVisible(true);
+        if (selectedNoiseFilter != null) {
+            selectedNoiseFilter.setControlsVisible(true);
         }
     }
 
@@ -1477,7 +1465,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
             log.info("Received Command:" + input);
-            String out = selectedFilter.setParameters(command, input);
+            String out = selectedNoiseFilter.setParameters(command, input);
             log.info("Execute Command:" + input);
             return out;
         }
@@ -1487,6 +1475,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setCorrelationTimeS(float dtS) {
         super.setCorrelationTimeS(dtS);
         for (AbstractNoiseFilter f : noiseFilters) {
+            if (f == null) {
+                continue;
+            }
             f.setCorrelationTimeS(dtS);
         }
     }
@@ -1495,6 +1486,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
         super.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
         for (AbstractNoiseFilter f : noiseFilters) {
+            if (f == null) {
+                continue;
+            }
             f.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
         }
     }
@@ -1503,6 +1497,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public synchronized void setSubsampleBy(int subsampleBy) {
         super.setSubsampleBy(subsampleBy);
         for (AbstractNoiseFilter f : noiseFilters) {
+            if (f == null) {
+                continue;
+            }
             f.setSubsampleBy(subsampleBy);
         }
     }
@@ -1511,6 +1508,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setFilterHotPixels(boolean filterHotPixels) {
         super.setFilterHotPixels(filterHotPixels); //To change body of generated methods, choose Tools | Templates.
         for (AbstractNoiseFilter f : noiseFilters) {
+            if (f == null) {
+                continue;
+            }
             f.setFilterHotPixels(filterHotPixels);
         }
     }
@@ -1519,6 +1519,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setLetFirstEventThrough(boolean letFirstEventThrough) {
         super.setLetFirstEventThrough(letFirstEventThrough); //To change body of generated methods, choose Tools | Templates.
         for (AbstractNoiseFilter f : noiseFilters) {
+            if (f == null) {
+                continue;
+            }
             f.setLetFirstEventThrough(letFirstEventThrough);
         }
     }
@@ -1527,6 +1530,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public synchronized void setSigmaDistPixels(int sigmaDistPixels) {
         super.setSigmaDistPixels(sigmaDistPixels); //To change body of generated methods, choose Tools | Templates.
         for (AbstractNoiseFilter f : noiseFilters) {
+            if (f == null) {
+                continue;
+            }
             f.setSigmaDistPixels(sigmaDistPixels);
         }
     }
@@ -1618,7 +1624,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         rocHistory.reset();
     }
 
-    @Preferred synchronized public void doClearROCHistory() {
+    @Preferred
+    synchronized public void doClearROCHistory() {
         rocHistory.reset();
     }
 
@@ -1945,7 +1952,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private ROCSample[] legendROCs = null;
         private ROCSample avgRocSample = null; // avg over entire rocHistoryLength
         private boolean fadedAndLabeled = false;
-        private NoiseFilterEnum noiseFilterEnum = null;
+        private AbstractNoiseFilter noiseFilter = null;
 
         public String toString() {
             return String.format("ROCHistory with %,d points", rocHistoryList.size());
@@ -2068,14 +2075,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glPopMatrix();
         }
 
-        void drawSaved(GL2 gl, NoiseFilterEnum noiseFilterEnum) {
+        void drawSaved(GL2 gl, AbstractNoiseFilter noiseFilter) {
             this.fadedAndLabeled = true;
-            this.noiseFilterEnum = noiseFilterEnum;
+            this.noiseFilter = noiseFilter; // TODO label these points with name and color for comparison
             draw(gl);
         }
 
         void draw(GL2 gl) {
-            if (selectedFilter == null) {
+            if (selectedNoiseFilter == null) {
                 return;
             }
             drawAxes(gl);
@@ -2333,24 +2340,43 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     /**
      * array of saved roc samples for comparison to other ROC histories
      */
-    private HashMap<NoiseFilterEnum, ROCHistory> rocHistoryHashMap = new HashMap();
+    private HashMap<AbstractNoiseFilter, ROCHistory> rocHistoryHashMap = new HashMap();
 
-    @Preferred public void doSaveRocHistory() {
-        rocHistoryHashMap.put(selectedNoiseFilterEnum, rocHistory);
+    @Preferred
+    public void doSaveRocHistory() {
+        rocHistoryHashMap.put(selectedNoiseFilter, rocHistory);
         rocHistory = new ROCHistory();
 
     }
 
-    @Preferred public void doClearSavedRocHistories() {
+    @Preferred
+    public void doClearSavedRocHistories() {
         rocHistoryHashMap.clear();
     }
-    
+
     @Override
-    public void setShowFilteringStatisticsFontSize(int size){
+    public void setShowFilteringStatisticsFontSize(int size) {
         super.setShowFilteringStatisticsFontSize(size);
-        for(AbstractNoiseFilter f:noiseFilters){
+        for (AbstractNoiseFilter f : noiseFilters) {
+            if (f == null) {
+                continue;
+            }
             f.setShowFilteringStatisticsFontSize(size);
-            
+
         }
+    }
+
+    /**
+     * @return the noiseFilterComboBoxModel
+     */
+    public ComboBoxModel<Class> getNoiseFilterComboBoxModel() {
+        return noiseFilterComboBoxModel;
+    }
+
+    /**
+     * @param noiseFilterComboBoxModel the noiseFilterComboBoxModel to set
+     */
+    public void setNoiseFilterComboBoxModel(ComboBoxModel<Class> noiseFilterComboBoxModel) {
+        this.noiseFilterComboBoxModel = noiseFilterComboBoxModel;
     }
 }
