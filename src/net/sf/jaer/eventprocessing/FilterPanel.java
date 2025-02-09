@@ -2094,13 +2094,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enabledCheckBox = new javax.swing.JCheckBox();
         resetButton = new javax.swing.JButton();
         showControlsToggleButton = new javax.swing.JToggleButton();
+        filler1 = new javax.swing.Box.Filler(new java.awt.Dimension(10, 0), new java.awt.Dimension(10, 0), new java.awt.Dimension(10, 32767));
         copyPasteDefaultsPanel = new javax.swing.JPanel();
-        filler2 = new javax.swing.Box.Filler(new java.awt.Dimension(10, 0), new java.awt.Dimension(10, 0), new java.awt.Dimension(30, 32767));
         copyB = new javax.swing.JButton();
         pasteB = new javax.swing.JButton();
         defaultsB = new javax.swing.JButton();
+        filler2 = new javax.swing.Box.Filler(new java.awt.Dimension(10, 0), new java.awt.Dimension(10, 0), new java.awt.Dimension(10, 32767));
         exportImportPanel = new javax.swing.JPanel();
-        filler1 = new javax.swing.Box.Filler(new java.awt.Dimension(10, 0), new java.awt.Dimension(10, 0), new java.awt.Dimension(30, 32767));
         exportB = new javax.swing.JButton();
         importB = new javax.swing.JButton();
 
@@ -2114,7 +2114,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enableResetControlsHelpPanel.setLayout(new javax.swing.BoxLayout(enableResetControlsHelpPanel, javax.swing.BoxLayout.X_AXIS));
 
         enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
-        enabledCheckBox.setToolTipText("Enable or disable the filter");
+        enabledCheckBox.setToolTipText("Enables the filter");
         enabledCheckBox.setMargin(new java.awt.Insets(1, 1, 1, 1));
         enabledCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2146,17 +2146,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         enableResetControlsHelpPanel.add(showControlsToggleButton);
 
         jPanel1.add(enableResetControlsHelpPanel);
+        jPanel1.add(filler1);
 
-        copyPasteDefaultsPanel.setMaximumSize(new java.awt.Dimension(129, 17));
-        copyPasteDefaultsPanel.setMinimumSize(new java.awt.Dimension(129, 17));
-        copyPasteDefaultsPanel.setPreferredSize(new java.awt.Dimension(98, 17));
+        copyPasteDefaultsPanel.setMaximumSize(new java.awt.Dimension(150, 17));
+        copyPasteDefaultsPanel.setMinimumSize(new java.awt.Dimension(150, 17));
+        copyPasteDefaultsPanel.setPreferredSize(new java.awt.Dimension(150, 17));
         copyPasteDefaultsPanel.setLayout(new javax.swing.BoxLayout(copyPasteDefaultsPanel, javax.swing.BoxLayout.X_AXIS));
-        copyPasteDefaultsPanel.add(filler2);
 
         copyB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         copyB.setText("Copy");
-        copyB.setToolTipText("Export the preferences for this filter to an XML preferences file");
-        copyB.setAlignmentX(0.5F);
+        copyB.setToolTipText("Copy prefs to clipboard");
         copyB.setMargin(new java.awt.Insets(1, 5, 1, 5));
         copyB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2167,8 +2166,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         pasteB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         pasteB.setText("Paste");
-        pasteB.setToolTipText("Import the preferences for this filter from an XML preferences file");
-        pasteB.setAlignmentX(0.5F);
+        pasteB.setToolTipText("Paste compatible prefs from clipboard");
         pasteB.setMargin(new java.awt.Insets(1, 5, 1, 5));
         pasteB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2180,7 +2178,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         defaultsB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         defaultsB.setText("Defaults");
         defaultsB.setToolTipText("Set all properties back to default values");
-        defaultsB.setAlignmentX(0.5F);
         defaultsB.setMargin(new java.awt.Insets(1, 5, 1, 5));
         defaultsB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2190,17 +2187,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         copyPasteDefaultsPanel.add(defaultsB);
 
         jPanel1.add(copyPasteDefaultsPanel);
+        jPanel1.add(filler2);
 
         exportImportPanel.setMaximumSize(new java.awt.Dimension(98, 17));
         exportImportPanel.setMinimumSize(new java.awt.Dimension(98, 17));
         exportImportPanel.setPreferredSize(new java.awt.Dimension(98, 17));
         exportImportPanel.setLayout(new javax.swing.BoxLayout(exportImportPanel, javax.swing.BoxLayout.X_AXIS));
-        exportImportPanel.add(filler1);
 
         exportB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         exportB.setText("Export");
         exportB.setToolTipText("Export the preferences for this filter to an XML preferences file");
-        exportB.setAlignmentX(0.5F);
         exportB.setMargin(new java.awt.Insets(1, 5, 1, 5));
         exportB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -2212,7 +2208,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         importB.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N
         importB.setText("Import");
         importB.setToolTipText("Import the preferences for this filter from an XML preferences file");
-        importB.setAlignmentX(0.5F);
         importB.setMargin(new java.awt.Insets(1, 5, 1, 5));
         importB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
