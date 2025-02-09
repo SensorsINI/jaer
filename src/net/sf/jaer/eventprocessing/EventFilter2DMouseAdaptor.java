@@ -30,117 +30,117 @@ import net.sf.jaer.graphics.FrameAnnotater;
  * For example, {@link ch.unizh.ini.jaer.projects.minliu.Speedometer} uses it
  * like this:
  * <pre>
- protected TimePoint startPoint;
- protected TimePoint endPoint;
- private boolean firstPoint = true;
- 
- 
- synchronized public void mouseClicked(MouseEvent e)
- {
-     if (!isSelected())
-     {
-         return;
-     }
-     if (e == null || e.getPoint() == null || getMousePixel(e) == null)
-     {
-         firstPoint = true;
-         setStartPoint(null);
-         setEndPoint(null);
-         log.info("reset to first point");
-         return; // handle out of bounds, which should reset
-     }
-     if (firstPoint)
-     {
-         setStartPoint(new TimePoint(getMousePixel(e), currentTimestamp));
-         setEndPoint(null);
-     }
-     else
-     {
-         setEndPoint(new TimePoint(getMousePixel(e), currentTimestamp));
-     }
-     computeVelocity();
-     firstPoint = !firstPoint;
- }
- 
- synchronized public void annotate(GLAutoDrawable drawable)
- {
-     if (isSelected())
-     {
-         if (firstPoint)
-         {
-             setCursorColor(START_COLOR);
-         }
-         else
-         {
-             setCursorColor(END_COLOR);
-         }
-     }
-     GL2 gl = drawable.getGL().getGL2();
-     gl.glPushMatrix();
-     drawCursor(gl, getStartPoint(), START_COLOR);
-     drawCursor(gl, getEndPoint(), END_COLOR);
-     gl.glPopMatrix(); // must push pop since drawCursor translates?
-     if (getStartPoint() != null && getEndPoint() != null)
-     {
-         gl.glPushMatrix();
-         gl.glColor3f(1, 1, 0);
-         gl.glBegin(GL.GL_LINES);
-         gl.glVertex2f(getStartPoint().x, getStartPoint().y);
-         gl.glVertex2f(getEndPoint().x, getEndPoint().y);
-         gl.glEnd();
- 
-         String s = String.format("Speed: %s pps (%.0fpix/%ss), dx/dy=%d/%d", engFmt.format(speedPps), distance, engFmt.format(1e-6f * ltaTimestamp), (int) Math.abs(endPoint.x - startPoint.x), (int) Math.abs(endPoint.y - startPoint.y));
-         drawString(drawable, s);
-         gl.glPopMatrix(); // must push pop since drawCursor translates?
-     }
-     else if (getStartPoint() != null)
-     {
-         String s = String.format("Left click for end point. Time from IN mark: %ss", engFmt.format(1e-6f * (currentTimestamp - tStartPoint().t)));
-         gl.glPushMatrix();
-         drawString(drawable, s);
-         gl.glPopMatrix(); // must push pop since drawCursor translates?
- 
-     }
-     else
-     {
-         String s = "Left click for start point";
-         gl.glPushMatrix();
-         drawString(drawable, s);
-         gl.glPopMatrix(); // must push pop since drawCursor translates?
-     }
- }
- 
- private void drawString(GLAutoDrawable drawable, String s) throws GLException
- {
-     DrawGL.drawString(drawable, 24, 0.5f, .2f, .5f, Color.yellow, s);
- }
- 
- private void drawCursor(GL2 gl, Point p, float[] color)
- {
-     if (p == null)
-     {
-         return;
-     }
-     gl.glPushMatrix();
-     gl.glColor4fv(color, 0);
-     gl.glLineWidth(3f);
-     gl.glTranslatef(p.x, p.y, 0);
-     gl.glBegin(GL2.GL_LINES);
-     gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
-     gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
-     gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
-     gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
-     gl.glEnd();
-     gl.glTranslatef(.5f, -.5f, 0);
-     gl.glColor4f(0, 0, 0, 1);
-     gl.glBegin(GL2.GL_LINES);
-     gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
-     gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
-     gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
-     gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
-     gl.glEnd();
-     gl.glPopMatrix();
- }
+ * protected TimePoint startPoint;
+ * protected TimePoint endPoint;
+ * private boolean firstPoint = true;
+ *
+ *
+ * synchronized public void mouseClicked(MouseEvent e)
+ * {
+ * if (!isSelected())
+ * {
+ * return;
+ * }
+ * if (e == null || e.getPoint() == null || getMousePixel(e) == null)
+ * {
+ * firstPoint = true;
+ * setStartPoint(null);
+ * setEndPoint(null);
+ * log.info("reset to first point");
+ * return; // handle out of bounds, which should reset
+ * }
+ * if (firstPoint)
+ * {
+ * setStartPoint(new TimePoint(getMousePixel(e), currentTimestamp));
+ * setEndPoint(null);
+ * }
+ * else
+ * {
+ * setEndPoint(new TimePoint(getMousePixel(e), currentTimestamp));
+ * }
+ * computeVelocity();
+ * firstPoint = !firstPoint;
+ * }
+ *
+ * synchronized public void annotate(GLAutoDrawable drawable)
+ * {
+ * if (isSelected())
+ * {
+ * if (firstPoint)
+ * {
+ * setCursorColor(START_COLOR);
+ * }
+ * else
+ * {
+ * setCursorColor(END_COLOR);
+ * }
+ * }
+ * GL2 gl = drawable.getGL().getGL2();
+ * gl.glPushMatrix();
+ * drawCursor(gl, getStartPoint(), START_COLOR);
+ * drawCursor(gl, getEndPoint(), END_COLOR);
+ * gl.glPopMatrix(); // must push pop since drawCursor translates?
+ * if (getStartPoint() != null && getEndPoint() != null)
+ * {
+ * gl.glPushMatrix();
+ * gl.glColor3f(1, 1, 0);
+ * gl.glBegin(GL.GL_LINES);
+ * gl.glVertex2f(getStartPoint().x, getStartPoint().y);
+ * gl.glVertex2f(getEndPoint().x, getEndPoint().y);
+ * gl.glEnd();
+ *
+ * String s = String.format("Speed: %s pps (%.0fpix/%ss), dx/dy=%d/%d", engFmt.format(speedPps), distance, engFmt.format(1e-6f * ltaTimestamp), (int) Math.abs(endPoint.x - startPoint.x), (int) Math.abs(endPoint.y - startPoint.y));
+ * drawString(drawable, s);
+ * gl.glPopMatrix(); // must push pop since drawCursor translates?
+ * }
+ * else if (getStartPoint() != null)
+ * {
+ * String s = String.format("Left click for end point. Time from IN mark: %ss", engFmt.format(1e-6f * (currentTimestamp - tStartPoint().t)));
+ * gl.glPushMatrix();
+ * drawString(drawable, s);
+ * gl.glPopMatrix(); // must push pop since drawCursor translates?
+ *
+ * }
+ * else
+ * {
+ * String s = "Left click for start point";
+ * gl.glPushMatrix();
+ * drawString(drawable, s);
+ * gl.glPopMatrix(); // must push pop since drawCursor translates?
+ * }
+ * }
+ *
+ * private void drawString(GLAutoDrawable drawable, String s) throws GLException
+ * {
+ * DrawGL.drawString(drawable, 24, 0.5f, .2f, .5f, Color.yellow, s);
+ * }
+ *
+ * private void drawCursor(GL2 gl, Point p, float[] color)
+ * {
+ * if (p == null)
+ * {
+ * return;
+ * }
+ * gl.glPushMatrix();
+ * gl.glColor4fv(color, 0);
+ * gl.glLineWidth(3f);
+ * gl.glTranslatef(p.x, p.y, 0);
+ * gl.glBegin(GL2.GL_LINES);
+ * gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
+ * gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
+ * gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+ * gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+ * gl.glEnd();
+ * gl.glTranslatef(.5f, -.5f, 0);
+ * gl.glColor4f(0, 0, 0, 1);
+ * gl.glBegin(GL2.GL_LINES);
+ * gl.glVertex2f(0, -CURSOR_SIZE_CHIP_PIXELS / 2);
+ * gl.glVertex2f(0, +CURSOR_SIZE_CHIP_PIXELS / 2);
+ * gl.glVertex2f(-CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+ * gl.glVertex2f(+CURSOR_SIZE_CHIP_PIXELS / 2, 0);
+ * gl.glEnd();
+ * gl.glPopMatrix();
+ * }
  * </pre>
  *
  * @author Tobi
@@ -198,8 +198,7 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             return;
         }
         if (isSelected() && showCrossHairCursor) {
-            Point mp = glCanvas.getMousePosition();
-            Point p = chipCanvas.getChipPixelFromMousePoint(mp);
+            Point p = chipCanvas.getMousePixel();
             if (p == null) {
                 return;
             }
@@ -256,19 +255,45 @@ abstract public class EventFilter2DMouseAdaptor extends EventFilter2D implements
             log.warning("null chip canvas GL drawable, can't add mouse listeners");
             return;
         }
+        addRemoveMouseListeners(yes);
+    }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        super.setFilterEnabled(yes);
+        addRemoveMouseListeners(yes);
+    }
+
+    private void addRemoveMouseListeners(boolean yes) {
+        if (glCanvas == null) {
+            return;
+        }
         if (yes) {
+            MouseWheelListener[] listeners = glCanvas.getMouseWheelListeners();
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
             glCanvas.removeMouseWheelListener(this);
             glCanvas.addMouseListener(this);
             glCanvas.addMouseMotionListener(this);
-            glCanvas.addMouseWheelListener(this);
+//            glCanvas.addMouseWheelListener(this);  // tobi this seems somehow to remove effect of mouse wheel in the main AEViewer ImagePanel
 
         } else {
             glCanvas.removeMouseListener(this);
             glCanvas.removeMouseMotionListener(this);
-            glCanvas.removeMouseWheelListener(this);
+//            glCanvas.removeMouseWheelListener(this);
         }
+    }
+
+    /**
+     * Use this method to prevent mouse processing when the filter is not
+     * selected or the enclosing filter is not enabled or not selected
+     *
+     * @return true if the filter is not enabled or the directly enclosing
+     * filter is not selected
+     */
+    protected boolean isDontProcessMouse() {
+        return !isFilterEnabled() || !isSelected()
+                || (isEnclosed() && getEnclosingFilter() != null && (!getEnclosingFilter().isFilterEnabled() || !getEnclosingFilter().isSelected()));
     }
 
     @Override

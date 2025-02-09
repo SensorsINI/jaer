@@ -34,6 +34,7 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.filter.LowpassFilter;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
 
 /**
@@ -170,6 +171,13 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
     private EngineeringFormat fmt = new EngineeringFormat();
 
+    
+    // number of packets to skip over rendering, used to speed up real time processing
+    private int skipFrameRenderingNumberMax, skipFrameRenderingNumberCurrent = 0;
+    protected int skipFramesCounter = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
+            private LowpassFilter skipFrameRenderingLPFilter = null;
+
+    
     public AEChipRenderer(AEChip chip) {
         super(chip);
         if (chip == null) {
@@ -188,6 +196,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             // System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
         }
         setColorScale(prefs.getInt("colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
+        skipFrameRenderingNumberMax = prefs.getInt("AEViewer.skipPacketsRenderingNumberMax", 0);
         slidingWindowPacketFifo = new SlidingWindowEventPacketFifo();
         updateContrastActions();
 
@@ -740,7 +749,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             colorScale = 1;
         }
         if (colorScale > chip.getFullScaleForEventAccumulationRendering()) {
-            colorScale =  chip.getFullScaleForEventAccumulationRendering();
+            colorScale = chip.getFullScaleForEventAccumulationRendering();
         }
         this.colorScale = colorScale;
         // we set eventContrast so that colorScale events takes us from .5 to 1, i.e., .5*(eventContrast^cs)=1, so eventContrast=2^(1/cs)
@@ -976,13 +985,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         float tau = 1 / ((1 - computeFadingFactor()) * renderingFps);
         return tau;
     }
-    
-    /** Return a general description of rendering mode
-     * 
+
+    /**
+     * Return a general description of rendering mode
+     *
      * @return the string description
      */
-    public String getDescription(){
-        return colorMode.toString()+" with full scale "+getColorScale()+" events";
+    public String getDescription() {
+        return colorMode.toString() + " with full scale " + getColorScale() + " events";
     }
 
     private String getFadingDescription() {
@@ -1223,7 +1233,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         @Override
         public void actionPerformed(ActionEvent e) {
             int modifiers = e.getModifiers();
-            if (isFadingEnabled() || isSlidingWindowEnabled()  || chip.getCanvas().getDisplayMethod() instanceof SpaceTimeRollingEventDisplayMethod ) {
+            if (isFadingEnabled() || isSlidingWindowEnabled() || chip.getCanvas().getDisplayMethod() instanceof SpaceTimeRollingEventDisplayMethod) {
                 if ((modifiers & ActionEvent.ALT_MASK) == 0) {
                     setFadingOrSlidingFrames(getFadingOrSlidingFrames() - 1);
                 } else {
@@ -1304,4 +1314,100 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 //        }
 //        slidingWindowPacketFifo.add(packetCopy);
 //    }
+    
+    /**
+     * Skips frames if enabled in AEViewer
+     *
+     * @return true to skip rendering this frame
+     */
+    protected boolean skipFrame() {
+        if (skipFrameRenderingNumberCurrent > 0) {
+            if (skipFramesCounter-- > 0) {
+                    log.fine(String.format("Skipping rendering this frame (count=%d is positive)", skipFramesCounter));
+                    return true;
+            }
+        }
+        skipFramesCounter=skipFrameRenderingNumberCurrent;
+        return false;
+    }
+    
+    
+    protected boolean skipApsEvent(){
+        return skipFramesCounter>0;
+    }
+    
+    protected void adaptRenderSkipping() {
+            if (skipFrameRenderingNumberMax==0) {
+                skipFrameRenderingNumberCurrent = 0;
+                return;
+            }
+            //  handled now by DavisRenderer internally (tobi)
+//            if ((renderer instanceof DavisRenderer) && ((DavisRenderer) renderer).isDisplayFrames()) {
+//                return; // don't skip rendering frames since this will chop frames up and corrupt them
+//            }
+            if (skipFrameRenderingLPFilter == null) {
+                skipFrameRenderingLPFilter = new LowpassFilter(AEViewer.FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
+            }
+            int oldSkip = getSkipFrameRenderingNumberCurrent();
+            int newSkip = oldSkip;
+
+            final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
+            final int desiredFrameRate = chip.getAeViewer().getDesiredFrameRate();
+            boolean skipMore = averageFPS < (int) (0.75f * desiredFrameRate);
+            boolean skipLess = averageFPS > (int) (0.25f * desiredFrameRate);
+            if (skipMore) {
+                newSkip = (Math.round((2 * getSkipFrameRenderingNumberCurrent()) + 1));
+                if (newSkip > getSkipFrameRenderingNumberMax()) {
+                    newSkip = getSkipFrameRenderingNumberMax();
+                }
+            } else if (skipLess) {
+                newSkip = (int) (0.5f * getSkipFrameRenderingNumberCurrent());
+                if (newSkip < 0) {
+                    newSkip = 0;
+                }
+            }
+            skipFrameRenderingNumberCurrent = Math.round(skipFrameRenderingLPFilter.filter(newSkip, (int) System.currentTimeMillis() * 1000));
+//            if (oldSkip != skipFrameRenderingNumberCurrent) {
+//                log.info("now skipping rendering " + skipFrameRenderingNumberCurrent + " packets");
+//            }
+        }
+    
+        /**
+     * @return the skipFrameRenderingNumberMax
+     */
+    public int getSkipFrameRenderingNumberMax() {
+        return skipFrameRenderingNumberMax;
+    }
+
+    /**
+     * @return the skipFramesCounter
+     */
+    public int getSkipPacketsRenderingCount() {
+        return skipFramesCounter;
+    }
+
+    /**
+     * @param skipPacketsRenderingCount the skipFramesCounter to set
+     */
+    public void setSkipPacketsRenderingCount(int skipPacketsRenderingCount) {
+        this.skipFramesCounter = skipPacketsRenderingCount;
+    }
+
+    /**
+     * @return the skipFrameRenderingNumberCurrent
+     */
+    public int getSkipFrameRenderingNumberCurrent() {
+        return skipFrameRenderingNumberCurrent;
+    }
+
+    /**
+     * @param skipFrameRenderingNumberMax the skipFrameRenderingNumberMax to set
+     */
+    public void setSkipFrameRenderingNumberMax(int skipFrameRenderingNumberMax) {
+        this.skipFrameRenderingNumberMax = skipFrameRenderingNumberMax;
+        prefs.putInt("skipPacketsRenderingNumberMax",skipFrameRenderingNumberMax);
+    }
+
+
+
 }

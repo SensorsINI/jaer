@@ -69,6 +69,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import javax.swing.JFrame;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.ChipCanvas;
@@ -107,11 +108,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private SavedModelBundle tfSavedModelBundle = null;
     private Graph tfExecutionGraph = null;
     private Session tfSession = null;
-    private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 1024);
+    @Preferred private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 1024);
     private int tfNumInBatchSoFar = 0;
     private FloatBuffer tfInputFloatBuffer = null;
     private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
-    protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
+    @Preferred protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
     protected float timeWindowS = getFloat("timeWindowS", .1f);
 
     // plotting TI patches and stats

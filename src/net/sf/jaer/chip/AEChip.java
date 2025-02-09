@@ -74,9 +74,12 @@ public class AEChip extends Chip2D {
     protected AEViewer aeViewer = null;
     private boolean subSamplingEnabled = getPrefs().getBoolean("AEChip.subSamplingEnabled", false);
     private Class<? extends BasicEvent> eventClass = BasicEvent.class;
-    /** Full scale value for rendering events; chips can override to provide finer or coarser scale */
-    private int fullScaleForEventAccumulationRendering=32;
-    
+    /**
+     * Full scale value for rendering events; chips can override to provide
+     * finer or coarser scale
+     */
+    private int fullScaleForEventAccumulationRendering = 32;
+
     /**
      * List of default EventFilter2D filters
      */
@@ -187,12 +190,12 @@ public class AEChip extends Chip2D {
         if (getRemoteControl() != null) {
             getRemoteControl().close();
         }
-        if(getFilterChain()!=null){
-            for(EventFilter f:getFilterChain()){
-                try{
+        if (getFilterChain() != null) {
+            for (EventFilter f : getFilterChain()) {
+                try {
                     f.cleanup();
-                }catch(Exception e){
-                    log.warning(String.format("cleanup %s: caught %s",f,e.toString()));
+                } catch (Exception e) {
+                    log.warning(String.format("cleanup %s: caught %s", f, e.toString()));
                 }
             }
         }
@@ -458,15 +461,16 @@ public class AEChip extends Chip2D {
      * file opening, to allow canceling it
      * @return the stream
      * @throws IOException on any IO exception
-     * @throws java.lang.InterruptedException if the operation is interrupted by user using the ProgressMonitor cancel button
+     * @throws java.lang.InterruptedException if the operation is interrupted by
+     * user using the ProgressMonitor cancel button
      */
     public AEFileInputStreamInterface constuctFileInputStream(File file, ProgressMonitor progressMonitor) throws IOException, InterruptedException {
         // usually called from EDT.. makes it tricky to update any progress GUI
-        if (FilenameUtils.isExtension(file.getName(),TextFileInputStream.FILE_EXTENSION_TXT) 
-                ||FilenameUtils.isExtension(file.getName(),TextFileInputStream.FILE_EXTENSION_CSV) ) {
+        if (FilenameUtils.isExtension(file.getName(), TextFileInputStream.FILE_EXTENSION_TXT)
+                || FilenameUtils.isExtension(file.getName(), TextFileInputStream.FILE_EXTENSION_CSV)) {
             // for text file, since counting events is slow, show progress dialog and let user cancel it
             try {
-                log.info(String.format("Opening file %s as a text CSV file",file));
+                log.info(String.format("Opening file %s as a text CSV file", file));
                 aeInputStream = new TextFileInputStream(file, this, progressMonitor);
             } catch (IOException ex) {
                 log.warning(ex.toString());
@@ -482,11 +486,10 @@ public class AEChip extends Chip2D {
             }
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT2.substring(1))
-                || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))
-                ) {
+                || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {
             aeInputStream = new AEFileInputStream(file, this);
-        }else{
-            throw new FileNotFoundException("file "+file+" file type is not known; .dat, .aedat, .aedat2, or .bag files are currently supported");
+        } else {
+            throw new FileNotFoundException("file " + file + " file type is not known; .dat, .aedat, .aedat2, or .bag files are currently supported");
         }
         return aeInputStream;
     }
@@ -494,7 +497,8 @@ public class AEChip extends Chip2D {
     /**
      * This method writes additional header lines to a newly created
      * AEFileOutputStream that logs data from this AEChip. The default
-     * implementation writes the AEChip class name and the particular AEChip hardware settings.
+     * implementation writes the AEChip class name and the particular AEChip
+     * hardware settings.
      *
      * @param os the AEFileOutputStream that is being written to
      * @see AEFileOutputStream#writeHeaderLine(java.lang.String)
@@ -502,18 +506,15 @@ public class AEChip extends Chip2D {
      */
     public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
         log.info("writing preferences for " + this.toString());
-        long start=System.currentTimeMillis();
+        long start = System.currentTimeMillis();
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
         os.writeHeaderLine("Start of Preferences for this AEChip (search for \"End of Preferences\" to find end of this block)"); // write header to AE data file for prefs
         // write only the hardware preferences for this particular device, which is mixed with all other devices in same package in Java Preferences.
         /// therefore just filter and save the keya
-        String header=prefsHeader()+".";
-        final String[] keys=getPrefs().keys();
-        final Preferences p=getPrefs();
-        for(String k:keys){
-            if(k.startsWith(header)){
-                os.writeHeaderLine(String.format("<entry key=\"%s\" value=\"%s\"/>",k,p.get(k, null)));
-            }
+        final String[] keys = getPrefs().keys();
+        final Preferences p = getPrefs();
+        for (String k : keys) {
+            os.writeHeaderLine(String.format("<entry key=\"%s\" value=\"%s\"/>", k, p.get(k, null)));
         }
         // code below was extremely slow, e.g. 2.5 seconds to write the header
 //        ByteArrayOutputStream bos = new ByteArrayOutputStream(500000);  // bos to hold preferences XML as byte array, tobi sized prefs as 186kB of text and about 2200 lines for set of preferences at INI
@@ -536,7 +537,7 @@ public class AEChip extends Chip2D {
 //        os.write(bos2.toByteArray()); // write out entire reformatted prefs header
         os.writeHeaderLine("End of Preferences for this AEChip"); // write end of prefs header
 //        os.flush();  // shouldn't need to flush here
-        log.info("done writing preferences to " + os + " after " + (System.currentTimeMillis()-start)+ " ms");
+        log.info("done writing preferences to " + os + " after " + (System.currentTimeMillis() - start) + " ms");
 
     }
 
@@ -561,7 +562,8 @@ public class AEChip extends Chip2D {
     }
 
     /**
-     * @param fullScaleForEventAccumulationRendering the fullScaleForEventAccumulationRendering to set
+     * @param fullScaleForEventAccumulationRendering the
+     * fullScaleForEventAccumulationRendering to set
      */
     public void setFullScaleForEventAccumulationRendering(int fullScaleForEventAccumulationRendering) {
         this.fullScaleForEventAccumulationRendering = fullScaleForEventAccumulationRendering;

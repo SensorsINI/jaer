@@ -58,6 +58,15 @@ public abstract class AbstractAEPlayer {
     public final MarkInAction markInAction = new MarkInAction();
     public final MarkOutAction markOutAction = new MarkOutAction();
     public final ClearMarksAction clearMarksAction = new ClearMarksAction();
+    /**
+     * Flog for all pause/resume state.
+     */
+    volatile protected boolean paused = false; // multiple threads will access
+
+    /**
+     * Whether playback repeats after mark out or EOF is reached
+     */
+    volatile protected boolean repeat = false; // preference set later
 
     /**
      * PropertyChangeEvent.
@@ -78,6 +87,8 @@ public abstract class AbstractAEPlayer {
         }
         this.viewer = viewer;
         support.addPropertyChangeListener(viewer);
+        repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
+        jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 100);
     }
 
     protected PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -119,15 +130,6 @@ public abstract class AbstractAEPlayer {
         this.support.removePropertyChangeListener(listener);
     }
 
-    /**
-     * Flog for all pause/resume state.
-     */
-    volatile protected boolean paused = false; // multiple threads will access
-
-    /**
-     * Whether playback repeats after mark out or EOF is reached
-     */
-    volatile protected boolean repeat = viewer.prefs.getBoolean("AbstractAEPlayer.repeat", true); // multiple threads will access
 
     public abstract void setFractionalPosition(float fracPos);
 
@@ -166,7 +168,7 @@ public abstract class AbstractAEPlayer {
     protected PlaybackDirection playbackDirection = PlaybackDirection.Forward;
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
-    protected int jogPacketCount = viewer.prefs.getInt("AbstractAEPlayer.jogPacketCount", 20);
+    protected int jogPacketCount = 20;
     protected int jogPacketsLeft = 0;
     protected boolean jogOccuring = false;
 

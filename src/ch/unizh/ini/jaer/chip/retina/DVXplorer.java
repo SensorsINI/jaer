@@ -676,6 +676,10 @@ public class DVXplorer extends AETemporalConstastRetina {
     }
     
     public int spiConfigReceive(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr) {
+        if(fx3==null){
+            log.warning("null DVXplorerFX3HardwareInterface");
+            return -1;
+        }
         try {
             final int ret = fx3.spiConfigReceive(moduleAddr, paramAddr);
             return ret;
@@ -687,6 +691,10 @@ public class DVXplorer extends AETemporalConstastRetina {
     }
     
     public boolean spiConfigSend(DVXplorerFX3HardwareInterface fx3, final short moduleAddr, final short paramAddr, int param) {
+        if(fx3==null){
+            log.warning("null DVXplorerFX3HardwareInterface");
+            return false;
+        }
         try {
             fx3.spiConfigSend(moduleAddr, paramAddr, param);
             return true;
@@ -921,7 +929,7 @@ public class DVXplorer extends AETemporalConstastRetina {
     
     final public class ToggleIMU extends DVXMenuAction {
         
-        public boolean isImuEnabled = true;
+        public boolean isImuEnabled = getPrefs().getBoolean("isImuEnabled", false);
 
         public ToggleIMU() {
             super("Toggle IMU",
@@ -939,6 +947,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
         
         public void setImuEnabled(boolean yes) {
+            getPrefs().putBoolean("isImuEnabled", yes);
             int param = yes? 1: 0;
             spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_ACCELEROMETER, param);
             spiConfigSendAndCheck(fx3, DVX_IMU, DVX_IMU_RUN_GYROSCOPE, param);
@@ -948,7 +957,7 @@ public class DVXplorer extends AETemporalConstastRetina {
     
     final public class ToggleEventsAction extends DVXMenuAction {
         
-        public boolean isEventsEnabled = true;
+        public boolean isEventsEnabled = getPrefs().getBoolean("isEventsEnabled", true);
         
         public ToggleEventsAction() {
             super("ToggleEvents", "Toggle DAVIS event capture and display", "ToggleEvents");
@@ -966,6 +975,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         }
         
         public void setCaptureEvents(boolean yes) {
+            getPrefs().putBoolean("isEventsEnabled", yes);
             int param = yes? 1: 0;
             spiConfigSendAndCheck(fx3, DVX_DVS, DVX_DVS_RUN, param);
         }
@@ -985,7 +995,7 @@ public class DVXplorer extends AETemporalConstastRetina {
         
         public DVXDisplayMethod(final DVXplorer chip) {
             super(chip.getCanvas());
-            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 70));
+            getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 10));
         }
         
         @Override

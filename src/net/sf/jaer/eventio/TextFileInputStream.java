@@ -90,10 +90,11 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
 
     /* length of input file in bytes */
     private long fileLength = 0;
+
     /**
      * Preferences to hold state over runs
      */
-    private Preferences prefs = Preferences.userNodeForPackage(this.getClass());
+    private Preferences prefs;
 
     /**
      * Stores the canonical (unique) file path as the key and an array of 2
@@ -103,13 +104,13 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     private final static int PREV_FILE_LENGTH_INDEX = 0, PREV_NUM_EVENTS_INDEX = 1;
 
     // preference items
-    protected boolean useCSV = prefs.getBoolean("useCSV", false);
-    protected boolean useUsTimestamps = prefs.getBoolean("useUsTimestamps", false);
-    protected boolean useSignedPolarity = prefs.getBoolean("useSignedPolarity", false);
-    protected boolean timestampLast = prefs.getBoolean("timestampLast", false);
-    private boolean specialEvents = prefs.getBoolean("specialEvents", false);
-    private boolean readTimestampsAsLongAndSubtractFirst = prefs.getBoolean("readTimestampsAsLongAndSubtractFirst", false);
-    protected boolean nonMonotonicTimestampsChecked = prefs.getBoolean("nonMonotonicTimestampsChecked", true);
+    protected boolean useCSV;
+    protected boolean useUsTimestamps;
+    protected boolean useSignedPolarity;
+    protected boolean timestampLast;
+    private boolean specialEvents;
+    private boolean readTimestampsAsLongAndSubtractFirst;
+    protected boolean nonMonotonicTimestampsChecked;
 
     private BufferedRandomAccessFile reader = null;
 
@@ -169,9 +170,9 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     protected boolean checkNonMonotonicTimestamps = prefs.getBoolean("checkNonMonotonicTimestamps", true);
     private boolean openFileAndRecordAedat = false;
 
-    protected boolean flipPolarity = prefs.getBoolean("flipPolarity", false);
-    private boolean flipX = prefs.getBoolean("flipX", false);
-    private boolean flipY = prefs.getBoolean("flipY", false);
+    protected boolean flipPolarity;
+    private boolean flipX;
+    private boolean flipY;
 
     final int SPECIAL_COL = 4; // location of special flag (0 normal, 1 special) 
 
@@ -197,6 +198,19 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
      */
     public TextFileInputStream(File f, AEChip chip, ProgressMonitor progressMonitor) throws IOException {
         super(new FileInputStream(f));
+        prefs = chip.getPrefs();
+        // preference items
+        useCSV = prefs.getBoolean("useCSV", false);
+        useUsTimestamps = prefs.getBoolean("useUsTimestamps", false);
+        useSignedPolarity = prefs.getBoolean("useSignedPolarity", false);
+        timestampLast = prefs.getBoolean("timestampLast", false);
+        specialEvents = prefs.getBoolean("specialEvents", false);
+        readTimestampsAsLongAndSubtractFirst = prefs.getBoolean("readTimestampsAsLongAndSubtractFirst", false);
+        nonMonotonicTimestampsChecked = prefs.getBoolean("nonMonotonicTimestampsChecked", true);
+        flipPolarity = prefs.getBoolean("flipPolarity", false);
+        flipX = prefs.getBoolean("flipX", false);
+        flipY = prefs.getBoolean("flipY", false);
+
         if (chip == null) {
             throw new NullPointerException("null AEchip, need it to construct the raw output events");
         }
@@ -314,7 +328,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
             throw new IOException(String.format("%s at event %,d; lastLineNumber=%,d, lastLineRead=%s", e.toString(), position(), lastLineNumber, lastLineRead));
         }
         try {
-            if (line.charAt(line.length()-1)=='\r') { // tobi work around bug in BufferedRandomAccessFile that can end line with \r at end of buffer
+            if (line.charAt(line.length() - 1) == '\r') { // tobi work around bug in BufferedRandomAccessFile that can end line with \r at end of buffer
                 line = line.substring(0, line.length() - 1);
             }
             String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space

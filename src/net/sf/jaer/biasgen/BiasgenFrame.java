@@ -21,12 +21,8 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
-import javax.swing.JMenu;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import javax.swing.event.MenuEvent;
-import javax.swing.event.MenuListener;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.CannotRedoException;
@@ -35,6 +31,7 @@ import javax.swing.undo.UndoManager;
 import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.chip.Chip;
+import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
@@ -53,7 +50,7 @@ import net.sf.jaer.util.XMLFileFilter;
  */
 public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditListener {
 
-    static Preferences prefs = Preferences.userNodeForPackage(BiasgenFrame.class);
+    static Preferences prefs;
     static Logger log = Logger.getLogger("net.sf.jaer");
     private Biasgen biasgen;
     JPanel biasgenPanel = null;
@@ -65,7 +62,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     File currentFile = null;
     private boolean fileModified = false;
     Chip chip;
-    private boolean viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
+    private boolean viewFunctionalBiasesEnabled;
     private String defaultFolder = ""; // "/biasgenSettings is appended in importPreferencesDialog
 
     /**
@@ -74,6 +71,8 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
      * @param chip a chip with a biasgen
      */
     public BiasgenFrame(Chip chip) {
+        prefs = chip.getPrefs();
+        viewFunctionalBiasesEnabled = prefs.getBoolean("BiasgenFrame.viewFunctionalBiasesEnabled", false);
         if (chip.getBiasgen() == null) {
             throw new RuntimeException("null biasgen while constructing BiasgenFrame");
         }
@@ -92,32 +91,32 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         fixUndoRedo();
         buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar
-        JMenu viewBiasOptionsMenu = PotGUIControl.viewMenu; // TODO assumes POTGUIControl is only type of control, not true anymore
-        mainMenuBar.add(viewBiasOptionsMenu, 2);
-        viewBiasOptionsMenu.addMenuListener(new MenuListener() {
-
-            @Override
-            public void menuDeselected(MenuEvent e) {
-                SwingUtilities.invokeLater(new Thread() {
-
-                    @Override
-                    public void run() {
-                        //                        System.out.println("repack frame");
-                        pack();
-                    }
-                });
-            }
-
-            @Override
-            public void menuSelected(MenuEvent e) {
-                //                System.out.println("view menu selected");
-            }
-
-            @Override
-            public void menuCanceled(MenuEvent e) {
-                //                System.out.println("view menu canceled");
-            }
-        });
+//        JMenu viewBiasOptionsMenu = PotGUIControl.viewMenu; // TODO assumes POTGUIControl is only type of control, not true anymore
+//        mainMenuBar.add(viewBiasOptionsMenu, 2);
+//        viewBiasOptionsMenu.addMenuListener(new MenuListener() {
+//
+//            @Override
+//            public void menuDeselected(MenuEvent e) {
+//                SwingUtilities.invokeLater(new Thread() {
+//
+//                    @Override
+//                    public void run() {
+//                        //                        System.out.println("repack frame");
+//                        pack();
+//                    }
+//                });
+//            }
+//
+//            @Override
+//            public void menuSelected(MenuEvent e) {
+//                //                System.out.println("view menu selected");
+//            }
+//
+//            @Override
+//            public void menuCanceled(MenuEvent e) {
+//                //                System.out.println("view menu canceled");
+//            }
+//        });
         defaultFolder = System.getProperty("user.dir");
         try {
             File f = new File(defaultFolder + File.separator + "biasgenSettings");
@@ -211,7 +210,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
     void undo() {
         try {
-            //            System.out.println("biasgenFrame undo");
             undoManager.undo();
         } catch (CannotUndoException e) {
             Toolkit.getDefaultToolkit().beep();
@@ -275,6 +273,13 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         setCurrentFile(f);
         setFileModified(false);
         recentFiles.addFile(f);
+        PreferencesMover.OldPrefsCheckResult result=PreferencesMover.hasOldChipPreferences(chip);
+        if (result.hasOldPrefs()) {
+            log.warning(result.message());
+            PreferencesMover.migratePreferencesDialog(this,chip,true,false,result.message());
+        }else{
+            log.fine(result.message());
+        }
     }
 
     private void exportPreferencesToFile(File f) throws Exception {
@@ -885,10 +890,10 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
     @Override
     public void dispose() {
-        MenuListener[] listeners = PotGUIControl.viewMenu.getMenuListeners();
-        for (MenuListener listener : listeners) {
-            PotGUIControl.viewMenu.removeMenuListener(listener);
-        }
+//        MenuListener[] listeners = PotGUIControl.viewMenu.getMenuListeners();
+//        for (MenuListener listener : listeners) {
+////            PotGUIControl.viewMenu.removeMenuListener(listener);
+//        }
         super.dispose();
     }
 

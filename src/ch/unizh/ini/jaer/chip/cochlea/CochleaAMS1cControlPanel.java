@@ -53,7 +53,7 @@ import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
  */
 public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implements Observer {
 
-    Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1cControlPanel.class);
+    Preferences prefs;
     Logger log = Logger.getLogger("net.sf.jaer");
     CochleaAMS1c chip;
     private CochleaAMS1c.Biasgen biasgen;
@@ -69,6 +69,7 @@ public final class CochleaAMS1cControlPanel extends javax.swing.JPanel implement
      */
     public CochleaAMS1cControlPanel(CochleaAMS1c chip) {
         this.chip = chip;
+        prefs=chip.getPrefs();
         biasgen = (CochleaAMS1c.Biasgen) chip.getBiasgen();
         scanner = biasgen.getScanner();
         adcProxy = biasgen.getAdcProxy();
@@ -1710,56 +1711,4 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
     private javax.swing.JButton unkillalllpfbut;
     private org.jdesktop.beansbinding.BindingGroup bindingGroup;
     // End of variables declaration//GEN-END:variables
-//         UndoableEditSupport editSupport = new UndoableEditSupport();
-//    StateEdit edit = null;
-//
-//    void startEdit(){
-////        System.out.println("ipot start edit "+pot);
-//        edit=new MyStateEdit(this, "configuration change");
-//        oldPotValue=pot.getBitValue();
-//    }
-//    
-//    void endEdit(){
-//        if(oldPotValue==pot.getBitValue()){
-////            System.out.println("no edit, because no change in "+pot);
-//            return;
-//        }
-////        System.out.println("ipot endEdit "+pot);
-//        if(edit!=null) edit.end();
-////        System.out.println("ipot "+pot+" postEdit");
-//        editSupport.postEdit(edit);
-//    }
-//    
-//    String STATE_KEY="pot state";
-//    
-//    public void restoreState(Hashtable<?,?> hashtable) {
-////        System.out.println("restore state");
-//        if(hashtable==null) throw new RuntimeException("null hashtable");
-//        if(hashtable.isSet(STATE_KEY)==null) {
-////            System.err.println("pot "+pot+" not in hashtable "+hashtable+" with size="+hashtable.size());
-////            Set s=hashtable.entrySet();
-////            System.out.println("hashtable entries");
-////            for(Iterator i=s.iterator();i.hasNext();){
-////                Map.Entry me=(Map.Entry)i.next();
-////                System.out.println(me);
-////            }
-//            return;
-//        }
-//        int integerConfig=(Integer)hashtable.isSet(STATE_KEY);
-//        pot.setBitValue(integerConfig);
-//    }
-//    
-//    public void storeState(Hashtable<Object, Object> hashtable) {
-////        System.out.println(" storeState "+pot);
-//        hashtable.put(STATE_KEY, new Integer(pot.getBitValue()));
-//    }
-//    
-//    class MyStateEdit extends StateEdit{
-//        public MyStateEdit(StateEditable o, String s){
-//            super(o,s);
-//        }
-//        protected void removeRedundantState(){}; // override this to actually isSet a state stored!!
-//    }
-
- 
 }

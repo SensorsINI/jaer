@@ -45,9 +45,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @Description("Tracks multiple moving compact (not linear) objects")
 public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnotater {
 
-	//    private static Preferences prefs=Preferences.userNodeForPackage(RectangularClusterTracker.class);
-	//    PreferencesEditor editor;
-	//    JFrame preferencesFrame;
 	private java.util.List<Cluster> clusters = new LinkedList<Cluster>();
 	protected AEChip chip;
 	private AEChipRenderer renderer;

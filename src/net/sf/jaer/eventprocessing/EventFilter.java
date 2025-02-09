@@ -22,17 +22,26 @@ import javax.swing.SwingUtilities;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLException;
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.beans.PropertyDescriptor;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.Serializable;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
-import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
@@ -89,6 +98,74 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @see setEnclosed
      */
     private Preferences prefs = null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
+    
+    /** If true, FilterPanel does not show un-enabled enclosed filters */
+    protected boolean hideNonEnabledEnclosedFilters=false;
+
+    /** Record of a property preferences information. 
+     * The key is the short name, e.g. "dt", the class is type of property. Class is the property type.
+     * The value is
+     * the actual current value in Preferences. defaultValue is the default value of property.
+     */
+    public record PrefsKeyClassValueDefault(String key, Class type, Object value, Object defaultValue){};
+    
+    /**
+     * Map of all preference values, filled by getXXX() method calls. Key is
+     * preferences key, value PrefsKeyClassValueDefault.
+     * @see PrefsKeyClassValueDefault
+     */
+    protected HashMap<String, PrefsKeyClassValueDefault> preferencesMap = new HashMap();
+
+    /**
+     * Holds cleared values of properties that have been most recently cleared, for undo support and resetting panel values.
+     * These keys have the preferences header string stripped from them. 
+     * E.g. preference key "SpatioTemporalCorrelationFilter.dt" becomes "dt".
+     */
+    protected HashMap<String, PrefsKeyClassValueDefault> clearedProperties = new HashMap();
+
+    /**
+     * Returns list of non-default preference properties.
+     *
+     * @return a map of non-default value names
+     */
+    public HashMap<String,PrefsKeyClassValueDefault> getNonDefaultProperties() {
+        int count = 0;
+        ArrayList<String> keys = new ArrayList();
+        for (String k : preferencesMap.keySet()) {
+            keys.add(k);
+        }
+        HashMap<String,PrefsKeyClassValueDefault> nonDefaults=new HashMap();
+        for (String k : keys) {
+            if (getPrefs().get(k, null) != null) {
+                count++;
+                nonDefaults.put(k,preferencesMap.get(k));
+            }
+        }
+        return nonDefaults;
+    }
+
+    /**
+     * Clear all stored preferences that have been saved in preferencesMap by
+     * getXXX method calls.
+     * @return a HashMap<String,Object> of the cleared preferences. Can be used to reset the GUI values to the defaults.
+     */
+    public HashMap<String, PrefsKeyClassValueDefault> restoreDefaultPreferences() {
+        log.fine(String.format("Before clearing, cleared preferences had %d entries", clearedProperties.size()));
+        clearedProperties.clear();
+        int count = 0;
+        for (String k : preferencesMap.keySet()) {
+            String v = getPrefs().get(k, null);
+            if (v != null) {
+                String propName=k.substring(prefsKeyHeader().length());
+                PrefsKeyClassValueDefault defaultValue=preferencesMap.get(k);
+                clearedProperties.put(propName, defaultValue);
+                getPrefs().remove(k);
+                count++;
+            }
+        }
+        log.info(String.format("Restored %d preferences to default values", count));
+        return clearedProperties;
+    }
 
     /**
      * Provides change support, e.g. for enabled state. Filters can cause their
@@ -135,6 +212,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Used by filterPacket to say whether to filter events; default false
      */
     protected boolean filterEnabled = false;
+    
+    /** Should controls be visible (true) or collapsed (false) in FilterPanel */
+    protected boolean controlsVisible = false;
+
     /**
      * Flags this EventFilter as "selected" for purposes of control
      */
@@ -189,6 +270,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         } catch (Exception e) {
             log.warning("Constructing prefs for " + this + ": " + e.getMessage() + " cause=" + e.getCause());
         }
+        hideProperty("hideNonEnabledEnclosedFilters");
     }
 
     /**
@@ -204,6 +286,13 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * is called. The AEViewer will also exist before initFilter is called.
      */
     abstract public void initFilter();
+    
+    /** Called by FilterFrame after all EventFilters has been placed into the FilterFrame.
+     * Subclasses can use to override default appearance of properties.
+     */ 
+    public void initGUI(){
+        
+    }
 
     /**
      * Clean up that should run when before filter is finalized, e.g. dispose of
@@ -268,6 +357,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param yes true to show controls, false to collapse them
      */
     public void setControlsVisible(boolean yes) {
+        this.controlsVisible=yes;
         FilterPanel p = getFilterPanel();
         if (p == null) {
             log.warning("FilterPanel for " + this + " is null; cannot set visibilty");
@@ -282,11 +372,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return true if expanded, false if null or collapsed.
      */
     public boolean isControlsVisible() {
-        FilterPanel p = getFilterPanel();
-        if (p == null) {
-            return false;
-        }
-        return p.isControlsVisible();
+        return this.controlsVisible;
     }
 
     /**
@@ -665,7 +751,52 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         return getClass().getSimpleName();
     }
 
-    
+    /**
+     * Export preferences for this EventFilter
+     *
+     * @param file
+     */
+    public void exportPrefs(File file) {
+        try {
+            String suffix = "";
+            if (!file.getName().endsWith(".xml")) {
+                suffix = ".xml";
+            }
+            file = new File(file.getPath() + suffix);
+            // examine prefs for filters
+            //                String path=null;
+            //                for(EventFilter f:filterChain){
+            //                    Preferences p=f.getPrefs();
+            //                    path=p.absolutePath();
+            ////                    System.out.println("filter "+f+" has prefs node name="+p.name()+" and absolute path="+p.absolutePath());
+            //                }
+
+            //                Preferences prefs=Preferences.userNodeForPackage(JAERViewer.class); // exports absolutely everything, which is not so good
+            FileOutputStream fos = new FileOutputStream(file);
+            prefs.exportSubtree(fos);
+            log.info("exported prefs subTree " + prefs.absolutePath() + " to file " + file.getCanonicalPath());
+            fos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Import preferences for this EventFilter from a file
+     *
+     * @param file
+     */
+    public void importPrefs(File file) {
+        try {
+            PreferencesMover.immportPrefs(file);  // we import the tree into *this* preference node, which is not the one exported (which is root node)
+            log.info("imported preferences from " + file.toPath().toString());
+            chip.getFilterFrame().renewContents();
+            JOptionPane.showMessageDialog(chip.getFilterFrame(), String.format("<html>Loaded Preferences from <br>\t%s<br>and reconstructed the entire FilterChain", file.toPath()));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
 
     /**
      * The development status of an EventFilter. An EventFilter can implement
@@ -728,66 +859,105 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * Constructs the prefs node for this EventFilter. It is based on the Chip
      * preferences node if the chip exists, otherwise on the EventFilter class
-     * package. If the filter is enclosed, then the node includes the package of
-     * the enclosing filter class so that enclosed filters take in
-     * individualized preferences depending on where they are enclosed.
+     * package. If the filter is enclosed, then the node is named for the
+     * enclosed filter (this one) as a child of the enclosing filter node.
+     *
+     * This way, filters that are enclosed have individualized preferences
+     * depending on where they are enclosed.
+     *
+     * Example: Info filter encloses TypedEventRateEstimator filter and is a
+     * filter for Davis346Red chip, so we have
+     * jaer/chips/Davis346Red/Info/TypedEventRateEstimator
+     *
      */
     private Preferences constructPrefsNode() {
         Preferences prefs;
         if (chip == null) {
             prefs = Preferences.userNodeForPackage(getClass()); // base on EventFilter.class package
-            log.warning("null chip, basing prefs on EventFilter package");
+            log.warning("null chip, basing prefs on this EventFilter package");
         } else {
             prefs = chip.getPrefs(); // base on chip class
         }
+
+        // At this point, prefs is the chip prefs
         // are we being constructed by the initializer of an enclosing filter?
         // if so, we should set up our preferences node so that we use a preferences node
         // that is unique for the enclosing filter
-        // if we are being constucted inside another filter's init, then after we march
-        // down the stack trace and find ourselves, the next element should be another
-        // filter's init
-
-        // Checks if we are being constucted by another filter's initializer. If so, make a new
+        // if we are being constucted inside another filter's init, make a new
         // prefs node that is derived from the enclosing filter class name.
+        // march down the trace from the root (start of java) 
+        // until we find the first constructor that is an EventFitler (could be ourselves).
+        // then construct a prefs node starting from chip prefs and that root to ourselves.
+        // The prefs node expresses that tree chipprefs/top/next/.../us, all using class simple names to keep it managably short
         StackTraceElement[] trace = Thread.currentThread().getStackTrace();
-        boolean next = false;
-        String enclClassName = null;
-        for (StackTraceElement e : trace) {
-            if (e.getMethodName().contains("<init>")) {
-                if (next) {
-                    enclClassName = e.getClassName();
-                    break;
-                }
-                if (e.getClassName().equals(getClass().getName())) {
-                    next = true;
+        Class enclosingClass = null;
+        Class aeChipClass = null;
+        int aeChipOrEventFilterTraceIdx = -1;
+        // find the constructor of AEChip that made us by marching backwards up on the stack trace
+        for (int i = trace.length - 1; i >= 0; i--) {
+            if (trace[i].getMethodName().equals("<init>")) { // constructor
+                try {
+                    Class c = Class.forName(trace[i].getClassName());
+                    if (c == chip.getClass()) { // we found the place in stack trace that is the AEChip for this filter
+                        aeChipClass = c;
+                        aeChipOrEventFilterTraceIdx = i;
+                        break;
+                    }
+                } catch (ClassNotFoundException e) {
+                    log.severe(e.toString());
                 }
             }
         }
-        //        System.out.println("enclClassName="+enclClassName);
-        try {
-            if (enclClassName != null) {
-                Class enclClass = Class.forName(enclClassName);
-                if (EventFilter.class.isAssignableFrom(enclClass)) {
-                    prefs = getPrefsForEnclosedFilter(prefs, enclClassName);
-                    log.finer("This filter " + this.getClass() + " is enclosed in " + enclClass + " and has new Preferences node=" + prefs);
+        enclosingClass = null;
+        if (aeChipClass == null) { // this happens if we renew the FilterChain for a chip by e.g. changing it by FilterFrame.renewContents()
+            log.fine(String.format("Assuming that prefs starts at the current AEChip prefs node because we could not find constructor AEchip for %s", getClass().getSimpleName()));
+            // no chip constructor, look for first concrete EventFilter
+            for (int i = trace.length - 1; i >= 0; i--) {
+                if (trace[i].getMethodName().equals("<init>")) { // constructor
+                    try {
+                        Class c = Class.forName(trace[i].getClassName());
+                        if (!Modifier.isAbstract(c.getModifiers()) && EventFilter.class.isAssignableFrom(c)) { // we found the top EventFilter
+                            enclosingClass = c;
+                            aeChipOrEventFilterTraceIdx = i;
+                            break;
+                        }
+                    } catch (ClassNotFoundException e) {
+                        log.severe(e.toString());
+                    }
                 }
-            }
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return prefs;
-    }
 
-    /**
-     * If the filter is enclosed, it's prefs node is the enclosing node plus the
-     * enclosing filter class node
-     */
-    private Preferences getPrefsForEnclosedFilter(Preferences prefs, String enclClassName) {
-        final String prefsNodeName = prefs.absolutePath() + "/" + enclClassName.replace(".", "/");
-        //        int clNaInd=enclClassName.lastIndexOf(".");
-        //        enclClassName=enclClassName.substring(clNaInd,enclClassName.length());
-        prefs = Preferences.userRoot().node(prefsNodeName);
-        log.finer(String.format("For enclosed class %s Got prefs node %s; prefs=%s",enclClassName,prefsNodeName,prefs.toString()));
+            }
+        }
+        enclosingClass = null;
+        // now continue up the stack trace until we are at ourselves, adding a node for each concrete EventFilter
+        for (int i = aeChipOrEventFilterTraceIdx; i >= 0; i--) {
+            if (trace[i].getMethodName().equals("<init>")) {  // constructor
+                try {
+                    Class c = Class.forName(trace[i].getClassName());
+                    if (!Modifier.isAbstract(c.getModifiers()) && EventFilter.class.isAssignableFrom(c)) {
+                        if (enclosingClass == null) {
+                            enclosingClass = c; // mark the top EventFilter that made us (maybe ourselves)
+                        }
+                        prefs = prefs.node(c.getSimpleName()); // add a node to this chip's prefs for this event filter, might enclose us or might be us
+                        if (c == this.getClass()) {
+                            break; // stop when we reach ourselves
+                        }
+                    }
+                } catch (ClassNotFoundException e) {
+                    log.severe(e.toString());
+                }
+            }
+        }
+        boolean isEnclosed = enclosingClass != getClass();
+        String chipName = (aeChipClass == null ? "(unknown)" : aeChipClass.getSimpleName());
+        if (isEnclosed) {
+            log.fine(String.format("Chip %s prefs node for %s enclosed in %s is %s", chipName, getClass().getSimpleName(), enclosingClass.getSimpleName(), prefs.absolutePath()));
+        } else {
+            log.fine(String.format("Chip %s prefs node for %s is %s", chipName, getClass().getSimpleName(), prefs.absolutePath()));
+        }
+//        if (PreferencesMover.hasOldChipPreferences(chip)) {
+//            log.warning(String.format("Chip %s has old style preferences", chip.getClass().getSimpleName()));
+//        }
         return prefs;
     }
 
@@ -929,12 +1099,13 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     public Object getObject(String key, Object defObject) {
         try {
             Object o = PrefObj.getObject(getPrefs(), prefsKeyHeader() + key);
+            preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Object.class, o, defObject));
             if (o == null) {
                 return defObject;
             }
             return o;
         } catch (IOException ex) {
-            log.fine(String.format("%s has no stored preference for %s", getShortName(), key));
+            log.finer(String.format("%s has no stored preference for %s", getShortName(), key));
         } catch (BackingStoreException ex) {
             log.warning(String.format("Could not load preference for %s; got %s", key, ex));
         } catch (ClassNotFoundException ex) {
@@ -961,6 +1132,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void putInt(String key, int value) {
         prefs.putInt(prefsKeyHeader() + key, value);
+        log.finer(String.format("Put %s for key %s to Preferences node %s", value, key, prefs.absolutePath()));
     }
 
     /**
@@ -981,6 +1153,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void putDouble(String key, double value) {
         prefs.putDouble(prefsKeyHeader() + key, value);
+        log.finer(String.format("Put %s for key %s to Preferences node %s", value, key, prefs.absolutePath()));
     }
 
     /**
@@ -1016,6 +1189,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void putBoolean(String key, boolean value) {
         prefs.putBoolean(prefsKeyHeader() + key, value);
+        log.finer(String.format("Put %s for key %s to Preferences node %s", value, key, prefs.absolutePath()));
     }
 
     /**
@@ -1026,6 +1200,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void putString(String key, String value) {
         prefs.put(prefsKeyHeader() + key, value);
+        log.finer(String.format("Put %s for key %s to Preferences node %s", value, key, prefs.absolutePath()));
     }
     // </editor-fold>
 
@@ -1038,7 +1213,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return long value
      */
     public long getLong(String key, long def) {
-        return prefs.getLong(prefsKeyHeader() + key, def);
+        final long aLong = prefs.getLong(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Long.TYPE, aLong, def));
+        return aLong;
     }
 
     /**
@@ -1049,7 +1226,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return int value
      */
     public int getInt(String key, int def) {
-        return prefs.getInt(prefsKeyHeader() + key, def);
+        final int aInt = prefs.getInt(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Integer.TYPE, aInt,def));
+        return aInt;
     }
 
     /**
@@ -1060,7 +1239,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return float value
      */
     public float getFloat(String key, float def) {
-        return prefs.getFloat(prefsKeyHeader() + key, def);
+        final float aFloat = prefs.getFloat(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Float.TYPE, aFloat, def));
+        return aFloat;
     }
 
     /**
@@ -1071,7 +1252,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return double value
      */
     public double getDouble(String key, double def) {
-        return prefs.getDouble(prefsKeyHeader() + key, def);
+        final double aDouble = prefs.getDouble(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Double.TYPE, aDouble, def));
+        return aDouble;
     }
 
     /**
@@ -1082,7 +1265,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return byte[] in preferences
      */
     public byte[] getByteArray(String key, byte[] def) {
-        return prefs.getByteArray(prefsKeyHeader() + key, def);
+        final byte[] byteArray = prefs.getByteArray(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, byte[].class, byteArray, def));
+        return byteArray;
     }
 
     /**
@@ -1101,6 +1286,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         for (int i = 0; i < length; i++) {
             outArray[i] = prefs.getFloat(prefsKeyHeader() + key + i, 0.0f);
         }
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, float[].class, outArray, def));
         return outArray;
     }
 
@@ -1112,7 +1298,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return boolean value
      */
     public boolean getBoolean(String key, boolean def) {
-        return prefs.getBoolean(prefsKeyHeader() + key, def);
+        final boolean aBoolean = prefs.getBoolean(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Boolean.TYPE, aBoolean, def));
+        return aBoolean;
     }
 
     /**
@@ -1123,7 +1311,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @return string value
      */
     public String getString(String key, String def) {
-        return prefs.get(prefsKeyHeader() + key, def);
+        final String aString = prefs.get(prefsKeyHeader() + key, def);
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, String.class, aString, def));
+        return aString;
     }
     // </editor-fold>
 
@@ -1349,6 +1539,101 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public boolean isPropertyHidden(String propertyName) {
         return hiddenProperties.contains(propertyName);
+    }
+    
+    /** Hides unselected (un-enabled) enclosed filters in the FilterPanel GUI. Used by NoiseTesterFilter, for example.
+     * 
+     * @param hide true to hide unselected filtes, false to show all.
+     */
+    public void setHideNonEnabledEnclosedFilters(boolean hide){
+        this.hideNonEnabledEnclosedFilters=hide;
+        if(getFilterPanel()!=null){
+            getFilterPanel().rebuildPanel();
+        }
+    }
+    
+    public boolean isHideNonEnabledEnclosedFilters(){
+        return hideNonEnabledEnclosedFilters;
+    }
+
+    public class CopiedProps {
+
+        public Class sourceClass = null;
+        public HashMap<String, Object> properties;
+
+        public CopiedProps(Class sourceClass, HashMap<String, Object> copiedProps) {
+            this.properties = copiedProps;
+            this.sourceClass = sourceClass;
+        }
+
+        public String toString() {
+            return String.format("CopiedProps for %s with %d properties", sourceClass.getSimpleName(), properties.size());
+        }
+
+        public boolean isEmpty() {
+            return properties == null || properties.isEmpty();
+        }
+
+        public int size() {
+            return properties == null ? 0 : properties.size();
+        }
+    }
+
+    public CopiedProps copyProperties() throws IntrospectionException, IllegalAccessException, InvocationTargetException {
+        BeanInfo info = Introspector.getBeanInfo(getClass());
+        PropertyDescriptor[] props = info.getPropertyDescriptors();
+        HashMap<String, Object> copiedProps = new HashMap();
+        for (PropertyDescriptor p : props) {
+            String propName = p.getName();
+            if (excludeProp(propName)) {
+                continue;
+            }
+            if ((p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                Method r = p.getReadMethod();
+                Object value = r.invoke(this);
+                copiedProps.put(propName, value);
+                log.finer(String.format("Copied %s=%s", propName, value));
+            }
+        }
+        log.fine(String.format("copied %d properties", copiedProps.size()));
+        return new CopiedProps(getClass(), copiedProps);
+    }
+
+    public void pasteProperties(CopiedProps copiedProps) throws IntrospectionException, IllegalAccessException, InvocationTargetException, ClassCastException {
+        if (copiedProps == null || copiedProps.sourceClass == null || copiedProps.properties == null || copiedProps.properties.isEmpty()) {
+            log.warning("Nothing to paste");
+            return;
+        }
+        if (copiedProps.sourceClass != this.getClass()) {
+            throw new ClassCastException(String.format("Cannot paste from %s to %s", copiedProps.sourceClass, getClass().toString()));
+        }
+        BeanInfo info = Introspector.getBeanInfo(getClass());
+        PropertyDescriptor[] props = info.getPropertyDescriptors();
+        for (PropertyDescriptor p : props) {
+            String propName = p.getName();
+            if (excludeProp(propName)) {
+                continue;
+            }
+            Object value = copiedProps.properties.get(propName);
+            if (value != null) {
+                if ((p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
+                    Method w = p.getWriteMethod();
+                    w.invoke(this, value);
+                    log.finer(String.format("Pasted %s=%s", propName, value));
+                }
+            }
+        }
+        log.fine(String.format("pasted %d properties", copiedProps.properties.size()));
+    }
+
+    private boolean excludeProp(String propName) {
+        return "chip".equals(propName)
+                || "annotationEnabled".equals(propName)
+                || "filterEnabled".equals(propName)
+                || "prefs".equals(propName)
+                || "enclosedFilter".equals(propName)
+                || "enclosedFilterChain".equals(propName)
+                || "selected".equals(propName);
     }
 
 }

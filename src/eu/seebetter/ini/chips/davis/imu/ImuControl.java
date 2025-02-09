@@ -168,7 +168,7 @@ public class ImuControl extends Observable implements HasPropertyTooltips, Biasg
     }
 
     private String getPreferencesKey() {
-        return davisChip.prefsHeader() + ".";
+        return "";
     }
 
     @Override

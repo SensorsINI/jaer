@@ -66,16 +66,6 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="closeMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="timestampResetBitmaskMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="116"/>
-                <Property name="text" type="java.lang.String" value="dummy, set in constructor"/>
-                <Property name="toolTipText" type="java.lang.String" value="Setting a bitmask here will memorize and subtract timestamps when address  &amp; bitmask != 0"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="timestampResetBitmaskMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator8">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="loggingMenuItem">
@@ -112,6 +102,16 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="logFilteredEventsCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem">
+              <Properties>
+                <Property name="selected" type="boolean" value="true"/>
+                <Property name="text" type="java.lang.String" value="Check for non-monotonic time in input streams"/>
+                <Property name="toolTipText" type="java.lang.String" value="If enabled, nonmonotonic time stamps are checked for in input streams from file or network"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="networkSeparator">
@@ -230,17 +230,17 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="syncEnabledCheckBoxMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator16">
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="timestampResetBitmaskMenuItem">
               <Properties>
-                <Property name="selected" type="boolean" value="true"/>
-                <Property name="text" type="java.lang.String" value="Check for non-monotonic time in input streams"/>
-                <Property name="toolTipText" type="java.lang.String" value="If enabled, nonmonotonic time stamps are checked for in input streams from file or network"/>
+                <Property name="mnemonic" type="int" value="116"/>
+                <Property name="text" type="java.lang.String" value="dummy, set in constructor"/>
+                <Property name="toolTipText" type="java.lang.String" value="Setting a bitmask here will memorize and subtract timestamps when address  &amp; bitmask != 0"/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="timestampResetBitmaskMenuItemActionPerformed"/>
               </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JSeparator" name="jSeparator16">
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="exitSeperator">
             </MenuItem>
@@ -449,7 +449,7 @@
                   <KeyStroke key="Ctrl+EQUALS"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Zoom in"/>
-                <Property name="toolTipText" type="java.lang.String" value="Zooms in around mouse point. Also Ctl+mouse wheel"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms in around mouse point. Also Ctl+mouse wheel. Right click and drag to pan."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomInMenuItemActionPerformed"/>
@@ -461,22 +461,10 @@
                   <KeyStroke key="Ctrl+MINUS"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Zoom out"/>
-                <Property name="toolTipText" type="java.lang.String" value="Zooms out around mouse point. Also Ctl+mouse wheel"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms out around mouse point. Also Ctl+mouse wheel. Right click and drag to pan."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomOutMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="zoomCenterMenuItem">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="END"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Center display here"/>
-                <Property name="toolTipText" type="java.lang.String" value="Centers display on mouse point"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomCenterMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="unzoomMenuItem">
@@ -485,7 +473,7 @@
                   <KeyStroke key="Ctrl+0"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Unzoom"/>
-                <Property name="toolTipText" type="java.lang.String" value="Goes to default display zooming"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Default display zooming, with border (see View/Filtering options/Set border space...). &lt;p&gt; Right click and drag to pan. &lt;p&gt; Ctl+wheel to zoom."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="unzoomMenuItemActionPerformed"/>
@@ -494,7 +482,7 @@
             <Menu class="javax.swing.JMenu" name="graphicsSubMenu">
               <Properties>
                 <Property name="mnemonic" type="int" value="103"/>
-                <Property name="text" type="java.lang.String" value="View/Filtering options"/>
+                <Property name="text" type="java.lang.String" value="View options"/>
               </Properties>
               <SubComponents>
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewActiveRenderingEnabledMenuItem">
@@ -537,15 +525,6 @@
                   <Events>
                     <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="skipPacketsRenderingCheckBoxMenuItemStateChanged"/>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="skipPacketsRenderingCheckBoxMenuItemActionPerformed"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="javax.swing.JMenuItem" name="setJogNCount">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Set jog N..."/>
-                    <Property name="toolTipText" type="java.lang.String" value="Sets the size of jog for keyboard jog"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setJogNCountActionPerformed"/>
                   </Events>
                 </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="setBorderSpaceMenuItem">
@@ -690,6 +669,15 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jogBackwardsMIActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="setJogNCount">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Set jog N..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the size of jog for keyboard jog"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setJogNCountActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator19">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="setMarkInMI">
@@ -737,6 +725,17 @@
             <Property name="toolTipText" type="java.lang.String" value="Specifies which AEChip class is used either for playback or live interfacnig to a device"/>
           </Properties>
           <SubComponents>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator3">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="renewChipMI">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Renew AEChip"/>
+                <Property name="toolTipText" type="java.lang.String" value="Construct new instance of selected AEChip"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="renewChipMIActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="deviceMenuSpparator">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="customizeDevicesMenuItem">

@@ -18,7 +18,7 @@ import net.sf.jaer.graphics.AEViewer;
  * @author tobi
  */
 public class UninitializedBiasesWarningOKCancelDialog extends javax.swing.JDialog {
-    Preferences prefs=Preferences.userNodeForPackage(AEViewer.class);
+    private static Preferences prefs = net.sf.jaer.JaerConstants.PREFS_ROOT;
     /** A return status code - returned if Cancel button has been pressed */
     public static final int RET_CANCEL = 0;
     /** A return status code - returned if OK button has been pressed */

@@ -69,7 +69,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
         // final int n = 3 * nrow * ncol;
         getChipCanvas().checkGLError(gl, glu, "before pixmap");
         // Zoom zoom = chip.getCanvas().getZoom();
-        if (!getChipCanvas().getZoom().isZoomEnabled()) {
+        if (!getChipCanvas().getZoom().isZoomed()) {
             final int wi = drawable.getSurfaceWidth(), hi = drawable.getSurfaceHeight();
             float scale = 1;
             // float ar=(float)hi/wi;

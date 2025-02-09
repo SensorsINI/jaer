@@ -43,7 +43,7 @@ public class SlotcarFrame extends javax.swing.JFrame {
 
     /** Creates new form SlotcarFrame */
     public SlotcarFrame() {
-        track = new SlotcarTrack();
+        track = new SlotcarTrack(null);
         initComponents();
         EditorPanel.setTrack(track);
         pointDragged = -1;

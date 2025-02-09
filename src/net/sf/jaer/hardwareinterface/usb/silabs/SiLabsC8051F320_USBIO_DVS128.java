@@ -43,6 +43,7 @@ import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
 import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
 import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
 import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
+import net.sf.jaer.JaerConstants;
 
 /**
  * USBIO interface to SiLabs C8051F3x based AE monitor and DVS128 chip; used for DVS128_PAER board.
@@ -57,7 +58,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     }
     static Logger log = Logger.getLogger("net.sf.jaer");
     /** Used to store preferences, e.g. the default firmware download file for blank devices */
-    protected static Preferences prefs = Preferences.userNodeForPackage(SiLabsC8051F320_USBIO_DVS128.class);
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
     PnPNotify pnp = null;
     private int interfaceNumber = 0;
     /** driver guid (Globally unique ID, for this USB driver instance. This GUID maps to the windows driver used. */

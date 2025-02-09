@@ -40,6 +40,7 @@ import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -86,7 +87,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     /**
      * Used to store preferences, e.g. buffer sizes and number of buffers.
      */
-    protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX3.class);
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
 
     protected static final Logger log = Logger.getLogger("net.sf.jaer");
     protected AEChip chip;
@@ -809,6 +810,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // System.out.println(String.format("SPI Config sent with modAddr=%d, paramAddr=%d, value=%d.\n", moduleAddr,
         // paramAddr, param));
         sendVendorRequest(CypressFX3.VR_FPGA_CONFIG, moduleAddr, paramAddr, configBytes);
+        getChip().getSupport().firePropertyChange(Chip.EVENT_HARDWARE_CHANGE, false, true);
 //                
 //		int returnedParam = 0;
 //
@@ -943,7 +945,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
     }
 
-    private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", 8192);
+    private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", 65536);
 
     /**
      * sets the buffer size for the aereader thread. optimal size depends on
@@ -1006,7 +1008,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     open();
                 } catch (final HardwareInterfaceException e) {
                     // TODO Auto-generated catch block
-                    e.printStackTrace();
+                    log.warning(e.toString());
                 }
             }
 
@@ -1186,7 +1188,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 System.arraycopy(addresses, realTimeEventCounterStart, realTimeRawPacket.getAddresses(), 0, nevents);
                 System.arraycopy(timestamps, realTimeEventCounterStart, realTimeRawPacket.getTimestamps(), 0, nevents);
             } catch (final IndexOutOfBoundsException e) {
-                e.printStackTrace();
+                log.warning(String.format("Real time filtering, caught %s",e.toString()));
             }
             realTimeEventCounterStart = eventCounter;
             // System.out.println("RealTimeEventCounterStart: " +
@@ -1230,7 +1232,6 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                 getChip().getFilterChain().filterPacket(realTimePacket);
             } catch (final Exception e) {
                 CypressFX3.log.warning(e.toString() + ": disabling all filters");
-                e.printStackTrace();
                 for (final EventFilter f : getChip().getFilterChain()) {
                     f.setFilterEnabled(false);
                 }

@@ -3,7 +3,7 @@
  * and open the template in the editor.
  */
 
-/*
+ /*
  * AePlayerAdvancedControlsPanel.java
  *
  * Created on Aug 3, 2009, 12:34:34 AM
@@ -40,7 +40,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     private final Hashtable<Integer, JLabel> markTable = new Hashtable<Integer, JLabel>(); // lookup from slider position to label, given to slider to draw labels at markers
     private final JLabel markInLabel, markOutLabel;
     private Integer markInPosition = null, markOutPosition = null; // store keys in markTable so we can remove them
-    private JPopupMenu markerPopupMenu=null;
+    private JPopupMenu markerPopupMenu = null;
 
     /**
      * Creates new form AePlayerAdvancedControlsPanel.
@@ -57,7 +57,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         initComponents();
         setAePlayer(viewer.getAePlayer()); // TODO double set needed because aePlayer is needed in initComponents and we still need to do more component binding in setAePlayer
         moreControlsPanel.setVisible(false);
-        markerPopupMenu=new JPopupMenu("Markers");
+        markerPopupMenu = new JPopupMenu("Markers");
         markerPopupMenu.add(aePlayer.markInAction);
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.clearMarksAction);
@@ -65,12 +65,15 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 //        playerSlider.setExtent(100);
         repeatPlaybackButton.setSelected(aePlayer.isRepeat());
     }
-    
-    /** Utility method to find out if the slider is being manipulated, so that event filters and other processing can be 
-     * turned off for better responsiveness.
+
+    /**
+     * Utility method to find out if the slider is being manipulated, so that
+     * event filters and other processing can be turned off for better
+     * responsiveness.
+     *
      * @return true if the slider is currently being manipulated.
      */
-    public boolean isSliderBeingAdjusted(){
+    public boolean isSliderBeingAdjusted() {
         return playerSlider.getValueIsAdjusting();
     }
 
@@ -111,15 +114,29 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                         if (markInPosition != null) {
                             markTable.remove(markInPosition);
                         }
-                        markInPosition = playerSlider.getValue();
-                        markTable.put(markInPosition, markInLabel);
-                        playerSlider.setLabelTable(markTable);
-                        playerSlider.setPaintLabels(true);
+                        if (evt.getSource() instanceof AEPlayer) {
+                            sliderDontProcess = true;
+                            long pos = (long) evt.getNewValue();
+                            playerSlider.setValue(Math.round((float) pos / aePlayer.getAEInputStream().size() * playerSlider.getMaximum()));
+
+                        }
+                        {
+                            markInPosition = playerSlider.getValue();
+                            markTable.put(markInPosition, markInLabel);
+                            playerSlider.setLabelTable(markTable);
+                            playerSlider.setPaintLabels(true);
+                        }
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARK_OUT_SET)) {
                     synchronized (aePlayer) {
                         if (markOutPosition != null) {
                             markTable.remove(markOutPosition);
+                        }
+                         if (evt.getSource() instanceof AEPlayer) {
+                            sliderDontProcess = true;
+                            long pos = (long) evt.getNewValue();
+                            playerSlider.setValue(Math.round((float) pos / aePlayer.getAEInputStream().size() * playerSlider.getMaximum()));
+
                         }
                         markOutPosition = playerSlider.getValue();
                         markTable.put(markOutPosition, markOutLabel);
@@ -140,14 +157,13 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 aePlayer.pausePlayAction.setPlayAction();
             } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_RESUMED)) {
                 aePlayer.pausePlayAction.setPauseAction();
-            }else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_REPEAT)) {
-                repeatPlaybackButton.setSelected((boolean)evt.getNewValue());
+            } else if (evt.getPropertyName().equals(AbstractAEPlayer.EVENT_REPEAT)) {
+                repeatPlaybackButton.setSelected((boolean) evt.getNewValue());
             }
         } catch (Throwable t) {
             log.warning("caught error in player control panel - probably another thread is modifying the text field at the same time: " + t.toString());
         }
     }
-        
 
     public JCheckBox getSyncPlaybackCheckBox() {
         return syncPlaybackCheckBox;
@@ -658,7 +674,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                 aeViewer.aePlayer.setFractionalPosition(fracPos); // sets position in events
                 int time = aeViewer.aePlayer.getAEInputStream().getMostRecentTimestamp();
                 aeViewer.aePlayer.getAEInputStream().setCurrentStartTimestamp(time); // tobi commented out to support RosbagFileInputStream
-                String s=String.format("%8.3f s, %10d position",time*1e-6f,aeViewer.aePlayer.getAEInputStream().position());
+                String s = String.format("%8.3f s, %10d position", time * 1e-6f, aeViewer.aePlayer.getAEInputStream().position());
                 aeViewer.setStatusMessage(s);
 //                log.info("slider position "+s);
                 //                log.info(this+" slider set time to "+time);
@@ -691,12 +707,12 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
             }
-            boolean wasPaused=aeViewer.getJaerViewer().getSyncPlayer().isPaused();
+            boolean wasPaused = aeViewer.getJaerViewer().getSyncPlayer().isPaused();
             aeViewer.getJaerViewer().getSyncPlayer().doSingleStep();
             aeViewer.getJaerViewer().getSyncPlayer().setPaused(wasPaused);
             // inform all listeners on the players that they have been repositioned
             for (AEViewer v : aeViewer.getJaerViewer().getViewers()) {
-                if(v.getAePlayer()!=null && v.getAePlayer().getAEInputStream()!=null){
+                if (v.getAePlayer() != null && v.getAePlayer().getAEInputStream() != null) {
                     v.getAePlayer().getSupport().firePropertyChange(AEInputStream.EVENT_REPOSITIONED, null, v.getAePlayer().getAEInputStream().position());
                 }
             }

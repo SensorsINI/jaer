@@ -18,13 +18,11 @@
  */
 package net.sf.jaer;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.logging.Logger;
-import javax.swing.JOptionPane;
-import static net.sf.jaer.graphics.AEViewerAboutDialog.VERSION_FILE;
+import java.util.prefs.Preferences;
 import org.apache.commons.io.IOUtils;
 
 /**
@@ -35,7 +33,14 @@ import org.apache.commons.io.IOUtils;
  */
 public class JaerConstants {
     private static final Logger log=Logger.getLogger(JaerConstants.class.getName());
-            
+    
+    /** Root of jaer preferences */
+    public static final String PREFS_ROOT_NAME="jaer";
+    public static final Preferences PREFS_ROOT=Preferences.userRoot().node(PREFS_ROOT_NAME);
+    /** Used for devices, retinas, cochleas */
+    public static final Preferences PREFS_ROOT_CHIPS=Preferences.userRoot().node(PREFS_ROOT_NAME).node("chips");
+    /** Used for things like USB interfaces that might not (yet) be attached to specific chips */
+    public static final Preferences PREFS_ROOT_HARDWARE=Preferences.userRoot().node(PREFS_ROOT_NAME).node("hardware");
     public static final String ICON_IMAGE="/net/sf/jaer/images/jaer-icon.png";
     public static final String ICON_IMAGE_MAIN="/net/sf/jaer/images/jaer-main.png";
     public static final String ICON_IMAGE_HARDWARE="/net/sf/jaer/images/jaer-hardware.png";

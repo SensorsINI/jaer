@@ -217,7 +217,7 @@ public class TowerOnChip6BitVDAC extends AddressedIPot {
 	 */
 	@Override
 	protected String prefsKey() {
-		return chip.prefsHeader() + ".VDACBias." + name;
+		return "VDACBias." + name;
 	}
 
 	static String KEY_VDAC_VALUE = "VdacBitValue", KEY_BUFFER_VALUE = "BufBitValue";

@@ -394,7 +394,14 @@ public class DavisColorRenderer extends DavisRenderer {
         final float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
 
+        if (!e.isStartOfFrame() && skipApsEvent()) { 
+            // we currently skip all APS events until the next start of frame that we should render
+            return;
+        }
         if (e.isStartOfFrame()) {
+            if (skipFrame()) {
+                return;
+            }
             startFrame(e.timestamp);
             renderedApsFrame = true;
         } else if ((!isCDavisReadout && e.isResetRead())
@@ -609,7 +616,7 @@ public class DavisColorRenderer extends DavisRenderer {
 
             if (!isMonochrome()) {
                 // Color interpolation support.
-                final int sx=chip.getSizeX(), sy=chip.getSizeY();
+                final int sx = chip.getSizeX(), sy = chip.getSizeY();
                 for (int y = 0; y < sy; y++) {
                     for (int x = 0; x < sx; x++) {
                         // What pixel am I? Get color information and color values on pixel

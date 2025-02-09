@@ -17,7 +17,9 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFrame;
@@ -75,10 +77,10 @@ public class WindowSaver implements AWTEventListener {
      * Creates a new instance of WindowSaver.
      *
      * @param o the object for which to save
-     * @param preferences the user preferences to save to
+     * @param preferences the user preferences to save to, in node "WindowSaver"
      */
     public WindowSaver(Object o, Preferences preferences) {
-        this.preferences = preferences;
+        this.preferences = preferences.node("WindowSaver");
     }
 
     /**
@@ -121,12 +123,16 @@ public class WindowSaver implements AWTEventListener {
         final String name = frame.getTitle().replaceAll(" ", "");
 
         // screen UL corner is 0,0
-        int x = preferences.getInt(name + ".x", 0);
-        int y = preferences.getInt(name + ".y", 0); // UL corner
+        int x = preferences.getInt(name + ".x", 10);
+        int y = preferences.getInt(name + ".y", 10); // UL corner
         int w = preferences.getInt(name + ".w", DEFAULT_WIDTH);
         int h = preferences.getInt(name + ".h", DEFAULT_HEIGHT);
         if (w != DEFAULT_WIDTH | h != DEFAULT_HEIGHT) {
             resize = true;
+        }
+        if(x!=0 || y!=0 || w!=DEFAULT_WIDTH || h!=DEFAULT_HEIGHT){
+            log.info(String.format("found non default window %s preferences x=%d y=%d w=%d h=%d",
+                    name,x,y,w,h));
         }
         Dimension sd = Toolkit.getDefaultToolkit().getScreenSize();
 
@@ -170,8 +176,8 @@ public class WindowSaver implements AWTEventListener {
             log.info("window x origin is <0, moving back to zero");
             x = 0;
         }
-        if (y < lowerInset) {
-            log.info("window y origin is < lowerInset, moving back to " + 0);
+        if (y < 0) {
+            log.info(String.format("window y origin=%d is < 0, moving back to 0",y));
             y = 0;
         }
         if (x + w > sd.width || y + h > sd.height) {
@@ -180,12 +186,12 @@ public class WindowSaver implements AWTEventListener {
             y=0;
         }
         if (h > sd.height - lowerInset) {
-            log.info("window height (" + h + ") is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT (" + (sd.height - WINDOWS_TASK_BAR_HEIGHT) + "), resizing height");
+            log.log(Level.INFO, "window height ({0}) is bigger than screen height minus WINDOWS_TASK_BAR_HEIGHT ({1}), resizing height", new Object[]{h, sd.height - WINDOWS_TASK_BAR_HEIGHT});
             h = sd.height - lowerInset;
             resize = true;
         }
         if (w > sd.width) {
-            log.info("window width (" + w + ") is bigger than screen width (" + (sd.width) + "), resizing height");
+            log.log(Level.INFO, "window width ({0}) is bigger than screen width ({1}), resizing height", new Object[]{w, sd.width});
             w = sd.width;
             resize = true;
         }
@@ -228,28 +234,28 @@ public class WindowSaver implements AWTEventListener {
 //        return Integer.parseInt(v);
 //    }
     /**
-     * Used to explicity save settings. Saves the x,y and width, height settings
+     * Used to explicitly save settings. Saves the x,y and width, height settings
      * of window in preferences.
      */
-    public void saveSettings() throws IOException {
+    public void saveSettings() throws IOException, BackingStoreException {
         StringBuilder sb = new StringBuilder();
-        sb.append("saved " + preferences + " for \n");
+        sb.append("saved window settings for \n");
         Iterator it = framemap.keySet().iterator();
         while (it.hasNext()) {
             String name = (String) it.next();
             JFrame frame = (JFrame) framemap.get(name);
             preferences.putInt(name + ".x", frame.getX());
-            sb.append(name + ".x=" + frame.getX() + " ");
+            sb.append(name + ".x=" + frame.getX() + "\n");
             preferences.putInt(name + ".y", frame.getY());
-            sb.append(name + ".y=" + frame.getY() + " ");
+            sb.append(name + ".y=" + frame.getY() + "\n");
             preferences.putInt(name + ".w", frame.getWidth());
-            sb.append(name + ".w=" + frame.getWidth() + " ");
+            sb.append(name + ".w=" + frame.getWidth() + "\n");
             preferences.putInt(name + ".h", frame.getHeight());
-            sb.append(name + ".h=" + frame.getHeight() + " ");
-            sb.append(" window " + name + "\n");
-
+            sb.append(name + ".h=" + frame.getHeight() + "\n");
+            sb.append("for window " + name);
         }
-//        log.info(sb.toString());
+        preferences.flush();
+        log.info(sb.toString());
     }
 
     /**

@@ -2128,7 +2128,7 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
             getSupport().firePropertyChange("skipProcessingEventsCount", old, this.skipProcessingEventsCount);
         }
         if (adaptiveEventSkippingUpdateCounterLPFilter == null) {
-            adaptiveEventSkippingUpdateCounterLPFilter = new LowpassFilter(chip.getAeViewer().getFrameRater().FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
+            adaptiveEventSkippingUpdateCounterLPFilter = new LowpassFilter(AEViewer.FPS_LOWPASS_FILTER_TIMECONSTANT_MS);
         }
         final float averageFPS = chip.getAeViewer().getFrameRater().getAverageFPS();
         final int frameRate = chip.getAeViewer().getDesiredFrameRate();

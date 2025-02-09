@@ -40,7 +40,7 @@ public class JaerUpdaterInstall4j {
 
     public static final boolean DEBUG = false; // TODO Set true to always run update check; remember to revert false for production version\    private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final Preferences prefs = Preferences.userNodeForPackage(JaerUpdaterInstall4j.class);
+    private static final Preferences prefs = JaerConstants.PREFS_ROOT;
     public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
 
     public enum CheckFreq {

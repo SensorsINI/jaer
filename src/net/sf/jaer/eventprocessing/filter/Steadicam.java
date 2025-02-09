@@ -1228,6 +1228,10 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
      */
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
+
         if (!centerOfRotationSelectionPending) {
             return;
         }
@@ -1241,6 +1245,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (!centerOfRotationSelectionPending) {
             return;
         }

@@ -43,12 +43,14 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     private float distance, deltaTimestamp;
     EngineeringFormat engFmt = new EngineeringFormat();
     private static final float[] START_COLOR = new float[]{0, 1, 0, 1}, END_COLOR = new float[]{1, 0, 0, 1};
+    private int fontSize = getInt("fontSize", 9);
 
     public Speedometer(AEChip chip) {
         super(chip);
         startPoint = getTimepoint("startPoint");
         endPoint = getTimepoint("endPoint");
         computeVelocity();
+        setPropertyTooltip("fontSize", "size of info string font");
     }
 
     @Override
@@ -70,7 +72,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
 
     @Override
     synchronized public void mouseClicked(MouseEvent e) {
-        if (!isSelected()) {
+        if (isDontProcessMouse()) {
             return;
         }
         if (e == null || e.getPoint() == null || getMousePixel(e) == null) {
@@ -149,17 +151,28 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
             gl.glEnd();
 
             String s = String.format("Speedometer: Speed: %s pps (%.0fpix/%ss), dx/dy=%d/%d", engFmt.format(speedPps), distance, engFmt.format(1e-6f * deltaTimestamp), (int) Math.abs(endPoint.x - startPoint.x), (int) Math.abs(endPoint.y - startPoint.y));
-            drawString(drawable, s);
+            float x = (getStartPoint().x + getEndPoint().x) / 2;
+            float y = (float) (Math.min(getEndPoint().y, getStartPoint().y));
+            DrawGL.drawStringDropShadow(fontSize, x, y, .5f, Color.white, s);
+//            drawString(drawable, s);
             gl.glPopMatrix(); // must push pop since drawCursor translates?
         } else if (getStartPoint() != null) {
             String s = String.format("Speedometer: Left click for end point. Time from IN mark: %ss", engFmt.format(1e-6f * (currentTimestamp - getStartPoint().t)));
             gl.glPushMatrix();
+            Point p = getChip().getCanvas().getMousePixel();
+            if (p != null) {
+                gl.glTranslatef(p.x, p.y, 0);
+            }
             drawString(drawable, s);
             gl.glPopMatrix(); // must push pop since drawCursor translates?
 
         } else if (isControlsVisible()) {
             String s = "Speedometer: Left click for start point";
             gl.glPushMatrix();
+            Point p = getChip().getCanvas().getMousePixel();
+            if (p != null) {
+                gl.glTranslatef(p.x, p.y, 0);
+            }
             drawString(drawable, s);
             gl.glPopMatrix(); // must push pop since drawCursor translates?
         } else {
@@ -171,7 +184,7 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
     }
 
     private void drawString(GLAutoDrawable drawable, String s) throws GLException {
-        DrawGL.drawString(24, 0.5f, .2f, .5f, Color.yellow, s);
+        DrawGL.drawStringDropShadow(fontSize, 0.5f, .2f, 0f, Color.white, s);
     }
 
     private void drawCursor(GL2 gl, Point p, float[] color) {
@@ -274,6 +287,20 @@ public class Speedometer extends EventFilter2DMouseAdaptor implements FrameAnnot
         }
         TimePoint t = new TimePoint(getInt(pointName + ".t", 0), getInt(pointName + ".x", 0), getInt(pointName + ".y", 0));
         return t;
+    }
+
+    /**
+     * @return the fontSize
+     */
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    /**
+     * @param fontSize the fontSize to set
+     */
+    public void setFontSize(int fontSize) {
+        this.fontSize = fontSize;
     }
 
 }

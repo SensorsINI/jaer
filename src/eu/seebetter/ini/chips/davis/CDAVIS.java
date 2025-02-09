@@ -37,8 +37,8 @@ public class CDAVIS extends DavisBaseCamera {
     {-0.42f, -1.13f, 2.45f, 0.18f}};
 
     public CDAVIS() {
-        setName("DavisRGBW640");
-        setDefaultPreferencesFile("biasgenSettings/DavisRGBW640/DavisRGBW640test6.xml");
+        setName("CDAVIS");
+        setDefaultPreferencesFile("biasgenSettings/CDAVIS/CDAVIS.xml");
         setSizeX(CDAVIS.WIDTH_PIXELS);
         setSizeY(CDAVIS.HEIGHT_PIXELS);
         setPixelHeightUm(10);

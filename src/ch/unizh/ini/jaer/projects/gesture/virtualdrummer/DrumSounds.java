@@ -10,7 +10,6 @@ import java.util.prefs.Preferences;
  * @author Tobi, Jun
  */
 public class DrumSounds{
-    private static Preferences prefs = Preferences.userNodeForPackage(DrumSounds.class);
     private Logger log = Logger.getLogger("net.sf.jaer");
     final static int NDRUMS = 2;
     final static int LEFT_BEATING = 0;

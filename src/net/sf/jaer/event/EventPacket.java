@@ -551,6 +551,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
          */
         public void reset() {
             cursor = 0;
+            filteredOutCount=0;
 //            usingTimeout = timeLimitTimer==null?false:timeLimitTimer.isEnabled(); // timelimiter only used if timeLimitTimer is enabled
             // but flag to
             // check it it only set on packet reset

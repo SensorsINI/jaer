@@ -5,7 +5,6 @@
  *Copyright September 28, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Date;
@@ -28,14 +27,12 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
-import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 
-import com.jogamp.opengl.util.awt.TextRenderer;
-import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
+import java.awt.Insets;
 import java.awt.geom.Rectangle2D;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -48,6 +45,7 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -71,18 +69,18 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
     private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss.SSS"); // tobi changed to show ms, not standard 10ms
     @Preferred
-    private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
+    private boolean analogClock = getPrefs().getBoolean("analogClock", true);
     @Preferred
-    private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
+    private boolean digitalClock = getPrefs().getBoolean("digitalClock", true);
     private float analogDigitalClockScale = getFloat("analogDigitalClockScale", 1);
-    private boolean date = getPrefs().getBoolean("Info.date", true);
-    private boolean localTime = getPrefs().getBoolean("Info.localTime", true);
-    private boolean ignoreTimeZone = getPrefs().getBoolean("Info.ignoreTimeZone", false);
-    private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
-    private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
+    private boolean date = getPrefs().getBoolean("date", true);
+    private boolean localTime = getPrefs().getBoolean("localTime", true);
+    private boolean ignoreTimeZone = getPrefs().getBoolean("ignoreTimeZone", false);
+    private int timeOffsetMs = getPrefs().getInt("timeOffsetMs", 0);
+    private float timestampScaleFactor = getPrefs().getFloat("timestampScaleFactor", 1);
     @Preferred
-    private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
-    private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
+    private float eventRateScaleMax = getPrefs().getFloat("eventRateScaleMax", 1e5f);
+    private boolean timeScaling = getPrefs().getBoolean("timeScaling", true);
     @Preferred
     private boolean showRateTrace = getBoolean("showRateTrace", true);
     private boolean showFrameRateForConstantCountFrames = getBoolean("showFrameRateForConstantCountFrames", true);
@@ -128,7 +126,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private int nPixels = 0; // to be either total pixels or set by XYTypeFilter ROI
 
     @Preferred
-    private int fontSize = getInt("fontSize", 14);
+    private int fontSize = getInt("fontSize", 8);
 
     public Info(AEChip chip) {
         super(chip);
@@ -607,6 +605,19 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     }
                 }
             }
+        } else if (in.getEventPrototype() instanceof PolarityEvent) {
+            for (BasicEvent be : in) {
+                PolarityEvent e = (PolarityEvent) be;
+                accumulatedDVSEventCount++;
+                if (e.getPolarity() == Polarity.On) {
+                    accumulatedDVSOnEventCount++;
+                } else if (e.getPolarity() == Polarity.Off) {
+                    accumulatedDVSOffEventCount++;
+                }
+                if (measureSparsity) {
+                    sparsityMap[e.x][e.y] = true;
+                }
+            }
         } else {
             accumulatedDVSEventCount += in.getSize();
             if (measureSparsity) {
@@ -767,7 +778,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 } else {
                     dateStr = timeFormat.format(zdt);
                 }
-                DrawGL.drawString(fontSize, radius+2, 0, .5f, Color.white, dateStr);
+                DrawGL.drawString(fontSize, radius + 2, 0, .5f, Color.white, dateStr);
             }
         }
 
@@ -779,10 +790,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         GL2 gl = drawable.getGL().getGL2();
         // positioning of rate bars depends on num types and display size
-        ChipCanvas.Borders borders = chip.getCanvas().getBorders();
+        Insets borders = chip.getCanvas().getBorderInsets();
 
         // get screen width in screen pixels, subtract borders in screen pixels to find width of drawn chip area in screen pixels
-        float /*h = drawable.getHeight(), */ w = drawable.getSurfaceWidth() - (2 * borders.leftRight * chip.getCanvas().getScale());
+        float w = drawable.getSurfaceWidth() - (2 * borders.left * chip.getCanvas().getScale());
         int ntypes = typedEventRateEstimator.getNumCellTypes();
         final int sx = chip.getSizeX(), sy = chip.getSizeY();
         final float yorig = .9f * sy, xpos = 0, ystep = Math.max(.03f * sy, 6), barh = .03f * sy;
@@ -900,7 +911,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setAnalogClock(boolean analogClock) {
         this.analogClock = analogClock;
-        getPrefs().putBoolean("Info.analogClock", analogClock);
+        getPrefs().putBoolean("analogClock", analogClock);
     }
 
     public boolean isDigitalClock() {
@@ -909,7 +920,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setDigitalClock(boolean digitalClock) {
         this.digitalClock = digitalClock;
-        getPrefs().putBoolean("Info.digitalClock", digitalClock);
+        getPrefs().putBoolean("digitalClock", digitalClock);
     }
 
     public boolean isDate() {
@@ -918,7 +929,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setDate(boolean date) {
         this.date = date;
-        getPrefs().putBoolean("Info.date", date);
+        getPrefs().putBoolean("date", date);
     }
 
     public boolean isLocalTime() {
@@ -927,7 +938,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setLocalTime(boolean localTime) {
         this.localTime = localTime;
-        getPrefs().putBoolean("Info.localTime", localTime);
+        getPrefs().putBoolean("localTime", localTime);
     }
 
     public boolean isEventRate() {
@@ -957,7 +968,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setTimeOffsetMs(int timeOffsetMs) {
         this.timeOffsetMs = timeOffsetMs;
-        getPrefs().putInt("Info.timeOffsetMs", timeOffsetMs);
+        getPrefs().putInt("timeOffsetMs", timeOffsetMs);
     }
 
     public float getTimestampScaleFactor() {
@@ -966,7 +977,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setTimestampScaleFactor(float timestampScaleFactor) {
         this.timestampScaleFactor = timestampScaleFactor;
-        getPrefs().putFloat("Info.timestampScaleFactor", timestampScaleFactor);
+        getPrefs().putFloat("timestampScaleFactor", timestampScaleFactor);
     }
 
     /**
@@ -981,7 +992,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setEventRateScaleMax(float eventRateScaleMax) {
         this.eventRateScaleMax = eventRateScaleMax;
-        getPrefs().putFloat("Info.eventRateScaleMax", eventRateScaleMax);
+        getPrefs().putFloat("eventRateScaleMax", eventRateScaleMax);
         maxRateString = engFmt.format(eventRateScaleMax);
     }
 
@@ -997,7 +1008,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setTimeScaling(boolean timeScaling) {
         this.timeScaling = timeScaling;
-        getPrefs().putBoolean("Info.timeScaling", timeScaling);
+        getPrefs().putBoolean("timeScaling", timeScaling);
     }
 
     /**
@@ -1107,7 +1118,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setIgnoreTimeZone(boolean ignoreTimeZone) {
         this.ignoreTimeZone = ignoreTimeZone;
-        putBoolean("Info.ignoreTimeZone", ignoreTimeZone);
+        putBoolean("ignoreTimeZone", ignoreTimeZone);
     }
 
     /**

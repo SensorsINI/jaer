@@ -103,7 +103,7 @@ public final class DrawGL {
      * @param centerY the box origin location x
      * @param width The x length of box
      * @param height the y length of box
-     * @param angle the angle relative to E
+     * @param angle the angle relative to E in degrees
      */
     public static void drawBox(final GL2 gl, final float centerX, final float centerY, final float width, final float height, final float angle) {
 
@@ -144,13 +144,13 @@ public final class DrawGL {
      * @param centerX the cross origin location x
      * @param centerY the cross origin location x
      * @param length The x length of cross
-     * @param angle the angle relative to E in radians
+     * @param angleRad the angle relative to East in radians
      */
-    public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length, final float angle) {
+    public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length, final float angleRad) {
 
         gl.glTranslatef(centerX, centerY, 0);
-        if (angle != 0) {
-            gl.glRotatef(angle * RAD_TO_DEG, 0, 0, 1);
+        if (angleRad != 0) {
+            gl.glRotatef(angleRad * RAD_TO_DEG, 0, 0, 1);
         }
 
         if (crossDisplayListId == 0 || length != 2 * crossLastL) {
@@ -181,15 +181,14 @@ public final class DrawGL {
      * @param centerY
      * @param radiusX
      * @param radiusY
-     * @param angle
+     * @param angleRad in radians
      * @param N number of segments used to draw ellipse
      */
-    public static void drawEllipse(GL2 gl, float centerX, float centerY, float radiusX, float radiusY, float angle, int N) {
-        final float r2d = (float) (180 / Math.PI);
+    public static void drawEllipse(GL2 gl, float centerX, float centerY, float radiusX, float radiusY, float angleRad, int N) {
 
         gl.glTranslatef(centerX, centerY, 0);
-        if (angle != 0) {
-            gl.glRotatef(angle * r2d, 0, 0, 1);
+        if (angleRad != 0) {
+            gl.glRotatef(angleRad, 0, 0, 1);
         }
 
         gl.glBegin(GL.GL_LINE_LOOP);
@@ -243,11 +242,9 @@ public final class DrawGL {
      * usually setup to represent pixels on AEChip. Embedded newlines are not
      * rendered as additional lines.
      * <p>
-     * If the TextRenderer does not exist for DrawGL, it is created. This can
-     * cause problems if it is out of context, so it might be necessary to
-     * create it.
+     * The TextRenderer is created for each string drawn. If the user wants to supply an existing TextRenderer, use the other drawString method
      *
-     * @param fontSize typically 12 to 36
+     * @param fontSize typically 5 to 18, font is Font("SansSerif", Font.PLAIN, fontSize)
      * @param x x position (0 at left)
      * @param y y position (0 at bottom)
      * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
@@ -257,7 +254,7 @@ public final class DrawGL {
      */
     public static Rectangle2D drawString(int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
         float scale = 1;
-        if (fontSize < 12) {
+        if (fontSize < 10) {
             fontSize *= 4;
             scale = .25f;
         }

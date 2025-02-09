@@ -155,6 +155,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         }
         if (!yes && (stats != null)) {
             stats.reset(); // ensure toggling enabled resets the maxBin stat
+            hist.reset();
         }
     }
 
