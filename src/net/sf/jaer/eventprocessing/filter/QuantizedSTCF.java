@@ -74,9 +74,7 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         // code from AbstractNoiseFilter filterPacket()
-        getNegativeEvents().clear();
-        filteredOutEventCount = 0;
-        totalEventCount = 0;
+        resetCountsAndNegativeEvents();
         // end code from super.super
         if (timestampImage == null) {
             allocateMaps(chip);
