@@ -9,7 +9,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.Insets;
@@ -36,8 +35,10 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -52,12 +53,14 @@ import javax.swing.AbstractButton;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.ComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
@@ -70,7 +73,6 @@ import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.StateEdit;
 import javax.swing.undo.StateEditable;
@@ -205,6 +207,20 @@ import net.sf.jaer.util.XMLFileFilter;
  * setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
  * setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
  * </pre>
+ * 
+ * <strong>
+ *Preferred parameters.</strong>
+ * <p>
+ * Mark a field or get or set method with the @Preferred annotation to show the property in bold and enable it to be shown in the Simple view.
+ * Search for usage of @Preferred to see how to use this.
+ * </p>
+ * 
+ * <strong>
+ * Enums and ComboBoxModels.</strong>
+ * <p>
+ * To show ComboBox for either enum or ComboBox model, define get and set methods for them.
+ * See NoiseTesterFilter for how to use a ComboBoxModel for classes.
+ * </p>
  *
  *
  * @author tobi
@@ -845,6 +861,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     } else if ((c != null) && c.isEnum() && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new EnumControl(p.getName(), p, c);
                         myadd(control, name, inherited);
+                    } else if ((c != null) && (c.isAssignableFrom(ComboBoxModel.class)) && (p.getReadMethod() != null) && (p.getWriteMethod() != null) && (p.getReadMethod().getReturnType() == ComboBoxModel.class)) {
+                        control = new ComboBoxControl(p.getName(), p);
+                        myadd(control, name, inherited);
                     } else if ((c != null) && ((c == Point2D.Float.class) || (c == Point2D.Double.class) || (c == Point2D.class)) && (p.getReadMethod() != null) && (p.getWriteMethod() != null)) {
                         control = new Point2DControl(p.getName(), p);
                         myadd(control, name, inherited);
@@ -1148,6 +1167,95 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     } catch (Exception e2) {
                         e2.printStackTrace();
                     }
+                }
+            });
+        }
+
+        @Override
+        void setGuiState(Object o) {
+            control.setSelectedItem(o); // TODO handle string value
+        }
+    }
+
+//    // from https://stackoverflow.com/questions/70105338/is-there-a-way-to-know-if-a-method-return-type-is-a-listinteger
+//    /** Checks if class method returns a JList
+//     * 
+//     * @param m the method
+//     * @return true if return is JList
+//     */
+//    private static boolean returnsJList(Method m) {
+////        Type returnType = m.getGenericReturnType();
+//        return JList.class.isAssignableFrom(m.getReturnType());
+////        if (returnType instanceof ParameterizedType parameterisedReturnType) {
+////            return JList.class.isAssignableFrom(m.getReturnType());
+////                    && parameterisedReturnType.getActualTypeArguments()[0].getTypeName().equals(String.class.getTypeName());
+////        } else {
+////            return false;
+////        }
+//    }
+//
+    /** Used when a filter has a method that returns a ComboBoxModel. 
+     * A ComboBox is constructed that displays the currently-selected item and whose ActiopListener calls setSelectedItem
+     */
+    class ComboBoxControl extends MyControl {
+
+        EventFilter filter;
+        boolean initValue = false, nval;
+        final JComboBox control;
+        final ComboBoxModel model;
+
+        public ComboBoxControl(final String name, final PropertyDescriptor p) throws InvocationTargetException, IllegalAccessException {
+            super(name, p); // set read and write fields to get and set methods
+            model=(ComboBoxModel)read.invoke(getFilter());
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setAlignmentX(LEFT_ALIGNMENT);
+            final JLabel label = new JLabel(name);
+            label.setAlignmentX(LEFT_ALIGNMENT);
+            setFontSizeStyle(label);
+            addTip(getFilter(), label);
+            add(label);
+
+            control = new JComboBox(model) {
+                /**
+                 * Do not fire if set by program.
+                 */
+                protected void fireActionEvent() {
+                    // if the mouse made the selection -> the comboBox has focus
+                    if (this.hasFocus()) {
+                        super.fireActionEvent();
+                    }
+                }
+            };
+            control.setMaximumSize(new Dimension(100, 30));
+            setFontSizeStyle(control);
+
+            add(label);
+            add(control);
+            add(Box.createHorizontalGlue());
+
+            try {
+                Object x = read.invoke(getFilter());  // TODO read returns entire list but state is one selected String from list
+                if (x == null) {
+                    log.warning("null Object returned from read method " + read);
+                    return;
+                }
+                x=((ComboBoxModel)x).getSelectedItem(); // set current state to the selected ComboBoxModel item
+                setCurrentState(x);
+                setGuiState(x);
+            } catch (Exception e) {
+                log.warning("cannot access the field named " + name + " is the class or method not public?");
+                e.printStackTrace();
+            }
+            control.addActionListener(new ActionListener() {
+
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    highlightClearingOthers();
+//                    try {
+//                        setUndoableState(control);
+//                    } catch (Exception e2) {
+//                        e2.printStackTrace();
+//                    }
                 }
             });
         }
