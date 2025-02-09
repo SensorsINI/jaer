@@ -15,3 +15,27 @@ exe*.tmp
 /logs
 /native
 *.jar
+*.xml
+jogl-osx-problem/bad frame.png
+jogl-osx-problem/bugreport folder.png
+jogl-osx-problem/jaer osx.wmv
+jogl-osx-problem/jaer win11.wmv
+jogl-osx-problem/jogamp-fat-02-osx.log
+jogl-osx-problem/jogamp-fat-02-win11.log
+jogl-osx-problem/ok frame.png
+nbproject/build-impl.xml
+nbproject/build-impl.xml~
+nbproject/genfiles.properties
+nbproject/project (LAPTOP-N8228CCU's conflicted copy 2024-12-14).properties
+nbproject/project.properties
+nbproject/project_1.properties
+NoiseTesterFilter.csv
+RectangularClusterTrackerLog_20241219T155839.m
+replay_pid22232.log
+src/net/sf/jaer/eventprocessing/LoggingFilePropertyChangeExampleFilter.java
+src/net/sf/jaer/graphics/DialogTest.java
+sven_goethel/AgreementTemplate-r03F.pdf
+sven_goethel/po 1240165 INI Goethel software.pdf
+sven_goethel/WorkOrder_XY_abcd.pdf
+nbproject/genfiles.properties
+nbproject/build-impl.xml
