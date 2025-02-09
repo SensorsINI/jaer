@@ -2111,6 +2111,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         enableResetControlsHelpPanel.setToolTipText("General controls for this EventFilter");
         enableResetControlsHelpPanel.setAlignmentX(0.0F);
+        enableResetControlsHelpPanel.setMaximumSize(new java.awt.Dimension(150, 17));
         enableResetControlsHelpPanel.setLayout(new javax.swing.BoxLayout(enableResetControlsHelpPanel, javax.swing.BoxLayout.X_AXIS));
 
         enabledCheckBox.setFont(new java.awt.Font("Tahoma", 0, 9)); // NOI18N

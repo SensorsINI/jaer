@@ -31,6 +31,9 @@
           <Properties>
             <Property name="toolTipText" type="java.lang.String" value="General controls for this EventFilter"/>
             <Property name="alignmentX" type="float" value="0.0"/>
+            <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
+              <Dimension value="[150, 17]"/>
+            </Property>
           </Properties>
           <AuxValues>
             <AuxValue name="JavaCodeGenerator_VariableModifier" type="java.lang.Integer" value="4"/>
