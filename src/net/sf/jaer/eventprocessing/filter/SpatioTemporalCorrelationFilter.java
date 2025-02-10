@@ -154,7 +154,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     filterOut(e);
                 } else {
                     // correlated, but might be shot noise event with opposite polarity to recent event from this same pixel
-                    if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                    if (testIsShotNoiseOppositePolarity(x, y, e)) {
                         filterOut(e);
                     } else {
                         filterIn(e);
@@ -221,7 +221,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 if (ncorrelated < numMustBeCorrelated) {
                     filterOut(e);
                 } else {
-                    if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                    if (testIsShotNoiseOppositePolarity(x, y, e)) {
                         filterOut(e);
                     } else {
                         filterIn(e);
@@ -395,7 +395,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      *
      * @return true if noise event, false if signal
      */
-    protected boolean testFilterOutShotNoiseOppositePolarity(int x, int y, BasicEvent e) {
+    protected boolean testIsShotNoiseOppositePolarity(int x, int y, BasicEvent e) {
         if (!filterAlternativePolarityShotNoiseEnabled) {
             return false;
         }
