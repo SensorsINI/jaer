@@ -75,6 +75,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.filter.AbstractNoiseFilter;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
@@ -97,7 +98,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @see #initFilter()
      */
     public static Class[] noiseFilterClasses = {null, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
-    private AbstractNoiseFilter[] noiseFilters = null;
+    private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
     private AbstractNoiseFilter selectedNoiseFilter = null;
 
     public static final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
@@ -195,18 +196,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private final long MAX_FILTER_PROCESSING_TIME_MS = 500000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
 
+    /** ComboBoxModel that holds the noise filter classes */
     @Preferred
     private ComboBoxModel noiseFilterComboBoxModel = new DefaultComboBoxModel<Class<? extends AbstractNoiseFilter>>(noiseFilterClasses) {
         @Override
         public void setSelectedItem(Object noiseFilterClass) {
             super.setSelectedItem(noiseFilterClass);
-            putString("selectedNoiseFilter", noiseFilterClass == null ? "(null)" : ((Class) noiseFilterClass).getName());
+            setSelectedNoiseFilter(noiseFilterClass);
+        }
+
+    };
+
+    synchronized private void setSelectedNoiseFilter(Object noiseFilterClass) {
+        putString("selectedNoiseFilter", noiseFilterClass == null ? "(null)" : ((Class) noiseFilterClass).getName());
+        resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
+        rocHistory.reset();
+        if (noiseFilterClass == null) {
+            selectedNoiseFilter = null;
+            for (AbstractNoiseFilter n : noiseFilters) {
+                if (n != null) {
+                    n.setFilterEnabled(false);
+                    n.setControlsVisible(false);
+                }
+            }
+        } else {
             for (AbstractNoiseFilter n : noiseFilters) {
                 if (n == null) {
-                    selectedNoiseFilter = null;
                     continue;
-                }
-                if (n.getClass() == noiseFilterClass) {
+                } else if (n.getClass() == noiseFilterClass) {
                     selectedNoiseFilter = n;
                     n.initFilter();
                     n.setFilterEnabled(true);
@@ -216,11 +233,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     n.setControlsVisible(false);
                 }
             }
-            resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
-            rocHistory.reset();
 
         }
-    };
+    }
 
     public String getSelectedNoiseFilterName() {
         return selectedNoiseFilter.getClass().getSimpleName();
@@ -694,8 +709,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (EventFilter2D f : getEnclosedFilterChain()) {
                 ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
-            EventPacket<PolarityEvent> passedSignalAndNoisePacket = (EventPacket<PolarityEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
+            EventPacket<PolarityEvent> passedSignalAndNoisePacket = signalAndNoisePacket;
             if (selectedNoiseFilter != null) {
+                passedSignalAndNoisePacket
+                        = (EventPacket<PolarityEvent>) selectedNoiseFilter.filterPacket(signalAndNoisePacket);
 
                 ArrayList<FilteredEventWithNNb> negativeList = selectedNoiseFilter.getNegativeEvents();
                 ArrayList<FilteredEventWithNNb> positiveList = selectedNoiseFilter.getPositiveEvents();
@@ -1178,6 +1195,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             int i = 0;
             for (Class cl : noiseFilterClasses) {
                 if (cl == null) {
+                    noiseFilters[i] = null;  // noop filter
+                    i++;
                     continue;
                 }
                 try {
