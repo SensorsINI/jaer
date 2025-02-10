@@ -48,9 +48,9 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
      * @param dt the negative delta time in us
      * @return the age, 1 for simultaneous, 0 for times =>tauUs
      */
-    private float age(int dt) {
-        if (-dt < tauUs) {
-            float age = 1 - ((float) (-dt)) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
+    private float age(final int dt) {
+        if (dt < tauUs && dt>0) {
+            final float age = 1 - ((float) (dt)) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
             return age;
         } else {
             return 0;
@@ -152,7 +152,7 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
                     filterOut(e);
                 } else {
                     // correlated, but might be shot noise event with opposite polarity to recent event from this same pixel
-                    if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                    if (testIsShotNoiseOppositePolarity(x, y, e)) {
                         filterOut(e);
                     } else {
                         filterIn(e);
@@ -220,7 +220,7 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
                 if (score < correlationThreshold) {
                     filterOut(e);
                 } else {
-                    if (testFilterOutShotNoiseOppositePolarity(x, y, e)) {
+                    if (testIsShotNoiseOppositePolarity(x, y, e)) {
                         filterOut(e);
                     } else {
                         filterIn(e);
