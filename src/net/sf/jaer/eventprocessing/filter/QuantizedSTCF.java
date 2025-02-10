@@ -3,9 +3,6 @@
  * Created on October 21, 2005, 12:33 PM */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.beans.PropertyChangeEvent;
-import java.util.Arrays;
-import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
@@ -14,9 +11,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
-import net.sf.jaer.eventio.AEInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.util.RemoteControlCommand;
 
 /**
  * A quantized version of STCF
