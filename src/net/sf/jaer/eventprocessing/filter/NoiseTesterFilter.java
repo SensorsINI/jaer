@@ -99,6 +99,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public static Class[] noiseFilterClasses = {null, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
+    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
     private AbstractNoiseFilter selectedNoiseFilter = null;
 
     public static final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
@@ -127,7 +128,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float leakOnThresholdProb; // bounds for samppling Poisson noise
 
     private PrerecordedNoise prerecordedNoise = null;
-    private ROCHistory rocHistory = new ROCHistory();
+    private ROCHistory rocHistoryCurrent = null;
+    private ArrayList<ROCHistory> rocHistoriesSaved = new ArrayList();
+    private int rocHistoryLabelPosY=0;
 
     private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
@@ -196,7 +199,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private final long MAX_FILTER_PROCESSING_TIME_MS = 500000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
 
-    /** ComboBoxModel that holds the noise filter classes */
+    /**
+     * ComboBoxModel that holds the noise filter classes
+     */
     @Preferred
     private ComboBoxModel noiseFilterComboBoxModel = new DefaultComboBoxModel<Class<? extends AbstractNoiseFilter>>(noiseFilterClasses) {
         @Override
@@ -207,10 +212,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     };
 
+    /** Sets the current denoising class and the selectedNoiseFilter instance, or null for none. Note this does not affect combobox if set from code.
+     * 
+     * @param noiseFilterClass one of static list of noise filters, or null
+     */
     synchronized private void setSelectedNoiseFilter(Object noiseFilterClass) {
         putString("selectedNoiseFilter", noiseFilterClass == null ? "(null)" : ((Class) noiseFilterClass).getName());
         resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
-        rocHistory.reset();
         if (noiseFilterClass == null) {
             selectedNoiseFilter = null;
             for (AbstractNoiseFilter n : noiseFilters) {
@@ -225,6 +233,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     continue;
                 } else if (n.getClass() == noiseFilterClass) {
                     selectedNoiseFilter = n;
+                    rocHistoryCurrent=new ROCHistory(selectedNoiseFilter);
                     n.initFilter();
                     n.setFilterEnabled(true);
                     n.setControlsVisible(true);
@@ -328,11 +337,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final GLUT glut = new GLUT();
 
         GL2 gl = drawable.getGL().getGL2();
-        for (AbstractNoiseFilter k : rocHistoryHashMap.keySet()) {
-            ROCHistory rh = rocHistoryHashMap.get(k);
-            rh.drawSaved(gl, k);
+        rocHistoryLabelPosY=chip.getSizeY()/2;
+        for (ROCHistory h : rocHistoriesSaved) {
+            h.draw(gl);
         }
-        rocHistory.draw(gl);
+        rocHistoryCurrent.draw(gl);
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, sy * .9f, 0);
@@ -826,7 +835,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 annotateNoiseFilteringEvents(fnList, SIG_COLOR);
             }
 
-            rocHistory.addSample(1 - TNR, TPR, getCorrelationTimeS());
+            rocHistoryCurrent.addSample(1 - TNR, TPR, getCorrelationTimeS());
 
             lastTimestampPreviousPacket = in.getLastTimestamp();
             return passedSignalAndNoisePacket;
@@ -1202,6 +1211,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 try {
                     Constructor con = cl.getConstructor(AEChip.class);
                     noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
+                    float hue = (float) i / (noiseFilterClasses.length - 1);
+                    int rgb = Color.HSBtoRGB(hue, 1, 1);
+                    noiseFilter2ColorMap.put(noiseFilters[i], rgb);
                     i++;
                 } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                     String s = String.format("Could not construct instance of AbstractNoiseFilter %s;\ngot %s", cl.getSimpleName(), ex.toString());
@@ -1239,11 +1251,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         } else {
             try {
                 Class c = Class.forName(initialFilterName);
-                noiseFilterComboBoxModel.setSelectedItem(c);
+                noiseFilterComboBoxModel.setSelectedItem(c);  // also sets the filter
             } catch (ClassNotFoundException ex) {
                 log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
             }
         }
+        
 
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
@@ -1640,12 +1653,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         this.rocHistoryLength = rocHistoryLength;
         putInt("rocHistoryLength", rocHistoryLength);
-        rocHistory.reset();
+        rocHistoryCurrent.reset();
     }
 
     @Preferred
     synchronized public void doClearROCHistory() {
-        rocHistory.reset();
+        rocHistoryCurrent.reset();
     }
 
     synchronized public void doCloseNoiseSourceRecording() {
@@ -1973,6 +1986,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private boolean fadedAndLabeled = false;
         private AbstractNoiseFilter noiseFilter = null;
 
+        public ROCHistory(AbstractNoiseFilter noiseFilter) {
+            this.noiseFilter = noiseFilter;
+        }
+
         public String toString() {
             return String.format("ROCHistory with %,d points", rocHistoryList.size());
         }
@@ -2053,7 +2070,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     || Math.abs(Math.log10(tau / lastTau)) > .1
                     || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
             labelIt = false;// tobi removec this clutter
-            rocHistoryList.add(rocHistory.createTprFpr(tpr, fpr, tau, labelIt));
+            rocHistoryList.add(rocHistoryCurrent.createTprFpr(tpr, fpr, tau, labelIt));
             float sumFpr = 0, sumTpr = 0;
             for (ROCSample s : rocHistoryList) {
                 sumFpr += s.x;
@@ -2094,27 +2111,18 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glPopMatrix();
         }
 
-        void drawSaved(GL2 gl, AbstractNoiseFilter noiseFilter) {
-            this.fadedAndLabeled = true;
-            this.noiseFilter = noiseFilter; // TODO label these points with name and color for comparison
-            draw(gl);
-        }
-
         void draw(GL2 gl) {
             if (selectedNoiseFilter == null) {
                 return;
             }
             drawAxes(gl);
             // draw each sample as a square point
-            if (!fadedAndLabeled) {
-                for (ROCSample rocSample : rocHistoryList) {
-                    rocSample.draw(gl);
-                }
-            } else {
-                for (ROCSample rocSample : rocHistoryList) {
-                    rocSample.draw(gl, Color.white);
-                }
+            Color color = new Color(noiseFilter2ColorMap.get(noiseFilter));
+            for (ROCSample rocSample : rocHistoryList) {
+                rocSample.draw(gl, color);
             }
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), chip.getSizeX(), rocHistoryLabelPosY, 1, color, noiseFilter.getClass().getSimpleName());
+            rocHistoryLabelPosY-=(2*getShowFilteringStatisticsFontSize()/3);
 
             if (!fadedAndLabeled) { // if we are drawing most recent data, draw smaller X for last ROC point
                 // draw X for last packet TPR / TNR point
@@ -2131,16 +2139,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                }
             }
 
-            if (avgRocSample != null) { // draw big thick X at avg ROC point
-                int L = 12;
-                gl.glColor4f(.9f, .9f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
-                gl.glLineWidth(8);
-                float x = avgRocSample.x;
-                float y = avgRocSample.y;
-                gl.glPushMatrix();
-                DrawGL.drawCross(gl, x, y, L, (float) Math.PI / 4);
-                gl.glPopMatrix();
-            }
+//            if (avgRocSample != null) { // draw big thick X at avg ROC point
+//                int L = 12;
+//                gl.glColor4f(.9f, .9f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
+//                gl.glLineWidth(8);
+//                float x = avgRocSample.x;
+//                float y = avgRocSample.y;
+//                gl.glPushMatrix();
+//                DrawGL.drawCross(gl, x, y, L, (float) Math.PI / 4);
+//                gl.glPopMatrix();
+//            }
 
         }
 
@@ -2356,21 +2364,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         resetFilter(); // reset since this affects filter and can cause apparent deadlock
     }
 
-    /**
-     * array of saved roc samples for comparison to other ROC histories
-     */
-    private HashMap<AbstractNoiseFilter, ROCHistory> rocHistoryHashMap = new HashMap();
-
     @Preferred
     public void doSaveRocHistory() {
-        rocHistoryHashMap.put(selectedNoiseFilter, rocHistory);
-        rocHistory = new ROCHistory();
-
+        rocHistoriesSaved.add(rocHistoryCurrent);
+        rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
     }
 
     @Preferred
     public void doClearSavedRocHistories() {
-        rocHistoryHashMap.clear();
+        rocHistoriesSaved.clear();
     }
 
     @Override
