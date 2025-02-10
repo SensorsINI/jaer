@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="10.0.6" transformSequenceNumber="10">
   <directoryPresets config="./images" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - UZH-ETH Zurich" publisherWeb="https://jaerproject.org" version="2.7.3" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - UZH-ETH Zurich" publisherWeb="https://jaerproject.org" version="2.7.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./installers/install4j-custom-resources.utf8" />
     </languages>
@@ -527,8 +527,6 @@ return console.askYesNo(message, true);
     </windows>
   </mediaSets>
   <buildIds>
-    <mediaSet refId="38" />
-    <mediaSet refId="37" />
     <mediaSet refId="26" />
   </buildIds>
 </install4j>
