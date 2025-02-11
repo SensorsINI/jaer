@@ -396,8 +396,12 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         }
                     }
                     // update player and slider marks
-                    getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, aeFileInputStream.getMarkInPosition());
-                    getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, aeFileInputStream.getMarkOutPosition());
+                    if (aeFileInputStream.isMarkInSet()) {
+                        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, aeFileInputStream.getMarkInPosition());
+                    }
+                    if (aeFileInputStream.isMarkOutSet()) {
+                        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, aeFileInputStream.getMarkOutPosition());
+                    }
 
                     if (viewer.getChip().getRenderer() != null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)) {
                         AEChipRenderer renderer = (AEChipRenderer) viewer.getChip().getRenderer();
