@@ -130,7 +130,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private PrerecordedNoise prerecordedNoise = null;
     private ROCHistory rocHistoryCurrent = null;
     private ArrayList<ROCHistory> rocHistoriesSaved = new ArrayList();
-    private int rocHistoryLabelPosY=0;
+    private int rocHistoryLabelPosY = 0;
 
     private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
@@ -212,8 +212,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     };
 
-    /** Sets the current denoising class and the selectedNoiseFilter instance, or null for none. Note this does not affect combobox if set from code.
-     * 
+    /**
+     * Sets the current denoising class and the selectedNoiseFilter instance, or
+     * null for none. Note this does not affect combobox if set from code.
+     *
      * @param noiseFilterClass one of static list of noise filters, or null
      */
     synchronized private void setSelectedNoiseFilter(Object noiseFilterClass) {
@@ -233,7 +235,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     continue;
                 } else if (n.getClass() == noiseFilterClass) {
                     selectedNoiseFilter = n;
-                    rocHistoryCurrent=new ROCHistory(selectedNoiseFilter);
+                    rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
                     n.initFilter();
                     n.setFilterEnabled(true);
                     n.setControlsVisible(true);
@@ -337,7 +339,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final GLUT glut = new GLUT();
 
         GL2 gl = drawable.getGL().getGL2();
-        rocHistoryLabelPosY=chip.getSizeY()/2;
+        rocHistoryLabelPosY = chip.getSizeY() / 2;
         for (ROCHistory h : rocHistoriesSaved) {
             h.draw(gl);
         }
@@ -1245,18 +1247,21 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 renderer = (DavisRenderer) chip.getRenderer();
             }
         }
-        String initialFilterName = getString("selectedNoiseFilter", SpatioTemporalCorrelationFilter.class.getName());
-        if (initialFilterName.equals("(null")) {
+        String initialFilterName = getString("selectedNoiseFilter", "(null)");
+        if (initialFilterName.equals("(null)")) {
             initialFilterName = null;
+            noiseFilterComboBoxModel.setSelectedItem(null);  // also sets the filter
+            rocHistoryCurrent = new ROCHistory(null);
         } else {
             try {
                 Class c = Class.forName(initialFilterName);
                 noiseFilterComboBoxModel.setSelectedItem(c);  // also sets the filter
+                rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
+
             } catch (ClassNotFoundException ex) {
                 log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
             }
         }
-        
 
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
@@ -2117,12 +2122,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             drawAxes(gl);
             // draw each sample as a square point
-            Color color = new Color(noiseFilter2ColorMap.get(noiseFilter));
+            Color color = noiseFilter == null ? Color.white : new Color(noiseFilter2ColorMap.get(noiseFilter));
             for (ROCSample rocSample : rocHistoryList) {
                 rocSample.draw(gl, color);
             }
-            DrawGL.drawString(getShowFilteringStatisticsFontSize(), chip.getSizeX(), rocHistoryLabelPosY, 1, color, noiseFilter.getClass().getSimpleName());
-            rocHistoryLabelPosY-=(2*getShowFilteringStatisticsFontSize()/3);
+            if (noiseFilter != null) {
+                DrawGL.drawString(getShowFilteringStatisticsFontSize(), chip.getSizeX(), rocHistoryLabelPosY, 1, color, noiseFilter.getClass().getSimpleName());
+            }
+            rocHistoryLabelPosY -= (2 * getShowFilteringStatisticsFontSize() / 3);
 
             if (!fadedAndLabeled) { // if we are drawing most recent data, draw smaller X for last ROC point
                 // draw X for last packet TPR / TNR point
@@ -2149,7 +2156,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                DrawGL.drawCross(gl, x, y, L, (float) Math.PI / 4);
 //                gl.glPopMatrix();
 //            }
-
         }
 
         private void drawAxes(GL2 gl) {
