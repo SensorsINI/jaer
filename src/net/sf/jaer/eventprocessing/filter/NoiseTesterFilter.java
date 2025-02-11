@@ -26,16 +26,21 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Font;
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyDescriptor;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -63,9 +68,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListCellRenderer;
 import javax.swing.JFileChooser;
-import javax.swing.JList;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
@@ -75,11 +78,11 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.filter.AbstractNoiseFilter;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
+import org.jdesktop.el.MethodNotFoundException;
 
 /**
  * Filter for testing noise filters
@@ -128,9 +131,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float leakOnThresholdProb; // bounds for samppling Poisson noise
 
     private PrerecordedNoise prerecordedNoise = null;
+
     private ROCHistory rocHistoryCurrent = null;
     private ArrayList<ROCHistory> rocHistoriesSaved = new ArrayList();
     private int rocHistoryLabelPosY = 0;
+    private ROCSweep rocSweep;
 
     private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
@@ -268,6 +273,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
+
+        String rocSw = "0c: ROC sweep parameters";
+        setPropertyTooltip(rocSw, "startROCSweep", "Starts sweeping a property over the marked (or entire) recoding and record the ROC points");
+        setPropertyTooltip(rocSw, "stopROCSweep", "Stops ROC sweep");
+        setPropertyTooltip(rocSw, "rocSweepStart", "starting value for sweep");
+        setPropertyTooltip(rocSw, "rocSweepEnd", "ending value for sweep");
+        setPropertyTooltip(rocSw, "rocSweepStep", "step size value for sweep");
+        setPropertyTooltip(rocSw, "rocSweepLogStep", "<html>Selected: sweep property by factors of rocSweepStep<br>Unselected: sweep in linear steps of rocSweepStep");
+        setPropertyTooltip(rocSw, "rocSweepPropertyName", "which property to sweep");
 
         String out = "5. Output";
         setPropertyTooltip(out, "closeCsvFile", "Closes the output CSV spreadsheet data file.");
@@ -606,7 +620,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-( Or at least it used to, fixed now I think (Tobi)
             initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts);
             // initialize filters with lastTimesMap to Poisson waiting times
-            log.info("initializing timestamp maps with Poisson process waiting times");
+            log.fine("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
                 if (f == null) {
                     continue;
@@ -1278,6 +1292,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         maybeCreateOrUpdateNoiseCoVArray();
         //        setAnnotateAlpha(annotateAlpha);
         fixRendererAnnotationLayerShowing(); // make sure renderer is properly set up.
+
+        rocSweep = new ROCSweep();
     }
 
     /**
@@ -1291,6 +1307,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param shotNoiseRateHz the shotNoiseRateHz to set
      */
     synchronized public void setShotNoiseRateHz(float shotNoiseRateHz) {
+        float old = this.shotNoiseRateHz;
         if (shotNoiseRateHz < 0) {
             shotNoiseRateHz = 0;
         }
@@ -1300,8 +1317,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         putFloat("shotNoiseRateHz", shotNoiseRateHz);
-        getSupport().firePropertyChange("shotNoiseRateHz", this.shotNoiseRateHz, shotNoiseRateHz);
         this.shotNoiseRateHz = shotNoiseRateHz;
+        getSupport().firePropertyChange("shotNoiseRateHz", old, this.shotNoiseRateHz);
         computeProbs();
     }
 
@@ -1511,11 +1528,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Override
     public void setCorrelationTimeS(float dtS) {
         super.setCorrelationTimeS(dtS);
-        for (AbstractNoiseFilter f : noiseFilters) {
-            if (f == null) {
-                continue;
-            }
-            f.setCorrelationTimeS(dtS);
+        if (selectedNoiseFilter != null) {
+            selectedNoiseFilter.setCorrelationTimeS(dtS);
         }
     }
 
@@ -1574,28 +1588,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-//    /**
-//     * @return the annotateAlpha
-//     */
-//    public float getAnnotateAlpha() {
-//        return annotateAlpha;
-//    }
-//
-//    /**
-//     * @param annotateAlpha the annotateAlpha to set
-//     */
-//    public void setAnnotateAlpha(float annotateAlpha) {
-//        if (annotateAlpha > 1.0) {
-//            annotateAlpha = 1.0f;
-//        }
-//        if (annotateAlpha < 0.0) {
-//            annotateAlpha = 0.0f;
-//        }
-//        this.annotateAlpha = annotateAlpha;
-//        if (renderer != null) {
-//            renderer.setAnnotateAlpha(annotateAlpha);
-//        }
-//    }
     /**
      * Sets renderer to show annotation layer
      */
@@ -1664,6 +1656,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Preferred
     synchronized public void doClearROCHistory() {
         rocHistoryCurrent.reset();
+    }
+
+    @Preferred
+    synchronized public void doStartROCSweep() {
+        rocSweep.start();
+    }
+
+    @Preferred
+    synchronized public void doStopROCSweep() {
+        rocSweep.stop();
     }
 
     synchronized public void doCloseNoiseSourceRecording() {
@@ -1975,6 +1977,219 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return "NNbHistograms{\n" + "tpHist=" + tpHist + "\n fpHist=" + fpHist + "\n tnHist=" + tnHist + "\n fnHist=" + fnHist + "}\n";
         }
 
+    }
+
+    private class ROCSweep implements PropertyChangeListener {
+
+        private float rocSweepStart = getFloat("rocSweepStart", 1e-3f);
+        private float rocSweepEnd = getFloat("rocSweepEnd", 1f);
+        private boolean rocSweepLogStep = getBoolean("rocSweepLogStep", true);
+        private float rocSweepStep = rocSweepLogStep ? getFloat("rocSweepLogStepFactor", 1.5f) : getFloat("rocSweepStepLinear", 1e-2f);
+        private String rocSweepPropertyName = getString("rocSweepPropertyName", "correlationTimeS");
+        float currentValue = rocSweepStart;
+        boolean running = false;
+        Method setter = null;
+
+        public ROCSweep() {
+            init();
+        }
+
+        final void init() {
+            if (chip.getAeViewer() != null) {
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_INIT, this);
+            }
+            running = false;
+            reset();
+        }
+
+        void start() {
+            reset();
+            running = true;
+        }
+
+        void stop() {
+            running = false;
+        }
+
+        void reset() {
+            currentValue = rocSweepStart;
+        }
+
+        boolean step() {
+            float old = currentValue;
+            if (!running) {
+                return false;
+            }
+            if (rocSweepLogStep) {
+                currentValue *= rocSweepStep;
+            } else {
+                currentValue += rocSweepStep;
+            }
+            if (setter != null) {
+                try {
+                    setter.invoke(selectedNoiseFilter, currentValue);
+                } catch (IllegalAccessException | InvocationTargetException ex) {
+                    log.warning(String.format("Could not set current value %.4f using setter %s: got %s", currentValue, setter, ex.toString()));
+                }
+            } else {
+                setCorrelationTimeS(currentValue);
+            }
+            log.info(String.format("ROCSweep increased currentValue from %.4f to %.4f", old, currentValue));
+            return currentValue > rocSweepEnd;
+        }
+
+        @Override
+        public void propertyChange(PropertyChangeEvent evt) {
+            switch (evt.getPropertyName()) {
+                case AEInputStream.EVENT_REWOUND:
+                    if (step()) {
+                        log.info("sweep ended");
+                        stop();
+                    }
+                    break;
+                case AEInputStream.EVENT_INIT:
+                    stop();
+                    break;
+            }
+        }
+
+        /**
+         * @return the rocSweepStart
+         */
+        public float getRocSweepStart() {
+            return rocSweepStart;
+        }
+
+        /**
+         * @param rocSweepStart the rocSweepStart to set
+         */
+        public void setRocSweepStart(float rocSweepStart) {
+            this.rocSweepStart = rocSweepStart;
+            putFloat("rocSweepStart", rocSweepStart);
+        }
+
+        /**
+         * @return the rocSweepEnd
+         */
+        public float getRocSweepEnd() {
+            return rocSweepEnd;
+        }
+
+        /**
+         * @param rocSweepEnd the rocSweepEnd to set
+         */
+        public void setRocSweepEnd(float rocSweepEnd) {
+            this.rocSweepEnd = rocSweepEnd;
+            putFloat("rocSweepEnd", rocSweepEnd);
+        }
+
+        /**
+         * @return the rocSweepLogStep
+         */
+        public boolean isRocSweepLogStep() {
+            return rocSweepLogStep;
+        }
+
+        /**
+         * @param rocSweepLogStep the rocSweepLogStep to set
+         */
+        public void setRocSweepLogStep(boolean rocSweepLogStep) {
+            this.rocSweepLogStep = rocSweepLogStep;
+            putBoolean("rocSweepLogStep", rocSweepLogStep);
+        }
+
+        /**
+         * @return the rocSweepStep
+         */
+        public float getRocSweepStep() {
+            return rocSweepStep;
+        }
+
+        /**
+         * @param rocSweepStep the rocSweepStep to set
+         */
+        public void setRocSweepStep(float rocSweepStep) {
+            this.rocSweepStep = rocSweepStep;
+            String k = rocSweepLogStep ? "rocSweepStepLog" : "rocSweepStepLinear";
+            putFloat(k, rocSweepStep);
+        }
+
+        /**
+         * @return the rocSweepPropertyName
+         */
+        public String getRocSweepPropertyName() {
+            return rocSweepPropertyName;
+        }
+
+        /**
+         * @param rocSweepPropertyName the rocSweepPropertyName to set
+         */
+        public void setRocSweepPropertyName(String rocSweepPropertyName) throws IntrospectionException {
+            this.rocSweepPropertyName = rocSweepPropertyName;
+            if (selectedNoiseFilter == null) {
+                return;
+            }
+
+            BeanInfo info;
+            info = Introspector.getBeanInfo(selectedNoiseFilter.getClass());
+            PropertyDescriptor[] props = info.getPropertyDescriptors();
+            setter = null;
+            for (PropertyDescriptor p : props) {
+                if (p.getName().equals(rocSweepPropertyName)) {
+                    setter = p.getWriteMethod();
+                    break;
+                }
+            }
+            if (setter != null) {
+                putString("rocSweepPropertyName", rocSweepPropertyName);
+                log.info(String.format("Found setter %s for property named %s", setter.toGenericString(), rocSweepPropertyName));
+            } else {
+                throw new MethodNotFoundException(String.format("MethodNotFoundException: property %s is not in %s",
+                        rocSweepPropertyName, selectedNoiseFilter.getClass().getSimpleName()));
+            }
+        }
+
+    }
+
+    public float getRocSweepStart() {
+        return rocSweep.getRocSweepStart();
+    }
+
+    public void setRocSweepStart(float rocSweepStart) {
+        rocSweep.setRocSweepStart(rocSweepStart);
+    }
+
+    public float getRocSweepEnd() {
+        return rocSweep.getRocSweepEnd();
+    }
+
+    public void setRocSweepEnd(float rocSweepEnd) {
+        rocSweep.setRocSweepEnd(rocSweepEnd);
+    }
+
+    public boolean isRocSweepLogStep() {
+        return rocSweep.isRocSweepLogStep();
+    }
+
+    public void setRocSweepLogStep(boolean rocSweepLogStep) {
+        rocSweep.setRocSweepLogStep(rocSweepLogStep);
+    }
+
+    public float getRocSweepStep() {
+        return rocSweep.getRocSweepStep();
+    }
+
+    public void setRocSweepStep(float rocSweepStep) {
+        rocSweep.setRocSweepStep(rocSweepStep);
+    }
+
+    public String getRocSweepPropertyName() {
+        return rocSweep.getRocSweepPropertyName();
+    }
+
+    synchronized public void setRocSweepPropertyName(String rocSweepPropertyName) throws IntrospectionException {
+        rocSweep.setRocSweepPropertyName(rocSweepPropertyName);
     }
 
     private class ROCHistory {
