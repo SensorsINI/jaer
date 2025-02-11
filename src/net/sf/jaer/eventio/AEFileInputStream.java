@@ -140,11 +140,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             log.fine(String.format("Loaded marksMap %s from %s", marksMap, prefs.absolutePath()));
         } catch (IOException | BackingStoreException | ClassNotFoundException ex) {
             log.fine(String.format("could not load existing marks: %s", ex.toString()));
-            marksMap=new HashMap<String, Marks>();
+            marksMap = new HashMap<String, Marks>();
         }
     }
-
-    
 
     // AEInputStream
     // public final static long MAX_FILE_SIZE=200000000;
@@ -287,8 +285,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public AEFileInputStream(File f, AEChip chip) throws IOException {
         super(new FileInputStream(f));
         this.chip = chip;
-        
-
 
         /* Here is the logic:
          * The chip and extractor will be updated unless the chip changed such as by the user.
@@ -401,11 +397,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     private void initializeSavedMarks() {
-        if(marksMap==null){
+        if (marksMap == null) {
             loadMarksMap();
         }
         Marks savedMarks = marksMap.get(getFile().getAbsolutePath());
-        if(savedMarks==null) return;
+        if (savedMarks == null) {
+            clearMarks();
+            return;
+        }
         long oldIn = savedMarks.markIn;
         marks.markIn = savedMarks.markIn;
         getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, oldIn, marks.markIn);
@@ -1108,7 +1107,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     @Override
     public boolean isMarkOutSet() {
-        return marks.markOut != size();
+        return marks.markOut != size()-1;
     }
 
     // https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java
@@ -1166,10 +1165,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         if (fileInputStream != null) {
             fileInputStream.close(); // should have been done by super(), but file seems to be kept open
         }
-        marksMap.put(file.getAbsolutePath(), marks);
-        if (isMarkInSet() || isMarkOutSet()) {
-            saveMarksMap();
+        if ((isMarkInSet() || isMarkOutSet())) {
+            marksMap.put(file.getAbsolutePath(), marks);
+        } else {
+            marksMap.put(file.getAbsolutePath(), null);
         }
+        saveMarksMap();
         System.gc();
 //        System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
     }
