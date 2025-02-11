@@ -207,19 +207,21 @@ import net.sf.jaer.util.XMLFileFilter;
  * setPropertyTooltip(tim,"dtRejectThreshold", "reject delta times more than this time in us to reduce effect of very old events");
  * setPropertyTooltip("multiOriOutputEnabled", "Enables multiple event output for all events that pass test");
  * </pre>
- * 
+ *
  * <strong>
- *Preferred parameters.</strong>
+ * Preferred parameters.</strong>
  * <p>
- * Mark a field or get or set method with the @Preferred annotation to show the property in bold and enable it to be shown in the Simple view.
- * Search for usage of @Preferred to see how to use this.
+ * Mark a field or get or set method with the @Preferred annotation to show the
+ * property in bold and enable it to be shown in the Simple view. Search for
+ * usage of @Preferred to see how to use this.
  * </p>
- * 
+ *
  * <strong>
  * Enums and ComboBoxModels.</strong>
  * <p>
- * To show ComboBox for either enum or ComboBox model, define get and set methods for them.
- * See NoiseTesterFilter for how to use a ComboBoxModel for classes.
+ * To show ComboBox for either enum or ComboBox model, define get and set
+ * methods for them. See NoiseTesterFilter for how to use a ComboBoxModel for
+ * classes.
  * </p>
  *
  *
@@ -1044,7 +1046,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 setGuiState(o);
                 return ro;
             } catch (IllegalAccessException | InvocationTargetException ex) {
-                Logger.getLogger(FilterPanel.class.getName()).log(Level.SEVERE, null, ex);
+                log.warning(String.format("Exception invoking setUndoableState with object %s: %s", o.toString(), ex.toString()));
             } finally {
                 endEdit();
             }
@@ -1194,8 +1196,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 ////        }
 //    }
 //
-    /** Used when a filter has a method that returns a ComboBoxModel. 
-     * A ComboBox is constructed that displays the currently-selected item and whose ActiopListener calls setSelectedItem
+    /**
+     * Used when a filter has a method that returns a ComboBoxModel. A ComboBox
+     * is constructed that displays the currently-selected item and whose
+     * ActiopListener calls setSelectedItem
      */
     class ComboBoxControl extends MyControl {
 
@@ -1206,7 +1210,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public ComboBoxControl(final String name, final PropertyDescriptor p) throws InvocationTargetException, IllegalAccessException {
             super(name, p); // set read and write fields to get and set methods
-            model=(ComboBoxModel)read.invoke(getFilter());
+            model = (ComboBoxModel) read.invoke(getFilter());
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(LEFT_ALIGNMENT);
             final JLabel label = new JLabel(name);
@@ -1239,7 +1243,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     log.warning("null Object returned from read method " + read);
                     return;
                 }
-                x=((ComboBoxModel)x).getSelectedItem(); // set current state to the selected ComboBoxModel item
+                x = ((ComboBoxModel) x).getSelectedItem(); // set current state to the selected ComboBoxModel item
                 setCurrentState(x);
                 setGuiState(x);
             } catch (Exception e) {
@@ -2044,11 +2048,11 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            " newValue=" + propertyChangeEvent.getNewValue());
 //                    final MyControl setter = setterMap.get(propertyChangeEvent.getPropertyName());
                     // we have to override get method here because strings are not always matching
-                    MyControl tmpSetter=null;
-                    String k=propertyChangeEvent.getPropertyName();
-                    for(String s:setterMap.keySet()){
-                        if(s.equals(k)){
-                            tmpSetter=setterMap.get(s);
+                    MyControl tmpSetter = null;
+                    String k = propertyChangeEvent.getPropertyName();
+                    for (String s : setterMap.keySet()) {
+                        if (s.equals(k)) {
+                            tmpSetter = setterMap.get(s);
                         }
                     }
                     final MyControl setter = tmpSetter;
