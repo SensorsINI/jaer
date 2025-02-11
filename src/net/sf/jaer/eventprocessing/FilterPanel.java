@@ -2042,7 +2042,16 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //                            propertyChangeEvent.getSource() + " for property=" +
 //                            propertyChangeEvent.getPropertyName() +
 //                            " newValue=" + propertyChangeEvent.getNewValue());
-                    final MyControl setter = setterMap.get(getFilter().getClass().getSimpleName() + "." + propertyChangeEvent.getPropertyName());
+//                    final MyControl setter = setterMap.get(propertyChangeEvent.getPropertyName());
+                    // we have to override get method here because strings are not always matching
+                    MyControl tmpSetter=null;
+                    String k=propertyChangeEvent.getPropertyName();
+                    for(String s:setterMap.keySet()){
+                        if(s.equals(k)){
+                            tmpSetter=setterMap.get(s);
+                        }
+                    }
+                    final MyControl setter = tmpSetter;
                     if (setter == null) {
                         if (!printedSetterWarning) {
                             log.warning("in filter " + getFilter() + " there is no setter for property change from property named " + propertyChangeEvent.getPropertyName());
