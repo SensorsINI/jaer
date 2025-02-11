@@ -39,6 +39,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.Random;
 import java.util.stream.IntStream;
+import net.sf.jaer.Preferred;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.util.RemoteControlCommand;
 
@@ -51,16 +52,10 @@ import net.sf.jaer.util.RemoteControlCommand;
  *
  * @author Shssha Guo
  */
-@Description("DWF/FWF Fixed Window and Double Window Filter that Filters out uncorrelated background activity noise according to "
-        + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually 2 or 4 is enough, and requires negligible memory cost.")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@Description("DWF/FWF Double Window and Fixed Window Filter that Filters out uncorrelated background activity noise according to "
+        + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually a few hundred is enough, and requires negligible memory cost.")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DoubleWindowFilter extends AbstractNoiseFilter {
-
-    /**
-     * the time in timestamp ticks (1us at present) that a spike needs to be
-     * supported by a prior event in the neighborhood by to pass through
-     */
-    private boolean letFirstEventThrough = getBoolean("letFirstEventThrough", true);
 
     /**
      * the amount to subsample x and y event location by in bit shifts when
@@ -68,30 +63,23 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
      * support. E.g. setting subSamplingShift to 1 quadruples range because both
      * x and y are shifted right by one bit
      */
-//    private int subsampleBy = getInt("subsampleBy", 0);
-    private int subsampleBy = 0;
 
-    private int timeThr = 0;
-
-    private int ts = 0; // used to reset filter
     private int sx;
     private int sy;
-    private final int DEFAULT_TIMESTAMP = Integer.MIN_VALUE;
 
-    private int lasttd = 0;
-    private int frameid = 0;
-
-    private int basicThr = 0;
-
-    private int wlen = getInt("wlen", 8); // window length
-    private int wlen2 = wlen / 2;
+    @Preferred
+    private int wLen = getInt("wlen", 512); // window length
+    private int wlen2 = wLen / 2;
     private short[][] lastREvents;// real window;
     private short[][] lastNEvents;// noise window;
 
-    private int disThr = getInt("disThr", 10);
+    @Preferred
+    private int disThr = getInt("disThr", 5);
+    @Preferred
     private boolean useDoubleMode = getBoolean("useDoubleMode", true);
     private int fillindex = 0;
 	
+    @Preferred
     private int numMustBeCorrelated = getInt("numMustBeCorrelated", 1);
 
     int maxDisThr = sx + sy;
@@ -100,12 +88,14 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
     public DoubleWindowFilter(AEChip chip) {
         super(chip);
         setPropertyTooltip(TT_FILT_CONTROL, "wlen", "total window length for holding previous events. If doubleMode selected, this window is split into signal and noise windows");
-        setPropertyTooltip(TT_FILT_CONTROL, "useDoubleMode", "use two separate windows for storing real and noise events");
-        setPropertyTooltip(TT_FILT_CONTROL, "disThr", "threshold for distance comparison, if too noisy, make this smaller, if too few events, make this larger");
-	setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of dis (3x3) neighbors (including our own event location) must have had event within the time duration implied in the dis window");
+        setPropertyTooltip(TT_FILT_CONTROL, "useDoubleMode", "DoubleWindowFilter (DWF): use two separate windows for storing discriminated signal and noise events. If unselected, put all events in single window (SWF)");
+        setPropertyTooltip(TT_FILT_CONTROL, "disThr", "threshold for pixel distance comparison, if too noisy, make this smaller, if too few events, make this larger");
+	setPropertyTooltip(TT_FILT_CONTROL, "numMustBeCorrelated", "At least this number of events in the window must be neighbors (including our own event location) must have had event within the wLen event FIFO(s)");
         hideProperty("correlationTimeS");
         hideProperty("antiCasualEnabled");
         hideProperty("sigmaDistPixels");
+        hideProperty("subsampleBy");
+        hideProperty("filterHotPixels");
     }
 
     /**
@@ -124,21 +114,19 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         // an event happened in the direct neighborhood
         for (BasicEvent e : in) {
             if (e == null) {
-                frameid = 0;
                 break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
             }
 //            if (e.isSpecial()) {
 //                continue;
 //            }
 
-            ts = e.timestamp;
             totalEventCount++;
             short x = (short) (e.x >>> subsampleBy), y = (short) (e.y >>> subsampleBy);
             if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
                 filterOut(e);
                 continue;
             }
-            if (fillindex < wlen && lastREvents[wlen - 1][0] == -1) {
+            if (fillindex < wLen && lastREvents[wLen - 1][0] == -1) {
                 filterOut(e);
                 lastREvents[fillindex][0] = e.x;
                 lastREvents[fillindex][1] = e.y;
@@ -149,7 +137,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
             int ncorrelated = 0;
 
 	    if (useDoubleMode) {
-		int dwlen = wlen > 1 ? wlen / 2 : 1;
+		int dwlen = wLen > 1 ? wLen / 2 : 1;
 		boolean noiseflag = true; // at first considered to be noise event
 //                check real window first 
 		int[] disarray = new int[dwlen];
@@ -204,9 +192,9 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
 		}
 	    } else { // fwf, single window
 //                only use lastREvents to store the past events
-		int[] disarray = new int[wlen];
+		int[] disarray = new int[wLen];
 		boolean noiseflag = true;
-		for (int i = 0; i < wlen; i++) {
+		for (int i = 0; i < wLen; i++) {
 		    disarray[i] = (Math.abs(e.x - lastREvents[i][0])) + (Math.abs(e.y - lastREvents[i][1]));
 		    if (disarray[i] < disThr){
 			ncorrelated ++;
@@ -226,12 +214,12 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
 		}
 
 //                update window
-		for (int i = 0; i < wlen - 1; i++) {
+		for (int i = 0; i < wLen - 1; i++) {
 		    lastREvents[i][0] = lastREvents[i + 1][0];
 		    lastREvents[i][1] = lastREvents[i + 1][1];
 		}
-		lastREvents[wlen - 1][0] = e.x;
-		lastREvents[wlen - 1][1] = e.y;
+		lastREvents[wLen - 1][0] = e.x;
+		lastREvents[wLen - 1][1] = e.y;
 	    }
         }
         getNoiseFilterControl().maybePerformControl(in);
@@ -240,22 +228,15 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
     }
 
     @Override
-    public synchronized final void resetFilter() {
-        super.resetFilter();
-        frameid = 0;
-    }
-
-    @Override
     public final void initFilter() {
         allocateMaps();
         sx = chip.getSizeX() - 1;
         sy = chip.getSizeY() - 1;
-        frameid = 0;
     }
 
     private void allocateMaps() {
-        lastREvents = new short[wlen][2];
-        lastNEvents = new short[wlen][2];
+        lastREvents = new short[wLen][2];
+        lastNEvents = new short[wLen][2];
 
         for (short[] arrayRow : lastREvents) {
             Arrays.fill(arrayRow, (short) -1);
@@ -280,50 +261,13 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
 //         TODO noop for now, how do we init the windows for noise rate after reset or rewind?
     }
 
-//    // <editor-fold defaultstate="collapsed" desc="getter-setter for --SubsampleBy--">
-//    public int getSubsampleBy() {
-//        return subsampleBy;
-//    }
-//
-//    /**
-//     * Sets the number of bits to subsample by when storing events into the map
-//     * of past events. Increasing this value will increase the number of events
-//     * that pass through and will also allow passing events from small sources
-//     * that do not stimulate every pixel.
-//     *
-//     * @param subsampleBy the number of bits, 0 means no subsampling, 1 means
-//     * cut event time map resolution by a factor of two in x and in y
-//     */
-//    public void setSubsampleBy(int subsampleBy) {
-//        if (subsampleBy < 0) {
-//            subsampleBy = 0;
-//        } else if (subsampleBy > 4) {
-//            subsampleBy = 4;
-//        }
-//        this.subsampleBy = subsampleBy;
-//        putInt("subsampleBy", subsampleBy);
-//    }
-    // </editor-fold>
-    /**
-     * @return the letFirstEventThrough
-     */
-    public boolean isLetFirstEventThrough() {
-        return letFirstEventThrough;
-    }
 
-    /**
-     * @param letFirstEventThrough the letFirstEventThrough to set
-     */
-    public void setLetFirstEventThrough(boolean letFirstEventThrough) {
-        this.letFirstEventThrough = letFirstEventThrough;
-        putBoolean("letFirstEventThrough", letFirstEventThrough);
-    }
 
     /**
      * @return the wlen
      */
     public int getWLen() {
-        return wlen;
+        return wLen;
     }
 
     /**
@@ -336,11 +280,11 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         if (setValue < 1) {
             setValue = 1;
         }
-        this.wlen = setValue;
-        log.info(String.format("wlen is%d\n", this.wlen));
+        this.wLen = setValue;
+        log.info(String.format("wlen is%d\n", this.wLen));
 
         putInt("wlen", setValue);
-        getSupport().firePropertyChange("wlen", this.wlen, setValue);
+        getSupport().firePropertyChange("wlen", this.wLen, setValue);
 
         allocateMaps();
     }
@@ -419,7 +363,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
         return maxDisThr;
     }
 
-    private String USAGE = "SequenceFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx num xx\n";
+    final private String USAGE = "SequenceFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx num xx\n";
 
     @Override
     public String setParameters(RemoteControlCommand command, String input) {
@@ -436,8 +380,8 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
                         setWLen(Integer.parseInt(tok[i + 1]));
                     }
                 }
-                String out = "successfully set SequenceFilter parameters dt " + String.valueOf(disThr) + " and windowsize " + String.valueOf(wlen);
-                return out;
+                final String str = "successfully set SequenceFilter parameters dt " + String.valueOf(disThr) + " and windowsize " + String.valueOf(wLen);
+                return str;
             } else {
                 return USAGE;
             }
@@ -450,7 +394,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
     @Override
     public String infoString() {
         String s = isUseDoubleMode() ? "DWF" : "FWF";
-        s = s + ": L=" + wlen + " sigma=" + eng.format(disThr);
+        s = s + ": L=" + wLen + " sigma=" + eng.format(disThr);
         return s;
     }
 
