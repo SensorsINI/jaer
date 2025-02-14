@@ -325,6 +325,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      * @param numMustBeCorrelated the numMustBeCorrelated to set
      */
     public void setNumMustBeCorrelated(int numMustBeCorrelated) {
+        int old=this.numMustBeCorrelated;
         if (numMustBeCorrelated < 1) {
             numMustBeCorrelated = 1;
         } else if (numMustBeCorrelated > getNumNeighbors()) {
@@ -332,7 +333,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         }
         putInt("numMustBeCorrelated", numMustBeCorrelated);
         this.numMustBeCorrelated = numMustBeCorrelated;
-        getSupport().firePropertyChange("numMustBeCorrelated", this.numMustBeCorrelated, numMustBeCorrelated);
+        getSupport().firePropertyChange("numMustBeCorrelated", old, this.numMustBeCorrelated);
     }
 
     @Override
