@@ -52,6 +52,13 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
         }
     }
 
+    @Override
+    public String infoString() {
+        return super.infoString() + String.format(" k=%d", numMustBeCorrelated);
+    }
+    
+    
+
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
      * than the number putString in
