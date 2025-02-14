@@ -457,7 +457,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             if (position == marks.markOut) { // TODO check exceptions here for marks.markOut set before marks.markIn
                 getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 if (repeat) {
-                    log.info("calling rewind at OUT marker (or end of file) in AEFileInputStream");
+                    log.fine("calling rewind at OUT marker (or end of file) in AEFileInputStream");
                     rewind();
                     throw new EOFException("reached out marker");
                 } else {
@@ -902,7 +902,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
                 readEventForwards(); // to set the mostRecentTimestamp
             }
         } catch (NonMonotonicTimeException e) {
-            log.log(Level.INFO, "rewind from timestamp={0} to timestamp={1}",
+            log.log(Level.FINE, "rewind from timestamp={0} to timestamp={1}",
                     new Object[]{e.getPreviousTimestamp(), e.getCurrentTimestamp()});
         }
         if (this.jaer3EnableFlg == true) {
