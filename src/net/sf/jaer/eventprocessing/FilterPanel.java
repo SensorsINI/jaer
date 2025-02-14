@@ -35,10 +35,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.text.NumberFormat;
 import java.text.ParseException;
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -60,7 +58,6 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
@@ -70,6 +67,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
+import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -770,6 +768,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 Collections.sort(setList);
                 for (String s : setList) {
                     JPanel groupPanel = new MyContainer(s);
+                    //JPanel groupPanel = new JCollapsiblePanel(s,Color.blue);
                     groupPanel.setName(s);
                     groupPanel.setBorder(new TitledBorder(s));
                     groupPanel.setLayout(new BoxLayout(groupPanel, BoxLayout.Y_AXIS));
@@ -1046,7 +1045,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 setGuiState(o);
                 return ro;
             } catch (IllegalAccessException | InvocationTargetException ex) {
-                log.warning(String.format("Exception invoking setUndoableState with object %s: %s", o.toString(), ex.toString()));
+                log.warning(String.format("Exception invoking setUndoableState with object %s, writer %s and reader %s: %s", o.toString(), write,read, ex.toString()));
             } finally {
                 endEdit();
             }
@@ -2972,6 +2971,61 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public String toString() {
             return String.format("StateEdit: object=%s, property=%s", this.object.getClass().getSimpleName(), this.undoRedoName);
+        }
+    }
+
+    // https://stackoverflow.com/questions/8177955/how-to-have-collapsable-expandable-jpanel-in-java-swing
+    private class JCollapsiblePanel extends JPanel {
+
+        private TitledBorder border;
+        private Dimension visibleSize;
+        private boolean collapsible;
+
+        public JCollapsiblePanel(String title, Color titleCol) {
+            super();
+
+            collapsible = true;
+
+            border = new TitledBorder(title);
+            border.setTitleColor(titleCol);
+            border.setBorder(new LineBorder(Color.white));
+            setBorder(border);
+
+            // as Titleborder has no access to the Label we fake the size data ;)
+            final JLabel l = new JLabel(title);
+            Dimension size = l.getPreferredSize();
+
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (!collapsible) {
+                        return;
+                    }
+
+                    Insets i = getBorder().getBorderInsets(JCollapsiblePanel.this);
+                    if (e.getX() < i.left + size.width && e.getY() < i.bottom + size.height) {
+                        if (visibleSize == null || getHeight() > size.height) {
+                            visibleSize = getSize();
+                        }
+                        if (getSize().height < visibleSize.height) {
+                            setMaximumSize(new Dimension(visibleSize.width, 20000));
+                            setMinimumSize(visibleSize);
+                        } else {
+                            setMaximumSize(new Dimension(visibleSize.width, size.height));
+                        }
+                        revalidate();
+                        e.consume();
+                    }
+                }
+            });
+        }
+
+        public void setCollapsible(boolean collapsible) {
+            this.collapsible = collapsible;
+        }
+
+        public void setTitle(String title) {
+            border.setTitle(title);
         }
     }
 
