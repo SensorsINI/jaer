@@ -104,7 +104,7 @@
                   <KeyStroke key="Ctrl+H"/>
                 </Property>
                 <Property name="mnemonic" type="int" value="104"/>
-                <Property name="text" type="java.lang.String" value="Highlight..."/>
+                <Property name="text" type="java.lang.String" value="Find/Highlight"/>
                 <Property name="toolTipText" type="java.lang.String" value="focuses the highlight text field, to allow highlighting filters or properties"/>
               </Properties>
               <Events>

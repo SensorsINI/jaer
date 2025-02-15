@@ -555,7 +555,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         highlightMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_H, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         highlightMI.setMnemonic('h');
-        highlightMI.setText("Highlight...");
+        highlightMI.setText("Find/Highlight");
         highlightMI.setToolTipText("focuses the highlight text field, to allow highlighting filters or properties");
         highlightMI.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
