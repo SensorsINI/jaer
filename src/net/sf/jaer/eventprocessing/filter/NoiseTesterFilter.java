@@ -1373,7 +1373,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param leakNoiseRateHz the leakNoiseRateHz to set
      */
     synchronized public void setLeakNoiseRateHz(float leakNoiseRateHz) {
-        float old=this.leakNoiseRateHz;
+        float old = this.leakNoiseRateHz;
         if (leakNoiseRateHz < 0) {
             leakNoiseRateHz = 0;
         }
@@ -2124,6 +2124,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         void start() {
+            if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                chip.getAeViewer().getAePlayer().rewind();
+            }
             reset();
             rocHistoryCurrent.reset();
             setRocHistoryLength(1000); //sufficient for whole marked section of recording
@@ -2296,13 +2299,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
          * @param rocSweepStep the rocSweepStep to set
          */
         public void setRocSweepStep(float rocSweepStep) {
-             float old = this.rocSweepStep;
-           this.rocSweepStep = rocSweepStep;
+            float old = this.rocSweepStep;
+            this.rocSweepStep = rocSweepStep;
             String k = rocSweepLogStep ? "rocSweepStepLog" : "rocSweepStepLinear";
             putFloat(k, rocSweepStep);
             storeParams();
-              getSupport().firePropertyChange("rocSweepStep", old, this.rocSweepStep);
-      }
+            getSupport().firePropertyChange("rocSweepStep", old, this.rocSweepStep);
+        }
 
         /**
          * @return the rocSweepPropertyName
@@ -2316,7 +2319,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
          */
         @Preferred
         public void setRocSweepPropertyName(String rocSweepPropertyName) throws IntrospectionException {
-            String old=this.rocSweepPropertyName;
+            String old = this.rocSweepPropertyName;
             this.rocSweepPropertyName = rocSweepPropertyName;
             if (selectedNoiseFilter == null) {
                 return;
@@ -2352,7 +2355,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 log.info(String.format("Found setter %s for property named %s", setter.toGenericString(), rocSweepPropertyName));
                 storeParams();
                 getSupport().firePropertyChange("rocSweepPropertyName", old, this.rocSweepPropertyName);
-          } else {
+            } else {
                 throw new MethodNotFoundException(String.format("MethodNotFoundException: property %s is not in %s",
                         rocSweepPropertyName, selectedNoiseFilter.getClass().getSimpleName()));
             }
@@ -2416,6 +2419,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         final int DEFAULT_PT_SIZE = 3;
         private int ptSize = DEFAULT_PT_SIZE;
         private Color color = Color.white;
+        private String label = "";
 
         public ROCHistory(AbstractNoiseFilter noiseFilter) {
             this.noiseFilter = noiseFilter;
@@ -2547,6 +2551,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (counter > SAMPLE_INTERVAL_NO_CHANGE) {
                 counter = 0;
             }
+            if (selectedNoiseFilter != null) {
+                label = selectedNoiseFilter.infoString();
+            }
         }
 
         private void drawLegend(GL2 gl) {
@@ -2582,7 +2589,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 rocSample.draw(gl, color, ptSize);
             }
             if (noiseFilter != null) {
-                DrawGL.drawString(getShowFilteringStatisticsFontSize(), chip.getSizeX(), rocHistoryLabelPosY, 1, color, noiseFilter.infoString());
+                DrawGL.drawString(getShowFilteringStatisticsFontSize(),
+                        chip.getSizeX(), rocHistoryLabelPosY, 1, color,
+                        label);
             }
             rocHistoryLabelPosY -= getShowFilteringStatisticsFontSize();
 
