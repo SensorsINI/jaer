@@ -8,6 +8,7 @@ package net.sf.jaer.eventprocessing;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
@@ -23,6 +24,7 @@ import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Point2D;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -2966,10 +2968,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     private class GroupPanel extends LeftAlignedPanel {
 
         private TitledBorder border;
-        private Dimension expandedSize;
+        private Dimension collapsedSize;
         private boolean collapsible = true, collapsed;
-        final int PREF_WIDTH = 200;
         final String collapsedKey;
+        JPanel placeholderPanel = new JPanel();
+        Cursor normalCursor = new Cursor(Cursor.DEFAULT_CURSOR),
+                uncollapseCursor = new Cursor(Cursor.N_RESIZE_CURSOR),
+                collapseCursor = new Cursor(Cursor.S_RESIZE_CURSOR);
 
         public GroupPanel(String title) {
 
@@ -2984,15 +2989,28 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             // because TitledBorder has no access to the Label we fake the size data ;)
             final JLabel l = new JLabel(title);
             Dimension d = l.getPreferredSize(); // size of title text of TitledBorder
-            Dimension collapsedSize = new Dimension(PREF_WIDTH, d.height + 2); // l.getPreferredSize(); // size of title text of TitledBorder
+            collapsedSize = new Dimension(getMaximumSize().width, d.height + 2); // l.getPreferredSize(); // size of title text of TitledBorder
 
             collapsed = prefs.getBoolean(collapsedKey, false);
             setTitle();
 
-            if (collapsed) {
-                setMaximumSize(collapsedSize);
-            }
+            addMouseMotionListener(new MouseMotionAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    if (isMouseInHotArea(e)) {
+                        if (collapsed) {
+                            setCursor(uncollapseCursor);
+                        } else {
+                            setCursor(collapseCursor);
+                        }
+                    } else {
+                        setCursor(normalCursor);
+                    }
+                }
+
+            });
             addMouseListener(new MouseAdapter() {
+
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     if (!collapsible) {
@@ -3002,29 +3020,39 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     if (getBorder() != null && getBorder().getBorderInsets(GroupPanel.this) != null) {
                         Insets i = getBorder().getBorderInsets(GroupPanel.this);
                         if (e.getX() < i.left + collapsedSize.width && e.getY() < i.bottom + collapsedSize.height) {
-                            if (expandedSize == null || getHeight() > collapsedSize.height) {
-                                expandedSize = getSize();
+                            collapsed = !collapsed;
+                            log.info(String.format("Setting %s collapsed=%s", getName(), collapsed));
+                            for (Component c : getComponents()) {
+                                if (c instanceof JPanel && c != GroupPanel.this) {
+                                    c.setVisible(!collapsed);
+                                }
                             }
-                            if (getSize().height < expandedSize.height) {  // expand
-                                GroupPanel.this.collapsed = false;
-                                setMaximumSize(new Dimension(expandedSize.width, 1000));
-                                setMinimumSize(expandedSize);
-                                setPreferredSize(null);
-                                log.fine(String.format("expanded GroupPanel %s to pref size %s, max size %s, min size %s", getName(), getPreferredSize(), getMaximumSize(), getPreferredSize()));
-                            } else { // collapse
-                                GroupPanel.this.collapsed = true;
-                                setMaximumSize(new Dimension(expandedSize.width, collapsedSize.height));
-                                setPreferredSize(new Dimension(expandedSize.width, collapsedSize.height));
-                                log.fine(String.format("collaposed GroupPanel %s to pref size %s, max size %s, min size %s", getName(), getPreferredSize(), getMaximumSize(), getPreferredSize()));
+                            if (collapsed) {
+                                add(placeholderPanel);
+                            } else {
+                                remove(placeholderPanel);
                             }
                             setTitle();
+                            revalidate();
+                            repaint();
                             prefs.putBoolean(collapsedKey, GroupPanel.this.isCollapsed());
                             GroupPanel.this.revalidate();
                             e.consume();
                         }
                     }
                 }
-            });
+
+            }
+            );
+        }
+
+        private boolean isMouseInHotArea(MouseEvent e) {
+            Insets i = getBorder().getBorderInsets(GroupPanel.this);
+            if (e.getX() < i.left + collapsedSize.width && e.getY() < i.bottom + collapsedSize.height) {
+                return true;
+            } else {
+                return false;
+            }
         }
 
         final private void setTitle() {
@@ -3034,7 +3062,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 border.setTitle("> " + getName());
             }
             setBorder(border);
-            repaint();
+
         }
 
         public void setCollapsible(boolean collapsible) {
