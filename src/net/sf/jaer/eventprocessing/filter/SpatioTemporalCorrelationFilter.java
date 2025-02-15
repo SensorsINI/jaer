@@ -382,7 +382,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
             String s = super.infoString() + String.format(" k=%d onOffShot=%s onOffFilt=%6.1f", numMustBeCorrelated, filterAlternativePolarityShotNoiseEnabled, shotFilteredOut);
             return s;
         } else {
-            return super.infoString() + String.format(" k=%d", numMustBeCorrelated);
+            return super.infoString() + String.format(" k=%d usePol=%s", numMustBeCorrelated,isPolaritiesMustMatch());
         }
     }
 
