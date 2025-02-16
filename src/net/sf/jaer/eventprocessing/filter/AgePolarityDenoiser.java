@@ -248,11 +248,13 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
      * @param correlationThreshold the correlationThreshold to set
      */
     public void setCorrelationThreshold(float correlationThreshold) {
+        float old=this.correlationThreshold;
         if (correlationThreshold > getNumNeighbors()) {
             correlationThreshold = getNumNeighbors();
         }
         this.correlationThreshold = correlationThreshold;
         putFloat("correlationThreshold", correlationThreshold);
+        getSupport().firePropertyChange("correlationThreshold",old,this.correlationThreshold);
     }
 
     public float getMaxCorrelationThreshold() {
