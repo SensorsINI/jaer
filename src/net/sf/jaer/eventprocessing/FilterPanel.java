@@ -953,7 +953,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         Object currentState = null;
 
         public MyControl(PropertyDescriptor p) {
-            setterMap.put(name, this);
             filter = getFilter();
             this.p = p;
             if (p != null) {
@@ -961,6 +960,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 write = p.getWriteMethod();
                 read = p.getReadMethod();
             }
+            setterMap.put(name, this);
             setAlignmentX(LEFT_ALIGNMENT);
             setAlignmentY(TOP_ALIGNMENT);
 
