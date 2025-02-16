@@ -246,6 +246,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     n.initFilter();
                     n.setFilterEnabled(true);
                     n.setControlsVisible(true);
+                    rocSweep.init();
                     try {
                         setRocSweepPropertyName(getRocSweepPropertyName());
                     } catch (IntrospectionException | MethodNotFoundException ex) {
@@ -308,8 +309,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
         // buttons
         setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
-        setPropertyTooltip(TT_DISP, "doClearSavedRocHistories", "Clears saved ROC histories");
+        setPropertyTooltip(TT_DISP, "doClearSavedRocHistories", "Clears saved ROC curves");
         setPropertyTooltip(TT_DISP, "doSaveRocHistory", "Saves current ROC points to be displayed");
+        setPropertyTooltip(TT_DISP, "doClearLastRocHistory", "Erase the last recording of ROC curve");
 
         setHideNonEnabledEnclosedFilters(true); // only show the enabled noise filter
         if (selectedNoiseFilter != null) {
@@ -2038,6 +2040,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         float startingValue = .1f;
 
         private HashMap<String, ROCSweepParams> rocSweepParamesHashMap = null;
+        private boolean installedPropertyChangeListeners=false;
 
         /**
          * Class to hold parameters for HashMap to be stored in preferences
@@ -2109,9 +2112,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         final void init() {
-            if (chip.getAeViewer() != null) {
+            if (chip.getAeViewer() != null && !installedPropertyChangeListeners) {
                 chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_INIT, this);
+                installedPropertyChangeListeners=true;
             }
             running = false;
             try {
@@ -2165,12 +2169,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 restoreStartingValue();
             }
             running = false;
+            setRocHistoryLength(1); //sufficient for whole marked section of recording
         }
 
         void endAndSave() {
             stop();
             rocHistoryCurrent.reset();
-            setRocHistoryLength(1); //sufficient for whole marked section of recording
         }
 
         void reset() {
@@ -2450,7 +2454,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             float x, y, tau;
             boolean labeled = false;
-            Color color;
 
             /**
              * Create new sample
@@ -2817,7 +2820,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Preferred
     public void doClearSavedRocHistories() {
-        rocHistoriesSaved.clear();
+        ROCHistory h=rocHistoriesSaved.getLast();
+        rocHistoriesSaved.remove(h);
+    }
+    
+    @Preferred
+    public void doClearLastRocHistory(){
+        
     }
 
     @Override
