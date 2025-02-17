@@ -1627,7 +1627,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     } else {
                         rawPacket = grabInput();
                         if (rawPacket == null) {
-                            log.warning("null rawPacket, probably at OUT marker or end of file");
+                            log.fine("null rawPacket, probably at OUT marker or end of file");
                             continue;
                         }
 
