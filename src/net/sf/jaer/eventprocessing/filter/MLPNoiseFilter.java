@@ -672,6 +672,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * exported using Danny Neil's XML Matlab script cnntoxml.m.
      *
      */
+    @Preferred 
     public void doLoadNetwork() {
         File file = null;
         file = openFileDialogAndGetFile("Choose a network, either tensorflow protobuf binary (pb),  or folder holding tensorflow SavedModelBundle",
