@@ -480,9 +480,14 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @return the info string
      */
     public String infoString() {
+        String s = camelCaseClassname();
+        s = s + String.format(": dT=%ss, sigma=%dpx subSamp=%d", eng.format(getCorrelationTimeS()), getSigmaDistPixels(), getSubsampleBy());
+        return s;
+    }
+
+    protected String camelCaseClassname() {
         String s = getClass().getSimpleName();
         s = s.replaceAll("[a-z]", "");
-        s = s + String.format(": dT=%ss, sigma=%dpx subSamp=%d", eng.format(getCorrelationTimeS()), getSigmaDistPixels(), getSubsampleBy());
         return s;
     }
 

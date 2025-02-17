@@ -96,14 +96,21 @@ public class PropertyTooltipSupport implements HasPropertyTooltips {
     }
 
     /**
-     * @return the tooltip for the property
+     * @return the tooltip for the property, or for the "do" method that goes with button controls.
+     * I.e. developers can make a tooltip for setPropertyTooltip("doClearHistory", "text") for the method
+     * doClearHistory() when the property is actually "clearHistory"
+     * @param the property name
      */
     @Override
     public String getPropertyTooltip(String propertyName) {
         if (propertyTooltipMap == null) {
             return null;
         }
-        return propertyTooltipMap.get(propertyName.toLowerCase());
+        String s= propertyTooltipMap.get(propertyName.toLowerCase());
+        if(s==null){
+            s= propertyTooltipMap.get("do"+propertyName.toLowerCase());
+        }
+        return s;
     }
 
     /**

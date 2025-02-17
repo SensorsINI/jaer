@@ -163,7 +163,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                 //                f.setFilterEnabled(yes);
             }
         }
-        pack();
 
         defaultFolder = System.getProperty("user.dir");
         try {
@@ -199,6 +198,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         for(EventFilter f:filterChain){
             f.initGUI();
         }
+        pack();
     }
 
     protected class MyUndoableEditListener
@@ -1018,7 +1018,9 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     }
 
     private void highlightOrShowOnly(String searchString) {
-        if (searchString == null || searchString.isBlank()) {
+        if(searchString==null)
+            searchString="";
+        if (searchString.isBlank()) {
             highlightRB.setEnabled(false);
             hideOthersRB.setEnabled(false);
         } else {
