@@ -104,7 +104,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public static Class[] noiseFilterClasses = {null, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
-    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
+//    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
     private AbstractNoiseFilter selectedNoiseFilter = null;
 
     public static final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
@@ -138,6 +138,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private ArrayList<ROCHistory> rocHistoriesSaved = new ArrayList();
     private int rocHistoryLabelPosY = 0;
     private ROCSweep rocSweep;
+
+    int[] colors = new int[6];
+    int lastcolor = 0;
 
     private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
     private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
@@ -226,7 +229,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param noiseFilterClass one of static list of noise filters, or null
      */
     synchronized private void setSelectedNoiseFilter(Object noiseFilterClass) {
-        putString("selectedNoiseFilter", noiseFilterClass == null ? "(null)" : ((Class) noiseFilterClass).getName());
         resetCalled = true; // make sure we iniitialize the timestamp maps on next packet for new filter    
         if (noiseFilterClass == null) {
             selectedNoiseFilter = null;
@@ -259,6 +261,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
 
         }
+        putString("selectedNoiseFilter", noiseFilterClass == null ? "(null)" : ((Class) noiseFilterClass).getName());
     }
 
     public String getSelectedNoiseFilterName() {
@@ -316,6 +319,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setHideNonEnabledEnclosedFilters(true); // only show the enabled noise filter
         if (selectedNoiseFilter != null) {
             selectedNoiseFilter.setControlsVisible(true);
+        }
+
+        for (int k = 0; k < colors.length; k++) {
+            float hue = (float) k / (colors.length - 1);
+            int rgb = Color.HSBtoRGB(hue, 1, 1);
+            colors[k] = rgb;
         }
     }
 
@@ -386,6 +395,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         rocHistoryLabelPosY = chip.getSizeY() / 2;
         for (ROCHistory h : rocHistoriesSaved) {
             h.draw(gl);
+//            float auc = h.computeAUC();
+//            log.info(String.format("AUC=%.3f for %s", auc, h.toString()));
         }
         rocHistoryCurrent.draw(gl);
         if (rocSweep != null && rocSweep.running) {
@@ -1270,9 +1281,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 try {
                     Constructor con = cl.getConstructor(AEChip.class);
                     noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
-                    float hue = (float) i / (noiseFilterClasses.length - 1);
-                    int rgb = Color.HSBtoRGB(hue, 1, 1);
-                    noiseFilter2ColorMap.put(noiseFilters[i], rgb);
                     i++;
                 } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                     String s = String.format("Could not construct instance of AbstractNoiseFilter %s;\ngot %s", cl.getSimpleName(), ex.toString());
@@ -1302,21 +1310,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             if (chip.getRenderer() instanceof DavisRenderer) {
                 renderer = (DavisRenderer) chip.getRenderer();
-            }
-        }
-        String initialFilterName = getString("selectedNoiseFilter", "(null)");
-        if (initialFilterName.equals("(null)")) {
-            initialFilterName = null;
-            noiseFilterComboBoxModel.setSelectedItem(null);  // also sets the filter
-            rocHistoryCurrent = new ROCHistory(null);
-        } else {
-            try {
-                Class c = Class.forName(initialFilterName);
-                noiseFilterComboBoxModel.setSelectedItem(c);  // also sets the filter
-                rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
-
-            } catch (ClassNotFoundException ex) {
-                log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
             }
         }
 
@@ -1531,6 +1524,21 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void initGUI() {
+        String initialFilterName = getString("selectedNoiseFilter", "(null)");
+        if (initialFilterName.equals("(null)")) {
+            initialFilterName = null;
+            noiseFilterComboBoxModel.setSelectedItem(null);  // also sets the filter
+            rocHistoryCurrent = new ROCHistory(null);
+        } else {
+            try {
+                Class c = Class.forName(initialFilterName);
+                noiseFilterComboBoxModel.setSelectedItem(c);  // also sets the filter
+                rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
+
+            } catch (ClassNotFoundException ex) {
+                log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
+            }
+        }
         if (selectedNoiseFilter != null) {
             selectedNoiseFilter.setControlsVisible(true);
         }
@@ -2040,7 +2048,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         float startingValue = .1f;
 
         private HashMap<String, ROCSweepParams> rocSweepParamesHashMap = null;
-        private boolean installedPropertyChangeListeners=false;
+        private boolean installedPropertyChangeListeners = false;
 
         /**
          * Class to hold parameters for HashMap to be stored in preferences
@@ -2115,7 +2123,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (chip.getAeViewer() != null && !installedPropertyChangeListeners) {
                 chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
                 chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_INIT, this);
-                installedPropertyChangeListeners=true;
+                installedPropertyChangeListeners = true;
             }
             running = false;
             try {
@@ -2135,7 +2143,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             rocHistoryCurrent.reset();
             setRocHistoryLength(1000); //sufficient for whole marked section of recording
             rocHistorySummary = new ROCHistory(selectedNoiseFilter);
-            Color color = selectedNoiseFilter == null ? Color.white : new Color(noiseFilter2ColorMap.get(selectedNoiseFilter));
+            rocHistorySummary.summary = true;
+            Color color = selectedNoiseFilter == null ? Color.white : new Color(colors[lastcolor % colors.length]);
+            lastcolor += 1;
             int ptSize = 8;
             rocHistorySummary.setColor(color);
             rocHistorySummary.setPtSize(ptSize);
@@ -2189,6 +2199,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             ROCHistory.ROCSample avg = rocHistoryCurrent.computeAvg();
             rocHistoryCurrent.reset();
             rocHistorySummary.addSample(avg.x, avg.y, currentValue);
+            rocHistorySummary.computeAUC();
 
             boolean done = updateCurrentValue();
 
@@ -2424,6 +2435,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private int ptSize = DEFAULT_PT_SIZE;
         private Color color = Color.white;
         private String label = "";
+        float auc = 0;
+        boolean summary = false;
 
         public ROCHistory(AbstractNoiseFilter noiseFilter) {
             this.noiseFilter = noiseFilter;
@@ -2448,6 +2461,25 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             float avgTpr = sumTpr / n;
             ROCSample avg = new ROCSample(avgFpr, avgTpr, getCorrelationTimeS(), false);
             return avg;
+        }
+
+        float computeAUC() {
+            this.auc = 0;
+            int n = rocHistoryList.size();
+            float lastx = 0, lasty = 0;
+            for (ROCSample s : rocHistoryList) {
+                if (Float.isNaN(s.x * s.y)) {
+                    continue;
+                }
+                final float x = s.x, y = s.y;
+                float a = (x - lastx) * ((y + lasty) / 2);
+                auc += a;
+                lastx = x;
+                lasty = y;
+            }
+            float lasta = (1 - lastx) * ((1 + lasty) / 2);
+            auc += lasta;
+            return auc;
         }
 
         class ROCSample {
@@ -2594,9 +2626,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (noiseFilter != null) {
                 DrawGL.drawString(getShowFilteringStatisticsFontSize(),
                         chip.getSizeX(), rocHistoryLabelPosY, 1, color,
-                        label);
+                        label + String.format(" AUC=%.3f", auc));
             }
             rocHistoryLabelPosY -= getShowFilteringStatisticsFontSize();
+            if (summary) {
+                float[] rgb = color.getRGBComponents(null);
+                gl.glColor3fv(rgb, 0);
+                gl.glLineWidth(1);
+                gl.glPushMatrix();
+                gl.glBegin(GL.GL_LINE_STRIP);
+//                gl.glVertex2f(0, 0);
+                for (ROCSample rocSample : rocHistoryList) {
+                    gl.glVertex2f(rocSample.x * sx, rocSample.y * sy);
+                }
+//                gl.glVertex2f(sx, sy);
+                gl.glEnd();
+                gl.glPopMatrix();
+
+            }
 
         }
 
@@ -2820,13 +2867,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Preferred
     public void doClearSavedRocHistories() {
-        ROCHistory h=rocHistoriesSaved.getLast();
+        ROCHistory h = rocHistoriesSaved.getLast();
         rocHistoriesSaved.remove(h);
     }
-    
+
     @Preferred
-    public void doClearLastRocHistory(){
-        
+    public void doClearLastRocHistory() {
+        ROCHistory r = rocHistoriesSaved.getLast();
+        rocHistoriesSaved.removeLast();
     }
 
     @Override
