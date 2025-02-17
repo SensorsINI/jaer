@@ -54,7 +54,14 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
 
     @Override
     public String infoString() {
-        return super.infoString() + String.format(" k=%d", numMustBeCorrelated);
+         String s = String.format("%s: dT=%ss, sigma=%dpx subSamp=%d usePol=%s corThr=%s", 
+                camelCaseClassname(),
+                eng.format(getCorrelationTimeS()), 
+                getSigmaDistPixels(), 
+                getSubsampleBy(), 
+                isPolaritiesMustMatch(),
+                eng.format(correlationThreshold));
+        return s;
     }
     
     
