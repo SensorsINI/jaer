@@ -392,7 +392,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                DrawGL.drawCross(gl, x, y, L, (float) Math.PI / 4);
 //                gl.glPopMatrix();
 //            }
-        rocHistoryLabelPosY = (int)(.7*chip.getSizeY());
+        rocHistoryLabelPosY = (int) (.7 * chip.getSizeY());
         for (ROCHistory h : rocHistoriesSaved) {
             h.draw(gl);
 //            float auc = h.computeAUC();
@@ -1311,6 +1311,21 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (chip.getRenderer() instanceof DavisRenderer) {
                 renderer = (DavisRenderer) chip.getRenderer();
             }
+            String initialFilterName = getString("selectedNoiseFilter", "(null)");
+            if (initialFilterName.equals("(null)")) {
+                initialFilterName = null;
+                noiseFilterComboBoxModel.setSelectedItem(null);  // also sets the filter
+                rocHistoryCurrent = new ROCHistory(null);
+            } else {
+                try {
+                    Class c = Class.forName(initialFilterName);
+                    noiseFilterComboBoxModel.setSelectedItem(c);  // also sets the filter
+                    rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
+
+                } catch (ClassNotFoundException ex) {
+                    log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
+                }
+            }
         }
 
         sx = chip.getSizeX() - 1;
@@ -1524,21 +1539,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void initGUI() {
-        String initialFilterName = getString("selectedNoiseFilter", "(null)");
-        if (initialFilterName.equals("(null)")) {
-            initialFilterName = null;
-            noiseFilterComboBoxModel.setSelectedItem(null);  // also sets the filter
-            rocHistoryCurrent = new ROCHistory(null);
-        } else {
-            try {
-                Class c = Class.forName(initialFilterName);
-                noiseFilterComboBoxModel.setSelectedItem(c);  // also sets the filter
-                rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
-
-            } catch (ClassNotFoundException ex) {
-                log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
-            }
-        }
         if (selectedNoiseFilter != null) {
             selectedNoiseFilter.setControlsVisible(true);
         }
@@ -2486,7 +2486,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     last = s;
                     continue; // don't get area from first point, compute this at end once we know direction
                 }
-                float a = (float)Math.abs((x - lastx) * ((y + lasty) / 2));
+                float a = (float) Math.abs((x - lastx) * ((y + lasty) / 2));
                 auc += a;
                 lastx = x;
                 lasty = y;
