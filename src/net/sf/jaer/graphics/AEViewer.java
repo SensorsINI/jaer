@@ -145,6 +145,7 @@ import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
+import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter;
@@ -284,9 +285,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     File currentFile = null;
     private FrameRater frameRater = null; // constructed in constructor since it needs prefs
     ChipCanvas chipCanvas;
-    private volatile boolean loggingEnabled = false, loggingPaused=false;
-    /** The file that AE data is currently being logged to. Note it can change when the user finally selects the file to save the data to. 
-     @see #startLogging(String,String)
+    private volatile boolean loggingEnabled = false, loggingPaused = false;
+    /**
+     * The file that AE data is currently being logged to. Note it can change
+     * when the user finally selects the file to save the data to.
+     *
+     * @see #startLogging(String,String)
      */
     private File loggingFile = null;
     AEFileOutputStream loggingOutputStream;
@@ -1649,7 +1653,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
 
                     // if we are logging data to disk do it here
-                    if (isLoggingEnabled()  & !isLoggingPaused()) {
+                    if (isLoggingEnabled() & !isLoggingPaused()) {
                         logPacket(rawPacket, cookedPacket);
                     }
 
@@ -4936,7 +4940,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             lastLoggingFolder = chooser.getCurrentDirectory();
                             prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
 
-                            final StringBuilder sb2 = new StringBuilder("Moving recording..");
+                            final StringBuilder sb2 = new StringBuilder("Moving recording.....");
                             final JOptionPane pane2 = new JOptionPane(sb2.toString(), JOptionPane.INFORMATION_MESSAGE);
                             log.fine(String.format("Renaming (or moving) %s to %s....", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
                             final JDialog dialog2 = pane2.createDialog(this, "Moving recording");
@@ -4947,39 +4951,31 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     dialog2.dispose();
                                 }
                             });
-                            if (Desktop.isDesktopSupported()) {
-                                final JButton showFileLocationButton = new JButton("Show folder");
-                                final File f = new File(newFile.getAbsolutePath());
-                                showFileLocationButton.addActionListener(new ActionListener() {
-                                    public void actionPerformed(ActionEvent e) {
-                                        try {
-                                            Desktop.getDesktop().open(lastLoggingFolder);
-                                        } catch (Exception ex) {
-                                            log.warning("Could not show file location: " + ex.toString());
-                                        } finally {
-                                            dialog2.dispose();
-                                        }
-                                    }
-                                });
-
-                                Object[] newOptions = {showFileLocationButton, okButton};
-                                pane2.setOptions(newOptions);
-                            }
-
-                            // the line below is added to the example from the docs
-                            dialog2.setModal(false); // this says not to block background components
-                            dialog2.setLocationRelativeTo(this);
-                            dialog2.pack();
-                            dialog2.setVisible(true);
-//                            int tries=10;
-//                            while(!okButton.requestFocusInWindow() && tries-->0){
-//                                try{
-//                                    Thread.sleep(100);
-//                                }catch(InterruptedException e){}
+//                            if (Desktop.isDesktopSupported()) {
+//                                final JButton showFileLocationButton = new JButton("Show folder");
+//                                final File f = new File(newFile.getAbsolutePath());
+//                                showFileLocationButton.addActionListener(new ActionListener() {
+//                                    public void actionPerformed(ActionEvent e) {
+//                                        try {
+//                                            Desktop.getDesktop().open(lastLoggingFolder);
+//                                        } catch (Exception ex) {
+//                                            log.warning("Could not show file location: " + ex.toString());
+//                                        } finally {
+//                                            dialog2.dispose();
+//                                        }
+//                                    }
+//                                });
+//
+//                                Object[] newOptions = {showFileLocationButton, okButton};
+//                                pane2.setOptions(newOptions);
 //                            }
+                            dialog2.setVisible(true);
 
                             boolean renamed = loggingFile.renameTo(newFile);
-                            pane2.setMessage("<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                            dialog2.dispose();
+
+                            ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                            dialog3.setVisible(true);
                             if (renamed) {
                                 // if successful, cool, save persistence
                                 savedIt = true;
@@ -5038,6 +5034,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                     final JDialog dialog = pane.createDialog(this, "Moving recording");
                                     // the line below is added to the example from the docs
                                     dialog.setModal(false); // this says not to block background components
+                                    dialog.setResizable(true);
                                     dialog.setVisible(true);
                                     t.start();
                                     while (t.isAlive()) {
@@ -5105,11 +5102,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return loggingFile;
     }    // doesn't actually reset the test in the dialog'
 
-    
-    
     /**
      * Returns true if currently logging (recording data to file)
-     * 
+     *
      * @return the loggingEnabled
      */
     public boolean isLoggingEnabled() {
@@ -5117,9 +5112,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Disables logging if it is enabled. Set true when logging is started. Users can disable during logging.
-     * Has no effect if logging is not started.
-     * 
+     * Disables logging if it is enabled. Set true when logging is started.
+     * Users can disable during logging. Has no effect if logging is not
+     * started.
+     *
      * @param loggingEnabled the loggingEnabled to set
      */
     private void setLoggingEnabled(boolean loggingEnabled) {
@@ -5128,7 +5124,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * Returns true if logging is paused.
-     * 
+     *
      * @return the loggingPaused
      */
     public boolean isLoggingPaused() {
@@ -5136,15 +5132,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * Pauses logging data if it is enabled. Users can disable before starting or during logging.
-     * Has no effect if logging is not started.
-     * 
+     * Pauses logging data if it is enabled. Users can disable before starting
+     * or during logging. Has no effect if logging is not started.
+     *
      * @param loggingPaused the loggingEnabled to set
      */
     private void setLoggingPaused(boolean loggingPaused) {
         this.loggingPaused = loggingPaused;
-    }    
-    
+    }
+
     class ResetFileButton extends JButton {
 
         String fn;
@@ -6711,7 +6707,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return false;
         }
     }
-
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
