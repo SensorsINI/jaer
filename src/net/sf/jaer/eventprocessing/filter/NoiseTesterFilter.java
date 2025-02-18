@@ -392,7 +392,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //                DrawGL.drawCross(gl, x, y, L, (float) Math.PI / 4);
 //                gl.glPopMatrix();
 //            }
-        rocHistoryLabelPosY = chip.getSizeY() / 2;
+        rocHistoryLabelPosY = (int)(.7*chip.getSizeY());
         for (ROCHistory h : rocHistoriesSaved) {
             h.draw(gl);
 //            float auc = h.computeAUC();
@@ -2197,9 +2197,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             // first save summary statistic for last step in private rocHistorySummary
             ROCHistory.ROCSample avg = rocHistoryCurrent.computeAvg();
+            if (!Float.isNaN(avg.x) && !Float.isNaN(avg.y)) {
+                rocHistorySummary.addSample(avg.x, avg.y, currentValue);
+                rocHistorySummary.computeAUC();
+            }
             rocHistoryCurrent.reset();
-            rocHistorySummary.addSample(avg.x, avg.y, currentValue);
-            rocHistorySummary.computeAUC();
 
             boolean done = updateCurrentValue();
 
@@ -2436,7 +2438,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private Color color = Color.white;
         private String label = "";
         float auc = 0;
-        boolean summary = false;
+        boolean summary = false; // flag for a roc sweep set of points
+        Boolean clockwise = null;  // flag that says last point has higher tpr/fpr, i.e. the sweep increased the signal and noise rate
 
         public ROCHistory(AbstractNoiseFilter noiseFilter) {
             this.noiseFilter = noiseFilter;
@@ -2467,18 +2470,48 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             this.auc = 0;
             int n = rocHistoryList.size();
             float lastx = 0, lasty = 0;
+            if (rocHistoryList.size() < 2) {
+                return Float.NaN;
+            }
+            ROCSample first = null, last = null;
             for (ROCSample s : rocHistoryList) {
                 if (Float.isNaN(s.x * s.y)) {
                     continue;
                 }
                 final float x = s.x, y = s.y;
-                float a = (x - lastx) * ((y + lasty) / 2);
+                if (first == null) {
+                    first = s;
+                    lastx = x;
+                    lasty = y;
+                    last = s;
+                    continue; // don't get area from first point, compute this at end once we know direction
+                }
+                float a = (float)Math.abs((x - lastx) * ((y + lasty) / 2));
                 auc += a;
                 lastx = x;
                 lasty = y;
+                last = s;
             }
-            float lasta = (1 - lastx) * ((1 + lasty) / 2);
-            auc += lasta;
+            if (first != null && last != null) {
+                if (first.x < last.x && first.y < last.y) {
+                    clockwise = true;
+                } else if (last.x < first.x && last.y < first.y) {
+                    clockwise = false;
+                }
+            }
+            if (clockwise != null) {
+                if (clockwise) {
+                    float lasta = (1 - last.x) * ((1 + last.y) / 2);
+                    auc += lasta;
+                    float firsta = (first.x - 0) * (first.y / 2);
+                    auc += firsta;
+                } else { // counterclockwise
+                    float lasta = (1 - first.x) * ((1 + first.y) / 2);
+                    auc += lasta;
+                    float firsta = (last.x - 0) * (last.y / 2);
+                    auc += firsta;
+                }
+            }
             return auc;
         }
 
@@ -2635,11 +2668,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 gl.glLineWidth(1);
                 gl.glPushMatrix();
                 gl.glBegin(GL.GL_LINE_STRIP);
-//                gl.glVertex2f(0, 0);
+                if (clockwise != null) {
+                    if (clockwise) {
+                        gl.glVertex2f(0, 0);
+                    } else {
+                        gl.glVertex2f(sx, sy);
+                    }
+                }
                 for (ROCSample rocSample : rocHistoryList) {
                     gl.glVertex2f(rocSample.x * sx, rocSample.y * sy);
                 }
-//                gl.glVertex2f(sx, sy);
+                if (clockwise != null) {
+                    if (clockwise) {
+                        gl.glVertex2f(sx, sy);
+                    } else {
+                        gl.glVertex2f(0, 0);
+                    }
+                }
                 gl.glEnd();
                 gl.glPopMatrix();
 
