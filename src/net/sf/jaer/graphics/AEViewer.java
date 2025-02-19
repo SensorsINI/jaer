@@ -1062,7 +1062,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            // https://docs.oracle.com/javase/tutorial/uiswing/misc/keybinding.html
 //            // https://docs.oracle.com/javase/tutorial/uiswing/misc/keybinding.html#howto
 //            // https://stackoverflow.com/questions/1946232/can-multiple-accelerators-be-defined-for-a-jmenuitem 
-////            InputMap im=getRootPane().getInputMap();
+            ////            InputMap im=getRootPane().getInputMap();
 //            InputMap imAnces=getRootPane().getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 //            ActionMap am=getRootPane().getActionMap();
 //            
@@ -2393,7 +2393,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //            SwingUtilities.invokeAndWait(new Runnable(){
         //                public void run(){
         //                    statisticsLabel.setText(s);
-        ////                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
+
+    
+
+    ////                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
         //////                        System.out.println("statisticsLabel width="+statisticsLabel.getWidth()+" > statisticsPanel width="+statisticsPanel.getWidth());
         ////                        // possibly resize statistics font size
         ////                        formComponentResized(null);
@@ -4796,7 +4799,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                }
 //                            };
 //
-////                            JOptionPane.showMessageDialog(getImagePanel(), "Moving recording to final location", "Moving recording", JOptionPane.INFORMATION_MESSAGE);
+    ////                            JOptionPane.showMessageDialog(getImagePanel(), "Moving recording to final location", "Moving recording", JOptionPane.INFORMATION_MESSAGE);
 //                            t.start();
 //                            StringBuilder sb = new StringBuilder("Saving..");
 //                            while (t.isAlive()) {
@@ -4926,7 +4929,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                                        commentsPanel.appendOfEventReferences(tf);
 //                                        chooser.setAccessory(commentsPanel);
 
-                    boolean savedIt = false;
+                    boolean doneSavingOrCancelling = false;
                     do {
                         // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
                         retValue = chooser.showSaveDialog(AEViewer.this);
@@ -4940,48 +4943,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             lastLoggingFolder = chooser.getCurrentDirectory();
                             prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
 
-                            final StringBuilder sb2 = new StringBuilder("Moving recording.....");
-                            final JOptionPane pane2 = new JOptionPane(sb2.toString(), JOptionPane.INFORMATION_MESSAGE);
-                            log.fine(String.format("Renaming (or moving) %s to %s....", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
-                            final JDialog dialog2 = pane2.createDialog(this, "Moving recording");
-                            dialog2.setAlwaysOnTop(true);
-                            final JButton okButton = new JButton("OK");
-                            okButton.addActionListener(new ActionListener() {
-                                public void actionPerformed(ActionEvent e) {
-                                    dialog2.dispose();
-                                }
-                            });
-//                            if (Desktop.isDesktopSupported()) {
-//                                final JButton showFileLocationButton = new JButton("Show folder");
-//                                final File f = new File(newFile.getAbsolutePath());
-//                                showFileLocationButton.addActionListener(new ActionListener() {
-//                                    public void actionPerformed(ActionEvent e) {
-//                                        try {
-//                                            Desktop.getDesktop().open(lastLoggingFolder);
-//                                        } catch (Exception ex) {
-//                                            log.warning("Could not show file location: " + ex.toString());
-//                                        } finally {
-//                                            dialog2.dispose();
-//                                        }
-//                                    }
-//                                });
-//
-//                                Object[] newOptions = {showFileLocationButton, okButton};
-//                                pane2.setOptions(newOptions);
-//                            }
-                            dialog2.setVisible(true);
-
                             boolean renamed = loggingFile.renameTo(newFile);
-                            dialog2.dispose();
 
-                            ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
-                            dialog3.setVisible(true);
                             if (renamed) {
                                 // if successful, cool, save persistence
-                                savedIt = true;
+                                doneSavingOrCancelling = true;
                                 recentFiles.addFile(newFile);
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
                                 log.info("renamed logging file to " + newFile.getAbsolutePath());
+                                ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                                dialog3.setVisible(true);
                             } else {
                                 // if this fails, it does not only mean that a file already exists,
                                 // the failure reasons are platform dependent, for example on Linux
@@ -4990,17 +4961,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 // so we check if the new file really exists, if it doesn't, we don't
                                 // have to delete it or ask for overwrite confirmation, just use it.
                                 if (newFile.exists()) {
-                                    int overwrite = JOptionPane.showConfirmDialog(chooser, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+                                    int overwrite = JOptionPane.showConfirmDialog(this, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
                                     if (overwrite == JOptionPane.OK_OPTION) {
                                         // we need to delete the file
                                         boolean deletedOld = newFile.delete();
                                         if (deletedOld) {
                                             loggingFile.renameTo(newFile);
-                                            savedIt = true;
+                                            doneSavingOrCancelling = true;
                                             log.info("renamed logging file to " + newFile); // TODO something messed up
                                             // here with confirmed
                                             // overwrite of logging file
                                             loggingFile = newFile;
+                                            ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                                            dialog3.setVisible(true);
                                         } else {
                                             log.warning("couldn't delete logging file " + newFile);
                                         }
@@ -5052,8 +5025,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                         sb.append("<p>").append(s);
                                         pane.setMessage(sb.toString());
 
-                                        savedIt = true;
+                                        doneSavingOrCancelling = true;
                                         loggingFile = newFile;
+                                        ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                                        dialog3.setVisible(true);
+
                                     } else {
                                         String s = String.format("Could not save %s: %s", newFinalFile, result.exception);
                                         sb.append("<p>").append(s);
@@ -5072,10 +5048,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 log.warning("Couldn't delete temporary logging file " + loggingFile);
                             }
 
-                            savedIt = true;
+                            doneSavingOrCancelling = true;
                         }
 
-                    } while (savedIt == false); // keep trying until user is happy (unless they deleted some crucial data!)
+                    } while (doneSavingOrCancelling == false); // keep trying until user is happy (unless they deleted some crucial data!)
                 }
 
             } catch (IOException e) {
@@ -5225,7 +5201,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //                try {
                 //                    BrowserLauncher launcher=new BrowserLauncher();
                 //                    launcher.openURLinBrowser(url);
-                ////                    BrowserLauncher.openURL(url);
+
+            
+        
+        ////                    BrowserLauncher.openURL(url);
                 //                } catch (Exception e) {
                 //                    log.warning(e.toString());
                 //                    setStatusMessage(e.getMessage());
@@ -5872,7 +5851,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             //        if(socketInputStream==null){
             //            try{
             //
-            ////                socketInputStream=new AEUnicastInput();
+        ////                socketInputStream=new AEUnicastInput();
             //                String host=JOptionPane.showInputDialog(this,"Hostname to receive from",socketInputStream.getHost());
             //                if(host==null) return;
             //                aeSocket=new AESocket(host);
