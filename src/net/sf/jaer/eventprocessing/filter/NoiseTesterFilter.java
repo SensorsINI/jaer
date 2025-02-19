@@ -36,12 +36,15 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyDescriptor;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -58,6 +61,7 @@ import net.sf.jaer.util.RemoteControlled;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -70,6 +74,8 @@ import java.util.logging.Logger;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
@@ -83,6 +89,7 @@ import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
+import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import org.apache.commons.math3.stat.descriptive.MultivariateSummaryStatistics;
 import org.jdesktop.el.MethodNotFoundException;
 
@@ -295,12 +302,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(rocSw, "rocSweepPropertyName", "which property to sweep");
 
         String out = "5. Output";
-        setPropertyTooltip(out, "closeCsvFile", "Closes the output CSV spreadsheet data file.");
-        setPropertyTooltip(out, "openCsvFile", "Opens the output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
-        setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open CSV output file (appending to it if it already exists). Information written determined by Output switches.");
+        setPropertyTooltip(out, "doCloseMLP_CSVFile", "Closes the MLP training output CSV spreadsheet data file.");
+        setPropertyTooltip(out, "doOpenMLP_CSVFile", "Opens the MLP training output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
+        setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open MLP training CSV output file (appending to it if it already exists). Information written determined by Output switches.");
         setPropertyTooltip(out, "outputTrainingData", "<html>Output data for training MLP. <p>Outputs CSV file that has a single row with most recent event information (timestamp and polarity) for 25x25 neighborhood of each event. <p>Each row thus has about 1000 columns.");
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
         setPropertyTooltip(out, "outputFilterStatistic", "Output analyzable data of a filter.");
+        setPropertyTooltip(out, "doSaveROCSweepsToCSV", "Opens a dialog to save ROC sweep data to CSV file");
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
 
         setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
@@ -776,7 +784,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             log.info(String.format("Wrote %,d events to %s", csvNumEventsWritten, csvFileName));
                         }
                     } catch (IOException e) {
-                        doCloseCsvFile();
+                        doCloseMLP_CSVFile();
                     }
                 }
             }
@@ -877,7 +885,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
                             inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
                 } catch (IOException e) {
-                    doCloseCsvFile();
+                    doCloseMLP_CSVFile();
                 }
             }
 
@@ -1416,13 +1424,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putString("csvFileName", csvFileName);
         getSupport().firePropertyChange("csvFileName", this.csvFileName, csvFileName);
         this.csvFileName = csvFileName;
-        doOpenCsvFile();
+        doOpenMLP_CSVFile();
     }
 
-    synchronized public void doCloseCsvFile() {
+    synchronized public void doCloseMLP_CSVFile() {
         if (csvFile != null) {
             try {
-                log.fine("closing CSV output file" + csvFile);
+                log.fine("closing MLPF CSV output file" + csvFile);
                 csvWriter.close();
                 float snr = (float) csvSignalCount / (float) csvNoiseCount;
                 String m = String.format("closed CSV output file %s with %,d events (%,d signal events, %,d noise events, SNR=%.3g", csvFile, csvNumEventsWritten, csvSignalCount, csvNoiseCount, snr);
@@ -1455,7 +1463,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    synchronized public void doOpenCsvFile() {
+    synchronized public void doOpenMLP_CSVFile() {
         csvNumEventsWritten = 0;
         csvSignalCount = 0;
         csvNoiseCount = 0;
@@ -1565,7 +1573,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     setLeakNoiseRateHz(Float.parseFloat(tok[i + 1]));
                     log.info(String.format("setLeakNoiseRateHz %f", leakNoiseRateHz));
                 } else if (tok[i].equals("closeFile")) {
-                    doCloseCsvFile();
+                    doCloseMLP_CSVFile();
                     log.info(String.format("closeFile %s", csvFileName));
                 }
             }
@@ -1719,6 +1727,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Preferred
     synchronized public void doStopROCSweep() {
         rocSweep.stop();
+    }
+
+    @Preferred
+    synchronized public void doSaveROCSweepsToCSV() {
+        try {
+            rocSweep.saveToCSVs();
+        } catch (FileNotFoundException ex) {
+            log.severe(ex.toString());
+            JOptionPane.showMessageDialog(chip.getFilterFrame(), "Error saving CSVs: " + ex.toString(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     synchronized public void doCloseNoiseSourceRecording() {
@@ -2135,6 +2153,65 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             reset();
         }
 
+        void saveToCSVs() throws FileNotFoundException {
+            if (!SwingUtilities.isEventDispatchThread()) {
+                log.warning("can only be called from Swing/AWT thread");
+                return;
+            }
+            if (rocHistoriesSaved.isEmpty()) {
+                JOptionPane.showMessageDialog(chip.getFilterFrame(), "No ROC sweeps to save");
+                return;
+            }
+            // TODO 
+            String lastFolder = getString("lastROCCSVFolder", System.getProperty("user.dir"));
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setApproveButtonToolTipText("Select folder and base name for CSV files (not including extension)");
+            File sf = new File(lastFolder);
+            fileChooser.setCurrentDirectory(sf);
+//            fileChooser.setSelectedFile(sf);
+            fileChooser.setMultiSelectionEnabled(false);
+            int retValue = fileChooser.showSaveDialog(getChip().getFilterFrame());
+            if (retValue == JFileChooser.APPROVE_OPTION) {
+                File selectedFile = fileChooser.getSelectedFile();
+                String folder = selectedFile.getParent();
+                putString("lastROCCSVFolder", folder);
+                ArrayList<String> filenames = new ArrayList();
+                int filenum = 0;
+                for (ROCHistory sweep : rocHistoriesSaved) {
+                    if (!sweep.summary || sweep.rocSweepPropertyName == null) {
+                        log.warning("not summary or missing roc sweep property name; will not save " + sweep);
+                        continue;
+                    }
+                    final String prefix = selectedFile.getName();
+                    final String simpleName = sweep.noiseFilter.getClass().getSimpleName();
+                    final String propName = sweep.rocSweepPropertyName;
+                    Path path = Path.of(folder, prefix+"-ROCSweep-" + simpleName + "-" + propName + "-" + filenum + ".csv");
+                    try (PrintWriter writer = new PrintWriter(path.toFile())) {
+                        writer.println(String.format("ROC sweep of %s for filter %s", propName, simpleName));
+                        writer.println("# created " + new Date().toString());
+                        writer.println("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)"));
+                        for (ROCHistory.ROCSample s : sweep.rocHistoryList) {
+                            writer.println(String.format("%f,%f,%f", s.tau, s.x, s.y));
+                        }
+                    }
+                    filenames.add(path.toString());
+                    filenum++;
+                }
+                if (!filenames.isEmpty()) {
+                    StringBuilder sb = new StringBuilder("<html>Saved CSV files");
+                    for (String s : filenames) {
+                        sb.append("<br>").append(s);
+                    }
+                    ShowFolderSaveConfirmation d
+                            = new ShowFolderSaveConfirmation(
+                                    chip.getFilterFrame(),
+                                    selectedFile, 
+                                    sb.toString());
+                    d.setVisible(true);
+                }
+            }
+        }
+
         void start() {
             if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
                 chip.getAeViewer().getAePlayer().rewind();
@@ -2149,6 +2226,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             int ptSize = 8;
             rocHistorySummary.setColor(color);
             rocHistorySummary.setPtSize(ptSize);
+            rocHistorySummary.rocSweepPropertyName = rocSweepPropertyName;
+
             rocHistoriesSaved.add(rocHistorySummary);
             running = true;
             getStartingValue();
@@ -2440,6 +2519,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         float auc = 0;
         boolean summary = false; // flag for a roc sweep set of points
         Boolean clockwise = null;  // flag that says last point has higher tpr/fpr, i.e. the sweep increased the signal and noise rate
+        String rocSweepPropertyName = null;
 
         public ROCHistory(AbstractNoiseFilter noiseFilter) {
             this.noiseFilter = noiseFilter;
