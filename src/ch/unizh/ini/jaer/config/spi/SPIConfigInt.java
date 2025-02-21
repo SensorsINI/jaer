@@ -176,7 +176,7 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
             final boolean up = (e.getKeyCode() == KeyEvent.VK_UP);
             final boolean down = (e.getKeyCode() == KeyEvent.VK_DOWN);
             final boolean shifted = (e.getModifiersEx() & KeyEvent.SHIFT_DOWN_MASK) == KeyEvent.SHIFT_DOWN_MASK;
-            log.info(String.format("up=%s down=%s shifted=%s", up, down, shifted));
+            log.fine(String.format("up=%s down=%s shifted=%s", up, down, shifted));
             if (up || down) {
                 int sign = up ? 1 : -1;
                 int oldValue = intConfig.get();
@@ -197,7 +197,7 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
         // ActionListener interface
         @Override
         public void actionPerformed(final ActionEvent e) {
-            setValueAndUpdateGUI(Integer.parseInt(((JTextField) intConfig.control).getText()));
+            setValFromTextField();
         }
 
         // FocusListener interface
@@ -207,7 +207,16 @@ public class SPIConfigInt extends SPIConfigValue implements ConfigInt {
 
         @Override
         public void focusLost(final FocusEvent e) {
-            setValueAndUpdateGUI(Integer.parseInt(((JTextField) intConfig.control).getText()));
+            setValFromTextField();
+        }
+
+        private void setValFromTextField() {
+            try {
+                int i = Integer.parseInt(((JTextField) intConfig.control).getText());
+                setValueAndUpdateGUI(i);
+            } catch (NumberFormatException ex) {
+                log.warning(String.format("\"%s\" is not an int: %s", ((JTextField) intConfig.control).getText(), ex));
+            }
         }
 
         // MouseWheelListener interface
