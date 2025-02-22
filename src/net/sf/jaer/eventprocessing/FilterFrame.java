@@ -193,12 +193,17 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         ToolTipManager toolTipManager = ToolTipManager.sharedInstance();
         toolTipManager.setInitialDelay(100); // Set initial delay to 500 milliseconds
         toolTipManager.setDismissDelay(2000); // Set dismiss delay to 2000 milliseconds
-        
+        pack();
+    }
+
+    /** 
+     * Should be called after setVisiible(true). Calls the optional initGUI in each filter.
+     */
+    public void initGUI() {
         // now call optional initGUI for each filter
         for(EventFilter f:filterChain){
             f.initGUI();
         }
-        pack();
     }
 
     protected class MyUndoableEditListener
