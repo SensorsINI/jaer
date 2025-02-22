@@ -1063,6 +1063,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 touched = true;
                 return ro;
             } catch (IllegalAccessException | InvocationTargetException ex) {
+                ex.printStackTrace();
                 log.warning(String.format("Exception invoking setUndoableState with object %s, writer %s and reader %s: %s", o.toString(), write, read, ex.toString()));
             } finally {
                 endEdit();
