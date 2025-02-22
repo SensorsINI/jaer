@@ -234,7 +234,7 @@ public abstract class DisplayMethod implements PropertyChangeListener {
             gl.glScalef(scale, scale, scale); // everything is scaled (maybe) down by this, e.g. 0.5 for DVS128
             Rectangle2D r = renderer.getBounds(ss[maxlenidx]); // get bounds of max width string
             float h1 = (float) (r.getHeight() * scale); // height of this line
-            final float linespace = (float) (h1 * 1.3f); // line spacing as factor of line height
+            final float linespace = (float) (h1 * 1.5f); // line spacing as factor of line height
             float ht = (float) h1 * nlines; // total height of multiline string
             float w = (float) (r.getWidth() * scale); // width of widest line
             float ypos = (float) (chip.getSizeY() / 2 / scale) + (ht / 2);
