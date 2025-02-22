@@ -87,7 +87,9 @@ import eu.seebetter.ini.chips.davis.*;
 import java.awt.Container;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
+import javax.swing.Action;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -306,6 +308,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     private JaerUpdaterFrame jaerUpdaterFrame = null;
+
+    private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", false);
+    private String rememberLastInterfaceDeviceID = null;
 
     private AEChip chip;
     /**
@@ -715,13 +720,49 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         lastInterfaceCheckTime = System.currentTimeMillis();
 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
+        HardwareInterface rememberedInterface = null;
         if (ninterfaces > 1) {
-            if ((showMultipleInterfacesMessageCount++ % 100) == 0) {
-                log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
+            if (isRememberLastInterface() && rememberLastInterfaceDeviceID != null) {
+                log.info(String.format("Last interface was %s, checking if it present in %d available ones",
+                        rememberLastInterfaceDeviceID, ninterfaces));
+                for (int i = 0; i < ninterfaces; i++) {
+                    HardwareInterface h = HardwareInterfaceFactory.instance().getInterface(i);
+                    if (h == null || h.isOpen()) {
+                        continue; // null or already open, skip 
+                    }
+                    if (h.getTypeName().startsWith("CypressFX")) {
+                        try {
+                            h.open();
+                            if (h instanceof USBInterface) {
+                                USBInterface usb = (USBInterface) h;
+                                String[] desc = usb.getStringDescriptors();
+                                if (desc.length == 2 || (desc.length == 3 && desc[2].isBlank())) {
+                                    log.warning(String.format("Device %s has only 2 string descriptors %s/%s and no device serial number", h.toString(), desc[0], desc[1]));
+                                    continue;
+                                } else {
+                                    String id = desc[2];
+                                    if (id.equals(rememberLastInterfaceDeviceID)) {
+                                        log.info("found remembered interface " + id);
+                                        rememberedInterface = h;
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (HardwareInterfaceException ex) {
+                            log.warning(String.format("could not open %s: %s", h.toString(), ex));
+                        }
+                    }
+                }
+            } else {
+                if ((showMultipleInterfacesMessageCount++ % 100) == 0) {
+                    log.info("found " + ninterfaces + " hardware interfaces, choose one from Interface menu to connect");
+                }
             }
         }
-        if ((jaerViewer != null) && (jaerViewer.getViewers().size() == 1) && (chip.getHardwareInterface() == null) && (ninterfaces == 1)) {
-            HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+        if ((jaerViewer != null) && (jaerViewer.getViewers().size() == 1) && (chip.getHardwareInterface() == null) && (ninterfaces == 1 || rememberedInterface != null)) {
+            HardwareInterface hw = rememberedInterface != null
+                    ? rememberedInterface
+                    : HardwareInterfaceFactory.instance().getFirstAvailableInterface();
             //UDP interfaces should only be opened if the chip is a NetworkChip
             if (UDPInterface.class.isInstance(hw)) {
                 if (NetworkChip.class.isInstance(chip)) {
@@ -1384,6 +1425,74 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
 
+        JCheckBoxMenuItem rememberSeletedInterfaceMI = new JCheckBoxMenuItem(new RememberLastInterfaceAction());
+        interfaceMenu.add(rememberSeletedInterfaceMI);
+
+    }
+
+    /**
+     * @return the rememberLastInterface
+     */
+    public boolean isRememberLastInterface() {
+        return rememberLastInterface;
+    }
+
+    /**
+     * @param rememberLastInterface the rememberLastInterface to set
+     */
+    public void setRememberLastInterface(boolean rememberLastInterface) {
+        this.rememberLastInterface = rememberLastInterface;
+        prefs.putBoolean("rememberLastInterface", this.rememberLastInterface);
+    }
+
+    final public class RememberLastInterfaceAction extends MyAction {
+
+        public RememberLastInterfaceAction() {
+            super("Remember last interface selected");
+            putValue(Action.SHORT_DESCRIPTION, "Select to remember the last selected hardware interface and reopen it automatically if it is found");
+            putValue(Action.SELECTED_KEY, isRememberLastInterface());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setRememberLastInterface(!rememberLastInterface);
+            putValue(Action.SELECTED_KEY, isRememberLastInterface());
+            showAction(isRememberLastInterface() ? "Will reopen last interfaceAutomatically" : "Selec desired interface from Interface menu");
+        }
+
+    }
+
+    abstract public class MyAction extends AbstractAction {
+
+        protected final String path = "/net/sf/jaer/graphics/icons/";
+
+        public MyAction() {
+            super();
+        }
+
+        public MyAction(String name) {
+            super(name);
+            putValue(Action.SHORT_DESCRIPTION, name);
+        }
+
+        public MyAction(String name, String icon) {
+            putValue(Action.NAME, name);
+            if (icon != null) {
+                putValue(Action.SMALL_ICON, new javax.swing.ImageIcon(getClass().getResource(path + icon + ".gif")));
+            }
+            putValue("hideActionText", "true");
+            putValue(Action.SHORT_DESCRIPTION, name);
+        }
+
+        protected void showAction() {
+            showActionText((String) getValue(Action.SHORT_DESCRIPTION));
+        }
+
+        protected void showAction(String s) {
+            if (s != null) {
+                showActionText(s);
+            }
+        }
     }
 
     /**
@@ -1465,6 +1574,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     aemon.setChip(chip);
                     aemon.open(); // will throw BlankDeviceException if device is blank.
+                    if (aemon instanceof USBInterface) {
+                        USBInterface usb = (USBInterface) aemon;
+                        if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
+                            rememberLastInterfaceDeviceID = usb.getStringDescriptors()[2];
+                        }
+                    }
                     fixLoggingControls();
                     fixBiasgenControls();
                     fixDeviceControlMenuItems();
