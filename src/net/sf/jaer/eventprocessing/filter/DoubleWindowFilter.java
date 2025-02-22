@@ -276,16 +276,16 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
      * @param wlen the wlen to set
      */
     synchronized public void setWLen(int wlen) {
+        int old=this.wLen;
         int setValue = wlen;
         if (setValue < 1) {
             setValue = 1;
         }
         this.wLen = setValue;
-        log.info(String.format("wlen is%d\n", this.wLen));
+
+        getSupport().firePropertyChange("wlen", old, this.wLen);
 
         putInt("wlen", setValue);
-        getSupport().firePropertyChange("wlen", this.wLen, setValue);
-
         allocateMaps();
     }
 
@@ -303,9 +303,10 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
      * @param wlen the useDoubleMode to set
      */
     public void setUseDoubleMode(boolean useDoubleMode) {
-        putBoolean("useDoubleMode", useDoubleMode);
-        getSupport().firePropertyChange("useDoubleMode", this.useDoubleMode, useDoubleMode);
+        boolean old=this.useDoubleMode;
         this.useDoubleMode = useDoubleMode;
+        getSupport().firePropertyChange("useDoubleMode", old, this.useDoubleMode);
+        putBoolean("useDoubleMode", useDoubleMode);
     }
 	
     /**
@@ -319,14 +320,15 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
      * @param numMustBeCorrelated the numMustBeCorrelated to set
      */
     public void setNumMustBeCorrelated(int numMustBeCorrelated) {
+        int old=this.numMustBeCorrelated;
 	if (numMustBeCorrelated < 1) {
 	    numMustBeCorrelated = 1;
 	} else if (numMustBeCorrelated > getNumNeighbors()) {
 	    numMustBeCorrelated = getNumNeighbors();
 	}
-	putInt("numMustBeCorrelated", numMustBeCorrelated);
 	this.numMustBeCorrelated = numMustBeCorrelated;
-	getSupport().firePropertyChange("numMustBeCorrelated", this.numMustBeCorrelated, numMustBeCorrelated);
+	getSupport().firePropertyChange("numMustBeCorrelated", old, this.numMustBeCorrelated);
+	putInt("numMustBeCorrelated", numMustBeCorrelated);
     }
 
     /**
@@ -340,7 +342,7 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
      * @param disThr the disThr to set
      */
     synchronized public void setDisThr(int disThr) {
-
+        int old=this.disThr;
         int setValue = disThr;
         if (disThr < getMinDisThr()) {
             setValue = getMinDisThr();
@@ -349,9 +351,9 @@ public class DoubleWindowFilter extends AbstractNoiseFilter {
             setValue = getMaxDisThr();
         }
 
-        putDouble("disThr", setValue);
-        getSupport().firePropertyChange("disThr", this.disThr, setValue);
         this.disThr = setValue;
+        getSupport().firePropertyChange("disThr", old, this.disThr);
+        putInt("disThr", setValue);
     }
 
     public int getMinDisThr() {
