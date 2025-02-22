@@ -376,19 +376,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return;
         }
         textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getShowFilteringStatisticsFontSize()));
-        final GLUT glut = new GLUT();
 
         GL2 gl = drawable.getGL().getGL2();
-
-        // draw X for last packet TPR / TNR point
-        float x = (1 - TNR) * sx;
-        float y = TPR * sy;
-        int L = 12;
-        gl.glPushMatrix();
-        gl.glColor4f(1, 1, 1, 1); // must set color before raster position (raster position is like glVertex)
-        gl.glLineWidth(10);
-        DrawGL.drawCross(gl, x, y, L, 0);
-        gl.glPopMatrix();
 
 //            if (avgRocSample != null) { // draw big thick X at avg ROC point
 //                int L = 12;
@@ -417,6 +406,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             gl.glPopMatrix();
         }
+
+        // draw X for last packet TPR / TNR point
+        float x = (1 - TNR) * sx;
+        float y = TPR * sy;
+        int L = 12;
+        gl.glPushMatrix();
+        gl.glColor4f(1, 1, 1, 1); // must set color before raster position (raster position is like glVertex)
+        gl.glLineWidth(10);
+        DrawGL.drawCross(gl, x, y, L, 0);
+        gl.glPopMatrix();
 
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
@@ -1548,7 +1547,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Override
     public void initGUI() {
         if (selectedNoiseFilter != null) {
-            selectedNoiseFilter.setControlsVisible(true);
+            setSelectedNoiseFilter(selectedNoiseFilter.getClass());
         }
     }
 
@@ -2185,7 +2184,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     final String prefix = selectedFile.getName();
                     final String simpleName = sweep.noiseFilter.getClass().getSimpleName();
                     final String propName = sweep.rocSweepPropertyName;
-                    Path path = Path.of(folder, prefix+"-ROCSweep-" + simpleName + "-" + propName + "-" + filenum + ".csv");
+                    Path path = Path.of(folder, prefix + "-ROCSweep-" + simpleName + "-" + propName + "-" + filenum + ".csv");
                     try (PrintWriter writer = new PrintWriter(path.toFile())) {
                         writer.println(String.format("ROC sweep of %s for filter %s", propName, simpleName));
                         writer.println("# created " + new Date().toString());
@@ -2205,7 +2204,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     ShowFolderSaveConfirmation d
                             = new ShowFolderSaveConfirmation(
                                     chip.getFilterFrame(),
-                                    selectedFile, 
+                                    selectedFile,
                                     sb.toString());
                     d.setVisible(true);
                 }
@@ -2731,8 +2730,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 return;
             }
             drawAxes(gl);
-            // draw each sample as a square point
 
+            // draw each sample as a square point
             for (ROCSample rocSample : rocHistoryList) {
                 rocSample.draw(gl, color, ptSize);
             }
