@@ -115,7 +115,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /**
      * Automatic control of filter correlation time
      */
-    private NoiseFilterControl noiseFilterControl = null;
+    protected NoiseFilterControl noiseFilterControl = null;
 
     protected final String TT_FILT_CONTROL = "1. Denoiser properties", TT_DISP = "2. Display", TT_ADAP = "3. Adaptive Filtering";
 
