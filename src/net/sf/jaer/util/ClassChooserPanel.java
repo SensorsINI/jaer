@@ -949,6 +949,13 @@ public class ClassChooserPanel extends javax.swing.JPanel {
             chosenClassesListModel.insertElementAt(s, i++);
             //            chosenClassesListModel.addElement(s);
         }
+                int size = chosenClassesListModel.getSize();
+
+        if (size == 0) { //Nobody's left, disable firing.
+            removeClassButton.setEnabled(false);
+        }else{
+            removeClassButton.setEnabled(true);
+        }
     }//GEN-LAST:event_defaultsButtonActionPerformed
 
     private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
@@ -989,6 +996,7 @@ public class ClassChooserPanel extends javax.swing.JPanel {
 
     private void removeClassButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeClassButtonActionPerformed
         int index = classJList.getSelectedIndex();
+        if(index<0) return;
         chosenClassesListModel.removeElementAt(index);
         int size = chosenClassesListModel.getSize();
 
