@@ -47,6 +47,7 @@ import java.awt.event.MouseEvent;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.OutputEventIterator;
@@ -105,11 +106,14 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     private float tiltTranslationDeg = 0;
     private float rollDeg = 0;
     private float panDC = 0, tiltDC = 0, rollDC = 0;
+    @Preferred
     private float lensFocalLengthMm = getFloat("lensFocalLengthMm", 8.5f);
     HighpassFilter panTranslationFilter = new HighpassFilter();
     HighpassFilter tiltTranslationFilter = new HighpassFilter();
     HighpassFilter rollFilter = new HighpassFilter();
+    @Preferred
     private float highpassTauMsTranslation = getFloat("highpassTauMsTranslation", 1000);
+    @Preferred
     private float highpassTauMsRotation = getFloat("highpassTauMsRotation", 1000);
     float radPerPixel;
     private volatile boolean resetCalled = false;
@@ -127,7 +131,9 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
     protected int numCalibrationSamples = getInt("numCalibrationSamples", NUM_CALIBRATION_SAMPLES_DEFAULT);
     private CalibrationFilter panCalibrator, tiltCalibrator, rollCalibrator;
     TextRenderer imuTextRenderer = null;
+    @Preferred
     private boolean showTransformRectangle = getBoolean("showTransformRectangle", true);
+    @Preferred
     private boolean showGrid = getBoolean("showGrid", true);
     // transform control
     public boolean disableTranslation = getBoolean("disableTranslation", false);
@@ -570,6 +576,7 @@ public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotat
         log.info("calibration erased");
     }
 
+    @Preferred
     synchronized public void doZeroGyro() {
         calibrating = true;
         calibrationSampleCount = 0;
