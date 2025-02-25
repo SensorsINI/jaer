@@ -25,6 +25,7 @@ import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Font;
@@ -33,6 +34,7 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.beans.PropertyDescriptor;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -109,10 +111,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      *
      * @see #initFilter()
      */
-    public static Class[] noiseFilterClasses = {null, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
+    public static Class[] noiseFilterClasses = {null, HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
 //    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
     private AbstractNoiseFilter selectedNoiseFilter = null;
+    private boolean enableMultipleMethods = getBoolean("enableMultipleMethods", false);
 
     public static final int MAX_NUM_RECORDED_EVENTS = 10_0000_0000;
     public static final float MAX_TOTAL_NOISE_RATE_HZ = 50e6f;
@@ -255,6 +258,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     n.initFilter();
                     n.setFilterEnabled(true);
                     n.setControlsVisible(true);
+                    if (n.getFilterPanel() != null) {
+                        n.getFilterPanel().setVisible(true);
+                    }
+
                     rocSweep.init();
                     try {
                         setRocSweepPropertyName(getRocSweepPropertyName());
@@ -264,6 +271,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 } else {
                     n.setFilterEnabled(false);
                     n.setControlsVisible(false);
+                    if (n.getFilterPanel() != null) {
+                        n.getFilterPanel().setVisible(false);
+                    }
                 }
             }
 
@@ -278,9 +288,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public NoiseTesterFilter(AEChip chip) {
         super(chip);
 
-        String denoiser = "0a. Denoisier algorithm";
+        String denoiser = "0a. Denoisier class selection";
         setPropertyTooltip(denoiser, "selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(denoiser, "noiseFilterComboBoxModel", "Choose a noise filter to test");
+        setPropertyTooltip(denoiser, "enableMultipleMethods", "Enable chain of denoising methods, in order top to bottom that are enabled.");
 
         String noise = "0b. Noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
@@ -323,11 +334,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "doClearSavedRocHistories", "Clears saved ROC curves");
         setPropertyTooltip(TT_DISP, "doSaveRocHistory", "Saves current ROC points to be displayed");
         setPropertyTooltip(TT_DISP, "doClearLastRocHistory", "Erase the last recording of ROC curve");
-
-        setHideNonEnabledEnclosedFilters(true); // only show the enabled noise filter
-        if (selectedNoiseFilter != null) {
-            selectedNoiseFilter.setControlsVisible(true);
-        }
 
         for (int k = 0; k < colors.length; k++) {
             float hue = (float) k / (colors.length - 1);
@@ -449,11 +455,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, s);
 //        glut.glutBitmapString(font, s);
 //        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
-        s = String.format("TPR=%s%% FPR=%s%% TNR=%s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
+        s = String.format("TPR=%-7s%% FPR=%-7s%% TNR=%-7s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
 //        glut.glutBitmapString(font, s);
         DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
 //        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
-        s = String.format("In sigRate=%s noiseRate=%s, Out sigRate=%s noiseRate=%s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+        s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
         DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
 //        glut.glutBitmapString(font, s);
         gl.glPopMatrix();
@@ -794,9 +800,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
             EventPacket<PolarityEvent> passedSignalAndNoisePacket = signalAndNoisePacket;
-            if (selectedNoiseFilter != null) {
+//            if (selectedNoiseFilter != null) {
+            if (true) {
                 passedSignalAndNoisePacket
-                        = (EventPacket<PolarityEvent>) selectedNoiseFilter.filterPacket(signalAndNoisePacket);
+                        = (EventPacket<PolarityEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
 
                 ArrayList<FilteredEventWithNNb> negativeList = selectedNoiseFilter.getNegativeEvents();
                 ArrayList<FilteredEventWithNNb> positiveList = selectedNoiseFilter.getPositiveEvents();
@@ -1546,9 +1553,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void initGUI() {
+        setHideNonEnabledEnclosedFilters(!isEnableMultipleMethods()); // only show the enabled noise filter
         if (selectedNoiseFilter != null) {
             setSelectedNoiseFilter(selectedNoiseFilter.getClass());
         }
+        getSupport().addPropertyChangeListener("enableMultipleMethods", new PropertyChangeListener() {
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                setHideNonEnabledEnclosedFilters(!isEnableMultipleMethods());
+            }
+        });
     }
 
     private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: setNoiseFilterParameters <csvFilename> xx <shotNoiseRateHz> xx <leakNoiseRateHz> xx and specific to the filter\n";
@@ -1588,17 +1602,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         super.setCorrelationTimeS(dtS);
         if (selectedNoiseFilter != null) {
             selectedNoiseFilter.setCorrelationTimeS(dtS);
-        }
-    }
-
-    @Override
-    public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
-        super.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
-        for (AbstractNoiseFilter f : noiseFilters) {
-            if (f == null) {
-                continue;
-            }
-            f.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
         }
     }
 
@@ -3025,5 +3028,22 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public void setNoiseFilterComboBoxModel(ComboBoxModel<Class> noiseFilterComboBoxModel) {
         this.noiseFilterComboBoxModel = noiseFilterComboBoxModel;
+    }
+
+    /**
+     * @return the enableMultipleMethods
+     */
+    public boolean isEnableMultipleMethods() {
+        return enableMultipleMethods;
+    }
+
+    /**
+     * @param enableMultipleMethods the enableMultipleMethods to set
+     */
+    public void setEnableMultipleMethods(boolean enableMultipleMethods) {
+        boolean oldEnableMultipleMethods = this.enableMultipleMethods;
+        this.enableMultipleMethods = enableMultipleMethods;
+        getSupport().firePropertyChange("enableMultipleMethods", oldEnableMultipleMethods, enableMultipleMethods);
+        putBoolean("enableMultipleMethods", enableMultipleMethods);
     }
 }
