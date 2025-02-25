@@ -24,7 +24,7 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.filter.AbstractNoiseFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 
@@ -177,23 +177,24 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
 
     public HotPixelFilter(final AEChip chip) {
         super(chip);
-        setPropertyTooltip("numHotPixelMax", "maximum number of hot pixels");
-        setPropertyTooltip("learnTimeMs", "how long to accumulate events during learning of hot pixels");
-        setPropertyTooltip("doLearnHotPixels", "learn which pixels are hot");
-        setPropertyTooltip("clearHotPixels", "clear list of hot pixels");
-        setPropertyTooltip("showHotPixels", "<html>Label the hot pixels graphically;<br>pixels can have both ON and OFF hot pixels.<br>Only if both are hot is the alpha 0.5");
-        setPropertyTooltip("showHotPixelsNumber", "Show number of hot pixels and percentage of all cells");
-        setPropertyTooltip("showHotPixelsFontSize", "Font size for number of hot pixels");
-        setPropertyTooltip("showHotPixelsNumberYLocation", "y location of text as fraction of array size");
-        setPropertyTooltip("showHotPixelsAlpha", "Alpha transparency used to draw hot pixels");
-        setPropertyTooltip("showHotPixelsRadius", "Radius used to render hot pixels (make >0 to show only a few)");
-        setPropertyTooltip("use2DBooleanArray",
-                "use a 2D boolean array to filter rather than a Set; more efficient for large numbers of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL,"numHotPixelsMax", "maximum number of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL,"learnTimeMs", "how long to accumulate events during learning of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL,"doLearnHotPixels", "learn which pixels are hot");
+        setPropertyTooltip(TT_FILT_CONTROL,"doClearHotPixels", "clear list of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL,"use2DBooleanArray", "use a 2D boolean array to filter rather than a Set; more efficient for large numbers of hot pixels");
+        setPropertyTooltip(TT_DISP, "showHotPixels", "<html>Label the hot pixels graphically;<br>pixels can have both ON and OFF hot pixels.<br>Only if both are hot is the alpha 0.5");
+        setPropertyTooltip(TT_DISP, "showHotPixelsNumber", "Show number of hot pixels and percentage of all cells");
+        setPropertyTooltip(TT_DISP, "showHotPixelsFontSize", "Font size for number of hot pixels");
+        setPropertyTooltip(TT_DISP, "showHotPixelsNumberYLocation", "y location of text as fraction of array size");
+        setPropertyTooltip(TT_DISP, "showHotPixelsAlpha", "Alpha transparency used to draw hot pixels");
+        setPropertyTooltip(TT_DISP,"showHotPixelsRadius", "Radius used to render hot pixels (make >0 to show only a few)");
         hideProperty("correlationTimeS");
         hideProperty("sigmaDistPixels");
         hideProperty("subsampleBy");
         hideProperty("letFirstEventThrough");
         hideProperty("antiCasualEnabled");
+        hideProperty("adaptiveFilteringEnabled");
+        
     }
 
     @Override
@@ -301,6 +302,7 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
         if (use2DBooleanArray) {
             fillHotPixelArrayFromHotPixelSet();
         }
+        removeNoiseFilterControl();
     }
 
     /**
