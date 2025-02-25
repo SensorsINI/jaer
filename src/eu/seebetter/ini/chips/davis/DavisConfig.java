@@ -952,6 +952,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                 final SPIConfigValue cfgVal = (SPIConfigValue) observable;
 
                 fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
+                log.info(cfgVal.toString());
             }
         }
     }
