@@ -139,7 +139,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         setPropertyTooltip(TT_FILT_CONTROL, "sigmaDistPixels", sigmaDistPixelsTooltip);
         setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
-        setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter is automatically adapted with NoiseFilterControl algorithm (if filter adopts it for controlling itself).");
+//        setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter is automatically adapted with NoiseFilterControl algorithm (if filter adopts it for controlling itself).");
         setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, lets first event through; if false, first event from each pixel is blocked");
         setPropertyTooltip(TT_FILT_CONTROL, "antiCasualEnabled", "<html>Enable sending previous events that were filtered out if later event shows they were actually correlated (depends on filter if supported).<p>Note that timestamp will not be correct; event will inherit timestamp of current event to keep event stream monotonic in time.");
         getSupport().addPropertyChangeListener(this);
@@ -491,15 +491,15 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         return s;
     }
 
-    public boolean isAdaptiveFilteringEnabled() {
-        return noiseFilterControl.isAdaptiveFilteringEnabled();
-    }
-
-    public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
-        boolean old = noiseFilterControl.isAdaptiveFilteringEnabled();
-        noiseFilterControl.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
-        getSupport().firePropertyChange("adaptiveFilteringEnabled", old, adaptiveFilteringEnabled);
-    }
+//    public boolean isAdaptiveFilteringEnabled() {
+//        return noiseFilterControl.isAdaptiveFilteringEnabled();
+//    }
+//
+//    public void setAdaptiveFilteringEnabled(boolean adaptiveFilteringEnabled) {
+//        boolean old = noiseFilterControl.isAdaptiveFilteringEnabled();
+//        noiseFilterControl.setAdaptiveFilteringEnabled(adaptiveFilteringEnabled);
+//        getSupport().firePropertyChange("adaptiveFilteringEnabled", old, adaptiveFilteringEnabled);
+//    }
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
@@ -521,7 +521,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
                 setSubsampleBy((int) evt.getNewValue());
                 break;
             case "adaptiveFilteringEnabled":
-                setAdaptiveFilteringEnabled((boolean) evt.getNewValue());
+                noiseFilterControl.setAdaptiveFilteringEnabled((boolean) evt.getNewValue());
                 break;
             case "filterHotPixels":
                 setFilterHotPixels((boolean) evt.getNewValue());
