@@ -98,16 +98,22 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @see setEnclosed
      */
     private Preferences prefs = null; // default null, constructed when AEChip is known Preferences.userNodeForPackage(EventFilter.class);
-    
-    /** If true, FilterPanel does not show un-enabled enclosed filters */
-    protected boolean hideNonEnabledEnclosedFilters=false;
 
-    /** Record of a property preferences information. 
-     * The key is the short name, e.g. "dt", the class is type of property. Class is the property type.
-     * The value is
-     * the actual current value in Preferences. defaultValue is the default value of property.
+    /**
+     * If true, FilterPanel does not show un-enabled enclosed filters
      */
-    public record PrefsKeyClassValueDefault(String key, Class type, Object value, Object defaultValue){};
+    protected boolean hideNonEnabledEnclosedFilters = false;
+
+    /**
+     * Record of a property preferences information. The key is the short name,
+     * e.g. "dt", the class is type of property. Class is the property type. The
+     * value is the actual current value in Preferences. defaultValue is the
+     * default value of property.
+     */
+    public record PrefsKeyClassValueDefault(String key, Class type, Object value, Object defaultValue) {
+
+    }
+    ;
     
     /**
      * Map of all preference values, filled by getXXX() method calls. Key is
@@ -117,9 +123,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     protected HashMap<String, PrefsKeyClassValueDefault> preferencesMap = new HashMap();
 
     /**
-     * Holds cleared values of properties that have been most recently cleared, for undo support and resetting panel values.
-     * These keys have the preferences header string stripped from them. 
-     * E.g. preference key "SpatioTemporalCorrelationFilter.dt" becomes "dt".
+     * Holds cleared values of properties that have been most recently cleared,
+     * for undo support and resetting panel values. These keys have the
+     * preferences header string stripped from them. E.g. preference key
+     * "SpatioTemporalCorrelationFilter.dt" becomes "dt".
      */
     protected HashMap<String, PrefsKeyClassValueDefault> clearedProperties = new HashMap();
 
@@ -128,17 +135,17 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      *
      * @return a map of non-default value names
      */
-    public HashMap<String,PrefsKeyClassValueDefault> getNonDefaultProperties() {
+    public HashMap<String, PrefsKeyClassValueDefault> getNonDefaultProperties() {
         int count = 0;
         ArrayList<String> keys = new ArrayList();
         for (String k : preferencesMap.keySet()) {
             keys.add(k);
         }
-        HashMap<String,PrefsKeyClassValueDefault> nonDefaults=new HashMap();
+        HashMap<String, PrefsKeyClassValueDefault> nonDefaults = new HashMap();
         for (String k : keys) {
             if (getPrefs().get(k, null) != null) {
                 count++;
-                nonDefaults.put(k,preferencesMap.get(k));
+                nonDefaults.put(k, preferencesMap.get(k));
             }
         }
         return nonDefaults;
@@ -147,7 +154,9 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     /**
      * Clear all stored preferences that have been saved in preferencesMap by
      * getXXX method calls.
-     * @return a HashMap<String,Object> of the cleared preferences. Can be used to reset the GUI values to the defaults.
+     *
+     * @return a HashMap<String,Object> of the cleared preferences. Can be used
+     * to reset the GUI values to the defaults.
      */
     public HashMap<String, PrefsKeyClassValueDefault> restoreDefaultPreferences() {
         log.fine(String.format("Before clearing, cleared preferences had %d entries", clearedProperties.size()));
@@ -156,8 +165,8 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
         for (String k : preferencesMap.keySet()) {
             String v = getPrefs().get(k, null);
             if (v != null) {
-                String propName=k.substring(prefsKeyHeader().length());
-                PrefsKeyClassValueDefault defaultValue=preferencesMap.get(k);
+                String propName = k.substring(prefsKeyHeader().length());
+                PrefsKeyClassValueDefault defaultValue = preferencesMap.get(k);
                 clearedProperties.put(propName, defaultValue);
                 getPrefs().remove(k);
                 count++;
@@ -212,8 +221,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Used by filterPacket to say whether to filter events; default false
      */
     protected boolean filterEnabled = false;
-    
-    /** Should controls be visible (true) or collapsed (false) in FilterPanel */
+
+    /**
+     * Should controls be visible (true) or collapsed (false) in FilterPanel
+     */
     protected boolean controlsVisible = false;
 
     /**
@@ -286,12 +297,14 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * is called. The AEViewer will also exist before initFilter is called.
      */
     abstract public void initFilter();
-    
-    /** Called by FilterFrame after all EventFilters has been placed into the FilterFrame.
-     * Subclasses can use to override default appearance of properties.
-     */ 
-    public void initGUI(){
-        
+
+    /**
+     * Called by FilterFrame after all EventFilters has been placed into the
+     * FilterFrame. Subclasses can use to override default appearance of
+     * properties.
+     */
+    public void initGUI() {
+
     }
 
     /**
@@ -357,10 +370,10 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * @param yes true to show controls, false to collapse them
      */
     public void setControlsVisible(boolean yes) {
-        this.controlsVisible=yes;
+        this.controlsVisible = yes;
         FilterPanel p = getFilterPanel();
         if (p == null) {
-            log.warning("FilterPanel for " + this + " is null; cannot set visibilty");
+            log.fine("FilterPanel for " + this + " is null; cannot set visibilty");
             return;
         }
         p.setControlsVisible(yes);
@@ -502,7 +515,12 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public void setEnclosedFilterChain(FilterChain enclosedFilterChain) {
         if (this.enclosedFilterChain != null) {
-            log.info("replacing existing enclosedFilterChain\n\t" + this.enclosedFilterChain + "\n with new enclosedFilterChain=\n\t " + enclosedFilterChain);
+            log.fine("replacing existing enclosedFilterChain\n\t" + this.enclosedFilterChain + "\n with new enclosedFilterChain=\n\t " + enclosedFilterChain);
+        }
+        if (enclosedFilterChain == null) {
+            log.fine("nullifying enclosed filter chain");
+            this.enclosedFilterChain = null;
+            return;
         }
         if (enclosedFilterChain.isEmpty()) {
             log.warning("empty filter chain in " + this + " - you should set the filter chain after all filters have been added to it so that enclosed filters can be processed");
@@ -1227,7 +1245,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      */
     public int getInt(String key, int def) {
         final int aInt = prefs.getInt(prefsKeyHeader() + key, def);
-        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Integer.TYPE, aInt,def));
+        preferencesMap.put(prefsKeyHeader() + key, new PrefsKeyClassValueDefault(key, Integer.TYPE, aInt, def));
         return aInt;
     }
 
@@ -1540,19 +1558,35 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     public boolean isPropertyHidden(String propertyName) {
         return hiddenProperties.contains(propertyName);
     }
-    
-    /** Hides unselected (un-enabled) enclosed filters in the FilterPanel GUI. Used by NoiseTesterFilter, for example.
-     * 
+
+    /**
+     * Hides unselected (un-enabled) enclosed filters in the FilterPanel GUI.
+     * Used by NoiseTesterFilter, for example.
+     *
      * @param hide true to hide unselected filtes, false to show all.
      */
-    public void setHideNonEnabledEnclosedFilters(boolean hide){
-        this.hideNonEnabledEnclosedFilters=hide;
-        if(getFilterPanel()!=null){
-            getFilterPanel().rebuildPanel();
+    public void setHideNonEnabledEnclosedFilters(boolean hide) {
+        boolean old = this.hideNonEnabledEnclosedFilters;
+        this.hideNonEnabledEnclosedFilters = hide;
+
+        if (old != hide && getFilterPanel() != null) {
+            for (EventFilter f : getEnclosedFilterChain()) {
+                if (f.getFilterPanel() != null) {
+                    if (hide) {
+                        if (f.isFilterEnabled()) {
+                            f.getFilterPanel().setVisible(true);
+                        } else {
+                            f.getFilterPanel().setVisible(false);
+                        }
+                    } else {
+                        f.getFilterPanel().setVisible(true);
+                    }
+                }
+            }
         }
     }
-    
-    public boolean isHideNonEnabledEnclosedFilters(){
+
+    public boolean isHideNonEnabledEnclosedFilters() {
         return hideNonEnabledEnclosedFilters;
     }
 
