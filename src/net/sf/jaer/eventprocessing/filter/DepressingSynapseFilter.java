@@ -53,7 +53,7 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
     private float tauUs = tauMs * 1000;
     @Preferred
     private float weight = prefs().getFloat("DepressingSynapseFilter.weight", .001f); // weight of each input spike on synapse
-    private boolean showStateAtMouse = getBoolean("showStateAtMouse",true);
+    private boolean showStateAtMouse = getBoolean("showStateAtMouse", true);
 
     public static DevelopmentStatus getDevelopementStatus() {
         return DevelopmentStatus.Beta;
@@ -73,7 +73,6 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in); // sets up statistics
-        checkNeuronAllocation();
         for (BasicEvent e : in) {
             if (!(e instanceof TypedEvent)) {
                 throw new RuntimeException("event type must be TypedEvent, got event " + e);
@@ -97,6 +96,8 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
 
     @Override
     public void initFilter() {
+        checkNeuronAllocation();
+        removeNoiseFilterControl();
     }
 
     @Override
@@ -106,7 +107,7 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
             return;
         }
         Point p = chip.getCanvas().getMousePixel();
-        if (p==null || !chip.getCanvas().wasMousePixelInsideChipBounds()) {
+        if (p == null || !chip.getCanvas().wasMousePixelInsideChipBounds()) {
             return;
         }
         neurons.display(drawable, p);
@@ -181,7 +182,7 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
             float s1 = n[0].getState(), s2 = n[1].getState();
             float avg = (s1 + s2) / 2;
             String s = String.format("%5.3f", avg);
-            Rectangle2D rect=DrawGL.drawString(filter.getShowFilteringStatisticsFontSize(), p.x,p.y,.5f,Color.white, s);
+            Rectangle2D rect = DrawGL.drawString(filter.getShowFilteringStatisticsFontSize(), p.x, p.y, .5f, Color.white, s);
             GL2 gl = drawable.getGL().getGL2();
             gl.glRectf(p.x, p.y - 2, p.x + ((float) rect.getWidth() * avg * .7f), p.y - 1);
 
