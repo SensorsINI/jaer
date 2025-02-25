@@ -416,13 +416,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // draw X for last packet TPR / TNR point
         float x = (1 - TNR) * sx;
         float y = TPR * sy;
-        int L = 12;
+        int L = 8;
         gl.glPushMatrix();
-        gl.glColor4f(1, 1, 1, 1); // must set color before raster position (raster position is like glVertex)
+        gl.glColor4f(.8f, .8f, .8f, .3f); // must set color before raster position (raster position is like glVertex)
         gl.glLineWidth(10);
         DrawGL.drawCross(gl, x, y, L, 0);
+        DrawGL.drawString(getShowFilteringStatisticsFontSize(), x, y, 0, Color.gray, "last");
         gl.glPopMatrix();
 
+        // draw overlays of TP/FP etc
         gl.glPushMatrix();
         gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
         gl.glRasterPos3f(0, sy * .9f, 0);
@@ -2639,7 +2641,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
              */
             private void draw(GL2 gl, Color c, int size) {
                 float[] rgb = c.getRGBComponents(null);
-                gl.glColor3fv(rgb, 0);
+                float[] rgba=new float[]{rgb[0],rgb[1],rgb[2],.2f};
+                gl.glColor4fv(rgba, 0);
                 gl.glLineWidth(1);
                 gl.glPushMatrix();
                 DrawGL.drawBox(gl, x * sx, y * sy, size, size, 0);
@@ -2768,6 +2771,21 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     }
                 }
                 gl.glEnd();
+                gl.glPopMatrix();
+
+            } else {
+                // draw avg over the samples
+                // draw X for last packet TPR / TNR point
+                float x = avgRocSample.x * sx;
+                float y = avgRocSample.y * sy;
+                float[] rgb = color.getRGBComponents(null);
+
+                int L = 12;
+                gl.glPushMatrix();
+                gl.glColor3fv(rgb, 0);
+                gl.glLineWidth(10);
+                DrawGL.drawCross(gl, x, y, L, 0);
+                DrawGL.drawString(getShowFilteringStatisticsFontSize(), x, y, 0, Color.gray, "avg");
                 gl.glPopMatrix();
 
             }
