@@ -101,14 +101,25 @@
             <MenuItem class="javax.swing.JMenuItem" name="highlightMI">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="Ctrl+H"/>
+                  <KeyStroke key="Ctrl+F"/>
                 </Property>
                 <Property name="mnemonic" type="int" value="104"/>
-                <Property name="text" type="java.lang.String" value="Find/Highlight"/>
-                <Property name="toolTipText" type="java.lang.String" value="focuses the highlight text field, to allow highlighting filters or properties"/>
+                <Property name="text" type="java.lang.String" value="Filter"/>
+                <Property name="toolTipText" type="java.lang.String" value="Focuses Filter field to filter properties by string"/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="highlightMIActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="rebuildPanelB">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Shift+Ctrl+P"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Rebuild panel"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="rebuildPanelBActionPerformed"/>
               </Events>
             </MenuItem>
           </SubComponents>
@@ -249,15 +260,15 @@
       <SubComponents>
         <Component class="javax.swing.JButton" name="overviewButton">
           <Properties>
+            <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+              <Connection code="new OverviewAction()" type="code"/>
+            </Property>
             <Property name="text" type="java.lang.String" value="Overview"/>
             <Property name="toolTipText" type="java.lang.String" value="Toggles overview of all filters in the FilterChain"/>
             <Property name="focusable" type="boolean" value="false"/>
             <Property name="horizontalTextPosition" type="int" value="0"/>
             <Property name="verticalTextPosition" type="int" value="3"/>
           </Properties>
-          <Events>
-            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="overviewButtonActionPerformed"/>
-          </Events>
         </Component>
         <Component class="javax.swing.JToggleButton" name="disableFilteringToggleButton">
           <Properties>
@@ -390,41 +401,14 @@
             </Component>
             <Component class="javax.swing.JTextField" name="highlightTF">
               <Properties>
-                <Property name="toolTipText" type="java.lang.String" value="highlight filters/parameters"/>
+                <Property name="toolTipText" type="java.lang.String" value="Filter properties"/>
                 <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
                   <Dimension value="[100, 30]"/>
                 </Property>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="highlightTFActionPerformed"/>
-                <EventHandler event="keyTyped" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="highlightTFKeyTyped"/>
-              </Events>
-            </Component>
-            <Component class="javax.swing.JRadioButton" name="highlightRB">
-              <Properties>
-                <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
-                  <ComponentRef name="hideHighlightBG"/>
-                </Property>
-                <Property name="selected" type="boolean" value="true"/>
-                <Property name="text" type="java.lang.String" value="Highlight"/>
-                <Property name="toolTipText" type="java.lang.String" value="Highlight  properties that contain search string"/>
-                <Property name="enabled" type="boolean" value="false"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="highlightRBActionPerformed"/>
-              </Events>
-            </Component>
-            <Component class="javax.swing.JRadioButton" name="hideOthersRB">
-              <Properties>
-                <Property name="buttonGroup" type="javax.swing.ButtonGroup" editor="org.netbeans.modules.form.RADComponent$ButtonGroupPropertyEditor">
-                  <ComponentRef name="hideHighlightBG"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Hide others"/>
-                <Property name="toolTipText" type="java.lang.String" value="Hide properties that don&apos;t match string"/>
-                <Property name="enabled" type="boolean" value="false"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="hideOthersRBActionPerformed"/>
+                <EventHandler event="keyReleased" listener="java.awt.event.KeyListener" parameters="java.awt.event.KeyEvent" handler="highlightTFKeyReleased"/>
               </Events>
             </Component>
             <Component class="javax.swing.JCheckBox" name="simpleCB">
