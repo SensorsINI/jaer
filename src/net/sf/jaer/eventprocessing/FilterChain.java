@@ -262,6 +262,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 //        if(chip!=null && chip.getFilterFrame()!=null){
 //            chip.getFilterFrame().rebuildContents();
 //        }
+        filter.setControlsVisible(false);
         return ret;
     }
 
