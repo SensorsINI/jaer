@@ -90,6 +90,7 @@ import java.awt.event.KeyEvent;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
+import javax.swing.KeyStroke;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -750,6 +751,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         } catch (HardwareInterfaceException ex) {
                             log.warning(String.format("could not open %s: %s", h.toString(), ex));
+                        } finally {
+                            h.close();
                         }
                     }
                 }
@@ -1398,33 +1401,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (choseOneButton == false) {
 
         }
-        //        log.info(sb.toString());
+        
         // make a 'reset device' item 
-        JMenuItem resetDeviceB = new JMenuItem("Reset");
-        resetDeviceB.setToolTipText("Close and reset device and then reopen it");
-//        resetDeviceB.putClientProperty(HARDWARE_INTERFACE_OBJECT_PROPERTY, null);
         interfaceMenu.add(new JSeparator());
+        JMenuItem resetDeviceB = new JMenuItem(new ResetHardwareIntefaceAction());
         interfaceMenu.add(resetDeviceB);
-        resetDeviceB.addActionListener(new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent evt) {
-                synchronized (viewLoop) {
-                    if (chip.getHardwareInterface() != null) {
-                        log.info(String.format("Resetting %s", chip.getHardwareInterface().toString()));
-                        try {
-                            chip.getHardwareInterface().close();
-                        } catch (Exception e) {
-                            String s = String.format("Exception closing device: %s", e.toString());
-                            log.warning(s);
-                            JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
-                        }
-                    }
-                    chip.setHardwareInterface(null); // force null interface, AEViewer will repopen it
-                }
-            }
-        });
-
         JCheckBoxMenuItem rememberSeletedInterfaceMI = new JCheckBoxMenuItem(new RememberLastInterfaceAction());
         interfaceMenu.add(rememberSeletedInterfaceMI);
 
@@ -1451,6 +1432,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             super("Remember last interface selected");
             putValue(Action.SHORT_DESCRIPTION, "Select to remember the last selected hardware interface and reopen it automatically if it is found");
             putValue(Action.SELECTED_KEY, isRememberLastInterface());
+//            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK|java.awt.event.InputEvent.CTRL_DOWN_MASK));
         }
 
         @Override
@@ -1460,6 +1442,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             showAction(isRememberLastInterface() ? "Will reopen last interfaceAutomatically" : "Selec desired interface from Interface menu");
         }
 
+    }
+
+    final public class ResetHardwareIntefaceAction extends MyAction {
+
+        public ResetHardwareIntefaceAction() {
+            super("Reset USB interface");
+            putValue(Action.NAME, "Reset USB interface");
+            putValue(Action.SHORT_DESCRIPTION, "Initiates a hard reset on USB interface");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_R, java.awt.event.InputEvent.SHIFT_DOWN_MASK | java.awt.event.InputEvent.CTRL_DOWN_MASK));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+
+            showAction("USB reset");
+            synchronized (viewLoop) {
+                if (chip.getHardwareInterface() != null) {
+                    log.info(String.format("Resetting %s", chip.getHardwareInterface().toString()));
+                    try {
+                        chip.getHardwareInterface().close();
+                    } catch (Exception ex) {
+                        String s = String.format("Exception closing device: %s", ex.toString());
+                        log.warning(s);
+                        JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
+                    }
+                }
+                chip.setHardwareInterface(null); // force null interface, AEViewer will repopen it
+            }
+        }
     }
 
     abstract public class MyAction extends AbstractAction {
@@ -2509,9 +2520,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //                public void run(){
         //                    statisticsLabel.setText(s);
 
-    
-
-    ////                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
+        ////                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
         //////                        System.out.println("statisticsLabel width="+statisticsLabel.getWidth()+" > statisticsPanel width="+statisticsPanel.getWidth());
         ////                        // possibly resize statistics font size
         ////                        formComponentResized(null);
@@ -4505,9 +4514,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     //                    log.info(e.toString());
                     filtersToggleButton.setSelected(false);
                 }
-                
+
                 @Override
-                public void windowOpened(WindowEvent e){
+                public void windowOpened(WindowEvent e) {
                     filterFrame.initGUI();
                 }
             });
@@ -5322,9 +5331,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //                    BrowserLauncher launcher=new BrowserLauncher();
                 //                    launcher.openURLinBrowser(url);
 
-            
-        
-        ////                    BrowserLauncher.openURL(url);
+                ////                    BrowserLauncher.openURL(url);
                 //                } catch (Exception e) {
                 //                    log.warning(e.toString());
                 //                    setStatusMessage(e.getMessage());
@@ -5971,7 +5978,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             //        if(socketInputStream==null){
             //            try{
             //
-        ////                socketInputStream=new AEUnicastInput();
+            ////                socketInputStream=new AEUnicastInput();
             //                String host=JOptionPane.showInputDialog(this,"Hostname to receive from",socketInputStream.getHost());
             //                if(host==null) return;
             //                aeSocket=new AESocket(host);
