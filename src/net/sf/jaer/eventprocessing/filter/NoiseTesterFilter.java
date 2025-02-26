@@ -1709,8 +1709,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     synchronized public void setRocHistoryLength(int rocHistoryLength) {
         int old = this.rocHistoryLength;
-        if (rocHistoryLength > 10000) {
-            rocHistoryLength = 10000;
+        if (rocHistoryLength > 1000) {
+            rocHistoryLength = 1000;
         }
         this.rocHistoryLength = rocHistoryLength;
         putInt("rocHistoryLength", rocHistoryLength);
@@ -2071,6 +2071,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         private HashMap<String, ROCSweepParams> rocSweepParamesHashMap = null;
         private boolean installedPropertyChangeListeners = false;
+        private int savedRocHistoryLength = getRocHistoryLength();
 
         /**
          * Class to hold parameters for HashMap to be stored in preferences
@@ -2222,6 +2223,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             reset();
             rocHistoryCurrent.reset();
+            savedRocHistoryLength = getRocHistoryLength(); // to restore on stop()
             setRocHistoryLength(1000); //sufficient for whole marked section of recording
             rocHistorySummary = new ROCHistory(selectedNoiseFilter);
             rocHistorySummary.summary = true;
@@ -2240,17 +2242,32 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private void getStartingValue() {
             if (getter != null) {
                 try {
-                    startingValue = (float) getter.invoke(selectedNoiseFilter);
+                    Object o = getter.invoke(selectedNoiseFilter);
+                    if (o instanceof Float) {
+                        startingValue = (float) o;
+                    } else if (o instanceof Integer) {
+                        int i = (int) o;
+                        startingValue = (float) i;
+                    } else {
+                        log.warning("can't restore starting value of swept parameter, return value is not int or float. Returned object is " + o);
+                    }
                 } catch (IllegalAccessException | InvocationTargetException ex) {
                     Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
 
-        private void restoreStartingValue() {
+        private void restoreStartingSweptValue() {
             if (setter != null) {
                 try {
-                    setter.invoke(selectedNoiseFilter, startingValue);
+                    if (setter.getParameterTypes()[0] == Float.TYPE) {
+                        setter.invoke(selectedNoiseFilter, startingValue);
+                    } else if (setter.getParameterTypes()[0] == Integer.TYPE) {
+                        int i = Math.round(startingValue);
+                        setter.invoke(selectedNoiseFilter, i);
+                    } else {
+                        log.warning("cannot restore starting value of swept parameter; setter argument type is not float or int");
+                    }
                 } catch (IllegalAccessException | InvocationTargetException ex) {
                     Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -2259,10 +2276,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         void stop() {
             if (running) {
-                restoreStartingValue();
+                restoreStartingSweptValue();
             }
             running = false;
-            setRocHistoryLength(1); //sufficient for whole marked section of recording
+            setRocHistoryLength(savedRocHistoryLength); //sufficient for whole marked section of recording
         }
 
         void endAndSave() {
@@ -2641,7 +2658,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
              */
             private void draw(GL2 gl, Color c, int size) {
                 float[] rgb = c.getRGBComponents(null);
-                float[] rgba=new float[]{rgb[0],rgb[1],rgb[2],.2f};
+                float[] rgba = new float[]{rgb[0], rgb[1], rgb[2], .2f};
                 gl.glColor4fv(rgba, 0);
                 gl.glLineWidth(1);
                 gl.glPushMatrix();
