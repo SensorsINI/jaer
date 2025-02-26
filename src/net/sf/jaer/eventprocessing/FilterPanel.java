@@ -453,6 +453,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         if(getFilterFrame()!=null){
             getFilterFrame().pack();
         }
+        getFilter().initGUI();
     }
 
     private void highlightNonDefaultProperties() {
