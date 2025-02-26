@@ -331,7 +331,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
         // buttons
         setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
-        setPropertyTooltip(TT_DISP, "doClearSavedRocHistories", "Clears saved ROC curves");
+        setPropertyTooltip(TT_DISP, "doClearAllSavedRocHistories", "Clears saved ROC curves");
         setPropertyTooltip(TT_DISP, "doSaveRocHistory", "Saves current ROC points to be displayed");
         setPropertyTooltip(TT_DISP, "doClearLastRocHistory", "Erase the last recording of ROC curve");
 
@@ -2327,7 +2327,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     log.warning(String.format("Could not set current value %.4f using setter %s: got %s", currentValue, setter, ex.toString()));
                 }
             } else {
-                log.warning("No setter for sweeep parameter rocSweepPropertyName " + getRocSweepPropertyName());
+                showWarningDialogInSwingThread("No setter for sweeep parameter rocSweepPropertyName " + getRocSweepPropertyName(), "ROC sweep parameter error");
+                stop();
             }
             log.info(String.format("ROCSweep increased currentValue of %s from %s -> %s", getRocSweepPropertyName(),
                     eng.format(old), eng.format(currentValue)));
@@ -3028,15 +3029,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Preferred
-    public void doClearSavedRocHistories() {
-        ROCHistory h = rocHistoriesSaved.getLast();
-        rocHistoriesSaved.remove(h);
+    public void doClearAllSavedRocHistories() {
+        rocHistoriesSaved.clear();
     }
 
     @Preferred
     public void doClearLastRocHistory() {
-        ROCHistory r = rocHistoriesSaved.getLast();
-        rocHistoriesSaved.removeLast();
+        if(!rocHistoriesSaved.isEmpty()){
+            rocHistoriesSaved.removeLast();
+        }
     }
 
     @Override
