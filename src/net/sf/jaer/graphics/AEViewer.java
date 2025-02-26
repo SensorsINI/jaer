@@ -4517,7 +4517,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 @Override
                 public void windowOpened(WindowEvent e) {
-                    filterFrame.initGUI();
+                    filtersToggleButton.setSelected(true);
                 }
             });
             filterFrameBuilt = true;
