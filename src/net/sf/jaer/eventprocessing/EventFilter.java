@@ -299,8 +299,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
     abstract public void initFilter();
 
     /**
-     * Called by FilterFrame after all EventFilters has been placed into the
-     * FilterFrame. Subclasses can use to override default appearance of
+     * Called by FilterPanel after the panel is built. Subclasses can use to override default appearance of
      * properties.
      */
     public void initGUI() {
