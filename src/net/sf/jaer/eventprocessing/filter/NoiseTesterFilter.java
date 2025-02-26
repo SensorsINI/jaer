@@ -2791,7 +2791,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 gl.glEnd();
                 gl.glPopMatrix();
 
-            } else {
+            } else if(avgRocSample!=null){
                 // draw avg over the samples
                 // draw X for last packet TPR / TNR point
                 float x = avgRocSample.x * sx;
