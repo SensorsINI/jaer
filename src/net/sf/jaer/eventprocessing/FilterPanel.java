@@ -44,6 +44,7 @@ import java.lang.reflect.Method;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -2351,6 +2352,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     public FilterPanel getEnclosedFilterPanel(EventFilter filter) {
         return enclosedFilterPanels.get(filter);
+    }
+    
+    public Collection<FilterPanel> getEnclosedFilterPanels(){
+        return enclosedFilterPanels.values();
     }
 
     private void enabledCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enabledCheckBoxActionPerformed

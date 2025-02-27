@@ -250,6 +250,35 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
     }
 
+    private class HideDisabledAction extends AbstractAction {
+
+        private boolean hideDisabled = prefs.getBoolean("hideDisabled", false);
+
+        public HideDisabledAction() {
+            putValue(NAME, "Hide disabled");
+            putValue(SHORT_DESCRIPTION, "Hides filters that are not enabled (by checkbox)");
+//            putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_Y, java.awt.event.InputEvent.CTRL_DOWN_MASK));
+            putValue(SELECTED_KEY, hideDisabled);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            hideDisabled = !hideDisabled;
+            prefs.putBoolean("hideDisabled", hideDisabled);
+            putValue(SELECTED_KEY, hideDisabled);
+            for (FilterPanel f : filterPanels) {
+                setVisible(f);
+            }
+        }
+
+        private void setVisible(FilterPanel f) {
+            f.setVisible(!hideDisabled || f.getFilter().isFilterEnabled());
+            for(FilterPanel ep: f.getEnclosedFilterPanels()){
+                setVisible(ep);
+            }
+        }
+    }
+
     private class RedoAction extends AbstractAction {
 
         public RedoAction() {
@@ -297,6 +326,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         clearFilterJB = new javax.swing.JButton();
         highlightTF = new javax.swing.JTextField();
         simpleCB = new javax.swing.JCheckBox();
+        hideDisnabledCB = new javax.swing.JCheckBox();
         scrollPane = new javax.swing.JScrollPane();
         filtersPanel = new javax.swing.JPanel();
         mainMenuBar = new javax.swing.JMenuBar();
@@ -457,6 +487,16 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         });
         filterJPanel.add(simpleCB);
+
+        hideDisnabledCB.setAction(new HideDisabledAction());
+        hideDisnabledCB.setText("Hide disabled");
+        hideDisnabledCB.setToolTipText("Hide disabled filters");
+        hideDisnabledCB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                hideDisnabledCBActionPerformed(evt);
+            }
+        });
+        filterJPanel.add(hideDisnabledCB);
 
         jPanel1.add(filterJPanel);
 
@@ -968,6 +1008,10 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
     }//GEN-LAST:event_highlightTFKeyReleased
 
+    private void hideDisnabledCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideDisnabledCBActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_hideDisnabledCBActionPerformed
+
     final void fixUndoRedo() {
         final boolean canUndo = undoManager.canUndo(), canRedo = undoManager.canRedo();
         undoAction.setEnabled(canUndo);
@@ -1166,6 +1210,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     private javax.swing.JPanel filterJPanel;
     protected javax.swing.JPanel filtersPanel;
     private javax.swing.JMenu helpMenu;
+    private javax.swing.JCheckBox hideDisnabledCB;
     private javax.swing.ButtonGroup hideHighlightBG;
     private javax.swing.JMenuItem highlightMI;
     private javax.swing.JTextField highlightTF;
