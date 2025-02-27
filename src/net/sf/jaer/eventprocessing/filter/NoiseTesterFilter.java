@@ -2063,6 +2063,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private String rocSweepPropertyName = getString("rocSweepPropertyName", "correlationTimeS");
         float currentValue = rocSweepStart;
         boolean running = false;
+        boolean firstStep = true;  // cleared afer initial sweep value is checked
         Method setter = null, getter = null;
         boolean floatType = true;
         ROCHistory rocHistorySummary = null;
@@ -2149,6 +2150,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 installedPropertyChangeListeners = true;
             }
             running = false;
+            firstStep = true;
             try {
                 rocSweepParamesHashMap = (HashMap<String, ROCSweepParams>) getObject("rocSweepParamesHashMap", new HashMap());
             } catch (ClassCastException | NullPointerException e) {
@@ -2311,11 +2313,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         protected boolean updateCurrentValue() {
             // now update swept variable
             float old = currentValue;
-            if (rocSweepLogStep) {
-                currentValue *= rocSweepStep;
-            } else {
-                currentValue += rocSweepStep;
+            if (!firstStep) {
+                if (rocSweepLogStep) {
+                    currentValue *= rocSweepStep;
+                } else {
+                    currentValue += rocSweepStep;
+                }
             }
+            firstStep = false;
             if (setter != null) {
                 try {
                     if (floatType) {
@@ -2330,6 +2335,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 showWarningDialogInSwingThread("No setter for sweeep parameter rocSweepPropertyName " + getRocSweepPropertyName(), "ROC sweep parameter error");
                 stop();
             }
+
             log.info(String.format("ROCSweep increased currentValue of %s from %s -> %s", getRocSweepPropertyName(),
                     eng.format(old), eng.format(currentValue)));
             boolean done = currentValue > rocSweepEnd;
@@ -2791,7 +2797,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 gl.glEnd();
                 gl.glPopMatrix();
 
-            } else if(avgRocSample!=null){
+            } else if (avgRocSample != null) {
                 // draw avg over the samples
                 // draw X for last packet TPR / TNR point
                 float x = avgRocSample.x * sx;
@@ -3035,7 +3041,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Preferred
     public void doClearLastRocHistory() {
-        if(!rocHistoriesSaved.isEmpty()){
+        if (!rocHistoriesSaved.isEmpty()) {
             rocHistoriesSaved.removeLast();
         }
     }
