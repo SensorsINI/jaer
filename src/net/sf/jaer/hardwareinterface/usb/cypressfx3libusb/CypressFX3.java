@@ -51,6 +51,7 @@ import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
+import net.sf.jaer.util.MessageWithLink;
 
 /**
  * Devices that use the CypressFX3 and the USBIO driver, e.g. the DVS retinas,
@@ -527,7 +528,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      */
     protected void checkFirmwareLogic(final int requiredFirmwareVersion, final int requiredLogicRevision)
             throws HardwareInterfaceException {
-        final StringBuilder updateStringBuilder = new StringBuilder("<html>");
+        final StringBuilder updateStringBuilder = new StringBuilder();
         boolean needsUpdate = false;
 
         // Verify device firmware version and logic revision.
@@ -552,7 +553,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
                     .append("<p>Please update by following the Flashy documentation at <a href=\" " + JaerConstants.HELP_USER_GUIDE_URL_FLASHY + "\">" + JaerConstants.HELP_USER_GUIDE_URL_FLASHY + "</a></p>");
             updateStringBuilder.append("<p>Clicking OK will open this URL in browser</p>");
             updateStringBuilder.append("<p>After installing DV, you can launch flashy from command line (in linux) or from DV GUI</p>");
-            final String updateString = updateStringBuilder.toString();
+            final MessageWithLink updateString = new MessageWithLink(updateStringBuilder.toString());
 
             final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
                 @Override
