@@ -681,7 +681,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.fine("Running cleanup() for " + chip);
             chip.cleanup();
         }
-        log.info("end of cleanup()");
+        log.info("end of AEViewer.cleanup(). Please wait for shutdown hook to finish running...");
 
     }
 
