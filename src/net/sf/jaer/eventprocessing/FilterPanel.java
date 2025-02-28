@@ -451,7 +451,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         addIntrospectedControls();
         clearHighlights();
         highlightNonDefaultProperties();
-        if(getFilterFrame()!=null){
+        if (getFilterFrame() != null) {
             getFilterFrame().pack();
         }
         getFilter().initGUI();
@@ -1021,10 +1021,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             });
         }
-        
+
         @Override
-        public String toString(){
-            return this.getClass().getSimpleName()+": "+getName();
+        public String toString() {
+            return this.getClass().getSimpleName() + ": " + getName();
         }
 
         @Override
@@ -1084,10 +1084,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             } catch (IllegalAccessException | InvocationTargetException ex) {
                 ex.printStackTrace();
                 log.warning(String.format("Exception invoking setUndoableState with object %s, writer %s and reader %s: %s", o.toString(), write, read, ex.toString()));
+                throw new RuntimeException(ex.getCause());
             } finally {
                 endEdit();
             }
-            return null;
         }
 
         public void setCurrentState(Object o) {
@@ -1348,8 +1348,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                     highlightClearingOthers();
                     try {
                         setUndoableState(textField.getText());
+                        textField.setBackground(Color.white);
+                        textField.setForeground(Color.black);
                     } catch (Exception e2) {
-                        e2.printStackTrace();
+                        log.warning(e2.toString());
+//                        e2.printStackTrace();
+//                        textField.selectAll();
+                        textField.setBackground(Color.red);
+                        textField.setForeground(Color.white);
+                        Toolkit.getDefaultToolkit().beep();
                     }
                 }
             });
@@ -2268,7 +2275,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     public void setControlsVisible(boolean visible) {
         getFilter().controlsVisible = visible;
 
-        ToggleControlsVisibleAction action=(ToggleControlsVisibleAction)showControlsToggleButton.getAction();
+        ToggleControlsVisibleAction action = (ToggleControlsVisibleAction) showControlsToggleButton.getAction();
         action.setLabel();
         getFilter().setSelected(true); // exposing controls 'selects' this filter
         setBorderActive(visible);
@@ -2291,7 +2298,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 //        if (additionalCustomControlsPanel != null) {
 //            additionalCustomControlsPanel.setVisible(visible);
 //        }
-
         if (!getFilter().isEnclosed()) { // store last selected top level filter
             if (visible) {
                 getFilter().getChip().getPrefs().put(FilterFrame.LAST_FILTER_SELECTED_KEY, getFilter().getClass().toString());
@@ -2353,8 +2359,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     public FilterPanel getEnclosedFilterPanel(EventFilter filter) {
         return enclosedFilterPanels.get(filter);
     }
-    
-    public Collection<FilterPanel> getEnclosedFilterPanels(){
+
+    public Collection<FilterPanel> getEnclosedFilterPanels() {
         return enclosedFilterPanels.values();
     }
 
@@ -2739,7 +2745,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * @param simple boolean to show only preferred properties
      */
     public void showPropertyHighlightsOrVisibility(String searchString, boolean simple) {
-        if(searchString==null) searchString="";
+        if (searchString == null) {
+            searchString = "";
+        }
         setSearchString(searchString);
         setSimple(simple);
         if (butPanel != null) {
@@ -3094,14 +3102,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
             });
         }
-        
-        public boolean isPopulated(){
-            return getComponentCount()>1;
+
+        public boolean isPopulated() {
+            return getComponentCount() > 1;
         }
-        
+
         @Override
-        public String toString(){
-            return "GroupPanel: "+getName();
+        public String toString() {
+            return "GroupPanel: " + getName();
         }
 
         void collapse() {
