@@ -111,7 +111,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      *
      * @see #initFilter()
      */
-    public static Class[] noiseFilterClasses = {null, HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
+    public static Class[] noiseFilterClasses = {null, HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, SinCosProdDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
 //    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
     private AbstractNoiseFilter selectedNoiseFilter = null;
@@ -328,7 +328,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "overlayTN", "<html><p>Overlay TN in red <br>(noise events correctly classified)");
         setPropertyTooltip(TT_DISP, "overlayFP", "<html><p>Overlay FP in red <br>(noise events incorrectly classified as signal)");
         setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay FN in green <br>(signal events incorrectly classified as noise)");
-        setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show.");
+        setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show. The average over these samples is shown as the large cross.");
         // buttons
         setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
         setPropertyTooltip(TT_DISP, "doClearAllSavedRocHistories", "Clears saved ROC curves");
