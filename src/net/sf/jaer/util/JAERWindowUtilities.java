@@ -37,7 +37,7 @@ public class JAERWindowUtilities {
     private static int lowerInset = WINDOWS_TASK_BAR_HEIGHT; // filled in from windows screen inset
     private static Logger log = Logger.getLogger("net.sf.jaer");
 //    private static int resizeCounter=0;
-    final static int STOP_TRYING_THRESHOLD = 5;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
+    final static int STOP_TRYING_THRESHOLD = 2;  // after this many calls on same window, give up, some feedback loop with underlying window manager such as Windows tablet mode
     private final static HashMap<JFrame, Integer> resizingCountMap = new HashMap<JFrame, Integer>();
 
     /**
@@ -61,7 +61,7 @@ public class JAERWindowUtilities {
         }
         int count = resizingCountMap.get(frame);
         if (++count >= STOP_TRYING_THRESHOLD) {
-            log.info("won't try to constrain window size anymore; could be some loop with underlying window manager. Try disabling tablet mode.");
+            log.fine("won't try to constrain window size anymore; could be some loop with underlying window manager. Try disabling tablet mode.");
             return;
         }
         resizingCountMap.put(frame, count);
