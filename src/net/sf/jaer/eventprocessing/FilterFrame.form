@@ -422,15 +422,9 @@
             </Component>
             <Component class="javax.swing.JCheckBox" name="hideDisnabledCB">
               <Properties>
-                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                  <Connection code="new HideDisabledAction()" type="code"/>
-                </Property>
                 <Property name="text" type="java.lang.String" value="Hide disabled"/>
-                <Property name="toolTipText" type="java.lang.String" value="Hide disabled filters"/>
+                <Property name="toolTipText" type="java.lang.String" value=""/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="hideDisnabledCBActionPerformed"/>
-              </Events>
             </Component>
           </SubComponents>
         </Container>

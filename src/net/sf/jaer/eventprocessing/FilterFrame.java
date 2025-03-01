@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -83,6 +84,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
     UndoAction undoAction = new UndoAction();
     RedoAction redoAction = new RedoAction();
 
+    private HideDisabledAction hideDiabledAction;
+
     protected HashMap<EventFilter, FilterPanel> filter2FilterPanelMap = new HashMap();
 
     /**
@@ -95,6 +98,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         chip.setFilterFrame(this);
         setName("FilterFrame");
         initComponents();
+        hideDiabledAction = new HideDisabledAction();
+        hideDisnabledCB.setAction(hideDiabledAction);
         simpleCB.setSelected(prefs.getBoolean("simpleMode", false));
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_FILTERS)).getImage());
 
@@ -250,6 +255,14 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         }
     }
 
+    public boolean isHideDisabled() {
+        return hideDiabledAction.isHideDisabled();
+    }
+
+    public void setHideDisabled(boolean hideDisabled) {
+        hideDiabledAction.setHideDisabled(hideDisabled);
+    }
+
     private class HideDisabledAction extends AbstractAction {
 
         private boolean hideDisabled = prefs.getBoolean("hideDisabled", false);
@@ -263,20 +276,38 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            hideDisabled = !hideDisabled;
-            prefs.putBoolean("hideDisabled", hideDisabled);
-            putValue(SELECTED_KEY, hideDisabled);
-            for (FilterPanel f : filterPanels) {
-                setVisible(f);
-            }
+            setHideDisabled(!isHideDisabled());
+            putValue(SELECTED_KEY, isHideDisabled());
         }
 
-        private void setVisible(FilterPanel f) {
-            f.setVisible(!hideDisabled || f.getFilter().isFilterEnabled());
-            for(FilterPanel ep: f.getEnclosedFilterPanels()){
-                setVisible(ep);
-            }
+        private void setVisibleIfEnabledOrNotHideDisabled(FilterPanel f) {
+            f.setVisible(!isHideDisabled() || f.getFilter().isFilterEnabled());
+            
         }
+
+        /**
+         * @return the hideDisabled
+         */
+        public boolean isHideDisabled() {
+            return hideDisabled;
+        }
+
+        /**
+         * @param hideDisabled the hideDisabled to set
+         */
+        public void setHideDisabled(boolean hideDisabled) {
+            boolean oldHideDisabled = this.hideDisabled;
+            this.hideDisabled = hideDisabled;
+            if (oldHideDisabled != this.hideDisabled) {
+                for (FilterPanel f : filterPanels) {
+                    setVisibleIfEnabledOrNotHideDisabled(f);
+                }
+            }
+            propertyChangeSupport.firePropertyChange(PROP_HIDEDISABLED, oldHideDisabled, hideDisabled);
+            prefs.putBoolean("hideDisabled", isHideDisabled());
+        }
+        private final transient PropertyChangeSupport propertyChangeSupport = new java.beans.PropertyChangeSupport(this);
+        public static final String PROP_HIDEDISABLED = "hideDisabled";
     }
 
     private class RedoAction extends AbstractAction {
@@ -488,14 +519,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         });
         filterJPanel.add(simpleCB);
 
-        hideDisnabledCB.setAction(new HideDisabledAction());
         hideDisnabledCB.setText("Hide disabled");
-        hideDisnabledCB.setToolTipText("Hide disabled filters");
-        hideDisnabledCB.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                hideDisnabledCBActionPerformed(evt);
-            }
-        });
+        hideDisnabledCB.setToolTipText("");
         filterJPanel.add(hideDisnabledCB);
 
         jPanel1.add(filterJPanel);
@@ -1007,10 +1032,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             highlightOrShowOnly(s);
         }
     }//GEN-LAST:event_highlightTFKeyReleased
-
-    private void hideDisnabledCBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hideDisnabledCBActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_hideDisnabledCBActionPerformed
 
     final void fixUndoRedo() {
         final boolean canUndo = undoManager.canUndo(), canRedo = undoManager.canRedo();
