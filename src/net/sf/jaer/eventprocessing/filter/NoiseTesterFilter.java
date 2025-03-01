@@ -2770,7 +2770,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         chip.getSizeX(), rocHistoryLabelPosY, 1, color,
                         label + String.format(" AUC=%.3f", auc));
             }
-            rocHistoryLabelPosY -= getShowFilteringStatisticsFontSize();
+            rocHistoryLabelPosY -= 1.8f*getShowFilteringStatisticsFontSize();
             if (summary) {
                 float[] rgb = color.getRGBComponents(null);
                 gl.glColor3fv(rgb, 0);
