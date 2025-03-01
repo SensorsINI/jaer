@@ -131,7 +131,7 @@ public class WindowSaver implements AWTEventListener {
             resize = true;
         }
         if(x!=0 || y!=0 || w!=DEFAULT_WIDTH || h!=DEFAULT_HEIGHT){
-            log.info(String.format("found non default window %s preferences x=%d y=%d w=%d h=%d",
+            log.fine(String.format("found non default window %s preferences x=%d y=%d w=%d h=%d",
                     name,x,y,w,h));
         }
         Dimension sd = Toolkit.getDefaultToolkit().getScreenSize();
@@ -255,7 +255,7 @@ public class WindowSaver implements AWTEventListener {
             sb.append("for window " + name);
         }
         preferences.flush();
-        log.info(sb.toString());
+        log.fine(sb.toString());
     }
 
     /**
