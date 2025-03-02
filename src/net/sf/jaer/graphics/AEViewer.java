@@ -83,10 +83,13 @@ import java.util.logging.ConsoleHandler;
 import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.retina.*;
+import com.google.common.collect.EvictingQueue;
 import eu.seebetter.ini.chips.davis.*;
 import java.awt.Container;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
@@ -369,6 +372,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AePlayerAdvancedControlsPanel playerControls;
     private static boolean showedSkippedPacketsRenderingWarning = false;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
+    private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
 
     /**
      * Constructs a new AEViewer using a default AEChip.
@@ -469,6 +473,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.getPopupMenu().setLightWeightPopupEnabled(false); // make remote submenu heavy to show over glcanvas
 
         ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false); // to show menu tips over GLCanvas
+
+        statusTextField.addMouseListener(new MouseAdapter() {
+
+            public void mouseEntered(MouseEvent me) {
+                ToolTipManager.sharedInstance().setDismissDelay(10000);
+            }
+
+            public void mouseExited(MouseEvent me) {
+                ToolTipManager.sharedInstance().setDismissDelay(defaultDismissTimeout);
+            }
+        });
 
         String lastFilePath = prefs.get("AEViewer.lastFile", "");
         lastFile = new File(lastFilePath);
@@ -1401,7 +1416,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (choseOneButton == false) {
 
         }
-        
+
         // make a 'reset device' item 
         interfaceMenu.add(new JSeparator());
         JMenuItem resetDeviceB = new JMenuItem(new ResetHardwareIntefaceAction());
@@ -2390,6 +2405,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    private final EvictingQueue<String> statusTextFieldMessages = EvictingQueue.create(4);
+
     /**
      * Sets the viewer's status message at the bottom of the window.
      *
@@ -2397,12 +2414,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @see #setStatusMessage(String)
      */
     public void setStatusMessage(final String s) {
+        statusTextFieldMessages.add(s);
         SwingUtilities.invokeLater(new Runnable() { //invoke in Swing thread to avoid Errors thrown by getLock when the viewloop (which is calling setStatusMessage) is interrupted by playMode change
 
             @Override
             public void run() {
                 statusTextField.setText(s);
-                statusTextField.setToolTipText(s);
+                StringBuilder sb = new StringBuilder("<html>");
+                for (String m : statusTextFieldMessages) {
+                    sb.append("<br>").append(m);
+                }
+                statusTextField.setToolTipText(sb.toString());
                 if (statusTimer != null) {
                     statusTimer.stop();
                 }
