@@ -52,6 +52,7 @@ public class JaerConstants {
     public static final String JAER_COMMITS = "https://github.com/SensorsINI/jaer/commits/master";
     public static final String HELP_URL_JAER_HOME = JAER_HOME;
     public static final String HELP_USER_GUIDE_URL_FLASHY = "https://docs.inivation.com/hardware/hardware-advanced-usage/firmware-update.html"; //"https://gitlab.com/inivation/devices-bin";
+    public static final String HELP_FLASHY_LINUX_DOWNLOAD="https://s3.eu-central-1.amazonaws.com/release.inivation.com/flashy/flashy-linux-1.7.1.zip";
     public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
     public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://www.inivation.com/support/hardware/";
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
