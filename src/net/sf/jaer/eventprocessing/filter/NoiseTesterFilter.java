@@ -377,10 +377,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
-        String s = null;
-        if (!showFilteringStatistics) {
-            return;
-        }
         textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getShowFilteringStatisticsFontSize()));
 
         GL2 gl = drawable.getGL().getGL2();
@@ -398,8 +394,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         rocHistoryLabelPosY = (int) (.7 * chip.getSizeY());
         for (ROCHistory h : rocHistoriesSaved) {
             h.draw(gl);
-//            float auc = h.computeAUC();
-//            log.info(String.format("AUC=%.3f for %s", auc, h.toString()));
         }
         rocHistoryCurrent.draw(gl);
         if (rocSweep != null && rocSweep.running) {
@@ -421,52 +415,48 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         gl.glColor4f(.8f, .8f, .8f, .3f); // must set color before raster position (raster position is like glVertex)
         gl.glLineWidth(10);
         DrawGL.drawCross(gl, x, y, L, 0);
-        DrawGL.drawString(getShowFilteringStatisticsFontSize(), x, y, 0, Color.gray, "last");
+//        DrawGL.drawString(getShowFilteringStatisticsFontSize(), x, y, 0, Color.gray, "last");
         gl.glPopMatrix();
 
-        // draw overlays of TP/FP etc
-        gl.glPushMatrix();
-        gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
-        gl.glRasterPos3f(0, sy * .9f, 0);
-        String overlayString = "Overlay ";
-        if (overlayNegatives) {
-            overlayString += "negatives: FN (green), TN (red)";
+        if (isShowFilteringStatistics()) {
+            // draw overlays of TP/FP etc
+            gl.glPushMatrix();
+            gl.glColor3f(.2f, .2f, .8f); // must set color before raster position (raster position is like glVertex)
+            gl.glRasterPos3f(0, sy * .9f, 0);
+            String overlayString = "Overlay ";
+            if (overlayNegatives) {
+                overlayString += "negatives: FN (green), TN (red)";
+            }
+            if (overlayPositives) {
+                overlayString += "positives: TP (green), FP (red)";
+            }
+            if (overlayFN) {
+                overlayString += " FN (green) ";
+            }
+            if (overlayFP) {
+                overlayString += " FP (red) ";
+            }
+            if (overlayTN) {
+                overlayString += " TN (red) ";
+            }
+            if (overlayTP) {
+                overlayString += " TP (green) ";
+            }
+            String s = null;
+            if (prerecordedNoise != null) {
+                s = String.format("NTF: Pre-recorded noise from %s with %,d events", prerecordedNoise.file.getName(), prerecordedNoise.recordedNoiseFileNoisePacket.getSize());
+            } else {
+                s = String.format("NTF: Synthetic noise: CoV %s dec, Leak %sHz+/-%s jitter, Shot %sHz. %s", eng.format(noiseRateCoVDecades), eng.format(leakNoiseRateHz), eng.format(leakJitterFraction), eng.format(shotNoiseRateHz),
+                        overlayString);
+            }
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, s);
+            s = String.format("TPR=%-7s%% FPR=%-7s%% TNR=%-7s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
+            s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
+            gl.glPopMatrix();
         }
-        if (overlayPositives) {
-            overlayString += "positives: TP (green), FP (red)";
-        }
-        if (overlayFN) {
-            overlayString += " FN (green) ";
-        }
-        if (overlayFP) {
-            overlayString += " FP (red) ";
-        }
-        if (overlayTN) {
-            overlayString += " TN (red) ";
-        }
-        if (overlayTP) {
-            overlayString += " TP (green) ";
-        }
-        if (prerecordedNoise != null) {
-            s = String.format("NTF: Pre-recorded noise from %s with %,d events", prerecordedNoise.file.getName(), prerecordedNoise.recordedNoiseFileNoisePacket.getSize());
-        } else {
-            s = String.format("NTF: Synthetic noise: CoV %s dec, Leak %sHz+/-%s jitter, Shot %sHz. %s", eng.format(noiseRateCoVDecades), eng.format(leakNoiseRateHz), eng.format(leakJitterFraction), eng.format(shotNoiseRateHz),
-                    overlayString);
-        }
-//        int font=GLUT.BITMAP_TIMES_ROMAN_24;
-        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, s);
-//        glut.glutBitmapString(font, s);
-//        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF"), 0);
-        s = String.format("TPR=%-7s%% FPR=%-7s%% TNR=%-7s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
-//        glut.glutBitmapString(font, s);
-        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
-//        gl.glRasterPos3f(0, getAnnotationRasterYPosition("NTF") + 10, 0);
-        s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
-        DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
-//        glut.glutBitmapString(font, s);
-        gl.glPopMatrix();
 
-//        nnbHistograms.draw(gl);  shows neighbor distributions, not informative
     }
 
     private void annotateNoiseFilteringEvents(ArrayList<FilteredEventWithNNb> outSig, ArrayList<FilteredEventWithNNb> outNoise) {
@@ -2770,7 +2760,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         chip.getSizeX(), rocHistoryLabelPosY, 1, color,
                         label + String.format(" AUC=%.3f", auc));
             }
-            rocHistoryLabelPosY -= 1.8f*getShowFilteringStatisticsFontSize();
+            rocHistoryLabelPosY -= 1.8f * getShowFilteringStatisticsFontSize();
             if (summary) {
                 float[] rgb = color.getRGBComponents(null);
                 gl.glColor3fv(rgb, 0);
