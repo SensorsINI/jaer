@@ -119,7 +119,7 @@ public class AEPacketRaw extends AEPacket {
         if (size > MAX_PACKET_SIZE_EVENTS) {
             log.warning("allocating arrays of size " + size + " which is larger than MAX_PACKET_SIZE_EVENTS=" + MAX_PACKET_SIZE_EVENTS + " in size");
         } else {
-            log.info("allocating size=" + size + " arrays of events");
+            log.fine("allocating size=" + size + " arrays of events");
         }
         allocateArrays(size);
     }
