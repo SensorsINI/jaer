@@ -41,9 +41,9 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
     public final float SPECIAL_BAR_LOCATION_Y = 0;
     public final float SPECIAL_BAR_LINE_WIDTH = 8;
     private boolean renderSpecialEvents = true;
-    private int TEX_EVENTS=0; // texture number for binding events frame texture
-    private int TEX_FRAME=0;
-    private int TEX_ANNOTATE=0;
+    private int TEX_EVENTS = 0; // texture number for binding events frame texture
+    private int TEX_FRAME = 0;
+    private int TEX_ANNOTATE = 0;
 
     /**
      * Creates a new instance of ChipRendererDisplayMethodRGBA
@@ -59,6 +59,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
      * values. The GL context is assumed to already be transformed so that chip
      * pixel x,y values can be used for coordinate values, with 0,0 at LL
      * corner.
+     *
      * @param drawable
      */
     @Override
@@ -193,16 +194,10 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 //			gl.glDisable(GL.GL_TEXTURE_2D);
 //		}
         if (annotateMap != null && displayAnnotation) {
+            gl.glEnable(GL.GL_BLEND);
+            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
             gl.glEnable(GL2.GL_ALPHA_TEST); // only draw annotation when alpha>0
-            gl.glAlphaFunc(GL2.GL_GREATER, 0f);
-//            gl.glBindTexture(GL.GL_TEXTURE_2D, 1);
-//            gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
-//            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
-//            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
-//            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
-//            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
-//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_ADD);
-//            gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
+            gl.glAlphaFunc(GL2.GL_GREATER, 0);
 
             gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_ANNOTATE);
             gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
@@ -210,19 +205,22 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
-            // rgb
+            
+            // https://registry.khronos.org/OpenGL-Refpages/gl2.1/xhtml/glTexEnv.xml
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, GL2.GL_REPLACE);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, GL2.GL_ADD_SIGNED);
+
+            // rgb
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, GL2.GL_REPLACE);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_RGB, GL2.GL_PREVIOUS);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_RGB, GL2.GL_TEXTURE);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_RGB, GL2.GL_SRC_COLOR);
             gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_RGB, GL2.GL_SRC_COLOR);
             // alpha
-//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_ALPHA, GL2.GL_ADD); 
-//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_ALPHA, GL2.GL_PREVIOUS);
-//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_ALPHA, GL2.GL_TEXTURE);
-//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_ALPHA, GL2.GL_SRC_ALPHA);
-//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_ALPHA, GL2.GL_SRC_ALPHA);
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_ALPHA, GL2.GL_REPLACE); 
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_ALPHA, GL2.GL_PREVIOUS);
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_ALPHA, GL2.GL_TEXTURE);
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_ALPHA, GL2.GL_SRC_ALPHA);
+            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_ALPHA, GL2.GL_SRC_ALPHA);
 
             gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
 
@@ -231,9 +229,8 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             drawPolygon(gl, width, height);
             gl.glDisable(GL.GL_TEXTURE_2D);
             gl.glDisable(GL2.GL_ALPHA_TEST);
+            gl.glDisable(GL.GL_BLEND);
         }
-
-        gl.glDisable(GL.GL_BLEND);
 
         getChipCanvas().checkGLError(gl, glu, "after rendering histogram quad");
 
@@ -290,8 +287,9 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         }
     }
 
-    /** Draws the current texture into the width and height of chip pixels
-     * 
+    /**
+     * Draws the current texture into the width and height of chip pixels
+     *
      * @param gl
      * @param width of chip pixel array
      * @param height of chip pixel array
