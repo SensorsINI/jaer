@@ -185,11 +185,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean overlayNegatives = getBoolean("overlayNegatives", false);
     private boolean overlayTP = getBoolean("overlayTP", false);
     private boolean overlayTN = getBoolean("overlayTN", false);
+    private float overlayAlpha = getFloat("overlayAlpha", .5f);
     @Preferred
     private boolean overlayFP = getBoolean("overlayFP", false);
     @Preferred
     private boolean overlayFN = getBoolean("overlayFN", false);
-    final float[] NOISE_COLOR = {1f, 0, 0, 1}, SIG_COLOR = {0, 1f, 0, 1};
+    final float[] NOISE_COLOR = {1f, 0, 0, .3f}, SIG_COLOR = {0, 1f, 0, .3f};
     final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
 
     private boolean outputTrainingData = getBoolean("outputTrainingData", false);
@@ -328,6 +329,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "overlayTN", "<html><p>Overlay TN in red <br>(noise events correctly classified)");
         setPropertyTooltip(TT_DISP, "overlayFP", "<html><p>Overlay FP in red <br>(noise events incorrectly classified as signal)");
         setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay FN in green <br>(signal events incorrectly classified as noise)");
+        setPropertyTooltip(TT_DISP, "overlayAlpha", "The alpha (opacity) of the overlaid classification colors");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show. The average over these samples is shown as the large cross.");
         // buttons
         setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
@@ -463,6 +465,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (renderer == null) {
             return;
         }
+        NOISE_COLOR[3] = getOverlayAlpha();
+        SIG_COLOR[3] = getOverlayAlpha();
         for (FilteredEventWithNNb e : outSig) {
             renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, SIG_COLOR);
         }
@@ -896,6 +900,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (overlayNegatives) {
                 annotateNoiseFilteringEvents(fnList, tnList);
             }
+            NOISE_COLOR[3] = getOverlayAlpha();
+            SIG_COLOR[3] = getOverlayAlpha();
             if (overlayTP) {
                 annotateNoiseFilteringEvents(tpList, SIG_COLOR);
             }
@@ -1815,6 +1821,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public boolean isOverlayTP() {
         return overlayTP;
+    }
+
+    /**
+     * @return the overlayAlpha
+     */
+    public float getOverlayAlpha() {
+        return overlayAlpha;
+    }
+
+    /**
+     * @param overlayAlpha the overlayAlpha to set
+     */
+    public void setOverlayAlpha(float overlayAlpha) {
+        if (overlayAlpha < 0) {
+            overlayAlpha = 0;
+        } else if (overlayAlpha > 1) {
+            overlayAlpha = 1;
+        }
+        this.overlayAlpha = overlayAlpha;
+        putFloat("overlayAlpha", overlayAlpha);
     }
 
     /**
