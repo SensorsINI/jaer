@@ -715,12 +715,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         assert signalList.size() == in.getSizeNotFilteredOut() : String.format("signalList size (%d) != in.getSizeNotFilteredOut() (%d)", signalList.size(), in.getSizeNotFilteredOut());
 
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
-        if (isDisableAddingNoise()) {
-            signalAndNoisePacket = (EventPacket<PolarityEvent>) in; // just make the signal+noise packet be the input packet since there is already labeled noise there
-            // the noise events are already in noiseList from above
-        } else {
-            noiseList.clear();
+        noiseList.clear();
+        if (!isDisableAddingNoise()) {
             addNoise((EventPacket<? extends PolarityEvent>) in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
+        } else {
+            addNoise((EventPacket<? extends PolarityEvent>) in, signalAndNoisePacket, noiseList, 0, 0);
         }
         // we need to copy the augmented event packet to a HashSet for use with Collections
         ArrayList<PolarityEvent> signalPlusNoiseList;
@@ -796,13 +795,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
             EventPacket<PolarityEvent> passedSignalAndNoisePacket = signalAndNoisePacket;
-//            if (selectedNoiseFilter != null) {
-            if (true) {
+            if (selectedNoiseFilter != null) {
                 passedSignalAndNoisePacket
                         = (EventPacket<PolarityEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
+                // if selectedNoiseFilter is null, nothing happens here
 
-                ArrayList<FilteredEventWithNNb> negativeList = selectedNoiseFilter.getNegativeEvents();
-                ArrayList<FilteredEventWithNNb> positiveList = selectedNoiseFilter.getPositiveEvents();
+                ArrayList<FilteredEventWithNNb> negativeList, positiveList;
+                negativeList = selectedNoiseFilter.getNegativeEvents();
+                positiveList = selectedNoiseFilter.getPositiveEvents();
 
                 // make a list of the output packet, which has noise filtered out by selected filter
                 SignalAndNoiseList snlpassed = createEventList(passedSignalAndNoisePacket, false); // don't split events here
@@ -3036,12 +3036,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     /**
      * @param disableAddingNoise the disableAddingNoise to set
      */
-    public void setDisableAddingNoise(boolean disableAddingNoise) {
+    synchronized public void setDisableAddingNoise(boolean disableAddingNoise) {
         boolean old = this.disableAddingNoise;
         this.disableAddingNoise = disableAddingNoise;
+        resetFilter(); // reset since this affects filter and can cause apparent deadlock
         putBoolean("disableAddingNoise", disableAddingNoise);
         getSupport().firePropertyChange("disableAddingNoise", old, this.disableAddingNoise);
-        resetFilter(); // reset since this affects filter and can cause apparent deadlock
     }
 
     @Preferred
