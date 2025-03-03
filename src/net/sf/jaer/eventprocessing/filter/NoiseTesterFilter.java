@@ -125,13 +125,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private boolean disableAddingNoise = getBoolean("disableAddingNoise", false);
     @Preferred
-    private float shotNoiseRateHz = getFloat("shotNoiseRateHz", .1f);
+    private float shotNoiseRateHz = getFloat("shotNoiseRateHz", 5f);
     protected boolean photoreceptorNoiseSimulation = getBoolean("photoreceptorNoiseSimulation", true);
     @Preferred
-    private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .1f);
+    private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .3f);
     @Preferred
-    private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0);
-    private float leakJitterFraction = getFloat("leakJitterFraction", 0.1f); // fraction of interval to jitter leak events
+    private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0.3f);
+    private float leakJitterFraction = getFloat("leakJitterFraction", 0.2f); // fraction of interval to jitter leak events
     private float[] noiseRateArray = null;
     private float[] noiseRateIntervals = null; // stored by column, with y changing fastest
     private PriorityQueue<PolarityEvent> leakNoiseQueue = null; // stored by column, with y changing fastest
@@ -298,9 +298,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip(noise, "photoreceptorNoiseSimulation", "<html>Generate shot noise from simulated bandlimited photoreceptor noise.<p>The <i>shotNoiseRateHz</i> will only be a guide to the actual generated noise rate. ");
-        setPropertyTooltip(noise, "noiseRateCoVDecades", "Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array");
-        setPropertyTooltip(noise, "leakJitterFraction", "Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution");
-        setPropertyTooltip(noise, "leakNoiseRateHz", "rate per pixel of leak noise events");
+        setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>0.3 decades is realistic for DAVIS cameras.");
+        setPropertyTooltip(noise, "leakJitterFraction", "<html>Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution.<p>0.1 to 0.2 is realistic for DAVIS cameras.");
+        setPropertyTooltip(noise, "leakNoiseRateHz", "Rate per pixel in Hz of leak noise events. 0.1 to 0.2Hz is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
         setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
 
