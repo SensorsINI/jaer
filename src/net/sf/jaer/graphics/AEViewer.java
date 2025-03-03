@@ -477,6 +477,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         statusTextField.addMouseListener(new MouseAdapter() {
 
             public void mouseEntered(MouseEvent me) {
+                StringBuilder sb = new StringBuilder("<html>");
+                for (String m : statusTextFieldMessages) {
+                    if (m != null) {
+                        sb.append("<br>").append(m);
+                    }
+                }
+                statusTextField.setToolTipText(sb.toString());
+
                 ToolTipManager.sharedInstance().setDismissDelay(10000);
             }
 
@@ -2414,17 +2422,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @see #setStatusMessage(String)
      */
     public void setStatusMessage(final String s) {
+        if (s == null) {
+            return;
+        }
         statusTextFieldMessages.add(s);
         SwingUtilities.invokeLater(new Runnable() { //invoke in Swing thread to avoid Errors thrown by getLock when the viewloop (which is calling setStatusMessage) is interrupted by playMode change
 
             @Override
             public void run() {
                 statusTextField.setText(s);
-                StringBuilder sb = new StringBuilder("<html>");
-                for (String m : statusTextFieldMessages) {
-                    sb.append("<br>").append(m);
-                }
-                statusTextField.setToolTipText(sb.toString());
                 if (statusTimer != null) {
                     statusTimer.stop();
                 }
