@@ -177,7 +177,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @param in the input packet of events
      * @return the resulting output.
      */
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    public EventPacket filterPacket(EventPacket in) {
         if (!filteringEnabled || size() == 0) {
             return in;
         }
