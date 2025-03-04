@@ -3,7 +3,6 @@
  * Created on October 21, 2005, 12:33 PM */
 package net.sf.jaer.eventprocessing.filter;
 
-
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.Preferred;
@@ -27,7 +26,7 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
     String QUAN_GROUP = "Quantization";
 
     // computed vals in computeBitMasksAndTooltips
-    int timestampResUs ;
+    int timestampResUs;
     int timestampBitmask;
     int maxTimestamp;
 
@@ -36,6 +35,11 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
         setPropertyTooltip(QUAN_GROUP, "timestampBits", "Number of bits for timestamp");
         setPropertyTooltip(QUAN_GROUP, "timestampRighShiftDividerBits", "Number of bits timestamp is rightshifted to divide it. A right shift of 10 bits makes the timestamps approx 1ms");
         computeBitMasksAndTooltips();
+    }
+
+    @Override
+    public String infoString() {
+            return String.format("%s: k=%d tau=%s usePol=%s %d-b timestamps >>%d-b", camelCaseClassname(),numMustBeCorrelated, eng.format(getCorrelationTimeS()), isPolaritiesMustMatch(),getTimestampBits(),getTimestampRightShiftDividerBits());
     }
 
     private void computeBitMasksAndTooltips() {
@@ -49,13 +53,14 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
         setPropertyTooltip(QUAN_GROUP, "timestampRightShiftDividerBits", "<html>Number of bits timestamp is rightshifted to divide it;<br>" + quantizationInfo);
     }
 
-    /** Applies quantization to timestamp image fill 32-bit timestamp
-     * 
+    /**
+     * Applies quantization to timestamp image fill 32-bit timestamp
+     *
      * @param ts
      * @return the quantized timestamp, right-shifted and masked
      */
-    private int quantizeTimestamp(int ts){
-        return ts>>>(timestampRightShiftDividerBits)&timestampBitmask;
+    private int quantizeTimestamp(int ts) {
+        return ts >>> (timestampRightShiftDividerBits) & timestampBitmask;
     }
 
     /**
@@ -125,14 +130,14 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
                         if (fhp && xx == x && yy == y) {
                             continue; // like BAF, don't correlate with ourself
                         }
-                        
-                        int lastTsFull=col[yy];
-                        boolean isDefaultTs=lastTsFull==DEFAULT_TIMESTAMP;
+
+                        int lastTsFull = col[yy];
+                        boolean isDefaultTs = lastTsFull == DEFAULT_TIMESTAMP;
                         final int lastT = quantizeTimestamp(lastTsFull);
                         final int deltaT = (ts - lastT);
 
                         boolean occupied = false;
-                        if (deltaT < dt && deltaT>0 && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                        if (deltaT < dt && deltaT > 0 && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                             if (!polaritiesMustMatch || !hasPolarites) {
                                 ncorrelated++;
                                 occupied = true;
@@ -198,13 +203,12 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
                         if (fhp && xx == x && yy == y) {
                             continue; // like BAF, don't correlate with ourself
                         }
-                        int lastTsFull=col[yy];
-                        boolean isDefaultTs=lastTsFull==DEFAULT_TIMESTAMP;
+                        int lastTsFull = col[yy];
+                        boolean isDefaultTs = lastTsFull == DEFAULT_TIMESTAMP;
                         final int lastT = quantizeTimestamp(lastTsFull);
                         final int deltaT = (ts - lastT);
 
-
-                        if (deltaT < dt && deltaT>0 && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                        if (deltaT < dt && deltaT > 0 && !isDefaultTs) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
                             if (!polaritiesMustMatch || !hasPolarites) {
                                 ncorrelated++;
                             } else {
@@ -261,8 +265,8 @@ public class QuantizedSTCF extends SpatioTemporalCorrelationFilter {
     }
 
     /**
-     * @param timestampRightShiftDividerBits the timestampRightShiftDividerBits to
- set
+     * @param timestampRightShiftDividerBits the timestampRightShiftDividerBits
+     * to set
      */
     public void setTimestampRightShiftDividerBits(int timestampRightShiftDividerBits) {
         if (timestampRightShiftDividerBits > 20) {
