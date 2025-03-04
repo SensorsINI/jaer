@@ -2825,7 +2825,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 gl.glColor3fv(rgb, 0);
                 gl.glLineWidth(10);
                 DrawGL.drawCross(gl, x, y, L, 0);
-                DrawGL.drawString(getShowFilteringStatisticsFontSize(), x, y, 0, Color.gray, "avg");
+                gl.glPopMatrix();
+                gl.glPushMatrix();
+                int fs=getShowFilteringStatisticsFontSize();
+                DrawGL.drawString(fs, x+L, y-fs/2, 0, Color.gray, "avg");
                 gl.glPopMatrix();
 
             }
