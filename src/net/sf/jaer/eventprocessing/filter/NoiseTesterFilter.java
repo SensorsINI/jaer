@@ -87,6 +87,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
+import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
@@ -111,7 +112,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      *
      * @see #initFilter()
      */
-    public static Class[] noiseFilterClasses = {null, HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, SinCosProdDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
+    public static Class[] noiseFilterClasses = {null,  HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, LinearCorrelationDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
 //    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
     private AbstractNoiseFilter selectedNoiseFilter = null;
@@ -130,7 +131,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Preferred
     private float leakNoiseRateHz = getFloat("leakNoiseRateHz", .3f);
     @Preferred
-    private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 0.3f);
+    private float noiseRateCoVDecades = getFloat("noiseRateCoVDecades", 1f);
     private float leakJitterFraction = getFloat("leakJitterFraction", 0.2f); // fraction of interval to jitter leak events
     private float[] noiseRateArray = null;
     private float[] noiseRateIntervals = null; // stored by column, with y changing fastest
@@ -198,7 +199,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private boolean outputFilterStatistic = false;
 
     @Preferred
-    private int rocHistoryLength = getInt("rocHistoryLength", 1);
+    private int rocHistoryLength = getInt("rocHistoryLength", 8);
     private final int LIST_LENGTH = 10000;
 
     private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
@@ -298,7 +299,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip(noise, "photoreceptorNoiseSimulation", "<html>Generate shot noise from simulated bandlimited photoreceptor noise.<p>The <i>shotNoiseRateHz</i> will only be a guide to the actual generated noise rate. ");
-        setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>0.3 decades is realistic for DAVIS cameras.");
+        setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>1 decade is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "leakJitterFraction", "<html>Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution.<p>0.1 to 0.2 is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "leakNoiseRateHz", "Rate per pixel in Hz of leak noise events. 0.1 to 0.2Hz is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
@@ -342,6 +343,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             int rgb = Color.HSBtoRGB(hue, 1, 1);
             colors[k] = rgb;
         }
+
+        hideProperty("correlationTimeS");   // don't set in enclosed denoisers because they might need to differ
     }
 
     @Override
@@ -1284,6 +1287,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             // construct the noise filters
             noiseFilters = new AbstractNoiseFilter[noiseFilterClasses.length];
             int i = 0;
+            ArrayList<Class> evictedFilters = new ArrayList();
             for (Class cl : noiseFilterClasses) {
                 if (cl == null) {
                     noiseFilters[i] = null;  // noop filter
@@ -1294,10 +1298,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     Constructor con = cl.getConstructor(AEChip.class);
                     noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
                     i++;
-                } catch (NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                } catch (ClassCastException| NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                     String s = String.format("Could not construct instance of AbstractNoiseFilter %s;\ngot %s", cl.getSimpleName(), ex.toString());
                     log.severe(s);
-                    throw new Error(s);
+                    evictedFilters.add(cl);
+                }
+            }
+            if (!evictedFilters.isEmpty()) {
+                showWarningDialogInSwingThread(String.format("NoiseTesterFilter could not construct instance(s) of %s", evictedFilters.toString()), "NoiseTesterFilter");
+                ArrayList<Class> tmp = new ArrayList();
+                for (Class cl : noiseFilterClasses) {
+                    if (!evictedFilters.contains(cl)) {
+                        tmp.add(cl);
+                    }
+                }
+                noiseFilterClasses = new Class[tmp.size()];
+                int k=0;
+                for(Class cl:tmp){
+                    noiseFilterClasses[k++]=cl;
                 }
             }
 
@@ -1592,14 +1610,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             String out = selectedNoiseFilter.setParameters(command, input);
             log.info("Execute Command:" + input);
             return out;
-        }
-    }
-
-    @Override
-    public void setCorrelationTimeS(float dtS) {
-        super.setCorrelationTimeS(dtS);
-        if (selectedNoiseFilter != null) {
-            selectedNoiseFilter.setCorrelationTimeS(dtS);
         }
     }
 
@@ -2242,7 +2252,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             reset();
             rocHistoryCurrent.reset();
             savedRocHistoryLength = getRocHistoryLength(); // to restore on stop()
-            setRocHistoryLength(1000); //sufficient for whole marked section of recording
+            rocHistoryLength = 1000; //sufficient for whole marked section of recording
             rocHistorySummary = new ROCHistory(selectedNoiseFilter);
             rocHistorySummary.summary = true;
             Color color = selectedNoiseFilter == null ? Color.white : new Color(colors[lastcolor % colors.length]);
@@ -2827,8 +2837,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 DrawGL.drawCross(gl, x, y, L, 0);
                 gl.glPopMatrix();
                 gl.glPushMatrix();
-                int fs=getShowFilteringStatisticsFontSize();
-                DrawGL.drawString(fs, x+L, y-fs/2, 0, Color.gray, "avg");
+                int fs = getShowFilteringStatisticsFontSize();
+                DrawGL.drawString(fs, x + L, y - fs / 2, 0, Color.gray, "avg");
                 gl.glPopMatrix();
 
             }
