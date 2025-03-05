@@ -134,6 +134,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             Object o = PrefObj.getObject(prefs, "marks");
             if (o == null) {
+                log.fine("no saved marks for this file");
+                marksMap = new HashMap<String, Marks>();
                 return;
             }
             marksMap = (HashMap<String, Marks>) o;
@@ -1107,7 +1109,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     @Override
     public boolean isMarkOutSet() {
-        return marks.markOut != size()-1;
+        return marks.markOut != size() - 1;
     }
 
     // https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java
