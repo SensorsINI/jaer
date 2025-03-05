@@ -291,7 +291,10 @@ public class BasicEvent implements EventInterface<BasicEvent>, BasicEventInterfa
         if (this == obj) {
             return true;
         }
-        if (obj.getClass() != this.getClass()) {
+//        if (obj.getClass() != this.getClass()) {
+//            return false;
+//        }
+        if(!(obj instanceof BasicEvent)){
             return false;
         }
         BasicEvent tgt = (BasicEvent) obj;

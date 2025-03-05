@@ -132,9 +132,12 @@ public class PolarityEvent extends TypedEvent implements PolarityEventInterface 
         if (this == obj) {
             return true;
         }
-        if (obj.getClass() != this.getClass()) {
+        if(!(obj instanceof PolarityEvent)){
             return false;
         }
+//        if (obj.getClass() != this.getClass()) {
+//            return false;
+//        }
         PolarityEvent tgt = (PolarityEvent) obj;
 
         return super.equals(tgt) && this.polarity==tgt.polarity;
