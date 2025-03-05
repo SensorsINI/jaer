@@ -2307,7 +2307,10 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
 
         // handle enclosed filters that are disabled and have parent enclosing filter that does not want to show them in GUI
-        if (getFilter().isEnclosed() && !getFilter().isFilterEnabled() && getFilter().getEnclosingFilter().isHideNonEnabledEnclosedFilters()) {
+        if (!visible && getFilter().isEnclosed() && !getFilter().isFilterEnabled() && getFilter().getEnclosingFilter().isHideNonEnabledEnclosedFilters()) {
+            log.info(String.format("Hiding %s because it is enclosed and the enclosing filter %s has set hideNonEnabledEnclosedFilters. Check the Hide diabled option in Filters window.",
+                    getFilter().getClass().getSimpleName(),
+                    getFilter().getEnclosingFilter().getClass().getSimpleName()));
             setVisible(false);
         } else {
             // if we are not enclosed in another filter, then make us visible
