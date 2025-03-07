@@ -78,7 +78,7 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     private int index = 0;
     private volatile boolean selecting = false;
     private static float lineWidth = 1f;
-    private int startx, starty, endx, endy;
+    private int selStartx, selStarty, selEndx, selEndy;
     private boolean multiSelectionEnabled = prefs().getBoolean("multiSelectionEnabled", false);
     private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
     protected boolean showTypeFilteringText = getBoolean("showTypeFilteringText", true);
@@ -279,8 +279,8 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         int old = this.startX;
         startX = clip(startX, chip.getSizeX());
         this.startX = startX;
-        putInt("startX", startX);
         getSupport().firePropertyChange("startX", old, startX);
+        putInt("startX", startX);
         setXEnabled(true);
 
     }
@@ -306,8 +306,8 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     public void setXEnabled(boolean xEnabled) {
         boolean old = this.xEnabled;
         this.xEnabled = xEnabled;
-        putBoolean("xEnabled", xEnabled);
         getSupport().firePropertyChange("XEnabled", old, xEnabled);
+        putBoolean("xEnabled", xEnabled);
 
     }
 
@@ -316,11 +316,11 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     }
 
     public void setStartY(int startY) {
-        int old = this.starty;
+        int old = this.startY;
         startY = clip(startY, chip.getSizeY());
         this.startY = startY;
-        putInt("startY", startY);
         getSupport().firePropertyChange("startY", old, startY);
+        putInt("startY", startY);
 
         setYEnabled(true);
     }
@@ -333,8 +333,8 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         int old = this.endY;
         endY = clip(endY, chip.getSizeY());
         this.endY = endY;
-        putInt("endY", endY);
         getSupport().firePropertyChange("endY", old, endY);
+        putInt("endY", endY);
         setYEnabled(true);
 
     }
@@ -346,8 +346,8 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     public void setYEnabled(boolean yEnabled) {
         boolean old = this.yEnabled;
         this.yEnabled = yEnabled;
-        putBoolean("yEnabled", yEnabled);
         getSupport().firePropertyChange("YEnabled", old, yEnabled);
+        putBoolean("yEnabled", yEnabled);
 
     }
 
@@ -359,8 +359,8 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         int old = this.startType;
         startType = clip(startType, chip.getNumCellTypes());
         this.startType = startType;
-        putInt("startType", startType);
         getSupport().firePropertyChange("startType", old, startType);
+        putInt("startType", startType);
         setTypeEnabled(true);
 
     }
@@ -373,8 +373,8 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         int old = this.endType;
         endType = clip(endType, chip.getNumCellTypes());
         this.endType = endType;
-        putInt("endType", endType);
         getSupport().firePropertyChange("endType", old, endType);
+        putInt("endType", endType);
         setTypeEnabled(true);
 
     }
@@ -502,10 +502,10 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         if (multiSelectionEnabled) {
             selectionList.add(selection);
         }
-        setStartX(startx);
-        setEndX(endx - 1);
-        setStartY(starty);
-        setEndY(endy - 1);
+        setStartX(selStartx);
+        setEndX(selEndx - 1);
+        setStartY(selStarty);
+        setEndY(selEndy - 1);
         selecting = false;
 
     }
@@ -543,13 +543,13 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
     private SelectionRectangle getSelection(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         endPoint = p;
-        startx = min(startPoint.x, endPoint.x);
-        starty = min(startPoint.y, endPoint.y);
-        endx = max(startPoint.x, endPoint.x) + 1;
-        endy = max(startPoint.y, endPoint.y) + 1;
-        int w = endx - startx;
-        int h = endy - starty;
-        selection = new SelectionRectangle(startx, starty, w, h);
+        selStartx = min(startPoint.x, endPoint.x);
+        selStarty = min(startPoint.y, endPoint.y);
+        selEndx = max(startPoint.x, endPoint.x) + 1;
+        selEndy = max(startPoint.y, endPoint.y) + 1;
+        int w = selEndx - selStartx;
+        int h = selEndy - selStarty;
+        selection = new SelectionRectangle(selStartx, selStarty, w, h);
         return selection;
 
     }
