@@ -39,7 +39,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     private boolean filterAlternativePolarityShotNoiseEnabled = getBoolean("filterAlternativePolarityShotNoiseEnabled", false);
 //    protected boolean favorLines = getBoolean("favorLines", false);
     protected float shotNoiseCorrelationTimeS = getFloat("shotNoiseCorrelationTimeS", 1e-3f);
-    private int numShotNoiseTests = 0, numAlternatingPolarityShotNoiseEventsFilteredOut = 0;
+    protected int numShotNoiseTests = 0, numAlternatingPolarityShotNoiseEventsFilteredOut = 0;
 
     protected int sxm1; // size of chip minus 1
     protected int sym1;
@@ -197,7 +197,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                     final byte [] polCol=polImage[xx];
                     for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
                         if (fhp && xx == x && yy == y) {
-                            continue; // like BAF, don't correlate with ourself
+                            continue; // like BAF, don't correlate with ourself. Makes no difference if polaritiesMustMatch because shot noise events almost never follow each other with same polarity
                         }
                         final int lastT = col[yy];
                         final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
