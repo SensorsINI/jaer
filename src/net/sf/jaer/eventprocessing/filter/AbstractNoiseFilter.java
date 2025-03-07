@@ -137,7 +137,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         }
 
         setPropertyTooltip(TT_FILT_CONTROL, "sigmaDistPixels", sigmaDistPixelsTooltip);
-        setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "Filter out hot pixels by not considering correlation with ourselves (i.e. self-exclusion of correlation).");
+        setPropertyTooltip(TT_FILT_CONTROL, "filterHotPixels", "<html>Filter out hot pixels by not considering correlation with ourselves <br>(i.e. self-exclusion of correlation).<p>Makes no practical difference if polaritiesMustMatch is set, because shot noise events almost always are followed by the opposite polarity noise event.");
         setPropertyTooltip(TT_FILT_CONTROL, "subsampleBy", "Past events are spatially subsampled (address right shifted) by this many bits");
 //        setPropertyTooltip(TT_ADAP, "adaptiveFilteringEnabled", "Controls whether filter is automatically adapted with NoiseFilterControl algorithm (if filter adopts it for controlling itself).");
         setPropertyTooltip(TT_FILT_CONTROL, "letFirstEventThrough", "After reset, lets first event through; if false, first event from each pixel is blocked");
@@ -365,7 +365,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @param sigmaDistPixels the sigmaDistPixels to set
      */
     public void setSigmaDistPixels(int sigmaDistPixels) {
-        int old = getSigmaDistPixels();
+        int old = this.sigmaDistPixels;
         int min = (chip instanceof CDAVIS ? 2 : 1); // tobi added for CDAVIS since DVS pitch is half of full pitch
         if (sigmaDistPixels < min) {
             sigmaDistPixels = min;
@@ -480,8 +480,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      * @return the info string
      */
     public String infoString() {
-        String s = camelCaseClassname();
-        s = s + String.format(": dT=%ss, sigma=%dpx subSamp=%d", eng.format(getCorrelationTimeS()), getSigmaDistPixels(), getSubsampleBy());
+        int nnbsize=sigmaDistPixels*2+1;
+        String s=String.format("%s: dT=%ss, sigma=%dpx (%dx%d) subSamp=%d", camelCaseClassname(), 
+                eng.format(correlationTimeS), 
+                sigmaDistPixels, nnbsize,nnbsize,
+                subsampleBy);
         return s;
     }
 
