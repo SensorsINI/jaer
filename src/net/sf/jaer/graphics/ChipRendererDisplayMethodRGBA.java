@@ -70,7 +70,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
     private static float clearDisplay(final Chip2DRenderer renderer, final GL gl) {
         final float gray = renderer.getGrayValue();
-        gl.glClearColor(gray, gray, gray, 0f);
+        gl.glClearColor(gray, gray, gray, 1f);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
         return gray;
     }
@@ -195,7 +195,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 //		}
         if (annotateMap != null && displayAnnotation) {
             gl.glEnable(GL.GL_BLEND);
-            gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+            gl.glBlendFuncSeparate(GL.GL_SRC_COLOR, GL.GL_ONE_MINUS_SRC_COLOR,GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
             gl.glEnable(GL2.GL_ALPHA_TEST); // only draw annotation when alpha>0
             gl.glAlphaFunc(GL2.GL_GREATER, 0);
 
@@ -206,21 +206,23 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
             gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
             
+            int op=GL2.GL_REPLACE;
+            
             // https://registry.khronos.org/OpenGL-Refpages/gl2.1/xhtml/glTexEnv.xml
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, GL2.GL_REPLACE);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_TEXTURE_ENV_MODE, op);
 
             // rgb
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, GL2.GL_REPLACE);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_RGB, GL2.GL_PREVIOUS);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_RGB, GL2.GL_TEXTURE);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_RGB, GL2.GL_SRC_COLOR);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_RGB, GL2.GL_SRC_COLOR);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_RGB, op);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_RGB, GL2.GL_PREVIOUS);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_RGB, GL2.GL_TEXTURE);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_RGB, GL2.GL_SRC_COLOR);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_RGB, GL2.GL_SRC_COLOR);
             // alpha
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_ALPHA, GL2.GL_REPLACE); 
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_ALPHA, GL2.GL_PREVIOUS);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_ALPHA, GL2.GL_TEXTURE);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_ALPHA, GL2.GL_SRC_ALPHA);
-            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_ALPHA, GL2.GL_SRC_ALPHA);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_COMBINE_ALPHA, op); 
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE0_ALPHA, GL2.GL_PREVIOUS);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_SOURCE1_ALPHA, GL2.GL_TEXTURE);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND0_ALPHA, GL2.GL_SRC_ALPHA);
+//            gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2.GL_OPERAND1_ALPHA, GL2.GL_SRC_ALPHA);
 
             gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
 
