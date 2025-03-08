@@ -24,7 +24,7 @@ import net.sf.jaer.util.RemoteControlCommand;
  *
  * @author tobi
  */
-@Description("Filters out uncorrelated background activity noise according to Delbruck, Tobi. 2008. “Frame-Free Dynamic Digital Vision.” In Proceedings of Intl. Symp. on Secure-Life Electronics, Advanced Electronics for Quality Life and Society, 1:21–26. Tokyo, Japan: Tokyo. https://drive.google.com/open?id=0BzvXOhBHjRheTS1rSVlZN0l2MDg.")
+@Description("<html>Filters out uncorrelated background activity noise according to <br>Delbruck, Tobi. 2008. <br>“Frame-Free Dynamic Digital Vision.” <br>In Proceedings of Intl. Symp. on Secure-Life Electronics, Advanced Electronics for Quality Life and Society, 1:21–26. Tokyo, Japan: Tokyo.<br> https://drive.google.com/open?id=0BzvXOhBHjRheTS1rSVlZN0l2MDg.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class BackgroundActivityFilter extends AbstractNoiseFilter {
 

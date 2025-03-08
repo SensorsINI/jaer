@@ -3,7 +3,6 @@
  * Created on October 21, 2005, 12:33 PM */
 package net.sf.jaer.eventprocessing.filter;
 
-
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.Preferred;
@@ -44,7 +43,7 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
      * @return the age, 1 for simultaneous, 0 for times =>tauUs
      */
     private float age(final int dt) {
-        if (dt < tauUs && dt>0) {
+        if (dt < tauUs && dt > 0) {
             final float age = 1 - ((float) (dt)) / tauUs;  // if dt is 0, then linearDt is 1, if dt=-tauUs, then linearDt=0
             return age;
         } else {
@@ -54,17 +53,10 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
 
     @Override
     public String infoString() {
-         String s = String.format("%s: dT=%ss, sigma=%dpx subSamp=%d usePol=%s corThr=%s", 
-                camelCaseClassname(),
-                eng.format(getCorrelationTimeS()), 
-                getSigmaDistPixels(), 
-                getSubsampleBy(), 
-                isPolaritiesMustMatch(),
-                eng.format(correlationThreshold));
+        String s = super.infoString() + " corrThr="
+                + eng.format(correlationThreshold);
         return s;
     }
-    
-    
 
     /**
      * filters in to out. if filtering is enabled, the number of out may be less
@@ -243,7 +235,6 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
     }
 
     // </editor-fold>
-
     /**
      * @return the correlationThreshold
      */
@@ -255,20 +246,20 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
      * @param correlationThreshold the correlationThreshold to set
      */
     public void setCorrelationThreshold(float correlationThreshold) {
-        float old=this.correlationThreshold;
+        float old = this.correlationThreshold;
         if (correlationThreshold > getNumNeighbors()) {
             correlationThreshold = getNumNeighbors();
         }
         this.correlationThreshold = correlationThreshold;
         putFloat("correlationThreshold", correlationThreshold);
-        getSupport().firePropertyChange("correlationThreshold",old,this.correlationThreshold);
+        getSupport().firePropertyChange("correlationThreshold", old, this.correlationThreshold);
     }
 
     public float getMaxCorrelationThreshold() {
         return getNumNeighbors();
     }
-    
-    public float getMinCorrelationThreshold(){
+
+    public float getMinCorrelationThreshold() {
         return 0;
     }
 }
