@@ -908,6 +908,20 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         setControlsVisible(isControlsVisible());
     }
 
+    void addTip(EventFilter f, JLabel label, String propName) {
+        String s = f.getPropertyTooltip(propName);
+        if (s == null) {
+            return;
+        }
+        label.setToolTipText(s);
+        label.setForeground(Color.BLUE);
+        if (f.isPropertyPreferred(label.getText())) {
+            label.setFont(label.getFont().deriveFont(Font.BOLD));
+        }
+        // add map from property name to label so we can change the tooltip dynamically
+        getFilter().tooltipSupport.property2ComponentMap.put(propName, label);
+    }
+
     void addTip(EventFilter f, JLabel label) {
         String s = f.getPropertyTooltip(label.getText());
         if (s == null) {
@@ -1238,6 +1252,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      * Used when a filter has a method that returns a ComboBoxModel. A ComboBox
      * is constructed that displays the currently-selected item and whose
      * ActiopListener calls setSelectedItem
+     * 
+     * The coder must implement the desired action listener on the model. See NoiseTesterFilter for example.
      */
     class ComboBoxControl extends MyControl {
 
@@ -1248,12 +1264,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public ComboBoxControl(final String name, final PropertyDescriptor p) throws InvocationTargetException, IllegalAccessException {
             super(p); // set read and write fields to get and set methods
-            model = (ComboBoxModel) read.invoke(getFilter());
+            setName(name.substring(0, name.indexOf("ComboBoxModel"))); // fix name to remove long trailing ComboBoxModel
+            model = (ComboBoxModel) p.getReadMethod().invoke(getFilter());
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            label = new JLabel(name);
+            label = new JLabel(getName());
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
-            addTip(getFilter(), label);
+            addTip(getFilter(), label, name);
             add(label);
 
             // https://stackoverflow.com/questions/5258596/how-to-avoid-firing-actionlistener-event-of-jcombobox-when-an-item-is-get-added
