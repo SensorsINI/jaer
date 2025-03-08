@@ -240,8 +240,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             try {
                 super.setSelectedItem(propName);
                 setRocSweepPropertyName((String) propName);
-            } catch (IntrospectionException|MethodNotFoundException ex) {
-                Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IntrospectionException | MethodNotFoundException ex) {
+                log.severe(ex.toString());
             }
         }
     };
@@ -278,7 +278,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
                     rocSweep.init();
                     constructRocSweepParameterComboBoxModel();
-
 
                 } else {
                     n.setFilterEnabled(false);
@@ -2412,25 +2411,29 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
             firstStep = false;
-            if (setter != null) {
-                try {
-                    if (floatType) {
-                        setter.invoke(selectedNoiseFilter, currentValue);
-                    } else {
-                        setter.invoke(selectedNoiseFilter, (int) Math.round(currentValue));
-                    }
-                } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException ex) {
-                    log.warning(String.format("Could not set current value %.4f using setter %s: got %s", currentValue, setter, ex.toString()));
-                }
-            } else {
-                showWarningDialogInSwingThread("No setter for sweeep parameter rocSweepPropertyName " + getRocSweepPropertyName(), "ROC sweep parameter error");
-                stop();
-            }
+            setCurrentSweptValue(currentValue);
 
             log.info(String.format("ROCSweep increased currentValue of %s from %s -> %s", getRocSweepPropertyName(),
                     eng.format(old), eng.format(currentValue)));
             boolean done = currentValue > rocSweepEnd;
             return done;
+        }
+
+        private void setCurrentSweptValue(float value) {
+            if (setter != null) {
+                try {
+                    if (floatType) {
+                        setter.invoke(selectedNoiseFilter, value);
+                    } else {
+                        setter.invoke(selectedNoiseFilter, (int) Math.round(value));
+                    }
+                } catch (IllegalAccessException | InvocationTargetException | IllegalArgumentException ex) {
+                    log.warning(String.format("Could not set current value %.4f using setter %s: got %s", value, setter, ex.toString()));
+                }
+            } else {
+                showWarningDialogInSwingThread("No setter for sweeep parameter rocSweepPropertyName " + getRocSweepPropertyName(), "ROC sweep parameter error");
+                stop();
+            }
         }
 
         @Override
@@ -2462,6 +2465,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         public void setRocSweepStart(float rocSweepStart) {
             float old = this.rocSweepStart;
             this.rocSweepStart = rocSweepStart;
+            if (rocSweepPropertyName != null) {
+                setCurrentSweptValue(rocSweepStart);
+            }
             putFloat("rocSweepStart", rocSweepStart);
             storeParams();
             getSupport().firePropertyChange("rocSweepStart", old, this.rocSweepStart);
@@ -2480,6 +2486,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         public void setRocSweepEnd(float rocSweepEnd) {
             float old = this.rocSweepEnd;
             this.rocSweepEnd = rocSweepEnd;
+            if (rocSweepPropertyName != null) {
+                setCurrentSweptValue(rocSweepEnd);
+            }
             putFloat("rocSweepEnd", rocSweepEnd);
             storeParams();
             getSupport().firePropertyChange("rocSweepEnd", old, this.rocSweepEnd);
