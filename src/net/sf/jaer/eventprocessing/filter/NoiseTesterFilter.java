@@ -308,7 +308,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String noise = "0b. Noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
         setPropertyTooltip(noise, "disableDenoising", "Disable denoising temporarily (not stored in preferences)");
-        setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
+        setPropertyTooltip(noise, "shotNoiseRateHz", "Mean rate per pixel in Hz of shot noise events");
         setPropertyTooltip(noise, "photoreceptorNoiseSimulation", "<html>Generate shot noise from simulated bandlimited photoreceptor noise.<p>The <i>shotNoiseRateHz</i> will only be a guide to the actual generated noise rate. ");
         setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>0.5 decade is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "leakJitterFraction", "<html>Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution.<p>0.1 to 0.2 is realistic for DAVIS cameras.");
@@ -319,12 +319,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String rocSw = "0c: ROC sweep parameters";
         setPropertyTooltip(rocSw, "startROCSweep", "Starts sweeping a property over the marked (or entire) recoding and record the ROC points");
         setPropertyTooltip(rocSw, "stopROCSweep", "Stops ROC sweep");
-        setPropertyTooltip(rocSw, "rocSweepStart", "starting value for sweep");
-        setPropertyTooltip(rocSw, "rocSweepEnd", "ending value for sweep");
-        setPropertyTooltip(rocSw, "rocSweepStep", "step size value for sweep");
+        setPropertyTooltip(rocSw, "rocSweepStart", "Starting value for sweep");
+        setPropertyTooltip(rocSw, "rocSweepEnd", "Ending value for sweep");
+        setPropertyTooltip(rocSw, "rocSweepStep", "Step size value for sweep. Multiplicative (e.g. 1.4) for rocSweepLogStep, additive (e.g. 0.25) for !rocSweepLogStep.");
         setPropertyTooltip(rocSw, "rocSweepLogStep", "<html>Selected: sweep property by factors of rocSweepStep<br>Unselected: sweep in linear steps of rocSweepStep");
-        setPropertyTooltip(rocSw, "rocSweepPropertyName", "which property to sweep");
-        setPropertyTooltip(rocSw, "rocSweepParameterComboBoxModel", "which property to sweep");
+//        setPropertyTooltip(rocSw, "rocSweepPropertyName", "Which property of the selected denoiser to sweep");
+        setPropertyTooltip(rocSw, "rocSweepParameterComboBoxModel", "Which property of the selected denoiser to sweep");
 
         String out = "5. Output";
         setPropertyTooltip(out, "doCloseMLP_CSVFile", "Closes the MLP training output CSV spreadsheet data file.");
@@ -2151,7 +2151,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private float rocSweepEnd = getFloat("rocSweepEnd", 1f);
         private boolean rocSweepLogStep = getBoolean("rocSweepLogStep", true);
         private float rocSweepStep = rocSweepLogStep ? getFloat("rocSweepLogStepFactor", 1.5f) : getFloat("rocSweepStepLinear", 1e-2f);
-        private String rocSweepPropertyName = getString("rocSweepPropertyName", "correlationTimeS");
+        private String rocSweepPropertyName = null; // not stored in properties
         float currentValue = rocSweepStart;
         boolean running = false;
         boolean firstStep = true;  // cleared afer initial sweep value is checked
@@ -2570,7 +2570,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
             if (setter != null) {
-                putString("rocSweepPropertyName", rocSweepPropertyName);
                 log.info(String.format("Found setter %s for property named %s", setter.toGenericString(), rocSweepPropertyName));
                 storeParams();
                 getSupport().firePropertyChange("rocSweepPropertyName", old, this.rocSweepPropertyName);
@@ -2614,11 +2613,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         rocSweep.setRocSweepStep(rocSweepStep);
     }
 
-    public String getRocSweepPropertyName() {
+    // following two methods are private because the roc sweep property is set by the rocSweepParameterComboBoxModel
+    // they are only here for convenience
+    private String getRocSweepPropertyName() {
         return rocSweep.getRocSweepPropertyName();
     }
 
-    synchronized public void setRocSweepPropertyName(String rocSweepPropertyName) throws IntrospectionException {
+    synchronized private void setRocSweepPropertyName(String rocSweepPropertyName) throws IntrospectionException {
         rocSweep.setRocSweepPropertyName(rocSweepPropertyName);
     }
 
