@@ -134,7 +134,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private int[][] lastPolMap; // last polarity image, contains 0 for not initialized, 1 for ON, -1 for OFF events
     private boolean useTI = getBoolean("useTI", true);
     private boolean usePolarity = getBoolean("usePolarity", false);
-    private boolean useTIandPol = getBoolean("useTIandPol", false);
+    @Preferred private boolean useTIandPol = getBoolean("useTIandPol", false);
 
     private boolean showOnlySignalTimeimages = getBoolean("showOnlySignalTimeimages", false);
     private boolean showOnlyNoiseTimeimages = getBoolean("showOnlyNoiseTimeimages", false);
