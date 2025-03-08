@@ -34,7 +34,6 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.beans.PropertyDescriptor;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -87,7 +86,6 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
-import net.sf.jaer.eventprocessing.tracking.RectangularClusterTracker;
 import net.sf.jaer.graphics.ChipDataFilePreview;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.util.DATFileFilter;
@@ -161,7 +159,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int csvNumEventsWritten = 0, csvSignalCount = 0, csvNoiseCount = 0;
     private int[][] timestampImage = null; // image of last event timestamps
     private int[][] lastPolMap;
-    private float[][] photoreceptorNoiseArray; // see https://github.com/SensorsINI/v2e/blob/565f6991daabbe0ad79d68b50d084d5dc82d6426/v2ecore/emulator_utils.py#L177
+//    private float[][] photoreceptorNoiseArray; // see https://github.com/SensorsINI/v2e/blob/565f6991daabbe0ad79d68b50d084d5dc82d6426/v2ecore/emulator_utils.py#L177
 
     /**
      * Chip dimensions in pixels MINUS ONE, set in initFilter()
@@ -1380,7 +1378,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         timestampImage = new int[chip.getSizeX()][chip.getSizeY()];
         lastPolMap = new int[chip.getSizeX()][chip.getSizeY()];
-        photoreceptorNoiseArray = new float[chip.getSizeX()][chip.getSizeY()];
 
         timestampImage = new int[sx + 1][sy + 1];
         leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
