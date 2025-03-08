@@ -36,6 +36,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.ArrayList;
 import javax.swing.JCheckBoxMenuItem;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -561,7 +562,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         default:
                             if ((warningCount < WARNING_COUNT_MAX) || ((warningCount % DavisEventExtractor.WARNING_COUNT_DIVIDER) == 0)) {
                                 Chip.log.warning(
-                                        "Event with unknown readout cycle " + readout_type + " was read. You might be reading a file that had the deprecated type 2 C readout mode enabled. See https://inivation.github.io/inivation-docs/Software%20user%20guides/AEDAT_file_formats.html#dvs-or-aps");
+                                        "Event with unknown readout cycle " + readout_type + " was read. You might be reading a file that had the deprecated type 2 C readout mode enabled. See "+JaerConstants.HELP_USER_GUIDE_URL_FLASHY);
                             }
                             warningCount++;
                             break;
