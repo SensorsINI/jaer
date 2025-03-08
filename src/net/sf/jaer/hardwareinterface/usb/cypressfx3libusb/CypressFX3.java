@@ -550,16 +550,18 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         if (needsUpdate) {
             updateStringBuilder
-                    .append("<p>Please update by following the Flashy documentation at <a href=\" " + JaerConstants.HELP_USER_GUIDE_URL_FLASHY + "\">" + JaerConstants.HELP_USER_GUIDE_URL_FLASHY + "</a></p>");
-            updateStringBuilder.append("<p>Clicking OK will open this URL in browser</p>");
+                    .append("<p>Please update by following the Flashy documentation at <a href=\"" + JaerConstants.HELP_USER_GUIDE_URL_FLASHY + "\">" + JaerConstants.HELP_USER_GUIDE_URL_FLASHY + "</a></p>");
+            updateStringBuilder.append("<p>The linux flashy is directly available at <a href=\""+JaerConstants.HELP_FLASHY_LINUX_DOWNLOAD+ "\">" + JaerConstants.HELP_FLASHY_LINUX_DOWNLOAD + "</a></p>");
             updateStringBuilder.append("<p>After installing DV, you can launch flashy from command line (in linux) or from DV GUI</p>");
+            updateStringBuilder.append("<p><p>Open the URL for firmware updates in browser? <i>No</i> or <i>Cancel</i> will just close this dialog.</p>");
+            log.warning(updateStringBuilder.toString());
             final MessageWithLink updateString = new MessageWithLink(updateStringBuilder.toString());
 
             final SwingWorker<Void, Void> strWorker = new SwingWorker<Void, Void>() {
                 @Override
                 public Void doInBackground() {
-                    JOptionPane.showMessageDialog(null, updateString);
-                    if (Desktop.isDesktopSupported()) {
+                    int ret=JOptionPane.showConfirmDialog(null, updateString);
+                    if (ret==JOptionPane.OK_OPTION && Desktop.isDesktopSupported()) {
                         try {
                             Desktop.getDesktop().browse(new URI(JaerConstants.HELP_USER_GUIDE_URL_FLASHY));
                         } catch (Exception ex) {
