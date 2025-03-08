@@ -112,7 +112,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      *
      * @see #initFilter()
      */
-    public static Class[] noiseFilterClasses = {null,  HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, LinearCorrelationDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
+    public static Class[] noiseFilterClasses = {null, HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, LinearCorrelationDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
 //    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
     private AbstractNoiseFilter selectedNoiseFilter = null;
@@ -125,6 +125,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private FilterChain chain;
 
     private boolean disableAddingNoise = getBoolean("disableAddingNoise", false);
+    private boolean disableDenoising = false;
     @Preferred
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", 5f);
     protected boolean photoreceptorNoiseSimulation = getBoolean("photoreceptorNoiseSimulation", true);
@@ -234,6 +235,19 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     };
 
+    @Preferred
+    private ComboBoxModel<String> rocSweepParameterComboBoxModel = new DefaultComboBoxModel<String>() {
+        @Override
+        public void setSelectedItem(Object propName) {
+            try {
+                super.setSelectedItem(propName);
+                setRocSweepPropertyName((String) propName);
+            } catch (IntrospectionException|MethodNotFoundException ex) {
+                Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    };
+
     /**
      * Sets the current denoising class and the selectedNoiseFilter instance, or
      * null for none. Note this does not affect combobox if set from code.
@@ -265,11 +279,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     }
 
                     rocSweep.init();
-                    try {
-                        setRocSweepPropertyName(getRocSweepPropertyName());
-                    } catch (IntrospectionException | MethodNotFoundException ex) {
-                        log.warning(String.format("Cannot set %s as the swept property for ROC sweep for selected method %s", getRocSweepPropertyName(), selectedNoiseFilter.getClass().getSimpleName()));
-                    }
+                    constructRocSweepParameterComboBoxModel();
+
+
                 } else {
                     n.setFilterEnabled(false);
                     n.setControlsVisible(false);
@@ -297,6 +309,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         String noise = "0b. Noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
+        setPropertyTooltip(noise, "disableDenoising", "Disable denoising temporarily (not stored in preferences)");
         setPropertyTooltip(noise, "shotNoiseRateHz", "rate per pixel of shot noise events");
         setPropertyTooltip(noise, "photoreceptorNoiseSimulation", "<html>Generate shot noise from simulated bandlimited photoreceptor noise.<p>The <i>shotNoiseRateHz</i> will only be a guide to the actual generated noise rate. ");
         setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>0.5 decade is realistic for DAVIS cameras.");
@@ -313,6 +326,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(rocSw, "rocSweepStep", "step size value for sweep");
         setPropertyTooltip(rocSw, "rocSweepLogStep", "<html>Selected: sweep property by factors of rocSweepStep<br>Unselected: sweep in linear steps of rocSweepStep");
         setPropertyTooltip(rocSw, "rocSweepPropertyName", "which property to sweep");
+        setPropertyTooltip(rocSw, "rocSweepParameterComboBoxModel", "which property to sweep");
 
         String out = "5. Output";
         setPropertyTooltip(out, "doCloseMLP_CSVFile", "Closes the MLP training output CSV spreadsheet data file.");
@@ -798,7 +812,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
             }
             EventPacket<PolarityEvent> passedSignalAndNoisePacket = signalAndNoisePacket;
-            if (selectedNoiseFilter != null) {
+            if (selectedNoiseFilter != null && !disableDenoising) {
                 passedSignalAndNoisePacket
                         = (EventPacket<PolarityEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
                 // if selectedNoiseFilter is null, nothing happens here
@@ -1298,7 +1312,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     Constructor con = cl.getConstructor(AEChip.class);
                     noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
                     i++;
-                } catch (ClassCastException| NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                } catch (ClassCastException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                     String s = String.format("Could not construct instance of AbstractNoiseFilter %s;\ngot %s", cl.getSimpleName(), ex.toString());
                     log.severe(s);
                     evictedFilters.add(cl);
@@ -1313,9 +1327,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     }
                 }
                 noiseFilterClasses = new Class[tmp.size()];
-                int k=0;
-                for(Class cl:tmp){
-                    noiseFilterClasses[k++]=cl;
+                int k = 0;
+                for (Class cl : tmp) {
+                    noiseFilterClasses[k++] = cl;
                 }
             }
 
@@ -1341,6 +1355,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (chip.getRenderer() instanceof DavisRenderer) {
                 renderer = (DavisRenderer) chip.getRenderer();
             }
+
+            // noise filter combo box
             String initialFilterName = getString("selectedNoiseFilter", "(null)");
             if (initialFilterName.equals("(null)")) {
                 initialFilterName = null;
@@ -1356,6 +1372,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     log.severe(String.format("Could not set initial noise filter to %s: %s", initialFilterName, ex.toString()));
                 }
             }
+
         }
 
         sx = chip.getSizeX() - 1;
@@ -1374,6 +1391,56 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         //        setAnnotateAlpha(annotateAlpha);
         fixRendererAnnotationLayerShowing(); // make sure renderer is properly set up.
 
+    }
+
+    private void constructRocSweepParameterComboBoxModel() {
+        // ROC sweep parameter combo box
+        try {
+            // build combo box for selecting swept parameter
+            BeanInfo info = Introspector.getBeanInfo((Class) selectedNoiseFilter.getClass());
+            PropertyDescriptor[] props = info.getPropertyDescriptors();
+            ArrayList<String> propArray = new ArrayList();
+            for (PropertyDescriptor p : props) {
+                if (p.getName().equals("showFilteringStatisticsFontSize")) {
+                    continue;
+                }
+                if (p.getPropertyType() == Float.TYPE || p.getPropertyType() == Integer.TYPE) {
+                    propArray.add(p.getName());
+                }
+            }
+
+            // remove the minX and maxX if X exists, since these set bounds on sliders
+            ArrayList<String> removeList = new ArrayList();
+            for (String s : propArray) {
+                String upper = s.substring(0, 1).toUpperCase();
+                String remainder = s.substring(1);
+                String maxName = "max" + upper + remainder, minName = "min" + upper + remainder;
+                if (propArray.contains(maxName) && propArray.contains(minName)) {
+                    log.fine("not including slider parameters " + maxName + " and " + minName + " for property " + s);
+                    removeList.add(maxName);
+                    removeList.add(minName);
+                }
+                if (selectedNoiseFilter.isPropertyHidden(s)) {
+                    log.fine("not including hidden parameter " + s);
+                    removeList.add(s);
+                }
+
+            }
+            propArray.removeAll(removeList);
+
+            DefaultComboBoxModel model = (DefaultComboBoxModel) rocSweepParameterComboBoxModel;
+            model.removeAllElements();
+            model.addAll(propArray);
+            model.setSelectedItem(getRocSweepPropertyName());
+            try {
+                setRocSweepPropertyName(getRocSweepPropertyName());
+            } catch (IntrospectionException | MethodNotFoundException ex) {
+                log.warning(String.format("Cannot set %s as the swept property for ROC sweep for selected method %s", getRocSweepPropertyName(), selectedNoiseFilter.getClass().getSimpleName()));
+            }
+
+        } catch (IntrospectionException e) {
+            log.warning("could not make combo box for selecting swept parameter: " + e.toString());
+        }
     }
 
     /**
@@ -1579,6 +1646,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 setHideNonEnabledEnclosedFilters(!isEnableMultipleMethods());
             }
         });
+
     }
 
     private String USAGE = "Need at least 2 arguments: noisefilter <command> <args>\nCommands are: setNoiseFilterParameters <csvFilename> xx <shotNoiseRateHz> xx <leakNoiseRateHz> xx and specific to the filter\n";
@@ -2151,7 +2219,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     setRocSweepLogStep(p.rocSweepLogStep);
                     try {
                         setRocSweepPropertyName(p.rocSweepPropertyName);
-                    } catch (IntrospectionException ex) {
+                    } catch (IntrospectionException | org.jdesktop.el.MethodNotFoundException ex) {
                         log.warning("Cannot set swept property name to " + p.rocSweepPropertyName + ": " + ex.toString());
                     }
                 }
@@ -2482,6 +2550,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (PropertyDescriptor p : props) {
                 if (p.getName().equals(rocSweepPropertyName)) {
                     setter = p.getWriteMethod();
+                    if (setter == null) {
+                        log.warning(String.format("Null setter for property " + p));
+                        continue;
+                    }
                     Class[] types = setter.getParameterTypes();
                     if (types.length != 1) {
                         log.warning(String.format("setter %s does not have single argument", setter));
@@ -3117,4 +3189,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         getSupport().firePropertyChange("enableMultipleMethods", oldEnableMultipleMethods, enableMultipleMethods);
         putBoolean("enableMultipleMethods", enableMultipleMethods);
     }
+
+    /**
+     * @return the disableDenoising
+     */
+    public boolean isDisableDenoising() {
+        return disableDenoising;
+    }
+
+    /**
+     * @param disableDenoising the disableDenoising to set
+     */
+    public void setDisableDenoising(boolean disableDenoising) {
+        this.disableDenoising = disableDenoising;
+    }
+
+    /**
+     * @return the rocSweepParameterComboBoxModel
+     */
+    public ComboBoxModel getRocSweepParameterComboBoxModel() {
+        return rocSweepParameterComboBoxModel;
+    }
+
+    /**
+     * @param rocSweepParameterComboBoxModel the rocSweepParameterComboBoxModel
+     * to set
+     */
+    public void setRocSweepParameterComboBoxModel(ComboBoxModel rocSweepParameterComboBoxModel) {
+        this.rocSweepParameterComboBoxModel = rocSweepParameterComboBoxModel;
+    }
+
 }
