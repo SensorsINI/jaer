@@ -31,7 +31,7 @@ import net.sf.jaer.util.DrawGL;
 public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
 
     @Preferred
-    private float minCorrelation = getFloat("correlationThreshold", 3);
+    private float minCorrelation = getFloat("minCorrelation", 3);
     @Preferred
     private float maxEntropy = getFloat("maxEntropy", 2);
     @Preferred
@@ -516,8 +516,8 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
             minCorrelation = getNumNeighbors();
         }
         this.minCorrelation = minCorrelation;
-        putFloat("correlationThreshold", minCorrelation);
-        getSupport().firePropertyChange("correlationThreshold", old, this.minCorrelation);
+        putFloat("minCorrelation", minCorrelation);
+        getSupport().firePropertyChange("minCorrelation", old, this.minCorrelation);
     }
 
     /**
