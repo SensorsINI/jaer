@@ -110,7 +110,17 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      *
      * @see #initFilter()
      */
-    public static Class[] noiseFilterClasses = {null, HotPixelFilter.class, BackgroundActivityFilter.class, SpatioTemporalCorrelationFilter.class, QuantizedSTCF.class, AgePolarityDenoiser.class, LinearCorrelationDenoiser.class, DoubleWindowFilter.class, MLPNoiseFilter.class};
+    public static Class[] noiseFilterClasses = {null, 
+        HotPixelFilter.class, 
+        BackgroundActivityFilter.class, 
+        SpatioTemporalCorrelationFilter.class, 
+        QuantizedSTCF.class, 
+        AgePolarityDenoiser.class, 
+        MultiEventAgePolarityDenoiser.class, 
+        LinearCorrelationDenoiser.class, 
+        DoubleWindowFilter.class, 
+        MLPNoiseFilter.class
+    };
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
 //    private HashMap<AbstractNoiseFilter, Integer> noiseFilter2ColorMap = new HashMap(); // for rendering, holds int AWT color
     private AbstractNoiseFilter selectedNoiseFilter = null;
