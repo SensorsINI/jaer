@@ -29,6 +29,7 @@ import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Font;
+import java.awt.geom.Rectangle2D;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -110,15 +111,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      *
      * @see #initFilter()
      */
-    public static Class[] noiseFilterClasses = {null, 
-        HotPixelFilter.class, 
-        BackgroundActivityFilter.class, 
-        SpatioTemporalCorrelationFilter.class, 
-        QuantizedSTCF.class, 
-        AgePolarityDenoiser.class, 
-        MultiEventAgePolarityDenoiser.class, 
-        LinearCorrelationDenoiser.class, 
-        DoubleWindowFilter.class, 
+    public static Class[] noiseFilterClasses = {null,
+        HotPixelFilter.class,
+        BackgroundActivityFilter.class,
+        SpatioTemporalCorrelationFilter.class,
+        QuantizedSTCF.class,
+        AgePolarityDenoiser.class,
+        MultiEventAgePolarityDenoiser.class,
+        LinearCorrelationDenoiser.class,
+        DoubleWindowFilter.class,
         MLPNoiseFilter.class
     };
     private AbstractNoiseFilter[] noiseFilters = null; // array of denoiseer instances, starting with null
@@ -154,7 +155,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private PrerecordedNoise prerecordedNoise = null;
 
-    private ROCHistory rocHistoryCurrent = null;
+    private ROCHistory rocHistoryCurrent = new ROCHistory(null);
     private ArrayList<ROCHistory> rocHistoriesSaved = new ArrayList();
     private int rocHistoryLabelPosY = 0;
     private ROCSweep rocSweep;
@@ -168,7 +169,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private BufferedWriter csvWriter = null;
     private int csvNumEventsWritten = 0, csvSignalCount = 0, csvNoiseCount = 0;
     private int[][] timestampImage = null; // image of last event timestamps
-    private int[][] lastPolMap;
+    private byte[][] polImage;
 //    private float[][] photoreceptorNoiseArray; // see https://github.com/SensorsINI/v2e/blob/565f6991daabbe0ad79d68b50d084d5dc82d6426/v2ecore/emulator_utils.py#L177
 
     /**
@@ -176,7 +177,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     private int sx = 0, sy = 0;
 
-    private Integer lastTimestampPreviousPacket = null, firstSignalTimestmap = null; // use Integer Object so it can be null to signify no value yet
     private float TPR = 0;
     private float TPO = 0;
     private float TNR = 0;
@@ -187,7 +187,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
     private final Random random = new Random();
     private EventPacket<PolarityEvent> signalAndNoisePacket = null;
+
     protected boolean resetCalled = true; // flag to reset on next event
+    private int timestampAfterReset;  // used for initializing timestampImage and to prevent collecting statistics until correlationTimeS has passed since reset or rewind6yd
+    private Integer lastTimestampPreviousPacket = null, firstSignalTimestmapAfterReset = null, firstSignalEventTimestampThisPacket = null; // use Integer Object so it can be null to signify no value yet
 
 //    private float annotateAlpha = getFloat("annotateAlpha", 0.5f);
     private DavisRenderer renderer = null;
@@ -226,7 +229,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse
     private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");
-    ;
     private final long MAX_FILTER_PROCESSING_TIME_MS = 500000; // times out to avoid using up all heap
     private TextRenderer textRenderer = null;
 
@@ -403,6 +405,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     synchronized public void annotate(GLAutoDrawable drawable) {
+
         textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getShowFilteringStatisticsFontSize()));
 
         GL2 gl = drawable.getGL().getGL2();
@@ -422,6 +425,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             h.draw(gl);
         }
         rocHistoryCurrent.draw(gl);
+        if (isInitializingPreviousEvents(firstSignalEventTimestampThisPacket)) {
+            gl.glPushMatrix();
+            gl.glColor4f(1, 1, 1, 1);
+            String s = "Initializing previous events";
+            float timeleft = (correlationTimeS);
+            if (firstSignalEventTimestampThisPacket != null) {
+                timeleft = (correlationTimeS - 1e-6f * (firstSignalEventTimestampThisPacket - timestampAfterReset));
+                s = String.format("Init events for correlationTimeS of %ss", eng.format(correlationTimeS));
+            }
+            Rectangle2D r = DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize(),
+                    0, sy / 2, 0f,
+                    Color.white, s);
+            float frac = timeleft / correlationTimeS;
+            float tw = (float) (r.getWidth()), th = (float) (r.getHeight());
+            gl.glLineWidth(7);
+            DrawGL.drawLine(gl, 0, sy / 2 - th, frac * (sx), 0, 1);
+
+            gl.glPopMatrix();
+            return;
+        }
         if (rocSweep != null && rocSweep.running) {
             gl.glPushMatrix();
             gl.glColor4f(1, 1, 1, 1);
@@ -505,6 +528,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         for (FilteredEventWithNNb e : events) {
             renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, color);
+        }
+    }
+
+    private boolean isInitializingPreviousEvents(Integer eventTimestamp) {
+        if (eventTimestamp == null || eventTimestamp - timestampAfterReset < correlationTimeS * 1e6f) {
+            return true;
+        } else {
+            return false;
         }
     }
 
@@ -674,6 +705,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         totalEventCount = 0; // from super, to measure filtering
         filteredOutEventCount = 0;
+        if (in != null && !in.isEmpty()) {
+            firstSignalEventTimestampThisPacket = in.getFirstTimestamp();
+        }
 
         int TP = 0; // filter take real events as real events. the number of events
         int TN = 0; // filter take noise events as noise events
@@ -697,23 +731,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }, MAX_FILTER_PROCESSING_TIME_MS);
         }
         BasicEvent firstE = in.getFirstEvent();
-        if (firstSignalTimestmap == null) {
-            firstSignalTimestmap = firstE.timestamp;
+        if (firstSignalTimestmapAfterReset == null) {
+            firstSignalTimestmapAfterReset = firstE.timestamp;
         }
         if (resetCalled) {
             resetCalled = false;
-            int ts = in.getLastTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-( Or at least it used to, fixed now I think (Tobi)
-            initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts);
+            timestampAfterReset = in.getFirstTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-( Or at least it used to, fixed now I think (Tobi)
+            initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, timestampAfterReset);
             // initialize filters with lastTimesMap to Poisson waiting times
             log.fine("initializing timestamp maps with Poisson process waiting times");
             for (AbstractNoiseFilter f : noiseFilters) {
-                if (f == null) {
+                if (f == null || !f.isFilterEnabled()) {
                     continue;
                 }
-                f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, ts); // TODO move to filter so that each filter can initialize its own map
-                for (int[] i : lastPolMap) {
-                    Arrays.fill(i, 0);
-                }
+                f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, timestampAfterReset); // TODO move to filter so that each filter can initialize its own map
+//                for (byte[] i : polImage) {  // already done in NTF.initializeLastTimesMapForNoiseRate()
+//                    Arrays.fill(i, (byte) 0);
+//                }
             }
             initializeLeakStates(in.getFirstTimestamp());
         }
@@ -756,7 +790,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 for (PolarityEvent event : signalPlusNoiseList) {
                     try {
                         int ts = event.timestamp;
-                        int type = event.getPolarity() == PolarityEvent.Polarity.Off ? -1 : 1;
+                        byte type = event.getPolarity() == PolarityEvent.Polarity.Off ? (byte) -1 : (byte) 1;
                         final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
                         int patchsize = 25;
                         int radius = (patchsize - 1) / 2;
@@ -769,10 +803,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         for (int indx = -radius; indx <= radius; indx++) {
                             for (int indy = -radius; indy <= radius; indy++) {
                                 int absTs = 0;
-                                int pol = 0;
+                                byte pol = 0;
                                 if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)) {
                                     absTs = timestampImage[x + indx][y + indy];
-                                    pol = lastPolMap[x + indx][y + indy];
+                                    pol = polImage[x + indx][y + indy];
                                 }
                                 absTstring.append(absTs + ",");
                                 polString.append(pol + ",");
@@ -803,7 +837,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             }
                         }
                         timestampImage[x][y] = ts;
-                        lastPolMap[x][y] = type;
+                        polImage[x][y] = type;
                         if (csvNumEventsWritten % 100000 == 0) {
                             log.info(String.format("Wrote %,d events to %s", csvNumEventsWritten, csvFileName));
                         }
@@ -823,7 +857,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 passedSignalAndNoisePacket
                         = (EventPacket<PolarityEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
                 // if selectedNoiseFilter is null, nothing happens here
-
+                if (isInitializingPreviousEvents(in.getFirstTimestamp())) {
+                    // we let the first packet be filtered to populated the history with
+                    // signal events
+                    if (renderer != null) {
+                        renderer.clearAnnotationMap();
+                    }
+                    return in;
+                }
                 ArrayList<FilteredEventWithNNb> negativeList, positiveList;
                 negativeList = selectedNoiseFilter.getNegativeEvents();
                 positiveList = selectedNoiseFilter.getPositiveEvents();
@@ -896,7 +937,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (stopper != null) {
                 stopper.cancel();
             }
-
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
                 inSignalRateHz = (1e6f * in.getSize()) / deltaTime;
@@ -947,6 +987,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
             return in;
         }
+
     }
 
     /**
@@ -1260,7 +1301,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     @Override
     synchronized public void resetFilter() {
         lastTimestampPreviousPacket = null;
-        firstSignalTimestmap = null;
+        firstSignalEventTimestampThisPacket = null;
+        firstSignalTimestmapAfterReset = null;
         resetCalled = true;
         getEnclosedFilterChain().reset();
         if (prerecordedNoise != null) {
@@ -1269,6 +1311,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
+//        rocHistoryCurrent.reset(); // do not reset, otherwise the saved point that is average of these samples is cleared
     }
 
     /**
@@ -1386,7 +1429,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         sy = chip.getSizeY() - 1;
 
         timestampImage = new int[chip.getSizeX()][chip.getSizeY()];
-        lastPolMap = new int[chip.getSizeX()][chip.getSizeY()];
+        polImage = new byte[chip.getSizeX()][chip.getSizeY()];
 
         timestampImage = new int[sx + 1][sy + 1];
         leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
@@ -2161,7 +2204,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private boolean rocSweepLogStep = getBoolean("rocSweepLogStep", true);
         private float rocSweepStep = rocSweepLogStep ? getFloat("rocSweepLogStepFactor", 1.5f) : getFloat("rocSweepStepLinear", 1e-2f);
         private String rocSweepPropertyName = null; // not stored in properties
-        float currentValue = rocSweepStart;
+        float currentValue;
         boolean running = false;
         boolean firstStep = true;  // cleared afer initial sweep value is checked
         Method setter = null, getter = null;
@@ -2169,10 +2212,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         ROCHistory rocHistorySummary = null;
         MultivariateSummaryStatistics stats = new MultivariateSummaryStatistics(2, false);
         float startingValue = .1f;
+        int stepsCompleted = 0;
 
         private HashMap<String, ROCSweepParams> rocSweepParamesHashMap = null;
         private boolean installedPropertyChangeListeners = false;
         private int savedRocHistoryLength = getRocHistoryLength();
+        private long estimateNumSteps;
 
         /**
          * Class to hold parameters for HashMap to be stored in preferences
@@ -2237,7 +2282,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         @Override
         public String toString() {
             if (running) {
-                return String.format("ROC Sweep: start:%s end:%s currentValue=%s", eng.format(rocSweepStart), eng.format(rocSweepEnd), eng.format(currentValue));
+                return String.format("ROC Sweep: %s start:%s end:%s step:%s currentValue:%s (step %d/%d)", 
+                        rocSweepLogStep? "log":"linear",
+                        eng.format(rocSweepStart), eng.format(rocSweepEnd), eng.format(rocSweepStep), eng.format(currentValue),
+                        stepsCompleted, estimateNumSteps);
             } else {
                 return "ROC sweep (not running)";
             }
@@ -2251,6 +2299,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             running = false;
             firstStep = true;
+            currentValue=stepSign()>0? rocSweepStart:rocSweepEnd;
             try {
                 rocSweepParamesHashMap = (HashMap<String, ROCSweepParams>) getObject("rocSweepParamesHashMap", new HashMap());
             } catch (ClassCastException | NullPointerException e) {
@@ -2258,6 +2307,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             loadParams();
             reset();
+            computeEstimatedNumSteps();
         }
 
         void saveToCSVs() throws FileNotFoundException {
@@ -2337,7 +2387,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             rocHistorySummary.rocSweepPropertyName = rocSweepPropertyName;
 
             rocHistoriesSaved.add(rocHistorySummary);
+
             running = true;
+            stepsCompleted = 0;
             getStartingValue();
         }
 
@@ -2406,8 +2458,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             rocHistoryCurrent.reset();
 
             boolean done = updateCurrentValue();
-
+            if (!done) {
+                stepsCompleted++;
+            }
             return done;
+        }
+
+        private int stepSign() {
+            if (rocSweepEnd > rocSweepStart) {
+                return +1;
+            } else {
+                return -1;
+            }
+        }
+
+        private void computeEstimatedNumSteps() {
+            if (rocSweepLogStep) {
+                estimateNumSteps = Math.round(Math.abs(Math.log(rocSweepEnd / rocSweepStart) / Math.log(rocSweepStep)));
+            } else {
+                estimateNumSteps = Math.round(Math.abs(rocSweepEnd - rocSweepStart) / rocSweepStep);
+            }
         }
 
         protected boolean updateCurrentValue() {
@@ -2415,9 +2485,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             float old = currentValue;
             if (!firstStep) {
                 if (rocSweepLogStep) {
-                    currentValue *= rocSweepStep;
+                    currentValue = stepSign()>0? currentValue*rocSweepStep:currentValue/rocSweepStep;
                 } else {
-                    currentValue += rocSweepStep;
+                    currentValue += rocSweepStep*stepSign();
                 }
             }
             firstStep = false;
@@ -2425,7 +2495,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             log.info(String.format("ROCSweep increased currentValue of %s from %s -> %s", getRocSweepPropertyName(),
                     eng.format(old), eng.format(currentValue)));
-            boolean done = currentValue > rocSweepEnd;
+            boolean done = stepSign()>0? currentValue > rocSweepEnd:currentValue<rocSweepStart;
             return done;
         }
 
@@ -2441,7 +2511,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     log.warning(String.format("Could not set current value %.4f using setter %s: got %s", value, setter, ex.toString()));
                 }
             } else {
-                showWarningDialogInSwingThread("No setter for sweeep parameter rocSweepPropertyName " + getRocSweepPropertyName(), "ROC sweep parameter error");
+                showWarningDialogInSwingThread(String.format("<html>NoiseTesterFilter: %s has no sweeepable property %s, <p>Check rocSweepParameter.", getSelectedNoiseFilterName(), getRocSweepPropertyName()), "ROC sweep property error");
                 stop();
             }
         }
@@ -2475,12 +2545,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         public void setRocSweepStart(float rocSweepStart) {
             float old = this.rocSweepStart;
             this.rocSweepStart = rocSweepStart;
-            if (rocSweepPropertyName != null) {
+            if (!running && rocSweepPropertyName != null) {
                 setCurrentSweptValue(rocSweepStart);
             }
             putFloat("rocSweepStart", rocSweepStart);
             storeParams();
             getSupport().firePropertyChange("rocSweepStart", old, this.rocSweepStart);
+            computeEstimatedNumSteps();
         }
 
         /**
@@ -2496,12 +2567,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         public void setRocSweepEnd(float rocSweepEnd) {
             float old = this.rocSweepEnd;
             this.rocSweepEnd = rocSweepEnd;
-            if (rocSweepPropertyName != null) {
+            if (!running && rocSweepPropertyName != null) {
                 setCurrentSweptValue(rocSweepEnd);
             }
             putFloat("rocSweepEnd", rocSweepEnd);
             storeParams();
             getSupport().firePropertyChange("rocSweepEnd", old, this.rocSweepEnd);
+            computeEstimatedNumSteps();
         }
 
         /**
@@ -2520,6 +2592,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             putBoolean("rocSweepLogStep", rocSweepLogStep);
             storeParams();
             getSupport().firePropertyChange("rocSweepLogStep", old, this.rocSweepLogStep);
+            computeEstimatedNumSteps();
         }
 
         /**
@@ -2539,6 +2612,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             putFloat(k, rocSweepStep);
             storeParams();
             getSupport().firePropertyChange("rocSweepStep", old, this.rocSweepStep);
+            computeEstimatedNumSteps();
         }
 
         /**
@@ -2591,8 +2665,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (setter != null) {
                 log.info(String.format("Found setter %s for property named %s", setter.toGenericString(), rocSweepPropertyName));
                 storeParams();
-                getSupport().firePropertyChange("rocSweepPropertyName", old, this.rocSweepPropertyName);
-            } else {
+//                getSupport().firePropertyChange("rocSweepPropertyName", old, this.rocSweepPropertyName); // no setter now, everything through comboboxmodel
+            } else if (rocSweepPropertyName != null) {
                 throw new MethodNotFoundException(String.format("MethodNotFoundException: property %s is not in %s",
                         rocSweepPropertyName, selectedNoiseFilter.getClass().getSimpleName()));
             }
@@ -2646,14 +2720,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistoryLength);
         private Float lastTau = null;
-        private final double LOG10_CHANGE_TO_ADD_LABEL = .2;
         GLUT glut = new GLUT();
         private int counter = 0;
         private final int SAMPLE_INTERVAL_NO_CHANGE = 30;
         private int legendDisplayListId = 0;
         private ROCSample[] legendROCs = null;
         private ROCSample avgRocSample = null; // avg over entire rocHistoryLength
-        private boolean fadedAndLabeled = false;
         private AbstractNoiseFilter noiseFilter = null;
         final int DEFAULT_PT_SIZE = 3;
         private int ptSize = DEFAULT_PT_SIZE;
@@ -2798,7 +2870,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         private void reset() {
-            rocHistoryList = EvictingQueue.create(rocHistoryLength);
+            rocHistoryList.clear();
             lastTau = null;
         }
 
@@ -2828,6 +2900,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
          */
         public void setColor(Color color) {
             this.color = color;
+        }
+
+        public void setNoiseFilter(AbstractNoiseFilter f) {
+            noiseFilter = f;
         }
 
         void addSample(float fpr, float tpr, float tau) {
@@ -3036,20 +3112,21 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param lastTimestampUs the last timestamp; waiting times are created
      * before this time
      */
+    @Override
     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
-        Random random = new Random();
+        double noiseIntervalS = 1 / noiseRateHz;
         for (final int[] arrayRow : timestampImage) {
             for (int i = 0; i < arrayRow.length; i++) {
                 final double p = random.nextDouble();
-                final double t = -noiseRateHz * Math.log(1 - p);
+                final double t = -noiseIntervalS * Math.log(1 - p);
                 final int tUs = (int) (1000000 * t);
                 arrayRow[i] = lastTimestampUs - tUs;
             }
         }
-        for (final int[] arrayRow : lastPolMap) {
+        for (final byte[] arrayRow : polImage) {
             for (int i = 0; i < arrayRow.length; i++) {
                 final boolean b = random.nextBoolean();
-                arrayRow[i] = b ? 1 : -1;
+                arrayRow[i] = b ? (byte) 1 : (byte) -1;
             }
         }
     }
