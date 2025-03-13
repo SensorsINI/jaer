@@ -78,7 +78,7 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
     }
 
     @Override
-    synchronized public void setSigmaDistPixels(int sigmaDistPixels) {
+    public void setSigmaDistPixels(int sigmaDistPixels) {
         int old = this.sigmaDistPixels;
         super.setSigmaDistPixels(sigmaDistPixels);
         if (old != sigmaDistPixels) {
