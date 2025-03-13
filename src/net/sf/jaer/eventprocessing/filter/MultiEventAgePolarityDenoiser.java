@@ -280,8 +280,8 @@ public class MultiEventAgePolarityDenoiser extends SpatioTemporalCorrelationFilt
      */
     public void setCorrelationThreshold(float correlationThreshold) {
         float old = this.correlationThreshold;
-        if (correlationThreshold > getNumNeighbors()) {
-            correlationThreshold = getNumNeighbors();
+        if (correlationThreshold > getNumNeighbors()*getNumPastEvents()*2) {
+            correlationThreshold = getNumNeighbors()*getNumPastEvents()*2;
         }
         this.correlationThreshold = correlationThreshold;
         putFloat("correlationThreshold", correlationThreshold);
