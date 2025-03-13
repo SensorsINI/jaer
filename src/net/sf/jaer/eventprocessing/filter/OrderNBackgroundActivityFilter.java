@@ -107,16 +107,17 @@ public class OrderNBackgroundActivityFilter extends AbstractNoiseFilter implemen
     @Override
     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
         Random random = new Random();
+        double meanIntervalS=1/noiseRateHz;
         for (int i = 0; i < lastRowTs.length; i++) {
             final double p = random.nextDouble();
-            final double t = -noiseRateHz * Math.log(1 - p);
+            final double t = -meanIntervalS * Math.log(1 - p);
             final int tUs = (int) (1000000 * t);
             lastRowTs[i] = lastTimestampUs - tUs;
             lastXByRow[i]=random.nextInt(sy);
         }
         for (int i = 0; i < lastColTs.length; i++) {
             final double p = random.nextDouble();
-            final double t = -noiseRateHz * Math.log(1 - p);
+            final double t = -meanIntervalS * Math.log(1 - p);
             final int tUs = (int) (1000000 * t);
             lastColTs[i] = lastTimestampUs - tUs;
             lastYByCol[i]=random.nextInt(sx);

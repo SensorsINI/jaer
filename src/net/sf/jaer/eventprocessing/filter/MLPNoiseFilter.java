@@ -30,9 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
@@ -74,8 +72,6 @@ import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
-import static net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat.PNG;
-import org.apache.commons.io.FilenameUtils;
 import org.tensorflow.Output;
 import org.tensorflow.Shape;
 import net.sf.jaer.util.RemoteControlCommand;
@@ -131,7 +127,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 
     private int patchWidthAndHeightPixels = getInt("patchWidthAndHeightPixels", 7);
     private int[][] timestampImage; // timestamp image
-    private int[][] lastPolMap; // last polarity image, contains 0 for not initialized, 1 for ON, -1 for OFF events
+    private byte[][] lastPolMap; // last polarity image, contains 0 for not initialized, 1 for ON, -1 for OFF events
     private boolean useTI = getBoolean("useTI", true);
     private boolean usePolarity = getBoolean("usePolarity", false);
     @Preferred private boolean useTIandPol = getBoolean("useTIandPol", false);
@@ -334,7 +330,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 }
             }
             if (usePolarity || useTIandPol) {
-                int pol = e.getPolaritySignum(); // -1 OFF, +1 ON
+                byte pol = (byte)e.getPolaritySignum(); // -1 OFF, +1 ON
                 lastPolMap[x][y] = pol;
 
                 for (int indx = x - radius; indx <= x + radius; indx++) {
@@ -568,8 +564,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         for (int[] arrayRow : timestampImage) {
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
-        for (int[] arrayRow : lastPolMap) {
-            Arrays.fill(arrayRow, 0);
+        for (byte[] arrayRow : lastPolMap) {
+            Arrays.fill(arrayRow, (byte)0);
         }
         checkMlpInputFloatBufferSize();  // in case size changed
         tfNumInBatchSoFar = 0;
@@ -587,7 +583,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private void allocateMaps(AEChip chip) {
         if ((chip != null) && (chip.getNumCells() > 0) && (timestampImage == null || timestampImage.length != chip.getSizeX() >> subsampleBy)) {
             timestampImage = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
-            lastPolMap = new int[chip.getSizeX()][chip.getSizeY()]; // 
+            lastPolMap = new byte[chip.getSizeX()][chip.getSizeY()]; // 
 
         }
     }
@@ -655,15 +651,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      */
     @Override
     public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
-        Random random = new Random();
-        for (final int[] arrayRow : timestampImage) {
-            for (int i = 0; i < arrayRow.length; i++) {
-                final double p = random.nextDouble();
-                final double t = -noiseRateHz * Math.log(1 - p);
-                final int tUs = (int) (1000000 * t);
-                arrayRow[i] = lastTimestampUs - tUs;
-            }
-        }
+        fill2dTimestampAndPolarityImagesWithNoiseEvents(noiseRateHz, lastTimestampUs, timestampImage, lastPolMap);
     }
 
     /**

@@ -139,16 +139,8 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
      */
     @Override
      public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
-        Random random=new Random();
-        for (final int[] arrayRow : timestampImage) {
-            for (int i = 0; i < arrayRow.length; i++) {
-                final double p = random.nextDouble();
-                final double t = -noiseRateHz * Math.log(1 - p);
-                final int tUs = (int) (1000000 * t);
-                arrayRow[i] = lastTimestampUs - tUs;
-            }
-        }
-    }
+            fill2dTimestampAndPolarityImagesWithNoiseEvents(noiseRateHz, lastTimestampUs, timestampImage, null);
+}
 
 
     private void allocateMaps(AEChip chip) {
