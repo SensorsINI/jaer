@@ -104,11 +104,13 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private SavedModelBundle tfSavedModelBundle = null;
     private Graph tfExecutionGraph = null;
     private Session tfSession = null;
-    @Preferred private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 1024);
+    @Preferred
+    private int tfBatchSizeEvents = getInt("tfBatchSizeEvents", 1024);
     private int tfNumInBatchSoFar = 0;
     private FloatBuffer tfInputFloatBuffer = null;
     private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
-    @Preferred protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
+    @Preferred
+    protected float signalClassifierThreshold = getFloat("signalClassifierThreshold", 0.5f);
     protected float timeWindowS = getFloat("timeWindowS", .1f);
 
     // plotting TI patches and stats
@@ -130,7 +132,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private byte[][] lastPolMap; // last polarity image, contains 0 for not initialized, 1 for ON, -1 for OFF events
     private boolean useTI = getBoolean("useTI", true);
     private boolean usePolarity = getBoolean("usePolarity", false);
-    @Preferred private boolean useTIandPol = getBoolean("useTIandPol", false);
+    @Preferred
+    private boolean useTIandPol = getBoolean("useTIandPol", false);
 
     private boolean showOnlySignalTimeimages = getBoolean("showOnlySignalTimeimages", false);
     private boolean showOnlyNoiseTimeimages = getBoolean("showOnlyNoiseTimeimages", false);
@@ -200,15 +203,15 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         setPropertyTooltip(tf, "useTIandPol", "use both TI and Polarity as input of MLP"); // TODO fix default to match training
 
         setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values");
-        setPropertyTooltip(disp, "showClassificationHistogram", "Shows a histogram of classification results");
+        setPropertyTooltip(disp, "showClassificationHistogram", "Shows a histogram of classification results for all events, should be bowl shaped for well-behaved denoising");
         setPropertyTooltip(disp, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
-        setPropertyTooltip(disp, "showOnlyNoiseTimeimages", "Shows timestamp image input to MLP only for noise classifications");
-        setPropertyTooltip(disp, "showOnlySignalTimeimages", "Shows timestamp image input to MLP only for signal classifications");
-        setPropertyTooltip(disp, "saveTiPatchImages", "Saves the TI patch images to a folder named MLPNoiseFilter-signal or MLPNoiseFilter-noise");
+        setPropertyTooltip(disp, "showOnlyNoiseTimeimages", "Shows TPI input to MLP only for noise classifications in the selected ROI");
+        setPropertyTooltip(disp, "showOnlySignalTimeimages", "Shows TPI input to MLP only for signal classifications in the selected ROI");
+        setPropertyTooltip(disp, "saveTiPatchImages", "Saves the TPI (timestamp polarity image) patch images to a folder named MLPNoiseFilter-signal or MLPNoiseFilter-noise");
         setPropertyTooltip(tf, "timeWindowS", "<html>Window of time tau in seconds that the timestamp image counts past events; <br>pixels with older events are set to zero.<p> Windows within window are linearly or exponentially decayed to zero as dt approaches timeWindowS");
         String roi = "Region of interest";
-        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI (region of interest) selection");
-        setPropertyTooltip(roi, "clearROI", "Clears ROI (region of interest)");
+        setPropertyTooltip(roi, "freezeRoi", "Freezes ROI (region of interest) selection for displaying the TPI patches of signal and noise events");
+        setPropertyTooltip(roi, "clearROI", "Clears ROI (region of interest) selection for displaying the TPI patches of signal and noise events");
         hideProperty("correlationTimeS");
         hideProperty("antiCasualEnabled");
         hideProperty("sigmaDistPixels");
@@ -330,7 +333,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 }
             }
             if (usePolarity || useTIandPol) {
-                byte pol = (byte)e.getPolaritySignum(); // -1 OFF, +1 ON
+                byte pol = (byte) e.getPolaritySignum(); // -1 OFF, +1 ON
                 lastPolMap[x][y] = pol;
 
                 for (int indx = x - radius; indx <= x + radius; indx++) {
@@ -565,7 +568,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             Arrays.fill(arrayRow, DEFAULT_TIMESTAMP);
         }
         for (byte[] arrayRow : lastPolMap) {
-            Arrays.fill(arrayRow, (byte)0);
+            Arrays.fill(arrayRow, (byte) 0);
         }
         checkMlpInputFloatBufferSize();  // in case size changed
         tfNumInBatchSoFar = 0;
@@ -660,7 +663,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
      * exported using Danny Neil's XML Matlab script cnntoxml.m.
      *
      */
-    @Preferred 
+    @Preferred
     public void doLoadNetwork() {
         File file = null;
         file = openFileDialogAndGetFile("Choose a network, either tensorflow protobuf binary (pb),  or folder holding tensorflow SavedModelBundle",
@@ -816,13 +819,19 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         }
     }
 
-    public synchronized void doShowTimeimagePatch() {
-        if (tiFrame != null) {
-            tiFrame.setVisible(true);
-            return;
+    synchronized public void doToggleOffShowTimeimagePatch() {
+        tiPatchDisplay = null;
+//        if(tiFrame!=null){
+//            tiFrame.setVisible(false);
+//            tiFrame.dispose();
+//        }
+    }
+
+    public synchronized void doToggleOnShowTimeimagePatch() {
+        if (tiFrame == null) {
+            tiFrame = new JFrame("TI patch");  // make a JFrame to hold it
+            tiFrame.setPreferredSize(new Dimension(400, 400));  // set the window size
         }
-        tiFrame = new JFrame("TI patch");  // make a JFrame to hold it
-        tiFrame.setPreferredSize(new Dimension(400, 400));  // set the window size
 
         tiPatchDisplay = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
         int s = 300;
@@ -853,6 +862,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         tiPatchDisplay.addYTick(sizey / 2, Integer.toString(sizey / 2));
 
         tiPatchDisplay.setTextColor(new float[]{.8f, 1, 1});
+        tiFrame.setVisible(true);
     }
 
     /**
