@@ -139,9 +139,9 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
         void clearHist() {
             Arrays.fill(hist, 0);
             signalEvent = false;
-            entropy=Float.NaN;
-            sum=0;
-            max=0;
+            entropy = Float.NaN;
+            sum = 0;
+            max = 0;
         }
 
         void addToHist(int x, int y, float age) {
@@ -160,8 +160,8 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
             }
             float dx = 5;
             float sy = 5;
-            int lx=chip.getSizeX() / 3, ly =chip.getSizeY() / 3;
-            gl.glTranslatef(lx, ly , 0);
+            int lx = chip.getSizeX() / 3, ly = chip.getSizeY() / 3;
+            gl.glTranslatef(lx, ly, 0);
 
             gl.glBegin(GL.GL_LINE_STRIP);
             for (int i = 0; i < numBins; i++) {
@@ -181,7 +181,7 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
 
             gl.glPopMatrix();
             gl.glPushMatrix();
-            DrawGL.drawString(getShowFilteringStatisticsFontSize(), lx, ly, 0f, Color.yellow, 
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), lx, ly, 0f, Color.yellow,
                     String.format("max=%s, entropy=%s", eng.format(max), eng.format(entropy)));
             gl.glPopMatrix();
         }
@@ -265,14 +265,14 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
 
         boolean isSignalEvent() {
             max = calculateMax();
-            signalEvent=false;
-            if(max>=minCorrelation){
-                if(!useEntropy){
-                    signalEvent=true;
-                }else{
-                    entropy=calculateEntropy();
-                    if(entropy<=maxEntropy){
-                        signalEvent=true;
+            signalEvent = false;
+            if (max >= minCorrelation) {
+                if (!useEntropy) {
+                    signalEvent = true;
+                } else {
+                    entropy = calculateEntropy();
+                    if (entropy <= maxEntropy) {
+                        signalEvent = true;
                     }
                 }
             }
@@ -321,13 +321,12 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
             // test
 //            Arrays.fill(hist,1);
 //            hist[0]=10;
-            
             sum = calculateSum();
 
-            if (sum ==0) {
+            if (sum == 0) {
                 entropy = (float) (Math.log(numBins) / Math.log(2)); // all zero, max entropy = n-bits, e.g. 3 for 8 bins
             } else {
-                entropy=0;
+                entropy = 0;
                 for (float value : hist) {
                     float probability = (float) value / sum;
                     if (probability > 0) {
@@ -368,64 +367,68 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
         final boolean hasPolarites = in.getEventPrototype() instanceof PolarityEvent;
 
         if (record) { // branch here to save a tiny bit if not instrumenting denoising
-            for (BasicEvent e : in) {
-                if (e == null) {
-                    continue;
-                }
-                // comment out to support special "noise" events that are labeled special for denoising study
+            try {
+                for (BasicEvent e : in) {
+                    if (e == null) {
+                        continue;
+                    }
+                    // comment out to support special "noise" events that are labeled special for denoising study
 //                if (e.isSpecial()) {
 //                    continue;
 //                }
-                totalEventCount++;
-                final int ts = e.timestamp;
-                final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
-                if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
-                    filterOut(e);
-                    continue;
-                }
-                if (timestampImage[x][y] == DEFAULT_TIMESTAMP) {
-                    storeTimestampPolarity(x, y, e);
-                    if (letFirstEventThrough) {
-                        filterIn(e);
-                        continue;
-                    } else {
+                    totalEventCount++;
+                    final int ts = e.timestamp;
+                    final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
+                    if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                         filterOut(e);
                         continue;
                     }
-                }
-
-                // finally the real denoising starts here
-                angleHist.clearHist();
-                nnbRange.compute(x, y, ssx, ssy);
-                outerloop:
-                for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
-                    final int[] col = timestampImage[xx];
-                    final byte[] polCol = polImage[xx];
-                    for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
-                        if (fhp && xx == x && yy == y) {
-                            continue; // like BAF, don't correlate with ourself
+                    if (timestampImage[x][y] == DEFAULT_TIMESTAMP) {
+                        storeTimestampPolarity(x, y, e);
+                        if (letFirstEventThrough) {
+                            filterIn(e);
+                            continue;
+                        } else {
+                            filterOut(e);
+                            continue;
                         }
-                        final int lastT = col[yy];
-                        final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
-                        final int dx = xx - x, dy = yy - y; // delta x and y
-                        if (deltaT < tauUs && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
-                            PolarityEvent pe = (PolarityEvent) e;
-                            if (pe.getPolaritySignum() == polCol[yy]) {
-                                final float age = useAge ? age(deltaT) : 1;
-                                angleHist.addToHist(dx, dy, age);
+                    }
+
+                    // finally the real denoising starts here
+                    angleHist.clearHist();
+                    nnbRange.compute(x, y, ssx, ssy);
+                    outerloop:
+                    for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
+                        final int[] col = timestampImage[xx];
+                        final byte[] polCol = polImage[xx];
+                        for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
+                            if (fhp && xx == x && yy == y) {
+                                continue; // like BAF, don't correlate with ourself
+                            }
+                            final int lastT = col[yy];
+                            final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
+                            final int dx = xx - x, dy = yy - y; // delta x and y
+                            if (deltaT < tauUs && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
+                                PolarityEvent pe = (PolarityEvent) e;
+                                if (pe.getPolaritySignum() == polCol[yy]) {
+                                    final float age = useAge ? age(deltaT) : 1;
+                                    angleHist.addToHist(dx, dy, age);
+                                }
                             }
                         }
                     }
-                }
-                boolean isSignal = angleHist.isSignalEvent();
+                    boolean isSignal = angleHist.isSignalEvent();
 //                log.info(angleHist.toString());
-                if (isSignal) {
-                    filterIn(e);
-                } else {
-                    filterOut(e);
-                }
-                storeTimestampPolarity(x, y, e);
-            } // event packet loop
+                    if (isSignal) {
+                        filterIn(e);
+                    } else {
+                        filterOut(e);
+                    }
+                    storeTimestampPolarity(x, y, e);
+                } // event packet loop
+            } catch (ArrayIndexOutOfBoundsException e) {
+                log.warning("Caught " + e + " probably from changing sigmaDistPixels during iiteration over events");
+            }
         } else { // not keep stats
             for (BasicEvent e : in) {
                 if (e == null) {
@@ -606,12 +609,12 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
      * @param maxEntropy the maxEntropy to set
      */
     public void setMaxEntropy(float maxEntropy) {
-        final float maxVal=(float)(Math.log(angleHist.numBins)/Math.log(2));
-        if(maxEntropy>maxVal){
-            maxEntropy=maxVal;
+        final float maxVal = (float) (Math.log(angleHist.numBins) / Math.log(2));
+        if (maxEntropy > maxVal) {
+            maxEntropy = maxVal;
         }
         this.maxEntropy = maxEntropy;
-        putFloat("maxEntropy",maxEntropy);
+        putFloat("maxEntropy", maxEntropy);
     }
 
 }
