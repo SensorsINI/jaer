@@ -1750,6 +1750,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 setTitleAccordingToState();
                 fpsDelay(); // delay at start so all the below that breaks out of loop still has a delay to avoid CPU hog
+                if(stop){
+                    log.info("breaking out of view loop after fpsDelay() because stop=true");
+                    break;
+                }
                 // unless fastForward is set, in which case there is no delay
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
                     // if !paused we always get data. below, if singleStepEnabled, we set paused after getting data.
@@ -1816,6 +1820,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 } // if (!isPaused() || isSingleStep())
 
+                if(stop){
+                    log.info("breaking out of view loop before rendering because stop=true");
+                    break;
+                }
                 if ((cookedPacket != null)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
