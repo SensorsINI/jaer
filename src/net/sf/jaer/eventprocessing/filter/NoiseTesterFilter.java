@@ -2613,6 +2613,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepStep", old, this.rocSweepStep);
             computeEstimatedNumSteps();
+            log.info(String.format("Step %s: about %d steps", eng.format(rocSweepStep), Math.round(estimateNumSteps)));
         }
 
         /**
