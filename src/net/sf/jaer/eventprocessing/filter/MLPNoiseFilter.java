@@ -696,6 +696,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         }
         ArrayList<String> ioLayers = new ArrayList();
         String sizeMsg = "";
+        StringBuilder b = new StringBuilder("TensorFlow Graph: \n");
         try {
             if (f.isDirectory()) {
                 log.info("loading \"serve\" graph from tensorflow SavedModelBundle folder " + f);
@@ -709,7 +710,6 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             }
 
             Iterator<Operation> itr = this.tfExecutionGraph.operations();
-            StringBuilder b = new StringBuilder("TensorFlow Graph: \n");
             int opnum = 0;
             ioLayers.clear();
             while (itr.hasNext()) {
@@ -740,7 +740,13 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                         setPatchWidthAndHeightPixels(tiInputDim);
                         setUseTIandPol(usesPolarity);
                     }
-                    b.append(opnum++ + ": " + o.toString() + "\t" + output.toString() + "\n");
+                    String outputString = "(output string)";
+                    try {
+
+                        b.append(opnum++ + ": " + o.toString() + "\t" + output.toString() + "\n");
+                    } catch (IllegalArgumentException iae) {
+                        b.append(opnum++ + ": " + o.toString() + "\t" + iae.toString() + "\n");
+                    }
 //                        int numDimensions = shape.numDimensions();
 //                        for (int dimidx = 0; dimidx < numDimensions; dimidx++) {
 //                            long dim = shape.size(dimidx);
