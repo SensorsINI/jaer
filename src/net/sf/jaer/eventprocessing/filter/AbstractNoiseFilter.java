@@ -20,11 +20,9 @@ package net.sf.jaer.eventprocessing.filter;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
-import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.CDAVIS;
 import java.awt.Color;
-import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,6 +32,7 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -62,7 +61,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /**
      * list of filtered out events
      */
-    private ArrayList<FilteredEventWithNNb> filteredOutEvents = new ArrayList(), filteredInEvents = new ArrayList();
+    private ArrayList<BasicEvent> filteredOutEvents = new ArrayList(), filteredInEvents = new ArrayList();
 
     /**
      * Use to format number to engineering notation
@@ -168,7 +167,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         e.setFilteredOut(true);
         filteredOutEventCount++;
         if (recordFilteredOutEvents) {
-            filteredOutEvents.add(new FilteredEventWithNNb(e));
+            if (e instanceof PolarityEvent pe) {
+                PolarityEvent peCopy = new PolarityEvent();
+                peCopy.copyFrom(pe);
+                filteredOutEvents.add(peCopy);
+            } else {
+                filteredOutEvents.add(new BasicEvent(e.timestamp, e.x, e.y));
+            }
         }
     }
 
@@ -181,7 +186,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     final protected void filterIn(BasicEvent e) {
         e.setFilteredOut(false);
         if (recordFilteredOutEvents) {
-            filteredInEvents.add(new FilteredEventWithNNb(e));
+            if (e instanceof PolarityEvent pe) {
+                PolarityEvent peCopy = new PolarityEvent();
+                peCopy.copyFrom(pe);
+                filteredInEvents.add(peCopy);
+            } else {
+                filteredInEvents.add(new BasicEvent(e.timestamp, e.x, e.y));
+            }
         }
     }
 
@@ -196,7 +207,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 //        e.setFilteredOut(true);
 //        filteredOutEventCount++;
 //        if (recordFilteredOutEvents) {
-//            filteredOutEvents.add(new FilteredEventWithNNb(e, nnb));
+//            filteredOutEvents.add(new BasicEvent(e, nnb));
 //        }
 //    }
 //    /**
@@ -209,7 +220,7 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
 //    protected void filterInWithNNb(BasicEvent e, byte nnb) {
 //        e.setFilteredOut(false);
 //        if (recordFilteredOutEvents) {
-//            filteredInEvents.add(new FilteredEventWithNNb(e, nnb));
+//            filteredInEvents.add(new BasicEvent(e, nnb));
 //        }
 //    }
     /**
@@ -465,11 +476,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     /**
      * @return the filteredOutEvents
      */
-    public ArrayList<FilteredEventWithNNb> getNegativeEvents() {
+    public ArrayList<BasicEvent> getNegativeEvents() {
         return filteredOutEvents;
     }
 
-    public ArrayList<FilteredEventWithNNb> getPositiveEvents() {
+    public ArrayList<BasicEvent> getPositiveEvents() {
         return filteredInEvents;
     }
 
@@ -600,22 +611,21 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         }
     }
 
-    public class FilteredEventWithNNb {
-
-        BasicEvent e;
-        byte nnb;
-
-        public FilteredEventWithNNb(BasicEvent e, byte nnb) {
-            this.e = e;
-            this.nnb = nnb;
-        }
-
-        public FilteredEventWithNNb(BasicEvent e) {
-            this.e = e;
-            this.nnb = 0;
-        }
-    }
-
+//    public class FilteredEventWithNNb {
+//
+//        BasicEvent e;
+//        byte nnb;
+//
+//        public FilteredEventWithNNb(BasicEvent e, byte nnb) {
+//            this.e = e;
+//            this.nnb = nnb;
+//        }
+//
+//        public FilteredEventWithNNb(BasicEvent e) {
+//            this.e = e;
+//            this.nnb = 0;
+//        }
+//    }
     /**
      * @return the noiseFilterControl
      */
