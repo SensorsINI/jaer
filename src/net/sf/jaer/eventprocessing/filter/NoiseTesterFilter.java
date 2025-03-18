@@ -214,7 +214,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int rocHistoryLength = getInt("rocHistoryLength", 8);
     private final int LIST_LENGTH = 10000;
 
-    private ArrayList<FilteredEventWithNNb> tpList = new ArrayList(LIST_LENGTH),
+    private ArrayList<BasicEvent> tpList = new ArrayList(LIST_LENGTH),
             fnList = new ArrayList(LIST_LENGTH),
             fpList = new ArrayList(LIST_LENGTH),
             tnList = new ArrayList(LIST_LENGTH); // output of classification
@@ -508,26 +508,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     }
 
-    private void annotateNoiseFilteringEvents(ArrayList<FilteredEventWithNNb> outSig, ArrayList<FilteredEventWithNNb> outNoise) {
+    private void annotateNoiseFilteringEvents(ArrayList<BasicEvent> outSig, ArrayList<BasicEvent> outNoise) {
         if (renderer == null) {
             return;
         }
         NOISE_COLOR[3] = getOverlayAlpha();
         SIG_COLOR[3] = getOverlayAlpha();
-        for (FilteredEventWithNNb e : outSig) {
-            renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, SIG_COLOR);
+        for (BasicEvent e : outSig) {
+            renderer.setAnnotateColorRGBA(e.x + LABEL_OFFSET_PIX >= sx ? e.x : e.x + LABEL_OFFSET_PIX, e.y - LABEL_OFFSET_PIX < 0 ? e.y : e.y - LABEL_OFFSET_PIX, SIG_COLOR);
         }
-        for (FilteredEventWithNNb e : outNoise) {
-            renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, NOISE_COLOR);
+        for (BasicEvent e : outNoise) {
+            renderer.setAnnotateColorRGBA(e.x + LABEL_OFFSET_PIX >= sx ? e.x : e.x + LABEL_OFFSET_PIX, e.y - LABEL_OFFSET_PIX < 0 ? e.y : e.y - LABEL_OFFSET_PIX, NOISE_COLOR);
         }
     }
 
-    private void annotateNoiseFilteringEvents(ArrayList<FilteredEventWithNNb> events, float[] color) {
+    private void annotateNoiseFilteringEvents(ArrayList<BasicEvent> events, float[] color) {
         if (renderer == null) {
             return;
         }
-        for (FilteredEventWithNNb e : events) {
-            renderer.setAnnotateColorRGBA(e.e.x + LABEL_OFFSET_PIX >= sx ? e.e.x : e.e.x + LABEL_OFFSET_PIX, e.e.y - LABEL_OFFSET_PIX < 0 ? e.e.y : e.e.y - LABEL_OFFSET_PIX, color);
+        for (BasicEvent e : events) {
+            renderer.setAnnotateColorRGBA(e.x + LABEL_OFFSET_PIX >= sx ? e.x : e.x + LABEL_OFFSET_PIX, e.y - LABEL_OFFSET_PIX < 0 ? e.y : e.y - LABEL_OFFSET_PIX, color);
         }
     }
 
@@ -620,7 +620,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * bits
      * @return count of intersections
      */
-    private int countIntersect(ArrayList<PolarityEvent> a, ArrayList<FilteredEventWithNNb> b, ArrayList<FilteredEventWithNNb> intersect) {
+    private int countIntersect(ArrayList<PolarityEvent> a, ArrayList<BasicEvent> b, ArrayList<BasicEvent> intersect) {
         intersect.clear();
         if (a.isEmpty() || b.isEmpty()) {
             return 0;
@@ -646,9 +646,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int i = 0, j = 0;
         final int na = a.size(), nb = b.size();
         while (i < na && j < nb) {
-            if (a.get(i).timestamp < b.get(j).e.timestamp) {
+            if (a.get(i).timestamp < b.get(j).timestamp) {
                 i++;
-            } else if (b.get(j).e.timestamp < a.get(i).timestamp) {
+            } else if (b.get(j).timestamp < a.get(i).timestamp) {
                 j++;
             } else {
                 // If timestamps equal, it mmight be identical events or maybe not
@@ -658,10 +658,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 // We do an inner double loop for exhaustive matching as long as the timestamps
                 // are identical. 
                 int i1 = i, j1 = j;
-                while (i1 < na && j1 < nb && a.get(i1).timestamp == b.get(j1).e.timestamp) {
+                while (i1 < na && j1 < nb && a.get(i1).timestamp == b.get(j1).timestamp) {
                     boolean match = false;
-                    while (j1 < nb && i1 < na && a.get(i1).timestamp == b.get(j1).e.timestamp) {
-                        if (a.get(i1).equals(b.get(j1).e)) {
+                    while (j1 < nb && i1 < na && a.get(i1).timestamp == b.get(j1).timestamp) {
+                        if (a.get(i1).equals(b.get(j1))) {
                             count++;
                             intersect.add(b.get(j1)); // TODO debug
                             // we have a match, so use up the a element
@@ -865,7 +865,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     }
                     return in;
                 }
-                ArrayList<FilteredEventWithNNb> negativeList, positiveList;
+                ArrayList<BasicEvent> negativeList, positiveList;
                 negativeList = selectedNoiseFilter.getNegativeEvents();
                 positiveList = selectedNoiseFilter.getPositiveEvents();
 
@@ -2346,8 +2346,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     try (PrintWriter writer = new PrintWriter(path.toFile())) {
                         writer.println(String.format("ROC sweep of %s for filter %s", propName, simpleName));
                         writer.println("# created " + new Date().toString());
+                        writer.println("# ROC Sweep: "+sweep.toString());
+                        writer.println("# NoiseTesterFilter: "+this.toString());
                         writer.println("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)"));
-                        for (ROCHistory.ROCSample s : sweep.rocHistoryList) {
+                        for (ROCSample s : sweep.rocHistoryList) {
                             writer.println(String.format("%f,%f,%f", s.tau, s.x, s.y));
                         }
                     }
@@ -2450,7 +2452,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 return false;
             }
             // first save summary statistic for last step in private rocHistorySummary
-            ROCHistory.ROCSample avg = rocHistoryCurrent.computeAvg();
+            ROCSample avg = rocHistoryCurrent.computeAvg();
             if (!Float.isNaN(avg.x) && !Float.isNaN(avg.y)) {
                 rocHistorySummary.addSample(avg.x, avg.y, currentValue);
                 rocHistorySummary.computeAUC();
@@ -2746,7 +2748,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         ROCSample createAbsolutePosition(float x, float y, float tau, boolean labeled) {
-            return new ROCSample(x, y, tau, labeled);
+            return new ROCSample(x, y, tau, labeled, this);
         }
 
         ROCSample computeAvg() {
@@ -2758,7 +2760,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             int n = rocHistoryList.size();
             float avgFpr = sumFpr / n;
             float avgTpr = sumTpr / n;
-            ROCSample avg = new ROCSample(avgFpr, avgTpr, getCorrelationTimeS(), false);
+            ROCSample avg = new ROCSample(avgFpr, avgTpr, getCorrelationTimeS(), false, this);
             return avg;
         }
 
@@ -2769,7 +2771,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (rocHistoryList.size() < 2) {
                 return Float.NaN;
             }
-            ROCSample first = null, last = null;
+            ROCSample first = null;
+            ROCSample last = null;
             for (ROCSample s : rocHistoryList) {
                 if (Float.isNaN(s.x * s.y)) {
                     continue;
@@ -2811,64 +2814,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return auc;
         }
 
-        class ROCSample {
-
-            float x, y, tau;
-            boolean labeled = false;
-
-            /**
-             * Create new sample
-             *
-             * @param x FPR *sx position on plot
-             * @param y TPR *sy position on plot in fraction of chip
-             * @param tau associated correlation time or threshold
-             * @param labeled true to label this sample, false for global values
-             * or last sample
-             */
-            private ROCSample(float x, float y, float tau, boolean labeled) {
-                this.x = x;
-                this.y = y;
-                this.tau = tau;
-                this.labeled = labeled;
-            }
-
-            /**
-             * Draw point using color derived from tau correlation interval
-             * parameter
-             *
-             * @param gl
-             */
-            private void draw(GL2 gl) {
-                float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms 
-                Color c = Color.getHSBColor(hue, 1f, hue);
-                draw(gl, c, getPtSize());
-            }
-
-            /**
-             * Draw point with a fixed color and size
-             *
-             * @param gl
-             * @param c the color
-             * @param size the size in (chip) pixels
-             */
-            private void draw(GL2 gl, Color c, int size) {
-                float[] rgb = c.getRGBComponents(null);
-                float[] rgba = new float[]{rgb[0], rgb[1], rgb[2], .2f};
-                gl.glColor4fv(rgba, 0);
-                gl.glLineWidth(1);
-                gl.glPushMatrix();
-                DrawGL.drawBox(gl, x * sx, y * sy, size, size, 0);
-                gl.glPopMatrix();
-                if (labeled) {
-//                    gl.glTranslatef(5 * L, - 3 * L, 0);
-                    gl.glRasterPos3f(x + size, y, 0);
-//                    gl.glRotatef(-45, 0, 0, 1); // can't rotate bitmaps, must use stroke and glScalef
-                    String s = String.format("%ss", eng.format(tau));
-                    glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
-//                    glut.glutStrokeString(GLUT.STROKE_ROMAN, s);
-                }
-            }
-        }
 
         private void reset() {
             rocHistoryList.clear();
@@ -2912,7 +2857,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     || Math.abs(Math.log10(tau / lastTau)) > .1
                     || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
             labelIt = false;// tobi removec this clutter
-            rocHistoryList.add(new ROCSample(fpr, tpr, tau, false));
+            rocHistoryList.add(new ROCSample(fpr, tpr, tau, false, this));
             avgRocSample = computeAvg();
             if (labelIt) {
                 lastTau = tau;
@@ -3312,6 +3257,59 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public void setRocSweepParameterComboBoxModel(ComboBoxModel rocSweepParameterComboBoxModel) {
         this.rocSweepParameterComboBoxModel = rocSweepParameterComboBoxModel;
+    }
+
+    class ROCSample {
+
+        float x;
+        float y;
+        float tau;
+        int size;
+
+        /**
+         * Create new sample
+         *
+         * @param x FPR *sx position on plot
+         * @param y TPR *sy position on plot in fraction of chip
+         * @param tau associated correlation time or threshold
+         * @param labeled true to label this sample, false for global values
+         * or last sample
+         */
+        ROCSample(float x, float y, float tau, boolean labeled, final ROCHistory outer) {
+            this.size = outer.getPtSize();
+            this.x = x;
+            this.y = y;
+            this.tau = tau;
+        }
+
+        /**
+         * Draw point using color derived from tau correlation interval
+         * parameter
+         *
+         * @param gl
+         */
+        void draw(GL2 gl) {
+            float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms
+            Color c = Color.getHSBColor(hue, 1f, hue);
+            draw(gl, c, size);
+        }
+
+        /**
+         * Draw point with a fixed color and size
+         *
+         * @param gl
+         * @param c the color
+         * @param size the size in (chip) pixels
+         */
+        void draw(GL2 gl, Color c, int size) {
+            float[] rgb = c.getRGBComponents(null);
+            float[] rgba = new float[]{rgb[0], rgb[1], rgb[2], .2f};
+            gl.glColor4fv(rgba, 0);
+            gl.glLineWidth(1);
+            gl.glPushMatrix();
+            DrawGL.drawBox(gl, x * sx, y * sy, size, size, 0);
+            gl.glPopMatrix();
+        }
     }
 
 }
