@@ -1,10 +1,9 @@
 package net.sf.jaer.util;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
-import java.awt.Frame;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.logging.Logger;
@@ -30,7 +29,7 @@ public class ShowFolderSaveConfirmation extends JDialog {
      * @param file the File
      * @param msg the message
      */
-    public ShowFolderSaveConfirmation(Frame owner, File file, String msg) {
+    public ShowFolderSaveConfirmation(Window owner, File file, String msg) {
         super(owner);
         this.file = file;
         this.msg = msg;
