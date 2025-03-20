@@ -111,7 +111,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      *
      * @see #initFilter()
      */
-    public static Class[] noiseFilterClasses = {null,
+    public static Class[] noiseFilterClasses = {
         HotPixelFilter.class,
         BackgroundActivityFilter.class,
         SpatioTemporalCorrelationFilter.class,
@@ -135,6 +135,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private boolean disableAddingNoise = getBoolean("disableAddingNoise", false);
     private boolean disableDenoising = false;
+    private String noiseSummaryString = null;
     @Preferred
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", 5f);
     protected boolean photoreceptorNoiseSimulation = getBoolean("photoreceptorNoiseSimulation", true);
@@ -157,6 +158,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private ROCHistory rocHistoryCurrent = new ROCHistory(null);
     private ArrayList<ROCHistory> rocHistoriesSaved = new ArrayList();
+    private ArrayList<ROCSweep> rocSweeps = new ArrayList();
     private int rocHistoryLabelPosY = 0;
     private ROCSweep rocSweep;
 
@@ -214,11 +216,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int rocHistoryLength = getInt("rocHistoryLength", 8);
     private final int LIST_LENGTH = 10000;
 
-    private ArrayList<BasicEvent> tpList = new ArrayList(LIST_LENGTH),
+    private final ArrayList<BasicEvent> tpList = new ArrayList(LIST_LENGTH),
             fnList = new ArrayList(LIST_LENGTH),
             fpList = new ArrayList(LIST_LENGTH),
             tnList = new ArrayList(LIST_LENGTH); // output of classification
-    private ArrayList<PolarityEvent> noiseList = new ArrayList<PolarityEvent>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
+    private final ArrayList<PolarityEvent> noiseList = new ArrayList<PolarityEvent>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
     /**
      * How time is split up for Poisson sampling using bounds trick
      */
@@ -288,7 +290,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                         n.getFilterPanel().setVisible(true);
                     }
 
-                    rocSweep.init();
+                    rocSweep = new ROCSweep(n);
                     constructRocSweepParameterComboBoxModel();
 
                 } else {
@@ -324,12 +326,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>0.5 decade is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "leakJitterFraction", "<html>Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution.<p>0.1 to 0.2 is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "leakNoiseRateHz", "Rate per pixel in Hz of leak noise events. 0.1 to 0.2Hz is realistic for DAVIS cameras.");
-        setPropertyTooltip(noise, "openNoiseSourceRecording", "Open a pre-recorded AEDAT file as noise source.");
-        setPropertyTooltip(noise, "closeNoiseSourceRecording", "Closes the pre-recorded noise input.");
+        setPropertyTooltip(noise, "useNoiseRecording", "Open a pre-recorded AEDAT file as noise source.");
+        setPropertyTooltip(noise, "doCloseNoise", "Closes the pre-recorded noise input.");
 
         String rocSw = "0c: ROC sweep parameters";
-        setPropertyTooltip(rocSw, "startROCSweep", "Starts sweeping a property over the marked (or entire) recoding and record the ROC points");
-        setPropertyTooltip(rocSw, "stopROCSweep", "Stops ROC sweep");
+        setPropertyTooltip(rocSw, "ROCSweep", "Toggles ON/OFF sweeping a property over the marked (or entire) recoding and record the ROC points");
+        setPropertyTooltip(rocSw, "doStopROC", "Stops ROC sweep");
         setPropertyTooltip(rocSw, "rocSweepStart", "Starting value for sweep");
         setPropertyTooltip(rocSw, "rocSweepEnd", "Ending value for sweep");
         setPropertyTooltip(rocSw, "rocSweepStep", "Step size value for sweep. Multiplicative (e.g. 1.4) for rocSweepLogStep, additive (e.g. 0.25) for !rocSweepLogStep.");
@@ -338,13 +340,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(rocSw, "rocSweepParameterComboBoxModel", "Which property of the selected denoiser to sweep");
 
         String out = "5. Output";
-        setPropertyTooltip(out, "doCloseMLP_CSVFile", "Closes the MLP training output CSV spreadsheet data file.");
-        setPropertyTooltip(out, "doOpenMLP_CSVFile", "Opens the MLP training output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
+        setPropertyTooltip(out, "saveMLPTraining", "Toggles ON/OFF the MLP training output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
         setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open MLP training CSV output file (appending to it if it already exists). Information written determined by Output switches.");
         setPropertyTooltip(out, "outputTrainingData", "<html>Output data for training MLP. <p>Outputs CSV file that has a single row with most recent event information (timestamp and polarity) for 25x25 neighborhood of each event. <p>Each row thus has about 1000 columns.");
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
         setPropertyTooltip(out, "outputFilterStatistic", "Output analyzable data of a filter.");
-        setPropertyTooltip(out, "doSaveROCSweepsToCSV", "Opens a dialog to save ROC sweep data to CSV file");
+        setPropertyTooltip(out, "doExportROCs", "Opens a dialog to export ROC sweeps data to multiple CSV files in a folder you choose with your chosen base filename");
 //        setPropertyTooltip(ann, "annotateAlpha", "Sets the transparency for the annotated pixels. Only works for Davis renderer.");
 
         setPropertyTooltip(TT_DISP, "overlayPositives", "<html><p>Overlay positives (passed input events)<p>FPs (red) are noise in output.<p>TPs (green) are signal in output.");
@@ -356,10 +357,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "overlayAlpha", "The alpha (opacity) of the overlaid classification colors");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show. The average over these samples is shown as the large cross.");
         // buttons
-        setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
-        setPropertyTooltip(TT_DISP, "doClearAllSavedRocHistories", "Clears saved ROC curves");
-        setPropertyTooltip(TT_DISP, "doSaveRocHistory", "Saves current ROC points to be displayed");
-        setPropertyTooltip(TT_DISP, "doClearLastRocHistory", "Erase the last recording of ROC curve");
+//        setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
+        setPropertyTooltip(TT_DISP, "doClearROCs", "Clears all saved ROC curves and current samples from packets");
+        setPropertyTooltip(TT_DISP, "doClearLastROC", "Erase the last recording of ROC curve");
 
         for (int k = 0; k < colors.length; k++) {
             float hue = (float) k / (colors.length - 1);
@@ -410,19 +410,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         GL2 gl = drawable.getGL().getGL2();
 
-//            if (avgRocSample != null) { // draw big thick X at avg ROC point
-//                int L = 12;
-//                gl.glColor4f(.9f, .9f, .2f, .7f); // must set color before raster position (raster position is like glVertex)
-//                gl.glLineWidth(8);
-//                float x = avgRocSample.x;
-//                float y = avgRocSample.y;
-//                gl.glPushMatrix();
-//                DrawGL.drawCross(gl, x, y, L, (float) Math.PI / 4);
-//                gl.glPopMatrix();
-//            }
         rocHistoryLabelPosY = (int) (.7 * chip.getSizeY());
         for (ROCHistory h : rocHistoriesSaved) {
             h.draw(gl);
+        }
+        for (ROCSweep s : rocSweeps) {
+            s.draw(gl);
         }
         rocHistoryCurrent.draw(gl);
         if (isInitializingPreviousEvents(firstSignalEventTimestampThisPacket)) {
@@ -491,14 +484,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (overlayTP) {
                 overlayString += " TP (green) ";
             }
-            String s = null;
             if (prerecordedNoise != null) {
-                s = String.format("NTF: Pre-recorded noise from %s with %,d events", prerecordedNoise.file.getName(), prerecordedNoise.recordedNoiseFileNoisePacket.getSize());
+                noiseSummaryString = String.format("NTF: Pre-recorded noise from %s with %,d events", prerecordedNoise.file.getName(), prerecordedNoise.recordedNoiseFileNoisePacket.getSize());
             } else {
-                s = String.format("NTF: Synthetic noise: CoV %s dec, Leak %sHz+/-%s jitter, Shot %sHz. %s", eng.format(noiseRateCoVDecades), eng.format(leakNoiseRateHz), eng.format(leakJitterFraction), eng.format(shotNoiseRateHz),
+                noiseSummaryString = String.format("NTF: Synthetic noise: CoV %s dec, Leak %sHz+/-%s jitter, Shot %sHz. %s", eng.format(noiseRateCoVDecades), eng.format(leakNoiseRateHz), eng.format(leakJitterFraction), eng.format(shotNoiseRateHz),
                         overlayString);
             }
-            DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, s);
+            DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, noiseSummaryString);
+
+            String s = null;
             s = String.format("TPR=%-7s%% FPR=%-7s%% TNR=%-7s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
             s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
@@ -842,7 +836,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             log.info(String.format("Wrote %,d events to %s", csvNumEventsWritten, csvFileName));
                         }
                     } catch (IOException e) {
-                        doCloseMLP_CSVFile();
+                        doToggleOffSaveMLPTraining();
                     }
                 }
             }
@@ -951,7 +945,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
                             inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
                 } catch (IOException e) {
-                    doCloseMLP_CSVFile();
+                    doToggleOffSaveMLPTraining();
                 }
             }
 
@@ -1343,7 +1337,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Override
     public void initFilter() {
-        rocSweep = new ROCSweep();
 
         if (chain == null) {
             chain = new FilterChain(chip);
@@ -1353,11 +1346,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             int i = 0;
             ArrayList<Class> evictedFilters = new ArrayList();
             for (Class cl : noiseFilterClasses) {
-                if (cl == null) {
-                    noiseFilters[i] = null;  // noop filter
-                    i++;
-                    continue;
-                }
                 try {
                     Constructor con = cl.getConstructor(AEChip.class);
                     noiseFilters[i] = (AbstractNoiseFilter) con.newInstance(chip);
@@ -1562,10 +1550,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putString("csvFileName", csvFileName);
         getSupport().firePropertyChange("csvFileName", this.csvFileName, csvFileName);
         this.csvFileName = csvFileName;
-        doOpenMLP_CSVFile();
+        doToggleOnSaveMLPTraining();
     }
 
-    synchronized public void doCloseMLP_CSVFile() {
+    synchronized public void doToggleOffSaveMLPTraining() {
         if (csvFile != null) {
             try {
                 log.fine("closing MLPF CSV output file" + csvFile);
@@ -1601,7 +1589,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    synchronized public void doOpenMLP_CSVFile() {
+    synchronized public void doToggleOnSaveMLPTraining() {
         csvNumEventsWritten = 0;
         csvSignalCount = 0;
         csvNoiseCount = 0;
@@ -1719,7 +1707,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     setLeakNoiseRateHz(Float.parseFloat(tok[i + 1]));
                     log.info(String.format("setLeakNoiseRateHz %f", leakNoiseRateHz));
                 } else if (tok[i].equals("closeFile")) {
-                    doCloseMLP_CSVFile();
+                    doToggleOffSaveMLPTraining();
                     log.info(String.format("closeFile %s", csvFileName));
                 }
             }
@@ -1832,32 +1820,28 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     synchronized public void setRocHistoryLength(int rocHistoryLength) {
         int old = this.rocHistoryLength;
-        if (rocHistoryLength > 1000) {
-            rocHistoryLength = 1000;
+        if (rocHistoryLength > 256) {
+            rocHistoryLength = 256;
         }
         this.rocHistoryLength = rocHistoryLength;
         putInt("rocHistoryLength", rocHistoryLength);
-        rocHistoryCurrent.reset();
+        rocHistoryCurrent.setLength(rocHistoryLength);
         getSupport().firePropertyChange("rocHistoryLength", old, this.rocHistoryLength);
     }
 
     @Preferred
-    synchronized public void doResetROCHistory() {
-        rocHistoryCurrent.reset();
-    }
-
-    @Preferred
-    synchronized public void doStartROCSweep() {
+    synchronized public void doToggleOnROCSweep() {
+        rocSweep = new ROCSweep(selectedNoiseFilter);
         rocSweep.start();
     }
 
     @Preferred
-    synchronized public void doStopROCSweep() {
+    synchronized public void doToggleOffROCSweep() {
         rocSweep.stop();
     }
 
     @Preferred
-    synchronized public void doSaveROCSweepsToCSV() {
+    synchronized public void doExportROCs() {
         try {
             rocSweep.saveToCSVs();
         } catch (FileNotFoundException ex) {
@@ -1866,14 +1850,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    synchronized public void doCloseNoiseSourceRecording() {
+    synchronized public void doToggleOffNoiseRecording() {
         if (prerecordedNoise != null) {
             log.info("clearing recoerded noise input data");
             prerecordedNoise = null;
         }
     }
 
-    synchronized public void doOpenNoiseSourceRecording() {
+    synchronized public void doToggleOnUseNoiseRecording() {
         JFileChooser fileChooser = new JFileChooser();
         ChipDataFilePreview preview = new ChipDataFilePreview(fileChooser, getChip());
         // from book swing hacks
@@ -2209,15 +2193,59 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         boolean firstStep = true;  // cleared afer initial sweep value is checked
         Method setter = null, getter = null;
         boolean floatType = true;
-        ROCHistory rocHistorySummary = null;
+//        ROCHistory rocHistorySummary = null;
         MultivariateSummaryStatistics stats = new MultivariateSummaryStatistics(2, false);
         float startingValue = .1f;
         int stepsCompleted = 0;
+        ArrayList<ROCSample> samples = new ArrayList();
 
         private HashMap<String, ROCSweepParams> rocSweepParamesHashMap = null;
         private boolean installedPropertyChangeListeners = false;
         private int savedRocHistoryLength = getRocHistoryLength();
         private long estimateNumSteps;
+        private float auc = Float.NaN;
+        private Boolean clockwise = null;
+        private Color color;
+        private String noiseFilterInfo;
+        private String noiseFilterName;
+
+        private void draw(GL2 gl) {
+
+            // draw each sample as a square point
+            for (ROCSample rocSample : samples) {
+                rocSample.draw(gl, color, 12);
+            }
+            if (noiseFilterInfo != null) {
+                DrawGL.drawString(getShowFilteringStatisticsFontSize(),
+                        chip.getSizeX(), rocHistoryLabelPosY, 1, color,
+                        noiseFilterInfo + String.format(" AUC=%.3f", auc));
+            }
+            rocHistoryLabelPosY -= 1.8f * getShowFilteringStatisticsFontSize();
+            float[] rgb = color.getRGBComponents(null);
+            gl.glColor3fv(rgb, 0);
+            gl.glLineWidth(1);
+            gl.glPushMatrix();
+            gl.glBegin(GL.GL_LINE_STRIP);
+            if (clockwise != null) {
+                if (clockwise) {
+                    gl.glVertex2f(0, 0);
+                } else {
+                    gl.glVertex2f(sx, sy);
+                }
+            }
+            for (ROCSample rocSample : samples) {
+                gl.glVertex2f(rocSample.x * sx, rocSample.y * sy);
+            }
+            if (clockwise != null) {
+                if (clockwise) {
+                    gl.glVertex2f(sx, sy);
+                } else {
+                    gl.glVertex2f(0, 0);
+                }
+            }
+            gl.glEnd();
+            gl.glPopMatrix();
+        }
 
         /**
          * Class to hold parameters for HashMap to be stored in preferences
@@ -2241,8 +2269,26 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
         }
 
-        public ROCSweep() {
-            init();
+        public ROCSweep(AbstractNoiseFilter noiseFilter) {
+            noiseFilterInfo = noiseFilter.infoString();
+            noiseFilterName = noiseFilter.getClass().getSimpleName();
+            if (chip.getAeViewer() != null && !installedPropertyChangeListeners) {
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
+                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_INIT, this);
+                installedPropertyChangeListeners = true;
+            }
+            running = false;
+            firstStep = true;
+            currentValue = stepSign() > 0 ? rocSweepStart : rocSweepEnd;
+            try {
+                rocSweepParamesHashMap = (HashMap<String, ROCSweepParams>) getObject("rocSweepParamesHashMap", new HashMap());
+            } catch (ClassCastException | NullPointerException e) {
+                log.log(Level.INFO, "No existing ROCSweepParams: {0}", e.toString());
+            }
+            loadParams();
+            reset();
+            computeEstimatedNumSteps();
+
         }
 
         void storeParams() {
@@ -2255,7 +2301,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             putObject("rocSweepParamesHashMap", rocSweepParamesHashMap);
         }
 
-        void loadParams() {
+        private void loadParams() {
             if (selectedNoiseFilter == null) {
                 return;
             }
@@ -2282,8 +2328,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         @Override
         public String toString() {
             if (running) {
-                return String.format("ROC Sweep: %s start:%s end:%s step:%s currentValue:%s (step %d/%d)", 
-                        rocSweepLogStep? "log":"linear",
+                return String.format("ROC Sweep: %s start:%s end:%s step:%s currentValue:%s (step %d/%d)",
+                        rocSweepLogStep ? "log" : "linear",
                         eng.format(rocSweepStart), eng.format(rocSweepEnd), eng.format(rocSweepStep), eng.format(currentValue),
                         stepsCompleted, estimateNumSteps);
             } else {
@@ -2292,22 +2338,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         final void init() {
-            if (chip.getAeViewer() != null && !installedPropertyChangeListeners) {
-                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_INIT, this);
-                installedPropertyChangeListeners = true;
-            }
-            running = false;
-            firstStep = true;
-            currentValue=stepSign()>0? rocSweepStart:rocSweepEnd;
-            try {
-                rocSweepParamesHashMap = (HashMap<String, ROCSweepParams>) getObject("rocSweepParamesHashMap", new HashMap());
-            } catch (ClassCastException | NullPointerException e) {
-                log.log(Level.INFO, "No existing ROCSweepParams: {0}", e.toString());
-            }
-            loadParams();
-            reset();
-            computeEstimatedNumSteps();
         }
 
         void saveToCSVs() throws FileNotFoundException {
@@ -2315,14 +2345,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 log.warning("can only be called from Swing/AWT thread");
                 return;
             }
-            if (rocHistoriesSaved.isEmpty()) {
+            if (rocSweeps.isEmpty()) {
                 JOptionPane.showMessageDialog(chip.getFilterFrame(), "No ROC sweeps to save");
                 return;
             }
             // TODO 
             String lastFolder = getString("lastROCCSVFolder", System.getProperty("user.dir"));
-            JFileChooser fileChooser = new JFileChooser();
+            JFileChooser fileChooser = new JFileChooser("Export ROC curves to CSV files");
             fileChooser.setApproveButtonToolTipText("Select folder and base name for CSV files (not including extension)");
+            fileChooser.setToolTipText("Browse to desired folder and enter base name for CSV files (not including extension)");
             File sf = new File(lastFolder);
             fileChooser.setCurrentDirectory(sf);
 //            fileChooser.setSelectedFile(sf);
@@ -2334,23 +2365,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 putString("lastROCCSVFolder", folder);
                 ArrayList<String> filenames = new ArrayList();
                 int filenum = 0;
-                for (ROCHistory sweep : rocHistoriesSaved) {
-                    if (!sweep.summary || sweep.rocSweepPropertyName == null) {
-                        log.warning("not summary or missing roc sweep property name; will not save " + sweep);
-                        continue;
-                    }
+                outer:
+                for (ROCSweep sweep : rocSweeps) {
                     final String prefix = selectedFile.getName();
-                    final String simpleName = sweep.noiseFilter.getClass().getSimpleName();
+                    final String simpleName = sweep.noiseFilterName;
                     final String propName = sweep.rocSweepPropertyName;
                     Path path = Path.of(folder, prefix + "-ROCSweep-" + simpleName + "-" + propName + "-" + filenum + ".csv");
-                    try (PrintWriter writer = new PrintWriter(path.toFile())) {
-                        writer.println(String.format("ROC sweep of %s for filter %s", propName, simpleName));
+                    File outputfile = path.toFile();
+                    if (outputfile.exists()) {
+                        int overwrite = JOptionPane.showConfirmDialog(fileChooser, outputfile.toString() + " exists, overwrite?");
+                        if (overwrite== JOptionPane.NO_OPTION) {
+                            continue;
+                        }else if(overwrite==JOptionPane.CANCEL_OPTION){
+                            break outer;
+                        }
+                    }
+                    try (PrintWriter writer = new PrintWriter(outputfile)) {
+                        writer.println(String.format("# ROC sweep of parameter %s for filter %s", propName, simpleName));
                         writer.println("# created " + new Date().toString());
-                        writer.println("# ROC Sweep: "+sweep.toString());
-                        writer.println("# NoiseTesterFilter: "+this.toString());
+                        writer.println("# NoiseTesterFilter noise: " + noiseSummaryString);
                         writer.println("# source-file: " + (chip.getAeInputStream() != null ? chip.getAeInputStream().getFile().toString() : "(live input)"));
-                        for (ROCSample s : sweep.rocHistoryList) {
-                            writer.println(String.format("%f,%f,%f", s.tau, s.x, s.y));
+                        if (chip.getAeInputStream() != null) {
+                            String marks = String.format("# Marks: IN=%,d OUT=%,d", chip.getAeInputStream().getMarkInPosition(), chip.getAeInputStream().getMarkOutPosition());
+                            writer.println(marks);
+                        }
+                        writer.println("# Computed ROC Sweep AUC=" + sweep.auc);
+                        writer.println(String.format("%s, FPR, TPR", propName));
+                        for (ROCSample s : sweep.samples) {
+                            writer.println(String.format("%f,%f,%f", s.param, s.x, s.y));
                         }
                     }
                     filenames.add(path.toString());
@@ -2375,20 +2417,15 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
                 chip.getAeViewer().getAePlayer().rewind();
             }
-            reset();
             rocHistoryCurrent.reset();
             savedRocHistoryLength = getRocHistoryLength(); // to restore on stop()
             rocHistoryLength = 1000; //sufficient for whole marked section of recording
-            rocHistorySummary = new ROCHistory(selectedNoiseFilter);
-            rocHistorySummary.summary = true;
-            Color color = selectedNoiseFilter == null ? Color.white : new Color(colors[lastcolor % colors.length]);
+//            rocHistorySummary = new ROCHistory(selectedNoiseFilter);
+//            rocHistorySummary.summary = true;
+            color = selectedNoiseFilter == null ? Color.white : new Color(colors[lastcolor % colors.length]);
             lastcolor += 1;
-            int ptSize = 8;
-            rocHistorySummary.setColor(color);
-            rocHistorySummary.setPtSize(ptSize);
-            rocHistorySummary.rocSweepPropertyName = rocSweepPropertyName;
 
-            rocHistoriesSaved.add(rocHistorySummary);
+            rocSweeps.add(this);
 
             running = true;
             stepsCompleted = 0;
@@ -2435,7 +2472,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 restoreStartingSweptValue();
             }
             running = false;
-            setRocHistoryLength(savedRocHistoryLength); //sufficient for whole marked section of recording
+            setRocHistoryLength(savedRocHistoryLength);
+            getSupport().firePropertyChange("doToggleOffROCSweep", true, false);
         }
 
         void endAndSave() {
@@ -2443,7 +2481,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             rocHistoryCurrent.reset();
         }
 
-        void reset() {
+        private void reset() {
             currentValue = rocSweepStart;
         }
 
@@ -2453,9 +2491,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
             // first save summary statistic for last step in private rocHistorySummary
             ROCSample avg = rocHistoryCurrent.computeAvg();
+            avg.param = currentValue;
             if (!Float.isNaN(avg.x) && !Float.isNaN(avg.y)) {
-                rocHistorySummary.addSample(avg.x, avg.y, currentValue);
-                rocHistorySummary.computeAUC();
+                samples.add(avg);
+                computeAUC();
             }
             rocHistoryCurrent.reset();
 
@@ -2474,6 +2513,56 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             }
         }
 
+        float computeAUC() {
+            this.auc = 0;
+            int n = samples.size();
+            float lastx = 0, lasty = 0;
+            if (n < 2) {
+                return Float.NaN;
+            }
+            ROCSample first = null;
+            ROCSample last = null;
+            for (ROCSample s : samples) {
+                if (Float.isNaN(s.x * s.y)) {
+                    continue;
+                }
+                final float x = s.x, y = s.y;
+                if (first == null) {
+                    first = s;
+                    lastx = x;
+                    lasty = y;
+                    last = s;
+                    continue; // don't get area from first point, compute this at end once we know direction
+                }
+                float a = (float) Math.abs((x - lastx) * ((y + lasty) / 2));
+                auc += a;
+                lastx = x;
+                lasty = y;
+                last = s;
+            }
+            if (first != null && last != null) {
+                if (first.x < last.x && first.y < last.y) {
+                    clockwise = true;
+                } else if (last.x < first.x && last.y < first.y) {
+                    clockwise = false;
+                }
+            }
+            if (clockwise != null) {
+                if (clockwise) {
+                    float lasta = (1 - last.x) * ((1 + last.y) / 2);
+                    auc += lasta;
+                    float firsta = (first.x - 0) * (first.y / 2);
+                    auc += firsta;
+                } else { // counterclockwise
+                    float lasta = (1 - first.x) * ((1 + first.y) / 2);
+                    auc += lasta;
+                    float firsta = (last.x - 0) * (last.y / 2);
+                    auc += firsta;
+                }
+            }
+            return auc;
+        }
+
         private void computeEstimatedNumSteps() {
             if (rocSweepLogStep) {
                 estimateNumSteps = Math.round(Math.abs(Math.log(rocSweepEnd / rocSweepStart) / Math.log(rocSweepStep)));
@@ -2487,9 +2576,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             float old = currentValue;
             if (!firstStep) {
                 if (rocSweepLogStep) {
-                    currentValue = stepSign()>0? currentValue*rocSweepStep:currentValue/rocSweepStep;
+                    currentValue = stepSign() > 0 ? currentValue * rocSweepStep : currentValue / rocSweepStep;
                 } else {
-                    currentValue += rocSweepStep*stepSign();
+                    currentValue += rocSweepStep * stepSign();
                 }
             }
             firstStep = false;
@@ -2497,7 +2586,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             log.info(String.format("ROCSweep increased currentValue of %s from %s -> %s", getRocSweepPropertyName(),
                     eng.format(old), eng.format(currentValue)));
-            boolean done = stepSign()>0? currentValue > rocSweepEnd:currentValue<rocSweepStart;
+            boolean done = stepSign() > 0 ? currentValue > rocSweepEnd : currentValue < rocSweepEnd;
             return done;
         }
 
@@ -2554,6 +2643,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepStart", old, this.rocSweepStart);
             computeEstimatedNumSteps();
+            log.info(String.format("Sweep start: %s - About %d steps", eng.format(rocSweepStart), Math.round(estimateNumSteps)));
         }
 
         /**
@@ -2576,6 +2666,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepEnd", old, this.rocSweepEnd);
             computeEstimatedNumSteps();
+            log.info(String.format("Sweep end: %s - About %d steps", eng.format(rocSweepEnd), Math.round(estimateNumSteps)));
         }
 
         /**
@@ -2595,6 +2686,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepLogStep", old, this.rocSweepLogStep);
             computeEstimatedNumSteps();
+            log.info(String.format("About %d steps", Math.round(estimateNumSteps)));
         }
 
         /**
@@ -2729,25 +2821,29 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private int legendDisplayListId = 0;
         private ROCSample[] legendROCs = null;
         private ROCSample avgRocSample = null; // avg over entire rocHistoryLength
-        private AbstractNoiseFilter noiseFilter = null;
+//        private AbstractNoiseFilter noiseFilter = null;
+        String noiseFilterName = null;
+        String noiseFilterInfo = null;
         final int DEFAULT_PT_SIZE = 3;
         private int ptSize = DEFAULT_PT_SIZE;
         private Color color = Color.white;
-        private String label = "";
         float auc = 0;
         boolean summary = false; // flag for a roc sweep set of points
         Boolean clockwise = null;  // flag that says last point has higher tpr/fpr, i.e. the sweep increased the signal and noise rate
         String rocSweepPropertyName = null;
 
         public ROCHistory(AbstractNoiseFilter noiseFilter) {
-            this.noiseFilter = noiseFilter;
+            if (noiseFilter != null) {
+                this.noiseFilterName = noiseFilter.getClass().getSimpleName();
+                this.noiseFilterInfo = noiseFilter.infoString();
+            }
         }
 
         public String toString() {
-            return String.format("ROCHistory with %,d points", rocHistoryList.size());
+            return String.format("ROCHistory for filter %s with %,d points", rocHistoryList.size());
         }
 
-        ROCSample createAbsolutePosition(float x, float y, float tau, boolean labeled) {
+        ROCSample createSample(float x, float y, float tau, boolean labeled) {
             return new ROCSample(x, y, tau, labeled, this);
         }
 
@@ -2814,10 +2910,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return auc;
         }
 
+        void setLength(int length) {
+            rocHistoryList.clear();
+            if (length != rocHistoryList.remainingCapacity()) {
+                rocHistoryList = EvictingQueue.create(length);
+            }
+        }
 
         private void reset() {
             rocHistoryList.clear();
             lastTau = null;
+        }
+
+        void prune() {
+            EvictingQueue<ROCSample> tmp = EvictingQueue.create(rocHistoryList.size());
+            for (ROCSample s : rocHistoryList) {
+                tmp.add(s);
+            }
+            rocHistoryList = tmp;
         }
 
         /**
@@ -2848,10 +2958,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             this.color = color;
         }
 
-        public void setNoiseFilter(AbstractNoiseFilter f) {
-            noiseFilter = f;
-        }
-
         void addSample(float fpr, float tpr, float tau) {
             boolean labelIt = lastTau == null
                     || Math.abs(Math.log10(tau / lastTau)) > .1
@@ -2865,31 +2971,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             if (counter > SAMPLE_INTERVAL_NO_CHANGE) {
                 counter = 0;
             }
-            if (selectedNoiseFilter != null) {
-                label = selectedNoiseFilter.infoString();
-            }
-        }
-
-        private void drawLegend(GL2 gl) {
-            if (legendDisplayListId == 0) {
-                int NLEG = 8;
-                legendROCs = new ROCSample[NLEG];
-                for (int i = 0; i < NLEG; i++) {
-                    ROCSample r = createAbsolutePosition(sx + 5, i * 12 + 20, (float) Math.pow(10, -3 + 2f * i / (NLEG - 1)), true);
-                    legendROCs[i] = r;
-                }
-                legendDisplayListId = gl.glGenLists(1);
-                gl.glNewList(legendDisplayListId, GL2.GL_COMPILE);
-                { // TODO make a real list
-                }
-                gl.glEndList();
-            }
-            gl.glPushMatrix();
-//            gl.glCallList(legendDisplayListId);
-            for (ROCSample r : legendROCs) {
-                r.draw(gl);
-            }
-            gl.glPopMatrix();
         }
 
         void draw(GL2 gl) {
@@ -2902,10 +2983,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             for (ROCSample rocSample : rocHistoryList) {
                 rocSample.draw(gl, color, ptSize);
             }
-            if (noiseFilter != null) {
+            if (noiseFilterInfo != null) {
                 DrawGL.drawString(getShowFilteringStatisticsFontSize(),
                         chip.getSizeX(), rocHistoryLabelPosY, 1, color,
-                        label + String.format(" AUC=%.3f", auc));
+                        noiseFilterInfo + String.format(" AUC=%.3f", auc));
             }
             rocHistoryLabelPosY -= 1.8f * getShowFilteringStatisticsFontSize();
             if (summary) {
@@ -3170,20 +3251,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Preferred
-    public void doSaveRocHistory() {
-        rocHistoriesSaved.add(rocHistoryCurrent);
-        rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
-    }
-
-    @Preferred
-    public void doClearAllSavedRocHistories() {
+    public void doClearROCs() {
         rocHistoriesSaved.clear();
+        rocSweeps.clear();
+        rocHistoryCurrent.reset();
     }
 
     @Preferred
-    public void doClearLastRocHistory() {
-        if (!rocHistoriesSaved.isEmpty()) {
-            rocHistoriesSaved.removeLast();
+    public void doClearLastROC() {
+        if (!rocSweeps.isEmpty()) {
+            rocSweeps.removeLast();
         }
     }
 
@@ -3263,7 +3340,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         float x;
         float y;
-        float tau;
+        float param;
         int size;
 
         /**
@@ -3271,25 +3348,25 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
          *
          * @param x FPR *sx position on plot
          * @param y TPR *sy position on plot in fraction of chip
-         * @param tau associated correlation time or threshold
-         * @param labeled true to label this sample, false for global values
-         * or last sample
+         * @param param associated correlation time or threshold
+         * @param labeled true to label this sample, false for global values or
+         * last sample
          */
-        ROCSample(float x, float y, float tau, boolean labeled, final ROCHistory outer) {
+        ROCSample(float x, float y, float param, boolean labeled, final ROCHistory outer) {
             this.size = outer.getPtSize();
             this.x = x;
             this.y = y;
-            this.tau = tau;
+            this.param = param;
         }
 
         /**
-         * Draw point using color derived from tau correlation interval
+         * Draw point using color derived from param correlation interval
          * parameter
          *
          * @param gl
          */
         void draw(GL2 gl) {
-            float hue = (float) (Math.log10(tau) / 2 + 1.5); //. hue is 1 for tau=0.1s and is 0 for tau = 1ms
+            float hue = (float) (Math.log10(param) / 2 + 1.5); //. hue is 1 for param=0.1s and is 0 for param = 1ms
             Color c = Color.getHSBColor(hue, 1f, hue);
             draw(gl, c, size);
         }
