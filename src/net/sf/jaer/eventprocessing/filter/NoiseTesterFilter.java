@@ -1822,6 +1822,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int old = this.rocHistoryLength;
         if (rocHistoryLength > 256) {
             rocHistoryLength = 256;
+        }else if(rocHistoryLength<1){
+            rocHistoryLength=1;
         }
         this.rocHistoryLength = rocHistoryLength;
         putInt("rocHistoryLength", rocHistoryLength);
