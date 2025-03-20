@@ -259,7 +259,7 @@
             <entry key="APS.ResetRead" value="true"/>
             <entry key="APS.WaitOnTransferStall" value="true"/>
             <entry key="APS.GlobalShutter" value="true"/>
-            <entry key="APS.Exposure" value="260871"/>
+            <entry key="APS.Exposure" value="32119"/>
             <entry key="APS.FrameDelay" value="1000000"/>
             <entry key="APS.ResetSettle" value="10"/>
             <entry key="APS.ColumnSettle" value="30"/>
@@ -314,15 +314,15 @@
             <entry key="Chip.AdjustOVG1Lo" value="true"/>
             <entry key="Chip.AdjustOVG2Lo" value="false"/>
             <entry key="Chip.AdjustTX2OVG2Hi" value="false"/>
-            <entry key="VDACBias.ApsCasBpc.VdacBitValue" value="27"/>
+            <entry key="VDACBias.ApsCasBpc.VdacBitValue" value="39"/>
             <entry key="VDACBias.ApsCasBpc.BufBitValue" value="4"/>
             <entry key="VDACBias.OVG1Lo.VdacBitValue" value="63"/>
             <entry key="VDACBias.OVG1Lo.BufBitValue" value="4"/>
-            <entry key="VDACBias.OVG2Lo.VdacBitValue" value="0"/>
+            <entry key="VDACBias.OVG2Lo.VdacBitValue" value="14"/>
             <entry key="VDACBias.OVG2Lo.BufBitValue" value="0"/>
             <entry key="VDACBias.TX2OVG2Hi.VdacBitValue" value="63"/>
             <entry key="VDACBias.TX2OVG2Hi.BufBitValue" value="0"/>
-            <entry key="VDACBias.Gnd07.VdacBitValue" value="13"/>
+            <entry key="VDACBias.Gnd07.VdacBitValue" value="12"/>
             <entry key="VDACBias.Gnd07.BufBitValue" value="4"/>
             <entry key="VDACBias.VTestADC.VdacBitValue" value="21"/>
             <entry key="VDACBias.VTestADC.BufBitValue" value="0"/>
@@ -353,7 +353,7 @@
             <entry key="VideoControl.autoContrastControlTimeConstantMs" value="1000.0"/>
             <entry key="VideoControl.brightness" value="0.0"/>
             <entry key="IMU.enabled" value="false"/>
-            <entry key="colorScale" value="3"/>
+            <entry key="colorScale" value="5"/>
             <entry key="borderSpacePixels" value="10"/>
             <entry key="ChipCanvas.origin3dx" value="0"/>
             <entry key="ChipCanvas.origin3dy" value="0"/>
@@ -366,7 +366,7 @@
             <entry key="DavisVideoContrastController.contrast" value="1.0"/>
             <entry key="DavisVideoContrastController.gamma" value="1.0"/>
             <entry key="DavisVideoContrastController.useAutoContrast" value="false"/>
-            <entry key="FilterFrame.lastFilterSelected" value=""/>
+            <entry key="FilterFrame.lastFilterSelected" value="class net.sf.jaer.eventprocessing.filter.DepressingSynapseFilter"/>
             <entry key="FilterFrame.restoreFilterEnabledStateEnabled" value="true"/>
             <entry key="autoWhiteBalance" value="false"/>
             <entry key="colorCorrection" value="false"/>
@@ -374,18 +374,19 @@
             <entry key="displayFrames" value="true"/>
             <entry key="monochrome" value="false"/>
             <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAADdwQAAAADc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABEQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGJpYXNnZW5TZXR0aW5nc1xDREFWSVN3AgBceHNxAH4AAnQAZkM6XFVzZXJzXHRvYmlkXERyb3Bib3hcR2l0SHViXFNlbnNvcnNJTklcamFlclxiaWFzZ2VuU2V0dGluZ3NcQ0RBVklTXENEQVZJUzIwLXRvYmktbmV3cHJlZnMtaW5kb29yLnhtbHcCAFx4c3EAfgACdABfQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGJpYXNnZW5TZXR0aW5nc1xDREFWSVNcQ0RBVklTMjAtdG9iaS1uZXdwcmVmcy54bWx3AgBceHg="/>
-            <entry key="separateAPSByColor" value="false"/>
+            <entry key="separateAPSByColor" value="true"/>
             <entry key="skipPacketsRenderingNumberMax" value="0"/>
-            <entry key="DavisBaseCamera.showImageHistogram" value="true"/>
+            <entry key="DavisBaseCamera.showImageHistogram" value="false"/>
             <entry key="CDAVIS.preferredDisplayMethod" value="eu.seebetter.ini.chips.davis.DavisBaseCamera$DavisDisplayMethod"/>
-            <entry key="ChipCanvas.angley" value="39.310345"/>
-            <entry key="ChipCanvas.anglex" value="-9.457093"/>
+            <entry key="ChipCanvas.angley" value="14.032258"/>
+            <entry key="ChipCanvas.anglex" value="-9.0"/>
             <entry key="fadingFrames" value="22"/>
             <entry key="framesAlpha" value="0.5"/>
             <entry key="additiveColorEnabled" value="true"/>
             <entry key="drawFramesOnOwnAxes" value="true"/>
             <entry key="largePointSizeEnabled" value="false"/>
             <entry key="ChipRenderer.colorMode" value="RedGreen"/>
+            <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAALdwQAAAALdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0ACduZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkluZm90ADJuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkNlbGxTdGF0c1Byb2JlcnQAKG5ldC5zZi5qYWVyLnV0aWwuYXZpb3V0cHV0LkphZXJBdmlXcml0ZXJ0ACpjaC51bml6aC5pbmkuamFlci5wcm9qZWN0cy5ucHAuUm9TaGFtQm9DTk50ACxuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlN0ZWFkaWNhbXQAOm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuRGVwcmVzc2luZ1N5bmFwc2VGaWx0ZXJ4"/>
           </map>
         </node>
       </node>
