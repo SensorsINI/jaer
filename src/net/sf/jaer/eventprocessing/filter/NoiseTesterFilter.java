@@ -228,10 +228,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     @Preferred
     private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
+
+    private final Timer stopper = new Timer("NoiseTesterFilter.Stopper", true);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
+    private TimerTask stopperTask = null;
     // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse
     private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");
-    private final long MAX_FILTER_PROCESSING_TIME_MS = 500000; // times out to avoid using up all heap
+    private int maxProcessingTimeLimitMs = getInt("maxProcessingTimeLimitMs", 500); // times out to avoid using up all heap
+
     private TextRenderer textRenderer = null;
 
     /**
@@ -317,6 +321,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(denoiser, "selectedNoiseFilterEnum", "Choose a noise filter to test");
         setPropertyTooltip(denoiser, "noiseFilterComboBoxModel", "Choose a noise filter to test");
         setPropertyTooltip(denoiser, "enableMultipleMethods", "Enable chain of denoising methods, in order top to bottom that are enabled.");
+        setPropertyTooltip(denoiser, "maxProcessingTimeLimitMs", "Maximum time limit in ms for processing each packet; to deal with problems with high noise rates and complex algorithms that may appear frozen.");
 
         String noise = "0b. Noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
@@ -356,6 +361,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay FN in green <br>(signal events incorrectly classified as noise)");
         setPropertyTooltip(TT_DISP, "overlayAlpha", "The alpha (opacity) of the overlaid classification colors");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show. The average over these samples is shown as the large cross.");
+        
+
         // buttons
 //        setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
         setPropertyTooltip(TT_DISP, "doClearROCs", "Clears all saved ROC curves and current samples from packets");
@@ -594,9 +601,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         return snl;
     }
 
-    private final boolean checkStopMe(String where) {
+    private boolean checkStopMe(String where) {
         if (stopMe) {
-            log.severe(where + "\n: Processing took longer than " + MAX_FILTER_PROCESSING_TIME_MS + "ms, disabling filter");
+            log.severe(String.format("After processing step %s \n: took longer than maxProcessingTimeLimitMs=%,dms, disabling NoiseTesterFilter", where, maxProcessingTimeLimitMs));
             setFilterEnabled(false);
             return true;
         }
@@ -713,16 +720,25 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             return in;
         }
 
+        // set a stopMe boolean false that is set true by a scheduled Timer task that executes maxProcessingTimeLimitMs after event processing starts.
+        // we check the stopMe flag periodically with checkStopMe() to disable NTF if something takes too long to process
         stopMe = false;
-        Timer stopper = null;
         if (!isDebug) {
-            stopper = new Timer("NoiseTesterFilter.Stopper", true);
-            stopper.schedule(new TimerTask() {
+            if (stopperTask != null) {
+                stopperTask.cancel();
+                stopperTask = null;
+            }
+            stopperTask = new TimerTask() {
                 @Override
                 public void run() {
+//                    if (System.currentTimeMillis() - scheduledExecutionTime()
+//                            >= maxProcessingTimeLimitMs) {
+//                        return;  // Too late; skip this execution.
+//                    }
                     stopMe = true;
                 }
-            }, MAX_FILTER_PROCESSING_TIME_MS);
+            };
+            stopper.schedule(stopperTask, maxProcessingTimeLimitMs);
         }
         BasicEvent firstE = in.getFirstEvent();
         if (firstSignalTimestmapAfterReset == null) {
@@ -928,9 +944,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 //        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
             }
-            if (stopper != null) {
-                stopper.cancel();
-            }
+            boolean ranStopper = stopperTask.cancel();
+            log.fine(String.format("stopperTask.cancel() returned %s", ranStopper));
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
                 inSignalRateHz = (1e6f * in.getSize()) / deltaTime;
@@ -1822,8 +1837,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int old = this.rocHistoryLength;
         if (rocHistoryLength > 256) {
             rocHistoryLength = 256;
-        }else if(rocHistoryLength<1){
-            rocHistoryLength=1;
+        } else if (rocHistoryLength < 1) {
+            rocHistoryLength = 1;
         }
         this.rocHistoryLength = rocHistoryLength;
         putInt("rocHistoryLength", rocHistoryLength);
@@ -2376,9 +2391,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     File outputfile = path.toFile();
                     if (outputfile.exists()) {
                         int overwrite = JOptionPane.showConfirmDialog(fileChooser, outputfile.toString() + " exists, overwrite?");
-                        if (overwrite== JOptionPane.NO_OPTION) {
+                        if (overwrite == JOptionPane.NO_OPTION) {
                             continue;
-                        }else if(overwrite==JOptionPane.CANCEL_OPTION){
+                        } else if (overwrite == JOptionPane.CANCEL_OPTION) {
                             break outer;
                         }
                     }
@@ -3336,6 +3351,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public void setRocSweepParameterComboBoxModel(ComboBoxModel rocSweepParameterComboBoxModel) {
         this.rocSweepParameterComboBoxModel = rocSweepParameterComboBoxModel;
+    }
+
+    /**
+     * @return the maxProcessingTimeLimitMs
+     */
+    public int getMaxProcessingTimeLimitMs() {
+        return maxProcessingTimeLimitMs;
+    }
+
+    /**
+     * @param maxProcessingTimeLimitMs the maxProcessingTimeLimitMs to set
+     */
+    public void setMaxProcessingTimeLimitMs(int maxProcessingTimeLimitMs) {
+        if (maxProcessingTimeLimitMs < 5) {
+            maxProcessingTimeLimitMs = 5;
+        }
+        this.maxProcessingTimeLimitMs = maxProcessingTimeLimitMs;
+        putInt("maxProcessingTimeLimitMs", maxProcessingTimeLimitMs);
     }
 
     class ROCSample {
