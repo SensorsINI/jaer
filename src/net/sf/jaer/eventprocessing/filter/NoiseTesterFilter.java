@@ -232,7 +232,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private final Timer stopper = new Timer("NoiseTesterFilter.Stopper", true);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     private TimerTask stopperTask = null;
-    // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse
+    // https://stackoverflow.com/questions/1109019/determine-if-a-java-application-is-in-debug-mode-in-eclipse\
+    // isDebug is only set true on windows systems, not linux
     private final boolean isDebug = java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments().toString().contains("debug");
     private int maxProcessingTimeLimitMs = getInt("maxProcessingTimeLimitMs", 500); // times out to avoid using up all heap
 
@@ -361,7 +362,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(TT_DISP, "overlayFN", "<html><p>Overlay FN in green <br>(signal events incorrectly classified as noise)");
         setPropertyTooltip(TT_DISP, "overlayAlpha", "The alpha (opacity) of the overlaid classification colors");
         setPropertyTooltip(TT_DISP, "rocHistoryLength", "Number of samples of ROC point to show. The average over these samples is shown as the large cross.");
-        
 
         // buttons
 //        setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
@@ -944,8 +944,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
 //        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
             }
-            boolean ranStopper = stopperTask.cancel();
-            log.fine(String.format("stopperTask.cancel() returned %s", ranStopper));
+            if (!isDebug) {
+                boolean ranStopper = stopperTask.cancel();
+//                log.fine(String.format("stopperTask.cancel() returned %s", ranStopper));
+            }
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
                 inSignalRateHz = (1e6f * in.getSize()) / deltaTime;
@@ -1909,6 +1911,104 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             preview.showFile(null);
         }
     }
+
+    private class SignalNoiseEvent extends ApsDvsEvent {
+
+        private boolean signal = true;
+        private boolean labeledSignal = true;
+
+        public SignalNoiseEvent(PolarityEvent e) {
+            this.timestamp = e.timestamp;
+            this.x = e.x;
+            this.y = e.y;
+            this.polarity = e.polarity;
+        }
+
+        @Override
+        public void copyFrom(BasicEvent src) {
+            super.copyFrom(src);
+            if (src instanceof SignalNoiseEvent e) {
+                this.setSignal(e.isSignal());
+                this.setLabeledSignal(e.isLabeledSignal());
+            }
+        }
+
+        /**
+         * @return the signal
+         */
+        final public boolean isSignal() {
+            return signal;
+        }
+
+        /**
+         * @param signal the signal to set
+         */
+        final public void setSignal(boolean signal) {
+            this.signal = signal;
+        }
+
+        /**
+         * @return the labeledSignal
+         */
+        public boolean isLabeledSignal() {
+            return labeledSignal;
+        }
+
+        /**
+         * @param labeledSignal the labeledSignal to set
+         */
+        public void setLabeledSignal(boolean labeledSignal) {
+            this.labeledSignal = labeledSignal;
+        }
+
+    }
+
+    private class SignalNoisePacket extends ApsDvsEventPacket<ApsDvsEvent> {
+
+        int tpCount, tnCount, fpCount, fnCount;
+
+        public SignalNoisePacket(Class<? extends ApsDvsEvent> eventClass) {
+            super(eventClass);
+        }
+
+        final void resetCounts() {
+            tpCount = 0;
+            tnCount = 0;
+            fpCount = 0;
+            fnCount = 0;
+        }
+
+        final void countClassifications() {
+            resetCounts();
+            for (ApsDvsEvent o : this) {
+                SignalNoiseEvent e = (SignalNoiseEvent) o;
+                if (e.signal) {
+                    if (e.labeledSignal) {
+                        tpCount++;
+                    } else {
+                        fnCount++;
+                    }
+                } else { // true noise
+                    if (e.labeledSignal) {
+                        fpCount++;
+                    } else {
+                        tnCount++;
+                    }
+                }
+
+            }
+        }
+
+        final void copyFrom(ApsDvsEventPacket p) {
+            OutputEventIterator outItr = outputIterator();
+            for (Object o : p) {
+                outItr.nextOutput().copyFrom((BasicEvent) o);
+            }
+            resetCounts();
+        }
+    }
+
+    private SignalNoisePacket signalNoisePacket = new SignalNoisePacket(SignalNoiseEvent.class);
 
     private enum Classification {
         None, TP, FP, TN, FN
