@@ -182,10 +182,14 @@ public class RepetitiousFilter extends AbstractNoiseFilter {
             if ( !passRepetitiousEvents ){
                 if ( repetitious ){
                     filterOut(e);
+                }else{
+                    filterIn(e);
                 }
             } else{ // pass boring events
                 if ( !repetitious ){
                     filterOut(e);
+                }else{
+                    filterIn(e);
                 }
             }
             // update the map

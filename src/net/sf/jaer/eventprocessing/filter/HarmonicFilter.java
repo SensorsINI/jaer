@@ -430,6 +430,8 @@ public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotate
             }
             if (oscillator.isNearZeroCrossing(e)) {
                 filterOut(e);
+            }else{
+                filterIn(e);
             }
         }
         //        if ( printStats ){
