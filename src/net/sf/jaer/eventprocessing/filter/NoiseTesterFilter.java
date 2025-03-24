@@ -227,9 +227,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      */
     public static final int POISSON_DIVIDER = 30;
 
-    @Preferred
-    private float correlationTimeS = getFloat("correlationTimeS", 20e-3f);
-
     private final Timer stopper = new Timer("NoiseTesterFilter.Stopper", true);
     private volatile boolean stopMe = false; // to interrupt if filterPacket takes too long
     private TimerTask stopperTask = null;
@@ -325,7 +322,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(denoiser, "enableMultipleMethods", "Enable chain of denoising methods, in order top to bottom that are enabled.");
         setPropertyTooltip(denoiser, "maxProcessingTimeLimitMs", "Maximum time limit in ms for processing each packet; to deal with problems with high noise rates and complex algorithms that may appear frozen.");
 
-        String noise = "0b. Noise control";
+        String noise = "0b. Synethetic noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
         setPropertyTooltip(noise, "disableDenoising", "Disable denoising temporarily (not stored in preferences)");
         setPropertyTooltip(noise, "shotNoiseRateHz", "Mean rate per pixel in Hz of shot noise events");
