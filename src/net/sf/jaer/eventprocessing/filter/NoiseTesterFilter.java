@@ -218,7 +218,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     // objects for denoising and keeping track of signal and noise events
     private SignalNoisePacket signalNoisePacket = new SignalNoisePacket(SignalNoiseEvent.class);
     final private SignalNoisePacket signalPacket = new SignalNoisePacket(SignalNoiseEvent.class);
-    
+
     // original NTF arrays for tracking signal and noise events
     private EventPacket<PolarityEvent> signalAndNoisePacket = null;
     private final ArrayList<PolarityEvent> noiseList = new ArrayList<>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
@@ -330,7 +330,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         setPropertyTooltip(noise, "disableDenoising", "Disable denoising temporarily (not stored in preferences)");
         setPropertyTooltip(noise, "shotNoiseRateHz", "Mean rate per pixel in Hz of shot noise events");
         setPropertyTooltip(noise, "photoreceptorNoiseSimulation", "<html>Generate shot noise from simulated bandlimited photoreceptor noise.<p>The <i>shotNoiseRateHz</i> will only be a guide to the actual generated noise rate. ");
-        setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>0.5 decade is realistic for DAVIS cameras.");
+        setPropertyTooltip(noise, "noiseRateCoVDecades", "<html>Coefficient of Variation of noise rates (shot and leak) in log normal distribution decades across pixel array.<p>0.5 decade is realistic for DAVIS cameras.<p>Change this property resamples the noise rates.");
         setPropertyTooltip(noise, "leakJitterFraction", "<html>Jitter of leak noise events relative to the (FPN) interval, drawn from normal distribution.<p>0.1 to 0.2 is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "leakNoiseRateHz", "Rate per pixel in Hz of leak noise events. 0.1 to 0.2Hz is realistic for DAVIS cameras.");
         setPropertyTooltip(noise, "useNoiseRecording", "Open a pre-recorded AEDAT file as noise source.");
@@ -368,6 +368,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 //        setPropertyTooltip(TT_DISP, "doResetROCHistory", "Clears current ROC samples from display.");
         setPropertyTooltip(TT_DISP, "doClearROCs", "Clears all saved ROC curves and current samples from packets");
         setPropertyTooltip(TT_DISP, "doClearLastROC", "Erase the last recording of ROC curve");
+        setPropertyTooltip(TT_FILT_CONTROL, "doResampleFPN", "<html>Resample the fixed pattern noise of hot pixels (leak and shot noise variation)<br> that models DVS event threshold and junction leakage fixed pattern noise variation.<p> Resampling also occurs when noise COV is modified.");
 
         for (int k = 0; k < colors.length; k++) {
             float hue = (float) k / (colors.length - 1);
@@ -558,10 +559,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         return false;
     }
 
-    /** UNUSED now
-     * Finds the intersection of events in a that are in b. Assumes packets are
-     * non-monotonic in timestamp ordering. Handles duplicates. Each duplicate
-     * is matched once. The matching is by event .equals() method.
+    /**
+     * UNUSED now Finds the intersection of events in a that are in b. Assumes
+     * packets are non-monotonic in timestamp ordering. Handles duplicates. Each
+     * duplicate is matched once. The matching is by event .equals() method.
      *
      * @param a ArrayList<PolarityEvent> of a
      * @param b likewise, but is list of events with NNb bits in byte
@@ -691,7 +692,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             initializeLeakStates(in.getFirstTimestamp());
         }
 
-
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         signalPacket.copySignalEventsFrom(in);
 //        signalPacket.countClassifications(false);
@@ -702,157 +702,157 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 //        signalNoisePacket.countClassifications(false);  // debug
 
-            if (outputTrainingData && csvWriter != null) {
+        if (outputTrainingData && csvWriter != null) {
 
-                for (SignalNoiseEvent event : signalNoisePacket) {
-                    try {
-                        int ts = event.timestamp;
-                        byte type = event.getPolarity() == PolarityEvent.Polarity.Off ? (byte) -1 : (byte) 1;
-                        final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
-                        int patchsize = 25;
-                        int radius = (patchsize - 1) / 2;
-                        if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
-                            continue;
-                        }
-
-                        StringBuilder absTstring = new StringBuilder();
-                        StringBuilder polString = new StringBuilder();
-                        for (int indx = -radius; indx <= radius; indx++) {
-                            for (int indy = -radius; indy <= radius; indy++) {
-                                int absTs = 0;
-                                byte pol = 0;
-                                if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)) {
-                                    absTs = timestampImage[x + indx][y + indy];
-                                    pol = polImage[x + indx][y + indy];
-                                }
-                                absTstring.append(absTs + ",");
-                                polString.append(pol + ",");
-
-                            }
-                        }
-                        if (recordPureNoise) { // if pure noise, labels must reversed otherwise the events will be labeled as signal
-                            if (event.isLabeledAsSignal()) {
-                                csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
-                                        type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 1 means signal
-                            } else {
-                                csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
-                                        type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 0 means noise
-                                csvNoiseCount++;
-                                csvNumEventsWritten++;
-                            }
-                        } else {
-                            if (event.isLabeledAsSignal()) {
-                                csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
-                                        type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 1 means signal
-                                csvSignalCount++;
-                                csvNumEventsWritten++;
-                            } else {
-                                csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
-                                        type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 0 means noise
-                                csvNoiseCount++;
-                                csvNumEventsWritten++;
-                            }
-                        }
-                        timestampImage[x][y] = ts;
-                        polImage[x][y] = type;
-                        if (csvNumEventsWritten % 100000 == 0) {
-                            log.info(String.format("Wrote %,d events to %s", csvNumEventsWritten, csvFileName));
-                        }
-                    } catch (IOException e) {
-                        doToggleOffSaveMLPTraining();
-                    }
-                }
-            }
-
-            if (selectedNoiseFilter != null && !disableDenoising) {
-                signalNoisePacket.countClassifications(false);
-                signalNoisePacket = (SignalNoisePacket) getEnclosedFilterChain().filterPacket(signalNoisePacket);
-                signalNoisePacket.countClassifications(false);
-                // if selectedNoiseFilter is null, nothing happens here
-                if (isInitializingPreviousEvents(in.getFirstTimestamp())) {
-                    // we let the first packet be filtered to populated the history with
-                    // signal events
-                    if (renderer != null) {
-                        renderer.clearAnnotationMap();
-                    }
-                    return signalNoisePacket;
-                }
-
-                // now we sort out the mess
-                boolean collectLabeledEvents=overlayFN||overlayFP|overlayNegatives
-                        |overlayPositives|overlayTN|overlayTP;
-                signalNoisePacket.countClassifications(collectLabeledEvents);
-                TP=signalNoisePacket.tpCount;
-                TN=signalNoisePacket.tnCount;
-                FP=signalNoisePacket.fpCount;
-                FN=signalNoisePacket.fnCount;
-                
-                assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size());
-                totalEventCount = signalNoisePacket.getSize();
-                int outputEventCount = signalNoisePacket.tpCount+signalNoisePacket.fpCount;
-                filteredOutEventCount = totalEventCount - outputEventCount;
-
-                assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
-                assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
-                assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
-
-                TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
-                TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
-
-                TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
-                accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
-
-                BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
-            }
-            if (!isDebug) {
-                boolean ranStopper = stopperTask.cancel();
-            }
-            if (lastTimestampPreviousPacket != null) {
-                int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
-                inSignalRateHz = (1e6f * signalNoisePacket.signalCount) / deltaTime;
-                inNoiseRateHz = (1e6f * signalNoisePacket.noiseCount) / deltaTime;
-                outSignalRateHz = (1e6f * TP) / deltaTime;
-                outNoiseRateHz = (1e6f * FP) / deltaTime;
-            }
-
-            if (outputFilterStatistic && csvWriter != null) {
+            for (SignalNoiseEvent event : signalNoisePacket) {
                 try {
-                    csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
-                            TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
-                            inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
+                    int ts = event.timestamp;
+                    byte type = event.getPolarity() == PolarityEvent.Polarity.Off ? (byte) -1 : (byte) 1;
+                    final int x = (event.x >> subsampleBy), y = (event.y >> subsampleBy);
+                    int patchsize = 25;
+                    int radius = (patchsize - 1) / 2;
+                    if ((x < 0) || (x > sx) || (y < 0) || (y > sy)) {
+                        continue;
+                    }
+
+                    StringBuilder absTstring = new StringBuilder();
+                    StringBuilder polString = new StringBuilder();
+                    for (int indx = -radius; indx <= radius; indx++) {
+                        for (int indy = -radius; indy <= radius; indy++) {
+                            int absTs = 0;
+                            byte pol = 0;
+                            if ((x + indx >= 0) && (x + indx < sx) && (y + indy >= 0) && (y + indy < sy)) {
+                                absTs = timestampImage[x + indx][y + indy];
+                                pol = polImage[x + indx][y + indy];
+                            }
+                            absTstring.append(absTs + ",");
+                            polString.append(pol + ",");
+
+                        }
+                    }
+                    if (recordPureNoise) { // if pure noise, labels must reversed otherwise the events will be labeled as signal
+                        if (event.isLabeledAsSignal()) {
+                            csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+                                    type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 1 means signal
+                        } else {
+                            csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+                                    type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 0 means noise
+                            csvNoiseCount++;
+                            csvNumEventsWritten++;
+                        }
+                    } else {
+                        if (event.isLabeledAsSignal()) {
+                            csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+                                    type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 1 means signal
+                            csvSignalCount++;
+                            csvNumEventsWritten++;
+                        } else {
+                            csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
+                                    type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 0 means noise
+                            csvNoiseCount++;
+                            csvNumEventsWritten++;
+                        }
+                    }
+                    timestampImage[x][y] = ts;
+                    polImage[x][y] = type;
+                    if (csvNumEventsWritten % 100000 == 0) {
+                        log.info(String.format("Wrote %,d events to %s", csvNumEventsWritten, csvFileName));
+                    }
                 } catch (IOException e) {
                     doToggleOffSaveMLPTraining();
                 }
             }
+        }
 
-            if (renderer != null) {
-                renderer.clearAnnotationMap();
-            }
-            if (overlayPositives) {
-                annotateNoiseFilteringEvents(signalNoisePacket.tpList, signalNoisePacket.fpList);
-            }
-            if (overlayNegatives) {
-                annotateNoiseFilteringEvents(signalNoisePacket.fnList, signalNoisePacket.tnList);
-            }
-            NOISE_COLOR[3] = getOverlayAlpha();
-            SIG_COLOR[3] = getOverlayAlpha();
-            if (overlayTP) {
-                annotateNoiseFilteringEvents(signalNoisePacket.tpList, SIG_COLOR);
-            }
-            if (overlayTN) {
-                annotateNoiseFilteringEvents(signalNoisePacket.tnList, NOISE_COLOR);
-            }
-            if (overlayFP) {
-                annotateNoiseFilteringEvents(signalNoisePacket.fpList, NOISE_COLOR);
-            }
-            if (overlayFN) {
-                annotateNoiseFilteringEvents(signalNoisePacket.fnList, SIG_COLOR);
+        if (selectedNoiseFilter != null && !disableDenoising) {
+            signalNoisePacket.countClassifications(false);
+            signalNoisePacket = (SignalNoisePacket) getEnclosedFilterChain().filterPacket(signalNoisePacket);
+            signalNoisePacket.countClassifications(false);
+            // if selectedNoiseFilter is null, nothing happens here
+            if (isInitializingPreviousEvents(in.getFirstTimestamp())) {
+                // we let the first packet be filtered to populated the history with
+                // signal events
+                if (renderer != null) {
+                    renderer.clearAnnotationMap();
+                }
+                return signalNoisePacket;
             }
 
-            rocHistoryCurrent.addSample(1 - TNR, TPR);
+            // now we sort out the mess
+            boolean collectLabeledEvents = overlayFN || overlayFP | overlayNegatives
+                    | overlayPositives | overlayTN | overlayTP;
+            signalNoisePacket.countClassifications(collectLabeledEvents);
+            TP = signalNoisePacket.tpCount;
+            TN = signalNoisePacket.tnCount;
+            FP = signalNoisePacket.fpCount;
+            FN = signalNoisePacket.fnCount;
 
-            lastTimestampPreviousPacket = signalNoisePacket.getLastTimestamp();
-            return signalNoisePacket;
+            assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size());
+            totalEventCount = signalNoisePacket.getSize();
+            int outputEventCount = signalNoisePacket.tpCount + signalNoisePacket.fpCount;
+            filteredOutEventCount = totalEventCount - outputEventCount;
+
+            assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
+            assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
+            assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
+
+            TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
+            TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
+
+            TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
+            accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
+
+            BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
+        }
+        if (!isDebug) {
+            boolean ranStopper = stopperTask.cancel();
+        }
+        if (lastTimestampPreviousPacket != null) {
+            int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
+            inSignalRateHz = (1e6f * signalNoisePacket.signalCount) / deltaTime;
+            inNoiseRateHz = (1e6f * signalNoisePacket.noiseCount) / deltaTime;
+            outSignalRateHz = (1e6f * TP) / deltaTime;
+            outNoiseRateHz = (1e6f * FP) / deltaTime;
+        }
+
+        if (outputFilterStatistic && csvWriter != null) {
+            try {
+                csvWriter.write(String.format("%d,%d,%d,%d,%f,%f,%f,%d,%f,%f,%f,%f\n",
+                        TP, TN, FP, FN, TPR, TNR, BR, firstE.timestamp,
+                        inSignalRateHz, inNoiseRateHz, outSignalRateHz, outNoiseRateHz));
+            } catch (IOException e) {
+                doToggleOffSaveMLPTraining();
+            }
+        }
+
+        if (renderer != null) {
+            renderer.clearAnnotationMap();
+        }
+        if (overlayPositives) {
+            annotateNoiseFilteringEvents(signalNoisePacket.tpList, signalNoisePacket.fpList);
+        }
+        if (overlayNegatives) {
+            annotateNoiseFilteringEvents(signalNoisePacket.fnList, signalNoisePacket.tnList);
+        }
+        NOISE_COLOR[3] = getOverlayAlpha();
+        SIG_COLOR[3] = getOverlayAlpha();
+        if (overlayTP) {
+            annotateNoiseFilteringEvents(signalNoisePacket.tpList, SIG_COLOR);
+        }
+        if (overlayTN) {
+            annotateNoiseFilteringEvents(signalNoisePacket.tnList, NOISE_COLOR);
+        }
+        if (overlayFP) {
+            annotateNoiseFilteringEvents(signalNoisePacket.fpList, NOISE_COLOR);
+        }
+        if (overlayFN) {
+            annotateNoiseFilteringEvents(signalNoisePacket.fnList, SIG_COLOR);
+        }
+
+        rocHistoryCurrent.addSample(1 - TNR, TPR);
+
+        lastTimestampPreviousPacket = signalNoisePacket.getLastTimestamp();
+        return signalNoisePacket;
 //        } catch (BackwardsTimestampException ex) {
 //            Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
 //            return in;
@@ -1065,7 +1065,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * search with cost log2(N) where N is the number of pixel, i.e.
      * log2(90k)=17 steps per sample.
      */
-    private void maybeCreateOrUpdateNoiseCoVArray() {
+    private void createOrUpdateNoiseVariance() {
 
         if (noiseRateArray == null) {
             noiseRateArray = new float[chip.getNumPixels()];
@@ -1304,7 +1304,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         signalAndNoisePacket = new EventPacket(ApsDvsEvent.class);
 //        setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
-        maybeCreateOrUpdateNoiseCoVArray();
+        createOrUpdateNoiseVariance();
         //        setAnnotateAlpha(annotateAlpha);
         fixRendererAnnotationLayerShowing(); // make sure renderer is properly set up.
 
@@ -1723,6 +1723,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Preferred
+    synchronized public void doResampleFPN() {
+        computeProbs();
+        createOrUpdateNoiseVariance();
+    }
+
+    @Preferred
     synchronized public void doExportROCs() {
         try {
             rocSweep.saveToCSVs();
@@ -1775,8 +1781,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-
-
     private enum Classification {
         None, TP, FP, TN, FN
     }
@@ -1794,7 +1798,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     public void setNoiseRateCoVDecades(float noiseRateCoVDecades) {
         this.noiseRateCoVDecades = noiseRateCoVDecades;
         putFloat("noiseRateCoVDecades", noiseRateCoVDecades);
-        maybeCreateOrUpdateNoiseCoVArray();
+        createOrUpdateNoiseVariance();
     }
 
     /**
