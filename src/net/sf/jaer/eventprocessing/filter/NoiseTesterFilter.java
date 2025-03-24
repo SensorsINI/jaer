@@ -146,7 +146,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float leakJitterFraction = getFloat("leakJitterFraction", 0.2f); // fraction of interval to jitter leak events
     private float[] noiseRateArray = null;
     private float[] noiseRateIntervals = null; // stored by column, with y changing fastest
-    private PriorityQueue<PolarityEvent> leakNoiseQueue = null; // stored by column, with y changing fastest
+    private PriorityQueue<SignalNoiseEvent> leakNoiseQueue = null; // stored by column, with y changing fastest
 
     private double poissonDtUs = 1;
 
@@ -188,7 +188,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
     private final Random random = new Random();
-    private EventPacket<PolarityEvent> signalAndNoisePacket = null;
 
     protected boolean resetCalled = true; // flag to reset on next event
     private int timestampAfterReset;  // used for initializing timestampImage and to prevent collecting statistics until correlationTimeS has passed since reset or rewind6yd
@@ -216,11 +215,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int rocHistoryLength = getInt("rocHistoryLength", 8);
     private final int LIST_LENGTH = 10000;
 
-    private final ArrayList<BasicEvent> tpList = new ArrayList(LIST_LENGTH),
-            fnList = new ArrayList(LIST_LENGTH),
-            fpList = new ArrayList(LIST_LENGTH),
-            tnList = new ArrayList(LIST_LENGTH); // output of classification
-    private final ArrayList<PolarityEvent> noiseList = new ArrayList<PolarityEvent>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
+    // objects for denoising and keeping track of signal and noise events
+    private SignalNoisePacket signalNoisePacket = new SignalNoisePacket(SignalNoiseEvent.class);
+    final private SignalNoisePacket signalPacket = new SignalNoisePacket(SignalNoiseEvent.class);
+    
+    // original NTF arrays for tracking signal and noise events
+    private EventPacket<PolarityEvent> signalAndNoisePacket = null;
+    private final ArrayList<PolarityEvent> noiseList = new ArrayList<>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
     /**
      * How time is split up for Poisson sampling using bounds trick
      */
@@ -548,59 +549,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     }
 
-    private SignalAndNoiseList createEventList(EventPacket<PolarityEvent> p, boolean splitNoiseBySpecialEvents) throws BackwardsTimestampException {
-        ArrayList<PolarityEvent> signalList = new ArrayList(p.getSize());
-        ArrayList<PolarityEvent> noiseList = new ArrayList(p.getSize());
-        SignalAndNoiseList snl = new SignalAndNoiseList(signalList, noiseList);
-        PolarityEvent previousEvent = null;
-        for (PolarityEvent e : p) {
-            if (previousEvent != null && (e.timestamp < previousEvent.timestamp)) {
-                throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, previousEvent.timestamp));
-            }
-            if (splitNoiseBySpecialEvents) {
-                if (e.isSpecial()) {
-                    noiseList.add(e);
-                } else {
-                    signalList.add(e);
-                }
-            } else {
-                signalList.add(e);
-            }
-            previousEvent = e;
-        }
-        return snl;
-    }
-
-    private class SignalAndNoiseList { // holds return from createEventList
-
-        ArrayList<PolarityEvent> signalList;
-        ArrayList<PolarityEvent> noiseList;
-
-        public SignalAndNoiseList(ArrayList<PolarityEvent> signalList, ArrayList<PolarityEvent> noiseList) {
-            this.signalList = signalList;
-            this.noiseList = noiseList;
-        }
-
-    }
-
-    private SignalAndNoiseList createEventList(List<PolarityEvent> p) throws BackwardsTimestampException {
-        ArrayList<PolarityEvent> signalList = new ArrayList(p.size());
-        SignalAndNoiseList snl = new SignalAndNoiseList(signalList, noiseList);
-        PolarityEvent pe = null;
-        for (PolarityEvent e : p) {
-            if (pe != null && (e.timestamp < pe.timestamp)) {
-                throw new BackwardsTimestampException(String.format("timestamp %d is earlier than previous %d", e.timestamp, pe.timestamp));
-            }
-            if (e.isSpecial()) {
-                noiseList.add(e);
-            } else {
-                signalList.add(e);
-            }
-            pe = e;
-        }
-        return snl;
-    }
-
     private boolean checkStopMe(String where) {
         if (stopMe) {
             log.severe(String.format("After processing step %s \n: took longer than maxProcessingTimeLimitMs=%,dms, disabling NoiseTesterFilter", where, maxProcessingTimeLimitMs));
@@ -610,7 +558,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         return false;
     }
 
-    /**
+    /** UNUSED now
      * Finds the intersection of events in a that are in b. Assumes packets are
      * non-monotonic in timestamp ordering. Handles duplicates. Each duplicate
      * is matched once. The matching is by event .equals() method.
@@ -628,22 +576,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         int count = 0;
 
-        // TODO test case
-//        a = new ArrayList();
-//        b = new ArrayList();
-//        a.add(new PolarityEvent(4, (short) 0, (short) 0));
-//        a.add(new PolarityEvent(4, (short) 0, (short) 0));
-//        a.add(new PolarityEvent(4, (short) 1, (short) 0));
-//        a.add(new PolarityEvent(4, (short) 2, (short) 0));
-        ////        a.add(new PolarityEvent(2, (short) 0, (short) 0));
-////        a.add(new PolarityEvent(10, (short) 0, (short) 0));
-//
-//        b.add(new PolarityEvent(2, (short) 0, (short) 0));
-//        b.add(new PolarityEvent(2, (short) 0, (short) 0));
-//        b.add(new PolarityEvent(4, (short) 0, (short) 0));
-//        b.add(new PolarityEvent(4, (short) 0, (short) 0));
-//        b.add(new PolarityEvent(4, (short) 1, (short) 0));
-//        b.add(new PolarityEvent(10, (short) 0, (short) 0));
         int i = 0, j = 0;
         final int na = a.size(), nb = b.size();
         while (i < na && j < nb) {
@@ -755,49 +687,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     continue;
                 }
                 f.initializeLastTimesMapForNoiseRate(shotNoiseRateHz + leakNoiseRateHz, timestampAfterReset); // TODO move to filter so that each filter can initialize its own map
-//                for (byte[] i : polImage) {  // already done in NTF.initializeLastTimesMapForNoiseRate()
-//                    Arrays.fill(i, (byte) 0);
-//                }
             }
             initializeLeakStates(in.getFirstTimestamp());
         }
 
-        // copy input events to inList
-        ArrayList<PolarityEvent> signalList = null, noiseList = null;
-        try {
-            SignalAndNoiseList snl = createEventList((EventPacket<PolarityEvent>) in, true); // maybe split sig and noise by labeled special events
-            signalList = snl.signalList;
-            noiseList = snl.noiseList;
-            if (!noiseList.isEmpty()) {
-                if (!isDisableAddingNoise()) {
-                    setDisableAddingNoise(true);
-                    log.warning(String.format("disabled adding noise because incoming packet has %,d labeled noise events", noiseList.size()));
-                    showWarningDialogInSwingThread("Disabled synthetic noise because incoming packet has labeled noise", "NoiseTesterFilter");
-                }
-            }
-        } catch (BackwardsTimestampException ex) {
-            log.warning(String.format("%s: skipping nonmonotonic packet [%s]", ex, in));
-            return in;
-        }
-
-        assert signalList.size() == in.getSizeNotFilteredOut() : String.format("signalList size (%d) != in.getSizeNotFilteredOut() (%d)", signalList.size(), in.getSizeNotFilteredOut());
 
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
-        noiseList.clear();
+        signalPacket.copySignalEventsFrom(in);
+//        signalPacket.countClassifications(false);
         if (!isDisableAddingNoise()) {
-            addNoise((EventPacket<? extends PolarityEvent>) in, signalAndNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
+            addNoise(signalPacket, signalNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
         } else {
-            addNoise((EventPacket<? extends PolarityEvent>) in, signalAndNoisePacket, noiseList, 0, 0);
+            addNoise(signalPacket, signalNoisePacket, noiseList, 0, 0);
         }
-        // we need to copy the augmented event packet to a HashSet for use with Collections
-        ArrayList<PolarityEvent> signalPlusNoiseList;
-        try {
-            SignalAndNoiseList snl = createEventList((EventPacket<PolarityEvent>) signalAndNoisePacket, false); // don't split here
-            signalPlusNoiseList = snl.signalList;
+//        signalNoisePacket.countClassifications(false);  // debug
 
             if (outputTrainingData && csvWriter != null) {
 
-                for (PolarityEvent event : signalPlusNoiseList) {
+                for (SignalNoiseEvent event : signalNoisePacket) {
                     try {
                         int ts = event.timestamp;
                         byte type = event.getPolarity() == PolarityEvent.Polarity.Off ? (byte) -1 : (byte) 1;
@@ -824,7 +731,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             }
                         }
                         if (recordPureNoise) { // if pure noise, labels must reversed otherwise the events will be labeled as signal
-                            if (signalList.contains(event)) {
+                            if (event.isLabeledAsSignal()) {
                                 csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
                                         type, event.x, event.y, event.timestamp, 0, absTstring, polString, firstE.timestamp)); // 1 means signal
                             } else {
@@ -834,7 +741,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                                 csvNumEventsWritten++;
                             }
                         } else {
-                            if (signalList.contains(event)) {
+                            if (event.isLabeledAsSignal()) {
                                 csvWriter.write(String.format("%d,%d,%d,%d,%d,%s%s%d\n",
                                         type, event.x, event.y, event.timestamp, 1, absTstring, polString, firstE.timestamp)); // 1 means signal
                                 csvSignalCount++;
@@ -857,15 +764,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 }
             }
 
-            // filter the augmented packet
-            // make sure to record events, turned off by default for normal use
-            for (EventFilter2D f : getEnclosedFilterChain()) {
-                ((AbstractNoiseFilter) f).setRecordFilteredOutEvents(true);
-            }
-            EventPacket<PolarityEvent> passedSignalAndNoisePacket = signalAndNoisePacket;
             if (selectedNoiseFilter != null && !disableDenoising) {
-                passedSignalAndNoisePacket
-                        = (EventPacket<PolarityEvent>) getEnclosedFilterChain().filterPacket(signalAndNoisePacket);
+                signalNoisePacket.countClassifications(false);
+                signalNoisePacket = (SignalNoisePacket) getEnclosedFilterChain().filterPacket(signalNoisePacket);
+                signalNoisePacket.countClassifications(false);
                 // if selectedNoiseFilter is null, nothing happens here
                 if (isInitializingPreviousEvents(in.getFirstTimestamp())) {
                     // we let the first packet be filtered to populated the history with
@@ -873,68 +775,27 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     if (renderer != null) {
                         renderer.clearAnnotationMap();
                     }
-                    return in;
+                    return signalNoisePacket;
                 }
-                ArrayList<BasicEvent> negativeList, positiveList;
-                negativeList = selectedNoiseFilter.getNegativeEvents();
-                positiveList = selectedNoiseFilter.getPositiveEvents();
-
-                // make a list of the output packet, which has noise filtered out by selected filter
-                SignalAndNoiseList snlpassed = createEventList(passedSignalAndNoisePacket, false); // don't split events here
-                ArrayList<PolarityEvent> passedSignalAndNoiseList = snlpassed.signalList;
-
-                assert (signalList.size() + noiseList.size() == signalPlusNoiseList.size());
 
                 // now we sort out the mess
-                TP = countIntersect(signalList, positiveList, tpList);   // True positives: Signal that was correctly retained by filtering
-                if (checkStopMe("after TP")) {
-                    return in;
-                }
-
-                FN = countIntersect(signalList, negativeList, fnList);            // False negatives: Signal that was incorrectly removed by filter.
-                if (checkStopMe("after FN")) {
-                    return in;
-                }
-                FP = countIntersect(noiseList, positiveList, fpList);    // False positives: Noise that is incorrectly passed by filter
-                if (checkStopMe("after FP")) {
-                    return in;
-                }
-                TN = countIntersect(noiseList, negativeList, tnList);             // True negatives: Noise that was correctly removed by filter
-                if (checkStopMe("after TN")) {
-                    return in;
-                }
-
-//            if (TN + FP != noiseList.size()) {
-//                System.err.println(String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size()));
-//                printarr(signalList, "signalList");
-//                printarr(noiseList, "noiseList");
-//                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
-//                printarr(signalAndNoiseList, "signalAndNoiseList");
-//            }
+                boolean collectLabeledEvents=overlayFN||overlayFP|overlayNegatives
+                        |overlayPositives|overlayTN|overlayTP;
+                signalNoisePacket.countClassifications(collectLabeledEvents);
+                TP=signalNoisePacket.tpCount;
+                TN=signalNoisePacket.tnCount;
+                FP=signalNoisePacket.fpCount;
+                FN=signalNoisePacket.fnCount;
+                
                 assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size());
-                totalEventCount = signalPlusNoiseList.size();
-                int outputEventCount = passedSignalAndNoiseList.size();
+                totalEventCount = signalNoisePacket.getSize();
+                int outputEventCount = signalNoisePacket.tpCount+signalNoisePacket.fpCount;
                 filteredOutEventCount = totalEventCount - outputEventCount;
 
-//            if (TP + FP != outputEventCount) {
-//                System.err.printf("@@@@@@@@@ TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
-//                printarr(signalList, "signalList");
-//                printarr(noiseList, "noiseList");
-//                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
-//                printarr(signalAndNoiseList, "signalAndNoiseList");
-//            }
                 assert TP + FP == outputEventCount : String.format("TP (%d) + FP (%d) = %d != outputEventCount (%d)", TP, FP, TP + FP, outputEventCount);
-//            if (TP + TN + FP + FN != totalEventCount) {
-//                System.err.printf("***************** TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
-//                printarr(signalList, "signalList");
-//                printarr(noiseList, "noiseList");
-//                printarr(signalAndNoiseList, "signalAndNoiseList");
-//                printarr(passedSignalAndNoiseList, "passedSignalAndNoiseList");
-//            }
                 assert TP + TN + FP + FN == totalEventCount : String.format("TP (%d) + TN (%d) + FP (%d) + FN (%d) = %d != totalEventCount (%d)", TP, TN, FP, FN, TP + TN + FP + FN, totalEventCount);
                 assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
-//        System.out.printf("every packet is: %d %d %d %d %d, %d %d %d: %d %d %d %d\n", inList.size(), newInList.size(), outList.size(), outRealList.size(), outNoiseList.size(), outInitList.size(), outInitRealList.size(), outInitNoiseList.size(), TP, TN, FP, FN);
                 TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
                 TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
 
@@ -942,16 +803,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
                 BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
-//        System.out.printf("shotNoiseRateHz and leakNoiseRateHz is %.2f and %.2f\n", shotNoiseRateHz, leakNoiseRateHz);
             }
             if (!isDebug) {
                 boolean ranStopper = stopperTask.cancel();
-//                log.fine(String.format("stopperTask.cancel() returned %s", ranStopper));
             }
             if (lastTimestampPreviousPacket != null) {
                 int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
-                inSignalRateHz = (1e6f * in.getSize()) / deltaTime;
-                inNoiseRateHz = (1e6f * noiseList.size()) / deltaTime;
+                inSignalRateHz = (1e6f * signalNoisePacket.signalCount) / deltaTime;
+                inNoiseRateHz = (1e6f * signalNoisePacket.noiseCount) / deltaTime;
                 outSignalRateHz = (1e6f * TP) / deltaTime;
                 outNoiseRateHz = (1e6f * FP) / deltaTime;
             }
@@ -970,34 +829,34 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 renderer.clearAnnotationMap();
             }
             if (overlayPositives) {
-                annotateNoiseFilteringEvents(tpList, fpList);
+                annotateNoiseFilteringEvents(signalNoisePacket.tpList, signalNoisePacket.fpList);
             }
             if (overlayNegatives) {
-                annotateNoiseFilteringEvents(fnList, tnList);
+                annotateNoiseFilteringEvents(signalNoisePacket.fnList, signalNoisePacket.tnList);
             }
             NOISE_COLOR[3] = getOverlayAlpha();
             SIG_COLOR[3] = getOverlayAlpha();
             if (overlayTP) {
-                annotateNoiseFilteringEvents(tpList, SIG_COLOR);
+                annotateNoiseFilteringEvents(signalNoisePacket.tpList, SIG_COLOR);
             }
             if (overlayTN) {
-                annotateNoiseFilteringEvents(tnList, NOISE_COLOR);
+                annotateNoiseFilteringEvents(signalNoisePacket.tnList, NOISE_COLOR);
             }
             if (overlayFP) {
-                annotateNoiseFilteringEvents(fpList, NOISE_COLOR);
+                annotateNoiseFilteringEvents(signalNoisePacket.fpList, NOISE_COLOR);
             }
             if (overlayFN) {
-                annotateNoiseFilteringEvents(fnList, SIG_COLOR);
+                annotateNoiseFilteringEvents(signalNoisePacket.fnList, SIG_COLOR);
             }
 
-            rocHistoryCurrent.addSample(1 - TNR, TPR, getCorrelationTimeS());
+            rocHistoryCurrent.addSample(1 - TNR, TPR);
 
-            lastTimestampPreviousPacket = in.getLastTimestamp();
-            return passedSignalAndNoisePacket;
-        } catch (BackwardsTimestampException ex) {
-            Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
-            return in;
-        }
+            lastTimestampPreviousPacket = signalNoisePacket.getLastTimestamp();
+            return signalNoisePacket;
+//        } catch (BackwardsTimestampException ex) {
+//            Logger.getLogger(NoiseTesterFilter.class.getName()).log(Level.SEVERE, null, ex);
+//            return in;
+//        }
 
     }
 
@@ -1005,32 +864,29 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * Adds the recorded or synthetic noise to packet.
      *
      * @param in the input packet
-     * @param augmentedPacket the packet with noise added
+     * @param signalNoisePacket the packet with noise added
      * @param generatedNoise list of noise events
      * @param shotNoiseRateHz noise rate for shot noise, per pixel
      * @param leakNoiseRateHz noise rate for leak noise, per pixel
      */
-    private void addNoise(EventPacket<? extends PolarityEvent> in, EventPacket<? extends PolarityEvent> augmentedPacket, ArrayList<PolarityEvent> generatedNoise, float shotNoiseRateHz, float leakNoiseRateHz) {
+    private void addNoise(SignalNoisePacket signalPacket, SignalNoisePacket signalNoisePacket, ArrayList<PolarityEvent> generatedNoise, float shotNoiseRateHz, float leakNoiseRateHz) {
 
         // we need at least 1 event to be able to inject noise before it
-        if ((in.isEmpty())) {
+        if ((signalPacket.isEmpty())) {
             log.warning("no input events in this packet, cannot inject noise because there is no end event");
             return;
         }
 
         // save input packet
-        augmentedPacket.clear();
+        signalNoisePacket.clear();
         generatedNoise.clear();
         // make the itertor to save events with added noise events
-        OutputEventIterator<ApsDvsEvent> outItr = (OutputEventIterator<ApsDvsEvent>) augmentedPacket.outputIterator();
+        OutputEventIterator<SignalNoiseEvent> outItr = (OutputEventIterator) signalNoisePacket.outputIterator();
         if (prerecordedNoise == null && leakNoiseRateHz == 0 && shotNoiseRateHz == 0) {
-            for (PolarityEvent ie : in) {
-                outItr.nextOutput().copyFrom(ie);
-            }
             return; // no noise, just return which returns the copy from filterPacket
         }
 
-        int firstTsThisPacket = in.getFirstTimestamp();
+        int firstTsThisPacket = signalPacket.getFirstTimestamp();
         // insert noise between last event of last packet and first event of current packet
         // but only if there waa a previous packet and we are monotonic
         if (lastTimestampPreviousPacket != null) {
@@ -1054,8 +910,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         int preEts = 0;
 
         int dvsEventCounter = 0;
-        int lastEventTs = in.getFirstTimestamp();
-        for (PolarityEvent ie : in) {
+        int lastEventTs = signalPacket.getFirstTimestamp();
+        for (SignalNoiseEvent ie : signalPacket) {
             dvsEventCounter++;
             // if it is the first event or any with first event timestamp then just copy them
             if (ie.timestamp == firstTsThisPacket) {
@@ -1068,8 +924,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
             outItr.nextOutput().copyFrom(ie);
         }
-        if (dvsEventCounter == 0 && (in instanceof ApsDvsEventPacket)) {
-            Iterator itr = ((ApsDvsEventPacket) in).fullIterator();
+        if (dvsEventCounter == 0 && (signalPacket instanceof ApsDvsEventPacket)) {
+            Iterator itr = ((ApsDvsEventPacket) signalPacket).fullIterator();
             while (itr.hasNext()) {
                 PolarityEvent ie = (PolarityEvent) (itr.next());
                 // if it is the first event or any with first event timestamp then just copy them
@@ -1086,7 +942,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    private void insertNoiseEvents(int lastPacketTs, int firstTsThisPacket, OutputEventIterator<ApsDvsEvent> outItr, List<PolarityEvent> generatedNoise) {
+    private void insertNoiseEvents(int lastPacketTs, int firstTsThisPacket, OutputEventIterator<SignalNoiseEvent> outItr, List<PolarityEvent> generatedNoise) {
 //         check that we don't have too many events, packet will get too large
         int tstepUs = (firstTsThisPacket - lastPacketTs);
         if (tstepUs > 100_0000) {
@@ -1119,7 +975,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param leakOnThresholdProb
      * @return count of number of noise events generated
      */
-    private int sampleNoiseEvent(int ts, OutputEventIterator<ApsDvsEvent> outItr, List<PolarityEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
+    private int sampleNoiseEvent(int ts, OutputEventIterator<SignalNoiseEvent> outItr, List<PolarityEvent> noiseList, float shotOffThresholdProb, float shotOnThresholdProb, float leakOnThresholdProb) {
         int count = 0;
         if (prerecordedNoise == null) { // sample 'ideal' shot noise
             final double randomnum = random.nextDouble();
@@ -1131,12 +987,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 count++;
             }
             if (leakNoiseRateHz > 0) {
-                PolarityEvent le = leakNoiseQueue.peek();
+                SignalNoiseEvent le = leakNoiseQueue.peek();
                 while (le != null && ts >= le.timestamp) {
                     le = leakNoiseQueue.poll();
                     le.timestamp = ts;
-                    ApsDvsEvent eout = (ApsDvsEvent) outItr.nextOutput();
+                    SignalNoiseEvent eout = outItr.nextOutput();
                     eout.copyFrom(le);
+                    eout.labelAsSignal(false);
+                    eout.unclassify();
                     // cryptic next line uses the AEChip's event extractor to compute the 'true' raw AER address for this event assuming word parallel format.
                     // this raw address is needed for CellStatsProber histograms
                     // TODO consider using object hash code
@@ -1160,12 +1018,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             ArrayList<PolarityEvent> noiseEvents = prerecordedNoise.nextEvents(ts); // these have timestamps of the prerecorded noise
             for (PolarityEvent e : noiseEvents) {
                 count++;
-                PolarityEvent ecopy = outItr.nextOutput(); // get the next event from output packet
+                SignalNoiseEvent ecopy = outItr.nextOutput(); // get the next event from output packet
                 if (ecopy instanceof ApsDvsEvent) {
                     ((ApsDvsEvent) ecopy).setReadoutType(ApsDvsEvent.ReadoutType.DVS);
                 }
                 ecopy.copyFrom(e); // copy its fields from the noise event
                 ecopy.timestamp = ts; // update the timestamp to the current timestamp
+                ecopy.labelAsSignal(false);
+                ecopy.unclassify();
                 noiseList.add(ecopy); // add it to the list of noise events we keep for analysis
             }
         }
@@ -1185,12 +1045,13 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         leakNoiseQueue.clear();
         for (int i = 0; i < chip.getNumPixels(); i++) {
             XYPt xy = getXYFromIdx(i);
-            PolarityEvent pe = new PolarityEvent();
+            SignalNoiseEvent pe = new SignalNoiseEvent();
             pe.x = xy.x;
             pe.y = xy.y;
             pe.polarity = Polarity.On;
             int t = random.nextInt((int) (1e6f / leakNoiseRateHz));
             pe.timestamp = ts + t;
+            pe.labelAsSignal(false);
             leakNoiseQueue.add(pe);
         }
     }
@@ -1288,8 +1149,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param outItr the output iterator to add event to
      * @param noiseList the noiseList to add event to
      */
-    private void injectShotNoiseEvent(int ts, PolarityEvent.Polarity pol, OutputEventIterator<ApsDvsEvent> outItr, List<PolarityEvent> noiseList) {
-        ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
+    private void injectShotNoiseEvent(int ts, PolarityEvent.Polarity pol, OutputEventIterator<SignalNoiseEvent> outItr, List<PolarityEvent> noiseList) {
+        SignalNoiseEvent e = outItr.nextOutput();
         e.setSpecial(false);
         if (noiseRateCoVDecades < Float.MIN_VALUE) { // if no variance in rates, just sample random pixel uniformly
             e.x = (short) random.nextInt(sx + 1);
@@ -1301,6 +1162,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         e.timestamp = ts;
         e.polarity = pol;
+        e.labelAsSignal(false);  // this is noise event
+        e.unclassify();
         // cryptic next line uses the AEChip's event extractor to compute the 'true' raw AER address for this event assuming word parallel format.
         // this raw address is needed for CellStatsProber histograms
         // TODO consider using object hash code
@@ -1438,7 +1301,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         timestampImage = new int[sx + 1][sy + 1];
         leakNoiseQueue = new PriorityQueue(chip.getNumPixels());
-        signalAndNoisePacket = new EventPacket<>(ApsDvsEvent.class);
+        signalAndNoisePacket = new EventPacket(ApsDvsEvent.class);
 //        setSelectedNoiseFilterEnum(selectedNoiseFilterEnum);
         computeProbs();
         maybeCreateOrUpdateNoiseCoVArray();
@@ -1912,103 +1775,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
     }
 
-    private class SignalNoiseEvent extends ApsDvsEvent {
 
-        private boolean signal = true;
-        private boolean labeledSignal = true;
-
-        public SignalNoiseEvent(PolarityEvent e) {
-            this.timestamp = e.timestamp;
-            this.x = e.x;
-            this.y = e.y;
-            this.polarity = e.polarity;
-        }
-
-        @Override
-        public void copyFrom(BasicEvent src) {
-            super.copyFrom(src);
-            if (src instanceof SignalNoiseEvent e) {
-                this.setSignal(e.isSignal());
-                this.setLabeledSignal(e.isLabeledSignal());
-            }
-        }
-
-        /**
-         * @return the signal
-         */
-        final public boolean isSignal() {
-            return signal;
-        }
-
-        /**
-         * @param signal the signal to set
-         */
-        final public void setSignal(boolean signal) {
-            this.signal = signal;
-        }
-
-        /**
-         * @return the labeledSignal
-         */
-        public boolean isLabeledSignal() {
-            return labeledSignal;
-        }
-
-        /**
-         * @param labeledSignal the labeledSignal to set
-         */
-        public void setLabeledSignal(boolean labeledSignal) {
-            this.labeledSignal = labeledSignal;
-        }
-
-    }
-
-    private class SignalNoisePacket extends ApsDvsEventPacket<ApsDvsEvent> {
-
-        int tpCount, tnCount, fpCount, fnCount;
-
-        public SignalNoisePacket(Class<? extends ApsDvsEvent> eventClass) {
-            super(eventClass);
-        }
-
-        final void resetCounts() {
-            tpCount = 0;
-            tnCount = 0;
-            fpCount = 0;
-            fnCount = 0;
-        }
-
-        final void countClassifications() {
-            resetCounts();
-            for (ApsDvsEvent o : this) {
-                SignalNoiseEvent e = (SignalNoiseEvent) o;
-                if (e.signal) {
-                    if (e.labeledSignal) {
-                        tpCount++;
-                    } else {
-                        fnCount++;
-                    }
-                } else { // true noise
-                    if (e.labeledSignal) {
-                        fpCount++;
-                    } else {
-                        tnCount++;
-                    }
-                }
-
-            }
-        }
-
-        final void copyFrom(ApsDvsEventPacket p) {
-            OutputEventIterator outItr = outputIterator();
-            for (Object o : p) {
-                outItr.nextOutput().copyFrom((BasicEvent) o);
-            }
-            resetCounts();
-        }
-    }
-
-    private SignalNoisePacket signalNoisePacket = new SignalNoisePacket(SignalNoiseEvent.class);
 
     private enum Classification {
         None, TP, FP, TN, FN
@@ -2933,7 +2700,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         private EvictingQueue<ROCSample> rocHistoryList = EvictingQueue.create(rocHistoryLength);
         private Float lastTau = null;
         GLUT glut = new GLUT();
-        private int counter = 0;
         private final int SAMPLE_INTERVAL_NO_CHANGE = 30;
         private int legendDisplayListId = 0;
         private ROCSample[] legendROCs = null;
@@ -3075,19 +2841,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             this.color = color;
         }
 
-        void addSample(float fpr, float tpr, float tau) {
-            boolean labelIt = lastTau == null
-                    || Math.abs(Math.log10(tau / lastTau)) > .1
-                    || ++counter >= SAMPLE_INTERVAL_NO_CHANGE;
-            labelIt = false;// tobi removec this clutter
-            rocHistoryList.add(new ROCSample(fpr, tpr, tau, false, this));
+        void addSample(float fpr, float tpr) {
+            rocHistoryList.add(new ROCSample(fpr, tpr, 0, false, this));
             avgRocSample = computeAvg();
-            if (labelIt) {
-                lastTau = tau;
-            }
-            if (counter > SAMPLE_INTERVAL_NO_CHANGE) {
-                counter = 0;
-            }
         }
 
         void draw(GL2 gl) {

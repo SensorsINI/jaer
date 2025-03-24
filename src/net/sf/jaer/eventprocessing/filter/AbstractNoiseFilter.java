@@ -73,7 +73,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     @Preferred
     protected boolean filterHotPixels = getBoolean("filterHotPixels", true);
-    protected boolean recordFilteredOutEvents = false;
     /**
      * Map from noise filters to drawing positions of noise filtering statistics
      * annotations
@@ -166,14 +165,8 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     final protected void filterOut(BasicEvent e) {
         e.setFilteredOut(true);
         filteredOutEventCount++;
-        if (recordFilteredOutEvents) {
-            if (e instanceof PolarityEvent pe) {
-                PolarityEvent peCopy = new PolarityEvent();
-                peCopy.copyFrom(pe);
-                filteredOutEvents.add(peCopy);
-            } else {
-                filteredOutEvents.add(new BasicEvent(e.timestamp, e.x, e.y));
-            }
+        if (e instanceof SignalNoiseEvent sne) {
+            sne.classifyNoise();
         }
     }
 
@@ -185,44 +178,11 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
      */
     final protected void filterIn(BasicEvent e) {
         e.setFilteredOut(false);
-        if (recordFilteredOutEvents) {
-            if (e instanceof PolarityEvent pe) {
-                PolarityEvent peCopy = new PolarityEvent();
-                peCopy.copyFrom(pe);
-                filteredInEvents.add(peCopy);
-            } else {
-                filteredInEvents.add(new BasicEvent(e.timestamp, e.x, e.y));
-            }
+        if (e instanceof SignalNoiseEvent sne) {
+            sne.classifySignal();
         }
     }
 
-//    /**
-//     * Use to filter out events, updates the list of such events when
-//     * recordFilteredOutEvents is true
-//     *
-//     * @param e the event
-//     * @param nnb the byte representing the occupation of nearest neighbors
-//     */
-//    protected void filterOutWithNNb(BasicEvent e, byte nnb) {
-//        e.setFilteredOut(true);
-//        filteredOutEventCount++;
-//        if (recordFilteredOutEvents) {
-//            filteredOutEvents.add(new BasicEvent(e, nnb));
-//        }
-//    }
-//    /**
-//     * Use to filter in events, updates the list of such events when
-//     * recordFilteredOutEvents is true
-//     *
-//     * @param e the event
-//     * @param nnb the byte representing the occupation of nearest neighbors
-//     */
-//    protected void filterInWithNNb(BasicEvent e, byte nnb) {
-//        e.setFilteredOut(false);
-//        if (recordFilteredOutEvents) {
-//            filteredInEvents.add(new BasicEvent(e, nnb));
-//        }
-//    }
     /**
      * Subclasses should call this before filtering to clear the
      * filteredOutEventCount and filteredOutEvents
@@ -251,12 +211,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         super.setFilterEnabled(yes);
-        // check if enclosed in NTF and warn user
-        // need to see if we are called from checkbox or from enum pulldown menu
-//        if(isEnclosed() && getEnclosingFilter() instanceof NoiseTesterFilter){
-//            showWarningDialogInSwingThread("Do not enable noise filter", USAGE);
-//            
-//        }
     }
 
     /**
@@ -485,19 +439,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     /**
-     * NoiseTesterFilter sets this boolean true to record filtered out events to
-     * the filteredOutEvents ArrayList. Set false by default to save time and
-     * memory.
-     *
-     * @param recordFilteredOutEvents the recordFilteredOutEvents to set
-     */
-    public void setRecordFilteredOutEvents(boolean recordFilteredOutEvents) {
-        this.recordFilteredOutEvents = recordFilteredOutEvents;
-        filteredOutEvents.clear(); // make sure to clear the list
-        filteredInEvents.clear(); // make sure to clear the list
-    }
-
-    /**
      * @return the filterHotPixels
      */
     public boolean isFilterHotPixels() {
@@ -611,21 +552,6 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
         }
     }
 
-//    public class FilteredEventWithNNb {
-//
-//        BasicEvent e;
-//        byte nnb;
-//
-//        public FilteredEventWithNNb(BasicEvent e, byte nnb) {
-//            this.e = e;
-//            this.nnb = nnb;
-//        }
-//
-//        public FilteredEventWithNNb(BasicEvent e) {
-//            this.e = e;
-//            this.nnb = 0;
-//        }
-//    }
     /**
      * @return the noiseFilterControl
      */
