@@ -576,7 +576,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                             numDoButtons++;
                             String camelCaseLabel = method.getName().substring(10);
                             String wordsLabel = splitCamelCase(camelCaseLabel);
-                            final AbstractButton button = new JButton(wordsLabel);
+                            final AbstractButton button = new JToggleButton(wordsLabel);
                             prefButton = button;
                             button.setMargin(butInsets);
                             button.setFont(button.getFont().deriveFont(9f));
