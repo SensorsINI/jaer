@@ -215,7 +215,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     final float[] NOISE_COLOR = {1f, 0, 0, .3f}, SIG_COLOR = {0, 1f, 0, .3f};
     final int LABEL_OFFSET_PIX = 1; // how many pixels LABEL_OFFSET_PIX is the annnotation overlay, so we can see original signal/noise event and its label
 
-    private boolean outputTrainingData = getBoolean("outputTrainingData", false);
+    private boolean outputTrainingData = false;
     private boolean recordPureNoise = false;
     private boolean outputFilterStatistic = false;
 
@@ -737,7 +737,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         if (outputTrainingData && csvWriter != null) {
 
-            for (SignalNoiseEvent event : signalNoisePacket) {
+            for (SignalNoiseEvent event : signalNoisePacket) { // denoising disabled so this gets all DVS events
                 try {
                     int ts = event.timestamp;
                     byte type = event.getPolarity() == PolarityEvent.Polarity.Off ? (byte) -1 : (byte) 1;
@@ -1472,7 +1472,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     synchronized public void doToggleOffSaveMLPTraining() {
         if (csvFile != null) {
             try {
-                log.fine("closing MLPF CSV output file" + csvFile);
+                log.fine("closing MLPF CSV output file" + csvFile.getAbsoluteFile());
                 csvWriter.close();
                 float snr = (float) csvSignalCount / (float) csvNoiseCount;
                 String m = String.format("closed CSV output file %s with %,d events (%,d signal events, %,d noise events, SNR=%.3g", csvFile, csvNumEventsWritten, csvSignalCount, csvNoiseCount, snr);
@@ -1480,10 +1480,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 showFolderInDesktop(csvFile);
                 log.info(m);
             } catch (IOException e) {
-                log.warning("could not close CSV output file " + csvFile + ": caught " + e.toString());
+                log.warning("could not close CSV output file " + csvFile.getAbsoluteFile() + ": caught " + e.toString());
             } finally {
                 csvFile = null;
                 csvWriter = null;
+                setDisableDenoising(false);
+                setOutputTrainingData(false);
             }
         }
     }
@@ -1512,11 +1514,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         String fn = csvFileName + ".csv";
         csvFile = new File(fn);
         boolean exists = csvFile.exists();
-        log.info(String.format("opening %s for output", fn));
+        log.info(String.format("opening %s for CSV training output", csvFile.getAbsoluteFile()));
         try {
-            csvWriter = new BufferedWriter(new FileWriter(csvFile, true));
+            csvWriter = new BufferedWriter(new FileWriter(csvFile, true),100_000_000);
             if (!exists) { // write header
-                log.info("file did not exist, so writing header");
+                log.info("file "+csvFile.getAbsoluteFile()+" did not exist, so writing header");
                 if (outputTrainingData) {
                     log.info("writing header for MLPF training file");
                     csvWriter.write(String.format("#MLPF training data\n# type, event.x, event.y, event.timestamp,signal/noise(1/0), nnbTimestamp(25*25), nnbPolarity(25*25), packetFirstEventTimestamp\n"));
@@ -1526,8 +1528,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                             + "inSignalRateHz,inNoiseRateHz,outSignalRateHz,outNoiseRateHz\n"));
                 }
             }
+            setDisableDenoising(true);
+            setOutputTrainingData(true);
         } catch (IOException ex) {
-            log.warning(String.format("could not open %s for output; caught %s", fn, ex.toString()));
+            log.warning(String.format("could not open %s for output; caught %s", csvFile.getAbsoluteFile(), ex.toString()));
+        } finally {
         }
     }
 
@@ -1542,8 +1547,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param outputTrainingData the outputTrainingData to set
      */
     public void setOutputTrainingData(boolean outputTrainingData) {
+        boolean old=this.outputTrainingData;
         this.outputTrainingData = outputTrainingData;
-        putBoolean("outputTrainingData", outputTrainingData);
+        getSupport().firePropertyChange("outputTrainingData",old,outputTrainingData);
     }
 
     /**
@@ -3301,7 +3307,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param disableDenoising the disableDenoising to set
      */
     public void setDisableDenoising(boolean disableDenoising) {
+        boolean old=this.disableDenoising;
         this.disableDenoising = disableDenoising;
+        getSupport().firePropertyChange("disableDenoising", old, disableDenoising);
     }
 
     /**
