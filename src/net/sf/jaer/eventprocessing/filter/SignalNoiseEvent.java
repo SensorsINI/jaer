@@ -22,7 +22,8 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 
 /**
- *
+ * Special event type for denoiser development
+ * 
  * @author tobi
  */
 public class SignalNoiseEvent extends ApsDvsEvent {
@@ -39,10 +40,12 @@ public class SignalNoiseEvent extends ApsDvsEvent {
         return String.format("label=%s classification=%s: %s", label(), classification(), super.toString());
     }
 
+    /** Returns "signal" or "noise" label string */
     public String label(){
         return labeledAsSignal?"signal":"noise";
     }
     
+    /** Returns "unclassified", "noise", or "signal" classification label */
     public String classification() {
         if (!classifiedAsNoise && !classifiedAsSignal) {
             return "unclassified";
@@ -55,7 +58,8 @@ public class SignalNoiseEvent extends ApsDvsEvent {
 
     /**
      * Copies the source event, and assumes event is a labeledAsSignal event, so
-     * that labeledAsSignal is set true and classifiedAsSignal is set false
+     * that labeledAsSignal is set true the event is unclassified.
+     * If the source event is a SignalNoiseEvent, its fields are copied.
      *
      * @param src the source event
      */
@@ -77,11 +81,13 @@ public class SignalNoiseEvent extends ApsDvsEvent {
         setClassifyAsSignal(false);
     }
 
+    /** Mark the event as classified as signal */
     public final void classifySignal() {
         setClassifyAsSignal(true);
         setClassifyAsNoise(false);
     }
 
+    /** Mark the event as classified as noise */
     public final void classifyNoise() {
         setClassifyAsSignal(false);
         setClassifyAsNoise(true);

@@ -469,6 +469,22 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         }
     }
 
+    private String splitCamelCase(String s) {
+        String delim = "(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])";
+        String[] words = s.splitWithDelimiters(delim, 0);
+        StringBuilder s1 = new StringBuilder();
+        for (String w : words) {
+            if (w.isEmpty()) {
+                s1.append(" ");
+            } else {
+                s1.append(w);
+            }
+        }
+        String s2=s1.toString();
+        String s3=s2.replaceAll(" ([A-Z])s", "$1s");
+        return s3;
+    }
+
     // gets getter/setter methods for the filter and makes controls for them. enclosed filters are also added as submenus
     private void addIntrospectedControls() {
         boolean wasSelected = getFilter().isSelected(); // restore the currentState in case filter is rebuilt
@@ -503,7 +519,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 && (releasedMethod.getReturnType() == void.class)) {
                             //found corresponding release method, add action listeners for press and release
                             numDoButtons++;
-                            final AbstractButton button = new JButton(method.getName().substring(7));
+                            String camelCaseLabel = method.getName().substring(7);
+                            String wordsLabel = splitCamelCase(camelCaseLabel);
+                            final AbstractButton button = new JButton(wordsLabel);
                             prefButton = button;
                             button.setMargin(butInsets);
                             button.setFont(button.getFont().deriveFont(9f));
@@ -556,7 +574,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                 && (toggleOffMethod.getReturnType() == void.class)) {
                             //found corresponding release method, add action listeners for toggle on and toggle off
                             numDoButtons++;
-                            final AbstractButton button = new JToggleButton(method.getName().substring(10));
+                            String camelCaseLabel = method.getName().substring(10);
+                            String wordsLabel = splitCamelCase(camelCaseLabel);
+                            final AbstractButton button = new JButton(wordsLabel);
                             prefButton = button;
                             button.setMargin(butInsets);
                             button.setFont(button.getFont().deriveFont(9f));
@@ -595,7 +615,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         && (method.getParameterTypes().length == 0)
                         && (method.getReturnType() == void.class)) {
                     numDoButtons++;
-                    final AbstractButton button = new JButton(method.getName().substring(2));
+                    String camelCaseLabel = method.getName().substring(2);
+                    String wordsLabel = splitCamelCase(camelCaseLabel);
+                    final AbstractButton button = new JButton(wordsLabel);
                     prefButton = button;
                     button.setMargin(butInsets);
                     button.setFont(button.getFont().deriveFont(9f));
@@ -937,7 +959,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     void addTip(EventFilter f, AbstractButton b) {
-        String s = f.getPropertyTooltip(b.getText());
+        String s = f.getPropertyTooltip(b.getText().replaceAll(" ", ""));
         if (s == null) {
             return;
         }
@@ -1175,7 +1197,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public EnumControl(final String name, final PropertyDescriptor p, final Class<? extends Enum> c) {
             super(p);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            label = new JLabel(name);
+            label = new JLabel((name));
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
             addTip(getFilter(), label);
@@ -1334,7 +1356,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         public StringControl(final String name, final PropertyDescriptor p) {
             super(p);
-            label = new JLabel(name);
+            label = new JLabel((name));
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
             addTip(getFilter(), label);
@@ -1636,7 +1658,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             signed = isSigned(write);
 
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
-            label = new JLabel(name);
+            label = new JLabel((name));
             label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             setFontSizeStyle(label);
@@ -1872,7 +1894,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
             signed = isSigned(write);
             setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
-            label = new JLabel(name);
+            label = new JLabel((name));
             label.setAlignmentX(LEFT_ALIGNMENT);
             setFontSizeStyle(label);
             addTip(getFilter(), label);
@@ -2657,7 +2679,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public Point2DControl(final String name, PropertyDescriptor p) {
             super(p);
 //            setLayout(new FlowLayout(FlowLayout.LEADING));
-            label = new JLabel(name);
+            label = new JLabel((name));
             label.setAlignmentX(LEFT_ALIGNMENT);
             label.setFont(label.getFont().deriveFont(fontSize));
             addTip(getFilter(), label);

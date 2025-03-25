@@ -53,7 +53,8 @@ import net.sf.jaer.util.RemoteControlCommand;
  * @author Shssha Guo
  */
 @Description("DWF/FWF Double Window and Fixed Window Filter that Filters out uncorrelated background activity noise according to "
-        + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually a few hundred is enough, and requires negligible memory cost.")
+        + " spatio-temporal correlation but with a past event window. The past event window stores the past few events, usually a few hundred is enough, and requires negligible memory cost."
+        + "<p>Published in Guo & Delbruck, T-PAMI 2022 <a href=\"http://dx.doi.org/10.1109/TPAMI.2022.3152999\">10.1109/TPAMI.2022.3152999</a>")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DoubleWindowFilter extends AbstractNoiseFilter {
 

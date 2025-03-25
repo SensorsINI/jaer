@@ -81,7 +81,7 @@ import net.sf.jaer.util.RemoteControlCommand;
  *
  * @author Tobi Delbruck and Shasha Guo, 2021
  */
-@Description("Denoising noise filter that uses a DNN deep neural network to classify events as signal or noise events")
+@Description("<html>Denoising noise filter that uses an MLP neural network to classify events as signal or noise events. Published in Guo & Delbruck, T-PAMI 2022 <a href=\"http://dx.doi.org/10.1109/TPAMI.2022.3152999\">10.1109/TPAMI.2022.3152999</a>")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener, MouseMotionListener, MouseWheelListener {
 

@@ -68,6 +68,12 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
         setPropertyTooltip(cat, "saveState", "Saves synaptic state to disk");
         setPropertyTooltip(cat, "loadState", "Loads synaptic state from disk");
         setPropertyTooltip(cat, "clearState", "Clears the synaptic depression state of all synapses");
+        hideProperty("correlationTimeS");
+        hideProperty("antiCasualEnabled");
+        hideProperty("filterHotPixels");
+        hideProperty("letFirstEventThrough");
+        hideProperty("sigmaDistPixels");
+        hideProperty("subsampleBy");
     }
 
     @Override
@@ -112,6 +118,12 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
         }
         neurons.display(drawable, p);
     }
+
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+    }
+    
+   
 
     private void checkNeuronAllocation() {
         if (chip.getNumCells() == 0) {

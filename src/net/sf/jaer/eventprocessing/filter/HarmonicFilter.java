@@ -47,7 +47,7 @@ import com.jogamp.opengl.util.awt.TextRenderer;
  *
  * @author tobi
  */
-@Description("An AE filter that filters out boring events caused by global flickering illumination. This filter measures the global event activity to obtain the phase and amplitude of flicker. If the amplitude exceeds a threashold, then events around the peak activity are filtered away.")
+@Description("<html>A denoiser that filters out boring events caused by global flickering illumination. <p>It measures the global event activity to obtain the phase and amplitude of flicker. <p>If the amplitude exceeds a threashold, then events around the peak activity are filtered away.")
 public class HarmonicFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
     private boolean printStats = prefs().getBoolean("HarmonicFilter.printStats", true);

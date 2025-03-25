@@ -28,8 +28,8 @@ import net.sf.jaer.util.RemoteControlCommand;
  * @author Tobi Delbruck and Shasha Guo, with discussion with Moritz Milde, Dave
  * Karpul, Elisabetta Chicca, Chiara Bartolozzi Telluride 2017
  */
-@Description("Denoises uncorrelated noise events based on work with Shasha Guo, from earlier Telluride 2017  discussions with Moritz Milde, Dave Karpul, Elisabetta\n"
-        + " * Chicca, and Chiara Bartolozzi, later with Rui Graca, Brian McReynolds")
+@Description("<html>Denoises uncorrelated noise events by multiple events in spatiotemporal neighborhood."
+        + "<p>Published in Guo & Delbruck, T-PAMI 2022 <a href=\"http://dx.doi.org/10.1109/TPAMI.2022.3152999\">10.1109/TPAMI.2022.3152999</a>")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 

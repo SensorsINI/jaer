@@ -25,7 +25,8 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 
 /**
- *
+ * Special denoising packet type for denoiser development.
+ * 
  * @author tobi
  */
 public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
@@ -38,6 +39,7 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
     int unclassifiedCount;
     private final int LIST_LENGTH = 0x8000;
 
+    /** list of events if makeLists=true on countEvents */
     public final ArrayList<BasicEvent> tpList = new ArrayList(LIST_LENGTH),
             fnList = new ArrayList(LIST_LENGTH),
             fpList = new ArrayList(LIST_LENGTH),
@@ -69,6 +71,10 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         fnList.clear();
     }
 
+    /** Count the event types and optionally collect events to lists 
+     * 
+     * @param makeLists 
+     */
     final void countClassifications(boolean makeLists) {
         resetCounts();
 //        for (SignalNoiseEvent e : this) { // !!! tobi: we cannot use default iterator because it skips all filteredOur events
@@ -81,6 +87,11 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         }
     }
 
+    /** Count single event
+     * 
+     * @param e
+     * @param makeLists 
+     */
     public void countEvent(SignalNoiseEvent e, boolean makeLists) {
         totalCount++;
         if (e.isLabeledAsSignal()) { // is true signal event
@@ -117,6 +128,10 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         }
     }
 
+    /** Copies from another event packet
+     * 
+     * @param in 
+     */
     final public void copyFrom(EventPacket in) {
         resetCounts();
         OutputEventIterator outItr = outputIterator();
@@ -125,6 +140,10 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         }
     }
 
+    /** Copy from another event packet, labeling all events as signal events that are unclassified
+     * 
+     * @param in 
+     */
     void copySignalEventsFrom(EventPacket<? extends BasicEvent> in) {
         resetCounts();
         OutputEventIterator outItr = outputIterator();
