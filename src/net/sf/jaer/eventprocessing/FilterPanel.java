@@ -51,6 +51,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
@@ -480,8 +482,8 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 s1.append(w);
             }
         }
-        String s2=s1.toString();
-        String s3=s2.replaceAll(" ([A-Z])s", "$1s");
+        String s2 = s1.toString();
+        String s3 = s2.replaceAll(" ([A-Z])s", "$1s");
         return s3;
     }
 
@@ -2748,6 +2750,44 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 // Addition by Peter: Allow user to add custom filter controls
 //    ArrayList<JPanel> customControls=new ArrayList();
     JPanel additionalCustomControlsPanel;
+
+    /**
+     * Shows a tooltip for the entry field for a given property
+     *
+     * @param propName
+     * @param text
+     */
+    public void displayTooltip(String propName, String text) {
+        MyControl control = propName2MyControlMap.get(propName);
+        if (control != null) {
+            if (control.label != null) {
+                displayToolTip(control.label, text);
+            } else if (control instanceof BooleanControl) {
+                displayToolTip(control, text);
+            }
+        }
+    }
+
+    private void displayToolTip(final JComponent comp, final String text) {
+        final ToolTipManager ttm = ToolTipManager.sharedInstance();
+        final MouseEvent event = new MouseEvent(comp, 0, 0, 0,
+                0, 0, // X-Y of the mouse for the tool tip
+                0, false);
+        final int oldDelay = ttm.getInitialDelay();
+        final String oldText = comp.getToolTipText(event);
+        comp.setToolTipText(text);
+        ttm.setInitialDelay(0);
+        ttm.setDismissDelay(1000);
+        ttm.mouseMoved(event);
+
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                ttm.setInitialDelay(oldDelay);
+                comp.setToolTipText(oldText);
+            }
+        }, ttm.getDismissDelay());
+    }
 
     public void addCustomControls(JPanel control) {
         if (additionalCustomControlsPanel == null) {
