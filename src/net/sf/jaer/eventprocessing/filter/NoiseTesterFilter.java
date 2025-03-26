@@ -188,8 +188,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private int sx = 0, sy = 0;
 
     private float TPR = 0;
-    private float TPO = 0;
+    private float FPR = 0;
     private float TNR = 0;
+    private float FNR = 0;
+    
+    private float TPO = 0;
     private float accuracy = 0;
     private float BR = 0;
     float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
@@ -344,7 +347,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         String out = "5. Output";
         setPropertyTooltip(out, "saveMLPTraining", "Toggles ON/OFF the MLP training output spreadsheet data file named csvFileName (see " + out + " section). Set switches there to determine output columns.");
-        setPropertyTooltip(out, "csvFileName", "Enter a filename base here to open MLP training CSV output file (appending to it if it already exists). Information written determined by Output switches.");
+        setPropertyTooltip(out, "csvFileName", "<html>Enter a filename base here to set MLP training CSV output filename <br>(appending to it if it already exists). <p>Information written is determined by Output switches.<p>Use <i>Save MLP Training</i> button start writing out data.");
         setPropertyTooltip(out, "outputTrainingData", "<html>Output data for training MLP. <p>Outputs CSV file that has a single row with most recent event information (timestamp and polarity) for 25x25 neighborhood of each event. <p>Each row thus has about 1000 columns.");
         setPropertyTooltip(out, "recordPureNoise", "Output pure noise data for training MLP.");
         setPropertyTooltip(out, "outputFilterStatistic", "Output analyzable data of a filter.");
@@ -527,7 +530,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, noiseSummaryString);
 
             String s = null;
-            s = String.format("TPR=%-7s%% FPR=%-7s%% TNR=%-7s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (1 - TNR)), eng.format(100 * TNR), poissonDtUs);
+            s = String.format("TPR=%-7s%% FPR=%-7s%% TNR=%-7s%% FNR=%-7s dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (FPR)), eng.format(100 * TNR), eng.format(100 * FNR), poissonDtUs);
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
             s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
@@ -830,9 +833,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
             TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
-            TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
+            FPR=1-TPR;
 
             TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
+            FNR = 1-TNR;
+            
+            TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
             accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
             BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
@@ -1466,7 +1472,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         putString("csvFileName", csvFileName);
         getSupport().firePropertyChange("csvFileName", this.csvFileName, csvFileName);
         this.csvFileName = csvFileName;
-        doToggleOnSaveMLPTraining();
+//        doToggleOnSaveMLPTraining();
     }
 
     synchronized public void doToggleOffSaveMLPTraining() {
