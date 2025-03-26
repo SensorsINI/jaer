@@ -288,7 +288,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 } else if (n.getClass() == noiseFilterClass) {
                     selectedNoiseFilter = n;
                     rocHistoryCurrent = new ROCHistory(selectedNoiseFilter);
-                    n.initFilter();
+//                    n.initFilter();
                     n.setFilterEnabled(true);
                     n.setControlsVisible(true);
                     if (n.getFilterPanel() != null) {
@@ -1297,7 +1297,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 if (n == null) {
                     continue;
                 }
-                n.initFilter();
+//                n.initFilter(); // already done by FilterChain
                 chain.add(n);
                 getSupport().addPropertyChangeListener(n);
                 n.getSupport().addPropertyChangeListener(this); // make sure we are synchronized both ways for all filter parameters
