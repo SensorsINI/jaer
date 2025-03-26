@@ -120,6 +120,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private JFrame tiFrame = null;
     private BasicEvent eventToDisplayTIPatchFor = null;
     private EngineeringFormat eng = new EngineeringFormat();
+    private int STATS_NUM_EVENTS=1_000_000;
 
     public enum TIPatchMethod {
         ExponentialDecay, LinearDecay // default is LinearDecay since it works better (and is faster and cheaper)
@@ -203,7 +204,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         setPropertyTooltip(tf, "correlationTimeS", "<html>Window of time tau in seconds that the timestamp image counts past events; <br>pixels with older events are set to zero.<p> Windows within window are linearly or exponentially decayed to zero as dt approaches timeWindowS<<p>Typically trained at 100ms, but shorter values can result in more accurate denoising.");
 
         setPropertyTooltip(tf, "tiPatchMethod", "Method used to compute the value of the timestamp image patch values");
-        setPropertyTooltip(disp, "showClassificationHistogram", "Shows a histogram of classification results for all events, should be bowl shaped for well-behaved denoising");
+        setPropertyTooltip(disp, "showClassificationHistogram", "Shows a histogram of classification results for last "+STATS_NUM_EVENTS+" events, should be bowl shaped for well-behaved denoising");
         setPropertyTooltip(disp, "showTimeimagePatch", "Shows a window with timestamp image input to MLP");
         setPropertyTooltip(disp, "showOnlyNoiseTimeimages", "Shows TPI input to MLP only for noise classifications in the selected ROI");
         setPropertyTooltip(disp, "showOnlySignalTimeimages", "Shows TPI input to MLP only for signal classifications in the selected ROI");
@@ -575,7 +576,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         }
         eventList.clear();
         if (stats == null) {
-            stats = new DescriptiveStatistics(100000);
+            stats = new DescriptiveStatistics(STATS_NUM_EVENTS);
         }
         stats.clear();
 
@@ -808,11 +809,12 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     public void doShowClassificationHistogram() {
         Plot plt = Plot.create(); // see https://github.com/sh0nk/matplotlib4j
         plt.subplot(1, 1, 1);
-        plt.title("S-N frequency histogram");
-        plt.xlabel("S-N");
-        plt.ylabel("frequency");
         List<Double> l = Doubles.asList(stats.getValues());
         plt.hist().add(l).bins(100);
+        long n=stats.getN();
+        plt.title(String.format("MLP output frequency histogram (N=%,d events)",n));
+        plt.xlabel("S-N");
+        plt.ylabel("frequency");
 
         plt.legend();
         try {
