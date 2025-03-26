@@ -220,6 +220,11 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
 
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        if(this.tfExecutionGraph==null){
+            showWarningDialogInSwingThread("<html>MLPNoiseFilter: No network loaded yet.<p>Use <i>Load network</i> button to load a .pb file and then reenable MLPNoiseFilter", "No MLP");
+            setFilterEnabled(false);
+            return in;
+        }
         super.filterPacket(in);
         if (timestampImage == null) {
             allocateMaps(chip);
@@ -543,6 +548,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 } catch (Exception ex) {
                     log.warning("Couldn't load network: Caught " + ex.toString());
                 }
+            }else{
+                log.warning("MLPNoiseFilter: MLP weights in \n    "+f.getAbsolutePath()+"\n are not available.\nUse Load network button to load a set of weights.");
             }
         }
         sxm1 = chip.getSizeX() - 1;
