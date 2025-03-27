@@ -27,8 +27,10 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.Font;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -76,10 +78,12 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
@@ -143,6 +147,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     private boolean disableAddingNoise = getBoolean("disableAddingNoise", false);
     private boolean disableDenoising = false;
+    private boolean disableSignal = false;
     private String noiseSummaryString = null;
     @Preferred
     private float shotNoiseRateHz = getFloat("shotNoiseRateHz", 5f);
@@ -191,7 +196,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float FPR = 0;
     private float TNR = 0;
     private float FNR = 0;
-    
+
     private float TPO = 0;
     private float accuracy = 0;
     private float BR = 0;
@@ -232,6 +237,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     // original NTF arrays for tracking signal and noise events
     private EventPacket<PolarityEvent> signalAndNoisePacket = null;
+;
     private final ArrayList<PolarityEvent> noiseList = new ArrayList<>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
     /**
      * How time is split up for Poisson sampling using bounds trick
@@ -326,6 +332,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         String noise = "0b. Synethetic noise control";
         setPropertyTooltip(noise, "disableAddingNoise", "Disable adding noise; use if labeled noise is present in the AEDAT, e.g. from v2e");
+        setPropertyTooltip(noise, "disableSignal", "Disable signal events, use to set parameters for e.g. HotPixelFilter or to study pure noise FPR");
         setPropertyTooltip(noise, "disableDenoising", "Disable denoising temporarily (not stored in preferences)");
         setPropertyTooltip(noise, "shotNoiseRateHz", "Mean rate per pixel in Hz of shot noise events");
         setPropertyTooltip(noise, "photoreceptorNoiseSimulation", "<html>Generate shot noise from simulated bandlimited photoreceptor noise.<p>The <i>shotNoiseRateHz</i> will only be a guide to the actual generated noise rate. ");
@@ -537,12 +544,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             gl.glPopMatrix();
         }
 
+        float sp=sy/10;
+        Rectangle2D bounds=null;
         if (isDisableAddingNoise()) {
-            DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2, .5f, Color.white, "disableAddingNoise=true");
+            bounds=DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2+sp, .5f, Color.white, "disableAddingNoise=true");
         }
         if (isDisableDenoising()) {
-            DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2, .5f, Color.white, "disableDenoising=true");
-
+            bounds=DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2-(float)(bounds!=null?bounds.getHeight():0), .5f, Color.white, "disableDenoising=true");
+        }
+        if (isDisableSignal()) {
+            bounds=DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2-(float)(bounds!=null?bounds.getHeight():0), .5f, Color.white, "disableSignal=true");
         }
 
     }
@@ -833,11 +844,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             assert TN + FN == filteredOutEventCount : String.format("TN (%d) + FN (%d) = %d  != filteredOutEventCount (%d)", TN, FN, TN + FN, filteredOutEventCount);
 
             TPR = TP + FN == 0 ? 0f : (float) (TP * 1.0 / (TP + FN)); // percentage of true positive events. that's output real events out of all real events
-            FPR=1-TPR;
+            FPR = 1 - TPR;
 
             TNR = TN + FP == 0 ? 0f : (float) (TN * 1.0 / (TN + FP));
-            FNR = 1-TNR;
-            
+            FNR = 1 - TNR;
+
             TPO = TP + FP == 0 ? 0f : (float) (TP * 1.0 / (TP + FP)); // percentage of real events in the filter's output
             accuracy = (float) ((TP + TN) * 1.0 / (TP + TN + FP + FN));
 
@@ -980,6 +991,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
                 outItr.nextOutput().copyFrom(ie);
             }
+        }
+        
+        if(isDisableSignal()){
+            signalNoisePacket.removeSignalEvents();
         }
     }
 
@@ -1203,6 +1218,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         e.timestamp = ts;
         e.polarity = pol;
+        e.type=(pol==Polarity.Off?(byte)0:(byte)1);
         e.labelAsSignal(false);  // this is noise event
         e.unclassify();
         // cryptic next line uses the AEChip's event extractor to compute the 'true' raw AER address for this event assuming word parallel format.
@@ -1522,9 +1538,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         boolean exists = csvFile.exists();
         log.info(String.format("opening %s for CSV training output", csvFile.getAbsoluteFile()));
         try {
-            csvWriter = new BufferedWriter(new FileWriter(csvFile, true),100_000_000);
+            csvWriter = new BufferedWriter(new FileWriter(csvFile, true), 100_000_000);
             if (!exists) { // write header
-                log.info("file "+csvFile.getAbsoluteFile()+" did not exist, so writing header");
+                log.info("file " + csvFile.getAbsoluteFile() + " did not exist, so writing header");
                 if (outputTrainingData) {
                     log.info("writing header for MLPF training file");
                     csvWriter.write(String.format("#MLPF training data\n# type, event.x, event.y, event.timestamp,signal/noise(1/0), nnbTimestamp(25*25), nnbPolarity(25*25), packetFirstEventTimestamp\n"));
@@ -1553,9 +1569,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
      * @param outputTrainingData the outputTrainingData to set
      */
     public void setOutputTrainingData(boolean outputTrainingData) {
-        boolean old=this.outputTrainingData;
+        boolean old = this.outputTrainingData;
         this.outputTrainingData = outputTrainingData;
-        getSupport().firePropertyChange("outputTrainingData",old,outputTrainingData);
+        getSupport().firePropertyChange("outputTrainingData", old, outputTrainingData);
     }
 
     /**
@@ -2649,7 +2665,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepStart", old, this.rocSweepStart);
             computeEstimatedNumSteps();
-            log.info(String.format("Sweep start: %s - About %d steps", eng.format(rocSweepStart), Math.round(estimateNumSteps)));
+            final String s = String.format("Sweep start: %s - About %d steps", eng.format(rocSweepStart), Math.round(estimateNumSteps));
+            log.info(s);
+            getFilterPanel().displayTooltip("rocSweepStart", s);
         }
 
         /**
@@ -2672,7 +2690,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepEnd", old, this.rocSweepEnd);
             computeEstimatedNumSteps();
-            log.info(String.format("Sweep end: %s - About %d steps", eng.format(rocSweepEnd), Math.round(estimateNumSteps)));
+            final String s = String.format("Sweep end: %s - About %d steps", eng.format(rocSweepEnd), Math.round(estimateNumSteps));
+            log.info(s);
+            getFilterPanel().displayTooltip("rocSweepEnd", s);
         }
 
         /**
@@ -2692,7 +2712,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepLogStep", old, this.rocSweepLogStep);
             computeEstimatedNumSteps();
-            log.info(String.format("About %d steps", Math.round(estimateNumSteps)));
+            final String s = String.format("About %d steps", Math.round(estimateNumSteps));
+            log.info(s);
+            getFilterPanel().displayTooltip("rocSweepLogStep", s);
         }
 
         /**
@@ -2713,7 +2735,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             storeParams();
             getSupport().firePropertyChange("rocSweepStep", old, this.rocSweepStep);
             computeEstimatedNumSteps();
-            log.info(String.format("Step %s: about %d steps", eng.format(rocSweepStep), Math.round(estimateNumSteps)));
+            final String s = String.format("Step %s: about %d steps", eng.format(rocSweepStep), Math.round(estimateNumSteps));
+            log.info(s);
+            getFilterPanel().displayTooltip("rocSweepEnd", s);
         }
 
         /**
@@ -3310,10 +3334,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     /**
+     * @return the disableSignal
+     */
+    public boolean isDisableSignal() {
+        return disableSignal;
+    }
+
+    /**
+     * @param disableSignal the disableSignal to set
+     */
+    public void setDisableSignal(boolean disableSignal) {
+        this.disableSignal = disableSignal;
+    }
+
+    /**
      * @param disableDenoising the disableDenoising to set
      */
     public void setDisableDenoising(boolean disableDenoising) {
-        boolean old=this.disableDenoising;
+        boolean old = this.disableDenoising;
         this.disableDenoising = disableDenoising;
         getSupport().firePropertyChange("disableDenoising", old, disableDenoising);
     }
