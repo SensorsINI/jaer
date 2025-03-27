@@ -16,6 +16,7 @@ import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.Color;
 import java.awt.Font;
 
 import net.sf.jaer.Description;
@@ -24,9 +25,9 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.filter.AbstractNoiseFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Cheaply suppresses (filters out) hot pixels from DVS; ie pixels that
@@ -59,7 +60,9 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
 
     /**
      * Stores a single hot pixel, with x,y,address and event count collected
-     * during sampling
+     * during sampling. The hashcode of the pixel is exactly the event address,
+     * so users may need to ensure that the address is unique for events that
+     * should be different.
      */
     private static class HotPixel implements Serializable { // static to avoid having this reference to enclosing class
 
@@ -177,24 +180,24 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
 
     public HotPixelFilter(final AEChip chip) {
         super(chip);
-        setPropertyTooltip(TT_FILT_CONTROL,"numHotPixelsMax", "maximum number of hot pixels");
-        setPropertyTooltip(TT_FILT_CONTROL,"learnTimeMs", "how long to accumulate events during learning of hot pixels");
-        setPropertyTooltip(TT_FILT_CONTROL,"doLearnHotPixels", "learn which pixels are hot");
-        setPropertyTooltip(TT_FILT_CONTROL,"doClearHotPixels", "clear list of hot pixels");
-        setPropertyTooltip(TT_FILT_CONTROL,"use2DBooleanArray", "use a 2D boolean array to filter rather than a Set; more efficient for large numbers of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "numHotPixelsMax", "maximum number of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "learnTimeMs", "how long to accumulate events during learning of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "doLearnHotPixels", "learn which pixels are hot");
+        setPropertyTooltip(TT_FILT_CONTROL, "doClearHotPixels", "clear list of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "use2DBooleanArray", "use a 2D boolean array to filter rather than a Set; more efficient for large numbers of hot pixels");
         setPropertyTooltip(TT_DISP, "showHotPixels", "<html>Label the hot pixels graphically;<br>pixels can have both ON and OFF hot pixels.<br>Only if both are hot is the alpha 0.5");
         setPropertyTooltip(TT_DISP, "showHotPixelsNumber", "Show number of hot pixels and percentage of all cells");
         setPropertyTooltip(TT_DISP, "showHotPixelsFontSize", "Font size for number of hot pixels");
         setPropertyTooltip(TT_DISP, "showHotPixelsNumberYLocation", "y location of text as fraction of array size");
         setPropertyTooltip(TT_DISP, "showHotPixelsAlpha", "Alpha transparency used to draw hot pixels");
-        setPropertyTooltip(TT_DISP,"showHotPixelsRadius", "Radius used to render hot pixels (make >0 to show only a few)");
+        setPropertyTooltip(TT_DISP, "showHotPixelsRadius", "Radius used to render hot pixels (make >0 to show only a few)");
         hideProperty("correlationTimeS");
         hideProperty("sigmaDistPixels");
         hideProperty("subsampleBy");
         hideProperty("letFirstEventThrough");
         hideProperty("antiCasualEnabled");
         hideProperty("adaptiveFilteringEnabled");
-        
+
     }
 
     @Override
@@ -318,6 +321,9 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
     public void setNumHotPixelsMax(final int numHotPixelsMax) {
         this.numHotPixelsMax = numHotPixelsMax;
         putInt("numHotPixelsMax", numHotPixelsMax);
+        int n = getNumHotPixelsMax();
+        float percent = 100 * (float) n / (chip.getNumCells());
+        getFilterPanel().displayTooltip("numHotPixelsMax", String.format("%.1f%% of all event addresses", percent));
     }
 
     synchronized public void doLearnHotPixels() {
@@ -329,7 +335,7 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
     @Override
     public String infoString() {
         String s = camelCaseClassname();
-        return String.format("%s: numHot=%,d/%,d max", s, getCurrentNumHotPixels(),numHotPixelsMax);
+        return String.format("%s: numHot=%,d/%,d max", s, getCurrentNumHotPixels(), numHotPixelsMax);
     }
 
     @Override
@@ -353,17 +359,12 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
             }
         }
         if (showHotPixelsNumber) {
-            int n =  getCurrentNumHotPixels();
+            int n = getCurrentNumHotPixels();
             float percent = 100 * (float) n / (chip.getNumCells());
             String s = String.format("%,d hot pixels (%.1f%%)", n, percent);
-            //GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s
-//            DrawGL.drawStringDropShadow(gl, getShowHotPixelsFontSize(), 1, chip.getSizeY() * .01f, 0, Color.getHSBColor(.5f, 1, 1), s);
-            final float scale = 1f;
-            TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, getShowFilteringStatisticsFontSize()), true, true);
-            textRenderer.begin3DRendering();
-            textRenderer.setColor(.3f, .3f, 1, 1);
-            textRenderer.draw3D(s, 1, chip.getSizeY() * showHotPixelsNumberYLocation, 0, scale); // x,y,z, scale factor, make scale small and font big for clear rendering
-            textRenderer.end3DRendering();
+            gl.glPushMatrix();
+            DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize(), 1, chip.getSizeY() * getShowHotPixelsNumberYLocation(), 0, Color.white, s);
+            gl.glPopMatrix();
         }
     }
 
