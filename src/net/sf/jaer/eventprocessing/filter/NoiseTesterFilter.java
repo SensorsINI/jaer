@@ -237,7 +237,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
     // original NTF arrays for tracking signal and noise events
     private EventPacket<PolarityEvent> signalAndNoisePacket = null;
-;
+    ;
     private final ArrayList<PolarityEvent> noiseList = new ArrayList<>(LIST_LENGTH); // TODO make it lazy, when filter is enabled
     /**
      * How time is split up for Poisson sampling using bounds trick
@@ -537,23 +537,23 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition(), 0, Color.white, noiseSummaryString);
 
             String s = null;
-            s = String.format("TPR=%-7s%% FPR=%-7s%% TNR=%-7s%% FNR=%-7s dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (FPR)), eng.format(100 * TNR), eng.format(100 * FNR), poissonDtUs);
+            s = String.format("TPR=%-6s%% FPR=%-6s%% TNR=%-6s%% FNR=%-6s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (FPR)), eng.format(100 * TNR), eng.format(100 * FNR), poissonDtUs);
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
             s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
             gl.glPopMatrix();
         }
 
-        float sp=sy/10;
-        Rectangle2D bounds=null;
+        float sp = sy / 10;
+        Rectangle2D bounds = null;
         if (isDisableAddingNoise()) {
-            bounds=DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2+sp, .5f, Color.white, "disableAddingNoise=true");
+            bounds = DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2 + sp, .5f, Color.white, "disableAddingNoise=true");
         }
         if (isDisableDenoising()) {
-            bounds=DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2-(float)(bounds!=null?bounds.getHeight():0), .5f, Color.white, "disableDenoising=true");
+            bounds = DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2 - (float) (bounds != null ? bounds.getHeight() : 0), .5f, Color.white, "disableDenoising=true");
         }
         if (isDisableSignal()) {
-            bounds=DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2-(float)(bounds!=null?bounds.getHeight():0), .5f, Color.white, "disableSignal=true");
+            bounds = DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2 - (float) (bounds != null ? bounds.getHeight() : 0), .5f, Color.white, "disableSignal=true");
         }
 
     }
@@ -724,6 +724,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         if (firstSignalTimestmapAfterReset == null) {
             firstSignalTimestmapAfterReset = firstE.timestamp;
         }
+        float deltaTimeS = lastTimestampPreviousPacket != null ? 1e-6f * (in.getLastTimestamp() - lastTimestampPreviousPacket) : Float.NaN;
+
         if (resetCalled) {
             resetCalled = false;
             timestampAfterReset = in.getFirstTimestamp(); // we use getLastTimestamp because getFirstTimestamp contains event from BEFORE the rewind :-( Or at least it used to, fixed now I think (Tobi)
@@ -741,14 +743,16 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         signalPacket.copySignalEventsFrom(in);
-//        signalPacket.countClassifications(false);
+        signalPacket.countClassifications(false);
+        inSignalRateHz = (signalNoisePacket.signalCount) / deltaTimeS;
+        inNoiseRateHz = (signalNoisePacket.noiseCount) / deltaTimeS;
         if (!isDisableAddingNoise()) {
             addNoise(signalPacket, signalNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
         } else {
             addNoise(signalPacket, signalNoisePacket, noiseList, 0, 0);
         }
-//        signalNoisePacket.countClassifications(false);  // debug
 
+//        signalNoisePacket.countClassifications(false);  // debug
         if (outputTrainingData && csvWriter != null) {
 
             for (SignalNoiseEvent event : signalNoisePacket) { // denoising disabled so this gets all DVS events
@@ -812,9 +816,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
 
         if (selectedNoiseFilter != null && !disableDenoising) {
-            signalNoisePacket.countClassifications(false);
+//            signalNoisePacket.countClassifications(false); // TODO debug
             signalNoisePacket = (SignalNoisePacket) getEnclosedFilterChain().filterPacket(signalNoisePacket);
-            signalNoisePacket.countClassifications(false);
+//            signalNoisePacket.countClassifications(false); // TODO debug
             // if selectedNoiseFilter is null, nothing happens here
             if (isInitializingPreviousEvents(in.getFirstTimestamp())) {
                 // we let the first packet be filtered to populated the history with
@@ -854,15 +858,11 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
 
             BR = TPR + TPO == 0 ? 0f : (float) (2 * TPR * TPO / (TPR + TPO)); // wish to norm to 1. if both TPR and TPO is 1. the value is 1
         }
+        outSignalRateHz = ((TP)) / deltaTimeS;
+        outNoiseRateHz = ((FP)) / deltaTimeS;
+
         if (!isDebug) {
             boolean ranStopper = stopperTask.cancel();
-        }
-        if (lastTimestampPreviousPacket != null) {
-            int deltaTime = in.getLastTimestamp() - lastTimestampPreviousPacket;
-            inSignalRateHz = (1e6f * signalNoisePacket.signalCount) / deltaTime;
-            inNoiseRateHz = (1e6f * signalNoisePacket.noiseCount) / deltaTime;
-            outSignalRateHz = (1e6f * TP) / deltaTime;
-            outNoiseRateHz = (1e6f * FP) / deltaTime;
         }
 
         if (outputFilterStatistic && csvWriter != null) {
@@ -992,8 +992,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 outItr.nextOutput().copyFrom(ie);
             }
         }
-        
-        if(isDisableSignal()){
+
+//        signalNoisePacket.countClassifications(false); // TODO debug
+        if (isDisableSignal()) {
             signalNoisePacket.removeSignalEvents();
         }
     }
@@ -1218,7 +1219,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         e.timestamp = ts;
         e.polarity = pol;
-        e.type=(pol==Polarity.Off?(byte)0:(byte)1);
+        e.type = (pol == Polarity.Off ? (byte) 0 : (byte) 1);
         e.labelAsSignal(false);  // this is noise event
         e.unclassify();
         // cryptic next line uses the AEChip's event extractor to compute the 'true' raw AER address for this event assuming word parallel format.
