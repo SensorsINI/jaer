@@ -423,6 +423,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         public DavisEventExtractor(final DavisBaseCamera chip) {
             super(chip);
+            this.setXshift((byte)DavisChip.XSHIFT);
+            this.setYshift((byte)DavisChip.YSHIFT);
+            this.setXmask((byte)DavisChip.XMASK);
+            this.setYmask((byte)DavisChip.YMASK); // used to construct raw address from synthetic events, such as those used for NoiseTesterFilter denoising studies. Ensures unique hashcode for HotPixelFilter
         }
 
         int lastImuTs = 0; // DEBUG
