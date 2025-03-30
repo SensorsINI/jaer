@@ -83,7 +83,7 @@ public class JAERViewer {
     private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled", false); // default false so that all viewers are independent
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
     private ToggleSyncEnabledAction toggleSyncEnabledAction = new ToggleSyncEnabledAction();
-
+    
     public ToggleSyncEnabledAction getToggleSyncEnabledAction() {
         return toggleSyncEnabledAction;
     }
@@ -582,6 +582,19 @@ public class JAERViewer {
                 v.getPlayerControls().setAePlayer(p);
             }
         }
+    }
+    
+    /** Returns true if any AEViewer (or its HardwareConfiguration or FilterSetting) windows are active, i.e. has focus
+     * 
+     * @return true if some jAER window has focus
+     */
+    public boolean isAnyWindowActive(){
+        for(AEViewer v:viewers){
+            if(v.isAnyWindowActive()){
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
