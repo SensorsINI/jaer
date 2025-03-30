@@ -158,6 +158,7 @@ import net.sf.jaer.util.filter.LowpassFilter;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
+import org.opencv.core.Core;
 
 /**
  * This is the main jAER interface to the user. The main event loop "ViewLoop"
@@ -1750,7 +1751,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 setTitleAccordingToState();
                 fpsDelay(); // delay at start so all the below that breaks out of loop still has a delay to avoid CPU hog
-                if(stop){
+                if (stop) {
                     log.info("breaking out of view loop after fpsDelay() because stop=true");
                     break;
                 }
@@ -1820,7 +1821,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 } // if (!isPaused() || isSingleStep())
 
-                if(stop){
+                if (stop) {
                     log.info("breaking out of view loop before rendering because stop=true");
                     break;
                 }
@@ -2557,7 +2558,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //                public void run(){
         //                    statisticsLabel.setText(s);
 
-        ////                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
+    
+
+    ////                    if(statisticsLabel.getWidth()>statisticsPanel.getWidth()) {
         //////                        System.out.println("statisticsLabel width="+statisticsLabel.getWidth()+" > statisticsPanel width="+statisticsPanel.getWidth());
         ////                        // possibly resize statistics font size
         ////                        formComponentResized(null);
@@ -5368,7 +5371,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //                    BrowserLauncher launcher=new BrowserLauncher();
                 //                    launcher.openURLinBrowser(url);
 
-                ////                    BrowserLauncher.openURL(url);
+            
+        
+        ////                    BrowserLauncher.openURL(url);
                 //                } catch (Exception e) {
                 //                    log.warning(e.toString());
                 //                    setStatusMessage(e.getMessage());
@@ -6015,7 +6020,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             //        if(socketInputStream==null){
             //            try{
             //
-            ////                socketInputStream=new AEUnicastInput();
+        ////                socketInputStream=new AEUnicastInput();
             //                String host=JOptionPane.showInputDialog(this,"Hostname to receive from",socketInputStream.getHost());
             //                if(host==null) return;
             //                aeSocket=new AESocket(host);
@@ -6408,6 +6413,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             interruptViewloop();  // to break out of exchangeers that might be waiting, problem is that it also interrupts a singleStep ....
         }
         getSupport().firePropertyChange(EVENT_PAUSED, old, isPaused());
+    }
+
+     /** Returns true if AEViewer (or the BiasgenFrame or FilterSetting) windows is active, i.e. has focus
+     * 
+     * @return true if some jAER window has focus
+     */
+    public boolean isAnyWindowActive() {
+       if(isActive()) return true;
+       if(getFilterFrame()!=null && getFilterFrame().isActive()) return true;
+       if(getBiasgenFrame()!=null && getBiasgenFrame().isActive()) return true;
+       return false;
     }
 
     public boolean isActiveRenderingEnabled() {
