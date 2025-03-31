@@ -201,6 +201,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     private float accuracy = 0;
     private float BR = 0;
     float inSignalRateHz = 0, inNoiseRateHz = 0, outSignalRateHz = 0, outNoiseRateHz = 0;
+    float inSNR = Float.NaN, outSNR = Float.NaN;
 
 //    private EventPacket<ApsDvsEvent> signalAndNoisePacket = null;
     private final Random random = new Random();
@@ -539,7 +540,10 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             String s = null;
             s = String.format("TPR=%-6s%% FPR=%-6s%% TNR=%-6s%% FNR=%-6s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (FPR)), eng.format(100 * TNR), eng.format(100 * FNR), poissonDtUs);
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
-            s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+//            s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
+            s = String.format("In: S/N=%-7s/%-7s Hz, SNR=%-7s ; Out: S/N=%-7s/%-7s Hz, SNR=%-7s", 
+                    eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(inSNR),
+                    eng.format(outSignalRateHz), eng.format(outNoiseRateHz), eng.format(outSNR));
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
             gl.glPopMatrix();
         }
@@ -746,6 +750,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         signalPacket.countClassifications(false);
         inSignalRateHz = (signalNoisePacket.signalCount) / deltaTimeS;
         inNoiseRateHz = (signalNoisePacket.noiseCount) / deltaTimeS;
+        inSNR=(float)signalNoisePacket.signalCount/signalNoisePacket.noiseCount;
         if (!isDisableAddingNoise()) {
             addNoise(signalPacket, signalNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
         } else {
@@ -860,6 +865,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         outSignalRateHz = ((TP)) / deltaTimeS;
         outNoiseRateHz = ((FP)) / deltaTimeS;
+        outSNR=(float)TP/FP;
 
         if (!isDebug) {
             boolean ranStopper = stopperTask.cancel();
