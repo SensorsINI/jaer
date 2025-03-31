@@ -26,7 +26,7 @@ import net.sf.jaer.event.OutputEventIterator;
 
 /**
  * Special denoising packet type for denoiser development.
- * 
+ *
  * @author tobi
  */
 public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
@@ -38,8 +38,11 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
     int fnCount;
     int unclassifiedCount;
     private final int LIST_LENGTH = 0x8000;
+    SignalNoisePacket tmpSignalNoisePacket = null; // tmp packet is double buffer for returning only noise events 
 
-    /** list of events if makeLists=true on countEvents */
+    /**
+     * list of events if makeLists=true on countEvents
+     */
     public final ArrayList<BasicEvent> tpList = new ArrayList(LIST_LENGTH),
             fnList = new ArrayList(LIST_LENGTH),
             fpList = new ArrayList(LIST_LENGTH),
@@ -71,26 +74,53 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         fnList.clear();
     }
 
-    /** Count the event types and optionally collect events to lists 
-     * 
-     * @param makeLists 
+    /**
+     * Count the event types and optionally collect events to lists
+     *
+     * @param makeLists
      */
     final void countClassifications(boolean makeLists) {
         resetCounts();
 //        for (SignalNoiseEvent e : this) { // !!! tobi: we cannot use default iterator because it skips all filteredOur events
-        int n=getSize();
-        for (int k=0;k<n;k++) { // we cannot use default iterator because it skips all filteredOur events
-            SignalNoiseEvent e=getEvent(k);
+        int n = getSize();
+        for (int k = 0; k < n; k++) { // we cannot use default iterator because it skips all filteredOur events
+            SignalNoiseEvent e = getEvent(k);
             if (e.isDVSEvent()) {
                 countEvent(e, makeLists);
             }
         }
     }
 
-    /** Count single event
-     * 
+    /**
+     * Copies only noise events to another SignalNoisePacket
+     *
+     * @param src
+     * @param dest
+     */
+    public static void removeSignalEvents(SignalNoisePacket src, SignalNoisePacket dest) {
+        OutputEventIterator<SignalNoiseEvent> outItr = dest.getOutputIterator();
+        for (int k = 0; k < src.getSize(); k++) { // we cannot use default iterator because it skips all filteredOur events
+            SignalNoiseEvent e = (SignalNoiseEvent) src.getEvent(k);
+            if (e.isDVSEvent() && e.isLabeledAsSignal()) {
+                outItr.nextOutput().copyFrom(e);
+            }
+        }
+    }
+
+    public void removeSignalEvents() {
+        if (tmpSignalNoisePacket == null) {
+            tmpSignalNoisePacket = new SignalNoisePacket(SignalNoiseEvent.class);
+        }
+        tmpSignalNoisePacket.copyNoiseEventsFrom(this);
+        this.copyNoiseEventsFrom(tmpSignalNoisePacket); // TODO inefficient....must be better way to replace this by this minus noise
+        countClassifications(false);
+    }
+
+    /**
+     * Count single event
+     *
      * @param e
-     * @param makeLists 
+     * @param makeLists
      */
     public void countEvent(SignalNoiseEvent e, boolean makeLists) {
         totalCount++;
@@ -128,9 +158,10 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         }
     }
 
-    /** Copies from another event packet
-     * 
-     * @param in 
+    /**
+     * Copies from another event packet
+     *
+     * @param in
      */
     final public void copyFrom(EventPacket in) {
         resetCounts();
@@ -140,9 +171,11 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         }
     }
 
-    /** Copy from another event packet, labeling all events as signal events that are unclassified
-     * 
-     * @param in 
+    /**
+     * Copy from another event packet, labeling all events as signal events that
+     * are unclassified
+     *
+     * @param in
      */
     void copySignalEventsFrom(EventPacket<? extends BasicEvent> in) {
         resetCounts();
@@ -153,6 +186,24 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
             sne.labelAsSignal(true);
             sne.unclassify();
         }
+    }
+
+    /**
+     * Copy from another event packet, labeling all events as signal events that
+     * are unclassified
+     *
+     * @param in
+     */
+    void copyNoiseEventsFrom(EventPacket<? extends BasicEvent> in) {
+        clear();
+        OutputEventIterator<SignalNoiseEvent> outItr = getOutputIterator();
+        for (int k = 0; k < in.getSize(); k++) { // we cannot use default iterator because it skips all filteredOur events
+            SignalNoiseEvent e = (SignalNoiseEvent) in.getEvent(k);
+            if (e.isDVSEvent() && !e.isLabeledAsSignal()) {
+                outItr.nextOutput().copyFrom(e);
+            }
+        }
+        resetCounts();
     }
 
 }
