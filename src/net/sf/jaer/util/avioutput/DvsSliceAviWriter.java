@@ -29,8 +29,6 @@ import javax.swing.filechooser.FileFilter;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import ch.unizh.ini.jaer.projects.npp.DvsFramer.TimeSliceMethod;
-import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
 import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
 import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
 import eu.seebetter.ini.chips.DavisChip;
@@ -57,6 +55,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.LoggingAnsiColorConsoleFormatter;
 import net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat;
+import net.sf.jaer.util.avioutput.DvsFramer.TimeSliceMethod;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**

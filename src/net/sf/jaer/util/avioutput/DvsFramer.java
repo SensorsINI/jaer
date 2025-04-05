@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301  USA
  */
-package ch.unizh.ini.jaer.projects.npp;
+package net.sf.jaer.util.avioutput;
 
 import java.awt.Dimension;
 import java.lang.reflect.InvocationTargetException;
@@ -189,13 +189,6 @@ abstract public class DvsFramer extends EventFilter2D {
      * @param srcHeight height of source address space
      */
     abstract public void addEvent(PolarityEvent e);
-
-    /**
-     * Sets parameters from a CNN
-     *
-     * @param apsDvsNet
-     */
-    abstract public void setFromNetwork(AbstractDavisCNN apsDvsNet);
 
 
     /**
@@ -846,15 +839,6 @@ abstract public class DvsFramer extends EventFilter2D {
             return true;
         }
 
-        /**
-         * Sets the size of the DVS from the input layer of the CNN
-         *
-         * @param apsDvsNet the CNN
-         */
-        public void setFromNetwork(AbstractDavisCNN apsDvsNet) {
-            width = apsDvsNet.getInputLayer().getWidth();
-            height = apsDvsNet.getInputLayer().getHeight();
-        }
 
 
         /**

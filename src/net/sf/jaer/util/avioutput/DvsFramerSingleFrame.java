@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301  USA
  */
-package ch.unizh.ini.jaer.projects.npp;
+package net.sf.jaer.util.avioutput;
 
 import java.awt.Rectangle;
 import java.io.ByteArrayOutputStream;
@@ -115,13 +115,7 @@ public class DvsFramerSingleFrame extends DvsFramer {
         allocateMemory();
     }
 
-    @Override
-    synchronized public void setFromNetwork(AbstractDavisCNN apsDvsNet) {
-        if (apsDvsNet != null && apsDvsNet.getInputLayer() != null) {
-            setOutputImageWidth(apsDvsNet.getInputLayer().getWidth());
-            setOutputImageHeight(apsDvsNet.getInputLayer().getHeight());
-        } 
-    }
+
 
 
     @Override

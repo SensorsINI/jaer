@@ -6,7 +6,6 @@
  */
 package ch.unizh.ini.jaer.chip.retina;
 
-import ch.unizh.ini.jaer.projects.npp.RoShamBoCNN;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -880,7 +879,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             try {
                 serialPortOutputStream.close();
             } catch (IOException ex) {
-                Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+                log.warning(ex.toString());
             }
             serialPortOutputStream = null;
         }
@@ -907,7 +906,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             putInt("serialBaudRate", serialBaudRate);
             openSerial();
         } catch (IOException ex) {
-            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+            log.warning(ex.toString());
         }
     }
 
@@ -927,7 +926,7 @@ public class DVSBiasController extends EventFilter2D implements FrameAnnotater {
             putString("serialPortName", serialPortName);
             openSerial();
         } catch (IOException ex) {
-            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+            log.warning(ex.toString());
         }
     }
 

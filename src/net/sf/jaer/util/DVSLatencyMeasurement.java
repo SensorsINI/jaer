@@ -4,7 +4,6 @@
  */
 package net.sf.jaer.util;
 
-import ch.unizh.ini.jaer.projects.npp.RoShamBoCNN;
 import com.google.common.collect.EvictingQueue;
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -434,7 +433,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             try {
                 serialPortOutputStream.close();
             } catch (IOException ex) {
-                Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+                log.warning(ex.toString());
             }
             serialPortOutputStream = null;
         }
@@ -461,7 +460,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             putInt("serialBaudRate", serialBaudRate);
             openSerial();
         } catch (IOException ex) {
-            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+                log.warning(ex.toString());
         }
     }
 
@@ -481,7 +480,7 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
             putString("serialPortName", serialPortName);
             openSerial();
         } catch (IOException ex) {
-            Logger.getLogger(RoShamBoCNN.class.getName()).log(Level.SEVERE, null, ex);
+            log.warning(ex.toString());
         }
     }
 
