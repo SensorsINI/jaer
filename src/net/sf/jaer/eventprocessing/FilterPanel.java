@@ -604,6 +604,15 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                     }
                                 }
                             });
+                            
+                            filter.getSupport().addPropertyChangeListener(toggleOffMethod.getName(), new PropertyChangeListener(){
+                                @Override
+                                public void propertyChange(PropertyChangeEvent pce) {
+                                    log.fine(pce+": deselected button");
+                                    button.setSelected(false);
+                                }
+                                
+                            });
 
                             addTip(f, button);
                             doButList.add(button);
@@ -2102,16 +2111,6 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                 boolean yes = (Boolean) propertyChangeEvent.getNewValue();
                 enabledCheckBox.setSelected(yes);
                 setBorderActive(yes);
-//                if (yes) {
-//                    log.info("selecting checkbox from " + propertyChangeEvent);
-//                }
-            } else if (propertyChangeEvent.getPropertyName().startsWith("doToggleOff")) {
-                // handle toggle off property changes to disable buttons that may have started logging, for example
-                for (AbstractButton b : doButList) {
-                    if ((b instanceof JToggleButton) && b.getText().equals(propertyChangeEvent.getPropertyName().substring(11))) {
-                        b.setSelected(false);
-                    }
-                }
             } else {
                 // we need to find the control and setUndoableState it appropriately. we don't need to setUndoableState the property itself since this has already been done!
                 try {
