@@ -23,14 +23,10 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.GLException;
-import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
 import eu.seebetter.ini.chips.davis.HotPixelFilter;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Desktop;
-import java.awt.Font;
-import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -49,6 +45,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -75,15 +72,13 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.prefs.Preferences;
 import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.ProgressMonitor;
 import javax.swing.SwingUtilities;
-import javax.swing.ToolTipManager;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
@@ -100,7 +95,7 @@ import net.sf.jaer.util.ClassNameWithDescriptionAndDevelopmentStatus;
 import net.sf.jaer.util.DATFileFilter;
 import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
-import net.sf.jaer.util.SubclassFinder;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.math3.stat.descriptive.MultivariateSummaryStatistics;
 import org.jdesktop.el.MethodNotFoundException;
 
@@ -179,7 +174,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     int lastcolor = 0;
 
     private static String DEFAULT_CSV_FILENAME_BASE = "NoiseTesterFilter";
-    private String csvFileName = getString("csvFileName", DEFAULT_CSV_FILENAME_BASE);
+    private String csvFileName = getString("lastMLPCSVFile", DEFAULT_CSV_FILENAME_BASE);
     private File csvFile = null;
     private BufferedWriter csvWriter = null;
     private int csvNumEventsWritten = 0, csvSignalCount = 0, csvNoiseCount = 0;
@@ -541,7 +536,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             s = String.format("TPR=%-6s%% FPR=%-6s%% TNR=%-6s%% FNR=%-6s%% dT=%.2fus", eng.format(100 * TPR), eng.format(100 * (FPR)), eng.format(100 * TNR), eng.format(100 * FNR), poissonDtUs);
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF"), 0, Color.white, s);
 //            s = String.format("In sigRate=%-7s noiseRate=%-7s, Out sigRate=%-7s noiseRate=%-7s Hz", eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(outSignalRateHz), eng.format(outNoiseRateHz));
-            s = String.format("In: S/N=%-7s/%-7s Hz, SNR=%-7s ; Out: S/N=%-7s/%-7s Hz, SNR=%-7s", 
+            s = String.format("In: S/N=%-7s/%-7s Hz, SNR=%-7s ; Out: S/N=%-7s/%-7s Hz, SNR=%-7s",
                     eng.format(inSignalRateHz), eng.format(inNoiseRateHz), eng.format(inSNR),
                     eng.format(outSignalRateHz), eng.format(outNoiseRateHz), eng.format(outSNR));
             DrawGL.drawString(getShowFilteringStatisticsFontSize(), 0, getAnnotationRasterYPosition("NTF") + 10, 0, Color.white, s);
@@ -558,6 +553,9 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         if (isDisableSignal()) {
             bounds = DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2 - (float) (bounds != null ? bounds.getHeight() : 0), .5f, Color.white, "disableSignal=true");
+        }
+        if(csvWriter!=null){
+            bounds = DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize() * 2, sx / 2, sy / 2 - (float) (bounds != null ? bounds.getHeight() : 0), .5f, Color.white, String.format("writing MLP CSV (%,d events)",csvNumEventsWritten));
         }
 
     }
@@ -749,13 +747,14 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         signalPacket.copySignalEventsFrom(in);
         signalPacket.countClassifications(false);
         inSignalRateHz = (signalNoisePacket.signalCount) / deltaTimeS;
-        inNoiseRateHz = (signalNoisePacket.noiseCount) / deltaTimeS;
-        inSNR=(float)signalNoisePacket.signalCount/signalNoisePacket.noiseCount;
         if (!isDisableAddingNoise()) {
             addNoise(signalPacket, signalNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
         } else {
             addNoise(signalPacket, signalNoisePacket, noiseList, 0, 0);
         }
+        signalNoisePacket.countClassifications(false);
+        inNoiseRateHz = (signalNoisePacket.noiseCount) / deltaTimeS;
+        inSNR = (float) signalNoisePacket.signalCount / signalNoisePacket.noiseCount;
 
 //        signalNoisePacket.countClassifications(false);  // debug
         if (outputTrainingData && csvWriter != null) {
@@ -811,7 +810,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     }
                     timestampImage[x][y] = ts;
                     polImage[x][y] = type;
-                    if (csvNumEventsWritten % 100000 == 0) {
+                    if (csvNumEventsWritten % 50000 == 0) {
                         log.info(String.format("Wrote %,d events to %s", csvNumEventsWritten, csvFileName));
                     }
                 } catch (IOException e) {
@@ -865,7 +864,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         outSignalRateHz = ((TP)) / deltaTimeS;
         outNoiseRateHz = ((FP)) / deltaTimeS;
-        outSNR=(float)TP/FP;
+        outSNR = (float) TP / FP;
 
         if (!isDebug) {
             boolean ranStopper = stopperTask.cancel();
@@ -1477,27 +1476,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         computeProbs();
     }
 
-    /**
-     * @return the csvFileName
-     */
-    public String getCsvFilename() {
-        return csvFileName;
-    }
-
-    /**
-     * @param csvFileName the csvFileName to set
-     */
-    public void setCsvFilename(String csvFileName) {
-        if (csvFileName.toLowerCase().endsWith(".csv")) {
-            csvFileName = csvFileName.substring(0, csvFileName.length() - 4);
-        }
-
-        putString("csvFileName", csvFileName);
-        getSupport().firePropertyChange("csvFileName", this.csvFileName, csvFileName);
-        this.csvFileName = csvFileName;
-//        doToggleOnSaveMLPTraining();
-    }
-
     synchronized public void doToggleOffSaveMLPTraining() {
         if (csvFile != null) {
             try {
@@ -1515,6 +1493,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                 csvWriter = null;
                 setDisableDenoising(false);
                 setOutputTrainingData(false);
+                getSupport().firePropertyChange("doToggleOffSaveMLPTraining", null, true);
             }
         }
     }
@@ -1537,31 +1516,61 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     synchronized public void doToggleOnSaveMLPTraining() {
-        csvNumEventsWritten = 0;
-        csvSignalCount = 0;
-        csvNoiseCount = 0;
-        String fn = csvFileName + ".csv";
-        csvFile = new File(fn);
-        boolean exists = csvFile.exists();
-        log.info(String.format("opening %s for CSV training output", csvFile.getAbsoluteFile()));
-        try {
-            csvWriter = new BufferedWriter(new FileWriter(csvFile, true), 100_000_000);
-            if (!exists) { // write header
-                log.info("file " + csvFile.getAbsoluteFile() + " did not exist, so writing header");
-                if (outputTrainingData) {
-                    log.info("writing header for MLPF training file");
-                    csvWriter.write(String.format("#MLPF training data\n# type, event.x, event.y, event.timestamp,signal/noise(1/0), nnbTimestamp(25*25), nnbPolarity(25*25), packetFirstEventTimestamp\n"));
-                } else if (outputFilterStatistic) {
-                    log.info("writing header for filter accuracy statistics file");
-                    csvWriter.write(String.format("TP,TN,FP,FN,TPR,TNR,BR,firstE.timestamp,"
-                            + "inSignalRateHz,inNoiseRateHz,outSignalRateHz,outNoiseRateHz\n"));
+        String lastFile = getString("lastMLPCSVFile", DEFAULT_CSV_FILENAME_BASE);
+        JFileChooser fileChooser = new JFileChooser("Export CSV MLP training data");
+        fileChooser.setApproveButtonToolTipText("Select CSV file (to append) or enter new name");
+        fileChooser.setToolTipText("Browse to desired folder");
+        File sf = new File(lastFile);
+        fileChooser.setSelectedFile(sf);
+        final String CSV = "csv";
+        final FileFilter filt = new FileNameExtensionFilter("CSV File", CSV);
+        fileChooser.addChoosableFileFilter(filt);
+        fileChooser.setMultiSelectionEnabled(false);
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        int retValue = fileChooser.showSaveDialog(getChip().getFilterFrame());
+        if (retValue == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            if (!FilenameUtils.isExtension(selectedFile.getAbsolutePath(), CSV)) {
+                String ext = FilenameUtils.getExtension(selectedFile.toString());
+                String newfile = selectedFile.getAbsolutePath();
+                if (ext != null && !ext.isEmpty() && !ext.equals(CSV)) {
+                    newfile = selectedFile.getAbsolutePath().replace(ext, CSV);
+                } else {
+                    newfile = newfile + "." + CSV;
                 }
+                selectedFile = new File(newfile);
             }
-            setDisableDenoising(true);
-            setOutputTrainingData(true);
-        } catch (IOException ex) {
-            log.warning(String.format("could not open %s for output; caught %s", csvFile.getAbsoluteFile(), ex.toString()));
-        } finally {
+            putString("lastMLPCSVFile",selectedFile.getAbsoluteFile().toString());
+            csvFile = selectedFile;
+            csvFileName=selectedFile.getAbsoluteFile().toString();
+            csvNumEventsWritten = 0;
+            csvSignalCount = 0;
+            csvNoiseCount = 0;
+            boolean exists = csvFile.exists();
+            log.info(String.format("opening %s for CSV training output", csvFileName));
+            try {
+                csvWriter = new BufferedWriter(new FileWriter(csvFile, true), 100_000_000);
+                if (!exists) { // write header
+                    log.info("file " + csvFile.getAbsoluteFile() + " did not exist, so writing header");
+                    if (outputTrainingData) {
+                        log.info("writing header for MLPF training file");
+                        csvWriter.write(String.format("#MLPF training data\n# type, event.x, event.y, event.timestamp,signal/noise(1/0), nnbTimestamp(25*25), nnbPolarity(25*25), packetFirstEventTimestamp\n"));
+                    } else if (outputFilterStatistic) {
+                        log.info("writing header for filter accuracy statistics file");
+                        csvWriter.write(String.format("TP,TN,FP,FN,TPR,TNR,BR,firstE.timestamp,"
+                                + "inSignalRateHz,inNoiseRateHz,outSignalRateHz,outNoiseRateHz\n"));
+                    }
+                }
+                setDisableDenoising(true);
+                setOutputTrainingData(true);
+            } catch (IOException ex) {
+                log.warning(String.format("could not open %s for output; caught %s", csvFile.getAbsoluteFile(), ex.toString()));
+            } finally {
+            }
+        }else{ // cancelled file dialog, turn off button
+            if(getFilterPanel()!=null){
+                getSupport().firePropertyChange("doToggleOffSaveMLPTraining", null, true);
+            }
         }
     }
 
@@ -1650,7 +1659,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         } else {
             for (int i = 1; i < tok.length; i++) {
                 if (tok[i].equals("csvFilename")) {
-                    setCsvFilename(tok[i + 1]);
+                    csvFileName=(tok[i + 1]);
                 } else if (tok[i].equals("shotNoiseRateHz")) {
                     setShotNoiseRateHz(Float.parseFloat(tok[i + 1]));
                     log.info(String.format("setShotNoiseRateHz %f", shotNoiseRateHz));
@@ -1882,6 +1891,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             log.info("clearing recoerded noise input data");
             prerecordedNoise = null;
         }
+        getSupport().firePropertyChange("doToggleOffNoiseRecording", null, true);
     }
 
     synchronized public void doToggleOnUseNoiseRecording() {
