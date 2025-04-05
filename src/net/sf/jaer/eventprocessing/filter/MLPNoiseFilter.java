@@ -43,7 +43,6 @@ import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.ImageDisplay;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.tensorflow.Graph;
-import org.tensorflow.Operation;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session;
 import org.tensorflow.Tensor;
@@ -73,9 +72,9 @@ import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.util.EngineeringFormat;
-import org.tensorflow.Output;
 import net.sf.jaer.util.RemoteControlCommand;
 import org.apache.commons.text.WordUtils;
+import org.tensorflow.ConcreteFunction;
 import org.tensorflow.GraphOperation;
 import org.tensorflow.Result;
 import org.tensorflow.ndarray.Shape;
@@ -121,7 +120,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     private int tfNumInBatchSoFar = 0;
     private FloatDataBuffer tfInputFloatBuffer = null;
     private int tfFloatBufferIdx = 0; // index into the FloatDataBuffer
-    private String tfInputName = "input", tfOutputName = "output"; // modified from SavedModelBundle.MetaGraphDef if loaded from TF exported model folder
+    private String tfInputName = "input", tfOutputName = "output/Sigmoid"; // modified from SavedModelBundle.MetaGraphDef if loaded from TF exported model folder
 
     private ArrayList<BasicEvent> eventList = new ArrayList(tfBatchSizeEvents);
     @Preferred
@@ -464,13 +463,17 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         // i.e. y last order, with y index changing fastest.
 //        tfInputFloatBuffer.flip();
         try (TFloat32 tfInputTensor = TFloat32.tensorOf(Shape.of(tfNumInBatchSoFar, NUM_INPUTS_PER_TPI_PIXEL * patchWidthAndHeightPixels * patchWidthAndHeightPixels), tfInputFloatBuffer)) {
-//            if (tfSession == null) {
-//                tfSession = new Session(tfExecutionGraph);
-//            }
-//            Result tfOutputs = tfSession.runner().feed(tfInputName, tfInputTensor).fetch(tfOutputName).run();
-            HashMap<String, Tensor> inputMap = new HashMap();
-            inputMap.put("input", tfInputTensor);
-            Result tfOutputs = tfSavedModelBundle.call(inputMap);
+            Result tfOutputs = null;
+            if (this.tfSavedModelBundle == null && this.tfExecutionGraph != null) {
+                if (tfSession == null) {
+                    tfSession = new Session(tfExecutionGraph);
+                }
+                tfOutputs = tfSession.runner().feed(tfInputName, tfInputTensor).fetch(tfOutputName).run();
+            } else {
+                HashMap<String, Tensor> inputMap = new HashMap();
+                inputMap.put("input", tfInputTensor);
+                tfOutputs = tfSavedModelBundle.call(inputMap);
+            }
             float[] outputVector;
             try (Tensor tfOutput = tfOutputs.get(0)) {
                 final Shape rshape = tfOutput.shape();
@@ -525,10 +528,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     @Override
     public synchronized void cleanup() {
         super.cleanup();
-        if (tfSession != null) {
-            tfSession.close();
-            tfSession = null;
-        }
+        closeTFResources();
     }
 
     private String USAGE = "MLPFilter needs at least 2 arguments: noisefilter <command> <args>\nCommands are: setParameters dt xx thr xx\n";
@@ -742,7 +742,8 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
         ArrayList<String> ioLayers = new ArrayList();
         StringBuilder resultSB = new StringBuilder(f.toString()).append(":\n");
         try {
-            if (f.isDirectory()) {
+            if (f.isDirectory()) { // TF2 model dir type
+                closeTFResources();
                 log.info("loading \"serve\" graph from tensorflow SavedModelBundle folder " + f);
                 this.tfSavedModelBundle = SavedModelBundle.load(f.getCanonicalPath(), "serve");
                 this.tfExecutionGraph = tfSavedModelBundle.graph();
@@ -780,11 +781,47 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                         log.info(s);
                     }
                 }
-            } else if (f.isFile()) {
+            } else if (f.isFile()) { // TF1 .pb or .h5 file
                 log.info(String.format("Loading tensorflow model from %s", f.getAbsoluteFile()));
-                 byte[] bytes = Files.readAllBytes(Paths.get(f.getAbsolutePath())); // "tensorflow_inception_graph.pb"
+                byte[] bytes = Files.readAllBytes(Paths.get(f.getAbsolutePath())); // "tensorflow_inception_graph.pb"
                 GraphDef graphDef = GraphDef.parseFrom(bytes);
+                closeTFResources();
+                this.tfExecutionGraph=new Graph();
                 this.tfExecutionGraph.importGraphDef(graphDef);
+                this.tfSavedModelBundle = null;  // we don't get one loading from single TF1 .pb file
+                StringBuilder sb=new StringBuilder(f.toString());
+                sb.append("\nOperations:\n");
+                Iterator<GraphOperation> itr=tfExecutionGraph.operations();
+                while(itr.hasNext()){
+                    GraphOperation op=itr.next();
+                    sb.append(op.toString()).append("\n");
+                }
+                sb.append("\n\nFunctions:\n");
+                List<ConcreteFunction> functions=tfExecutionGraph.getFunctions();
+                for(ConcreteFunction fnc:functions){
+                    sb.append(fnc.toString()).append("\n");
+                }
+                
+                log.info(sb.toString());
+            /* sample output
+            INFO: F:\tobi\Dropbox (Personal)\GitHub\SensorsINI\jaer\filterSettings\floattimesurface100tauNonebitaw0fH16_linear_7-2025-03-14-19-00-model.pb
+            Operations:
+            <Placeholder 'input'>
+            <Const 'fc1/kernel'>
+            <Const 'fc1/bias'>
+            <Identity 'fc1/MatMul/ReadVariableOp'>
+            <MatMul 'fc1/MatMul'>
+            <Identity 'fc1/BiasAdd/ReadVariableOp'>
+            <BiasAdd 'fc1/BiasAdd'>
+            <Relu 'fc1/Relu'>
+            <Const 'output/kernel'>
+            <Const 'output/bias'>
+            <Identity 'output/MatMul/ReadVariableOp'>
+            <MatMul 'output/MatMul'>
+            <Identity 'output/BiasAdd/ReadVariableOp'>
+            <BiasAdd 'output/BiasAdd'>
+            <Sigmoid 'output/Sigmoid'>
+            */
             }
         } catch (Exception e) {
             log.warning(e.toString());
@@ -792,6 +829,21 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             return e.toString();
         }
         return resultSB.toString();
+    }
+
+    private void closeTFResources() {
+        if(this.tfSession!=null){
+            this.tfSession.close();
+            this.tfSession=null;
+        }
+        if(this.tfExecutionGraph!=null){
+            this.tfExecutionGraph.close();
+            this.tfExecutionGraph=null;
+        }
+        if(tfSavedModelBundle!=null){
+            tfSavedModelBundle.close();
+            tfSavedModelBundle=null;
+        }
     }
 
     private String getExtension(File f) {
