@@ -217,14 +217,14 @@ public class DavisRenderer extends AEChipRenderer {
     public synchronized void resetAnnotationFrame(final float resetValue) {
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
-        if ((grayBuffer == null) || (grayBuffer.capacity() != n || resetValue!=lastAnnotationResetValue)) {
+        if ((grayBuffer == null) || (grayBuffer.capacity() != n || resetValue != lastAnnotationResetValue)) {
             grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
-            lastAnnotationResetValue=resetValue;
-        // Fill maps with fully transparent values
-            float[] rgba={resetValue,resetValue,resetValue,0};
-            float[] grayArray=grayBuffer.array();
-            for(int i=0;i<n;i++){
-                grayArray[i]=rgba[i%4];
+            lastAnnotationResetValue = resetValue;
+            // Fill maps with fully transparent values
+            float[] rgba = {resetValue, resetValue, resetValue, 0};
+            float[] grayArray = grayBuffer.array();
+            for (int i = 0; i < n; i++) {
+                grayArray[i] = rgba[i % 4];
             }
         }
         grayBuffer.rewind();
@@ -316,13 +316,23 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
         if (isSlidingWindowEnabled()) {
-            slidingWindowPacketFifo.add(pkt);
+            if (!(pkt instanceof ApsDvsEventPacket)) {
+                setSlidingWindowEnabled(false);
+                log.warning("disabled sliding window mode because packets are not ApsDvsEventPacket type");
+            } else {
+                slidingWindowPacketFifo.add(pkt);
+            }
         }
 
         final boolean displayFrames = isDisplayFrames();
 
         Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
         for (EventPacket p : packets) {
+            if (!(p instanceof ApsDvsEventPacket)) {
+                setSlidingWindowEnabled(false);
+                log.warning("disabled sliding window mode because packets are not ApsDvsEventPacket type");
+                break;
+            }
             final ApsDvsEventPacket packetAPS = (ApsDvsEventPacket) p;
 
             final Iterator allItr = packetAPS.fullIterator();
@@ -458,7 +468,7 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     private final Random random = new Random();
-   
+
     protected void updateFrameBuffer(final ApsDvsEvent e) {
         final float[] buf = pixBuffer.array();
         // TODO if playing backwards, then frame will come out white because B sample comes before A
@@ -1185,5 +1195,5 @@ public class DavisRenderer extends AEChipRenderer {
         }
 //        System.out.println("downsampling "+dvsDownsamplingValue);
     }
-   
+
 }
