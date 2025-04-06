@@ -487,6 +487,7 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 FloatDataBuffer fb = DataBuffers.of(outputVector, false, false);
                 TFloat32 tfloat = (TFloat32) tfOutput;
                 tfloat.copyTo(fb);
+                tfOutput.close();
             }
 
             int idx = 0;
@@ -803,6 +804,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
                 }
                 
                 log.info(sb.toString());
+                tfInputName="input";
+                tfOutputName="output/Sigmoid";
+                log.info(String.format("Set hard-coded tfInputName=%s and tfOutputName=%s to match legacy .pb TF1 network",tfInputName,tfOutputName));
             /* sample output
             INFO: F:\tobi\Dropbox (Personal)\GitHub\SensorsINI\jaer\filterSettings\floattimesurface100tauNonebitaw0fH16_linear_7-2025-03-14-19-00-model.pb
             Operations:
@@ -832,18 +836,19 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     }
 
     private void closeTFResources() {
-        if(this.tfSession!=null){
-            this.tfSession.close();
-            this.tfSession=null;
-        }
-        if(this.tfExecutionGraph!=null){
-            this.tfExecutionGraph.close();
-            this.tfExecutionGraph=null;
-        }
-        if(tfSavedModelBundle!=null){
-            tfSavedModelBundle.close();
-            tfSavedModelBundle=null;
-        }
+        log.info("closing possible existing tensorflow resources");
+//        if(this.tfSession!=null){
+//            this.tfSession.close();
+//            this.tfSession=null;
+//        }
+//        if(this.tfExecutionGraph!=null){
+//            this.tfExecutionGraph.close();
+//            this.tfExecutionGraph=null;
+//        }
+//        if(tfSavedModelBundle!=null){
+//            tfSavedModelBundle.close();
+//            tfSavedModelBundle=null;
+//        }
     }
 
     private String getExtension(File f) {
