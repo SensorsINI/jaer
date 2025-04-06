@@ -640,11 +640,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                         public void actionPerformed(ActionEvent e) {
                             try {
                                 meth.invoke(f);
-                            } catch (IllegalArgumentException ex) {
-                                ex.printStackTrace();
-                            } catch (InvocationTargetException ex) {
-                                ex.printStackTrace();
-                            } catch (IllegalAccessException ex) {
+                            } catch (IllegalArgumentException | InvocationTargetException | IllegalAccessException ex) {
                                 ex.printStackTrace();
                             }
                         }
