@@ -292,10 +292,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
          * The chip and extractor will be updated unless the chip changed such as by the user.
          * It makes the chip and the extractor are alwayse associated with each other.
          */
-        if (this.chip != LAST_CHIP) {
+        if (this.chip!=null && this.chip != LAST_CHIP) {
             LAST_CHIP = this.chip;
             LAST_EVENT_EXTRACTOR = this.chip.getEventExtractor();
         }
+//        if(this.chip!=null && this.chip.getAeViewer()!=null && this.chip.getAeViewer()!=null){
+//            // add prop change listener AEViewer to receive events from this file input stream, e.g. clearing marks
+//            getSupport().addPropertyChangeListener(this.chip.getAeViewer());
+//        }
 
         this.chip.setEventExtractor(LAST_EVENT_EXTRACTOR); // Restore the extractor, because jaer3BufferParser might change it.
         setFile(f);
@@ -1089,7 +1093,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         marks.markIn = 0;
         long[] newMarks = {marks.markIn, marks.markOut};
 
-        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, oldMarks, newMarks);
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, null, newMarks); // always send p;op change, e.g. on opening file
     }
 
     @Override
@@ -1682,7 +1686,8 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * Sets the File reference but doesn't open the file
      */
-    public void setFile(File f) {
+    @Override
+    final public void setFile(File f) {
         this.file = f;
         absoluteStartingTimeMs = parseAbsoluteStartingTimeMsFromFile(f);
     }
