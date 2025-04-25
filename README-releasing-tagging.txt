@@ -23,6 +23,10 @@ The release name should then be jaer-1.8.1, for example.
 
 ### Deleting tag
 
+If tag is just local, run 
+
+`git tag -d tag-name`
+
 If tag is already pushed to origin:
 
 `git push --delete origin 2.1.0`  
