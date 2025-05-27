@@ -7,6 +7,7 @@ import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.logging.Logger;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -35,6 +36,9 @@ public class ShowFolderSaveConfirmation extends JDialog {
         this.msg = msg;
         setResizable(true);
         setLocationRelativeTo(owner);
+        if (getContentPane() instanceof JPanel panel) {
+            panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // top, left, bottom, right
+        }
         setTitle("File saved");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setAlwaysOnTop(true);
