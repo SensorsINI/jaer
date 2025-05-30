@@ -537,7 +537,7 @@ public class AEChip extends Chip2D {
 //        os.write(bos2.toByteArray()); // write out entire reformatted prefs header
         os.writeHeaderLine("End of Preferences for this AEChip"); // write end of prefs header
 //        os.flush();  // shouldn't need to flush here
-        log.info("done writing preferences to " + os + " after " + (System.currentTimeMillis() - start) + " ms");
+        log.fine("done writing preferences after " + (System.currentTimeMillis() - start) + " ms");
 
     }
 
