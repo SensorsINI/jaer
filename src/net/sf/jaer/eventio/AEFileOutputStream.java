@@ -23,6 +23,7 @@ import java.util.prefs.BackingStoreException;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Streams out packets of events in binary. The only difference to AEOuputStream
@@ -44,6 +45,9 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
     private int eventCounter = 0;
     private String dataFileVersionNumber;
+    private Date startDate = null, endDate = null;
+    private long startTimeMs = 0, endTimeMs = 0;
+    EngineeringFormat eng = new EngineeringFormat();
 
     /**
      * Creates a new instance of AEOutputStream and writes the header. If there
@@ -62,6 +66,8 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
     public AEFileOutputStream(final OutputStream os, final AEChip chip, String dataFileVersionNum) throws IOException {
         super(os);
         try {
+            startDate = new Date();
+            startTimeMs = System.currentTimeMillis();
             dataFileVersionNumber = dataFileVersionNum;
             writeHeaderLine(AEDataFile.DATA_FILE_FORMAT_HEADER + dataFileVersionNumber);
             writeHeaderLine(" This is a raw AE data file - do not edit");
@@ -228,6 +234,64 @@ public class AEFileOutputStream extends AEOutputStream implements AEDataFile {
 
         super.close();
 
-        AEOutputStream.log.info(String.format("wrote %,d events",eventCounter));
+        endDate = new Date();
+        endTimeMs = System.currentTimeMillis();
+        AEOutputStream.log.info(String.format("wrote %s",toString()));
+    }
+
+    /**
+     * From
+     * https://stackoverflow.com/questions/8655901/how-to-check-whether-an-outputstream-is-closed
+     *
+     * @return true if closed, false if open
+     */
+    public boolean isClosed() {
+        if (channel == null) {
+            return true;
+        }
+        try {
+            return channel.position() >= 0L; // This may throw a ClosedChannelException.
+        } catch (java.nio.channels.ClosedChannelException cce) {
+            return false;
+        } catch (IOException e) {
+        }
+        return true;
+    }
+
+    /**
+     * Return number of events written
+     *
+     * @return
+     */
+    public long getNumEvents() {
+        return eventCounter;
+    }
+
+    /**
+     * Return duration in ms
+     *
+     * @return
+     */
+    public long getDurationMs() {
+        if (isClosed()) {
+            return endTimeMs - startTimeMs;
+        } else {
+            return System.currentTimeMillis() - startTimeMs;
+        }
+    }
+
+    public Date getStartDate() {
+        return startDate;
+    }
+
+    public Date getEndDate() {
+        return endDate;
+    }
+
+    @Override
+    public String toString() {
+        float durationM = (float) getDurationMs() / 1000/60f;
+        return String.format("AEFileOutputStream: %s events, %s minutes",
+                eng.format(getNumEvents()), eng.format(durationM));
     }
 }
