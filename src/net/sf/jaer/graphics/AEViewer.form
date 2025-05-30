@@ -43,7 +43,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="openMenuItem">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="O"/>
+                  <KeyStroke key="Ctrl+O"/>
                 </Property>
                 <Property name="mnemonic" type="int" value="111"/>
                 <Property name="text" type="java.lang.String" value="Open logged data file..."/>
@@ -683,7 +683,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="setMarkInMI">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="OPEN_BRACKET"/>
+                  <KeyStroke key="I"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Set IN marker"/>
                 <Property name="toolTipText" type="java.lang.String" value="If playing back file, it rewinds to this position"/>
@@ -695,7 +695,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="setMarkOutMI">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="CLOSE_BRACKET"/>
+                  <KeyStroke key="O"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Set OUT marker"/>
                 <Property name="toolTipText" type="java.lang.String" value="If playing back recording, it plays to this marker"/>
@@ -704,10 +704,34 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setMarkOutMIActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="clearMarksMI">
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItem1">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
                   <KeyStroke key="M"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Set marker"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItem3">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="J"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Jump to next marker"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItem4">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="K"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Jump to previous marker"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="clearMarksMI">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="Shift+M"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Clear IN and OUT markers"/>
                 <Property name="toolTipText" type="java.lang.String" value="Clears the IN and OUT markers for playing back a section of a recording"/>

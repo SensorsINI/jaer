@@ -481,7 +481,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 StringBuilder sb = new StringBuilder("<html>");
                 for (String m : statusTextFieldMessages) {
                     if (m != null) {
-                        sb.append("<br>").append(m);
+                        sb.append("<br>").append(m.substring(0,Math.min(m.length(), 80)));
                     }
                 }
                 statusTextField.setToolTipText(sb.toString());
@@ -2893,6 +2893,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator19 = new javax.swing.JPopupMenu.Separator();
         setMarkInMI = new javax.swing.JMenuItem();
         setMarkOutMI = new javax.swing.JMenuItem();
+        jMenuItem1 = new javax.swing.JMenuItem();
+        jMenuItem3 = new javax.swing.JMenuItem();
+        jMenuItem4 = new javax.swing.JMenuItem();
         clearMarksMI = new javax.swing.JMenuItem();
         deviceMenu = new javax.swing.JMenu();
         jSeparator3 = new javax.swing.JPopupMenu.Separator();
@@ -3072,7 +3075,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         fileMenu.add(newViewerMenuItem);
 
-        openMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0));
+        openMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         openMenuItem.setMnemonic('o');
         openMenuItem.setText("Open logged data file...");
         openMenuItem.setToolTipText("Opens a logged data file for playback");
@@ -3608,7 +3611,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playbackMenu.add(setJogNCount);
         playbackMenu.add(jSeparator19);
 
-        setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_OPEN_BRACKET, 0));
+        setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_I, 0));
         setMarkInMI.setText("Set IN marker");
         setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
         setMarkInMI.addActionListener(new java.awt.event.ActionListener() {
@@ -3618,7 +3621,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         playbackMenu.add(setMarkInMI);
 
-        setMarkOutMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_CLOSE_BRACKET, 0));
+        setMarkOutMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0));
         setMarkOutMI.setText("Set OUT marker");
         setMarkOutMI.setToolTipText("If playing back recording, it plays to this marker");
         setMarkOutMI.addActionListener(new java.awt.event.ActionListener() {
@@ -3628,7 +3631,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         playbackMenu.add(setMarkOutMI);
 
-        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
+        jMenuItem1.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
+        jMenuItem1.setText("Set marker");
+        playbackMenu.add(jMenuItem1);
+
+        jMenuItem3.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_J, 0));
+        jMenuItem3.setText("Jump to next marker");
+        playbackMenu.add(jMenuItem3);
+
+        jMenuItem4.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_K, 0));
+        jMenuItem4.setText("Jump to previous marker");
+        playbackMenu.add(jMenuItem4);
+
+        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         clearMarksMI.setText("Clear IN and OUT markers");
         clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
         clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
@@ -6910,7 +6925,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem increaseNumBuffersMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
     private javax.swing.JMenu interfaceMenu;
+    private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItem2;
+    private javax.swing.JMenuItem jMenuItem3;
+    private javax.swing.JMenuItem jMenuItem4;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JProgressBar jProgressBar1;
     private javax.swing.JSeparator jSeparator1;
