@@ -481,7 +481,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 StringBuilder sb = new StringBuilder("<html>");
                 for (String m : statusTextFieldMessages) {
                     if (m != null) {
-                        sb.append("<br>").append(m.substring(0,Math.min(m.length(), 80)));
+                        sb.append("<br>").append(m.substring(0, Math.min(m.length(), 80)));
                     }
                 }
                 statusTextField.setToolTipText(sb.toString());
@@ -5063,6 +5063,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // to move the already logged file to a possibly different location with a new name, or if cancel is hit,
         // to delete it.
         int retValue = JFileChooser.CANCEL_OPTION;
+        String fileInfo = "";
         if (isLoggingEnabled()) {
             if (loggingButton.isSelected()) {
                 loggingButton.setSelected(false);
@@ -5075,6 +5076,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 synchronized (loggingOutputStream) {
                     setLoggingEnabled(false);
                     loggingOutputStream.close();
+                    fileInfo = loggingOutputStream.toString();
                 }
                 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
@@ -5135,7 +5137,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 recentFiles.addFile(newFile);
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
                                 log.info("renamed logging file to " + newFile.getAbsolutePath());
-                                ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                                ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
                                 dialog3.setVisible(true);
                             } else {
                                 // if this fails, it does not only mean that a file already exists,
@@ -5156,7 +5158,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             // here with confirmed
                                             // overwrite of logging file
                                             loggingFile = newFile;
-                                            ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                                            ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
                                             dialog3.setVisible(true);
                                         } else {
                                             log.warning("couldn't delete logging file " + newFile);
@@ -5211,7 +5213,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                                         doneSavingOrCancelling = true;
                                         loggingFile = newFile;
-                                        ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath());
+                                        ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
                                         dialog3.setVisible(true);
 
                                     } else {
@@ -6430,15 +6432,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         getSupport().firePropertyChange(EVENT_PAUSED, old, isPaused());
     }
 
-     /** Returns true if AEViewer (or the BiasgenFrame or FilterSetting) windows is active, i.e. has focus
-     * 
+    /**
+     * Returns true if AEViewer (or the BiasgenFrame or FilterSetting) windows
+     * is active, i.e. has focus
+     *
      * @return true if some jAER window has focus
      */
     public boolean isAnyWindowActive() {
-       if(isActive()) return true;
-       if(getFilterFrame()!=null && getFilterFrame().isActive()) return true;
-       if(getBiasgenFrame()!=null && getBiasgenFrame().isActive()) return true;
-       return false;
+        if (isActive()) {
+            return true;
+        }
+        if (getFilterFrame() != null && getFilterFrame().isActive()) {
+            return true;
+        }
+        if (getBiasgenFrame() != null && getBiasgenFrame().isActive()) {
+            return true;
+        }
+        return false;
     }
 
     public boolean isActiveRenderingEnabled() {
