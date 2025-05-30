@@ -67,8 +67,10 @@ public class ShowFolderSaveConfirmation extends JDialog {
         okB.addActionListener((ActionEvent e) -> {
             dispose();
         });
+
         buts.add(okB);
         add(buts, BorderLayout.SOUTH);
+        getRootPane().setDefaultButton(okB);
         pack();
     }
 
