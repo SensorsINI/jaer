@@ -1139,10 +1139,9 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Sets or clears the marked OUT position. Does nothing if trying to set
-     * marks.markOut <= marks.markIn.
+     * Sets or clears the marked position.
      *
-     * @return the marks.markIn position.
+     * @return the mark position in events.
      */
     @Override
     public long toggleMarker() {
