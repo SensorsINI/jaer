@@ -15,6 +15,7 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.KeyStroke;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.util.EngineeringFormat;
 
@@ -36,7 +37,7 @@ public abstract class AbstractAEPlayer {
     /**
      * The AE file input stream.
      */
-    protected AEFileInputStreamInterface aeFileInputStream = null;
+    protected AEFileInputStreamInterface aeInputStream = null;
     /**
      * The input file.
      */
@@ -58,6 +59,9 @@ public abstract class AbstractAEPlayer {
     public final MarkInAction markInAction = new MarkInAction();
     public final MarkOutAction markOutAction = new MarkOutAction();
     public final ClearMarksAction clearMarksAction = new ClearMarksAction();
+    public final ToggleMarkAction toggleMarkerAction = new ToggleMarkAction();
+    public final JumpNextMarkerkAction jumpNextMarkerAction = new JumpNextMarkerkAction();
+    public final JumpPrevMarkerkAction jumpPrevMarkerAction = new JumpPrevMarkerkAction();
     /**
      * Flog for all pause/resume state.
      */
@@ -130,7 +134,6 @@ public abstract class AbstractAEPlayer {
         this.support.removePropertyChangeListener(listener);
     }
 
-
     public abstract void setFractionalPosition(float fracPos);
 
     abstract public void setDoSingleStepEnabled(boolean b);
@@ -177,9 +180,12 @@ public abstract class AbstractAEPlayer {
     abstract public AEPacketRaw getNextPacket(AbstractAEPlayer player);
 
     abstract public AEPacketRaw getNextPacket();
-    /** How much the player speeds up or slows down with slower() and faster() actions */
-    public static double SPEED_UP_SLOW_DOWN_FACTOR=Math.pow(2,0.25);
-    
+    /**
+     * How much the player speeds up or slows down with slower() and faster()
+     * actions
+     */
+    public static double SPEED_UP_SLOW_DOWN_FACTOR = Math.pow(2, 0.25);
+
     /**
      * Speeds up the playback so that more time or more events are displayed per
      * slice.
@@ -209,7 +215,7 @@ public abstract class AbstractAEPlayer {
      */
     public void slowDown() {
         if (isFlexTimeEnabled()) {
-            setPacketSizeEvents((int)Math.round(getPacketSizeEvents() / SPEED_UP_SLOW_DOWN_FACTOR));
+            setPacketSizeEvents((int) Math.round(getPacketSizeEvents() / SPEED_UP_SLOW_DOWN_FACTOR));
             if (getPacketSizeEvents() == 0) {
                 setPacketSizeEvents(1);
             }
@@ -270,7 +276,7 @@ public abstract class AbstractAEPlayer {
     }
 
     public AEFileInputStreamInterface getAEInputStream() {
-        return aeFileInputStream;
+        return aeInputStream;
     }
 
     abstract public int getTime();
@@ -286,6 +292,8 @@ public abstract class AbstractAEPlayer {
     abstract public long setMarkIn();
 
     abstract public long setMarkOut();
+
+    abstract public long toggleMarker();
 
     public void pause() {
         setPaused(true);
@@ -399,7 +407,9 @@ public abstract class AbstractAEPlayer {
         setPlaybackDirection(PlaybackDirection.Backward);
     }
 
-    /** Return the flextime packet size in events */
+    /**
+     * Return the flextime packet size in events
+     */
     public int getPacketSizeEvents() {
         return packetSizeEvents;
     }
@@ -539,10 +549,11 @@ public abstract class AbstractAEPlayer {
             super("Clear Marks", "ClearMarks16");
         }
 
+        @Override
         public void actionPerformed(ActionEvent e) {
             clearMarks();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Clear IN and OUT markers");
+            putValue(Action.SHORT_DESCRIPTION, "Clear all markers");
             showAction();
         }
     }
@@ -553,6 +564,7 @@ public abstract class AbstractAEPlayer {
             super("Mark IN", "MarkIn16");
         }
 
+        @Override
         public void actionPerformed(ActionEvent e) {
             showAction();
             setMarkIn();
@@ -567,6 +579,7 @@ public abstract class AbstractAEPlayer {
             super("Mark OUT", "MarkOut16");
         }
 
+        @Override
         public void actionPerformed(ActionEvent e) {
             showAction();
             setMarkOut();
@@ -574,6 +587,62 @@ public abstract class AbstractAEPlayer {
             putValue(Action.SHORT_DESCRIPTION, "Set OUT marker");
         }
     }
+
+    final public class ToggleMarkAction extends MyAction {
+
+        public ToggleMarkAction() {
+            super("Toggle marker", "ToggleMarker16");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            toggleMarker();
+            putValue(Action.SELECTED_KEY, true);
+            putValue(Action.SHORT_DESCRIPTION, "Toggled marker");
+            showAction();
+        }
+    }
+    
+    final public class JumpNextMarkerkAction extends MyAction {
+
+        public JumpNextMarkerkAction() {
+            super("Jump to next marker", "ToggleMarker16");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean succeeded= jumpToNextMarker();
+            putValue(Action.SELECTED_KEY, true);
+            putValue(Action.SHORT_DESCRIPTION, succeeded? "Jumped to next marker":"No next marker");
+            showAction();
+        }
+
+        private boolean jumpToNextMarker() {
+            return aeInputStream.jumpToNextMarker();
+        }
+    }
+    
+    
+    final public class JumpPrevMarkerkAction extends MyAction {
+
+        public JumpPrevMarkerkAction() {
+            super("Jump to previous marker", "ToggleMarker16");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean succeeded=jumpToPreviousMarker();
+            putValue(Action.SELECTED_KEY, true);
+            putValue(Action.SHORT_DESCRIPTION,  succeeded? "Jumped to previous marker":"No previous marker");
+            showAction();
+        }
+
+        private boolean jumpToPreviousMarker() {
+            return aeInputStream.jumpToPrevMarker();
+        }
+    }
+    
+    
 
     final public class PlayAction extends MyAction {
 
@@ -662,9 +731,9 @@ public abstract class AbstractAEPlayer {
     private final EngineeringFormat engFmt = new EngineeringFormat();
 
     private final String speedText(boolean faster) {
-        String fpsStr=isFlexTimeEnabled()?"":String.format(" (%sFPS)",engFmt.format(1e6f/getTimesliceUs()));
+        String fpsStr = isFlexTimeEnabled() ? "" : String.format(" (%sFPS)", engFmt.format(1e6f / getTimesliceUs()));
         return String.format("DVS accumulation %s to %s%s%s", faster ? "increased" : "reduced",
-                isFlexTimeEnabled() ? Integer.toString(getPacketSizeEvents()) : engFmt.format(1e-6f*getTimesliceUs()),
+                isFlexTimeEnabled() ? Integer.toString(getPacketSizeEvents()) : engFmt.format(1e-6f * getTimesliceUs()),
                 isFlexTimeEnabled() ? " events" : "s",
                 fpsStr
         );
@@ -728,7 +797,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction(String.format("Jog forwards %d",getJogPacketCount()));
+            showAction(String.format("Jog forwards %d", getJogPacketCount()));
             jogForwards(getJogPacketCount());
             putValue(Action.SELECTED_KEY, true);
         }
@@ -742,7 +811,7 @@ public abstract class AbstractAEPlayer {
         }
 
         public void actionPerformed(ActionEvent e) {
-            showAction(String.format("Jog backwards %d",getJogPacketCount()));
+            showAction(String.format("Jog backwards %d", getJogPacketCount()));
             jogBackwards(getJogPacketCount());
             putValue(Action.SELECTED_KEY, true);
         }
@@ -757,11 +826,11 @@ public abstract class AbstractAEPlayer {
 
         public void actionPerformed(ActionEvent e) {
             toggleFlexTime();
-            String s=null;
-            if(isFlexTimeEnabled()){
-                s=String.format("Flextime: Constant-count DVS frames with %d events/frame",getPacketSizeEvents());
-            }else{
-                s=String.format("Flextime: Flextime: Constant-duration DVS frames with %ss/frame",engFmt.format(getTimesliceUs()*1e-6f));
+            String s = null;
+            if (isFlexTimeEnabled()) {
+                s = String.format("Flextime: Constant-count DVS frames with %d events/frame", getPacketSizeEvents());
+            } else {
+                s = String.format("Flextime: Flextime: Constant-duration DVS frames with %ss/frame", engFmt.format(getTimesliceUs() * 1e-6f));
             }
             showAction(s);
             putValue(Action.SELECTED_KEY, isFlexTimeEnabled());

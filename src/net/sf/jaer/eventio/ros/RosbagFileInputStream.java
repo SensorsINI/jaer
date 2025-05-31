@@ -155,6 +155,21 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     private static final String RPG_TOPIC_HEADER = "/dvs/", MVSEC_TOPIC_HEADER = "/davis/left/", EV_IMO_TOPIC_HEADER = "/samsung/camera/"; // TODO arbitrarily choose left camera for MVSEC for now
 
+    @Override
+    public long toggleMarker() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public boolean jumpToNextMarker() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public boolean jumpToPrevMarker() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
     private enum RosbagFileType {
         RPG(RPG_TOPIC_HEADER), MVSEC(MVSEC_TOPIC_HEADER), EV_IMO(EV_IMO_TOPIC_HEADER), Unknown("???");
         private String header;

@@ -23,6 +23,7 @@ import java.time.ZoneId;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
@@ -144,32 +145,32 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public long getAbsoluteStartingTimeMs() {
-        return aeFileInputStream.getAbsoluteStartingTimeMs();
+        return aeInputStream.getAbsoluteStartingTimeMs();
     }
 
     @Override
     public int getDurationUs() {
-        return aeFileInputStream.getDurationUs();
+        return aeInputStream.getDurationUs();
     }
 
     @Override
     public int getFirstTimestamp() {
-        return aeFileInputStream.getFirstTimestamp();
+        return aeInputStream.getFirstTimestamp();
     }
 
     @Override
     public File getFile() {
-        return aeFileInputStream.getFile();
+        return aeInputStream.getFile();
     }
 
     @Override
     public int getLastTimestamp() {
-        return aeFileInputStream.getLastTimestamp();
+        return aeInputStream.getLastTimestamp();
     }
 
     @Override
     public int getMostRecentTimestamp() {
-        return aeFileInputStream.getMostRecentTimestamp();
+        return aeInputStream.getMostRecentTimestamp();
     }
 
     @Override
@@ -204,11 +205,27 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public ZoneId getZoneId() {
-        if (aeFileInputStream != null) {
-            return aeFileInputStream.getZoneId();
+        if (aeInputStream != null) {
+            return aeInputStream.getZoneId();
         } else {
             return ZoneId.systemDefault();
         }
+    }
+
+    @Override
+    public boolean jumpToNextMarker() {
+        if (aeInputStream != null) {
+            return aeInputStream.jumpToNextMarker();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean jumpToPrevMarker() {
+        if (aeInputStream != null) {
+            return aeInputStream.jumpToPrevMarker();
+        }
+        return false;
     }
 
     public class FileDeleter extends KeyAdapter implements PropertyChangeListener {
@@ -302,9 +319,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public synchronized void startPlayback(final File file) throws IOException, InterruptedException {
-        if (aeFileInputStream != null) {
+        if (aeInputStream != null) {
             try {
-                aeFileInputStream.close();
+                aeInputStream.close();
             } catch (IOException e) {
                 log.warning(String.format("Could not close existing file: %s", e.toString()));
             }
@@ -355,25 +372,30 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 //                    progressMonitor.setNote("Opening " + file);
                     progressMonitor.setProgress(0);
 //                    TimeUnit.SECONDS.sleep(10);
-                    aeFileInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
-                    aeFileInputStream.setFile(file);
-                    aeFileInputStream.setRepeat(isRepeat());
-                    aeFileInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
-                    aeFileInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
-                    aeFileInputStream.getSupport().addPropertyChangeListener(viewer);
+                    aeInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
+                    aeInputStream.setFile(file);
+                    if (aeInputStream instanceof AEFileInputStream s) {
+                        s.initializeSavedMarks();
+                    }
+                    aeInputStream.setRepeat(isRepeat());
+                    aeInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
+                    aeInputStream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
+                    aeInputStream.getSupport().addPropertyChangeListener(viewer);
                     // so that users of the stream can get the file information
                     if ((viewer.getJaerViewer() != null) && (viewer.getJaerViewer().getViewers().size() > 1)) {
                         // if there is only one viewer, start it there
                         // tobi changed rewind at starting playback 6.1.21, no need for rewind when opening file for first time if we are the only viewer
                         try {
-                            aeFileInputStream.rewind();
+                            aeInputStream.rewind();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
                     // don't waste cycles grabbing events while playing back
                     viewer.setPlayMode(AEViewer.PlayMode.PLAYBACK);
-                    viewer.getPlayerControls().addMeToPropertyChangeListeners(aeFileInputStream);
+                    // add control panel (with slider) as listener to AEFileInputStream, 
+                    // however this is too late to get events generated during open()
+                    viewer.getPlayerControls().addMeToPropertyChangeListeners(aeInputStream);
                     // so that slider is updated when position changes
                     viewer.setPlaybackControlsEnabledState(true);
                     viewer.fixLoggingControls();
@@ -396,14 +418,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         }
                     }
                     // update player and slider marks
-                    if (!aeFileInputStream.isMarkInSet() && !aeFileInputStream.isMarkOutSet()) {
+                    if (!aeInputStream.isMarkInSet() && !aeInputStream.isMarkOutSet()) {
                         getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, false, true);
                     } else {
-                        if (aeFileInputStream.isMarkInSet()) {
-                            getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, aeFileInputStream.getMarkInPosition());
+                        if (aeInputStream.isMarkInSet()) {
+                            getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, aeInputStream.getMarkInPosition());
                         }
-                        if (aeFileInputStream.isMarkOutSet()) {
-                            getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, aeFileInputStream.getMarkOutPosition());
+                        if (aeInputStream.isMarkOutSet()) {
+                            getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, aeInputStream.getMarkOutPosition());
                         }
                     }
 
@@ -498,9 +520,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         viewer.setPlaybackControlsEnabledState(false);
         try {
-            if (aeFileInputStream != null) {
-                aeFileInputStream.close();
-                aeFileInputStream = null;
+            if (aeInputStream != null) {
+                aeInputStream.close();
+                aeInputStream = null;
             }
         } catch (IOException ignore) {
             ignore.printStackTrace();
@@ -511,11 +533,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public void rewind() {
         cancelJog();
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return;
         }
         try {
-            aeFileInputStream.rewind();
+            aeInputStream.rewind();
             if (viewer != null) {
                 viewer.filterChain.reset(); // already done in aePlayer
                 viewer.getRenderer().resetAccumulation();
@@ -544,17 +566,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         try {
             if (!jogOccuring || (jogOccuring && jogPacketsLeft == 0)) {
                 if (!viewer.aePlayer.isFlexTimeEnabled()) {
-                    aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
+                    aeRaw = aeInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
                 } else {
-                    aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+                    aeRaw = aeInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
                 }
             } else {
                 while (jogPacketsLeft != 0) {
                     setDirectionForwards(jogPacketsLeft >= 0);
                     if (!viewer.aePlayer.isFlexTimeEnabled()) {
-                        aeRaw = aeFileInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
+                        aeRaw = aeInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
                     } else {
-                        aeRaw = aeFileInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+                        aeRaw = aeInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
                     }
                     if (jogPacketsLeft < 0) {
                         jogPacketsLeft++;
@@ -611,100 +633,108 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public float getFractionalPosition() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             log.warning("AEViewer.AEPlayer.getFractionalPosition: null fileAEInputStream, returning 0");
             return 0;
         }
-        float fracPos = aeFileInputStream.getFractionalPosition();
+        float fracPos = aeInputStream.getFractionalPosition();
         return fracPos;
     }
 
     @Override
     public long position() {
-        return aeFileInputStream.position();
+        return aeInputStream.position();
     }
 
     @Override
     public void position(long event) {
-        aeFileInputStream.position(event);
+        aeInputStream.position(event);
     }
 
     @Override
     public AEPacketRaw readPacketByNumber(int n) throws IOException {
-        return aeFileInputStream.readPacketByNumber(n);
+        return aeInputStream.readPacketByNumber(n);
     }
 
     @Override
     public AEPacketRaw readPacketByTime(int dt) throws IOException {
-        return aeFileInputStream.readPacketByTime(dt);
+        return aeInputStream.readPacketByTime(dt);
     }
 
     @Override
     public long size() {
-        return aeFileInputStream.size();
+        return aeInputStream.size();
     }
 
     @Override
     public void clearMarks() {
-        if (aeFileInputStream != null) {
-            aeFileInputStream.clearMarks();
+        if (aeInputStream != null) {
+            aeInputStream.clearMarks();
         }
     }
 
     @Override
     public long getMarkInPosition() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return -1;
         }
-        return aeFileInputStream.getMarkInPosition();
+        return aeInputStream.getMarkInPosition();
     }
 
     @Override
     public long getMarkOutPosition() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return -1;
         }
-        return aeFileInputStream.getMarkOutPosition();
+        return aeInputStream.getMarkOutPosition();
     }
 
     @Override
     public boolean isMarkInSet() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return false;
         }
-        return aeFileInputStream.isMarkInSet();
+        return aeInputStream.isMarkInSet();
     }
 
     @Override
     public boolean isMarkOutSet() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return false;
         }
-        return aeFileInputStream.isMarkOutSet();
+        return aeInputStream.isMarkOutSet();
     }
 
     @Override
     public long setMarkIn() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return -1;
         }
-        return aeFileInputStream.setMarkIn();
+        return aeInputStream.setMarkIn();
     }
 
     @Override
     public long setMarkOut() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return -1;
         }
-        return aeFileInputStream.setMarkOut();
+        return aeInputStream.setMarkOut();
+    }
+
+    @Override
+    public long toggleMarker() {
+        if (aeInputStream != null) {
+            return aeInputStream.toggleMarker();
+        }
+        return -1;
     }
 
     @Override
     public void setFractionalPosition(float frac) {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return;
         }
-        aeFileInputStream.setFractionalPosition(frac);
+        aeInputStream.setFractionalPosition(frac);
         if (viewer != null) {
             viewer.filterChain.reset(); // already done in aePlayer
             viewer.getRenderer().resetAccumulation();
@@ -715,8 +745,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     @Override
     public void setTime(int time) {
 //            System.out.println(this+".setTime("+time+")");
-        if (aeFileInputStream != null) {
-            aeFileInputStream.setCurrentStartTimestamp(time);
+        if (aeInputStream != null) {
+            aeInputStream.setCurrentStartTimestamp(time);
         } else {
             log.warning("null AEInputStream");
             Thread.dumpStack();
@@ -725,15 +755,15 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
     @Override
     public int getTime() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return 0;
         }
-        return aeFileInputStream.getMostRecentTimestamp();
+        return aeInputStream.getMostRecentTimestamp();
     }
 
     @Override
     public AEFileInputStreamInterface getAEInputStream() {
-        return aeFileInputStream;
+        return aeInputStream;
     }
 
     /**
@@ -755,8 +785,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public void setRepeat(boolean yes) {
-        if (aeFileInputStream != null) {
-            aeFileInputStream.setRepeat(yes);
+        if (aeInputStream != null) {
+            aeInputStream.setRepeat(yes);
         }
         super.setRepeat(yes);
     }
@@ -768,10 +798,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public boolean isNonMonotonicTimeExceptionsChecked() {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             return false;
         }
-        return aeFileInputStream.isNonMonotonicTimeExceptionsChecked();
+        return aeInputStream.isNonMonotonicTimeExceptionsChecked();
     }
 
     /**
@@ -781,10 +811,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public void setNonMonotonicTimeExceptionsChecked(boolean yes) {
-        if (aeFileInputStream == null) {
+        if (aeInputStream == null) {
             log.warning("null fileAEInputStream");
             return;
         }
-        aeFileInputStream.setNonMonotonicTimeExceptionsChecked(yes);
+        aeInputStream.setNonMonotonicTimeExceptionsChecked(yes);
     }
 }

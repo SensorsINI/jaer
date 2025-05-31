@@ -168,4 +168,10 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      */
     public void setCurrentStartTimestamp(int currentStartTimestamp);
 
+    public long toggleMarker();
+
+    public boolean jumpToNextMarker();
+
+    public boolean jumpToPrevMarker();
+
 }

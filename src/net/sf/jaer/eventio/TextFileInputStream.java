@@ -449,6 +449,21 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         return null;
     }
 
+    @Override
+    public long toggleMarker() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public boolean jumpToNextMarker() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public boolean jumpToPrevMarker() {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
     private class EventFormatException extends NumberFormatException {
 
         private String s;
