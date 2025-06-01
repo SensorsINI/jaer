@@ -10,7 +10,10 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.Point;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Hashtable;
@@ -20,6 +23,9 @@ import javax.swing.Action;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPopupMenu;
+import javax.swing.JSlider;
+import javax.swing.plaf.basic.BasicSliderUI;
+import javax.swing.plaf.basic.BasicSliderUI.TrackListener;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -65,6 +71,29 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.toggleMarkerAction);
         markerPopupMenu.add(aePlayer.clearMarksAction);
+        // https://stackoverflow.com/questions/518471/jslider-question-position-after-leftclick
+        MouseListener[] listeners = playerSlider.getMouseListeners();
+        for (MouseListener l : listeners) {
+            removeMouseListener(l); // remove UI-installed TrackListener
+        }
+        final BasicSliderUI ui = (BasicSliderUI) playerSlider.getUI();
+        BasicSliderUI.TrackListener tl = ui.new TrackListener() {
+            // this is where we jump to absolute value of click
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                Point p = e.getPoint();
+                int value = ui.valueForXPosition(p.x);
+
+                playerSlider.setValue(value);
+            }
+            // disable check that will invoke scrollDueToClickInTrack
+
+            @Override
+            public boolean shouldScroll(int dir) {
+                return false;
+            }
+        };
+        playerSlider.addMouseListener(tl);
         playerSlider.setComponentPopupMenu(markerPopupMenu);
 //        playerSlider.setExtent(100);
         repeatPlaybackButton.setSelected(aePlayer.isRepeat());
@@ -150,7 +179,9 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
                     }
                 } else if (evt.getPropertyName().equals(AEInputStream.EVENT_MARK_TOGGLED)) {
                     synchronized (aePlayer) {
-                        markPosition = playerSlider.getValue();
+                        Object oldLocation=evt.getOldValue(), newLocation=evt.getNewValue();
+                        boolean added=newLocation!=null;
+                        markPosition = convertToSlider(added?(long)newLocation:(long)oldLocation);
                         if (marksTable.get(markPosition) != null) {
                             marksTable.remove(markPosition);
                         } else {

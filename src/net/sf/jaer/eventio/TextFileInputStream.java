@@ -450,7 +450,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
     }
 
     @Override
-    public long toggleMarker() {
+    public boolean toggleMarker() {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 

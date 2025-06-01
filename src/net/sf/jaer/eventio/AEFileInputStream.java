@@ -1144,15 +1144,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @return the mark position in events.
      */
     @Override
-    public long toggleMarker() {
+    public boolean toggleMarker() {
         final long EVENT_COUNT_TOLERANCE=1000000L;
         long here = (position() / eventSizeBytes) * eventSizeBytes;
-        boolean remove=false;
+        boolean added=false;
         Long ceil=marks.otherMarks.ceiling(here), floor=marks.otherMarks.floor(here);
         
         if (marks.otherMarks.contains(here)) { // TODO add remove method somehow
             marks.otherMarks.remove(here);
-            getSupport().firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, here, null);
         } else if(ceil!=null && ceil-here<EVENT_COUNT_TOLERANCE){
             marks.otherMarks.remove(ceil);
             here=ceil;
@@ -1161,9 +1160,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             here=floor;
         } else {
             marks.otherMarks.add(here);
+            added=true;
         }
-        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, null, here);
-        return here;
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED, 
+                added?null:here, added?here:null);
+        log.info(String.format("%s marker at %,d",added?"Added":"Removed", here));
+        return added;
     }
 
     /**

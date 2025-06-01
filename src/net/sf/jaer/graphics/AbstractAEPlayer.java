@@ -293,7 +293,7 @@ public abstract class AbstractAEPlayer {
 
     abstract public long setMarkOut();
 
-    abstract public long toggleMarker();
+    abstract public boolean toggleMarker();
 
     public void pause() {
         setPaused(true);
@@ -596,9 +596,9 @@ public abstract class AbstractAEPlayer {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            toggleMarker();
+            boolean addedMarker=toggleMarker();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Toggled marker");
+            putValue(Action.SHORT_DESCRIPTION, addedMarker?"Added marker":"Removed marker");
             showAction();
         }
     }

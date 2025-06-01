@@ -722,11 +722,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     }
 
     @Override
-    public long toggleMarker() {
+    public boolean toggleMarker() {
         if (aeInputStream != null) {
             return aeInputStream.toggleMarker();
         }
-        return -1;
+        return false;
     }
 
     @Override

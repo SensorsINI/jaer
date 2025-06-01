@@ -618,10 +618,11 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     }
 
     @Override
-    public long toggleMarker() {
+    public boolean toggleMarker() {
+        boolean added=false;
         for (AEViewer v : getPlayingViewers()) {
-            v.aePlayer.toggleMarker();
+            added=v.aePlayer.toggleMarker();
         }
-        return 0;
+        return added;
     }
 }
