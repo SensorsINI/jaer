@@ -323,7 +323,7 @@ public abstract class AbstractAEPlayer {
         boolean old = paused;
         paused = yes;
         support.firePropertyChange(paused ? EVENT_PAUSED : EVENT_RESUMED, old, paused);
-        if (yes) {
+         if (yes) {
             pausePlayAction.setPlayAction();
         } else {
             pausePlayAction.setPauseAction();

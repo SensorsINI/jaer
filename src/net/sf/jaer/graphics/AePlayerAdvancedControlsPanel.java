@@ -14,6 +14,7 @@ import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseWheelEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Hashtable;
@@ -67,6 +68,7 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         setAePlayer(viewer.getAePlayer()); // TODO double set needed because aePlayer is needed in initComponents and we still need to do more component binding in setAePlayer
         moreControlsPanel.setVisible(false);
         markerPopupMenu = new JPopupMenu("Markers");
+        markerPopupMenu.add(aePlayer.pausePlayAction);
         markerPopupMenu.add(aePlayer.markInAction);
         markerPopupMenu.add(aePlayer.markOutAction);
         markerPopupMenu.add(aePlayer.toggleMarkerAction);
@@ -86,8 +88,8 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
 
                 playerSlider.setValue(value);
             }
-            // disable check that will invoke scrollDueToClickInTrack
 
+            // disable check that will invoke scrollDueToClickInTrack
             @Override
             public boolean shouldScroll(int dir) {
                 return false;
@@ -384,6 +386,11 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         playerSlider.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 playerSliderStateChanged(evt);
+            }
+        });
+        playerSlider.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
+            public void mouseWheelMoved(java.awt.event.MouseWheelEvent evt) {
+                playerSliderMouseWheelMoved(evt);
             }
         });
         playerSlider.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -832,6 +839,11 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
         }
         aePlayer.setRepeat(repeatPlaybackButton.isSelected());
     }//GEN-LAST:event_repeatPlaybackButtonActionPerformed
+
+    private void playerSliderMouseWheelMoved(java.awt.event.MouseWheelEvent evt) {//GEN-FIRST:event_playerSliderMouseWheelMoved
+//       log.info(String.format("Scrolling %,d clicks",evt.getWheelRotation()));
+       playerSlider.setValue(playerSlider.getValue()+evt.getWheelRotation());
+    }//GEN-LAST:event_playerSliderMouseWheelMoved
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.ButtonGroup buttonGroup1;
