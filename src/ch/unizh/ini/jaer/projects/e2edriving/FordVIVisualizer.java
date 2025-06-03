@@ -240,8 +240,7 @@ public class FordVIVisualizer extends EventFilter2D implements FrameAnnotater, P
 
             }
             if (showText) {
-                MultilineAnnotationTextRenderer.setColor(Color.blue);
-                MultilineAnnotationTextRenderer.setScale(.3f);
+                MultilineAnnotationTextRenderer.setColor(Color.white);
                 MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
                 MultilineAnnotationTextRenderer.renderMultilineString(lastFordViState.toString());
             }

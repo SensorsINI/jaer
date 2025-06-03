@@ -273,7 +273,6 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
             textRenderer.setColor(1, 1, 1, 1);
         }
         MultilineAnnotationTextRenderer.setColor(Color.CYAN);
-        MultilineAnnotationTextRenderer.setScale(.2f);
         StringBuilder sb = new StringBuilder();
         if (showHelpText) {
 //            sb.append("Shift+!Ctrl + mouse position: Specify no target present\nClt+Shift + mouse position: Specify currentTargetTypeID is present at mouse location\nShift+Alt: specify new radius for current targets");

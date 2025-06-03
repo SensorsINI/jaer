@@ -414,7 +414,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         s.append(String.format("\nController dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q));
         s.append(isControllerEnabled() ? "\nController is ENABLED" : "\nController is DISABLED");
         s.append("\n").append(nav.toString());
-        MultilineAnnotationTextRenderer.setScale(.2f);
         MultilineAnnotationTextRenderer.renderMultilineString(s.toString());
         chip.getCanvas().checkGLError(gl, glu, "after controller annotations");
     }

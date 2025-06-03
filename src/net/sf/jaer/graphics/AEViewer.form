@@ -682,72 +682,70 @@
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="setMarkInMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="I"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.markInAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Set IN marker"/>
                 <Property name="toolTipText" type="java.lang.String" value="If playing back file, it rewinds to this position"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setMarkInMIActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="setMarkOutMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="O"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.markOutAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Set OUT marker"/>
                 <Property name="toolTipText" type="java.lang.String" value="If playing back recording, it plays to this marker"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setMarkOutMIActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="toggleMarkerMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="M"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.toggleMarkerAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Toggle marker"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="toggleMarkerMIActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jumpPrevMarkerMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="J"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.jumpPrevMarkerAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Jump to previous marker"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jumpPrevMarkerMIActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jumpNextMarkerMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="K"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.jumpNextMarkerAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Jump to next marker"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jumpNextMarkerMIActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="clearMarksMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="Shift+M"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.clearMarksAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Clear IN and OUT markers"/>
                 <Property name="toolTipText" type="java.lang.String" value="Clears the IN and OUT markers for playing back a section of a recording"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearMarksMIActionPerformed"/>
-              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="exportMarksMI">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.exportMarksAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Export marks"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="importMarksMI">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.importMarksAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Import marks"/>
+              </Properties>
             </MenuItem>
           </SubComponents>
         </Menu>

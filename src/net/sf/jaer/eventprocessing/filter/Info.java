@@ -853,7 +853,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 engFmt.format(accumulatedAPSSampleCount / 2), engFmt.format(cAps / 2 / t), // divide by two for reset/signal reads
                 engFmt.format(accumulatedIMUSampleCount), engFmt.format(cImu / t));
         MultilineAnnotationTextRenderer.setFontSize(fontSize);
-        MultilineAnnotationTextRenderer.setScale(1);
+        MultilineAnnotationTextRenderer.setLineShiftMultiplier(1.15f); // default value is 1.15 lines
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }

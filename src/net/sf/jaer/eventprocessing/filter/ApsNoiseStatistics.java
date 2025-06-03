@@ -486,8 +486,9 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
          * draws all statistics
          */
         void draw(GL2 gl) {
-            MultilineAnnotationTextRenderer.setColor(Color.BLUE);
-            MultilineAnnotationTextRenderer.setScale(((float) chip.getSizeX() / 240) * .25f); // scaled to fit 240 sensor, scale up for larger sensors
+            MultilineAnnotationTextRenderer.setColor(Color.WHITE);
+            MultilineAnnotationTextRenderer.setFontSize(7);
+//            MultilineAnnotationTextRenderer.setLineShiftMultiplier(((float) chip.getSizeX() / 240) * .25f); // scaled to fit 240 sensor, scale up for larger sensors
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.8f);
             engFmt.setPrecision(2);
             MultilineAnnotationTextRenderer.renderMultilineString(String.format("Exposure: set=%ss, measured=%ss", engFmt.format(lastExposureDelayMs * .001f), engFmt.format(lastMeasuredExposureMs * .001f)));
@@ -644,7 +645,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                 float kdn = (float) (meanvar / meanmean);
                 float keuV = kdn * adcVref / adcResolutionCounts * 1e6f;
                 String s = String.format("Temporal noise: %.1f+/-%.2f var=%.1f COV=%.1f%% var/mean=k=%.2f DN/e, k=%s uV/e N=%d", meanmean, rmsAC, meanvar, (100 * rmsAC) / meanmean, kdn, engFmt.format(keuV), nPixels);
-                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .6f);
+//                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .6f);
                 MultilineAnnotationTextRenderer.renderMultilineString(s);
 //
 //                renderer.begin3DRendering();
@@ -878,7 +879,7 @@ public class ApsNoiseStatistics extends EventFilter2DMouseAdaptor implements Fra
                         gl.glEnd();
                     }
                 }
-                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .7f);
+//                MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .7f);
                 float expRateDNperMs = mean / lastMeasuredExposureMs;
                 float expDNperMsStd = expRateDNperMs / lastMeasuredExposureMs;
                 MultilineAnnotationTextRenderer.renderMultilineString(String.format("Spatial histogram: mean=%.1f+/-%.3f DN (%.2f +/- %.3f DN/ms), COV=%.3f%%", mean, std, expRateDNperMs, expDNperMsStd, cov * 100));

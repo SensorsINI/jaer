@@ -174,7 +174,6 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     @Override
     public void annotate(GLAutoDrawable drawable) {
         String s = generateSummaryStatisticsString();
-        MultilineAnnotationTextRenderer.setScale(.4f);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(.6f * chip.getSizeY());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }

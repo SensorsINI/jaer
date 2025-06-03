@@ -20,8 +20,8 @@ import net.sf.jaer.util.DrawGL;
  * chip output display. Assumes pixel-based coordinates of GL context.
  *
  * @author tobi
- * @see TextRendererScale for utility static method to compute a reasonable
- * scale
+ * @see TextRendererScalefor utility static method to compute a reasonable
+ lineShiftMultiplier
  */
 public class MultilineAnnotationTextRenderer {
 
@@ -30,7 +30,7 @@ public class MultilineAnnotationTextRenderer {
     private static TextRenderer renderer;
     private static float yshift = 0;
     private static float xposition = 1;
-    private static float scale = .15f;
+    private static float lineShiftMultiplier = 1.15f;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static Color color = Color.WHITE;
     private static int fontSize = 9;
@@ -87,7 +87,7 @@ public class MultilineAnnotationTextRenderer {
                     continue;
                 }
                 r = DrawGL.drawString(fontSize, xposition, yshift, 0, color, l);
-                yshift -= r.getHeight() * scale;
+                yshift -= r.getHeight() * lineShiftMultiplier;
                 l = "  " + l;
             }
         } catch (GLException e) {
@@ -99,19 +99,19 @@ public class MultilineAnnotationTextRenderer {
     /**
      * Returns overall text scaling (0.15 by default)
      *
-     * @return the scale
+     * @return the lineShiftMultiplier
      */
-    public static float getScale() {
-        return scale;
+    public static float getLineShiftMultiplier() {
+        return lineShiftMultiplier;
     }
 
     /**
      * Sets overall text scaling (0.15 by default)
      *
-     * @param aScale the scale to set
+     * @param aScale the lineShiftMultiplier to set
      */
-    public static void setScale(float aScale) {
-        scale = aScale;
+    public static void setLineShiftMultiplier(float aScale) {
+        lineShiftMultiplier = aScale;
     }
 
     /**
@@ -134,7 +134,7 @@ public class MultilineAnnotationTextRenderer {
     }
 
     public static void setDefaultScale() {
-        scale = 0.15f;
+        lineShiftMultiplier = 0.15f;
     }
 
     /**
@@ -156,14 +156,5 @@ public class MultilineAnnotationTextRenderer {
         color = aColor;
     }
 
-    /**
-     * Returns the TextRenderer used by MultilineAnnotationTextRenderer. This
-     * renderer will be null before the first use.
-     *
-     * @return the renderer, or null if it has not been used yet
-     */
-    public static TextRenderer getRenderer() {
-        return renderer;
-    }
 
 }

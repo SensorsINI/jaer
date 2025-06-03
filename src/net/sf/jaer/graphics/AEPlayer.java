@@ -375,7 +375,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     aeInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
                     aeInputStream.setFile(file);
                     if (aeInputStream instanceof AEFileInputStream s) {
-                        s.initializeSavedMarks();
+                        s.marksInitialize();
                     }
                     aeInputStream.setRepeat(isRepeat());
                     aeInputStream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());

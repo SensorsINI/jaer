@@ -431,13 +431,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        }
         setName("AEViewer");
 
+        aePlayer = new AEPlayer(this);
+        playerControls = new AePlayerAdvancedControlsPanel(this);
+        
         initComponents();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_MAIN)).getImage());
 
-        aePlayer = new AEPlayer(this);
-        playerControls = new AePlayerAdvancedControlsPanel(this);
         playerControlPanel.add(playerControls, BorderLayout.NORTH);
         this.jaerViewer = jaerViewer;
         if (jaerViewer != null) {
@@ -2897,6 +2898,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jumpPrevMarkerMI = new javax.swing.JMenuItem();
         jumpNextMarkerMI = new javax.swing.JMenuItem();
         clearMarksMI = new javax.swing.JMenuItem();
+        exportMarksMI = new javax.swing.JMenuItem();
+        importMarksMI = new javax.swing.JMenuItem();
         deviceMenu = new javax.swing.JMenu();
         jSeparator3 = new javax.swing.JPopupMenu.Separator();
         renewChipMI = new javax.swing.JMenuItem();
@@ -3611,62 +3614,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playbackMenu.add(setJogNCount);
         playbackMenu.add(jSeparator19);
 
-        setMarkInMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_I, 0));
+        setMarkInMI.setAction(aePlayer.markInAction);
         setMarkInMI.setText("Set IN marker");
         setMarkInMI.setToolTipText("If playing back file, it rewinds to this position");
-        setMarkInMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setMarkInMIActionPerformed(evt);
-            }
-        });
         playbackMenu.add(setMarkInMI);
 
-        setMarkOutMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0));
+        setMarkOutMI.setAction(aePlayer.markOutAction);
         setMarkOutMI.setText("Set OUT marker");
         setMarkOutMI.setToolTipText("If playing back recording, it plays to this marker");
-        setMarkOutMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                setMarkOutMIActionPerformed(evt);
-            }
-        });
         playbackMenu.add(setMarkOutMI);
 
-        toggleMarkerMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, 0));
+        toggleMarkerMI.setAction(aePlayer.toggleMarkerAction);
         toggleMarkerMI.setText("Toggle marker");
-        toggleMarkerMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                toggleMarkerMIActionPerformed(evt);
-            }
-        });
         playbackMenu.add(toggleMarkerMI);
 
-        jumpPrevMarkerMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_J, 0));
+        jumpPrevMarkerMI.setAction(aePlayer.jumpPrevMarkerAction);
         jumpPrevMarkerMI.setText("Jump to previous marker");
-        jumpPrevMarkerMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jumpPrevMarkerMIActionPerformed(evt);
-            }
-        });
         playbackMenu.add(jumpPrevMarkerMI);
 
-        jumpNextMarkerMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_K, 0));
+        jumpNextMarkerMI.setAction(aePlayer.jumpNextMarkerAction);
         jumpNextMarkerMI.setText("Jump to next marker");
-        jumpNextMarkerMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jumpNextMarkerMIActionPerformed(evt);
-            }
-        });
         playbackMenu.add(jumpNextMarkerMI);
 
-        clearMarksMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_M, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        clearMarksMI.setAction(aePlayer.clearMarksAction);
         clearMarksMI.setText("Clear IN and OUT markers");
         clearMarksMI.setToolTipText("Clears the IN and OUT markers for playing back a section of a recording");
-        clearMarksMI.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                clearMarksMIActionPerformed(evt);
-            }
-        });
         playbackMenu.add(clearMarksMI);
+
+        exportMarksMI.setAction(aePlayer.exportMarksAction);
+        exportMarksMI.setText("Export marks");
+        playbackMenu.add(exportMarksMI);
+
+        importMarksMI.setAction(aePlayer.importMarksAction);
+        importMarksMI.setText("Import marks");
+        playbackMenu.add(importMarksMI);
 
         menuBar.add(playbackMenu);
 
@@ -6169,25 +6150,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 	}//GEN-LAST:event_interfaceMenuMenuSelected
 
-    private void clearMarksMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearMarksMIActionPerformed
-        synchronized (getAePlayer()) {
-            getAePlayer().clearMarksAction.actionPerformed(evt);
-        }
-    }//GEN-LAST:event_clearMarksMIActionPerformed
-
-    private void setMarkInMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setMarkInMIActionPerformed
-        synchronized (aePlayer) {
-            aePlayer.markInAction.actionPerformed(evt);
-        }
-    }//GEN-LAST:event_setMarkInMIActionPerformed
-
-    private void setMarkOutMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setMarkOutMIActionPerformed
-        synchronized (aePlayer) {
-            aePlayer.markOutAction.actionPerformed(evt);
-            aePlayer.rewind();
-        }
-    }//GEN-LAST:event_setMarkOutMIActionPerformed
-
     private void printUSBStatisticsCBMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_printUSBStatisticsCBMIActionPerformed
         if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof HasUsbStatistics)) {
             HasUsbStatistics usbStatistics = (HasUsbStatistics) chip.getHardwareInterface();
@@ -6358,24 +6320,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
     }//GEN-LAST:event_renewChipMIActionPerformed
-
-    private void toggleMarkerMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_toggleMarkerMIActionPerformed
-        synchronized (aePlayer) {
-            aePlayer.toggleMarkerAction.actionPerformed(evt);
-        }
-    }//GEN-LAST:event_toggleMarkerMIActionPerformed
-
-    private void jumpNextMarkerMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jumpNextMarkerMIActionPerformed
-         synchronized (aePlayer) {
-            aePlayer.jumpNextMarkerAction.actionPerformed(evt);
-        }
-    }//GEN-LAST:event_jumpNextMarkerMIActionPerformed
-
-    private void jumpPrevMarkerMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jumpPrevMarkerMIActionPerformed
-         synchronized (aePlayer) {
-            aePlayer.jumpPrevMarkerAction.actionPerformed(evt);
-        }
-    }//GEN-LAST:event_jumpPrevMarkerMIActionPerformed
 
     private ArrayList<LoggingLevelButton> loggingLevelRadioButtons = null;
     private final Level[] loggingLevels = {Level.OFF, Level.SEVERE, Level.WARNING, Level.INFO, Level.FINE, Level.FINER, Level.FINEST, Level.ALL};
@@ -6954,6 +6898,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem enableMissedEventsCheckBox;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JSeparator exitSeperator;
+    private javax.swing.JMenuItem exportMarksMI;
     private javax.swing.JCheckBoxMenuItem fadingMI;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JToggleButton filtersToggleButton;
@@ -6962,6 +6907,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu graphicsSubMenu;
     private javax.swing.JMenu helpMenu;
     private javax.swing.JPanel imagePanel;
+    private javax.swing.JMenuItem importMarksMI;
     private javax.swing.JMenuItem increaseBufferSizeMenuItem;
     private javax.swing.JMenuItem increaseContrastMenuItem;
     private javax.swing.JMenuItem increaseFrameRateMenuItem;

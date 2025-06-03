@@ -931,8 +931,7 @@ public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnot
             renderer.end3DRendering();
             if (countDVSEventsBetweenExternalPinEvents) {
                 MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .4f);
-                MultilineAnnotationTextRenderer.setScale(.25f);
-                MultilineAnnotationTextRenderer.setColor(Color.yellow);
+                MultilineAnnotationTextRenderer.setColor(Color.white);
                 MultilineAnnotationTextRenderer.renderMultilineString(eventCountAfterExternalPinEvents.toString());
             }
             // ... more draw commands, color changes, etc.

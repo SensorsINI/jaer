@@ -789,7 +789,6 @@ public class DVSLatencyMeasurement extends EventFilter2DMouseAdaptor implements 
                 }
             }
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .9f);
-            MultilineAnnotationTextRenderer.setScale(.3f);
             MultilineAnnotationTextRenderer.renderMultilineString(String.format("State: %s\n%s",
                     state.toString(),statsSummaryString()));
 

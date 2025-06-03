@@ -207,7 +207,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         dvsFrame.setShowFrames(isWriteDvsFrames());
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
-        MultilineAnnotationTextRenderer.setScale(.3f);
         float avgFrameRate = avgDvsFrameIntervalMs == 0 ? Float.NaN : 1000 / avgDvsFrameIntervalMs;
         String s = null;
         if (dvsFrame.isNormalizeFrame()) {

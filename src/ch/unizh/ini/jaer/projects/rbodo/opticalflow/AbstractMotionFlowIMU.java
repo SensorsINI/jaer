@@ -1384,7 +1384,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         if (measureAccuracy) {
             MultilineAnnotationTextRenderer.resetToYPositionPixels(-20);
 //            MultilineAnnotationTextRenderer.setDefaultScale();
-            MultilineAnnotationTextRenderer.setScale(.6f);
+            MultilineAnnotationTextRenderer.setFontSize(6);
 //            MultilineAnnotationTextRenderer.setFontSize(24);
             String s = String.format("Accuracy statistics:%n%s%n%s%n%s%n%s",
                     motionFlowStatistics.endpointErrorAbs.graphicsString("AEE:", "px/s"),

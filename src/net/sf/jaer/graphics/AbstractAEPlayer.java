@@ -8,16 +8,24 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.io.File;
 import java.io.IOException;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.JFileChooser;
 import javax.swing.KeyStroke;
 import net.sf.jaer.aemonitor.AEPacketRaw;
-import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.util.EngineeringFormat;
+
+import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import java.io.File;
+import java.util.logging.Level;
+import java.util.prefs.Preferences;
+import net.sf.jaer.JaerConstants;
+import net.sf.jaer.eventio.AEFileInputStream;
+import org.apache.commons.io.FilenameUtils;
 
 /**
  * Base class for AEPlayers for playing back AER data files that implements some
@@ -34,6 +42,7 @@ public abstract class AbstractAEPlayer {
 
     protected AEViewer viewer = null;
     protected static Logger log = Logger.getLogger("net.sf.jaer");
+    public Preferences prefs = JaerConstants.PREFS_ROOT.node("AEViewer");
     /**
      * The AE file input stream.
      */
@@ -62,6 +71,8 @@ public abstract class AbstractAEPlayer {
     public final ToggleMarkAction toggleMarkerAction = new ToggleMarkAction();
     public final JumpNextMarkerkAction jumpNextMarkerAction = new JumpNextMarkerkAction();
     public final JumpPrevMarkerkAction jumpPrevMarkerAction = new JumpPrevMarkerkAction();
+    public final ExportMarksAction exportMarksAction = new ExportMarksAction();
+    public final ImportMarksAction importMarksAction = new ImportMarksAction();
     /**
      * Flog for all pause/resume state.
      */
@@ -323,7 +334,7 @@ public abstract class AbstractAEPlayer {
         boolean old = paused;
         paused = yes;
         support.firePropertyChange(paused ? EVENT_PAUSED : EVENT_RESUMED, old, paused);
-         if (yes) {
+        if (yes) {
             pausePlayAction.setPlayAction();
         } else {
             pausePlayAction.setPauseAction();
@@ -547,13 +558,14 @@ public abstract class AbstractAEPlayer {
 
         public ClearMarksAction() {
             super("Clear Marks", "ClearMarks16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("control M"));
+            putValue(Action.SHORT_DESCRIPTION, "Clear all markers");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
             clearMarks();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Clear all markers");
             showAction();
         }
     }
@@ -562,6 +574,8 @@ public abstract class AbstractAEPlayer {
 
         public MarkInAction() {
             super("Mark IN", "MarkIn16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed i"));
+            putValue(Action.SHORT_DESCRIPTION, "Mark IN marker");
         }
 
         @Override
@@ -569,7 +583,6 @@ public abstract class AbstractAEPlayer {
             showAction();
             setMarkIn();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Mark IN marker");
         }
     }
 
@@ -577,6 +590,8 @@ public abstract class AbstractAEPlayer {
 
         public MarkOutAction() {
             super("Mark OUT", "MarkOut16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed o"));
+            putValue(Action.SHORT_DESCRIPTION, "Set OUT marker");
         }
 
         @Override
@@ -584,7 +599,6 @@ public abstract class AbstractAEPlayer {
             showAction();
             setMarkOut();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, "Set OUT marker");
         }
     }
 
@@ -592,48 +606,31 @@ public abstract class AbstractAEPlayer {
 
         public ToggleMarkAction() {
             super("Toggle marker", "ToggleMarker16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed m"));
+            putValue(Action.SHORT_DESCRIPTION, "Add or remove a marker at current location");
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            boolean addedMarker=toggleMarker();
+            boolean addedMarker = toggleMarker();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, addedMarker?"Added marker":"Removed marker");
+            putValue(Action.SHORT_DESCRIPTION, addedMarker ? "Added marker" : "Removed marker");
             showAction();
         }
     }
-    
-    final public class JumpNextMarkerkAction extends MyAction {
 
-        public JumpNextMarkerkAction() {
-            super("Jump to next marker", "ToggleMarker16");
-        }
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            boolean succeeded= jumpToNextMarker();
-            putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION, succeeded? "Jumped to next marker":"No next marker");
-            showAction();
-        }
-
-        private boolean jumpToNextMarker() {
-            return aeInputStream.jumpToNextMarker();
-        }
-    }
-    
-    
     final public class JumpPrevMarkerkAction extends MyAction {
 
         public JumpPrevMarkerkAction() {
             super("Jump to previous marker", "ToggleMarker16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed j"));
         }
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            boolean succeeded=jumpToPreviousMarker();
+            boolean succeeded = jumpToPreviousMarker();
             putValue(Action.SELECTED_KEY, true);
-            putValue(Action.SHORT_DESCRIPTION,  succeeded? "Jumped to previous marker":"No previous marker");
+            putValue(Action.SHORT_DESCRIPTION, succeeded ? "Jumped to previous marker" : "No previous marker");
             showAction();
         }
 
@@ -641,8 +638,158 @@ public abstract class AbstractAEPlayer {
             return aeInputStream.jumpToPrevMarker();
         }
     }
-    
-    
+
+    final public class JumpNextMarkerkAction extends MyAction {
+
+        public JumpNextMarkerkAction() {
+            super("Jump to next marker", "ToggleMarker16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed k"));
+
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean succeeded = jumpToNextMarker();
+            putValue(Action.SELECTED_KEY, true);
+            putValue(Action.SHORT_DESCRIPTION, succeeded ? "Jumped to next marker" : "No next marker");
+            showAction();
+        }
+
+        private boolean jumpToNextMarker() {
+            return aeInputStream.jumpToNextMarker();
+        }
+    }
+
+    private File marksCSVFileChooserShower() {
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select Location and Name for CSV File");
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+
+        // Set file filter for CSV files
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("CSV Files (*.csv)", "csv");
+        fileChooser.addChoosableFileFilter(filter);
+        fileChooser.setAcceptAllFileFilterUsed(false); // allow also seeing all recordings
+
+        // Set default directory and filename from currently-playing file
+        if (aeInputStream == null) {
+            JOptionPane.showMessageDialog(viewer, "Marks only available for playback", "Marks are only avaialble during playback", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        if (!(aeInputStream instanceof AEFileInputStream)) {
+            JOptionPane.showMessageDialog(viewer, "Marks not yet supported", "Marks are only avaialble for AEFileInputTream (.aedat) files", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+        AEFileInputStream aeFileInputStream = (AEFileInputStream) aeInputStream;
+        File playingFile = aeFileInputStream.getFile();
+        if (playingFile == null) {
+            JOptionPane.showMessageDialog(viewer, "Cannot export", "No file playing, cannot export marks", JOptionPane.WARNING_MESSAGE);
+            return null;
+        }
+//        String lastDirectoryPath = prefs.get("lastMarksDir", System.getProperty("user.home"));
+//        File defaultDirectory = new File(lastDirectoryPath);
+//        if (defaultDirectory.exists() && defaultDirectory.isDirectory()) {
+//            fileChooser.setCurrentDirectory(defaultDirectory);
+//        } else {
+//            fileChooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+//        }
+//
+//        // Set default file name if available
+//        String lastFileName = prefs.get("lastMarksFile", "exported-marks.csv");
+        fileChooser.setCurrentDirectory(playingFile.getParentFile().getAbsoluteFile());
+        String csvFileName = FilenameUtils.removeExtension(playingFile.getAbsolutePath()) + "-narks.csv";
+        fileChooser.setSelectedFile(new File(csvFileName));
+
+        int userSelection = fileChooser.showSaveDialog(null);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+
+            // Ensure the file has a .csv extension
+            String filePath = selectedFile.getAbsolutePath();
+            if (!filePath.toLowerCase().endsWith(".csv")) {
+                selectedFile = new File(filePath + ".csv");
+            }
+
+            // Save the chosen directory and file name to preferences
+            prefs.put("lastMarksDir", selectedFile.getParent());
+            prefs.put("lastMarksFile", selectedFile.getName());
+
+//            JOptionPane.showMessageDialog(null, "CSV file will be: " + selectedFile.getAbsolutePath(),
+//                    "File Selected", JOptionPane.INFORMATION_MESSAGE);
+            // In a real application, you would now proceed to write your CSV data
+            // to 'selectedFile'.
+            log.info("Selected file: " + selectedFile.getAbsolutePath());
+            return selectedFile;
+        } else {
+            JOptionPane.showMessageDialog(null, "File selection cancelled.",
+                    "Cancelled", JOptionPane.INFORMATION_MESSAGE);
+        }
+        return null;
+
+    }
+
+    final public class ExportMarksAction extends MyAction {
+
+        public ExportMarksAction() {
+            super("Export marks", "Export16");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (!(aeInputStream instanceof AEFileInputStream)) {
+                JOptionPane.showMessageDialog(viewer, "Marks not supported", "Marks are not yet supported except for AEFileInputStream", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            File f = marksCSVFileChooserShower();
+            if (f == null) {
+                return;
+            }
+            AEFileInputStream aeFileInputStream = (AEFileInputStream) aeInputStream;
+            try {
+                aeFileInputStream.marksExportToCSV(f);
+                putValue(Action.SELECTED_KEY, true);
+                putValue(Action.SHORT_DESCRIPTION, "Exported marks");
+                showAction();
+            } catch (IOException ex) {
+                log.warning("Could not export: " + ex.toString());
+                JOptionPane.showMessageDialog(viewer, "Export failed", ex.toString(), JOptionPane.WARNING_MESSAGE);
+            }
+
+        }
+    }
+
+    final public class ImportMarksAction extends MyAction {
+
+        public ImportMarksAction() {
+            super("Import marks", "Import16");
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (!(aeInputStream instanceof AEFileInputStream)) {
+                JOptionPane.showMessageDialog(viewer, "Marks not supported", "Marks are not yet supported except for AEFileInputStream", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            File f = marksCSVFileChooserShower();
+            if (f == null) {
+                return;
+            }
+            AEFileInputStream aeFileInputStream = (AEFileInputStream) aeInputStream;
+            try {
+                aeFileInputStream.marksImportFromCSV(f);
+            } catch (IOException ex) {
+                Logger.getLogger(AbstractAEPlayer.class.getName()).log(Level.SEVERE, null, ex);
+                putValue(Action.SELECTED_KEY, true);
+                putValue(Action.SHORT_DESCRIPTION, "Imported marks");
+                showAction();
+            } catch (IllegalArgumentException ex) {
+                log.warning("Could not  import: " + ex.toString());
+                JOptionPane.showMessageDialog(viewer, "Import failed", ex.toString(), JOptionPane.WARNING_MESSAGE);
+            }
+
+        }
+    }
 
     final public class PlayAction extends MyAction {
 
@@ -871,4 +1018,5 @@ public abstract class AbstractAEPlayer {
         this.jogPacketCount = jogPacketCount;
         viewer.prefs.putInt("AbstractAEPlayer.jogPacketCount", jogPacketCount);
     }
+
 }
