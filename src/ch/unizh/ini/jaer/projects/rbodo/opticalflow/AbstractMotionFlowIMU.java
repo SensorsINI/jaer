@@ -37,6 +37,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
@@ -143,6 +144,10 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     private boolean displayGlobalMotion = getBoolean("displayGlobalMotion", true);
     private boolean displayGlobalMotionAngleHistogram = getBoolean("displayGlobalMotionAngleHistogram", false);
     protected int statisticsWindowSize = getInt("statisticsWindowSize", 10000);
+
+    // global font size
+    @Preferred
+    private int fontSize = getInt("fontSize", 6);
 
     protected EngineeringFormat engFmt = new EngineeringFormat();
 
@@ -267,8 +272,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     // for drawing GT flow at a point
     private volatile MotionOrientationEventInterface mouseVectorEvent = new ApsDvsMotionOrientationEvent();
     private volatile String mouseVectorString = null;
-    
-    private boolean warnNonmonotonicTimestamps=true;
+
+    private boolean warnNonmonotonicTimestamps = true;
 
     public AbstractMotionFlowIMU(AEChip chip) {
         super(chip);
@@ -303,6 +308,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(measureTT, "loggingFolder", "directory to store logged data files");
         setPropertyTooltip(measureTT, "statisticsWindowSize", "Window in samples for measuring statistics of global flow, optical flow errors, and processing times");
 
+        setPropertyTooltip(dispTT, "fontSize", "font size for annotations");
         setPropertyTooltip(dispTT, "ppsScale", "<html>When <i>ppsScaleDisplayRelativeOFLength=false</i>, then this is <br>scale of screen pixels per px/s flow to draw local motion vectors; <br>global vectors are scaled up by an additional factor of " + GLOBAL_MOTION_DRAWING_SCALE + "<p>"
                 + "When <i>ppsScaleDisplayRelativeOFLength=true</i>, then local motion vectors are scaled by average speed of flow");
         setPropertyTooltip(dispTT, "ppsScaleDisplayRelativeOFLength", "<html>Display flow vector lengths relative to global average speed");
@@ -353,7 +359,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         setPropertyTooltip(motionFieldTT, "displayMotionFieldUsingColor", "Shows motion field flow vectors in color; otherwise shown as monochrome color arrows");
         setPropertyTooltip(motionFieldTT, "motionFieldDiffusionEnabled", "Enables an event-driven diffusive averaging of motion field values");
         setPropertyTooltip(motionFieldTT, "decayTowardsZeroPeridiclly", "Decays motion field values periodically (with update interval of the time constant) towards zero velocity, i.e. enforce zero flow prior");
-        
+
         setPropertyTooltip(miscTT, "warnNonmonotonicTimestamps", "Warn about nonmonotonic or other suspicious event timestamps");
         File lf = new File(loggingFolder);
         if (!lf.exists() || !lf.isDirectory()) {
@@ -1275,11 +1281,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 s = String.format("%.1f px/s OF scale", speed);
             }
 //            gl.glColor3f(1, 1, 1);
-            DrawGL.drawString(15, px + 4 + speed * ppsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
+            DrawGL.drawString(fontSize, px + 4 + speed * ppsScale / 2, py, 0, new Color(rgba[0], rgba[1], rgba[2], rgba[3]), s);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
 
             if (showFilterName) {
-                DrawGL.drawString(18, 10, 10, 0, Color.white, getShortName());
+                DrawGL.drawString(fontSize, 10, 10, 0, Color.white, getShortName());
             }
             gl.glPopMatrix();
 
@@ -1300,8 +1306,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
 //            gl.glRasterPos2i(2, 10);
 //            chip.getCanvas().getGlut().glutBitmapString(GLUT.BITMAP_HELVETICA_18,globMotionString);
             gl.glPopMatrix();
-            DrawGL.drawString(13, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2 - 1, .5f, Color.black, globMotionString);
-            DrawGL.drawString(13, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, globMotionString); // drop shadow
+            DrawGL.drawString(fontSize, chip.getSizeX() / 2 + 1, chip.getSizeY() / 2 - 1, .5f, Color.black, globMotionString);
+            DrawGL.drawString(fontSize, chip.getSizeX() / 2, chip.getSizeY() / 2, .5f, Color.white, globMotionString); // drop shadow
 //            System.out.println(String.format("%5.3f\t%5.2f",ts*1e-6f, motionFlowStatistics.getGlobalMotion().meanGlobalTrans));  // debug
 
             // draw quartiles statistics ellipse
@@ -1337,7 +1343,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                 gl.glColor3f(1, 1, 1);
                 gl.glLineWidth(motionVectorLineWidthPixels);
                 motionFlowStatistics.getGlobalMotion().drawAngleHistogram(gl, chip.getSizeX() / 2);
-                DrawGL.drawString(10, 0, 0, .5f, Color.white, String.format("Angle dist. N=%,d", motionFlowStatistics.getGlobalMotion().globalMotionAngleFrequency.getSumFreq()));
+                DrawGL.drawString(fontSize, 0, 0, .5f, Color.white, String.format("Angle dist. N=%,d", motionFlowStatistics.getGlobalMotion().globalMotionAngleFrequency.getSumFreq()));
                 gl.glPopMatrix();
             }
 
@@ -1427,8 +1433,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             gl.glPushMatrix();
             drawMotionVector(gl, mouseVectorEvent.getX() + 1, mouseVectorEvent.getY() - 1, mouseVectorEvent.getVelocity().x, mouseVectorEvent.getVelocity().y, new float[]{0, 0, 0, 1}, getMotionVectorLineWidthPixels() * 2);
             float[] c = drawMotionVector(gl, mouseVectorEvent.getX(), mouseVectorEvent.getY(), mouseVectorEvent.getVelocity().x, mouseVectorEvent.getVelocity().y, motionColor(mouseVectorEvent), getMotionVectorLineWidthPixels() * 2);
-            DrawGL.drawString(16, (float) mouseVectorEvent.getX() + 1, (float) mouseVectorEvent.getY() - 1 + 3, .5f, Color.black, mouseVectorString);
-            DrawGL.drawString(16, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
+            DrawGL.drawString(fontSize, (float) mouseVectorEvent.getX() + 1, (float) mouseVectorEvent.getY() - 1 + 3, .5f, Color.black, mouseVectorString);
+            DrawGL.drawString(fontSize, (float) mouseVectorEvent.getX(), (float) mouseVectorEvent.getY() + 3, .5f, Color.white, mouseVectorString);
             gl.glPopMatrix();
         }
 
@@ -1505,8 +1511,8 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
         prevTs = ts;
         lastTs = lastTimesMap[e.x][e.y][e.type];
         if (ts < lastTs) {
-            int dtMap=ts-lastTs;
-            log.warning(String.format("Nonmonotonic timestamp in pixel lastTimesMap:%n  For event %s,%n   nonmontoic timestamp ts=%,d < lastTs=%,d (dt=%,dus)", e.toString(), ts, lastTs,dtMap));
+            int dtMap = ts - lastTs;
+            log.warning(String.format("Nonmonotonic timestamp in pixel lastTimesMap:%n  For event %s,%n   nonmontoic timestamp ts=%,d < lastTs=%,d (dt=%,dus)", e.toString(), ts, lastTs, dtMap));
             return false;
         }
         lastTimesMap[x][y][type] = ts;
@@ -1895,7 +1901,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     }
 
     public synchronized void setMeasureAccuracy(boolean measureAccuracy) {
-        support.firePropertyChange("measureAccuracy", this.measureAccuracy, measureAccuracy);
+        boolean old = this.measureAccuracy;
         this.measureAccuracy = measureAccuracy;
         putBoolean("measureAccuracy", measureAccuracy);
         motionFlowStatistics.setMeasureAccuracy(measureAccuracy);
@@ -1903,6 +1909,7 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
             //setMeasureProcessingTime(false);
             resetFilter();
         }
+        support.firePropertyChange("measureAccuracy", old, measureAccuracy);
     }
     // </editor-fold>
 
@@ -2360,10 +2367,11 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
                     gl.glColor4f(rgb[0], rgb[1], rgb[2], 1f);
                     gl.glLineWidth(motionVectorLineWidthPixels);
 //                    gl.glColor4f(angle, 1 - angle, 1 / (1 + 10 * angle), .5f);
-                    gl.glPushMatrix();
-                    DrawGL.drawVector(gl, x, y, vx * ppsScale, vy * ppsScale, motionVectorLineWidthPixels, 1);
-                    gl.glPopMatrix();
-                    if (displayMotionFieldColorBlobs) {
+                    if (!displayMotionFieldColorBlobs) {
+                        gl.glPushMatrix();
+                        DrawGL.drawVector(gl, x, y, vx * ppsScale, vy * ppsScale, motionVectorLineWidthPixels, 1);
+                        gl.glPopMatrix();
+                    } else if (displayMotionFieldColorBlobs) {
                         gl.glColor4f(rgb[0], rgb[1], rgb[2], .01f);
                         final float s = shift / 4;
                         // draw a blurred square showing motion field direction
@@ -2963,6 +2971,21 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
      */
     public void setWarnNonmonotonicTimestamps(boolean warnNonmonotonicTimestamps) {
         this.warnNonmonotonicTimestamps = warnNonmonotonicTimestamps;
+    }
+
+    /**
+     * @return the fontSize
+     */
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    /**
+     * @param fontSize the fontSize to set
+     */
+    public void setFontSize(int fontSize) {
+        this.fontSize = fontSize;
+        putInt("fontSize", fontSize);
     }
 
 }

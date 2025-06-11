@@ -90,6 +90,7 @@ import javax.swing.event.UndoableEditListener;
 import javax.swing.undo.StateEdit;
 import javax.swing.undo.StateEditable;
 import javax.swing.undo.UndoableEditSupport;
+import net.sf.jaer.Description;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.eventprocessing.EventFilter.PrefsKeyClassValueDefault;
 import static net.sf.jaer.eventprocessing.FilterFrame.prefs;
@@ -604,14 +605,14 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
                                     }
                                 }
                             });
-                            
-                            filter.getSupport().addPropertyChangeListener(toggleOffMethod.getName(), new PropertyChangeListener(){
+
+                            filter.getSupport().addPropertyChangeListener(toggleOffMethod.getName(), new PropertyChangeListener() {
                                 @Override
                                 public void propertyChange(PropertyChangeEvent pce) {
-                                    log.fine(pce+": deselected button");
+                                    log.fine(pce + ": deselected button");
                                     button.setSelected(false);
                                 }
-                                
+
                             });
 
                             addTip(f, button);
@@ -938,7 +939,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     void addTip(EventFilter f, JLabel label, String propName) {
-        String s = f.getPropertyTooltip(propName);
+        String s = getTip(f, propName);
         if (s == null) {
             return;
         }
@@ -952,7 +953,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     void addTip(EventFilter f, JLabel label) {
-        String s = f.getPropertyTooltip(label.getText());
+        String s = getTip(f, label.getText());
         if (s == null) {
             return;
         }
@@ -966,7 +967,7 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     void addTip(EventFilter f, AbstractButton b) {
-        String s = f.getPropertyTooltip(b.getText().replaceAll(" ", ""));
+        String s = getTip(f, b.getText().replaceAll(" ", ""));
         if (s == null) {
             return;
         }
@@ -975,8 +976,44 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         getFilter().tooltipSupport.property2ComponentMap.put(b.getText(), b);
     }
 
+    /** Returns tooltip for property if it exists, either from tooltipSupport or from direct @Description annotation of a field
+     * 
+     * @param f the EventFilter, e.g. instance of BackgroundActivityFilter
+     * @param propertyName the property name, e.g. "dt"
+     * @return the tooltip string, e.g. "Correlation time"
+     */
+    private String getTip(EventFilter f, String propertyName) {
+        String s = f.getPropertyTooltip(propertyName);
+        if (s != null  ) {
+            return s;
+        }
+        if(this.props==null){
+            return null;
+        }
+        
+        for (PropertyDescriptor p : props) {
+            if ((propertyName == null ? p.getName() == null : propertyName.equals(p.getName())) 
+                    && p.getReadMethod() != null && p.getWriteMethod() != null) {
+                try {
+                    Field field = getFilter().getClass().getDeclaredField(p.getName());
+                    Annotation annotation = field.getAnnotation(Description.class);
+                    if (annotation != null && annotation.annotationType()==Description.class) {
+                        Description description = (Description)annotation;
+                        return description.value();
+                    }else{
+                        return null;
+                    }
+                } catch (NoSuchFieldException e) {
+                    // only get super-class when we couldn't find field
+                }
+            }
+        }
+        log.fine(String.format("EventFilter %s has no tooltip for property %s", f.getClass().getSimpleName(), propertyName));
+        return null;
+    }
+
     void addTip(EventFilter f, JCheckBox label) {
-        String s = f.getPropertyTooltip(label.getText());
+        String s = getTip(f, label.getText());
         if (s == null) {
             return;
         }

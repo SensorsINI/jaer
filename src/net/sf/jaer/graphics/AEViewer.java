@@ -374,6 +374,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static boolean showedSkippedPacketsRenderingWarning = false;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
+    
+    // Actions
+    FrameRateDecreaseAction frameRateDecreaseAction=new FrameRateDecreaseAction();
+    FrameRateIncreaseAction frameRateIncreaseAction=new FrameRateIncreaseAction();
 
     /**
      * Constructs a new AEViewer using a default AEChip.
@@ -433,7 +437,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         aePlayer = new AEPlayer(this);
         playerControls = new AePlayerAdvancedControlsPanel(this);
-        
+
         initComponents();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
@@ -1495,6 +1499,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 chip.setHardwareInterface(null); // force null interface, AEViewer will repopen it
             }
+        }
+    }
+
+    final public class FrameRateIncreaseAction extends MyAction {
+
+        public FrameRateIncreaseAction() {
+            super("Increase rendering rate", "Faster16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
+            putValue(Action.SHORT_DESCRIPTION, "Increase the (target) rendering frame rate");
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setDesiredFrameRate(getDesiredFrameRate() * 2);
+            showAction(String.format("Increased target rendering frame rate to %d Hz", getDesiredFrameRate()));
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class FrameRateDecreaseAction extends MyAction {
+
+        public FrameRateDecreaseAction() {
+            super("Decrease rendering rate", "Slower16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
+            putValue(Action.SHORT_DESCRIPTION, "Decrease the (target) rendering frame rate");
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setDesiredFrameRate(getDesiredFrameRate() / 2);
+            showAction(String.format("Decreased rendering frame rate to %d Hz", getDesiredFrameRate()));
+            putValue(Action.SELECTED_KEY, true);
         }
     }
 
@@ -2856,9 +2890,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         cycleDisplayMethodButton = new javax.swing.JMenuItem();
         displayMethodMenu = new javax.swing.JMenu();
         jSeparator12 = new javax.swing.JSeparator();
-        increasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
-        decreasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
-        flextimePlaybackEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         acccumulateImageEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         resetAccumulationMenuItem = new javax.swing.JMenuItem();
         fadingMI = new javax.swing.JCheckBoxMenuItem();
@@ -2881,6 +2912,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         pauseRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         viewStepForwardsMI = new javax.swing.JMenuItem();
         viewStepBackwardsMI = new javax.swing.JMenuItem();
+        jSeparator28 = new javax.swing.JPopupMenu.Separator();
+        increasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
+        decreasePlaybackSpeedMenuItem = new javax.swing.JMenuItem();
+        flextimePlaybackEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator11 = new javax.swing.JPopupMenu.Separator();
         increaseFrameRateMenuItem = new javax.swing.JMenuItem();
         decreaseFrameRateMenuItem = new javax.swing.JMenuItem();
@@ -3343,39 +3378,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewMenu.add(displayMethodMenu);
         viewMenu.add(jSeparator12);
 
-        increasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, 0));
-        increasePlaybackSpeedMenuItem.setText("Increase accumulation");
-        increasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice or event count longer (see FlextTime mode)<p>Or use SHIFT+ALT+mouse wheel up.<p>Only enabled for playing back recorded data.");
-        increasePlaybackSpeedMenuItem.setEnabled(false);
-        increasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increasePlaybackSpeedMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(increasePlaybackSpeedMenuItem);
-
-        decreasePlaybackSpeedMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_S, 0));
-        decreasePlaybackSpeedMenuItem.setText("Decrease accumulation");
-        decreasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice or event count shorter (see FlextTime mode)<p>Or use SHIFT+ALT+mouse wheel down.<p>Only enabled for playing back recorded data.");
-        decreasePlaybackSpeedMenuItem.setEnabled(false);
-        decreasePlaybackSpeedMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                decreasePlaybackSpeedMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(decreasePlaybackSpeedMenuItem);
-
-        flextimePlaybackEnabledCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_T, 0));
-        flextimePlaybackEnabledCheckBoxMenuItem.setText("Toggle Flextime playback mode");
-        flextimePlaybackEnabledCheckBoxMenuItem.setToolTipText("Toggles playback betweeen constant-duration and constant count event frames ");
-        flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(false);
-        flextimePlaybackEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                flextimePlaybackEnabledCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        viewMenu.add(flextimePlaybackEnabledCheckBoxMenuItem);
-
         acccumulateImageEnabledCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_P, 0));
         acccumulateImageEnabledCheckBoxMenuItem.setText("Accumulate events without resetting");
         acccumulateImageEnabledCheckBoxMenuItem.setToolTipText("Rendered data accumulates over 2d hisograms");
@@ -3513,13 +3515,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playbackMenu.setText("Playback");
         playbackMenu.setToolTipText("Controls playback time slices, frame rate, direction, etc");
 
-        pauseRenderingCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_SPACE, 0));
+        pauseRenderingCheckBoxMenuItem.setAction(aePlayer.pausePlayAction);
         pauseRenderingCheckBoxMenuItem.setText("Pause");
-        pauseRenderingCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                pauseRenderingCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
         playbackMenu.add(pauseRenderingCheckBoxMenuItem);
 
         viewStepForwardsMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_PERIOD, 0));
@@ -3539,19 +3536,38 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         playbackMenu.add(viewStepBackwardsMI);
-        playbackMenu.add(jSeparator11);
+        playbackMenu.add(jSeparator28);
 
-        increaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_RIGHT, 0));
-        increaseFrameRateMenuItem.setText("Increase rendering frame rate");
-        increaseFrameRateMenuItem.setToolTipText("Increases frames/second target for rendering");
-        increaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
+        increasePlaybackSpeedMenuItem.setAction(aePlayer.fasterAction);
+        increasePlaybackSpeedMenuItem.setText("Increase accumulation");
+        increasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice or event count longer (see FlextTime mode)<p>Or use SHIFT+ALT+mouse wheel up.<p>Only enabled for playing back recorded data.");
+        increasePlaybackSpeedMenuItem.setEnabled(false);
+        playbackMenu.add(increasePlaybackSpeedMenuItem);
+
+        decreasePlaybackSpeedMenuItem.setAction(aePlayer.slowerAction);
+        decreasePlaybackSpeedMenuItem.setText("Decrease accumulation");
+        decreasePlaybackSpeedMenuItem.setToolTipText("<html>Makes the time slice or event count shorter (see FlextTime mode)<p>Or use SHIFT+ALT+mouse wheel down.<p>Only enabled for playing back recorded data.");
+        decreasePlaybackSpeedMenuItem.setEnabled(false);
+        playbackMenu.add(decreasePlaybackSpeedMenuItem);
+
+        flextimePlaybackEnabledCheckBoxMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_T, 0));
+        flextimePlaybackEnabledCheckBoxMenuItem.setText("Toggle Flextime playback mode");
+        flextimePlaybackEnabledCheckBoxMenuItem.setToolTipText("Toggles playback betweeen constant-duration and constant count event frames ");
+        flextimePlaybackEnabledCheckBoxMenuItem.setEnabled(false);
+        flextimePlaybackEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increaseFrameRateMenuItemActionPerformed(evt);
+                flextimePlaybackEnabledCheckBoxMenuItemActionPerformed(evt);
             }
         });
+        playbackMenu.add(flextimePlaybackEnabledCheckBoxMenuItem);
+        playbackMenu.add(jSeparator11);
+
+        increaseFrameRateMenuItem.setAction(frameRateIncreaseAction);
+        increaseFrameRateMenuItem.setText("Increase rendering frame rate");
+        increaseFrameRateMenuItem.setToolTipText("Increases frames/second target for rendering");
         playbackMenu.add(increaseFrameRateMenuItem);
 
-        decreaseFrameRateMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_LEFT, 0));
+        decreaseFrameRateMenuItem.setAction(frameRateDecreaseAction);
         decreaseFrameRateMenuItem.setText("Decrease rendering frame rate");
         decreaseFrameRateMenuItem.setToolTipText("Decreases frames/second target for rendering");
         decreaseFrameRateMenuItem.addActionListener(new java.awt.event.ActionListener() {
@@ -4340,9 +4356,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     AbstractAEPlayer p = getAePlayer();
                     int n = (int) Math.abs(rotation);
                     if (rotation < 0) { // mouse wheel up
-                        increasePlaybackSpeedMenuItemActionPerformed(ae);
+                        aePlayer.fasterAction.actionPerformed(null);
                     } else if (rotation > 0) {
-                        decreasePlaybackSpeedMenuItemActionPerformed(ae);
+                        aePlayer.slowerAction.actionPerformed(null);
                     }
                 }
                 if (isPaused()) {
@@ -4371,14 +4387,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getAePlayer().rewindAction.actionPerformed(evt);
 	}//GEN-LAST:event_rewindPlaybackMenuItemActionPerformed
 
-	private void decreasePlaybackSpeedMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreasePlaybackSpeedMenuItemActionPerformed
-            getAePlayer().slowerAction.actionPerformed(evt);
-	}//GEN-LAST:event_decreasePlaybackSpeedMenuItemActionPerformed
-
-	private void increasePlaybackSpeedMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increasePlaybackSpeedMenuItemActionPerformed
-            getAePlayer().fasterAction.actionPerformed(evt);
-	}//GEN-LAST:event_increasePlaybackSpeedMenuItemActionPerformed
-
 	private void zeroTimestampsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_zeroTimestampsMenuItemActionPerformed
             if ((jaerViewer != null) && jaerViewer.isSyncEnabled()) {
                 log.info("zeroing timestamps on all viewers because isSyncEnabled=true");
@@ -4394,11 +4402,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setDesiredFrameRate(getDesiredFrameRate() / 2);
             showActionText(String.format("Decrease rendering frame rate to %d Hz", getDesiredFrameRate()));
 	}//GEN-LAST:event_decreaseFrameRateMenuItemActionPerformed
-
-	private void increaseFrameRateMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseFrameRateMenuItemActionPerformed
-            setDesiredFrameRate(getDesiredFrameRate() * 2);
-            showActionText(String.format("Increase rendering frame rate to %d Hz", getDesiredFrameRate()));
-	}//GEN-LAST:event_increaseFrameRateMenuItemActionPerformed
 
 	private void cycleNextColorRenderingMethodMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cycleNextColorRenderingMethodMenuItemActionPerformed
             if ((chipCanvas != null) && (chipCanvas.getDisplayMethod() != null) /*&& (chipCanvas.getDisplayMethod() instanceof DisplayMethod2D)*/) {
@@ -5774,10 +5777,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingHandler.getConsoleWindow().setVisible(!loggingHandler.getConsoleWindow().isVisible());
 	}//GEN-LAST:event_showConsoleOutputButtonActionPerformed
 
-	private void pauseRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pauseRenderingCheckBoxMenuItemActionPerformed
-            setPaused(pauseRenderingCheckBoxMenuItem.isSelected());
-	}//GEN-LAST:event_pauseRenderingCheckBoxMenuItemActionPerformed
-
 	private void exitMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_exitMenuItemActionPerformed
             if ((biasgenFrame != null) && !biasgenFrame.isModificationsSaved()) {
                 return;
@@ -6937,6 +6936,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator25;
     private javax.swing.JPopupMenu.Separator jSeparator26;
     private javax.swing.JPopupMenu.Separator jSeparator27;
+    private javax.swing.JPopupMenu.Separator jSeparator28;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;

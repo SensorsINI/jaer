@@ -56,8 +56,8 @@ public abstract class AbstractAEPlayer {
     public final PlayBackwardsAction playBackwardsAction = new PlayBackwardsAction();
     public final PauseAction pauseAction = new PauseAction();
     public final RewindAction rewindAction = new RewindAction();
-    public final FasterAction fasterAction = new FasterAction();
-    public final SlowerAction slowerAction = new SlowerAction();
+    public final AccumulationIncreaseAction fasterAction = new AccumulationIncreaseAction();
+    public final AccumulationDecreaseAction slowerAction = new AccumulationDecreaseAction();
     public final ReverseAction reverseAction = new ReverseAction();
     public final StepForwardAction stepForwardAction = new StepForwardAction();
     public final StepBackwardAction stepBackwardAction = new StepBackwardAction();
@@ -524,6 +524,8 @@ public abstract class AbstractAEPlayer {
 
         public PausePlayAction() {
             super("Pause", "Pause16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("SPACE"));
+            putValue(Action.SHORT_DESCRIPTION, "Pause or resume playback");
         }
 
         public void actionPerformed(ActionEvent e) {
@@ -559,7 +561,7 @@ public abstract class AbstractAEPlayer {
         public ClearMarksAction() {
             super("Clear Marks", "ClearMarks16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("control M"));
-            putValue(Action.SHORT_DESCRIPTION, "Clear all markers");
+            putValue(Action.SHORT_DESCRIPTION, "Clear all markers (IN, OUT, and others)");
         }
 
         @Override
@@ -575,7 +577,7 @@ public abstract class AbstractAEPlayer {
         public MarkInAction() {
             super("Mark IN", "MarkIn16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed i"));
-            putValue(Action.SHORT_DESCRIPTION, "Mark IN marker");
+            putValue(Action.SHORT_DESCRIPTION, "Set IN marker to current position");
         }
 
         @Override
@@ -591,7 +593,7 @@ public abstract class AbstractAEPlayer {
         public MarkOutAction() {
             super("Mark OUT", "MarkOut16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed o"));
-            putValue(Action.SHORT_DESCRIPTION, "Set OUT marker");
+            putValue(Action.SHORT_DESCRIPTION, "Set OUT marker to current position");
         }
 
         @Override
@@ -624,6 +626,7 @@ public abstract class AbstractAEPlayer {
         public JumpPrevMarkerkAction() {
             super("Jump to previous marker", "ToggleMarker16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke("typed j"));
+            putValue(Action.SHORT_DESCRIPTION, "Jumps to previous marker (or 2nd previous if jump occurs shortly after previous jump)");
         }
 
         @Override
@@ -861,20 +864,6 @@ public abstract class AbstractAEPlayer {
         }
     }
 
-    final public class FasterAction extends MyAction {
-
-        public FasterAction() {
-            super("Increase accumulation", "Faster16");
-            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, 0));
-        }
-
-        public void actionPerformed(ActionEvent e) {
-            speedUp();
-            showAction(speedText(true));
-            putValue(Action.SELECTED_KEY, true);
-        }
-    }
-
     private final EngineeringFormat engFmt = new EngineeringFormat();
 
     private final String speedText(boolean faster) {
@@ -886,10 +875,25 @@ public abstract class AbstractAEPlayer {
         );
     }
 
-    final public class SlowerAction extends MyAction {
+    final public class AccumulationIncreaseAction extends MyAction {
 
-        public SlowerAction() {
-            super("Decrease accumulation", "Slower16");
+        public AccumulationIncreaseAction() {
+            super("Increase event accumulation", "Faster16");
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_F, 0));
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            speedUp();
+            showAction(speedText(true));
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+
+    final public class AccumulationDecreaseAction extends MyAction {
+
+        public AccumulationDecreaseAction() {
+            super("Decrease event accumulation", "Slower16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
         }
 
@@ -941,6 +945,7 @@ public abstract class AbstractAEPlayer {
         public JogForwardAction() {
             super("Jog forward", "StepForward16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_PERIOD, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+            putValue(Action.SHORT_DESCRIPTION, "Jogs forwards N packets");
         }
 
         public void actionPerformed(ActionEvent e) {
@@ -955,6 +960,7 @@ public abstract class AbstractAEPlayer {
         public JogBackwardAction() {
             super("Jog backward", "StepBack16");
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_COMMA, java.awt.event.InputEvent.SHIFT_MASK | java.awt.event.InputEvent.CTRL_MASK));
+            putValue(Action.SHORT_DESCRIPTION, "Jogs backwards N packets");
         }
 
         public void actionPerformed(ActionEvent e) {
@@ -969,7 +975,8 @@ public abstract class AbstractAEPlayer {
         public ToggleFlextimeAction() {
             super("ToggleFlextimeAction", null);
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_T, 0));
-        }
+               putValue(Action.SHORT_DESCRIPTION, "Toggles between constant-duration frames and constant-event-count frames");
+      }
 
         public void actionPerformed(ActionEvent e) {
             toggleFlexTime();
