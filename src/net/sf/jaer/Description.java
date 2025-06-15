@@ -34,10 +34,12 @@ import java.lang.annotation.Target;
  *
  * @author tobi
  * @see Preferred
+ * @see https://docs.oracle.com/javase/tutorial/java/annotations/predefined.html
  */
 @Retention(RetentionPolicy.RUNTIME) // retain at runtime
 @Target({ElementType.TYPE, ElementType.METHOD, ElementType.FIELD}) // can annotate classes,  methods and fields
 public @interface Description {
 
     String value();
+    String group() default "";
 }
