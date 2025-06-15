@@ -29,8 +29,8 @@ import javax.swing.filechooser.FileFilter;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
-import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
+import net.sf.jaer.eventprocessing.tracking.TargetLabeler;
+import net.sf.jaer.eventprocessing.tracking.TargetLabeler.TargetLocation;
 import eu.seebetter.ini.chips.DavisChip;
 import java.io.EOFException;
 import java.util.logging.ConsoleHandler;
