@@ -748,6 +748,23 @@ public abstract class AbstractAEPlayer {
             if (f == null) {
                 return;
             }
+            // check if file exists already and can be overwritten by showing confirm dialog
+            // Check if file exists already and can be overwritten by showing confirm dialog
+            if (f.exists()) {
+                int result = JOptionPane.showConfirmDialog(
+                        viewer,
+                        "The file '" + f.getName() + "' already exists. Do you want to overwrite it?",
+                        "Confirm Overwrite",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                );
+                if (result == JOptionPane.NO_OPTION) {
+                    // If the user chooses not to overwrite, return without doing anything
+                    log.info("Export cancelled by user: file already exists.");
+                    return;
+                }
+            }
+
             AEFileInputStream aeFileInputStream = (AEFileInputStream) aeInputStream;
             try {
                 aeFileInputStream.marksExportToCSV(f);
@@ -889,7 +906,6 @@ public abstract class AbstractAEPlayer {
         }
     }
 
-
     final public class AccumulationDecreaseAction extends MyAction {
 
         public AccumulationDecreaseAction() {
@@ -975,8 +991,8 @@ public abstract class AbstractAEPlayer {
         public ToggleFlextimeAction() {
             super("ToggleFlextimeAction", null);
             putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_T, 0));
-               putValue(Action.SHORT_DESCRIPTION, "Toggles between constant-duration frames and constant-event-count frames");
-      }
+            putValue(Action.SHORT_DESCRIPTION, "Toggles between constant-duration frames and constant-event-count frames");
+        }
 
         public void actionPerformed(ActionEvent e) {
             toggleFlexTime();
