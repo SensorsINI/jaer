@@ -700,7 +700,7 @@ public abstract class AbstractAEPlayer {
 //        // Set default file name if available
 //        String lastFileName = prefs.get("lastMarksFile", "exported-marks.csv");
         fileChooser.setCurrentDirectory(playingFile.getParentFile().getAbsoluteFile());
-        String csvFileName = FilenameUtils.removeExtension(playingFile.getAbsolutePath()) + "-narks.csv";
+        String csvFileName = FilenameUtils.removeExtension(playingFile.getAbsolutePath()) + "-marks.csv";
         fileChooser.setSelectedFile(new File(csvFileName));
 
         int userSelection = fileChooser.showSaveDialog(null);
