@@ -118,7 +118,7 @@ public class TargetLabeler extends EventFilter2DMouseAdaptor implements Property
     private HashMap<String, String> mapDataFilenameToTargetFilename = new HashMap();
 
     private boolean propertyChangeListenerAdded = false;
-    private String DEFAULT_FILENAME = "locations.txt";
+    private String DEFAULT_FILENAME = "target-locations.txt";
     private String lastFileName = getString("lastFileName", DEFAULT_FILENAME);
     protected boolean showStatistics = getBoolean("showStatistics", true);
 
