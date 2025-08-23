@@ -119,6 +119,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private boolean displayDvsEvents = true;
     private boolean displayApsFrames = true;
+    private boolean orthoProjectionEnabled = false;
 //    private boolean displayAnnotation = false;
 
     final private FramesInTimeWindow apsFramesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
@@ -146,6 +147,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         frameEventSpacing = prefs.getFloat("frameEventSpacing", 1.2f);
         additiveColorEnabled = prefs.getBoolean("additiveColorEnabled", false);
         largePointSizeEnabled = prefs.getBoolean("largePointSizeEnabled", false);
+        orthoProjectionEnabled = prefs.getBoolean("orthoProjectionEnabled", false);
         timeAspectRatio = prefs.getFloat("timeAspectRatio", 4); // depth of 3d cube compared to max of x and y chip dimension
         displayDvsFrames = prefs.getBoolean("displayDvsFrames", false);
         framesAlpha = prefs.getFloat("framesAlpha", .5f);
@@ -439,8 +441,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
         // determine the viewable area (that is not clipped to black).
         // this is not the view project!  This is the model projection. See later for viewport setting for where we look from.
-//        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glFrustumf(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
+        if (isOrthoProjectionEnabled()) {
+            gl.glOrtho(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), -zmax * .1, zmax * 1.7);
+        } else {
+            gl.glFrustumf(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
+        }
 
         // go to the end, -zmax
         gl.glTranslatef(0, 0, -1 * zmax);
@@ -913,6 +918,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         displayMenu = new JMenu("3-D Display Options");
         displayMenu.add(new JMenuItem(new SetTimeAspectRatioAction()));
+        displayMenu.add(new JCheckBoxMenuItem(new ToggleOrthoProjectionAction()));
         displayMenu.add(new JSeparator());
         displayMenu.add(new JCheckBoxMenuItem(new ToggleDisplayDvsFrames()));
         displayMenu.add(new JCheckBoxMenuItem(new ToggleDrawFramesOnOwnAxesAction()));
@@ -1039,6 +1045,21 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     public void setDisplayDvsFrames(boolean displayDvsFrames) {
         this.displayDvsFrames = displayDvsFrames;
         prefs.putBoolean("displayDvsFrames", displayDvsFrames);
+    }
+
+    /**
+     * @return the orthoProjectionEnabled
+     */
+    public boolean isOrthoProjectionEnabled() {
+        return orthoProjectionEnabled;
+    }
+
+    /**
+     * @param orthoProjectionEnabled the orthoProjectionEnabled to set
+     */
+    public void setOrthoProjectionEnabled(boolean orthoProjectionEnabled) {
+        this.orthoProjectionEnabled = orthoProjectionEnabled;
+        prefs.putBoolean("orthoProjectionEnabled", orthoProjectionEnabled);
     }
 
 //    /**
@@ -1257,6 +1278,30 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             setDrawFramesOnOwnAxes(!isDrawFramesOnOwnAxes());
             putValue(Action.SELECTED_KEY, isDrawFramesOnOwnAxes());
             showAction();
+        }
+    }
+
+    final public class ToggleOrthoProjectionAction extends MyAction {
+
+        public ToggleOrthoProjectionAction() {
+            super("Orthographic projection enabled", "<html>If enabled, projection is orthographic rather than perpective. Use it for demonstrating contrast maximization.");
+            putValue(Action.SELECTED_KEY, isOrthoProjectionEnabled());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            setOrthoProjectionEnabled(!isOrthoProjectionEnabled());
+            putValue(Action.SELECTED_KEY, isOrthoProjectionEnabled());
+            showAction();
+        }
+
+        @Override
+        protected void showAction() {
+            if (isOrthoProjectionEnabled()) {
+                showAction("Orthographic projection enabled");
+            } else {
+                showAction("Perpective projection enabled");
+            }
         }
     }
 
