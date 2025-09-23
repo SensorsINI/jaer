@@ -20,6 +20,7 @@ import de.thesycon.usbio.UsbIoBuf;
 import de.thesycon.usbio.UsbIoInterface;
 import de.thesycon.usbio.structs.USBIO_CLASS_OR_VENDOR_REQUEST;
 import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
+import net.sf.jaer.JaerConstants;
 
 /**
  * The hardware interface for the DVS128 (second Tmpdiff128 board, with CPLD) retina boards.
@@ -29,7 +30,7 @@ import de.thesycon.usbio.structs.USBIO_DATA_BUFFER;
 public class CypressFX2DVS128HardwareInterface extends CypressFX2Biasgen implements CypressFX2DVS128HardwareInterfaceInterface  {
 
     public final static String FIRMWARE_FILENAME_DVS128_XSVF = "/net/sf/jaer/hardwareinterface/usb/cypressfx2/dvs128CPLD.xsvf";
-    private static Preferences prefs = Preferences.userNodeForPackage(CypressFX2DVS128HardwareInterface.class);
+    private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
     private boolean syncEventEnabled = true; // tobi changed to always true so that if user selects this mode, then it must be deselected explicitly for slave cameras // default is true so that device is the timestamp master by default, necessary after firmware rev 11
     // if not, a device will not advance timestamps
     /** Vendor request for setting LED */

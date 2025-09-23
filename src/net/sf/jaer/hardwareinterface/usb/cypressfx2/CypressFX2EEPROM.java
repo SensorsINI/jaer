@@ -26,6 +26,7 @@ import net.sf.jaer.util.HexString;
 import de.thesycon.usbio.PnPNotify;
 import de.thesycon.usbio.PnPNotifyInterface;
 import de.thesycon.usbio.UsbIoErrorCodes;
+import net.sf.jaer.JaerConstants;
 
 /**
  * Utility GUI for dealing with CypressFX2 EEPROM stuff. Using this rudimentary tool, you can scan for USBIO devices. If the device is virgin (not had
@@ -43,7 +44,7 @@ import de.thesycon.usbio.UsbIoErrorCodes;
 public class CypressFX2EEPROM extends javax.swing.JFrame implements UsbIoErrorCodes, PnPNotifyInterface {
 
     Logger log = Logger.getLogger("net.sf.jaer");
-    Preferences prefs = Preferences.userNodeForPackage(CypressFX2EEPROM.class);
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
     AEChip chip;
     PnPNotify pnp = null;
     short VID = (short) 0x0547, PID = (short) 0x8700, DID = 0;  // defaults to tmpdiff128 retina, TO-DO fix this lousy default

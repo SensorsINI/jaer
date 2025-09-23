@@ -16,7 +16,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
 /**
- * A complete GUI conrol for an IPot.
+ * A complete GUI control for an IPot.
  * @author tobi
  */
 public class IPotGUIControl extends JPanel {

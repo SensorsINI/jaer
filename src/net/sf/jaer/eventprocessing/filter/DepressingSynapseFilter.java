@@ -4,16 +4,13 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.awt.Font;
 import java.awt.Point;
-import java.awt.geom.Rectangle2D;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Random;
-import java.util.logging.Logger;
 
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
@@ -22,12 +19,14 @@ import net.sf.jaer.Description;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.graphics.FrameAnnotater;
 
-import com.jogamp.opengl.util.awt.TextRenderer;
+import java.awt.Color;
+import java.awt.geom.Rectangle2D;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Filters out high-firing input using probabilistic depressing synaptic
@@ -49,10 +48,12 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
 
     private static Random random = new Random();
     private Neurons neurons;
+    @Preferred
     private float tauMs = prefs().getFloat("DepressingSynapseFilter.tauMs", 1000); // decay constant us
     private float tauUs = tauMs * 1000;
+    @Preferred
     private float weight = prefs().getFloat("DepressingSynapseFilter.weight", .001f); // weight of each input spike on synapse
-    private boolean showStateAtMouse = false;
+    private boolean showStateAtMouse = getBoolean("showStateAtMouse", true);
 
     public static DevelopmentStatus getDevelopementStatus() {
         return DevelopmentStatus.Beta;
@@ -67,12 +68,17 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
         setPropertyTooltip(cat, "saveState", "Saves synaptic state to disk");
         setPropertyTooltip(cat, "loadState", "Loads synaptic state from disk");
         setPropertyTooltip(cat, "clearState", "Clears the synaptic depression state of all synapses");
+        hideProperty("correlationTimeS");
+        hideProperty("antiCasualEnabled");
+        hideProperty("filterHotPixels");
+        hideProperty("letFirstEventThrough");
+        hideProperty("sigmaDistPixels");
+        hideProperty("subsampleBy");
     }
 
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in); // sets up statistics
-        checkNeuronAllocation();
         for (BasicEvent e : in) {
             if (!(e instanceof TypedEvent)) {
                 throw new RuntimeException("event type must be TypedEvent, got event " + e);
@@ -96,6 +102,8 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
 
     @Override
     public void initFilter() {
+        checkNeuronAllocation();
+        removeNoiseFilterControl();
     }
 
     @Override
@@ -105,11 +113,17 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
             return;
         }
         Point p = chip.getCanvas().getMousePixel();
-        if (p==null || !chip.getCanvas().wasMousePixelInsideChipBounds()) {
+        if (p == null || !chip.getCanvas().wasMousePixelInsideChipBounds()) {
             return;
         }
         neurons.display(drawable, p);
     }
+
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+    }
+    
+   
 
     private void checkNeuronAllocation() {
         if (chip.getNumCells() == 0) {
@@ -125,8 +139,6 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
         private final float max = 1; // max state
         Neuron[][][] cells;
         private int numCells;
-        transient private TextRenderer renderer;
-        transient private Logger log = Logger.getLogger("net.sf.jaer");
         transient DepressingSynapseFilter filter;
 
         public Neurons(DepressingSynapseFilter filter) {
@@ -178,18 +190,11 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
         }
 
         private void display(GLAutoDrawable drawable, Point p) {
-            if (renderer == null) {
-                renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 10), true, true);
-            }
             Neuron[] n = cells[p.x][p.y];
-            renderer.begin3DRendering();
-            renderer.setColor(0, 0, 1, 0.8f);
             float s1 = n[0].getState(), s2 = n[1].getState();
             float avg = (s1 + s2) / 2;
             String s = String.format("%5.3f", avg);
-            Rectangle2D rect = renderer.getBounds(s);
-            renderer.draw3D(s, p.x, p.y, 0, .7f); // TODO fix string n lines
-            renderer.end3DRendering();
+            Rectangle2D rect = DrawGL.drawString(filter.getShowFilteringStatisticsFontSize(), p.x, p.y, .5f, Color.white, s);
             GL2 gl = drawable.getGL().getGL2();
             gl.glRectf(p.x, p.y - 2, p.x + ((float) rect.getWidth() * avg * .7f), p.y - 1);
 
@@ -314,6 +319,7 @@ public class DepressingSynapseFilter extends AbstractNoiseFilter implements Fram
      */
     public void setShowStateAtMouse(boolean showStateAtMouse) {
         this.showStateAtMouse = showStateAtMouse;
+        putBoolean("showStateAtMouse", showStateAtMouse);
     }
 
     synchronized public void doSaveState() {

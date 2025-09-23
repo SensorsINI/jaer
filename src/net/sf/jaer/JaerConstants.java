@@ -18,13 +18,11 @@
  */
 package net.sf.jaer;
 
-import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.logging.Logger;
-import javax.swing.JOptionPane;
-import static net.sf.jaer.graphics.AEViewerAboutDialog.VERSION_FILE;
+import java.util.prefs.Preferences;
 import org.apache.commons.io.IOUtils;
 
 /**
@@ -35,7 +33,14 @@ import org.apache.commons.io.IOUtils;
  */
 public class JaerConstants {
     private static final Logger log=Logger.getLogger(JaerConstants.class.getName());
-            
+    
+    /** Root of jaer preferences */
+    public static final String PREFS_ROOT_NAME="jaer";
+    public static final Preferences PREFS_ROOT=Preferences.userRoot().node(PREFS_ROOT_NAME);
+    /** Used for devices, retinas, cochleas */
+    public static final Preferences PREFS_ROOT_CHIPS=Preferences.userRoot().node(PREFS_ROOT_NAME).node("chips");
+    /** Used for things like USB interfaces that might not (yet) be attached to specific chips */
+    public static final Preferences PREFS_ROOT_HARDWARE=Preferences.userRoot().node(PREFS_ROOT_NAME).node("hardware");
     public static final String ICON_IMAGE="/net/sf/jaer/images/jaer-icon.png";
     public static final String ICON_IMAGE_MAIN="/net/sf/jaer/images/jaer-main.png";
     public static final String ICON_IMAGE_HARDWARE="/net/sf/jaer/images/jaer-hardware.png";
@@ -46,7 +51,8 @@ public class JaerConstants {
     public static final String JAER_RELEASES = "https://github.com/SensorsINI/jaer/releases";
     public static final String JAER_COMMITS = "https://github.com/SensorsINI/jaer/commits/master";
     public static final String HELP_URL_JAER_HOME = JAER_HOME;
-    public static final String HELP_USER_GUIDE_URL_FLASHY = "https://gitlab.com/inivation/inivation-docs/blob/master/Software%20user%20guides/User_guide_-_Reflashing_devices.md";
+    public static final String HELP_USER_GUIDE_URL_FLASHY = "https://docs.inivation.com/hardware/hardware-advanced-usage/firmware-update.html"; //"https://gitlab.com/inivation/devices-bin";
+    public static final String HELP_FLASHY_LINUX_DOWNLOAD="https://s3.eu-central-1.amazonaws.com/release.inivation.com/flashy/flashy-linux-1.7.1.zip";
     public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
     public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://www.inivation.com/support/hardware/";
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";

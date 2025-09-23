@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javax.swing.JFileChooser;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.chip.Chip;
 
@@ -28,7 +29,7 @@ public class CypressFX2FirmwareFilennameChooserOkCancelDialog extends javax.swin
      */
     public static final String DEFAULT_RELATIVE_FIRMWARE_PATH = "../../devices/firmware/CypressFX2/";
     static Logger log = Logger.getLogger("net.sf.jaer");
-    static Preferences prefs = Preferences.userNodeForPackage(CypressFX2FirmwareFilennameChooserOkCancelDialog.class);
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
     /**
      * A return status code - returned if Cancel button has been pressed
      */

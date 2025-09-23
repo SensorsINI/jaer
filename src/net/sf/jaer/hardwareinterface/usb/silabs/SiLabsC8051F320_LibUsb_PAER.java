@@ -30,7 +30,6 @@ public class SiLabsC8051F320_LibUsb_PAER extends SiLabsC8051F320_LibUsb {
     public SiLabsC8051F320_LibUsb_PAER(Device dev) {
         LibUsb.setDebug(null, 1);
         this.retina = dev;
-        this.prefs = Preferences.userNodeForPackage(this.getClass());
         this.aeReader = null;
 
 

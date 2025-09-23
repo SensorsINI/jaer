@@ -40,7 +40,7 @@ public class Chip2DRenderer implements Observer {
 
     protected static final Logger log = Logger.getLogger(Chip2DRenderer.class.getSimpleName());
     private int sizeX, sizeY;
-    protected Preferences prefs = Preferences.userNodeForPackage(Chip2DRenderer.class);
+    protected Preferences prefs;
     /**
      * the chip rendered for
      */
@@ -49,13 +49,13 @@ public class Chip2DRenderer implements Observer {
      * determines whether frame is reset to starting value on each rendering
      * cycle. True to accumulate.
      */
-    protected boolean accumulateEnabled = false, resetAccumulationFlag=false;
+    protected boolean accumulateEnabled = false, resetAccumulationFlag = false;
     protected ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     protected int autoScaleValue = 1;
     /**
      * false for manual scaling, true for auto-scaling of contrast
      */
-    protected boolean autoscaleEnabled = prefs.getBoolean("Chip2DRenderer.autoscaleEnabled", false);
+    protected boolean autoscaleEnabled;
     /**
      * the number of events for full scale saturated color
      */
@@ -67,7 +67,7 @@ public class Chip2DRenderer implements Observer {
      */
     protected float[] backgroundColor = new float[]{0, 0, 0};
 
-   /**
+    /**
      * the contrast attributed to an event, either level is multiplied or
      * divided by this value depending on polarity of event. Gets set by
      * setColorScale
@@ -100,6 +100,8 @@ public class Chip2DRenderer implements Observer {
     public Chip2DRenderer(Chip2D chip) {
         this();
         this.chip = chip;
+        prefs = chip.getPrefs();
+        autoscaleEnabled = prefs.getBoolean("Chip2DRenderer.autoscaleEnabled", false);
         sizeX = chip.getSizeX();
         sizeY = chip.getSizeY();
         chip.addObserver(this);
@@ -250,9 +252,6 @@ public class Chip2DRenderer implements Observer {
      */
     protected int selectedPixelEventCount = 0;
 
-
-
-
     public void setBackgroundColor(float[] rgb) {
         float[] old = this.backgroundColor;
         this.backgroundColor = rgb;
@@ -294,8 +293,6 @@ public class Chip2DRenderer implements Observer {
     public short getYsel() {
         return ysel;
     }
-
-  
 
     public boolean isAutoscaleEnabled() {
         return this.autoscaleEnabled;
@@ -345,7 +342,7 @@ public class Chip2DRenderer implements Observer {
      *
      */
     public void resetAccumulation() {
-        resetAccumulationFlag=true;
+        resetAccumulationFlag = true;
     }
 
     /**
@@ -361,7 +358,6 @@ public class Chip2DRenderer implements Observer {
         this.autoscaleEnabled = autoscaleEnabled;
         prefs.putBoolean(("BinocularRenderer.autoscaleEnabled"), autoscaleEnabled);
     }
-
 
     /**
      * Gets width in chip pixels (not screen pixels).

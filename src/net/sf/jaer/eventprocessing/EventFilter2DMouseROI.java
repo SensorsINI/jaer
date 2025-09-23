@@ -16,6 +16,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 import java.awt.Color;
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import net.sf.jaer.Preferred;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -43,6 +44,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     /**
      * Flag that freezes ROI selection
      */
+    @Preferred
     protected boolean freezeRoi = getBoolean("freezeRoi", false);
     private boolean multiROI = getBoolean("multiROI", false);
 
@@ -121,7 +123,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
         int sx = chip.getSizeX(), sy = chip.getSizeY();
         drawRois(gl, ROI_COLOR);
 
-        if (roiSelecting && roiStartPoint!=null && currentMousePoint!=null) {
+        if (roiSelecting && roiStartPoint != null && currentMousePoint != null) {
             gl.glPushMatrix();
             gl.glColor3fv(SELECT_COLOR, 0);
             gl.glLineWidth(3);
@@ -156,7 +158,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
             gl.glVertex2f(r.x, r.y + r.height);
             gl.glEnd();
             gl.glPushAttrib(GL.GL_COLOR_BUFFER_BIT);
-            DrawGL.drawString(gl, 10, r.x, r.y, 0, Color.RED.darker(), Integer.toString(i));
+            DrawGL.drawString(10, r.x, r.y, 0, Color.RED.darker(), Integer.toString(i));
             gl.glPopAttrib();
             i++;
         }
@@ -191,7 +193,9 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     private void clearSelection() {
-        roiRects.clear();
+        if (roiRects != null) {
+            roiRects.clear();
+        }
     }
 
     synchronized private void startRoiSelection(MouseEvent e) {
@@ -319,6 +323,12 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         Point p = getMousePixel(e);
         if (!freezeRoi) {
             startRoiSelection(e);
@@ -327,6 +337,12 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         if (freezeRoi || roiStartPoint == null) {
             return;
         }
@@ -337,6 +353,12 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         currentMousePoint = getMousePixel(e);
     }
 
@@ -351,6 +373,12 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         if (roiStartPoint == null) {
             return;
         }
@@ -363,6 +391,12 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
+        if (e.isAltDown() || e.isControlDown() || e.isShiftDown()) {
+            return;
+        }
         Point p = getMousePixel(e);
         clickedPoint = p;
     }
@@ -375,7 +409,7 @@ abstract public class EventFilter2DMouseROI extends EventFilter2DMouseAdaptor {
     }
 
     /**
-     * @param freezeSelection the freezeSelection to set
+     * @param freezeRoi the freezeSelection to set
      */
     public void setFreezeRoi(boolean freezeRoi) {
         this.freezeRoi = freezeRoi;

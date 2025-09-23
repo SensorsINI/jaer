@@ -137,9 +137,9 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
             if (tracker.ball != null && tracker.ball.getLocation() != null) {
                 ballX = tracker.ball.getLocation().x;
                 ballY = tracker.ball.getLocation().y;
-                if (tracker.ball.getVelocityPPS() != null) {
-                    ballVelX = tracker.ball.getVelocityPPS().x;
-                    ballVelY = tracker.ball.getVelocityPPS().y;
+                if (tracker.ball.getVelocity() != null) {
+                    ballVelX = tracker.ball.getVelocity().x;
+                    ballVelY = tracker.ball.getVelocity().y;
                 }
             }
             //         timestamp pan tilt targetX targetY ballX ballY ballVelX ballVelY");
@@ -414,7 +414,6 @@ public class LabyrinthBallController extends EventFilter2DMouseAdaptor implement
         s.append(String.format("\nController dynamics:\ntau=%.1fms\nQ=%.2f", tau * 1000, Q));
         s.append(isControllerEnabled() ? "\nController is ENABLED" : "\nController is DISABLED");
         s.append("\n").append(nav.toString());
-        MultilineAnnotationTextRenderer.setScale(.2f);
         MultilineAnnotationTextRenderer.renderMultilineString(s.toString());
         chip.getCanvas().checkGLError(gl, glu, "after controller annotations");
     }

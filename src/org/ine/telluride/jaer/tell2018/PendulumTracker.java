@@ -342,7 +342,6 @@ public class PendulumTracker extends EventFilter2D implements FrameAnnotater {
             DrawGL.drawLine(gl, valleyPosX, h2 - l, 0, 2 * l, 1);
             gl.glPopMatrix();
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * 0.9f);
-            MultilineAnnotationTextRenderer.setScale(.2f);
             MultilineAnnotationTextRenderer.renderMultilineString(
                     String.format("lastPeriod: %.2fs (Freq: %.3fHz)", lastPeriodS, 1 / lastPeriodS)
             );

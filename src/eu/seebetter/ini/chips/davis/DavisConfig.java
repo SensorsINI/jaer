@@ -26,6 +26,7 @@ import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
 import ch.unizh.ini.jaer.config.spi.SPIConfigBit;
 import ch.unizh.ini.jaer.config.spi.SPIConfigInt;
 import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
+import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import eu.seebetter.ini.chips.davis.imu.ImuAccelScale;
 import eu.seebetter.ini.chips.davis.imu.ImuControl;
 import eu.seebetter.ini.chips.davis.imu.ImuControlPanel;
@@ -85,6 +86,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     // subclasses for controlling aspects of camera
     protected DavisConfig.VideoControl videoControl;
     protected ImuControl imuControlGUI;
+    protected AutoExposureController autoExposureController;
+    protected DavisVideoContrastController contrastController = null;
     EngineeringFormat eng = new EngineeringFormat();
 
     private boolean dualUserFriendlyAndBiasCurrentsViewEnabled = false;
@@ -312,6 +315,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
         // imuControl
         imuControlGUI = new ImuControl(this, imuControl);
+
+        autoExposureController = new AutoExposureController((DavisBaseCamera) chip);
 
         // Link to DavisUserControlPanel to update values there too.
         // TODO add observer for updating computed DVS threshold values with diff/diffOn/diffOff change
@@ -650,6 +655,24 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         if (videoControl != null) {
             videoControl.loadPreference();
         }
+
+        if (autoExposureController != null) {
+            autoExposureController.loadPreferences();
+        }
+    }
+
+    @Override
+    public boolean isInitialized() {
+        if (ipots == null) {
+            log.info("returning true because ipots is null");
+            return true;
+        }
+        for (final Pot b : ipots) {
+            if (b instanceof AddressedIPotCF && ((AddressedIPotCF) b).getCurrent() > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -757,7 +780,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
     }
 
     /**
-     * Returns the exposure delay setting in float ms.
+     * Returns the exposure duration setting in float ms.
      *
      * @return value of exposure delay. It is quantized by apsExposure to be a
      * multiple of quantization.
@@ -889,6 +912,10 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
         videoControl.storePreference();
 
+        if (autoExposureController != null) {
+            autoExposureController.loadPreferences();
+        }
+
         super.storePreferences();
     }
 
@@ -918,7 +945,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                     updateHW(observable, getHardwareInterface());
                 }
             } catch (HardwareInterfaceException | IllegalStateException e) {
-                log.warning(String.format("Got %s",e.toString()));
+                log.warning(String.format("Got %s", e.toString()));
             }
         }
     }
@@ -939,11 +966,15 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                 final SPIConfigValue cfgVal = (SPIConfigValue) observable;
 
                 fx3HwIntf.spiConfigSend(cfgVal.getModuleAddr(), cfgVal.getParamAddr(), cfgVal.get());
+                log.info(cfgVal.toString());
             }
         }
     }
 
-    // sends complete configuration information to multiple shift registers and off chip DACs
+    /**
+     * sends complete configuration information to multiple shift registers and
+     * off chip DACs
+     */
     public void sendConfiguration() throws HardwareInterfaceException {
         if (!isOpen()) {
             open();
@@ -1003,14 +1034,19 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         return f3dBHz;
     }
 
+    AutoExposureController getAutoExposureController() {
+        return autoExposureController;
+    }
+
     public class VideoControl extends Observable implements Observer, HasPreference, HasPropertyTooltips {
 
-        public boolean displayEvents = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.displayEvents", true);
-        public boolean displayFrames = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.displayFrames", true);
+        public boolean displayEvents = getChip().getPrefs().getBoolean(getPreferencesHeader() + "displayEvents", true);
+        public boolean displayFrames = getChip().getPrefs().getBoolean(getPreferencesHeader() + "displayFrames", true);
 
-        public boolean separateAPSByColor = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.separateAPSByColor", false);
-        public boolean autoWhiteBalance = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.autoWhiteBalance", true);
-        public boolean colorCorrection = getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.colorCorrection", true);
+        public boolean separateAPSByColor = getChip().getPrefs().getBoolean(getPreferencesHeader() + "separateAPSByColor", false);
+        public boolean autoWhiteBalance = getChip().getPrefs().getBoolean(getPreferencesHeader() + "autoWhiteBalance", true);
+        public boolean colorCorrection = getChip().getPrefs().getBoolean(getPreferencesHeader() + "colorCorrection", true);
+        private boolean monochrome = getChip().getPrefs().getBoolean(getPreferencesHeader() + "monochrome", true);
 
         private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
 
@@ -1029,8 +1065,8 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                     "Time constant in ms for autocontrast control. This is the lowpasss filter time constant for min and max image values to automatically scale image to 0-1 range.");
         }
 
-        private String getPreferencesKey() {
-            return getChip().prefsHeader() + ".";
+        private String getPreferencesHeader() {
+            return "";
         }
 
         /**
@@ -1046,7 +1082,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         public void setDisplayFrames(final boolean displayFrames) {
             final boolean old = this.displayFrames;
             this.displayFrames = displayFrames;
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.displayFrames", displayFrames);
+//            getChip().getPrefs().putBoolean(getPreferencesKey() + "displayFrames", displayFrames);
             if (((AEChip) getChip()).getAeViewer() != null) {
                 ((AEChip) getChip()).getAeViewer().interruptViewloop();
             }
@@ -1069,22 +1105,46 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             return colorCorrection;
         }
 
-        /**
-         * @param displayFrames the displayFrames to set
-         */
         public void setSeparateAPSByColor(final boolean separateAPSByColor) {
+            boolean old = this.separateAPSByColor;
             this.separateAPSByColor = separateAPSByColor;
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.separateAPSByColor", separateAPSByColor);
+            getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_SEPARATE_COLORS, old, separateAPSByColor);
+            if (old != separateAPSByColor) {
+                setChanged();
+                notifyObservers(); // inform ParameterControlPanel
+            }
+
         }
 
         public void setAutoWhiteBalance(final boolean autoWhiteBalance) {
+            boolean old = this.autoWhiteBalance;
             this.autoWhiteBalance = autoWhiteBalance;
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.autoWhiteBalance", autoWhiteBalance);
+            getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_AUTO_WHITE_BALANCE, old, autoWhiteBalance);
+            if (old != autoWhiteBalance) {
+                setChanged();
+                notifyObservers(); // inform ParameterControlPanel
+            }
+
         }
 
         public void setColorCorrection(final boolean colorCorrection) {
+            boolean old = this.colorCorrection;
             this.colorCorrection = colorCorrection;
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.colorCorrection", colorCorrection);
+            getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_COLOR_CORRECTION, old, colorCorrection);
+            if (old != colorCorrection) {
+                setChanged();
+                notifyObservers(); // inform ParameterControlPanel
+            }
+        }
+
+        public void setMonochrome(boolean monochrome) {
+            boolean old = this.monochrome;
+            this.monochrome = monochrome;
+            getSupport().firePropertyChange(DavisDisplayConfigInterface.PROPERTY_MONOCHROME, old, monochrome);
+            if (old != monochrome) {
+                setChanged();
+                notifyObservers(); // inform ParameterControlPanel
+            }
         }
 
         /**
@@ -1100,7 +1160,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         public void setDisplayEvents(final boolean displayEvents) {
             final boolean old = this.displayEvents;
             this.displayEvents = displayEvents;
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.displayEvents", displayEvents);
+//            getChip().getPrefs().putBoolean(getPreferencesKey() + "displayEvents", displayEvents);
             if (((AEChip) getChip()).getAeViewer() != null) {
                 ((AEChip) getChip()).getAeViewer().interruptViewloop();
             }
@@ -1166,22 +1226,34 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
         @Override
         public void loadPreference() {
-            setDisplayFrames(getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.displayFrames", true));
-            setDisplayEvents(getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.displayEvents", true));
+            setDisplayFrames(getChip().getPrefs().getBoolean(getPreferencesHeader() + "displayFrames", true));
+            setDisplayEvents(getChip().getPrefs().getBoolean(getPreferencesHeader() + "displayEvents", true));
 
-            setSeparateAPSByColor(getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.separateAPSByColor", false));
-            setAutoWhiteBalance(getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.autoWhiteBalance", true));
-            setColorCorrection(getChip().getPrefs().getBoolean(getPreferencesKey() + "VideoControl.colorCorrection", true));
+            setSeparateAPSByColor(getChip().getPrefs().getBoolean(getPreferencesHeader() + "separateAPSByColor", false));
+            setAutoWhiteBalance(getChip().getPrefs().getBoolean(getPreferencesHeader() + "autoWhiteBalance", true));
+            setColorCorrection(getChip().getPrefs().getBoolean(getPreferencesHeader() + "colorCorrection", true));
+            setMonochrome(getChip().getPrefs().getBoolean(getPreferencesHeader() + "monochrome", true));
+            setSeparateAPSByColor(getChip().getPrefs().getBoolean(getPreferencesHeader() + "separateAPSByColor", false));
+
+            if (getContrastContoller() != null) { // might not exist until constructor is finished
+                getContrastContoller().loadPrefences();
+            } else {
+                log.warning("Could not load preferences for null ContrastController");
+            }
         }
 
         @Override
         public void storePreference() {
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.displayEvents", isDisplayEvents());
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.displayFrames", isDisplayFrames());
+            getChip().getPrefs().putBoolean(getPreferencesHeader() + "displayEvents", isDisplayEvents());
+            getChip().getPrefs().putBoolean(getPreferencesHeader() + "displayFrames", isDisplayFrames());
 
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.separateAPSByColor", isSeparateAPSByColor());
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.autoWhiteBalance", isAutoWhiteBalance());
-            getChip().getPrefs().putBoolean(getPreferencesKey() + "VideoControl.colorCorrection", isColorCorrection());
+            getChip().getPrefs().putBoolean(getPreferencesHeader() + "separateAPSByColor", isSeparateAPSByColor());
+            getChip().getPrefs().putBoolean(getPreferencesHeader() + "autoWhiteBalance", isAutoWhiteBalance());
+            getChip().getPrefs().putBoolean(getPreferencesHeader() + "colorCorrection", isColorCorrection());
+            getChip().getPrefs().putBoolean(getPreferencesHeader() + "monochrome", isMonochrome());
+            if (getContrastContoller() != null) { // might not exist until constructor is finished
+                getContrastContoller().storePreferences();
+            }
         }
 
         @Override
@@ -1197,9 +1269,16 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                 return ((DavisRenderer) (((AEChip) getChip()).getRenderer())).getContrastController();
             }
 
-            throw new RuntimeException("Cannot return a video contrast controller for the image output for the current renderer, which is "
-                    + ((AEChip) getChip()).getRenderer());
+            return null;
         }
+
+        /**
+         * @return the monochrome
+         */
+        public boolean isMonochrome() {
+            return monochrome;
+        }
+
     }
 
     public static String[] choices() {

@@ -21,7 +21,6 @@ import java.awt.geom.Rectangle2D;
  */
 public final class DrawGL {
 
-    private static TextRenderer textRenderer = null;
     static final float RAD_TO_DEG = (float) (180 / Math.PI);
 
     /**
@@ -57,7 +56,9 @@ public final class DrawGL {
     }
 
     /**
-     * Draws an arrow vector using current open gl color. After the call, the origin of the current coordinate has been translated to the origin of the vector.
+     * Draws an arrow vector using current open gl color. After the call, the
+     * origin of the current coordinate has been translated to the origin of the
+     * vector.
      *
      * @param gl the opengl context
      * @param origX the arrow origin location x
@@ -102,7 +103,7 @@ public final class DrawGL {
      * @param centerY the box origin location x
      * @param width The x length of box
      * @param height the y length of box
-     * @param angle the angle relative to E
+     * @param angle the angle relative to E in degrees
      */
     public static void drawBox(final GL2 gl, final float centerX, final float centerY, final float width, final float height, final float angle) {
 
@@ -143,13 +144,13 @@ public final class DrawGL {
      * @param centerX the cross origin location x
      * @param centerY the cross origin location x
      * @param length The x length of cross
-     * @param angle the angle relative to E in radians
+     * @param angleRad the angle relative to East in radians
      */
-    public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length, final float angle) {
+    public static void drawCross(final GL2 gl, final float centerX, final float centerY, final float length, final float angleRad) {
 
         gl.glTranslatef(centerX, centerY, 0);
-        if (angle != 0) {
-            gl.glRotatef(angle * RAD_TO_DEG, 0, 0, 1);
+        if (angleRad != 0) {
+            gl.glRotatef(angleRad * RAD_TO_DEG, 0, 0, 1);
         }
 
         if (crossDisplayListId == 0 || length != 2 * crossLastL) {
@@ -180,15 +181,14 @@ public final class DrawGL {
      * @param centerY
      * @param radiusX
      * @param radiusY
-     * @param angle
+     * @param angleRad in radians
      * @param N number of segments used to draw ellipse
      */
-    public static void drawEllipse(GL2 gl, float centerX, float centerY, float radiusX, float radiusY, float angle, int N) {
-        final float r2d = (float) (180 / Math.PI);
+    public static void drawEllipse(GL2 gl, float centerX, float centerY, float radiusX, float radiusY, float angleRad, int N) {
 
         gl.glTranslatef(centerX, centerY, 0);
-        if (angle != 0) {
-            gl.glRotatef(angle * r2d, 0, 0, 1);
+        if (angleRad != 0) {
+            gl.glRotatef(angleRad, 0, 0, 1);
         }
 
         gl.glBegin(GL.GL_LINE_LOOP);
@@ -238,6 +238,37 @@ public final class DrawGL {
     }
 
     /**
+     * Draws a string using TextRenderer.draw using native GL coordinates,
+     * usually setup to represent pixels on AEChip. Embedded newlines are not
+     * rendered as additional lines.
+     * <p>
+     * The TextRenderer is created for each string drawn. If the user wants to supply an existing TextRenderer, use the other drawString method
+     *
+     * @param fontSize typically 5 to 18, font is Font("SansSerif", Font.PLAIN, fontSize)
+     * @param x x position (0 at left)
+     * @param y y position (0 at bottom)
+     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
+     * @param color, e.g. Color.red
+     * @param s the string to draw
+     * @return the bounds of the text
+     */
+    public static Rectangle2D drawString(int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
+        float scale = 1;
+        if (fontSize < 10) {
+            fontSize *= 4;
+            scale = .25f;
+        }
+        TextRenderer textRenderer=new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+        textRenderer.begin3DRendering();
+        textRenderer.setColor(color);
+        Rectangle2D r = textRenderer.getBounds(s);
+        r.setRect(r.getX(), r.getY(), r.getWidth() * scale, r.getHeight() * scale); // adjust bounds for actual drawing scale of text
+        textRenderer.draw3D(s, (int) (x - alignmentX * r.getWidth()), (int) (y), 0, scale);
+        textRenderer.end3DRendering();
+        return r;
+    }
+
+    /**
      * Draws a string using TextRenderer.draw somewhere on the entire drawing
      * surface
      *
@@ -252,26 +283,23 @@ public final class DrawGL {
      * @param color, e.g. Color.red
      * @param s the string to draw
      * @return the bounds of the text
+     * @deprecated Only for backward capability, use
+     * #drawString(int,float,float,float,Color,String)
      */
+    @Deprecated
     public static Rectangle2D drawString(GLAutoDrawable drawable, int fontSize, float x, float y, float alignmentX, Color color, String s) {
-        if (getTextRenderer() == null || getTextRenderer().getFont().getSize() != fontSize) {
-            setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, false));
-        }
-        getTextRenderer().beginRendering(drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
-        getTextRenderer().setColor(color);
-        Rectangle2D r = getTextRenderer().getBounds(s);
-        getTextRenderer().draw(s, (int) ((x * drawable.getSurfaceWidth()) - alignmentX * r.getWidth()), (int) (y * drawable.getSurfaceHeight()));
-        getTextRenderer().endRendering();
+        Rectangle2D r = drawString(fontSize, x, y, alignmentX, color, s);
         return r;
     }
 
     /**
      * Draws a string using TextRenderer.draw using native GL coordinates,
-     * usually setup to represent pixels on AEChip.
-     * Embedded newlines are not rendered as additional lines.
+     * usually setup to represent pixels on AEChip. Embedded newlines are not
+     * rendered as additional lines.
      * <p>
-     * If the TextRenderer does not exist for DrawGL, it is created. This can cause problems if it is out of context, so 
-     * it might be necessary to create it.
+     * If the TextRenderer does not exist for DrawGL, it is created. This can
+     * cause problems if it is out of context, so it might be necessary to
+     * create it.
      *
      * @param gl the rendering context surface
      * @param fontSize typically 12 to 36
@@ -281,24 +309,21 @@ public final class DrawGL {
      * @param color, e.g. Color.red
      * @param s the string to draw
      * @return the bounds of the text
+     * @deprecated Only for backward capability, use
+     * #drawString(int,float,float,float,Color,String)
      */
+    @Deprecated
     public static Rectangle2D drawString(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) { // TODO gl is not actually used
-        if (getTextRenderer() == null || getTextRenderer().getFont().getSize() != fontSize) {
-            setTextRenderer(new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true));
-        }
-        getTextRenderer().begin3DRendering();
-        getTextRenderer().setColor(color);
-        Rectangle2D r = getTextRenderer().getBounds(s);
-        getTextRenderer().draw(s, (int) (x - alignmentX * r.getWidth()), (int) (y));
-        getTextRenderer().end3DRendering();
+        Rectangle2D r = drawString(fontSize, x, y, alignmentX, color, s);
         return r;
     }
 
-   /**
-     * Draws a string with drop shadow effect using TextRenderer.draw using native GL coordinates,
-     * usually setup to represent pixels on AEChip
+
+    /**
+     * Draws a string with drop shadow effect using TextRenderer.draw using
+     * native GL coordinates, usually setup to represent pixels on AEChip
      *
-     * @param gl the rendering context surface
+     * @param gl the rendering context surface (not actually used)
      * @param fontSize typically 12 to 36
      * @param x x position (0 at left)
      * @param y y position (0 at bottom)
@@ -307,25 +332,31 @@ public final class DrawGL {
      * @param s the string to draw
      * @return the bounds of the text
      */
-       public static Rectangle2D drawStringDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
-        drawString(gl, fontSize, x+1, y-1, alignmentX, Color.black, s);
-        Rectangle2D r = drawString(gl, fontSize, x, y, alignmentX, color, s);
+    public static Rectangle2D drawStringDropShadow(int fontSize, float x, float y, float alignmentX, Color color, String s) {
+        drawString(fontSize, x + 1, y - 1, alignmentX, Color.black, s);
+        Rectangle2D r = drawString(fontSize, x, y, alignmentX, color, s);
         return r;
     }
 
-    /**
-     * Returns the text renderer if it has been initialized. These should only be initialized in the OpenGL rendering context.
-     * @return the textRenderer
-     */
-    public static TextRenderer getTextRenderer() {
-        return textRenderer;
-    }
 
     /**
-     * Allows setting a text renderer for DrawGL, which might be useful for determining a scale, etc, before rendering.
-     * @param aTextRenderer the textRenderer to set
+     * Draws a string with drop shadow effect using TextRenderer.draw using
+     * native GL coordinates, usually setup to represent pixels on AEChip
+     *
+     * @param gl the rendering context surface (not actually used)
+     * @param fontSize typically 12 to 36
+     * @param x x position (0 at left)
+     * @param y y position (0 at bottom)
+     * @param alignmentX 0 for left aligned, .5 for centered, 1 for right
+     * @param color, e.g. Color.red
+     * @param s the string to draw
+     * @return the bounds of the text
+     * @deprecated use the method that does not take GL object since it is not needed
      */
-    public static void setTextRenderer(TextRenderer aTextRenderer) {
-        textRenderer = aTextRenderer;
+    @Deprecated
+    public static Rectangle2D drawStringDropShadow(GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s) {
+        Rectangle2D r = drawStringDropShadow(fontSize, x, y, alignmentX, color, s);
+        return r;
     }
+
 }

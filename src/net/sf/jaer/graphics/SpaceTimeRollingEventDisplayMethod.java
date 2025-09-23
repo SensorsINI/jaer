@@ -12,7 +12,6 @@
 package net.sf.jaer.graphics;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -32,27 +31,31 @@ import com.jogamp.opengl.GL2ES1;
 import com.jogamp.opengl.GL2ES2;
 import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.fixedfunc.GLLightingFunc;
 import com.jogamp.opengl.fixedfunc.GLMatrixFunc;
 import com.jogamp.opengl.glu.GLU;
+import com.jogamp.opengl.util.awt.TextRenderer;
 import com.jogamp.opengl.util.gl2.GLUT;
+import eu.seebetter.ini.chips.DavisChip;
+import eu.seebetter.ini.chips.davis.DavisConfig;
 
 import eu.seebetter.ini.chips.davis.DavisDisplayConfigInterface;
+import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.util.LinkedList;
 import java.util.logging.Level;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import static javax.swing.Action.ACCELERATOR_KEY;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JSeparator;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.graphics.ChipCanvas.ClipArea;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
@@ -71,7 +74,7 @@ import net.sf.jaer.util.EngineeringFormat;
 public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements DisplayMethod3D {
 
     private EngineeringFormat engFmt = new EngineeringFormat();
-    static final Preferences prefs = Preferences.userNodeForPackage(SpaceTimeRollingEventDisplayMethod.class);
+    final Preferences prefs;
 
     private DavisDisplayConfigInterface config;
 //    private boolean displayEvents = true;
@@ -105,14 +108,31 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private int timeWindowUs = 100000, t0;
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
-    private boolean regenerateAxesDisplayList = true;
-    private final int aspectRatio = 4; // depth of 3d cube compared to max of x and y chip dimension
+    private volatile boolean regenerateAxesDisplayList = true;
+    private float timeAspectRatio; // depth of 3d cube compared to max of x and y chip dimension
     private float pointSize = 4f;
 
     private JMenu displayMenu = null;
 
-    private boolean additiveColorEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.additiveColorEnabled", false);
-    private boolean largePointSizeEnabled = prefs.getBoolean("SpaceTimeRollingEventDisplayMethod.largePointSizeEnabled", false);
+    private boolean additiveColorEnabled;
+    private boolean largePointSizeEnabled;
+
+    private boolean displayDvsEvents = true;
+    private boolean displayApsFrames = true;
+//    private boolean displayAnnotation = false;
+
+    final private FramesInTimeWindow apsFramesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
+    final private FramesInTimeWindow dvsFramesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
+    private float framesAlpha;
+    private boolean drawFramesOnOwnAxes;
+    private float frameEventSpacing;
+
+    private boolean displayDvsFrames;
+
+    private ChipCanvas.Zoom zoom = null;
+    private ChipCanvas.Zoom oldZoom = null;
+
+    private TextRenderer textRenderer = null;
 
     private boolean displayEvents = true;
     private boolean displayFrames = true;
@@ -129,6 +149,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     public SpaceTimeRollingEventDisplayMethod(final ChipCanvas chipCanvas) {
         super(chipCanvas);
+        prefs = chipCanvas.prefs;
+        drawFramesOnOwnAxes = prefs.getBoolean("drawFramesOnOwnAxes", false);
+        frameEventSpacing = prefs.getFloat("frameEventSpacing", 1.2f);
+        additiveColorEnabled = prefs.getBoolean("additiveColorEnabled", false);
+        largePointSizeEnabled = prefs.getBoolean("largePointSizeEnabled", false);
+        timeAspectRatio = prefs.getFloat("timeAspectRatio", 4); // depth of 3d cube compared to max of x and y chip dimension
+        displayDvsFrames = prefs.getBoolean("displayDvsFrames", false);
+        framesAlpha = prefs.getFloat("framesAlpha", .5f);
+        zoom = chipCanvas.createZoom();
     }
 
     private void installShaders(GL2 gl) throws IOException {
@@ -271,14 +300,14 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             final int t1 = packet.getLastTimestamp();
 //        final int dtThisPacket = t1 - t0ThisPacket + 1;
             // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
-            int colorScale = ((AEChipRenderer) getRenderer()).getColorScale(); // use color scale to determine multiple, up and down arrows set it then
+            int timeScale = ((AEChipRenderer) getRenderer()).getFadingOrSlidingFrames(); // use color scale to determine multiple, up and down arrows set it then
             int newTimeWindowUs, frameDurationUs = 100000;
             if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
                 frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
             } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
                 frameDurationUs = chip.getAeViewer().getAePlayer().getTimesliceUs();
             }
-            newTimeWindowUs = (int) (frameDurationUs * Math.pow(2, (colorScale - 1) / 4f));
+            newTimeWindowUs = (int) (frameDurationUs * Math.pow(2, (timeScale - 1) / 4f));
             if (newTimeWindowUs < 10000) {
                 newTimeWindowUs = 10000; // tobi - don't let time get too short for window, minimum 10ms
             }
@@ -288,7 +317,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 if (eventList != null) {
                     eventList.clear();
                 }
-                framesInTimeWindow.clear();
+                apsFramesInTimeWindow.clear();
+                dvsFramesInTimeWindow.clear();
             }
             timeWindowUs = newTimeWindowUs;
             t0 = t1 - timeWindowUs;
@@ -296,7 +326,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             sx = chip.getSizeX();
             sy = chip.getSizeY();
             smax = chip.getMaxSize();
-            tfac = (float) (smax * aspectRatio) / timeWindowUs;
+            tfac = (float) (smax * getTimeAspectRatio()) / timeWindowUs;
 
             pruneOldEventsAndFrames(t0, t1);
             checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
@@ -315,7 +345,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
             checkGLError(gl, "set uniform t0 and t1");
         }
-        renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * aspectRatio);
+        if (displayDvsFrames) {
+            DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
+            dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), renderer.getPacket().getLastTimestamp());
+            log.log(Level.FINE, "New DVS frame with timestamp {0}", renderer.getPacket().getLastTimestamp());
+        }
+        renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
         displayStatusChangeText(drawable);
     }
 
@@ -360,19 +395,32 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         eventList = eventListTmp;
         eventListTmp = tmp;
 
-        framesInTimeWindow.removeFramesOlderThan(t0);
+        apsFramesInTimeWindow.removeFramesOlderThan(t0);
+        dvsFramesInTimeWindow.removeFramesOlderThan(t0);
 
     }
 
+    /**
+     * Draws DVS events and APS frames (or maybe DVS constant count frames if
+     * isShowDvsConstantCountFrames()). Depends on displayEvents and
+     * displayFrames and the various option parameters
+     *
+     * @param gl the OpenGL context
+     * @param drawable the drawable surface
+     * @param buffer the event vertex buffer
+     * @param nEvents The number of events in the buffer
+     * @param dtS the complete time window in seconds
+     * @param zmax the scale of max time in past in units of pixels of array
+     */
     synchronized void renderEventsAndFrames(GL2 gl, GLAutoDrawable drawable, ByteBuffer buffer, int nEvents, float dtS, float zmax) {
 
         if (chip.getRenderer() instanceof DavisRenderer) {
             final DavisRenderer frameRenderer = (DavisRenderer) chip.getRenderer();
-            displayFrames = frameRenderer.isDisplayFrames();
-            displayEvents = frameRenderer.isDisplayEvents();
+            displayApsFrames = frameRenderer.isDisplayFrames();
+            displayDvsEvents = frameRenderer.isDisplayEvents();
 //            displayAnnotation = frameRenderer.isDisplayAnnotation();
-            if (!displayFrames && !displayEvents) {
-                log.warning("Both frame and event display off, enabling events display so something shows");
+            if (!displayApsFrames && !displayDvsEvents && !displayDvsFrames) {
+                log.warning("Both frame types and event display off, enabling events display so something shows");
                 frameRenderer.setDisplayEvents(true);
             }
         }
@@ -387,17 +435,20 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
         final float modelScale = 1f / 2; // everything is drawn at this scale
         maybeRegenerateAxesDisplayList(gl, zmax, modelScale, dtS);
+        textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
 
 //        gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
 //        gl.glPushMatrix();
         gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
         gl.glLoadIdentity();
         gl.glPushMatrix();
-        ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
+        ChipCanvas.Zoom.ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
 
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
+        // determine the viewable area (that is not clipped to black).
+        // this is not the view project!  This is the model projection. See later for viewport setting for where we look from.
 //        gl.glOrtho(clip.left, clip.right, clip.bottom, clip.top, -zmax * 4, zmax * 4);
-        gl.glFrustumf(clip.left, clip.right, clip.bottom, clip.top, zmax * 1.5f, zmax * .3f);
+        gl.glFrustumf(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
 
         // go to the end, -zmax
         gl.glTranslatef(0, 0, -1 * zmax);
@@ -435,14 +486,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glClearDepthf(0);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
 
+        // act on view matrix (not projection). The view can change perspective
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
-        gl.glTranslatef(0, 0, -zmax);
+        gl.glTranslatef(0, 0, -1.0f * zmax); // go to -zmax, which is zmax away from the volume that is from 0 to zmax (zmax is positive)
         gl.glScalef(modelScale, modelScale, modelScale);
         gl.glCallList(axesDisplayListId);
 
-        if (displayEvents) {
-//        getChipCanvas().setDefaultProjection(gl, drawable);
+        if (displayDvsEvents) {
+//        getChipCanvas().applyProjection(gl, drawable);
             // draw points using shaders
             gl.glUseProgram(shaderprogram);
             gl.glValidateProgram(shaderprogram);
@@ -489,12 +541,17 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glBindVertexArray(0); // to use TextRenderers elsewhere; see http://forum.jogamp.org/TextRenderer-my-text-won-t-show-td4029291.html
             gl.glUseProgram(0);
             checkGLError(gl, "disable program");
+
+            drawPlotLabel("Space", gl, .0f, .0f, -0.00f, zmax, 0);
+            drawPlotLabel("Time", gl, 1f, 0f, -0.00f, zmax, 90);
+            String s = "DVS events";
+            drawPlotLabel(s, gl, 1.05f, 0, .25f, zmax, 90);
         }
 
-        if (displayFrames) { // render frames
+        if (displayApsFrames) { // render APS frames
             gl.glPushMatrix();
             if (isDrawFramesOnOwnAxes()) {
-                gl.glTranslatef(0, chip.getSizeY() * 1.2f, 0);
+                gl.glTranslatef(0, chip.getSizeY() * getFrameEventSpacing(), 0);
                 gl.glCallList(axesDisplayListId);
             }
             int nFrames = 0;
@@ -502,7 +559,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             DavisRenderer renderer = (DavisRenderer) chip.getRenderer();
             final EventPacket packet = (EventPacket) renderer.getPacket();
             int lastTimestamp = packet.getLastTimestamp();
-            for (FrameWithTime frame : framesInTimeWindow) {
+            for (FrameWithTime frame : apsFramesInTimeWindow) {
                 final int frameDt = frame.timestampUs - lastTimestamp;
                 final float z = tfac * (frameDt);
 //                log.finer(String.format("Frame %d has frameDt=%,dus (frame.timestampUs=%,d, lastTimestamp=%,d)", nFrames, frameDt, frame.timestampUs, lastTimestamp));
@@ -537,7 +594,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
                 gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
                 gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_REPLACE);
-                gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, renderer.getWidth(), renderer.getHeight(), 0, GL.GL_RGBA, GL.GL_FLOAT, frame.pixBuffer.rewind());
+                gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA,
+                        renderer.getWidth(), renderer.getHeight(),
+                        0, GL.GL_RGBA, GL.GL_FLOAT,
+                        frame.pixBuffer.rewind()
+                );
                 {
                     gl.glPushMatrix();
                     gl.glTranslatef(0, 0, z); // translate frame to correct time point in z plane
@@ -548,8 +609,86 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
                 nFrames++;
             }
+            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+            String s = "APS frames";
+            if (chip instanceof DavisChip davis) {
+                float fps = davis.getFrameRateHz();
+                float exp = davis.getMeasuredExposureMs();
+                s = String.format("APS frames (%s FPS, %ss exp)", engFmt.format(fps), engFmt.format(exp * 1e-3f));
+            }
+            drawPlotLabel(s, gl, 1, 1.05f, .05f, zmax, 90);
+
+//            gl.glColor3f(1, 1, 1);
+//            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 3);
+//            glut.glutBitmapString(font, s);
             gl.glPopMatrix();
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
+        }
+
+        if (displayDvsFrames) { // render APS frames
+            gl.glPushMatrix();
+            if (isDrawFramesOnOwnAxes()) {
+                gl.glTranslatef(0, chip.getSizeY() * getFrameEventSpacing(), 0);
+                gl.glCallList(axesDisplayListId);
+            }
+            int nFrames = 0;
+//            gl.glShadeModel(GL2.GL_FLAT);
+            DavisRenderer renderer = (DavisRenderer) chip.getRenderer();
+            final EventPacket packet = (EventPacket) renderer.getPacket();
+            int lastTimestamp = packet.getLastTimestamp();
+            for (FrameWithTime frame : dvsFramesInTimeWindow) {
+                final int frameDt = frame.timestampUs - lastTimestamp;
+                final float z = tfac * (frameDt);
+//                log.finer(String.format("Frame %d has frameDt=%,dus (frame.timestampUs=%,d, lastTimestamp=%,d)", nFrames, frameDt, frame.timestampUs, lastTimestamp));
+                if (z < -zmax || z > 0) {
+                    log.warning(String.format("Frame has z=%f outside of range [0,%f]", z, -zmax));
+                }
+
+                gl.glBindTexture(GL.GL_TEXTURE_2D, 0); // use texture number 0 for all textures, otherwise causes problems in JOGL on MacOS
+                gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+                gl.glEnable(GL.GL_TEXTURE_2D);
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
+                final int nearestFilter = GL.GL_NEAREST;
+
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
+                gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
+                gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_REPLACE);
+                gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA,
+                        renderer.getWidth(), renderer.getHeight(),
+                        0, GL.GL_RGBA, GL.GL_FLOAT,
+                        frame.pixBuffer.rewind()
+                );
+                {
+                    gl.glPushMatrix();
+                    gl.glTranslatef(0, 0, z); // translate frame to correct time point in z plane
+                    drawTexture(gl, renderer.getWidth(), renderer.getHeight());
+                    gl.glPopMatrix();
+                }
+                gl.glDisable(GL.GL_TEXTURE_2D);
+                getChipCanvas().checkGLError(gl, glu, "after texture frame rendering");
+                nFrames++;
+            }
+            AbstractAEPlayer player = ((AEChip) chip).getAeViewer().getAePlayer();
+            String s = "DVS events";
+            switch (player.getPlaybackMode()) {
+                case FixedPacketSize:
+                    int n = player.getPacketSizeEvents();
+                    s = String.format("DVS frames of %sev", engFmt.format(n));
+                    break;
+                case FixedTimeSlice:
+                    int us = player.getTimesliceUs();
+                    s = String.format("DVS frames of %ss", engFmt.format(us * 1e-6f));
+            }
+            drawPlotLabel(s, gl, 1, 1.05f, .25f, zmax, 90);
+
+//            gl.glColor3f(1, 1, 1);
+//            gl.glRasterPos3f(0, sy * 1.05f, -zmax / 4);
+//            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+//            glut.glutBitmapString(font, s);
+            gl.glPopMatrix();
+//            log.fine(String.format("rendered %d texture APS frames", nFrames));
+
         }
 
 //
@@ -561,6 +700,36 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         // re-enable depth sorting for everything else
 //        gl.glDepthMask(true);
+    }
+
+    /**
+     * Plot a label along axis at position x,y,z relative to entire axis rotated
+     * along z direction (like the DVS events label)
+     *
+     * @param s the string
+     * @param gl
+     * @param x 0-1
+     * @param y
+     * @param z 0-1 along z
+     * @param zmax the max z in pixels (i.e max of width and height times aspect
+     * ratio)
+     * @param angleDeg the additional angle, 90 to lie along z axis, 0 to align
+     * with space axes
+     * @throws GLException
+     */
+    private void drawPlotLabel(String s, GL2 gl, float x, float y, float z, float zmax, float angleDeg) throws GLException {
+        gl.glPushMatrix();
+        textRenderer.begin3DRendering();
+        gl.glTranslatef(x * sx, y * sy, z * (-zmax));
+//        gl.glRotatef(-getChipCanvas().getAnglex(), 1, 0, 0); // rotate viewpoint by angle deg around the x axis
+        gl.glRotatef(angleDeg, 0, 1, 0); // rotate viewpoint by angle deg around the y axis
+        textRenderer.draw3D(s, 0, 0, 0, 1.5f);
+        textRenderer.end3DRendering();
+        gl.glPopMatrix();
+//            final int font = GLUT.BITMAP_TIMES_ROMAN_24;
+//            gl.glColor3f(1, 1, 1);
+//            gl.glRasterPos3f(sx * 1.05f, 0, -zmax / 4);
+//            glut.glutBitmapString(font, s);
     }
 
     protected void maybeRegenerateAxesDisplayList(GL2 gl, float zmax, final float modelScale, float dtS) {
@@ -638,7 +807,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             gl.glRasterPos3f(0, sy * 1.05f, 0);
             glut.glutBitmapString(font, "y=" + sy);
             w = glut.glutBitmapLength(font, "t=0");
-            gl.glRasterPos3f(-2 * w * modelScale, 0, 0);
+            gl.glRasterPos3f(-6 * w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
             gl.glColor3f(1f, 0, 0);
             String tMaxString = "t=" + engFmt.format(-dtS) + "s";
@@ -653,7 +822,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     /**
      * Draws the current texture into the width and height of chip pixels
      *
-     * @param gl
+     * @param gl the OpenGL context
      * @param width of texture (power of 2 larger than chip size)
      * @param height of texture (larger than chip pixel array height)
      */
@@ -724,7 +893,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     protected void onDeregistration() {
         if (chip.getRenderer() != null && chip.getRenderer() instanceof DavisRenderer) {
             chip.getRenderer().getSupport().removePropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
-            framesInTimeWindow.clear(); // recover memory
+            apsFramesInTimeWindow.clear(); // recover memory
         }
         AEChip aeChip = (AEChip) chip;
         if (displayMenu == null) {
@@ -736,6 +905,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
+        getChipCanvas().setZoom(oldZoom);
     }
 
     @Override
@@ -750,10 +920,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return;
         }
         displayMenu = new JMenu("3-D Display Options");
+        displayMenu.add(new JMenuItem(new SetTimeAspectRatioAction()));
+        displayMenu.add(new JSeparator());
+        displayMenu.add(new JCheckBoxMenuItem(new ToggleDisplayDvsFrames()));
+        displayMenu.add(new JCheckBoxMenuItem(new ToggleDrawFramesOnOwnAxesAction()));
+        displayMenu.add(new JMenuItem(new SetFrameEventSpacingAction()));
+        displayMenu.add(new JSeparator());
         displayMenu.add(new JCheckBoxMenuItem(new ToggleLargePointsAction()));
+        displayMenu.add(new JSeparator());
         displayMenu.add(new JCheckBoxMenuItem(new ToggleAdditiveColorAction()));
         displayMenu.add(new JMenuItem(new SetTransparencyAction()));
-        displayMenu.add(new JCheckBoxMenuItem(new ToggleDrawFramesOnOwnAxesAction()));
         viewer.addMenu(displayMenu);
 
         if (chip.getRenderer() != null) {
@@ -762,18 +938,21 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
+        oldZoom = getChipCanvas().getZoom();
+        getChipCanvas().setZoom(zoom);
+
     }
 
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
-        if (displayFrames && evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE) {
+        if (displayApsFrames && evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE) {
             DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
 //            float[] pixmap = renderer.getPixmapArray();
 //            FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
-            framesInTimeWindow.add(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
+            apsFramesInTimeWindow.add(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
             log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
-            framesInTimeWindow.clear();
+            apsFramesInTimeWindow.clear();
             eventList.clear();
         }
     }
@@ -823,6 +1002,67 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         prefs.putBoolean("largePointSizeEnabled", largePointSizeEnabled);
     }
 
+    /**
+     * @return the frameEventSpacing
+     */
+    public float getFrameEventSpacing() {
+        return frameEventSpacing;
+    }
+
+    /**
+     * @param frameEventSpacing the frameEventSpacing to set
+     */
+    public void setFrameEventSpacing(float frameEventSpacing) {
+        this.frameEventSpacing = frameEventSpacing;
+        prefs.putFloat("frameEventSpacing", frameEventSpacing);
+        regenerateAxesDisplayList = true;
+    }
+
+    /**
+     * @return the timeAspectRatio
+     */
+    public float getTimeAspectRatio() {
+        return timeAspectRatio;
+    }
+
+    /**
+     * @param timeAspectRatio the timeAspectRatio to set
+     */
+    public void setTimeAspectRatio(float timeAspectRatio) {
+        this.timeAspectRatio = timeAspectRatio;
+        prefs.putFloat("timeAspectRatio", timeAspectRatio);
+        regenerateAxesDisplayList = true;
+    }
+
+    /**
+     * @return the displayDvsFrames
+     */
+    public boolean isDisplayDvsFrames() {
+        return displayDvsFrames;
+    }
+
+    /**
+     * @param displayDvsFrames the displayDvsFrames to set
+     */
+    public void setDisplayDvsFrames(boolean displayDvsFrames) {
+        this.displayDvsFrames = displayDvsFrames;
+        prefs.putBoolean("displayDvsFrames", displayDvsFrames);
+    }
+
+//    /**
+//     * @return the dvsFramesEventCount
+//     */
+//    public int getDvsFramesEventCount() {
+//        return dvsFramesEventCount;
+//    }
+//
+//    /**
+//     * @param dvsFramesEventCount the dvsFramesEventCount to set
+//     */
+//    public void setDvsFramesEventCount(int dvsFramesEventCount) {
+//        this.dvsFramesEventCount = dvsFramesEventCount;
+//        prefs.putInt("dvsFramesEventCount", dvsFramesEventCount);
+//    }
     /**
      * A frame pixel buffer along with the frame (end of exposure) time
      */
@@ -892,22 +1132,35 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         /**
-         * Removes oldest frame if older than t0 time
+         * Removes frames older than t0 time
+         *
+         * @param t0 the oldest timestamp in us
+         * @return true if frame was removed, false otherwise
          */
         public boolean removeFramesOlderThan(int t0) {
             if (isEmpty()) {
                 return false;
             }
-            int tFrame = peekFirst().timestampUs;  // peekFirst gets the oldest frame
-            int dt = tFrame - t0;
-            if (dt < 0) {
+            boolean removedSomeFrame = false;
+            while (!isEmpty() && peekFirst().timestampUs < t0) {
                 // if it is older than the oldest time in window, remove it
 //                log.finest(String.format("Removing old frames %s", peekFirst()));
                 FrameWithTime removed = removeFirst(); // prune frames outside the window
                 unusedFrames.add(removed);
-                return true;
+                removedSomeFrame = true;
             }
-            return false;
+            return removedSomeFrame;
+
+//            int tFrame = peekFirst().timestampUs;  // peekFirst gets the oldest frame
+//            int dt = tFrame - t0;
+//            if (dt < 0) {
+//               
+//                FrameWithTime removed = removeFirst(); // prune frames outside the window
+//                unusedFrames.add(removed);
+//                return true;
+//            }
+//            return false;
+//        }
         }
     }
 
@@ -1046,4 +1299,93 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
     }
 
+    final public class SetFrameEventSpacingAction extends MyAction {
+
+        public SetFrameEventSpacingAction() {
+            super("Set frame/event spacing", String.format("Set frame/event spacing as multiple of chip height (currently %.2f)", getFrameEventSpacing()));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            String ret = JOptionPane.showInputDialog(String.format("New frame/event spacing value (currently %.2f", getFrameEventSpacing()), String.format("%f", getFrameEventSpacing()));
+            if (ret == null) {
+                return;
+            }
+            try {
+                float v = Float.parseFloat(ret);
+                setFrameEventSpacing(v);
+                putValue(Action.SHORT_DESCRIPTION, String.format("Set frame/event spacing (currently %.2f)", getFrameEventSpacing()));
+            } catch (NumberFormatException e) {
+                log.warning(e.toString()); // TODO put in loop with cancel
+            }
+        }
+
+        @Override
+        protected void showAction() {
+            showAction(String.format("Set frame/event spacing=%.2f", getFrameEventSpacing()));
+        }
+    }
+
+    final public class SetTimeAspectRatioAction extends MyAction {
+
+        public SetTimeAspectRatioAction() {
+            super("Set time axis aspect ratio", String.format("Set aspect ratio of time axis relative to space axes (currently %.1f)", getTimeAspectRatio()));
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            String ret = JOptionPane.showInputDialog(String.format("New aspect ratio of time axis relative to space axes (currently %.1f)", getTimeAspectRatio()), String.format("%f", getTimeAspectRatio()));
+            if (ret == null) {
+                return;
+            }
+            try {
+                float v = Float.parseFloat(ret);
+                setTimeAspectRatio(v);
+                putValue(Action.SHORT_DESCRIPTION, String.format("Set aspect ratio of time axis relative to space axes (currently %.1f)", getTimeAspectRatio()));
+            } catch (NumberFormatException e) {
+                log.warning(e.toString()); // TODO put in loop with cancel
+            }
+        }
+
+        @Override
+        protected void showAction() {
+            showAction(String.format("Set frame/event spacing=%.2f", getFrameEventSpacing()));
+        }
+    }
+
+    final public class ToggleDisplayDvsFrames extends MyAction {
+
+        public ToggleDisplayDvsFrames() {
+            super("Toggle DVS frames", String.format("Toggles display of accumulated-event-count DVS frames"));
+            putValue(Action.SELECTED_KEY, isDisplayDvsFrames());
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent ae) {
+            setDisplayDvsFrames(!displayDvsFrames);
+            putValue(Action.SELECTED_KEY, isDisplayDvsFrames());
+        }
+
+        @Override
+        protected void showAction() {
+            showAction(String.format("Set showDvsFrames=%s", isDisplayDvsFrames()));
+        }
+    }
+
+//    final public class SetDvsConstantCountAction extends MyAction {
+//
+//        public SetDvsConstantCountAction() {
+//            super("Set number events per frame", String.format("Set number events per frame (currently %,d)", getDvsFramesEventCount()));
+//        }
+//
+//        @Override
+//        public void actionPerformed(ActionEvent ae) {
+//            setShowDvsFrames(!displayDvsFrames);
+//        }
+//
+//        @Override
+//        protected void showAction() {
+//            showAction(String.format("Set showDvsConstantCountFrames=%s", isShowDvsFrames()));
+//        }
+//    }
 }

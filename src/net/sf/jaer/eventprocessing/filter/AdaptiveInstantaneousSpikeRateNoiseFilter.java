@@ -117,9 +117,10 @@ public class AdaptiveInstantaneousSpikeRateNoiseFilter extends AbstractNoiseFilt
             
             int myflag = 1;
             if (deltaT > timeThr){
-                e.setFilteredOut(true);
-                filteredOutEventCount++;
+                filterOut(e);
                 myflag = 0;
+            }else{
+                filterIn(e);
             }
             
 //            System.out.printf("every event is: %d %x %x %d %d %d %d %d %d\n", totalEventCount, e.x, e.y, e.timestamp, x,y, lastT, deltaT, myflag);

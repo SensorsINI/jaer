@@ -126,15 +126,22 @@ MA 02110-1301  USA
         <!--<dependency org="org.bytedeco" name="javacv" rev="1.0" />-->
         <!--<dependency org="org.bytedeco" name="javacv" rev="1.5.9" />-->
         
+        <!--Tensor flow-->
+        
+<!--        See Code and Usage Examples
+Please look at this repository: https://github.com/tensorflow/java-models-->
         <!--tensorflow has native libraries, but handled fine with this dependeny - see https://www.tensorflow.org/install/lang_java -->
+        <!-- See the java tensorflow landing page (new in 2024) https://github.com/tensorflow/java -->
         <!--if having trouble loading the DLL, you might have to downgrade locally to version 1.5.0-->
         <!--make sure to delete newer versions of libtensorflow* and tensorflow* from lib/-->
-        <dependency org="org.tensorflow" name="tensorflow" rev="1.15.0" />
+        <!--<dependency org="org.tensorflow" name="tensorflow" rev="1.15.0" />-->
+        <!--<dependency org="org.tensorflow" name="tensorflow-core-platform" rev="1.15.0" />-->
+        <dependency org="org.tensorflow" name="tensorflow-core-platform" rev="1.0.0-rc.2" />
         
         <!--to use GPU if you have an Nvida GPU installed, comment line above and use lines below with appropriate version of tensor flow. 
         You have to separately install Cuda toolkit  for this to work - see https://developer.nvidia.com/cuda-toolkit -->
         <!--<dependency org="org.tensorflow" name="libtensorflow" rev="1.12.0" />-->
-        <dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.15.0" />
+        <!--<dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.0.0-rc.2" />-->
         
         
         <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns. Also for reading OpenCV Mat files in YamlMatLoader -->

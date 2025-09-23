@@ -4,11 +4,13 @@
  */
 package net.sf.jaer.eventprocessing.filter;
 
+import eu.seebetter.ini.chips.DavisChip;
 import java.beans.PropertyChangeEvent;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.EventFilter2D;
@@ -40,7 +42,7 @@ public class EventRateEstimator extends EventFilter2D {
     private float maxRate = getFloat("maxRate", 10e6f);
     private float filteredRate = 0, instantaneousRate = 0;
     private float eventRateTauMs = getFloat("eventRateTauMs", 100);
-    private float biasChangePauseS = getFloat("biasChangePauseS", .5f);
+    private float biasChangePauseS = getFloat("biasChangePauseS", 0);
     /* Event rate estimates are sent to observers this many times per tau */
     protected int UPDATE_RATE_TAU_DIVIDER = 1;
     private int numEventsSinceLastUpdate = 0;
@@ -145,9 +147,10 @@ public class EventRateEstimator extends EventFilter2D {
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getSource() instanceof AEChip) {
+        if (biasChangePauseS>0 && evt.getSource() instanceof Chip && evt.getPropertyName()==Chip.EVENT_HARDWARE_CHANGE) {
             biasChanged = true;
             biasChangedTimeMs = System.currentTimeMillis();
+            log.fine(String.format("hardware change: pausing biasChangedTimeS=%.2fs",biasChangePauseS));
         }
     }
 

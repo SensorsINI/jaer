@@ -13,8 +13,8 @@ public class ClusterPathPoint extends Point2D.Float {
     /** Number of events that contributed to this point. */
     protected int nEvents;
     /** Velocity of cluster (filtered) at this point in pixels per timestamp tick (e.g. us).
-     * This field is initially null and is initialized by the velocityPPT estimation, if used. */
-    public Point2D.Float velocityPPT=null;
+     * This field is velocity at this point in px/s and is initially null and is initialized by the velocity estimation, if used. */
+    public Point2D.Float velocity=null;
     /** disparity of stereo vision. Valid for stereo vision only */
     public float stereoDisparity;
     /** Measured size (average radius) of cluster */

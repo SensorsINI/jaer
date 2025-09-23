@@ -43,11 +43,18 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
 
     public RefractoryFilter(AEChip chip) {
         super(chip);
+        getEnclosedFilterChain().remove(noiseFilterControl);
+        setEnclosedFilterChain(null);
         initFilter();
         resetFilter();
-        setPropertyTooltip("correlationTimeS", "the time in seconds that a spike needs to be supported by a prior event in the neighborhood by to pass through");
-        setPropertyTooltip("subsampleBy", "Past event addresses are subsampled by this many bits in x and y");
-        setPropertyTooltip("passShortISIsEnabled", "<html>Inverts filtering so that only events with short ISIs are passed through.<br>If refractoryPeriodUs==0, then you can block all events with idential timestamp from the same pixel.");
+        setPropertyTooltip(TT_FILT_CONTROL,"correlationTimeS", "the time in seconds that must elapse between events at the same pixel");
+        setPropertyTooltip(TT_FILT_CONTROL,"subsampleBy", "Past event addresses are subsampled by this many bits in x and y");
+        setPropertyTooltip(TT_FILT_CONTROL,"passShortISIsEnabled", "<html>Inverts filtering so that only events with short ISIs are passed through.<br>If refractoryPeriodUs==0, then you can block all events with idential timestamp from the same pixel.");
+        hideProperty("filterHotPixels");
+        hideProperty("letFirstEventThrough");
+        hideProperty("sigmaDistPixels");
+        hideProperty("adaptiveFilteringEnabled");
+        hideProperty("antiCasualEnabled");
     }
 
     void allocateMaps(AEChip chip) {
@@ -90,7 +97,7 @@ public class RefractoryFilter extends AbstractNoiseFilter implements PropertyCha
             short x = (short) (i.x >>> subsampleBy), y = (short) (i.y >>> subsampleBy);
             int lastt = lastTimestamps[x][y];
             int deltat = (ts - lastt);
-            boolean longISI = lastt == DEFAULT_TIMESTAMP || deltat > correlationTimeS*1e-6f; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
+            boolean longISI = lastt == DEFAULT_TIMESTAMP || deltat > correlationTimeS*1e6f; // if refractoryPeriodUs==0, then all events with ISI==0 pass if passShortISIsEnabled
             if ((longISI && !passShortISIsEnabled) || (!longISI && passShortISIsEnabled)) {
 //                BasicEvent o = (BasicEvent) outItr.nextOutput();
 //                o.copyFrom(i);

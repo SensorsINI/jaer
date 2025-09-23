@@ -13,14 +13,15 @@ import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import net.sf.jaer.util.TextRendererScale;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Useful static methods for text rendering in the annotation of an EventFilter
  * chip output display. Assumes pixel-based coordinates of GL context.
  *
  * @author tobi
- * @see TextRendererScale for utility static method to compute a reasonable
- * scale
+ * @see TextRendererScalefor utility static method to compute a reasonable
+ lineShiftMultiplier
  */
 public class MultilineAnnotationTextRenderer {
 
@@ -29,10 +30,10 @@ public class MultilineAnnotationTextRenderer {
     private static TextRenderer renderer;
     private static float yshift = 0;
     private static float xposition = 1;
-    private static float scale = .15f;
+    private static float lineShiftMultiplier = 1.15f;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static Color color = Color.WHITE;
-    private static int fontSize = 24;
+    private static int fontSize = 5; // OK for Davis346
     private static boolean rebuildRenderer = true;
 
     /**
@@ -74,53 +75,43 @@ public class MultilineAnnotationTextRenderer {
      * @param s the string to render.
      */
     public static void renderMultilineString(String s) {
-        if (rebuildRenderer || renderer == null) {
-            renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
-            renderer.setColor(color);
-        }
         String[] lines = s.split("\n");
         if (lines == null) {
             return;
         }
 
         try {
-            renderer.begin3DRendering();
-            boolean first = true;
+            Rectangle2D r = null; // get bounds from first string rendered
             for (String l : lines) {
                 if (l == null) {
                     continue;
                 }
-                Rectangle2D r = renderer.getBounds(l);
-                if (!first) {
-                    yshift -= r.getHeight() * scale;
-                    l = "  " + l;
-                }
-                first = false;
-                renderer.draw3D(l, xposition, yshift, 0, scale);
+                r = DrawGL.drawString(fontSize, xposition, yshift, 0, color, l);
+                yshift -= r.getHeight() * lineShiftMultiplier;
+                l = "  " + l;
             }
-            renderer.end3DRendering();
         } catch (GLException e) {
             log.warning("caught " + e + " when trying to render text into the current OpenGL context");
         }
-        yshift -= additionalSpace;  // add additional space between multiline strings
+//        yshift -= additionalSpace;  // add additional space between multiline strings
     }
 
     /**
      * Returns overall text scaling (0.15 by default)
      *
-     * @return the scale
+     * @return the lineShiftMultiplier
      */
-    public static float getScale() {
-        return scale;
+    public static float getLineShiftMultiplier() {
+        return lineShiftMultiplier;
     }
 
     /**
      * Sets overall text scaling (0.15 by default)
      *
-     * @param aScale the scale to set
+     * @param aScale the lineShiftMultiplier to set
      */
-    public static void setScale(float aScale) {
-        scale = aScale;
+    public static void setLineShiftMultiplier(float aScale) {
+        lineShiftMultiplier = aScale;
     }
 
     /**
@@ -143,7 +134,7 @@ public class MultilineAnnotationTextRenderer {
     }
 
     public static void setDefaultScale() {
-        scale = 0.15f;
+        lineShiftMultiplier = 0.15f;
     }
 
     /**
@@ -165,14 +156,5 @@ public class MultilineAnnotationTextRenderer {
         color = aColor;
     }
 
-    /**
-     * Returns the TextRenderer used by MultilineAnnotationTextRenderer. This
-     * renderer will be null before the first use.
-     *
-     * @return the renderer, or null if it has not been used yet
-     */
-    public static TextRenderer getRenderer() {
-        return renderer;
-    }
 
 }

@@ -236,7 +236,7 @@ public class AddressedIPot extends Pot implements Cloneable, Observer, RemoteCon
      */
     @Override
     protected String prefsKey(){
-        return chip.prefsHeader()+".IPot."+name;
+        return "IPot."+name;
     }
     
     private byte[] bytes=null;

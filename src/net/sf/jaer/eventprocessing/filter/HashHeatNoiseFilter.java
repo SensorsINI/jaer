@@ -222,10 +222,9 @@ public class HashHeatNoiseFilter extends AbstractNoiseFilter  {
             boolean filterOut = filterEvent(x, y, (ts-firstts));
     
             if (filterOut) {
-                
-                e.setFilteredOut(true);
-                filteredOutEventCount++;
-                
+               filterOut(e);
+            }else{
+                filterIn(e);
             }
             
             if (totalEventCount == (eventCountWindow)){ // should be the last event of a frame

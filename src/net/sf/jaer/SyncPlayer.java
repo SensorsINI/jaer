@@ -72,7 +72,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
     // used to sync up viewers for playback
     int numPlayers = 0;
     private ArrayList<AEViewer> playingViewers = new ArrayList<AEViewer>();
-    static Preferences prefs = Preferences.userNodeForPackage(SyncPlayer.class);
+    static Preferences prefs;
 
     /**
      * Create new SyncPlayer
@@ -82,6 +82,7 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
      */
     public SyncPlayer(AEViewer viewer, JAERViewer outer) {
         super(viewer);
+        prefs = viewer.prefs;
         this.outer = outer;
     }
 
@@ -221,7 +222,8 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 //                    // or if it is a virgin window named "AEViewer"
 //                    // AND if it hasn't already been assigned to some file
 //                    String windowTitle = v.getTitle();
-////                        log.info("...AEViewer has window title "+windowTitle);
+                
+                ////                        log.info("...AEViewer has window title "+windowTitle);
 //                    if ( ( windowTitle.startsWith(className) || windowTitle.startsWith("AEViewer") ) && !dontUseAgain.contains(v) ){
 //                        vToUse = v;
 //                        // always gets first one...
@@ -464,11 +466,11 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
 
     @Override
     public void setPacketSizeEvents(int packetSizeEvents) {
-       super.setPacketSizeEvents(packetSizeEvents);
+        super.setPacketSizeEvents(packetSizeEvents);
         for (AEViewer v : getPlayingViewers()) {
             v.aePlayer.setTimesliceUs(packetSizeEvents);
         }
-  }
+    }
 
     /**
      * Sets all viewers to the same time.
@@ -613,5 +615,14 @@ public class SyncPlayer extends AbstractAEPlayer implements PropertyChangeListen
             v.aePlayer.setMarkOut();
         }
         return 0;
+    }
+
+    @Override
+    public boolean toggleMarker() {
+        boolean added=false;
+        for (AEViewer v : getPlayingViewers()) {
+            added=v.aePlayer.toggleMarker();
+        }
+        return added;
     }
 }

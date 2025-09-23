@@ -51,6 +51,7 @@ import de.thesycon.usbio.structs.USBIO_PIPE_PARAMETERS;
 import de.thesycon.usbio.structs.USBIO_SET_CONFIGURATION;
 import de.thesycon.usbio.structs.USB_DEVICE_DESCRIPTOR;
 import de.thesycon.usbio.structs.USB_STRING_DESCRIPTOR;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
 
@@ -89,7 +90,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
     /**
      * Used to store preferences, e.g. buffer sizes and number of buffers.
      */
-    protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX2.class);
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
 
     protected static final Logger log = Logger.getLogger("net.sf.jaer");
     protected AEChip chip;

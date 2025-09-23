@@ -40,7 +40,7 @@ public class EngineeringFormat {
         double k=Math.floor(dec/3);
         double div=Math.pow(10, k*3);
         double mant=x/div;
-        return String.format(formatterString,isNeg?'-':' ',mant,suffix((int)k+6));
+        return String.format(formatterString,isNeg?'-':'+',mant,suffix((int)k+6));
     }
 
     private char suffix(int k){

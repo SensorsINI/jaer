@@ -19,6 +19,7 @@ import javax.swing.SwingUtilities;
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -75,7 +76,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
     /**
      * Used to store preferences, e.g. buffer sizes and number of buffers.
      */
-    protected static Preferences prefs = Preferences.userNodeForPackage(CypressFX2.class);
+    private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
 
     protected static final Logger log = Logger.getLogger("net.sf.jaer");
     protected AEChip chip;

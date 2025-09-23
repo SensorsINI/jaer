@@ -4,6 +4,7 @@
  */
 package ch.unizh.ini.jaer.projects.virtualslotcar;
 
+import ch.unizh.ini.jaer.projects.virtualslotcar.SlotcarTrack;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Point;
@@ -145,7 +146,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
     private GLCanvas glCanvas;
     private ChipCanvas canvas;
     TobiLogger learningLogger = new TobiLogger("HumanVsComputerThrottleController", "throttle settings log for slot car racer during learning");
-    private SlotcarTrack track = new SlotcarTrack();
+    private SlotcarTrack track;
     private String trackFileName = getString("trackFileName", null);
 
     Histogram2DFilter computerMask = null, humanMask = null; // later refer to enclosed filters in CarTrackers
@@ -155,6 +156,8 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
 
     public HumanVsComputerThrottleController(AEChip chip) {
         super(chip);
+        track = new SlotcarTrack(chip);
+
         final String s = "EvolutionaryThrottleController";
         setPropertyTooltip(s, "defaultThrottle", "default throttle setting if no car is detected; also starting throttle after resetting learning and minimum allowed throttle");
         setPropertyTooltip(s, "fractionOfTrackToPunish", "fraction of track to reduce throttle and mark for no reward");
@@ -818,7 +821,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
         if (isTextEnabled()) {
             String s;
             s = String.format("HumanVsComputerThrottleController\nDefine track with TrackDefineFilter and load that track here.\nState: %s\nLearning %s\ncomputer/human trackPosition: %d|%d/%d\nThrottle: %8.3f\nLast throttle reduction factor: %.2f\nComputer %s\nHuman %s\n%s\n%d laps remaining\nLast Winner: %s", state.toString(), learningEnabled ? "Enabled" : "Disabled", computerTrackPosition, humanTrackPosition, track == null ? 0 : getTrack().getNumPoints(), throttle.throttle, throttleReductionFactor, computerLapTimer.toString(), humanLapTimer.toString(), standings(), raceLapsRemaining, winner.toString());
-            MultilineAnnotationTextRenderer.setScale(.25f);
+            MultilineAnnotationTextRenderer.setFontSize(5);
             MultilineAnnotationTextRenderer.renderMultilineString(s);
         }
         if (showTrack && (track != null)) {
@@ -1606,8 +1609,7 @@ public class HumanVsComputerThrottleController extends AbstractSlotCarController
      */
     private void drawThrottlePainter(GLAutoDrawable drawable) {
         if (isSelected() && (getTrack() != null) && (getTrack().getPointList() != null) && (currentProfile != null)) {
-            Point mp = glCanvas.getMousePosition();
-            Point p = canvas.getChipPixelFromMousePoint(mp);
+            Point p = canvas.getMousePixel();
             if (p == null) {
                 return;
             }

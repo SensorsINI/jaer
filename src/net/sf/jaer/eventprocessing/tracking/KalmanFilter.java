@@ -35,7 +35,6 @@ import com.jogamp.opengl.util.gl2.GLUT;
 
 public class KalmanFilter extends EventFilter2D implements FrameAnnotater {//, PreferenceChangeListener {
 
-    //    static Preferences prefs=Preferences.userNodeForPackage(KalmanFilter.class);
     List<Cluster> clusters;
     AEChip chip;
     AEChipRenderer renderer;
@@ -307,7 +306,7 @@ public class KalmanFilter extends EventFilter2D implements FrameAnnotater {//, P
             //System.out.println("predicted P:");Matrix.print(Pp);
         }
 
-        private float mixingFactor = tracker.getMixingFactor();
+        private float mixingFactor = tracker.getLocationMixingFactor();
 
         private void updateVariances() {
             if (useDynamicVariances) {

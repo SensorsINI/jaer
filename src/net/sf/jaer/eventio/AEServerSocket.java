@@ -37,7 +37,7 @@ This AEServerSocket is a Thread and it must be started after construction to all
  */
 public class AEServerSocket extends Thread {
 
-    static Preferences prefs = Preferences.userNodeForPackage(AEServerSocket.class);
+    static Preferences prefs = net.sf.jaer.JaerConstants.PREFS_ROOT;
     static Logger log = Logger.getLogger("net.sf.jaer");
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
     public static final int DEFAULT_BUFFERED_STREAM_SIZE_BYTES = 8192;

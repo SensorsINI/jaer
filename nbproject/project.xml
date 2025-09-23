@@ -25,6 +25,8 @@
             <word>clazz</word>
             <word>configurability</word>
             <word>Delbruck</word>
+            <word>denoise</word>
+            <word>denoiser</word>
             <word>Downsampling</word>
             <word>DVS</word>
             <word>INI</word>
@@ -39,6 +41,7 @@
             <word>rosbags</word>
             <word>Tmpdiff</word>
             <word>Tobi</word>
+            <word>unzoomed</word>
         </spellchecker-wordlist>
     </configuration>
 </project>

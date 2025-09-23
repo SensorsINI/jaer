@@ -12,6 +12,7 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -36,7 +37,7 @@ public class SmartEyeTDS implements UDPInterface, HardwareInterface, AEMonitorIn
 	//TODO: Make SmartEyeTDS an instance of BiasgenHardwareInterface
 
 	/** Used to store preferences, e.g. the default firmware download file for blank devices */
-	protected static Preferences prefs = Preferences.userNodeForPackage(SmartEyeTDS.class);
+    private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE.node("SmartEyeTDS");
 	/** This support can be used to register this interface for property change events */
 	public PropertyChangeSupport support = new PropertyChangeSupport(this);
 

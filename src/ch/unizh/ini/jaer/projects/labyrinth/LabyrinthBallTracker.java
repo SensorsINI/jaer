@@ -265,7 +265,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
 
     public Point2D.Float getBallVelocityPPS() {
         if ((ball != null) && ball.isVisible()) {
-            return ball.getVelocityPPS();
+            return ball.getVelocity();
         } else {
             return zeroVelocity;
         }
@@ -282,7 +282,7 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
             velyfilter.setInternalValue(0);
             return null;
         }
-        Point2D.Float vel = ball.getVelocityPPS();
+        Point2D.Float vel = ball.getVelocity();
         ballVel.setLocation(velxfilter.filter(vel.x), velyfilter.filter(vel.y));
         //        System.out.println(vel.x+"\t\t"+velxfilter.getValue());
         return ballVel;
@@ -342,11 +342,11 @@ public class LabyrinthBallTracker extends EventFilter2D implements FrameAnnotate
     }
 
     public float getMixingFactor() {
-        return tracker.getMixingFactor();
+        return tracker.getLocationMixingFactor();
     }
 
     public void setMixingFactor(float mixingFactor) {
-        tracker.setMixingFactor(mixingFactor);
+        tracker.setLocationMixingFactor(mixingFactor);
     }
 
     public float getMinMixingFactor() {

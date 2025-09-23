@@ -168,4 +168,14 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
      */
     public void setCurrentStartTimestamp(int currentStartTimestamp);
 
+    /** Adds or removes a marker at current position() of AEFileInputStream.
+     * 
+     * @return true if marker added, false if one is removed.
+     */
+    public boolean toggleMarker();
+
+    public boolean jumpToNextMarker();
+
+    public boolean jumpToPrevMarker();
+
 }

@@ -98,7 +98,7 @@ public class GpsTimestamps extends EventFilter2D implements FrameAnnotater, Prop
         GL2 gl = drawable.getGL().getGL2();  // use it to draw, see zillions of examples in jaer filters (use find usage)
 
         MultilineAnnotationTextRenderer.setColor(Color.yellow);
-        MultilineAnnotationTextRenderer.setFontSize(28);
+        MultilineAnnotationTextRenderer.setFontSize(9);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(0.8f * chip.getSizeY());
         String s = String.format("last absolute time is XXX\nhere is another line, last gps timestamp=%d", lastGpsTimestampUs);
         MultilineAnnotationTextRenderer.renderMultilineString(s);

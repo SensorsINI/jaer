@@ -41,8 +41,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class EyeTracker extends EventFilter2D implements FrameAnnotater {
 
-//    static Preferences prefs=Preferences.userNodeForPackage(EyeTracker.class);
-//    ChipRenderer renderer;
     private float pupilRadius = getPrefs().getFloat("EyeTracker.pupilRadius", 10f);
     private float irisRadius = getPrefs().getFloat("EyeTracker.irisRadius", 20f);
 //    private float eyeLidDistance=prefs.getFloat("EyeTracker.eyeLidDistance",20f);

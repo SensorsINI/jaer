@@ -50,6 +50,8 @@ import net.sf.jaer.util.WindowSaver;
 import com.jogamp.opengl.GLAutoDrawable;
 import com.jogamp.opengl.JoglVersion;
 import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.prefs.BackingStoreException;
 
 /**
  * Used to show multiple chips simultaneously in separate instances of
@@ -71,7 +73,7 @@ public class JAERViewer {
      * Root preferences object for jAER
      *
      */
-    protected static Preferences prefs;
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT;
     /**
      * Root Logger
      *
@@ -81,7 +83,7 @@ public class JAERViewer {
     private boolean syncEnabled = prefs.getBoolean("JAERViewer.syncEnabled", false); // default false so that all viewers are independent
     ArrayList<AbstractButton> syncEnableButtons = new ArrayList<AbstractButton>(); // list of all viewer sync enable buttons, used here to change boolean state because this is not property of Action that buttons understand
     private ToggleSyncEnabledAction toggleSyncEnabledAction = new ToggleSyncEnabledAction();
-
+    
     public ToggleSyncEnabledAction getToggleSyncEnabledAction() {
         return toggleSyncEnabledAction;
     }
@@ -99,7 +101,6 @@ public class JAERViewer {
     static public long globalTime1, globalTime2, globalTime3;
     private SyncPlayer syncPlayer = null; // add a sync player once we have a viewer to assign it to
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
-
 
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode = false;
@@ -127,7 +128,7 @@ public class JAERViewer {
 //        GLProfile.initSingleton(); // recommneded by https://sites.google.com/site/justinscsstuff/jogl-tutorial-2 especially for linux systems
 //        final GLCapabilities caps = new GLCapabilities(GLProfile.getDefault());
 //        final GLProfile glp = GLProfile.getMaximum(true);// FixedFunc(true);
-////        final GLProfile glp = caps.getGLProfile();
+        ////        final GLProfile glp = caps.getGLProfile();
 //        final boolean createNewDevice = true; // use 'own' display device!
 //        sharedDrawable = GLDrawableFactory.getFactory(glp).createDummyAutoDrawable(null, createNewDevice, caps, null);
 //        sharedDrawable.display(); // triggers GLContext object creation and native realization. sharedDrawable is a static variable that can be used by all AEViewers and file preview dialogs
@@ -156,16 +157,11 @@ public class JAERViewer {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                log.info("JAERViewer shutdown hook - saving window settings");
-                if (windowSaver != null) {
-                    try {
-                        windowSaver.saveSettings();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
+                System.out.println("JAERViewer shutdown hook - start of shutdown");
+                System.out.flush();
                 if ((viewers != null) && !viewers.isEmpty()) {
-                    log.info("saving list of AEViewer chip classes");
+                    System.out.println("JAERViewer shutdown hook - shutting down AEViewers");
+                    System.out.flush();
                     try {
 
                         ArrayList<String> viewerChipClassNames = new ArrayList<String>();
@@ -181,12 +177,37 @@ public class JAERViewer {
                         // Get the bytes of the serialized object
                         byte[] buf = bos.toByteArray();
                         prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
+                        prefs.flush();
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        System.err.println(String.format("could not store class names: %s", e.toString()));
                     } catch (IllegalArgumentException e2) {
-                        log.warning("tried to store too many classes in last chip classes");
+                        System.err.println("tried to store too many classes in last chip classes? " + e2.toString());
+                    } catch (BackingStoreException ex) {
+                        System.err.println("could not flush the preferences holding AEChip class names: " + ex.toString());
+                    }
+                    System.out.println("JAERViewer shutdown hook - saving possible open data logging");
+                    try {
+                        for (AEViewer v : viewers) {
+                            if (v.getLoggingFile() != null) {
+                                v.stopLogging(true);
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println(String.format("stopping logging, caught Exception %s", e.toString()));
                     }
                 }
+
+                System.out.println("JAERViewer shutdown hook - saving window settings");
+                if (windowSaver != null) {
+                    try {
+                        windowSaver.saveSettings();
+                    } catch (Exception e) {
+                        System.err.println(String.format("could not save window settings: %s", e.toString()));
+                    }
+                }
+                System.out.println("JAERViewer shutdown hook - end of shutdown");
+                System.out.flush();
+
             }
         });
     }
@@ -306,10 +327,10 @@ public class JAERViewer {
     }
 
     public void addViewer(AEViewer viewer) {
-        if(syncPlayer==null){
-            syncPlayer=new SyncPlayer(viewer, this);
-            log.info("added "+syncPlayer+" to first viewer "+this);
-        } 
+        if (syncPlayer == null) {
+            syncPlayer = new SyncPlayer(viewer, this);
+            log.info("added " + syncPlayer + " to first viewer " + this);
+        }
         getViewers().add(viewer);
         viewer.addWindowListener(new java.awt.event.WindowAdapter() {
 
@@ -456,8 +477,8 @@ public class JAERViewer {
                 for (AEViewer v : viewers) {
                     v.getRecentFiles().addFile(indexFile);
                 }
-                log.info("Saved index file " + indexFile.getAbsolutePath());
-//                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getAbsolutePath());
+                log.info("Saved index file " + indexFile.getCanonicalPath());
+//                JOptionPane.showMessageDialog(null,"Saved index file " + indexFile.getCanonicalPath());
             }
         } catch (IOException e) {
             log.warning("creating index file " + indexFile);
@@ -562,6 +583,19 @@ public class JAERViewer {
             }
         }
     }
+    
+    /** Returns true if any AEViewer (or its HardwareConfiguration or FilterSetting) windows are active, i.e. has focus
+     * 
+     * @return true if some jAER window has focus
+     */
+    public boolean isAnyWindowActive(){
+        for(AEViewer v:viewers){
+            if(v.isAnyWindowActive()){
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Controls whether multiple viewers are synchronized for logging and
@@ -640,7 +674,6 @@ public class JAERViewer {
         log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."
                 + " \nThe current value of java.util.logging.config.file is " + System.getProperty("java.util.logging.config.file")
                 + "\nEdit this file to configure logging." + "\nThe value of java.io.tmpdir is " + System.getProperty("java.io.tmpdir"));
-        prefs = Preferences.userNodeForPackage(JAERViewer.class);
         log.info("Preferences come from root located at " + prefs.absolutePath());
         Logger root = log;
         while (root.getParent() != null) {
@@ -648,7 +681,7 @@ public class JAERViewer {
         }
         log.info("logging configuration read from java.util.logging.config.file=" + System.getProperty("java.util.logging.config.file"));
         for (Handler h : root.getHandlers()) {
-            log.info(String.format("Handler %s logging with Level=%s",h,h.getLevel()));
+            log.info(String.format("Handler %s logging with Level=%s", h, h.getLevel()));
 //            if (h instanceof ConsoleHandler) {
 //                log.info("debug logging to console with Level=" + ((ConsoleHandler) h).getLevel());
 //            } else if (h instanceof FileHandler) {

@@ -27,27 +27,29 @@ import java.awt.geom.Rectangle2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.prefs.Preferences;
 import net.sf.jaer.util.DrawGL;
 import org.apache.commons.text.WordUtils;
+import static org.apache.tools.ant.util.ScriptManager.javax;
 
 /**
  * A abstract class that displays AE data in a ChipCanvas using OpenGL.
  *
  * @author tobi
  */
-public abstract class DisplayMethod  implements PropertyChangeListener {
+public abstract class DisplayMethod implements PropertyChangeListener {
 
+    protected Preferences prefs;
     private ChipCanvas chipCanvas;
     protected GLUT glut; // GL extensions
     protected GLU glu; // GL utilities
     protected Chip2D chip;
-    protected ChipCanvas.Zoom zoom;
     protected Logger log = Logger.getLogger("net.sf.jaer");
     private JMenuItem menuItem;
     private ArrayList<FrameAnnotater> annotators = new ArrayList<>();
     private String statusChangeString = null;
     private long statusChangeStartTimeMillis = 0;
-    private final long statusChangeDisplayTimeMillis = 1000;
+    private int statusChangeDisplayTimeMillis;
     /**
      * Provides PropertyChangeSupport for all DisplayMethods
      */
@@ -60,10 +62,12 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
      */
     public DisplayMethod(ChipCanvas parent) {
         chipCanvas = parent;
+        prefs = parent.getChip().getPrefs();
+        statusChangeDisplayTimeMillis = prefs.getInt("statusChangeDisplayTimeMillis", 1000);
+
         glut = chipCanvas.glut;
         glu = chipCanvas.glu;
         chip = chipCanvas.getChip();
-        zoom = chipCanvas.getZoom();
     }
 
     /**
@@ -72,7 +76,7 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
      * pixels (address by 1 increments), and sets the origin to the lower left
      * corner of the screen with coordinates increase upwards and to right.
      *
-     * @param drawable the drawable passed in.
+     * @param drawable the glCanvas passed in.
      * @return the context to draw in.
      *
      */
@@ -144,7 +148,7 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
     }
 
     /**
-     * removes an annotator to the drawn canvas.
+     * removes an annotator to the drawn glCanvas.
      *
      * @param annotator the object that will annotate the displayed data
      */
@@ -190,12 +194,12 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
      * @param drawable the OpenGL context
      */
     protected void displayStatusChangeText(GLAutoDrawable drawable) {
-        if (statusChangeString == null) {
+        if (statusChangeString == null || statusChangeDisplayTimeMillis <= 0) {
             return;
         }
         long now = System.currentTimeMillis();
         final int WRAP_LEN = 24;
-        if ((now - statusChangeStartTimeMillis) > statusChangeDisplayTimeMillis * (1 + (statusChangeString.length() / WRAP_LEN))) {
+        if ((now - statusChangeStartTimeMillis) > getStatusChangeDisplayTimeMillis() * (1 + (statusChangeString.length() / WRAP_LEN))) {
             statusChangeString = null;
             return;
         }
@@ -205,41 +209,40 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
         }
         String[] ss = s.split("\n");
         int nlines = ss.length;
-        int maxlenidx=Integer.MIN_VALUE;
-        int idx=0;
-        for(String sss:ss){
-            if(sss.length()>maxlenidx){
-                maxlenidx=idx;
+        int maxlenidx = Integer.MIN_VALUE;
+        int idx = 0;
+        for (String sss : ss) {
+            if (sss.length() > maxlenidx) {
+                maxlenidx = idx;
                 idx++;
             }
         }
 
-        int fontsize = Math.round(16*(chip.getSizeX()/346f)); // heuristic to scale font based on empirical estimate for DAVIS346
+        int fontsize = Math.round(8 * (chip.getSizeX() / 346f)); // heuristic to scale font based on empirical estimate for DAVIS346
         // if font is too small, then make a larger one and scale all the drawing
-        float scale=1;
-        if(fontsize<10){
-            fontsize*=2;
-            scale=.5f;
+        float scale = 1;
+        if (fontsize < 10) {
+            fontsize *= 2;
+            scale = .5f;
         }
 //        log.fine(String.format("Chose fontsize=%d and scale=%f for chip with %d horizontal pixels",fontsize,scale,chip.getSizeX()));
         GL2 gl = drawable.getGL().getGL2();
         // we want status display to fill about 1/2 of width of chip area, so choose font size appropriately.
         TextRenderer renderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontsize), true, true);
-        DrawGL.setTextRenderer(renderer);
         try {
             gl.glPushMatrix();
             gl.glScalef(scale, scale, scale); // everything is scaled (maybe) down by this, e.g. 0.5 for DVS128
             Rectangle2D r = renderer.getBounds(ss[maxlenidx]); // get bounds of max width string
-            float h1 = (float) (r.getHeight()*scale); // height of this line
-            final float linespace = (float) (h1 * 1.25f); // line spacing as factor of line height
+            float h1 = (float) (r.getHeight() * scale); // height of this line
+            final float linespace = (float) (h1 * 1.5f); // line spacing as factor of line height
             float ht = (float) h1 * nlines; // total height of multiline string
-            float w = (float) (r.getWidth()*scale); // width of widest line
+            float w = (float) (r.getWidth() * scale); // width of widest line
             float ypos = (float) (chip.getSizeY() / 2 / scale) + (ht / 2);
-            float xpos = (float) (chip.getSizeX() / 2 )/scale; // xpos is center because alignment is 0.5 below
+            float xpos = (float) (chip.getSizeX() / 2) / scale; // xpos is center because alignment is 0.5 below
 //            log.info(String.format("ypos=%.1f",ypos));
             float y = ypos;
             for (String sss : ss) {
-                DrawGL.drawStringDropShadow(gl, fontsize, xpos, y, .5f, Color.white, sss); // use alignment 0.5f to center, font size determined by chip pixels
+                DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, sss); // use alignment 0.5f to center, font size determined by chip pixels
                 y -= linespace;
             }
             gl.glPopMatrix();
@@ -272,5 +275,21 @@ public abstract class DisplayMethod  implements PropertyChangeListener {
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         // does nothing by default
+    }
+
+    /**
+     * @return the statusChangeDisplayTimeMillis
+     */
+    public int getStatusChangeDisplayTimeMillis() {
+        return statusChangeDisplayTimeMillis;
+    }
+
+    /**
+     * @param statusChangeDisplayTimeMillis the statusChangeDisplayTimeMillis to
+     * set
+     */
+    public void setStatusChangeDisplayTimeMillis(int statusChangeDisplayTimeMillis) {
+        this.statusChangeDisplayTimeMillis = statusChangeDisplayTimeMillis;
+        prefs.putInt("statusChangeDisplayTimeMillis", statusChangeDisplayTimeMillis);
     }
 }

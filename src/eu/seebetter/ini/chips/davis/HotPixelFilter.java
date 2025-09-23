@@ -21,10 +21,11 @@ import java.awt.Font;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.filter.AbstractNoiseFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
 
@@ -38,18 +39,20 @@ import net.sf.jaer.util.DrawGL;
  */
 @Description("Cheaply suppresses (filters out) hot pixels from DVS; ie pixels that continuously fire events when when the visual input is idle.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
+public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotater {
 
-    private int numHotPixels = getInt("numHotPixels", 30);
+    @Preferred
+    private int numHotPixelsMax = getInt("numHotPixelsMax", 1000);
     private final HotPixelSet hotPixelSet = new HotPixelSet();
+    @Preferred
     private boolean showHotPixels = getBoolean("showHotPixels", true);
     private boolean showHotPixelsNumber = getBoolean("showHotPixelsNumber", true);
-    private int showHotPixelsFontSize = getInt("showHotPixelsFontSize", 36);
     private float showHotPixelsNumberYLocation = getFloat("showHotPixelsNumberYLocation", 0f);
-    private float showHotPixelsAlpha = getFloat("showHotPixelsAlpha", .25f);
-    private int showHotPixelsRadius = getInt("showHotPixelsRadius", 0);
+    private float showHotPixelsAlpha = getFloat("showHotPixelsAlpha", .5f);
+    private int showHotPixelsRadius = getInt("showHotPixelsRadius", 1);
     private CollectedAddresses collectedAddresses = null;
-    private int learnTimeMs = getInt("learnTimeMs", 20);
+    @Preferred
+    private int learnTimeMs = getInt("learnTimeMs", 500);
     private boolean learnHotPixels = false, learningStarted = false;
     private int learningStartedTimestamp = 0;
     protected boolean use2DBooleanArray = getBoolean("use2DBooleanArray", false);
@@ -57,7 +60,9 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
     /**
      * Stores a single hot pixel, with x,y,address and event count collected
-     * during sampling
+     * during sampling. The hashcode of the pixel is exactly the event address,
+     * so users may need to ensure that the address is unique for events that
+     * should be different.
      */
     private static class HotPixel implements Serializable { // static to avoid having this reference to enclosing class
 
@@ -125,7 +130,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
         void storePrefs(HotPixelFilter f) {
             try {
                 // Serialize to a byte array
-                f.putObject("HotPixelFilter.HotPixelSet", this);
+                f.putObject("HotPixelSet", this);
             } catch (final Exception e) {
                 e.printStackTrace();
             }
@@ -143,7 +148,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
         void loadPrefs(HotPixelFilter f) {
             try {
-                HotPixelSet hotPixelSet = (HotPixelSet) f.getObject("HotPixelFilter.HotPixelSet", new HotPixelSet());
+                HotPixelSet hotPixelSet = (HotPixelSet) f.getObject("HotPixelSet", new HotPixelSet());
                 if (hotPixelSet.isEmpty()) {
                     f.log.info("no hot pixels loaded");
                 } else {
@@ -175,28 +180,34 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
 
     public HotPixelFilter(final AEChip chip) {
         super(chip);
-        setPropertyTooltip("numHotPixels", "maximum number of hot pixels");
-        setPropertyTooltip("learnTimeMs", "how long to accumulate events during learning of hot pixels");
-        setPropertyTooltip("learnHotPixels", "learn which pixels are hot");
-        setPropertyTooltip("clearHotPixels", "clear list of hot pixels");
-        setPropertyTooltip("showHotPixels", "<html>Label the hot pixels graphically;<br>pixels can have both ON and OFF hot pixels.<br>Only if both are hot is the alpha 0.5");
-        setPropertyTooltip("showHotPixelsNumber", "Show number of hot pixels and percentage of all cells");
-        setPropertyTooltip("showHotPixelsFontSize", "Font size for number of hot pixels");
-        setPropertyTooltip("showHotPixelsNumberYLocation", "y location of text as fraction of array size");
-        setPropertyTooltip("showHotPixelsAlpha", "Alpha transparency used to draw hot pixels");
-        setPropertyTooltip("showHotPixelsRadius", "Radius used to render hot pixels (make >0 to show only a few)");
-        setPropertyTooltip("use2DBooleanArray",
-                "use a 2D boolean array to filter rather than a Set; more efficient for large numbers of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "numHotPixelsMax", "maximum number of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "learnTimeMs", "how long to accumulate events during learning of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "doLearnHotPixels", "learn which pixels are hot");
+        setPropertyTooltip(TT_FILT_CONTROL, "doClearHotPixels", "clear list of hot pixels");
+        setPropertyTooltip(TT_FILT_CONTROL, "use2DBooleanArray", "use a 2D boolean array to filter rather than a Set; more efficient for large numbers of hot pixels");
+        setPropertyTooltip(TT_DISP, "showHotPixels", "<html>Label the hot pixels graphically;<br>pixels can have both ON and OFF hot pixels.<br>Only if both are hot is the alpha 0.5");
+        setPropertyTooltip(TT_DISP, "showHotPixelsNumber", "Show number of hot pixels and percentage of all cells");
+        setPropertyTooltip(TT_DISP, "showHotPixelsFontSize", "Font size for number of hot pixels");
+        setPropertyTooltip(TT_DISP, "showHotPixelsNumberYLocation", "y location of text as fraction of array size");
+        setPropertyTooltip(TT_DISP, "showHotPixelsAlpha", "Alpha transparency used to draw hot pixels");
+        setPropertyTooltip(TT_DISP, "showHotPixelsRadius", "Radius used to render hot pixels (make >0 to show only a few)");
+        hideProperty("correlationTimeS");
+        hideProperty("sigmaDistPixels");
+        hideProperty("subsampleBy");
+        hideProperty("letFirstEventThrough");
+        hideProperty("antiCasualEnabled");
+        hideProperty("adaptiveFilteringEnabled");
+
     }
 
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
-        // checkOutputPacketEventType(in);
-        // OutputEventIterator outItr = getOutputPacket().outputIterator();
+        super.filterPacket(in);
         for (final BasicEvent e : in) {
             if ((e == null) || e.isSpecial() || e.isFilteredOut() || (e.x >= chip.getSizeX()) || (e.y >= chip.getSizeY())) {
                 continue; // don't learn special events
             }
+            totalEventCount++;
             if (learnHotPixels) {
                 if (learningStarted) {
                     // initialize collection of addresses to be filled during learning
@@ -209,7 +220,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                     learnHotPixels = false;
                     // find largest n counts and call them hot
                     final Set<Entry<Integer, HotPixel>> collectedAddressesEntrySet = collectedAddresses.entrySet(); // the entry set are the HotPixels
-                    for (int i = 0; i < numHotPixels; i++) {
+                    for (int i = 0; i < numHotPixelsMax; i++) {
                         int max = 0;
                         HotPixel hp = null;
 
@@ -231,7 +242,7 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
                             }
                             hp.count = 0; // clear it's count so next time we look for max firing pixel, this one is not max anymore
                         }
-                    } // look for next not pixel, up to numHotPixels
+                    } // look for next not pixel, up to numHotPixelsMax
                     collectedAddresses = null; // free memory
                     hotPixelSet.storePrefs(this);
                     if (use2DBooleanArray) {
@@ -250,9 +261,11 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
             }
             // process event
             if (!use2DBooleanArray && hotPixelSet.contains(e)) {
-                e.setFilteredOut(true);
+                filterOut(e);
             } else if (use2DBooleanArray && (hotPixelArray != null) && hotPixelArray[e.x][e.y]) {
-                e.setFilteredOut(true);
+                filterOut(e);
+            } else {
+                filterIn(e);
             }
             // if (e.special || !hotPixelSet.contains(e) ) {
             // if(e.special){
@@ -292,21 +305,25 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
         if (use2DBooleanArray) {
             fillHotPixelArrayFromHotPixelSet();
         }
+        removeNoiseFilterControl();
     }
 
     /**
-     * @return the numHotPixels
+     * @return the numHotPixelsMax
      */
-    public int getNumHotPixels() {
-        return numHotPixels;
+    public int getNumHotPixelsMax() {
+        return numHotPixelsMax;
     }
 
     /**
-     * @param numHotPixels the numHotPixels to set
+     * @param numHotPixelsMax the numHotPixelsMax to set
      */
-    public void setNumHotPixels(final int numHotPixels) {
-        this.numHotPixels = numHotPixels;
-        putInt("numHotPixels", numHotPixels);
+    public void setNumHotPixelsMax(final int numHotPixelsMax) {
+        this.numHotPixelsMax = numHotPixelsMax;
+        putInt("numHotPixelsMax", numHotPixelsMax);
+        int n = getNumHotPixelsMax();
+        float percent = 100 * (float) n / (chip.getNumCells());
+        getFilterPanel().displayTooltip("numHotPixelsMax", String.format("%.1f%% of all event addresses", percent));
     }
 
     synchronized public void doLearnHotPixels() {
@@ -316,9 +333,16 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
     }
 
     @Override
+    public String infoString() {
+        String s = camelCaseClassname();
+        return String.format("%s: numHot=%,d/%,d max", s, getCurrentNumHotPixels(), numHotPixelsMax);
+    }
+
+    @Override
     public void annotate(final GLAutoDrawable drawable) {
+        super.annotate(drawable);
         final GL2 gl = drawable.getGL().getGL2();
-        if (!showHotPixels) {
+        if (showHotPixels) {
             try {
                 gl.glEnable(GL.GL_BLEND);
                 gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
@@ -335,18 +359,17 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
             }
         }
         if (showHotPixelsNumber) {
-            int n = hotPixelSet.size();
+            int n = getCurrentNumHotPixels();
             float percent = 100 * (float) n / (chip.getNumCells());
             String s = String.format("%,d hot pixels (%.1f%%)", n, percent);
-            //GL2 gl, int fontSize, float x, float y, float alignmentX, Color color, String s
-//            DrawGL.drawStringDropShadow(gl, getShowHotPixelsFontSize(), 1, chip.getSizeY() * .01f, 0, Color.getHSBColor(.5f, 1, 1), s);
-            final float scale = .2f;
-            TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, showHotPixelsFontSize), true, true);
-            textRenderer.begin3DRendering();
-            textRenderer.setColor(.3f, .3f, 1, 1);
-            textRenderer.draw3D(s, 1, chip.getSizeY() * showHotPixelsNumberYLocation, 0, scale); // x,y,z, scale factor, make scale small and font big for clear rendering
-            textRenderer.end3DRendering();
+            gl.glPushMatrix();
+            DrawGL.drawStringDropShadow(getShowFilteringStatisticsFontSize(), 1, chip.getSizeY() * getShowHotPixelsNumberYLocation(), 0, Color.white, s);
+            gl.glPopMatrix();
         }
+    }
+
+    protected int getCurrentNumHotPixels() {
+        return hotPixelSet.size();
     }
 
     /**
@@ -453,21 +476,6 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
     }
 
     /**
-     * @return the showHotPixelsFontSize
-     */
-    public int getShowHotPixelsFontSize() {
-        return showHotPixelsFontSize;
-    }
-
-    /**
-     * @param showHotPixelsFontSize the showHotPixelsFontSize to set
-     */
-    public void setShowHotPixelsFontSize(int showHotPixelsFontSize) {
-        this.showHotPixelsFontSize = showHotPixelsFontSize;
-        putInt("showHotPixelsFontSize", showHotPixelsFontSize);
-    }
-
-    /**
      * @return the showHotPixelsNumberYLocation
      */
     public float getShowHotPixelsNumberYLocation() {
@@ -485,4 +493,10 @@ public class HotPixelFilter extends EventFilter2D implements FrameAnnotater {
         this.showHotPixelsNumberYLocation = showHotPixelsNumberYLocation;
         putFloat("showHotPixelsNumberYLocation", showHotPixelsNumberYLocation);
     }
+
+    @Override
+    public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
+        // do nothing, HotPixelFilter does not rely on timestamp image
+    }
+
 }

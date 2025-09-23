@@ -21,7 +21,6 @@ import net.sf.jaer.biasgen.VDAC.VPot;
  */
 public class CochleaAMS1bBasicPanel extends javax.swing.JPanel implements PropertyChangeListener {
 
-    Preferences prefs = Preferences.userNodeForPackage(CochleaAMS1bBasicPanel.class);
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     CochleaAMS1b chip;
     private CochleaAMS1b.Biasgen biasgen;
@@ -342,6 +341,5 @@ private void formAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 }

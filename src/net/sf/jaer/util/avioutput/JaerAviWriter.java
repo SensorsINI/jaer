@@ -11,10 +11,12 @@ import com.jogamp.opengl.GLAutoDrawable;
 import java.awt.Color;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.DrawGL;
 
 /**
  * Writes AVI file from displayed AEViewer frames, The AVI file is in RAW
@@ -26,8 +28,8 @@ import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class JaerAviWriter extends AbstractAviWriter {
 
-    private boolean showTimeFactor = getBoolean("showTimeFactor", false);
-    private float showTimeFactorTextScale = getFloat("showTimeFactorTextScale", .2f);
+    @Preferred private boolean showTimeFactor = getBoolean("showTimeFactor", false);
+    private int fontSize = getInt("fontSize", 9);
     private float timeExpansionFactor = 1;
     
     private volatile boolean writeFrameNowFlag=false;
@@ -35,7 +37,7 @@ public class JaerAviWriter extends AbstractAviWriter {
     public JaerAviWriter(AEChip chip) {
         super(chip);
         setPropertyTooltip("showTimeFactor", "Displays the realtime slowdown or speedup factor");
-        setPropertyTooltip("showTimeFactorTextScale", "Font size for time scaling factor");
+        setPropertyTooltip("fontSize", "Font size for time scaling factor");
     }
 
     @Override
@@ -58,10 +60,7 @@ public class JaerAviWriter extends AbstractAviWriter {
             } else {
                 s = String.format("%.1fX speed-up", timeExpansionFactor);
             }
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .1f);
-            MultilineAnnotationTextRenderer.setScale(showTimeFactorTextScale);
-            MultilineAnnotationTextRenderer.setColor(Color.blue);
-            MultilineAnnotationTextRenderer.renderMultilineString(s);
+            DrawGL.drawString(fontSize,0,0,0,Color.white,s);
         }
 
         if (isRecordingActive() && isWriteEnabled() && writeFrameNowFlag) {
@@ -95,18 +94,18 @@ public class JaerAviWriter extends AbstractAviWriter {
     }
 
     /**
-     * @return the showTimeFactorTextScale
+     * @return the fontSize
      */
-    public float getShowTimeFactorTextScale() {
-        return showTimeFactorTextScale;
+    public int getFontSize() {
+        return fontSize;
     }
 
     /**
-     * @param showTimeFactorTextScale the showTimeFactorTextScale to set
+     * @param fontSize the fontSize to set
      */
-    public void setShowTimeFactorTextScale(float showTimeFactorTextScale) {
-        this.showTimeFactorTextScale = showTimeFactorTextScale;
-        putFloat("showTimeFactorTextScale", showTimeFactorTextScale);
+    public void setFontSize(int fontSize) {
+        this.fontSize = fontSize;
+        putInt("fontSize", fontSize);
     }
 
 }

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <updateDescriptor baseUrl="">
-  <entry targetMediaFileId="38" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_macos_2_6_0.dmg" newVersion="2.6.0" newMediaFileId="38" fileSize="854085767" md5Sum="238e9e34729f6fb13e72d932dd122972" sha256Sum="ebb8d6ec25dfac5b45549fd92c8ecd2f1431f066a94c99b49155cd7ae1856436" bundledJre="macos-amd64-21.tar.gz" archive="false" singleBundle="false">
+  <entry targetMediaFileId="38" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_macos_2_7_2.dmg" newVersion="2.7.2" newMediaFileId="38" fileSize="1045500039" md5Sum="96dfc7138002702a77521d4b66859e65" sha256Sum="1827ca83b30bd07b66c6fb00cb408baf40cfd2d84454c640e2b88f73788213c1" bundledJre="macos-amd64-21.tar.gz" archive="false" singleBundle="false">
     <comment language="en" />
   </entry>
-  <entry targetMediaFileId="37" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_unix_2_6_0.sh" newVersion="2.6.0" newMediaFileId="37" fileSize="853816739" md5Sum="1b6d974ed56b76029ae629f29286fea6" sha256Sum="b349f8597e01836c155acdae5ab6768eb7ea921c58dece4d825d2a6c827f8ebd" bundledJre="linux-amd64-21.tar.gz" archive="false" singleBundle="false">
+  <entry targetMediaFileId="37" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_unix_2_7_2.sh" newVersion="2.7.2" newMediaFileId="37" fileSize="1043600345" md5Sum="b55e7cfb1305d9d662c2e201e9f9d187" sha256Sum="78b365bc6bdfe2dd882ba94220e715a8fafbf3bec8cb96ff4af07887494bfef4" bundledJre="linux-amd64-21.tar.gz" archive="false" singleBundle="false">
     <comment language="en" />
   </entry>
-  <entry targetMediaFileId="26" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_windows-x64_2_6_0.exe" newVersion="2.6.0" newMediaFileId="26" fileSize="852507648" md5Sum="b7be4b8f01d08f1ac2ff38bd2be797f0" sha256Sum="bde5cfeb2b6b49364a18f5afba329dcb95cc5cc88ec42ec46ff090b919d0da62" bundledJre="windows-amd64-21.tar.gz" archive="false" singleBundle="false">
+  <entry targetMediaFileId="26" updatableVersionMin="2.0" updatableVersionMax="" fileName="jAER_windows-x64_2_7_2.exe" newVersion="2.7.2" newMediaFileId="26" fileSize="1041972736" md5Sum="5db4aefd46166902c60ad1b39f64f39f" sha256Sum="7d1c754568b99fbd3a81c49f26c72a86c0b211793fb4167f4db4f161342521e9" bundledJre="windows-amd64-21.tar.gz" archive="false" singleBundle="false">
     <comment language="en" />
   </entry>
 </updateDescriptor>

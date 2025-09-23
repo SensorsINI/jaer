@@ -21,11 +21,11 @@ public class Davis640 extends DavisBaseCamera {
 		setSizeX(Davis640.WIDTH_PIXELS);
 		setSizeY(Davis640.HEIGHT_PIXELS);
 
-		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
-
 		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
+
+		setBiasgen(davisConfig = new DavisTowerBaseConfig(this));
 
 		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
 		setApsLastPixelReadOut(new Point(0, 0));

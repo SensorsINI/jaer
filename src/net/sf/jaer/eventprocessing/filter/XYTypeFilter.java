@@ -38,6 +38,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -52,7 +53,7 @@ import net.sf.jaer.util.DrawGL;
  */
 @Description("Filters a region of interest (ROI) defined by x, y, and event type ranges")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
-public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, MouseListener, MouseMotionListener {
+public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnnotater, MouseListener, MouseMotionListener {
 
     final private static float[] SELECT_COLOR = {.8f, 0, 0, .5f};
     private int startX = getInt("startX", 0);
@@ -77,14 +78,15 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     private int index = 0;
     private volatile boolean selecting = false;
     private static float lineWidth = 1f;
-    private int startx, starty, endx, endy;
+    private int selStartx, selStarty, selEndx, selEndy;
     private boolean multiSelectionEnabled = prefs().getBoolean("multiSelectionEnabled", false);
     private ArrayList<SelectionRectangle> selectionList = new ArrayList(1);
     protected boolean showTypeFilteringText = getBoolean("showTypeFilteringText", true);
+    private boolean lockSelections = getBoolean("lockSelections", false);
 
     private boolean circularShapeFilter = getBoolean("circularShapeFilter", false);
     private int circularRadiusPixels = getInt("circularRadiusPixels", 50);
-    
+
     private Point circularShapeCenterPoint = (Point) getObject("circularShapeCenterPoint", null);
     private boolean circularShapeCenterSelecting = false;
 
@@ -111,6 +113,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         setPropertyTooltip(c, "circularRadiusPixels", "radius of circular selection");
         setPropertyTooltip(c, "circularShapeFilter", "filter in based on circular disk shape");
         setPropertyTooltip("invertSelection", "invert filtering to pass events outside selection");
+        setPropertyTooltip("lockSelections", "lock all selections to avoid inadvertent mouse selections");
         setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
         setPropertyTooltip("multiSelectionEnabled", "allows defining multiple regions to filter on");
 
@@ -276,8 +279,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.startX;
         startX = clip(startX, chip.getSizeX());
         this.startX = startX;
-        putInt("startX", startX);
         getSupport().firePropertyChange("startX", old, startX);
+        putInt("startX", startX);
         setXEnabled(true);
 
     }
@@ -303,8 +306,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void setXEnabled(boolean xEnabled) {
         boolean old = this.xEnabled;
         this.xEnabled = xEnabled;
-        putBoolean("xEnabled", xEnabled);
         getSupport().firePropertyChange("XEnabled", old, xEnabled);
+        putBoolean("xEnabled", xEnabled);
 
     }
 
@@ -313,11 +316,11 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     }
 
     public void setStartY(int startY) {
-        int old = this.starty;
+        int old = this.startY;
         startY = clip(startY, chip.getSizeY());
         this.startY = startY;
-        putInt("startY", startY);
         getSupport().firePropertyChange("startY", old, startY);
+        putInt("startY", startY);
 
         setYEnabled(true);
     }
@@ -330,8 +333,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.endY;
         endY = clip(endY, chip.getSizeY());
         this.endY = endY;
-        putInt("endY", endY);
         getSupport().firePropertyChange("endY", old, endY);
+        putInt("endY", endY);
         setYEnabled(true);
 
     }
@@ -343,8 +346,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void setYEnabled(boolean yEnabled) {
         boolean old = this.yEnabled;
         this.yEnabled = yEnabled;
-        putBoolean("yEnabled", yEnabled);
         getSupport().firePropertyChange("YEnabled", old, yEnabled);
+        putBoolean("yEnabled", yEnabled);
 
     }
 
@@ -356,8 +359,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.startType;
         startType = clip(startType, chip.getNumCellTypes());
         this.startType = startType;
-        putInt("startType", startType);
         getSupport().firePropertyChange("startType", old, startType);
+        putInt("startType", startType);
         setTypeEnabled(true);
 
     }
@@ -370,8 +373,8 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         int old = this.endType;
         endType = clip(endType, chip.getNumCellTypes());
         this.endType = endType;
-        putInt("endType", endType);
         getSupport().firePropertyChange("endType", old, endType);
+        putInt("endType", endType);
         setTypeEnabled(true);
 
     }
@@ -406,7 +409,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
                 gl.glColor3f(0, 0, 1);
                 gl.glLineWidth(2f);
                 gl.glPushMatrix();
-                DrawGL.drawCross(gl, circularShapeCenterPoint.x, circularShapeCenterPoint.y, 10,0);
+                DrawGL.drawCross(gl, circularShapeCenterPoint.x, circularShapeCenterPoint.y, 10, 0);
                 gl.glPopMatrix();
                 gl.glPushMatrix();
                 DrawGL.drawCircle(gl, circularShapeCenterPoint.x, circularShapeCenterPoint.y, getCircularRadiusPixels(), 64);
@@ -416,9 +419,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
                 gl.glLineWidth(2f);
                 gl.glBegin(GL.GL_LINE_LOOP);
                 gl.glVertex2i(startX, startY);
-                gl.glVertex2i(endX+1, startY);
-                gl.glVertex2i(endX+1, endY+1);
-                gl.glVertex2i(startX, endY+1);
+                gl.glVertex2i(endX + 1, startY);
+                gl.glVertex2i(endX + 1, endY + 1);
+                gl.glVertex2i(startX, endY + 1);
                 gl.glEnd();
             } else {
                 for (SelectionRectangle r : selectionList) {
@@ -472,13 +475,26 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
+        if (isDontProcessMouse()) {
+            return;
+        }
         Point p = canvas.getPixelFromMouseEvent(e);
         startPoint = p;
         selecting = true;
     }
 
+
     @Override
     public void mouseReleased(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
+        if (isDontProcessMouse()) {
+            return;
+        }
         if ((startPoint == null)) {
             return;
         }
@@ -486,10 +502,10 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
         if (multiSelectionEnabled) {
             selectionList.add(selection);
         }
-        setStartX(startx);
-        setEndX(endx-1);
-        setStartY(starty);
-        setEndY(endy-1);
+        setStartX(selStartx);
+        setEndX(selEndx - 1);
+        setStartY(selStarty);
+        setEndY(selEndy - 1);
         selecting = false;
 
     }
@@ -500,6 +516,9 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mouseExited(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
         selecting = false;
     }
 
@@ -509,7 +528,13 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (lockSelections) {
+            return;
+        }
         if (startPoint == null) {
+            return;
+        }
+        if (isDontProcessMouse()) {
             return;
         }
         getSelection(e);
@@ -518,13 +543,13 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     private SelectionRectangle getSelection(MouseEvent e) {
         Point p = canvas.getPixelFromMouseEvent(e);
         endPoint = p;
-        startx = min(startPoint.x, endPoint.x);
-        starty = min(startPoint.y, endPoint.y);
-        endx = max(startPoint.x, endPoint.x)+1;
-        endy = max(startPoint.y, endPoint.y)+1;
-        int w = endx - startx;
-        int h = endy - starty;
-        selection = new SelectionRectangle(startx, starty, w, h);
+        selStartx = min(startPoint.x, endPoint.x);
+        selStarty = min(startPoint.y, endPoint.y);
+        selEndx = max(startPoint.x, endPoint.x) + 1;
+        selEndy = max(startPoint.y, endPoint.y) + 1;
+        int w = selEndx - selStartx;
+        int h = selEndy - selStarty;
+        selection = new SelectionRectangle(selStartx, selStarty, w, h);
         return selection;
 
     }
@@ -547,42 +572,6 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
             circularShapeCenterPoint = new Point(clickedPoint);
             putObject("circularShapeCenterPoint", circularShapeCenterPoint);
         }
-    }
-
-// already handled by setSelected below
-//    @Override
-//    public synchronized void setFilterEnabled (boolean yes){
-//        super.setFilterEnabled(yes);
-//        if ( glCanvas == null ){
-//            return;
-//        }
-//        if ( yes ){
-//            glCanvas.addMouseListener(this);
-//            glCanvas.addMouseMotionListener(this);
-//
-//        } else{
-//            glCanvas.removeMouseListener(this);
-//            glCanvas.removeMouseMotionListener(this);
-//        }
-//    }
-    @Override
-    public void setSelected(boolean yes) {
-        super.setSelected(yes);
-        if (glCanvas == null) {
-            return;
-        }
-//          log.info("selected="+yes);
-        if (yes) {
-            glCanvas.removeMouseListener(this);
-            glCanvas.removeMouseMotionListener(this);
-            glCanvas.addMouseListener(this);
-            glCanvas.addMouseMotionListener(this);
-
-        } else {
-            glCanvas.removeMouseListener(this);
-            glCanvas.removeMouseMotionListener(this);
-        }
-
     }
 
     /**
@@ -643,7 +632,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
 
         public boolean contains(BasicEvent e) {
 //            return contains(e.x, e.y);
-            return (e.x>=x && e.x<x+width) && (e.y>=y && e.y<y+height);
+            return (e.x >= x && e.x < x + width) && (e.y >= y && e.y < y + height);
         }
 
         public int getNumPixels() {
@@ -660,7 +649,7 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
             gl.glVertex2i(x, y + height);
             gl.glEnd();
         }
-        
+
     }
 
     synchronized public void doEraseSelections() {
@@ -755,6 +744,21 @@ public class XYTypeFilter extends EventFilter2D implements FrameAnnotater, Mouse
     public void setCircularRadiusPixels(int circularRadiusPixels) {
         this.circularRadiusPixels = circularRadiusPixels;
         putInt("circularRadiusPixels", circularRadiusPixels);
+    }
+
+    /**
+     * @return the lockSelections
+     */
+    public boolean isLockSelections() {
+        return lockSelections;
+    }
+
+    /**
+     * @param lockSelections the lockSelections to set
+     */
+    public void setLockSelections(boolean lockSelections) {
+        this.lockSelections = lockSelections;
+        putBoolean("lockSelections", lockSelections);
     }
 
     private static class SavedMultiSelection implements Serializable {

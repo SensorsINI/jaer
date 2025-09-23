@@ -293,6 +293,9 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void mousePressed(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         Point p = canvas.getPixelFromMouseEvent(e);
         startPoint = p;
         selecting = true;
@@ -300,6 +303,9 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         currentMousePoint = canvas.getPixelFromMouseEvent(e);
         for (int k = 0; k < chip.getNumCellTypes(); k++) {
             currentAddress[k] = chip.getEventExtractor().getAddressFromCell(currentMousePoint.x, currentMousePoint.y, k);
@@ -309,6 +315,9 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void mouseExited(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         selecting = false;
     }
 
@@ -318,6 +327,9 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void mouseDragged(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         if (startPoint == null) {
             return;
         }
@@ -326,6 +338,9 @@ public class CellStatsProber_cochlea extends EventFilter2DMouseAdaptor implement
 
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (isDontProcessMouse()) {
+            return;
+        }
         Point p = canvas.getPixelFromMouseEvent(e);
         clickedPoint = p;
     }

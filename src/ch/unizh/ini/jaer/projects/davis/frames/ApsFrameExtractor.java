@@ -41,6 +41,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
+import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseROI;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;

@@ -776,7 +776,7 @@ public class AddressedIPotCF extends AddressedIPot {
      */
     @Override
     protected String prefsKey() {
-        return chip.prefsHeader() + ".AddressedIPotCF." + name;
+        return "AddressedIPotCF." + name;
     }
 
     static String KEY_BITVALUE_COARSE = "BitValueCoarse",

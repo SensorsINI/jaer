@@ -1,0 +1,136 @@
+forceES2    false
+forceES3    false
+forceGL3    false
+forceGL4ES3 false
+-----------------------------------------------------------------------------------------------------
+Platform: MACOS / Mac OS X 14.3 (14.3.0), aarch64 (ARM64, EABI_AARCH64), 8 cores, littleEndian true
+MachineDataInfo: runtimeValidated true, 32Bit false, primitive size / alignment:
+  int8    1 / 1, int16   2 / 2
+  int     4 / 4, long    8 / 8
+  int32   4 / 4, int64   8 / 8
+  float   4 / 4, double  8 / 8, ldouble 8 / 8
+  pointer 8 / 8, page    16384
+Platform: Java Version: 21.0.2 (21.0.2u0), VM: OpenJDK 64-Bit Server VM, Runtime: OpenJDK Runtime Environment
+Platform: Java Vendor: Eclipse Adoptium, https://adoptium.net/, Java21, dynamicLib: true, AWT enabled: true
+-----------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
+Package: com.jogamp
+Extension Name: com.jogamp
+Specification Title: JogAmp Java Bindings Specification
+Specification Vendor: JogAmp Community
+Specification Version: 2.5
+Implementation Title: JogAmp Java Bindings Fat Jar
+Implementation Vendor: JogAmp Community
+Implementation Vendor ID: com.jogamp
+Implementation URL: http://jogamp.org/
+Implementation Version: 2.5.0
+Implementation Build: 2.5-b967-20230818
+Implementation Branch: origin/master
+Implementation Commit: a235ae5dae463afa16f62f48bf62f896efa80b68
+Implementation SHA Sources: null
+Implementation SHA Classes: null
+Implementation SHA Classes-this: null
+Implementation SHA Natives: null
+Implementation SHA Natives-this: null
+-----------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
+Package: com.jogamp
+Extension Name: com.jogamp
+Specification Title: JogAmp Java Bindings Specification
+Specification Vendor: JogAmp Community
+Specification Version: 2.5
+Implementation Title: JogAmp Java Bindings Fat Jar
+Implementation Vendor: JogAmp Community
+Implementation Vendor ID: com.jogamp
+Implementation URL: http://jogamp.org/
+Implementation Version: 2.5.0
+Implementation Build: 2.5-b967-20230818
+Implementation Branch: origin/master
+Implementation Commit: a235ae5dae463afa16f62f48bf62f896efa80b68
+Implementation SHA Sources: null
+Implementation SHA Classes: null
+Implementation SHA Classes-this: null
+Implementation SHA Natives: null
+Implementation SHA Natives-this: null
+-----------------------------------------------------------------------------------------------------
+2024-02-09 07:25:45.338 java[11228:844837] WARNING: Secure coding is automatically enabled for restorable state! However, not on all supported macOS versions of this application. Opt-in to secure coding explicitly by implementing NSApplicationDelegate.applicationSupportsSecureRestorableState:.
+GLProfiles on device MacOSXGraphicsDevice[type .macosx, connection decon, unitID 0, handle 0x0, owner false, NullToolkitLock[obj 0x3c407114]]
+	Natives
+		GL4bc 	false
+		GL4 	true [4.1 (Core profile, arb, compat[ES2, ES3], FBO, hardware)]
+		GLES3 	false
+		GL3bc 	false
+		GL3 	true [4.1 (Core profile, arb, compat[ES2, ES3], FBO, hardware)]
+		GL2 	true [2.1 (Compat profile, arb, compat[], FBO, hardware)]
+		GLES2 	false
+		GLES1 	false
+		Count	3 / 8
+	Common
+		GL4ES3 	true
+		GL2GL3 	true
+		GL2ES2 	true
+		GL2ES1 	true
+	Mappings
+		GL2ES1 	GLProfile[GL2ES1/GL2.hw]
+		GL4ES3 	GLProfile[GL4ES3/GL4.hw]
+		GL2ES2 	GLProfile[GL2ES2/GL4.hw]
+		GL2 	GLProfile[GL2/GL2.hw]
+		GL4 	GLProfile[GL4/GL4.hw]
+		GL3 	GLProfile[GL3/GL4.hw]
+		GL2GL3 	GLProfile[GL2GL3/GL4.hw]
+		default GLProfile[GL2/GL2.hw]
+		Count	7 / 12
+
+
+Capabilities for MacOSXGraphicsDevice[type .macosx, connection decon, unitID 0, handle 0x0, owner false, NullToolkitLock[obj 0x3c407114]]
+	none
+
+
+Requesting: GLCaps[rgba 8/8/8/0, opaque, accum-rgba 0/0/0/0, dp/st/ms 16/0/0, dbl, mono  , hw, GLProfile[GL2/GL2.hw], on-scr[.]]
+Main Monitor: Monitor[Id 0x1 [primary], 341 x 190 mm, pixelScale [1.0, 1.0], viewport[pixel [ 0 / 0  1920 x 1080 ], window [ 0 / 0  1920 x 1080 ]], orig [Id 0xd, [ 1920 x 1080 pixels x 32 bpp ] @ 60.0 Hz, flags [], 0 degr], curr [Id 0xd, [ 1920 x 1080 pixels x 32 bpp ] @ 60.0 Hz, flags [], 0 degr], modeChanged false, modeCount 128]
+    pixel/mm [5.6304984, 5.6842103]
+    pixel/in [143.01466, 144.37894]
+-----------------------------------------------------------------------------------------------------
+MacOSXGraphicsDevice[type .macosx, connection decon, unitID 0, handle 0x0, owner false, NullToolkitLock[obj 0x3c407114]]:
+	Natives
+		GL4bc 	false
+		GL4 	true [4.1 (Core profile, arb, compat[ES2, ES3], FBO, hardware)]
+		GLES3 	false
+		GL3bc 	false
+		GL3 	true [4.1 (Core profile, arb, compat[ES2, ES3], FBO, hardware)]
+		GL2 	true [2.1 (Compat profile, arb, compat[], FBO, hardware)]
+		GLES2 	false
+		GLES1 	false
+		Count	3 / 8
+	Common
+		GL4ES3 	true
+		GL2GL3 	true
+		GL2ES2 	true
+		GL2ES1 	true
+	Mappings
+		GL2ES1 	GLProfile[GL2ES1/GL2.hw]
+		GL4ES3 	GLProfile[GL4ES3/GL4.hw]
+		GL2ES2 	GLProfile[GL2ES2/GL4.hw]
+		GL2 	GLProfile[GL2/GL2.hw]
+		GL4 	GLProfile[GL4/GL4.hw]
+		GL3 	GLProfile[GL3/GL4.hw]
+		GL2GL3 	GLProfile[GL2GL3/GL4.hw]
+		default GLProfile[GL2/GL2.hw]
+		Count	7 / 12
+
+Swap Interval  1
+GL Profile     GLProfile[GL2/GL2.hw]
+GL Version     2.1 (Compat profile, arb, compat[], FBO, hardware) - 2.1 Metal - 88 [GL 2.1.0, vendor 0.0.0 (n/a)]
+Quirks         [NoOffscreenBitmap, GL4NeedsGL3Request, NeedSharedObjectSync]
+Impl. class    jogamp.opengl.gl4.GL4bcImpl
+GL_VENDOR      Apple
+GL_RENDERER    Apple M2
+GL_VERSION     2.1 Metal - 88
+GLSL           true, has-compiler-func: true, version: 1.20 / 1.20.0
+GL FBO: basic true, full true
+GL_EXTENSIONS  133
+GLX_EXTENSIONS 0
+-----------------------------------------------------------------------------------------------------
+Requested: GLCaps[rgba 8/8/8/0, opaque, accum-rgba 0/0/0/0, dp/st/ms 16/0/0, dbl, mono  , hw, GLProfile[GL2/GL2.hw], on-scr[.]]
+Chosen   : GLCaps[rgba 8/8/8/8, opaque, accum-rgba 0/0/0/0, dp/st/ms 32/0/0, dbl, mono  , hw, GLProfile[GL2/GL2.hw], on-scr[.]]
+GL impl. class jogamp.opengl.gl4.GL4bcImpl

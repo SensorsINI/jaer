@@ -25,12 +25,12 @@ public class Davis208PixelParadeColor extends DavisBaseCamera {
 
 		setEventExtractor(new DavisColorEventExtractor(this, false, true, Davis208PixelParadeColor.COLOR_FILTER, false));
 
-		setBiasgen(davisConfig = new Davis208PixelParadeConfig(this));
-
 		davisRenderer = new DavisColorRenderer(this, false, Davis208PixelParadeColor.COLOR_FILTER, false,
 			Davis208PixelParadeColor.COLOR_CORRECTION);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
+
+		setBiasgen(davisConfig = new Davis208PixelParadeConfig(this));
 
 		setApsFirstPixelReadOut(new Point(0, 0));
 		setApsLastPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));

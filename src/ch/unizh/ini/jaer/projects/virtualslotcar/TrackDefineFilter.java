@@ -798,7 +798,7 @@ public class TrackDefineFilter extends EventFilter2D implements FrameAnnotater, 
         log.info("Extracted " + extractPoints.size() + " track point(s); if only a single or few points then increase maxDistance in case starting point is hot pixel");
 
         // Create track object and spline
-        extractedTrack = new SlotcarTrack();
+        extractedTrack = new SlotcarTrack(chip);
         extractedTrack.getSupport().addPropertyChangeListener(this);
         extractedTrack.create(extractPoints);
 

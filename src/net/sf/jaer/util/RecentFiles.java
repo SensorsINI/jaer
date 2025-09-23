@@ -90,6 +90,8 @@ public class RecentFiles {
                 fileMenu.insert(item, fileMenu.getItemCount()-3);
                 fileIndex++;
                 if(fileIndex>MAX_FILES) break;
+            }else if(!f.isDirectory()){
+                log.info(String.format("File %s dis not a file or directory",f.toString()));
             }
         }
         for(File f:fileList){

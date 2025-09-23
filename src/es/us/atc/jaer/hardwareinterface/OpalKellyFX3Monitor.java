@@ -30,6 +30,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
 import java.util.logging.Level;
 import java.util.prefs.Preferences;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 
@@ -52,7 +53,7 @@ public class OpalKellyFX3Monitor implements AEMonitorInterface, PnPNotifyInterfa
     public PropertyChangeSupport support;
     public PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE;
     
-    private static Preferences prefs = Preferences.userNodeForPackage(OpalKellyFX3Monitor.class);
+    private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE.node("OpalKellyFX3Monitor");
     private int aeBufferSize; // Must be multiple of usbBlockSize and multiple of 16 as a minimum
     private static final int MIN_AEBUFFERSIZE = 1024;
     private static final int DEFAULT_AEBUFFERSIZE = 64*1024;

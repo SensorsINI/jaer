@@ -43,7 +43,7 @@ import net.sf.jaer.util.ByteSwapper;
  */
 public class AEUnicastOutput implements AEUnicastSettings {
 
-    static Preferences prefs = Preferences.userNodeForPackage(AEUnicastOutput.class);
+    static Preferences prefs= net.sf.jaer.JaerConstants.PREFS_ROOT;
     private int sendBufferSize = prefs.getInt("AEUnicastOutput.bufferSize", 1500);
     static Logger log = Logger.getLogger("net.sf.jaer");
     protected DatagramChannel channel = null;

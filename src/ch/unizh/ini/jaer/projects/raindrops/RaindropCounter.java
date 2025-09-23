@@ -107,7 +107,6 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
         onEventFilter.setEndType(1);
 
         tracker.setMaxNumClusters(100);
-        tracker.setPathsEnabled(true);
         tracker.setDontMergeEver(true);
         tracker.setHighwayPerspectiveEnabled(false);
         tracker.setColorClustersDifferentlyEnabled(false);
@@ -175,7 +174,6 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
     @Override
     public void annotate(GLAutoDrawable drawable) {
         String s = generateSummaryStatisticsString();
-        MultilineAnnotationTextRenderer.setScale(.4f);
         MultilineAnnotationTextRenderer.resetToYPositionPixels(.6f * chip.getSizeY());
         MultilineAnnotationTextRenderer.renderMultilineString(s);
     }
@@ -353,8 +351,8 @@ public class RaindropCounter extends EventFilter2D implements FrameAnnotater, Pr
             }
 
             @Override
-            protected void updateAverageEventDistance(float m) {
-                super.updateAverageEventDistance(m);
+            protected void updateAverageEventDistance() {
+                super.updateAverageEventDistance();
                 if (getAverageEventXDistance() > maxRadiusPixels) {
                     maxRadiusPixels = getAverageEventXDistance();
                 }

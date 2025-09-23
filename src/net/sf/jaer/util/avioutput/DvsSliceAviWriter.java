@@ -1,7 +1,6 @@
 package net.sf.jaer.util.avioutput;
 
 import static net.sf.jaer.graphics.AEViewer.DEFAULT_CHIP_CLASS;
-import static net.sf.jaer.graphics.AEViewer.prefs;
 
 import java.awt.Dimension;
 import java.awt.event.WindowAdapter;
@@ -30,10 +29,8 @@ import javax.swing.filechooser.FileFilter;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import ch.unizh.ini.jaer.projects.npp.DvsFramer.TimeSliceMethod;
-import ch.unizh.ini.jaer.projects.npp.DvsFramerSingleFrame;
-import ch.unizh.ini.jaer.projects.npp.TargetLabeler;
-import ch.unizh.ini.jaer.projects.npp.TargetLabeler.TargetLocation;
+import net.sf.jaer.eventprocessing.tracking.TargetLabeler;
+import net.sf.jaer.eventprocessing.tracking.TargetLabeler.TargetLocation;
 import eu.seebetter.ini.chips.DavisChip;
 import java.io.EOFException;
 import java.util.logging.ConsoleHandler;
@@ -58,6 +55,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.LoggingAnsiColorConsoleFormatter;
 import net.sf.jaer.util.avioutput.AVIOutputStream.VideoFormat;
+import net.sf.jaer.util.avioutput.DvsFramer.TimeSliceMethod;
 import net.sf.jaer.util.filter.LowpassFilter;
 
 /**
@@ -209,7 +207,6 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         }
         dvsFrame.setShowFrames(isWriteDvsFrames());
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
-        MultilineAnnotationTextRenderer.setScale(.3f);
         float avgFrameRate = avgDvsFrameIntervalMs == 0 ? Float.NaN : 1000 / avgDvsFrameIntervalMs;
         String s = null;
         if (dvsFrame.isNormalizeFrame()) {
@@ -844,7 +841,7 @@ public class DvsSliceAviWriter extends AbstractAviWriter implements FrameAnnotat
         if (opt.getSet().isSet("aechip")) {
             chipname = opt.getSet().getOption("aechip").getResultValue(0);
         } else {
-            chipname = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+            chipname = chip.getAeViewer().prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
         }
         try {
             String className = chipClassesMap.get(chipname.toLowerCase());

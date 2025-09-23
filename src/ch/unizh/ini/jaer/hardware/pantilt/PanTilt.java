@@ -30,7 +30,7 @@ public class PanTilt implements PanTiltInterface, LaserOnOffControl {
     
     private static List<PanTilt> InstanceList = new ArrayList<>();
     private static int numberInstances=0;
-    private final int instanceID;
+    public final int instanceID;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     /** Servo output number on SiLabsC8051F320_USBIO_ServoController, 0 based. */

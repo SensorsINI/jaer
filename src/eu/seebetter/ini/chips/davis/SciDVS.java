@@ -30,6 +30,7 @@ public class SciDVS extends DavisBaseCamera {
 		setApsLastPixelReadOut(new Point(getSizeX() - 1, 0));
 
 		setBiasgen(davisConfig = new SciDVSConfig(this));
+                setFullScaleForEventAccumulationRendering(256);
 	}
 	
 

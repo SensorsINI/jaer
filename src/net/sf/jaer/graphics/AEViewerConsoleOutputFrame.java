@@ -137,7 +137,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
         findTF.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent evt) {
-                System.out.println("findTF text:" + findTF.getText());
+//                System.out.println("findTF text:" + findTF.getText());
 
                 if (evt.getKeyChar() == '\n') {
                     findNext();
@@ -443,7 +443,7 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
             try {
                 Thread.sleep(600);
             } catch (InterruptedException e) {
-                System.out.println("interrupted");
+//                System.out.println("interrupted");
                 break;
             }
             int n = r.nextInt(80);

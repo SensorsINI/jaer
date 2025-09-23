@@ -14,6 +14,7 @@ import java.util.prefs.Preferences;
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -31,7 +32,7 @@ import org.usb4java.LibUsb;
  */
 public abstract class SilabsAEReader implements ReaderBufferControl {
 
-    private Preferences prefs = Preferences.userNodeForPackage(this.getClass());
+    private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
     private int fifoSize = this.prefs.getInt("Silabs.AEReader.fifoSize", 8192);
     private int numBuffers;
     private int Silabs_FIFO_SIZE = 128; // just took this from usbio

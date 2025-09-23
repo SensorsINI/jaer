@@ -12,6 +12,7 @@ package net.sf.jaer.hardwareinterface.usb.cypressfx2libusb;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterfaceInterface;
 import java.nio.ByteBuffer;
 import java.util.prefs.Preferences;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -30,7 +31,7 @@ import org.usb4java.Device;
  */
 public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen implements CypressFX2DVS128HardwareInterfaceInterface {
 
-    private static Preferences prefs = Preferences.userNodeForPackage(CypressFX2LibUsbDVS128HardwareInterface.class);
+    protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
     private boolean syncEventEnabled = CypressFX2LibUsbDVS128HardwareInterface.prefs.getBoolean(
             "CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default
     //  is true so that device is the timestamp master by default, necessary after firmware rev 11

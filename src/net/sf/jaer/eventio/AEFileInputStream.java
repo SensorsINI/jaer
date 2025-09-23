@@ -11,13 +11,17 @@ package net.sf.jaer.eventio;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.BufferUnderflowException;
@@ -34,10 +38,18 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.prefs.BackingStoreException;
+import java.util.prefs.Preferences;
+import java.util.stream.Collectors;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
@@ -45,6 +57,7 @@ import net.sf.jaer.aemonitor.EventRaw.EventType;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.PrefObj;
 
 /**
  * Class to stream in packets of events from binary input stream from a file
@@ -103,9 +116,13 @@ import net.sf.jaer.util.EngineeringFormat;
  * @see net.sf.jaer.eventio.AEDataFile
  */
 public class AEFileInputStream extends DataInputStream implements AEFileInputStreamInterface { // TODO extend
+
+    static final private Logger log = Logger.getLogger("net.sf.jaer");
+    private static HashMap<String, Marks> marksFilesMap = null; // stores previous marks on files
+    private static final Preferences prefs = JaerConstants.PREFS_ROOT.node("AEFileInputStream");
+
     // AEInputStream
     // public final static long MAX_FILE_SIZE=200000000;
-
     /**
      * number of line separator characters which AEFileOutputStream
      * (writeHeaderLine) is writing to AE data files. important for calculation
@@ -123,7 +140,6 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public int MARK_OFFSET_EVENTS = 0;
 
     private PropertyChangeSupport support = new PropertyChangeSupport(this);
-    static Logger log = Logger.getLogger("net.sf.jaer");
     private FileInputStream fileInputStream = null;
     long fileSize = 0; // size of file in bytes
     private File file = null;
@@ -133,11 +149,27 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int numHeaderLines = 0;
     private boolean rewindFlag = false;
 
+    public static class Marks implements Serializable {
+
+        transient AEFileInputStream aeFileInputStream;
+
+        public Marks(AEFileInputStream aeFileInputStream) {
+            this.aeFileInputStream = aeFileInputStream;
+        }
+
+        public long markIn = 0, markOut = Long.MAX_VALUE;
+        public TreeSet<Long> otherMarks = new TreeSet();
+
+        @Override
+        public String toString() {
+            return "Marks{" + "markIn=" + markIn + ", markOut=" + markOut + "otherMarks: " + otherMarks.size() + '}';
+        }
+    }
+
     /**
      * Marking positions
      */
-    private long markPosition = 0; // a single MARK position for rewinding to
-    private long markIn = 0, markOut = Long.MAX_VALUE;
+    private Marks marks = new Marks(this); // replace with stored marks if available in constructor
 
     private int eventSizeBytes = AEFileInputStream.EVENT16_SIZE; // size of event in bytes, set finally after reading
     // file header
@@ -231,38 +263,23 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     public AEFileInputStream(File f, AEChip chip) throws IOException {
         super(new FileInputStream(f));
         this.chip = chip;
+        this.fileInputStream = (FileInputStream) this.in;
+        setFile(f);
 
         /* Here is the logic:
          * The chip and extractor will be updated unless the chip changed such as by the user.
          * It makes the chip and the extractor are alwayse associated with each other.
          */
-        if (this.chip != LAST_CHIP) {
+        if (this.chip != null && this.chip != LAST_CHIP) {
             LAST_CHIP = this.chip;
             LAST_EVENT_EXTRACTOR = this.chip.getEventExtractor();
         }
+//        if(this.chip!=null && this.chip.getAeViewer()!=null && this.chip.getAeViewer()!=null){
+//            // add prop change listener AEViewer to receive events from this file input stream, e.g. clearing marks
+//            getSupport().addPropertyChangeListener(this.chip.getAeViewer());
+//        }
 
         this.chip.setEventExtractor(LAST_EVENT_EXTRACTOR); // Restore the extractor, because jaer3BufferParser might change it.
-        init(new FileInputStream(f));
-
-        setFile(f);
-    }
-
-    @Override
-    public String toString() {
-        EngineeringFormat fmt = new EngineeringFormat();
-        String s = "AEInputStream with size=" + fmt.format(size()) + " events, firstTimestamp=" + getFirstTimestamp() + " lastTimestamp="
-                + getLastTimestamp() + " duration=" + fmt.format(getDurationUs() / 1e6f) + "s" + " event rate="
-                + fmt.format(size() / (getDurationUs() / 1e6f)) + " eps";
-        return s;
-    }
-
-    /**
-     * fires property change "position".
-     *
-     * @throws IOException if file is empty or there is some other error.
-     */
-    private void init(FileInputStream fileInputStreamP) throws IOException {
-        fileInputStream = fileInputStreamP;
 
         if (fileInputStream == null) {
             log.warning("File input stream is NULL");
@@ -277,7 +294,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
         setupChunks();
 
-        clearMarks();
+        clearMarks();  // set from saved below
         setRepeat(true);
 
         // long totalMemory=Runtime.getRuntime().totalMemory();
@@ -339,7 +356,41 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         } finally {
             position(0);
         }
-        log.info("initialized " + this.toString());
+    }
+
+    @Override
+    public String toString() {
+        EngineeringFormat fmt = new EngineeringFormat();
+        String s = "AEInputStream with size=" + fmt.format(size()) + " events, firstTimestamp=" + getFirstTimestamp() + " lastTimestamp="
+                + getLastTimestamp() + " duration=" + fmt.format(getDurationUs() / 1e6f) + "s" + " event rate="
+                + fmt.format(size() / (getDurationUs() / 1e6f)) + " eps";
+        return s;
+    }
+
+    /**
+     * Loads markers and sets up AEPlayer slider marks from the marks. Should be
+     * called *after* the AEFileInputStream is constructed completely; otherwise
+     * the callees will not have neccessary information like size of file.
+     */
+    public void marksInitialize() {
+        marksLoadMapFromPreferences();
+        Marks savedMarks = marksFilesMap.get(getFile().getAbsolutePath());
+        if (savedMarks == null) {
+            clearMarks();
+            return;
+        }
+//        long oldIn = savedMarks.markIn;
+        marks.markIn = savedMarks.markIn;
+//        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, oldIn, marks.markIn);
+//        long oldOut = savedMarks.markOut;
+        marks.markOut = savedMarks.markOut;
+        marks.otherMarks.addAll(savedMarks.otherMarks);
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks); // so that AEPlayerAdvanceControlPanel computes the slider markers
+        // mark loading occurs during construction, before listeners have been added.
+        // directly call the AEPlayer controls to load marks to slider
+        if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
+            chip.getAeViewer().getPlayerControls().setMarks(marks);
+        }
     }
 
     /**
@@ -383,10 +434,10 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // return jaer3fileinputstream.readEventForwards();
         // }
         try {
-            if (position == markOut) { // TODO check exceptions here for markOut set before markIn
+            if (position == marks.markOut) { // TODO check exceptions here for marks.markOut set before marks.markIn
                 getSupport().firePropertyChange(AEInputStream.EVENT_EOF, null, position());
                 if (repeat) {
-                    log.info("calling rewind at OUT marker (or end of file) in AEFileInputStream");
+                    log.fine("calling rewind at OUT marker (or end of file) in AEFileInputStream");
                     rewind();
                     throw new EOFException("reached out marker");
                 } else {
@@ -822,16 +873,16 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     @Override
     synchronized public void rewind() throws IOException {
         long oldPosition = position();
-        position(markIn);
+        position(marks.markIn);
         try {
-            if (markIn == 0) {
+            if (marks.markIn == 0) {
                 mostRecentTimestamp = firstTimestamp;
                 // skipHeader();
             } else {
                 readEventForwards(); // to set the mostRecentTimestamp
             }
         } catch (NonMonotonicTimeException e) {
-            log.log(Level.INFO, "rewind from timestamp={0} to timestamp={1}",
+            log.log(Level.FINE, "rewind from timestamp={0} to timestamp={1}",
                     new Object[]{e.getPreviousTimestamp(), e.getCurrentTimestamp()});
         }
         if (this.jaer3EnableFlg == true) {
@@ -846,13 +897,76 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // log.info("Listeners for EVENT_REWOUND of "+this+" are \n"+s);
     }
 
+    private long lastJumpTimeMs = System.currentTimeMillis();
+
+    @Override
+    public boolean jumpToNextMarker() {
+        lastJumpTimeMs = System.currentTimeMillis();
+        long oldPosition = position();
+        Long marker = marks.otherMarks.ceiling(oldPosition);
+        if (marker != null) {
+            position(marker);
+            try {
+                readEventForwards();
+                currentStartTimestamp = mostRecentTimestamp;
+            } catch (IOException | NonMonotonicTimeException ex) {
+                Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            log.fine(String.format("Jumped to next marker at %,d", marker));
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean jumpToPrevMarker() {
+        long oldPosition = position();
+        // jump back to previous marker that is less than current position,
+        // or if time is less than 1 second since last jump, then
+        // to 2nd previous marker
+        Iterator<Long> it = marks.otherMarks.reversed().iterator();
+        while (it.hasNext()) {
+            Long m = it.next();
+            if (m != null && m < oldPosition) {
+                if (System.currentTimeMillis() - lastJumpTimeMs > 2000) {
+                    position(m);
+                    currentStartTimestamp = mostRecentTimestamp;
+                    lastJumpTimeMs = System.currentTimeMillis();
+                    log.fine(String.format("Jumped back to previous marker at %,d", m));
+
+                    return true;
+                } else {
+                    if (it.hasNext()) {
+                        m = it.next();
+                        if (m != null) {
+                            position(m);
+                            currentStartTimestamp = mostRecentTimestamp;
+                            lastJumpTimeMs = System.currentTimeMillis();
+                            log.fine(String.format("Quick jumped back to 2nd previous marker at %,d", m));
+                            return true;
+                        }
+                    } else {
+                        position(m);
+                        currentStartTimestamp = mostRecentTimestamp;
+                        lastJumpTimeMs = System.currentTimeMillis();
+                        log.fine(String.format("Jumped back to first marker at %,d", m));
+
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * gets the size of the stream in events
      *
      * @return size in events
      */
     @Override
-    public long size() {
+    public final long size() {
         if (jaer3EnableFlg) {
             return jaer3BufferParser.size();
         } else {
@@ -866,7 +980,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * @param event the number of the event, starting with 0
      */
     @Override
-    synchronized public void position(long event) {
+    public final synchronized void position(long event) {
         // if(event==size()) event=event-1;
         int newChunkNumber;
         try {
@@ -925,7 +1039,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         } catch (NonMonotonicTimeException e) {
 //            log.info(String.format("When setting fractionalPosition to %.2f got %s", frac, e.toString()));
         } catch (Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             log.warning("When changing fractional position, got " + e.toString());
         }
         log.info(String.format("Set fractional position %.1f%%", frac * 100));
@@ -963,92 +1077,111 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
 
     /**
      * Sets or clears the marked IN position. Does nothing if trying to set
-     * markIn > markOut.
+     * marks.markIn > marks.markOut.
      *
-     * @return the markIn position.
+     * @return the marks.markIn position.
      */
     @Override
     public long setMarkIn() {
         long here = position();
-        if (here > markOut) {
-            return markIn;
+        if (here > marks.markOut) {
+            return marks.markIn;
         }
         here -= MARK_OFFSET_EVENTS;
         if (here < 0) {
             here = 0;
         }
-        long old = markIn;
-        markIn = here;
-        markIn = (markIn / eventSizeBytes) * eventSizeBytes; // to avoid marking inside an event
-        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, old, markIn);
-        return markIn;
+        long old = marks.markIn;
+        marks.markIn = here;
+        marks.markIn = (marks.markIn / eventSizeBytes) * eventSizeBytes; // to avoid marking inside an event
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, old, marks.markIn);
+        return marks.markIn;
     }
 
     /**
      * Sets or clears the marked OUT position. Does nothing if trying to set
-     * markOut <= markIn.
+     * marks.markOut <= marks.markIn.
      *
-     * @return the markIn position.
+     * @return the marks.markIn position.
      */
     @Override
     public long setMarkOut() {
         long here = position();
-        if (here <= markIn) {
-            return markOut;
+        if (here <= marks.markIn) {
+            return marks.markOut;
         }
-        long old = markOut;
-        markOut = position();
-        markOut = (markOut / eventSizeBytes) * eventSizeBytes; // to avoid marking inside an event
-        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, old, markOut);
-        return markIn;
+        long old = marks.markOut;
+        marks.markOut = position();
+        marks.markOut = (marks.markOut / eventSizeBytes) * eventSizeBytes; // to avoid marking inside an event
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, old, marks.markOut);
+        return marks.markIn;
+    }
+
+    /**
+     * Sets or clears the marked position.
+     *
+     * @return the mark position in events.
+     */
+    @Override
+    public boolean toggleMarker() {
+        final long EVENT_COUNT_TOLERANCE = 1000000L;
+        long here = (position() / eventSizeBytes) * eventSizeBytes;
+        boolean added = false;
+        Long ceil = marks.otherMarks.ceiling(here), floor = marks.otherMarks.floor(here);
+
+        if (marks.otherMarks.contains(here)) { // TODO add remove method somehow
+            marks.otherMarks.remove(here);
+        } else if (ceil != null && ceil - here < EVENT_COUNT_TOLERANCE) {
+            marks.otherMarks.remove(ceil);
+            here = ceil;
+        } else if (floor != null && here - floor < EVENT_COUNT_TOLERANCE) {
+            marks.otherMarks.remove(floor);
+            here = floor;
+        } else {
+            marks.otherMarks.add(here);
+            added = true;
+        }
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARK_TOGGLED,
+                added ? null : here, added ? here : null);
+        log.info(String.format("%s marker at %,d", added ? "Added" : "Removed", here));
+        return added;
     }
 
     /**
      * clear any marked position
      */
     @Override
-    synchronized public void clearMarks() {
-        long oldIn = markIn;
-        long oldOut = markOut;
+    public final synchronized void clearMarks() {
+        long oldIn = marks.markIn;
+        long oldOut = marks.markOut;
         long[] oldMarks = {oldIn, oldOut};
 
-        markOut = size() - 1;
-        markIn = 0;
-        long[] newMarks = {markIn, markOut};
+        marks.markOut = size() - 1;
+        marks.markIn = 0;
+        marks.otherMarks.clear();
+        long[] newMarks = {marks.markIn, marks.markOut};
 
-        markPosition = 0;
-        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, oldMarks, newMarks);
-    }
-
-    /**
-     * Returns true if mark has been set to nonzero position.
-     *
-     * @return true if set.
-     * @deprecated
-     */
-    @Deprecated
-    public boolean isMarkSet() {
-        return markPosition != 0;
+        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, null, newMarks); // always send p;op change, e.g. on opening file
     }
 
     @Override
     public long getMarkInPosition() {
-        return markIn;
+        return marks.markIn;
     }
 
     @Override
     public long getMarkOutPosition() {
-        return markOut;
+        return marks.markOut;
     }
 
     @Override
     public boolean isMarkInSet() {
-        return markIn != 0;
+        return marks.markIn != 0;
     }
 
     @Override
     public boolean isMarkOutSet() {
-        return markOut != size();
+        return marks.markOut != size() - 1;
     }
 
     // https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java
@@ -1106,6 +1239,12 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         if (fileInputStream != null) {
             fileInputStream.close(); // should have been done by super(), but file seems to be kept open
         }
+        if ((isMarkInSet() || isMarkOutSet() || !marks.otherMarks.isEmpty())) {
+            marksFilesMap.put(file.getAbsolutePath(), marks);
+        } else {
+            marksFilesMap.put(file.getAbsolutePath(), null);
+        }
+        marksSaveToPreferences();
         System.gc();
 //        System.runFinalization(); // try to free memory mapped file buffers so file can be deleted....
     }
@@ -1179,7 +1318,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * EOF
      */
     @Override
-    public synchronized void setRepeat(boolean rep) {
+    public final synchronized void setRepeat(boolean rep) {
         repeat = rep;
     }
 
@@ -1405,7 +1544,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * set for backwards compatiblity for files without headers to short address
      * sizes.
      */
-    protected void readHeader(FileInputStream fileInputStream) throws IOException {
+    protected final void readHeader(FileInputStream fileInputStream) throws IOException {
 
         if (fileInputStream == null) {
             throw new IOException("null fileInputStream");
@@ -1504,7 +1643,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         }
     }
 
-    void setupChunks() throws IOException {
+    final void setupChunks() throws IOException {
         fileChannel = fileInputStream.getChannel();
         fileSize = fileChannel.size();
         chunkSizeBytes = eventSizeBytes * CHUNK_SIZE_EVENTS;
@@ -1613,11 +1752,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
-     * Sets the File reference but doesn't open the file
+     * Sets the File reference but doesn't open the file, parses the starting
+     * time from filename if possible.
      */
-    public void setFile(File f) {
+    @Override
+    final public void setFile(File f) {
         this.file = f;
-        absoluteStartingTimeMs = parseAbsoluteStartingTimeMsFromFile(getFile());
+        absoluteStartingTimeMs = parseAbsoluteStartingTimeMsFromFile(f);
     }
 
     /**
@@ -1717,6 +1858,152 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      */
     public void setTimestampResetBitmask(int timestampResetBitmask) {
         this.timestampResetBitmask = timestampResetBitmask;
+    }
+
+    /**
+     * Stores the map of previous marks
+     */
+    static void marksSaveToPreferences() {
+        try {
+            PrefObj.putObject(prefs, "marks", marksFilesMap);
+            log.fine(String.format("Saved marksMap %s to %s", marksFilesMap, prefs.absolutePath()));
+        } catch (IOException | BackingStoreException | ClassNotFoundException e) {
+            log.warning(String.format("Could not store marks; got %s", e));
+        }
+    }
+
+    /**
+     * Load the map of previous marks
+     *
+     */
+    static void marksLoadMapFromPreferences() {
+        try {
+            Object o = PrefObj.getObject(prefs, "marks");
+            if (o == null) {
+                log.fine("no saved marks for this file");
+                marksFilesMap = new HashMap<>();
+                return;
+            }
+            marksFilesMap = (HashMap<String, Marks>) o;
+            log.fine(String.format("Loaded marksMap %s from %s", marksFilesMap, prefs.absolutePath()));
+        } catch (IOException | BackingStoreException | ClassNotFoundException ex) {
+            log.warning(String.format("could not load existing marks: %s", ex.toString()));
+            marksFilesMap = new HashMap<>();
+        }
+    }
+
+    /**
+     * Exports the data from a given Marks instance to a specified CSV file. The
+     * CSV file will have a header row and one data row. The format is:
+     * markIn,markOut,"comma_separated_otherMarks"
+     *
+     * @param file The File object representing the target CSV file.
+     * @throws IOException If an I/O error occurs during file writing.
+     */
+    public void marksExportToCSV(File file) throws IOException {
+        // Use try-with-resources to ensure the BufferedWriter is closed automatically.
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+            // Write the header row for clarity in the CSV file.
+            writer.write("markIn,markOut,otherMarks\n");
+
+            // Convert the TreeSet of Longs into a single comma-separated string.
+            // Each Long is mapped to its String representation, then joined.
+            String otherMarksString = marks.otherMarks.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            // Write the data row.
+            // The 'otherMarksString' is enclosed in double quotes to handle potential
+            // commas within the data itself, which is standard CSV practice.
+            writer.write(String.format("%d,%d,\"%s\"\n",
+                    marks.markIn, // First column: markIn
+                    marks.markOut, // Second column: markOut
+                    otherMarksString)); // Third column: otherMarks as a quoted string
+        }
+    }
+
+    /**
+     * Imports Marks data from a specified CSV file and populates the given
+     * Marks instance. It expects the CSV file to have a header row (which is
+     * skipped) and then one data row. The expected format is:
+     * markIn,markOut,"comma_separated_otherMarks"
+     *
+     * @param marks The Marks object to be populated with the imported data.
+     * This object must not be null.
+     * @param file The File object representing the source CSV file.
+     * @throws IOException If an I/O error occurs during file reading.
+     * @throws IllegalArgumentException If the provided Marks instance is null,
+     * or if the CSV file format is unexpected (e.g., wrong number of columns,
+     * invalid number format).
+     */
+    public void marksImportFromCSV(File file) throws IOException, IllegalArgumentException {
+        // Validate that the Marks instance to be populated is not null.
+        if (marks == null) {
+            throw new IllegalArgumentException("Marks instance to populate cannot be null.");
+        }
+
+        // Use try-with-resources to ensure the BufferedReader is closed automatically.
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            int lineNumber = 0;
+
+            // Read and skip the header line.
+            if ((line = reader.readLine()) != null) {
+                lineNumber++; // Increment line number for the header.
+                // In a more robust solution, you might parse the header to validate columns.
+            } else {
+                // If the file is empty (no header), throw an exception.
+                throw new IOException("CSV file is empty or contains no header.");
+            }
+
+            // Read the actual data line.
+            if ((line = reader.readLine()) != null) {
+                lineNumber++; // Increment line number for the data.
+
+                // Split the line by comma, but only if the comma is NOT inside double quotes.
+                // This regex handles the quoted 'otherMarks' field correctly.
+                String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+                // Check if the number of parsed parts matches the expected number of columns.
+                if (parts.length != 3) {
+                    throw new IllegalArgumentException("Unexpected number of columns in CSV line " + lineNumber + ": " + line + ". Expected 3, found " + parts.length);
+                }
+
+                try {
+                    // Parse markIn and markOut from the first two parts.
+                    marks.markIn = Long.parseLong(parts[0].trim());
+                    marks.markOut = Long.parseLong(parts[1].trim());
+
+                    // Process the 'otherMarks' string.
+                    String otherMarksCsv = parts[2].trim();
+                    // Remove enclosing double quotes if they exist (from the export process).
+                    if (otherMarksCsv.startsWith("\"") && otherMarksCsv.endsWith("\"")) {
+                        otherMarksCsv = otherMarksCsv.substring(1, otherMarksCsv.length() - 1);
+                    }
+
+                    // Clear any existing marks in the TreeSet before adding new ones.
+                    marks.otherMarks.clear();
+                    // If the otherMarksCsv string is not empty, parse its contents.
+                    if (!otherMarksCsv.isEmpty()) {
+                        // Split the string by comma, trim each part, filter out empty strings,
+                        // parse each part to a Long, and add it to the TreeSet.
+                        Arrays.stream(otherMarksCsv.split(","))
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty()) // Filter out empty strings that might result from splitting (e.g., "1,,2")
+                                .map(Long::parseLong)
+                                .forEach(marks.otherMarks::add);
+                    }
+                    getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks); // so that AEPlayerAdvanceControlPanel computes the slider markers
+
+                } catch (NumberFormatException e) {
+                    // Catch and re-throw NumberFormatException with more context.
+                    throw new IllegalArgumentException("Invalid number format in CSV line " + lineNumber + ": " + line, e);
+                }
+            } else {
+                // If there's only a header and no data, throw an exception.
+                throw new IOException("CSV file contains only header, no data found.");
+            }
+        }
     }
 
 }

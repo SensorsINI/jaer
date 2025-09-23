@@ -38,6 +38,7 @@ import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -52,7 +53,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
  */
 public class eDVS128_InterfaceFactory extends javax.swing.JDialog implements HardwareInterfaceFactoryChooserDialog {
 
-    private static Preferences prefs = Preferences.userNodeForPackage(eDVS128_InterfaceFactory.class);
+    private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE.node("eDVS128");
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     public static final int[] SERIAL_BAUD_RATES_MBPS = {1, 2, 4, 8, 12};
     /**

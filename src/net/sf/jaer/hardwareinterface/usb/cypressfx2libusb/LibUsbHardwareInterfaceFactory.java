@@ -72,7 +72,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
         addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_DVS128_REV0, CypressFX2LibUsbDVS128HardwareInterface.class);
         addDeviceToMap(CypressFX2.VID_DVS128_ORIG_FX2_ONLY, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2LibUsbDVS128HardwareInterface.class); // tobi added for Tmpdiff128 StereoBoard VID/PID 0x547/0x8700
 // maybe need to comment back in to handle very first Tmpdiff128 board
-//        addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
+        addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
 //        addDeviceToMap(CypressFX2.VID_DVS128_ORIG_FX2_ONLY, CypressFX2.PID_TMPDIFF128_RETINA, CypressFX2TmpdiffRetinaHardwareInterface.class);
         addDeviceToMap(CypressFX2.VID_THESYCON_FX2_CPLD, CypressFX2.PID_COCHLEAAMS, CochleaAMS1cHardwareInterface.class);
 
@@ -157,6 +157,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
             final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
 
+            log.finer(String.format("Checking if can open vid=0x%04x pid=0x%04x",vidPid.left,vidPid.right));
             // Check that the device is not already bound to any other driver.
             final DeviceHandle devHandle = new DeviceHandle();
             int status = LibUsb.open(dev, devHandle);
@@ -166,7 +167,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
             status = LibUsb.kernelDriverActive(devHandle, 0);
 
-            log.fine(String.format("probing libusb device with VID/PID 0x%x/0x%x to see if it maps to a compatible LibUsbHardwareInterface", vidPid.left, vidPid.right));
+            log.finer(String.format("probing libusb device with VID/PID 0x%x/0x%x to see if it maps to a compatible LibUsbHardwareInterface", vidPid.left, vidPid.right));
 
             LibUsb.close(devHandle);
 

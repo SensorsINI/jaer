@@ -24,7 +24,7 @@ import net.sf.jaer.util.RemoteControlCommand;
  *
  * @author tobi
  */
-@Description("Filters out uncorrelated background activity noise according to Delbruck, Tobi. 2008. “Frame-Free Dynamic Digital Vision.” In Proceedings of Intl. Symp. on Secure-Life Electronics, Advanced Electronics for Quality Life and Society, 1:21–26. Tokyo, Japan: Tokyo. https://drive.google.com/open?id=0BzvXOhBHjRheTS1rSVlZN0l2MDg.")
+@Description("<html>Filters out uncorrelated background activity noise according to <br>Delbruck, Tobi. 2008. <br>“Frame-Free Dynamic Digital Vision.” <br>In Proceedings of Intl. Symp. on Secure-Life Electronics, Advanced Electronics for Quality Life and Society, 1:21–26. Tokyo, Japan: Tokyo.<br> https://drive.google.com/open?id=0BzvXOhBHjRheTS1rSVlZN0l2MDg.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class BackgroundActivityFilter extends AbstractNoiseFilter {
 
@@ -139,16 +139,8 @@ public class BackgroundActivityFilter extends AbstractNoiseFilter {
      */
     @Override
      public void initializeLastTimesMapForNoiseRate(float noiseRateHz, int lastTimestampUs) {
-        Random random=new Random();
-        for (final int[] arrayRow : timestampImage) {
-            for (int i = 0; i < arrayRow.length; i++) {
-                final double p = random.nextDouble();
-                final double t = -noiseRateHz * Math.log(1 - p);
-                final int tUs = (int) (1000000 * t);
-                arrayRow[i] = lastTimestampUs - tUs;
-            }
-        }
-    }
+            fill2dTimestampAndPolarityImagesWithNoiseEvents(noiseRateHz, lastTimestampUs, timestampImage, null);
+}
 
 
     private void allocateMaps(AEChip chip) {

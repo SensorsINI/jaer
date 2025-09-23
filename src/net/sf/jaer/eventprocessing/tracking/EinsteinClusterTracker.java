@@ -45,9 +45,6 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @Description("Tracks multiple moving compact (not linear) objects")
 public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnotater {
 
-	//    private static Preferences prefs=Preferences.userNodeForPackage(RectangularClusterTracker.class);
-	//    PreferencesEditor editor;
-	//    JFrame preferencesFrame;
 	private java.util.List<Cluster> clusters = new LinkedList<Cluster>();
 	protected AEChip chip;
 	private AEChipRenderer renderer;
@@ -1135,7 +1132,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 				radiusY,
 				getLifetime(),
 				isVisible(),
-				getVelocityPPS());
+				getVelocity());
 		}
 
 		public ArrayList<PathPoint> getPath() {
@@ -1158,7 +1155,7 @@ public class EinsteinClusterTracker extends EventFilter2D implements FrameAnnota
 		 * @see #getVelocityPPT()
 		 *
 		 */
-		public Point2D.Float getVelocityPPS() {
+		public Point2D.Float getVelocity() {
 			return velocityPPS;
 			/* old method for velocity estimation is as follows
 			 * The velocity is instantaneously

@@ -34,8 +34,11 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
+import net.sf.jaer.JaerConstants;
+import net.sf.jaer.chip.AEChip;
 
 import net.sf.jaer.graphics.ImageDisplay;
+import static org.apache.tools.ant.util.ScriptManager.javax;
 
 /**
  * Class for storing race tracks for slot cars. The SlotcarTrack also holds a
@@ -51,7 +54,7 @@ public class SlotcarTrack implements java.io.Serializable {
 
     private static Logger log = Logger.getLogger("net.sf.jaer");
     private static final long serialVersionUID = 8769462155491049760L; // define so that rebuilds don't cause load failure
-    private static Preferences prefs = Preferences.userNodeForPackage(SlotcarTrack.class);
+    static private Preferences prefs;
     /**
      * All points of the track added by the user
      */
@@ -115,13 +118,15 @@ public class SlotcarTrack implements java.io.Serializable {
     /**
      * Creates a new track with trackName set to null.
      */
-    public SlotcarTrack() {
+    public SlotcarTrack(AEChip chip) {
+        prefs=chip.getPrefs()!=null? chip.getPrefs():JaerConstants.PREFS_ROOT;
     }
 
     /**
      * Creates a new track with specified trackName.
      */
-    public SlotcarTrack(String trackName) {
+    public SlotcarTrack(AEChip chip, String trackName) {
+        this(chip);
         this.trackName = trackName;
     }
 

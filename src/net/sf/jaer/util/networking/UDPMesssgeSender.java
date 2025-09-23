@@ -23,7 +23,7 @@ import java.util.prefs.Preferences;
  */
 public class UDPMesssgeSender {
 
-    final static Preferences prefs = Preferences.userNodeForPackage(UDPMesssgeSender.class);
+    final static Preferences prefs = net.sf.jaer.JaerConstants.PREFS_ROOT;
     static final Logger log = Logger.getLogger("net.sf.jaer");
     protected DatagramChannel channel = null;
     protected DatagramSocket socket = null;

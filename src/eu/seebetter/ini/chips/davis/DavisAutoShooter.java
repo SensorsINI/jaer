@@ -36,7 +36,7 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
 
     private final EventRateEstimator eventRateEstimator = new EventRateEstimator(chip);
     private final RectangularClusterTracker tracker = new RectangularClusterTracker(chip);
-    private final TextRenderer textRenderer = new TextRenderer(new Font("Monospaced", Font.BOLD, 24));
+    private TextRenderer textRenderer = null;
     private float eventRateThresholdHz = getFloat("eventRateThresholdHz", 50000);
     private float blurEventRateThresholdHz = getFloat("blurEventRateThresholdHz", 100000);
     private int eventCountThresholdKEvents = getInt("eventCountThresholdKEvents", 100);
@@ -87,6 +87,7 @@ public class DavisAutoShooter extends EventFilter2D implements FrameAnnotater {
         final float x2 = (chip.getSizeX() * ((eventRateEstimator.getFilteredEventRate()))) / eventRateThresholdHz;
         gl.glRectf(0, 4, x2, 6);
 
+        textRenderer=new TextRenderer(new Font("Monospaced", Font.BOLD, 24));
         textRenderer.setColor(1, 1, 1, 0.4f); // rgba
         textRenderer.begin3DRendering();
         final String s = String.format("kevents accum.: %4d, rate keps: %6.2f, snapshot triggered=%s", eventsSinceLastShot >> 10,

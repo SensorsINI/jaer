@@ -43,7 +43,7 @@
             <MenuItem class="javax.swing.JMenuItem" name="openMenuItem">
               <Properties>
                 <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="O"/>
+                  <KeyStroke key="Ctrl+O"/>
                 </Property>
                 <Property name="mnemonic" type="int" value="111"/>
                 <Property name="text" type="java.lang.String" value="Open logged data file..."/>
@@ -64,16 +64,6 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="closeMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="timestampResetBitmaskMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="116"/>
-                <Property name="text" type="java.lang.String" value="dummy, set in constructor"/>
-                <Property name="toolTipText" type="java.lang.String" value="Setting a bitmask here will memorize and subtract timestamps when address  &amp; bitmask != 0"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="timestampResetBitmaskMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator8">
@@ -112,6 +102,16 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="logFilteredEventsCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem">
+              <Properties>
+                <Property name="selected" type="boolean" value="true"/>
+                <Property name="text" type="java.lang.String" value="Check for non-monotonic time in input streams"/>
+                <Property name="toolTipText" type="java.lang.String" value="If enabled, nonmonotonic time stamps are checked for in input streams from file or network"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="networkSeparator">
@@ -230,17 +230,17 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="syncEnabledCheckBoxMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator16">
-            </MenuItem>
-            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="timestampResetBitmaskMenuItem">
               <Properties>
-                <Property name="selected" type="boolean" value="true"/>
-                <Property name="text" type="java.lang.String" value="Check for non-monotonic time in input streams"/>
-                <Property name="toolTipText" type="java.lang.String" value="If enabled, nonmonotonic time stamps are checked for in input streams from file or network"/>
+                <Property name="mnemonic" type="int" value="116"/>
+                <Property name="text" type="java.lang.String" value="dummy, set in constructor"/>
+                <Property name="toolTipText" type="java.lang.String" value="Setting a bitmask here will memorize and subtract timestamps when address  &amp; bitmask != 0"/>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="timestampResetBitmaskMenuItemActionPerformed"/>
               </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JSeparator" name="jSeparator16">
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="exitSeperator">
             </MenuItem>
@@ -319,6 +319,18 @@
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cyclePreviousColorRenderingMethodMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="showRenderingModeMI">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="TAB"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Show rendering mode momentarily"/>
+                <Property name="toolTipText" type="java.lang.String" value="Momentarily display the current rendering mode details"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="showRenderingModeMIActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator4">
@@ -437,7 +449,7 @@
                   <KeyStroke key="Ctrl+EQUALS"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Zoom in"/>
-                <Property name="toolTipText" type="java.lang.String" value="Zooms in around mouse point. Also Ctl+mouse wheel"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms in around mouse point. Also Ctl+mouse wheel. Right click and drag to pan."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomInMenuItemActionPerformed"/>
@@ -449,22 +461,10 @@
                   <KeyStroke key="Ctrl+MINUS"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Zoom out"/>
-                <Property name="toolTipText" type="java.lang.String" value="Zooms out around mouse point. Also Ctl+mouse wheel"/>
+                <Property name="toolTipText" type="java.lang.String" value="Zooms out around mouse point. Also Ctl+mouse wheel. Right click and drag to pan."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomOutMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="zoomCenterMenuItem">
-              <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="END"/>
-                </Property>
-                <Property name="text" type="java.lang.String" value="Center display here"/>
-                <Property name="toolTipText" type="java.lang.String" value="Centers display on mouse point"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zoomCenterMenuItemActionPerformed"/>
               </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="unzoomMenuItem">
@@ -473,7 +473,7 @@
                   <KeyStroke key="Ctrl+0"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Unzoom"/>
-                <Property name="toolTipText" type="java.lang.String" value="Goes to default display zooming"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Default display zooming, with border (see View/Filtering options/Set border space...). &lt;p&gt; Right click and drag to pan. &lt;p&gt; Ctl+wheel to zoom."/>
               </Properties>
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="unzoomMenuItemActionPerformed"/>
@@ -482,7 +482,7 @@
             <Menu class="javax.swing.JMenu" name="graphicsSubMenu">
               <Properties>
                 <Property name="mnemonic" type="int" value="103"/>
-                <Property name="text" type="java.lang.String" value="View/Filtering options"/>
+                <Property name="text" type="java.lang.String" value="View options"/>
               </Properties>
               <SubComponents>
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="viewActiveRenderingEnabledMenuItem">
@@ -527,15 +527,6 @@
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="skipPacketsRenderingCheckBoxMenuItemActionPerformed"/>
                   </Events>
                 </MenuItem>
-                <MenuItem class="javax.swing.JMenuItem" name="setJogNCount">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="Set jog N..."/>
-                    <Property name="toolTipText" type="java.lang.String" value="Sets the size of jog for keyboard jog"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setJogNCountActionPerformed"/>
-                  </Events>
-                </MenuItem>
                 <MenuItem class="javax.swing.JMenuItem" name="setBorderSpaceMenuItem">
                   <Properties>
                     <Property name="text" type="java.lang.String" value="Set border space..."/>
@@ -568,14 +559,11 @@
           <SubComponents>
             <MenuItem class="javax.swing.JCheckBoxMenuItem" name="pauseRenderingCheckBoxMenuItem">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="SPACE"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.pausePlayAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Pause"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="pauseRenderingCheckBoxMenuItemActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="viewStepForwardsMI">
               <Properties>
@@ -599,24 +587,56 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="viewStepBackwardsMIActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator28">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="increasePlaybackSpeedMenuItem">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.fasterAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Increase accumulation"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice or event count longer (see FlextTime mode)&lt;p&gt;Or use SHIFT+ALT+mouse wheel up.&lt;p&gt;Only enabled for playing back recorded data."/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="decreasePlaybackSpeedMenuItem">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.slowerAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Decrease accumulation"/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Makes the time slice or event count shorter (see FlextTime mode)&lt;p&gt;Or use SHIFT+ALT+mouse wheel down.&lt;p&gt;Only enabled for playing back recorded data."/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JCheckBoxMenuItem" name="flextimePlaybackEnabledCheckBoxMenuItem">
+              <Properties>
+                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
+                  <KeyStroke key="T"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Toggle Flextime playback mode"/>
+                <Property name="toolTipText" type="java.lang.String" value="Toggles playback betweeen constant-duration and constant count event frames "/>
+                <Property name="enabled" type="boolean" value="false"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="flextimePlaybackEnabledCheckBoxMenuItemActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator11">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="increaseFrameRateMenuItem">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="RIGHT"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="frameRateIncreaseAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Increase rendering frame rate"/>
                 <Property name="toolTipText" type="java.lang.String" value="Increases frames/second target for rendering"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="increaseFrameRateMenuItemActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="decreaseFrameRateMenuItem">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="LEFT"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="frameRateDecreaseAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Decrease rendering frame rate"/>
                 <Property name="toolTipText" type="java.lang.String" value="Decreases frames/second target for rendering"/>
@@ -678,43 +698,83 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jogBackwardsMIActionPerformed"/>
               </Events>
             </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="setJogNCount">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Set jog N..."/>
+                <Property name="toolTipText" type="java.lang.String" value="Sets the size of jog for keyboard jog"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setJogNCountActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator19">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="setMarkInMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="OPEN_BRACKET"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.markInAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Set IN marker"/>
                 <Property name="toolTipText" type="java.lang.String" value="If playing back file, it rewinds to this position"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setMarkInMIActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="setMarkOutMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="CLOSE_BRACKET"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.markOutAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Set OUT marker"/>
                 <Property name="toolTipText" type="java.lang.String" value="If playing back recording, it plays to this marker"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="setMarkOutMIActionPerformed"/>
-              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="toggleMarkerMI">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.toggleMarkerAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Toggle marker"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jumpPrevMarkerMI">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.jumpPrevMarkerAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Jump to previous marker"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jumpNextMarkerMI">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.jumpNextMarkerAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Jump to next marker"/>
+              </Properties>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="clearMarksMI">
               <Properties>
-                <Property name="accelerator" type="javax.swing.KeyStroke" editor="org.netbeans.modules.form.editors.KeyStrokeEditor">
-                  <KeyStroke key="M"/>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.clearMarksAction" type="code"/>
                 </Property>
                 <Property name="text" type="java.lang.String" value="Clear IN and OUT markers"/>
                 <Property name="toolTipText" type="java.lang.String" value="Clears the IN and OUT markers for playing back a section of a recording"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="clearMarksMIActionPerformed"/>
-              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="exportMarksMI">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.exportMarksAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Export marks"/>
+              </Properties>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="importMarksMI">
+              <Properties>
+                <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                  <Connection code="aePlayer.importMarksAction" type="code"/>
+                </Property>
+                <Property name="text" type="java.lang.String" value="Import marks"/>
+              </Properties>
             </MenuItem>
           </SubComponents>
         </Menu>
@@ -725,6 +785,17 @@
             <Property name="toolTipText" type="java.lang.String" value="Specifies which AEChip class is used either for playback or live interfacnig to a device"/>
           </Properties>
           <SubComponents>
+            <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator3">
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="renewChipMI">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Renew AEChip"/>
+                <Property name="toolTipText" type="java.lang.String" value="Construct new instance of selected AEChip"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="renewChipMIActionPerformed"/>
+              </Events>
+            </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="deviceMenuSpparator">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="customizeDevicesMenuItem">

@@ -51,7 +51,7 @@ import net.sf.jaer.graphics.AEViewer;
  *
  * @author Tobi Delbruck
  */
-@Description("<html>Writes out text format files with DVS and IMU data from DAVIS and DVS cameras."
+@Description("<html>Writes out text CSV (comma separated values or space separate values) format files with DVS and IMU data from DAVIS and DVS cameras."
         + " <p>Previous filtering affects the output. "
         + "<p>Output format is compatible with <a href=\"http://rpg.ifi.uzh.ch/davis_data.html \">rpg.ifi.uzh.ch/davis_data.html</a>")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)

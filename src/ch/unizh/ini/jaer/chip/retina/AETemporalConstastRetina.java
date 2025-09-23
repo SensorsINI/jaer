@@ -25,7 +25,7 @@ abstract public class AETemporalConstastRetina extends AEChip{
         // these are subclasses of ChipRenderer and ChipCanvas
         // these need to be added *before* the filters are made or the filters will not annotate the results!!!
         setRenderer(new RetinaRenderer(this));
-        addDefaultEventFilter(CellStatsProber.class);
+//        addDefaultEventFilter(CellStatsProber.class);
    }
     
 }

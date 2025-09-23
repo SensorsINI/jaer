@@ -177,7 +177,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * @param in the input packet of events
      * @return the resulting output.
      */
-    synchronized public EventPacket filterPacket(EventPacket in) {
+    public EventPacket filterPacket(EventPacket in) {
         if (!filteringEnabled || size() == 0) {
             return in;
         }
@@ -262,6 +262,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 //        if(chip!=null && chip.getFilterFrame()!=null){
 //            chip.getFilterFrame().rebuildContents();
 //        }
+        filter.setControlsVisible(false);
         return ret;
     }
 
@@ -389,7 +390,7 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     synchronized public void contructPreferredFilters() {
         clear();
         ArrayList<String> classNames;
-        Preferences prefs = chip.getPrefs(); // Preferences.userNodeForPackage(chip.getClass()); // getString prefs for the Chip, not for the FilterChain class
+        Preferences prefs = chip.getPrefs(); 
         try {
             byte[] bytes = prefs.getByteArray(prefsKey(), null);
             if (bytes != null) {

@@ -14,6 +14,7 @@ import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -33,7 +34,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class SpiNNaker_HardwareInterface implements HardwareInterface, AEMonitorInterface, BiasgenHardwareInterface, Observer/*, CommPortOwnershipListener */ {
 
-    private static Preferences prefs = Preferences.userNodeForPackage(SpiNNaker_HardwareInterface.class);
+    private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE.node("SpiNNaker");
     public PropertyChangeSupport support = new PropertyChangeSupport(this);
     static Logger log = Logger.getLogger("net.sf.jaer");
     private AEChip chip;

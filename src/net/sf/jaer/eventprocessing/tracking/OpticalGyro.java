@@ -174,8 +174,8 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 					weightSum += weight;
 					avgxloc += (c.getLocation().x - c.getBirthLocation().x) * weight;
 					avgyloc += (c.getLocation().y - c.getBirthLocation().y) * weight;
-					avgxvel += c.getVelocityPPT().x * weight;
-					avgyvel += c.getVelocityPPT().y * weight;
+					avgxvel += c.velocity.x * weight;
+					avgyvel += c.velocity.y * weight;
 					ageSum += c.getLifetime() * weight;
 					nn++;
 					if ((oldestCluster == null) || (c.getBirthTime() < oldestCluster.getBirthTime())) {
@@ -236,7 +236,7 @@ public class OpticalGyro extends RectangularClusterTracker implements FrameAnnot
 		 * @param e the event to transform.
 		 */
 		public void transformEvent(BasicEvent e, float gainTranslation, float gainVelocity) {
-			int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
+			final int sx2 = chip.getSizeX() / 2, sy2 = chip.getSizeY() / 2;
 			e.x -= sx2;
 			e.y -= sy2;
 			e.x = (short) (((cosAngle * e.x) - (sinAngle * e.y)) + translation.x);

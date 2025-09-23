@@ -57,8 +57,6 @@ import net.sf.jaer.util.filter.LowpassFilter;
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class HoughLineTracker extends EventFilter2D implements FrameAnnotater, LineDetector {
 
-    //    static Preferences prefs=Preferences.userNodeForPackage(HoughLineTracker.class);
-    //    Line line=new Line();
     private float angleMixingFactor = getPrefs().getFloat("LineTracker.angleMixingFactor", 0.005f);
     private float positionMixingFactor = getPrefs().getFloat("LineTracker.positionMixingFactor", 0.005f);
     //    private boolean favorVertical=getPrefs().getBoolean("LineTracker.favorVertical",true);

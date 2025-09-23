@@ -5,7 +5,6 @@
  *Copyright September 28, 2007 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich */
 package net.sf.jaer.eventprocessing.filter;
 
-import java.awt.Font;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Date;
@@ -28,14 +27,13 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
-import net.sf.jaer.graphics.ChipCanvas;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.TobiLogger;
 
-import com.jogamp.opengl.util.awt.TextRenderer;
-import com.jogamp.opengl.util.gl2.GLUT;
-import eu.seebetter.ini.chips.davis.DavisBaseCamera;
+import java.awt.Color;
+import java.awt.Insets;
+import java.awt.geom.Rectangle2D;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -43,12 +41,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import net.sf.jaer.Preferred;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.DrawGL;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 /**
@@ -65,18 +66,26 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     private AEFileInputStreamInterface aeFileInputStream = null; // current recorded file input stream
     private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ISO_DATE_TIME;
-    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
-    private boolean analogClock = getPrefs().getBoolean("Info.analogClock", true);
-    private boolean digitalClock = getPrefs().getBoolean("Info.digitalClock", true);
+//    private DateTimeFormatter timeFormat = DateTimeFormatter.ISO_TIME;
+    private DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss.SSS"); // tobi changed to show ms, not standard 10ms
+    @Preferred
+    private boolean analogClock = getPrefs().getBoolean("analogClock", true);
+    @Preferred
+    private boolean digitalClock = getPrefs().getBoolean("digitalClock", true);
     private float analogDigitalClockScale = getFloat("analogDigitalClockScale", 1);
-    private boolean date = getPrefs().getBoolean("Info.date", true);
-    private boolean absoluteTime = getPrefs().getBoolean("Info.absoluteTime", true);
-    private int timeOffsetMs = getPrefs().getInt("Info.timeOffsetMs", 0);
-    private float timestampScaleFactor = getPrefs().getFloat("Info.timestampScaleFactor", 1);
-    private float eventRateScaleMax = getPrefs().getFloat("Info.eventRateScaleMax", 1e5f);
-    private boolean timeScaling = getPrefs().getBoolean("Info.timeScaling", true);
+    private boolean date = getPrefs().getBoolean("date", true);
+    private boolean localTime = getPrefs().getBoolean("localTime", true);
+    private boolean ignoreTimeZone = getPrefs().getBoolean("ignoreTimeZone", false);
+    private int timeOffsetMs = getPrefs().getInt("timeOffsetMs", 0);
+    private float timestampScaleFactor = getPrefs().getFloat("timestampScaleFactor", 1);
+    @Preferred
+    private float eventRateScaleMax = getPrefs().getFloat("eventRateScaleMax", 1e5f);
+    private boolean timeScaling = getPrefs().getBoolean("timeScaling", true);
+    @Preferred
     private boolean showRateTrace = getBoolean("showRateTrace", true);
+    private boolean showFrameRateForConstantCountFrames = getBoolean("showFrameRateForConstantCountFrames", true);
     public final int MAX_SAMPLES = 1000; // to avoid running out of memory
+    @Preferred
     private int maxSamples = getInt("maxSamples", MAX_SAMPLES);
     private long dataFileTimestampStartTimeUs = 0;
     private long wrappingCorrectionMs = 0;
@@ -86,7 +95,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     volatile private long lastUpdateTimeMs = 0; // DEBUG to look for nonmonotonic update times
 //    volatile private float eventRateMeasured = 0; // volatile, also shared
     private boolean addedViewerPropertyChangeListener = false; // need flag because viewer doesn't exist on creation
+    @Preferred
     private boolean eventRate = getBoolean("eventRate", true);
+    @Preferred
     private boolean eventRatePerPixel = getBoolean("eventRatePerPixel", false);
     private volatile boolean resetTimeEnabled = false;  // user for doResetTime
     private boolean resetTimeOnRewind = getBoolean("resetTimeOnRewind", false);
@@ -99,7 +110,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private String maxTimeString = "unknown";
     private boolean logStatistics = false;
     private TobiLogger tobiLogger = null;
+    @Preferred
     private boolean showAccumulatedEventCount = getBoolean("showAccumulatedEventCount", true);
+    @Preferred
     private boolean measureSparsity = getBoolean("measureSparsity", false);
     private boolean[][] sparsityMap = null;
     private DescriptiveStatistics sparsity = null;
@@ -112,14 +125,55 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     private String INFO_FIELDS = "updateTimeMs, eventRateHz,accumulateTimeUs,accumulatedDVSOnEventCount,accumulatedDVSOffEventCount,accumulatedDVSEventCount,accumulatedAPSSampleCount,accumulatedIMUSampleCount";
     private int nPixels = 0; // to be either total pixels or set by XYTypeFilter ROI
 
+    @Preferred
+    private int fontSize = getInt("fontSize", 8);
+
+    public Info(AEChip chip) {
+        super(chip);
+        xyTypeFilter = new XYTypeFilter(chip);
+        typedEventRateEstimator = new TypedEventRateEstimator(chip);
+        typedEventRateEstimator.getSupport().addPropertyChangeListener(EventRateEstimator.EVENT_RATE_UPDATE, this);
+        typedEventRateEstimator.getSupport().addPropertyChangeListener(TypedEventRateEstimator.EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED, this);
+
+        FilterChain fc = new FilterChain(chip);
+        fc.add(xyTypeFilter);
+        fc.add(typedEventRateEstimator);
+        setEnclosedFilterChain(fc);
+        String time = "1: Time", rate = "2: Rate", sparsity = "3: Sparsity", misc = "4: Options/Logging";
+        setPropertyTooltip(time, "analogClock", "show normal circular clock");
+        setPropertyTooltip(time, "digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
+        setPropertyTooltip(time, "analogDigitalClockScale", "scale for drawing clock");
+        setPropertyTooltip(time, "date", "show date");
+        setPropertyTooltip(time, "localTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
+        setPropertyTooltip(time, "ignoreTimeZone", "ignore the local time zone");
+        setPropertyTooltip(time, "showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
+        setPropertyTooltip(time, "timeOffsetMs", "add this time in ms to the displayed time");
+        setPropertyTooltip(time, "timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
+        setPropertyTooltip(rate, "eventRateScaleMax", "scale event rates to this maximum");
+        setPropertyTooltip(time, "timeScaling", "shows time scaling relative to real time");
+        setPropertyTooltip(rate, "eventRate", "<html>shows average event rate;<br>in enclosed filter <i>TypedEventRateEstimator</i> set <i>measureIndividualTypesEnabled</i> to see ON/OFF stats");
+        setPropertyTooltip(rate, "eventRatePerPixel", "<html>sets rate bar to show average event rate per pixel (selected) or total (unselected).<br>Set <i>eventRateScaleMax</i> to scale bars.");
+        setPropertyTooltip(rate, "eventRateSigned", "uses signed event rate for ON positive and OFF negative");
+        setPropertyTooltip(rate, "eventRateTauMs", "lowpass time constant in ms for filtering event rate");
+        setPropertyTooltip(rate, "showRateTrace", "shows a historical trace of event rate");
+        setPropertyTooltip(rate, "maxSamples", "maximum number of samples before clearing rate history");
+        setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip(time, "resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
+        setPropertyTooltip(sparsity, "measureSparsity", "Report fraction of pixels with no events in last packet.");
+        setPropertyTooltip(misc, "fontSize", "Font size for rendered text; scaled for chip size in pixels to render nicely.");
+        setPropertyTooltip(misc, "logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
+        setPropertyTooltip(misc, "toggleLogStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
+    }
+
     /**
      * computes the absolute time (since 1970) or relative time (in file) given
      * the timestamp. The internal wrappingCorrection and any scaling and start
      * time is applied.
      *
      * @param relativeTimeInFileMs the relative time in file in ms
-     * @return the absolute or relative time depending on absoluteTime switch,
-     * or the System.currentTimeMillis() if we are in live playback mode
+     * @return the absolute or relative time depending on localTime switch, or
+     * the System.currentTimeMillis() if we are in live playback mode
      */
     private long computeDisplayTime(long relativeTimeInFileMs) {
         long t;
@@ -128,7 +182,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         } else {
             t = relativeTimeInFileMs + wrappingCorrectionMs;
             t = (long) (t * timestampScaleFactor);
-            if (absoluteTime) {
+            if (localTime) {
                 t += absoluteStartTimeMs;
             }
             t = t + timeOffsetMs;
@@ -317,8 +371,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //            gl.glColor3f(1, 1, .8f);
             gl.glLineWidth(1.5f);
             gl.glTranslatef(0.5f, yorig, 0);
-            //            gl.glRotatef(90, 0, 0, 1);
-            //            gl.glRotatef(-90, 0, 0, 1);
             gl.glScalef((float) (sx - 1) / (deltaTimeUs), (ysize) / (maxRate), 1);
             gl.glBegin(GL.GL_LINE_STRIP);
             for (RateSamples s : rateSamples) {
@@ -331,17 +383,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             maxRateString = String.format("max %s eps", engFmt.format(rateHistoriesMaxRate));
             maxTimeString = String.format("%s s", engFmt.format((deltaTimeUs) * .001f));
 
-            GLUT glut = chip.getCanvas().getGlut();
-            int font = GLUT.BITMAP_9_BY_15;
-            ChipCanvas.Borders borders = chip.getCanvas().getBorders();
-            float w = drawable.getSurfaceWidth() - (2 * borders.leftRight * chip.getCanvas().getScale());
-//            int ntypes = typedEventRateEstimator.getNumCellTypes();
-            float sw = (glut.glutBitmapLength(font, maxRateString) / w) * sx;
-            gl.glRasterPos3f(0, yorig + ysize * sign, 0);
-            glut.glutBitmapString(font, maxRateString);
-            sw = (glut.glutBitmapLength(font, maxTimeString) / w) * sx;
-            gl.glRasterPos3f(sx - sw, sy * .3f, 0);
-            glut.glutBitmapString(font, maxTimeString);
+            DrawGL.drawString(fontSize, 0, yorig + ysize * sign, 0, Color.white, maxRateString);
+            DrawGL.drawString(fontSize, sx, sy * 0.3f, 1, Color.white, maxTimeString);
 
             gl.glPopMatrix();
         }
@@ -372,40 +415,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      *
      * @param chip the chip object
      */
-    public Info(AEChip chip) {
-        super(chip);
-        xyTypeFilter = new XYTypeFilter(chip);
-        typedEventRateEstimator = new TypedEventRateEstimator(chip);
-        typedEventRateEstimator.getSupport().addPropertyChangeListener(EventRateEstimator.EVENT_RATE_UPDATE, this);
-        typedEventRateEstimator.getSupport().addPropertyChangeListener(TypedEventRateEstimator.EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED, this);
-
-        FilterChain fc = new FilterChain(chip);
-        fc.add(xyTypeFilter);
-        fc.add(typedEventRateEstimator);
-        setEnclosedFilterChain(fc);
-        setPropertyTooltip("analogClock", "show normal circular clock");
-        setPropertyTooltip("digitalClock", "show digital clock; includes timezone as last component of time (e.g. -0800) if availble from file or local computer");
-        setPropertyTooltip("analogDigitalClockScale", "scale for drawing clock");
-        setPropertyTooltip("date", "show date");
-        setPropertyTooltip("absoluteTime", "enable to show absolute time, disable to show timestmp time (usually relative to start of recording");
-        setPropertyTooltip("showTimeAsEventTimestamp", "if enabled, time will be displayed in your timezone, e.g. +1 hour in Zurich relative to GMT; if disabled, time will be displayed in GMT");
-        setPropertyTooltip("timeOffsetMs", "add this time in ms to the displayed time");
-        setPropertyTooltip("timestampScaleFactor", "scale timestamps by this factor to account for crystal offset");
-        setPropertyTooltip("eventRateScaleMax", "scale event rates to this maximum");
-        setPropertyTooltip("timeScaling", "shows time scaling relative to real time");
-        setPropertyTooltip("eventRate", "<html>shows average event rate;<br>in enclosed filter <i>TypedEventRateEstimator</i> set <i>measureIndividualTypesEnabled</i> to see ON/OFF stats");
-        setPropertyTooltip("eventRatePerPixel", "<html>sets rate bar to show average event rate per pixel (selected) or total (unselected).<br>Set <i>eventRateScaleMax</i> to scale bars.");
-        setPropertyTooltip("eventRateSigned", "uses signed event rate for ON positive and OFF negative");
-        setPropertyTooltip("eventRateTauMs", "lowpass time constant in ms for filtering event rate");
-        setPropertyTooltip("showRateTrace", "shows a historical trace of event rate");
-        setPropertyTooltip("maxSamples", "maximum number of samples before clearing rate history");
-        setPropertyTooltip("logStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
-        setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
-        setPropertyTooltip("toggleLogStatistics", "<html>enables logging of any activiated statistics (e.g. event rate) to a log file <br>written to the user's home folder. <p>See the logging output for the file location.");
-        setPropertyTooltip("showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
-        setPropertyTooltip("resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
-        setPropertyTooltip("measureSparsity", "Report fraction of pixels with no events in last packet.");
-    }
     private boolean increaseWrappingCorrectionOnNextPacket = false;
 
     /**
@@ -596,6 +605,19 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                     }
                 }
             }
+        } else if (in.getEventPrototype() instanceof PolarityEvent) {
+            for (BasicEvent be : in) {
+                PolarityEvent e = (PolarityEvent) be;
+                accumulatedDVSEventCount++;
+                if (e.getPolarity() == Polarity.On) {
+                    accumulatedDVSOnEventCount++;
+                } else if (e.getPolarity() == Polarity.Off) {
+                    accumulatedDVSOffEventCount++;
+                }
+                if (measureSparsity) {
+                    sparsityMap[e.x][e.y] = true;
+                }
+            }
         } else {
             accumulatedDVSEventCount += in.getSize();
             if (measureSparsity) {
@@ -659,11 +681,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         drawRateSamples(drawable);
         if (measureSparsity && sparsity != null) {
-            GLUT glut = chip.getCanvas().getGlut();
-            gl.glRasterPos3f(10, (int) (chip.getSizeY() * .6f), 0);
-
             String s = String.format("Sparsity: last: %.2f%% mean: %.2f%% median: %.2f%% min: %.2f%% max: %.2f%% N=%d", lastSparsity * 100, sparsity.getMean() * 100, sparsity.getPercentile(50) * 100, sparsity.getMin() * 100, sparsity.getMax() * 100, sparsity.getN());
-            glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, s);
+            DrawGL.drawString(fontSize, 0, 0, 0, Color.white, s);
         }
 
     }
@@ -677,10 +696,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         ZonedDateTime zdt = null;
         Instant instant = Instant.ofEpochMilli(t);
 
-        if (aeFileInputStream != null && aeFileInputStream.getZoneId() != null) {
-            zdt = ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
-        } else if (absoluteTime) {
+        if (localTime) {
             zdt = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
+        } else if (!ignoreTimeZone && aeFileInputStream != null && aeFileInputStream.getZoneId() != null) {
+            zdt = ZonedDateTime.ofInstant(instant, aeFileInputStream.getZoneId());
         } else {
             zdt = ZonedDateTime.ofInstant(instant, ZoneId.of("GMT"));
         }
@@ -752,31 +771,17 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 gl.glEnd();
             }
             gl.glPopMatrix();
-        }
-
-        if (digitalClock) {
-            String dateStr = null;
-            if (date) {
-                dateStr = dateTimeFormatter.format(zdt);
-            } else {
-                dateStr = timeFormat.format(zdt);
+            if (digitalClock) {
+                String dateStr = null;
+                if (date) {
+                    dateStr = dateTimeFormatter.format(zdt);
+                } else {
+                    dateStr = timeFormat.format(zdt);
+                }
+                DrawGL.drawString(fontSize, radius + 2, 0, .5f, Color.white, dateStr);
             }
-
-            gl.glPushMatrix();
-            TextRenderer textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 12), true, true);
-            textRenderer.begin3DRendering();
-            textRenderer.setColor(1, 1, 1, 1);
-            textRenderer.draw3D(dateStr, 0, 0, 0, analogDigitalClockScale);
-            textRenderer.end3DRendering();
-//            gl.glRasterPos3f(0, 0, 0);
-//            GLUT glut = chip.getCanvas().getGlut();
-//            if (date) {
-//                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, dateTimeFormatter.format(zdt));
-//            } else {
-//                glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, timeFormat.format(zdt));
-//            }
-            gl.glPopMatrix();
         }
+
     }
 
     private void drawEventRateBars(GLAutoDrawable drawable) {
@@ -785,10 +790,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         GL2 gl = drawable.getGL().getGL2();
         // positioning of rate bars depends on num types and display size
-        ChipCanvas.Borders borders = chip.getCanvas().getBorders();
+        Insets borders = chip.getCanvas().getBorderInsets();
 
         // get screen width in screen pixels, subtract borders in screen pixels to find width of drawn chip area in screen pixels
-        float /*h = drawable.getHeight(), */ w = drawable.getSurfaceWidth() - (2 * borders.leftRight * chip.getCanvas().getScale());
+        float w = drawable.getSurfaceWidth() - (2 * borders.left * chip.getCanvas().getScale());
         int ntypes = typedEventRateEstimator.getNumCellTypes();
         final int sx = chip.getSizeX(), sy = chip.getSizeY();
         final float yorig = .9f * sy, xpos = 0, ystep = Math.max(.03f * sy, 6), barh = .03f * sy;
@@ -797,14 +802,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         //        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         //        gl.glLoadIdentity();
         gl.glColor3f(1, 1, 1);
-        int font = GLUT.BITMAP_9_BY_15;
-        GLUT glut = chip.getCanvas().getGlut();
+//        int font = GLUT.BITMAP_9_BY_15;
+//        GLUT glut = chip.getCanvas().getGlut();
         int nbars = typedEventRateEstimator.isMeasureIndividualTypesEnabled() ? ntypes : 1;
         for (int i = 0; i < nbars; i++) {
             final float totalRate = typedEventRateEstimator.getFilteredEventRate(i);
             final float perPixelRate = totalRate / this.nPixels;
             float bary = yorig - (ystep * i);
-            gl.glRasterPos3f(xpos, bary, 0);
             String s = null;
             if (typedEventRateEstimator.isMeasureIndividualTypesEnabled()) {
                 s = String.format("Type %d: %8s Hz (%8s Hz/pixel) N=%d px", i,
@@ -816,9 +820,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             }
             // get the string length in screen pixels , divide by chip array in screen pixels,
             // and multiply by number of pixels to get string length in screen pixels.
-            float sw = (glut.glutBitmapLength(font, s) / w) * sx;
-            glut.glutBitmapString(font, s);
+            Rectangle2D r = DrawGL.drawString(fontSize, xpos, bary, 0, Color.white, s);
             float rate = isEventRatePerPixel() ? perPixelRate : totalRate;
+            int sw = (int) (r.getWidth());
             gl.glRectf(xpos + sw, bary + barh, xpos + sw + ((rate * sx) / getEventRateScaleMax()), bary);
         }
         gl.glPopMatrix();
@@ -831,11 +835,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         GL2 gl = drawable.getGL().getGL2();
         gl.glColor3f(1, 1, 1);
-        int font = GLUT.BITMAP_9_BY_15;
         final int sx = chip.getSizeX(), sy = chip.getSizeY();
         final float yorig = .7f * sy, xpos = 0;
-        GLUT glut = chip.getCanvas().getGlut();
-        gl.glRasterPos3f(xpos, yorig, 0);
         int n = this.nPixels;
         float cDvs = (float) accumulatedDVSEventCount;
         float cDvsOn = (float) accumulatedDVSOnEventCount;
@@ -851,10 +852,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 engFmt.format(accumulatedDVSOffEventCount), engFmt.format(cDvsOff / t), engFmt.format(cDvsOff / t / n),
                 engFmt.format(accumulatedAPSSampleCount / 2), engFmt.format(cAps / 2 / t), // divide by two for reset/signal reads
                 engFmt.format(accumulatedIMUSampleCount), engFmt.format(cImu / t));
-        MultilineAnnotationTextRenderer.setScale(.3f);
+        MultilineAnnotationTextRenderer.setFontSize(fontSize);
+        MultilineAnnotationTextRenderer.setLineShiftMultiplier(1.15f); // default value is 1.15 lines
         MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .8f);
         MultilineAnnotationTextRenderer.renderMultilineString(s);
-//        glut.glutBitmapString(font, s);
     }
 
     public void drawRateSamples(GLAutoDrawable drawable) {
@@ -886,7 +887,6 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
         gl.glPushMatrix();
         gl.glColor3f(1, 1, 1);
-        GLUT glut = chip.getCanvas().getGlut();
         StringBuilder s = new StringBuilder();
         if ((timeExpansion < 1) && (timeExpansion != 0)) {
             s.append('/');
@@ -894,12 +894,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         } else {
             s.append('x');
         }
-        int font = GLUT.BITMAP_9_BY_15;
         String s2 = String.format("Time factor: %8s", engFmt.format(timeExpansion) + s);
-
-        float sw = (glut.glutBitmapLength(font, s2) / (float) w) * sx;
-        gl.glRasterPos3f(0, yorig, 0);
-        glut.glutBitmapString(font, s2);
+        DrawGL.drawString(fontSize, 0, yorig, 0, Color.white, s2);
         float x0 = xpos;
         float x1 = (float) (xpos + (x0 * Math.log10(timeExpansion)));
         float y0 = sy + barh;
@@ -915,7 +911,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setAnalogClock(boolean analogClock) {
         this.analogClock = analogClock;
-        getPrefs().putBoolean("Info.analogClock", analogClock);
+        getPrefs().putBoolean("analogClock", analogClock);
     }
 
     public boolean isDigitalClock() {
@@ -924,7 +920,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setDigitalClock(boolean digitalClock) {
         this.digitalClock = digitalClock;
-        getPrefs().putBoolean("Info.digitalClock", digitalClock);
+        getPrefs().putBoolean("digitalClock", digitalClock);
     }
 
     public boolean isDate() {
@@ -933,16 +929,16 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setDate(boolean date) {
         this.date = date;
-        getPrefs().putBoolean("Info.date", date);
+        getPrefs().putBoolean("date", date);
     }
 
-    public boolean isAbsoluteTime() {
-        return absoluteTime;
+    public boolean isLocalTime() {
+        return localTime;
     }
 
-    public void setAbsoluteTime(boolean absoluteTime) {
-        this.absoluteTime = absoluteTime;
-        getPrefs().putBoolean("Info.absoluteTime", absoluteTime);
+    public void setLocalTime(boolean localTime) {
+        this.localTime = localTime;
+        getPrefs().putBoolean("localTime", localTime);
     }
 
     public boolean isEventRate() {
@@ -972,7 +968,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setTimeOffsetMs(int timeOffsetMs) {
         this.timeOffsetMs = timeOffsetMs;
-        getPrefs().putInt("Info.timeOffsetMs", timeOffsetMs);
+        getPrefs().putInt("timeOffsetMs", timeOffsetMs);
     }
 
     public float getTimestampScaleFactor() {
@@ -981,7 +977,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
     public void setTimestampScaleFactor(float timestampScaleFactor) {
         this.timestampScaleFactor = timestampScaleFactor;
-        getPrefs().putFloat("Info.timestampScaleFactor", timestampScaleFactor);
+        getPrefs().putFloat("timestampScaleFactor", timestampScaleFactor);
     }
 
     /**
@@ -996,7 +992,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setEventRateScaleMax(float eventRateScaleMax) {
         this.eventRateScaleMax = eventRateScaleMax;
-        getPrefs().putFloat("Info.eventRateScaleMax", eventRateScaleMax);
+        getPrefs().putFloat("eventRateScaleMax", eventRateScaleMax);
         maxRateString = engFmt.format(eventRateScaleMax);
     }
 
@@ -1012,7 +1008,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     public void setTimeScaling(boolean timeScaling) {
         this.timeScaling = timeScaling;
-        getPrefs().putBoolean("Info.timeScaling", timeScaling);
+        getPrefs().putBoolean("timeScaling", timeScaling);
     }
 
     /**
@@ -1108,6 +1104,36 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setAnalogDigitalClockScale(float analogDigitalClockScale) {
         this.analogDigitalClockScale = analogDigitalClockScale;
         putFloat("analogDigitalClockScale", analogDigitalClockScale);
+    }
+
+    /**
+     * @return the ignoreTimeZone
+     */
+    public boolean isIgnoreTimeZone() {
+        return ignoreTimeZone;
+    }
+
+    /**
+     * @param ignoreTimeZone the ignoreTimeZone to set
+     */
+    public void setIgnoreTimeZone(boolean ignoreTimeZone) {
+        this.ignoreTimeZone = ignoreTimeZone;
+        putBoolean("ignoreTimeZone", ignoreTimeZone);
+    }
+
+    /**
+     * @return the fontSize
+     */
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    /**
+     * @param fontSize the fontSize to set
+     */
+    public void setFontSize(int fontSize) {
+        this.fontSize = fontSize;
+        putInt("fontSize", fontSize);
     }
 
 }

@@ -98,6 +98,15 @@
 
           <Layout class="org.netbeans.modules.form.compat2.layouts.DesignFlowLayout"/>
           <SubComponents>
+            <Component class="javax.swing.JCheckBox" name="captureEventsCB">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Capture events"/>
+                <Property name="toolTipText" type="java.lang.String" value="Enables capture of DVS events. Disabling capture turns off AER output of sensor."/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureEventsCBActionPerformed"/>
+              </Events>
+            </Component>
             <Component class="javax.swing.JCheckBox" name="displayEventsCheckBox">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Display events"/>
@@ -145,15 +154,6 @@
               </Properties>
               <Events>
                 <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="dvsContSpStateChanged"/>
-              </Events>
-            </Component>
-            <Component class="javax.swing.JCheckBox" name="captureEventsCB">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Capture events"/>
-                <Property name="toolTipText" type="java.lang.String" value="Enables capture of DVS events. Disabling capture turns off AER output of sensor."/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="captureEventsCBActionPerformed"/>
               </Events>
             </Component>
             <Container class="javax.swing.JPanel" name="bwPanel">

@@ -151,8 +151,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private final FilterChain filterChain;
     private boolean saved = false;
     private boolean textRendererScaleSet = false;
-    private float textRendererScale = 0.3f;
     private int noPatternFoundwarningSkipInterval = 50, noPatternFoundWarningCount = 0;
+    private int fontSize=getInt("fontSize",6);
+        
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
@@ -182,6 +183,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("hideStatisticsAndStatus", "hides the status text");
         setPropertyTooltip("numAutoCaptureFrames", "Number of frames to automatically capture with min delay autocaptureCalibrationFrameDelayMs between frames");
         setPropertyTooltip("autocaptureCalibrationFrameDelayMs", "Delay after capturing automatic calibration frame");
+        setPropertyTooltip("fontSize", "Font size for rendering text");
 //        loadCalibration(); // moved from here to update method so that Chip is fully constructed with correct size, etc.
     }
 
@@ -536,7 +538,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             // render once to set the scale using the same TextRenderer
             MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
             MultilineAnnotationTextRenderer.setColor(Color.green);
-            MultilineAnnotationTextRenderer.setScale(textRendererScale);
+            MultilineAnnotationTextRenderer.setFontSize(fontSize);
             MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
             if (!textRendererScaleSet) {
                 textRendererScaleSet = true;
@@ -549,7 +551,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                         longestString = s;
                     }
                 }
-                textRendererScale = TextRendererScale.draw3dScale(MultilineAnnotationTextRenderer.getRenderer(), longestString, chip.getCanvas().getScale(), chip.getSizeX(), .8f);
             }
         }
     }
@@ -1338,6 +1339,21 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         };
         t.start();
 
+    }
+
+    /**
+     * @return the fontSize
+     */
+    public int getFontSize() {
+        return fontSize;
+    }
+
+    /**
+     * @param fontSize the fontSize to set
+     */
+    public void setFontSize(int fontSize) {
+        this.fontSize = fontSize;
+        putInt("fontSize",fontSize);
     }
 
 }

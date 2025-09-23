@@ -36,20 +36,9 @@ public interface ClusterInterface {
      * Returns velocity of cluster in pixels per second.
      *
      * @return averaged velocity of cluster in pixels per second.
-     * <p>
-     * The method of measuring velocity is based on a linear regression of a number of previous cluter locations.
-     * @see #getVelocityPPT()
-     *
      */
-    public Point2D.Float getVelocityPPS();
+    public Point2D.Float getVelocity();
 
-    /**
-     * Cluster velocity in pixels/timestamp tick as a vector. Velocity values are set during cluster upate.
-     *
-     * @return the velocityPPT in pixels per timestamp tick.
-     * @see #getVelocityPPS()
-     */
-    public Point2D.Float getVelocityPPT();
 
     /** Computes and returns speed of cluster in pixels per second.
      *
@@ -63,6 +52,13 @@ public interface ClusterInterface {
      */
     public float getRadius();
 
+     /** Returns area in pixels.
+     *
+     * @return some measure of cluster area size.
+     */
+    public float getArea();
+
+    
     /** Returns measure of cluster 'mass' or importance.  This mass is increased by support (e.g. events) and decays away with lack of support.
      *
      * @return the mass measure.

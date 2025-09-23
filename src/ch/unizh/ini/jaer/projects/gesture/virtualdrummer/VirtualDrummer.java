@@ -169,7 +169,7 @@ public class VirtualDrummer extends EventFilter2D implements FrameAnnotater,Obse
 //           System.out.print("Cluster_"+((BlurringFilter2DTracker.Cluster)c).getClusterNumber()+": ");
             // check latest five y-axis velocities
             for ( int i = 0 ; i < numVelocityToCheck ; i++ ){
-                Point2D.Float vel = c.getPath().get(nPoints - 1 - i).velocityPPT; // first last point, one before last, two before last....
+                Point2D.Float vel = c.getPath().get(nPoints - 1 - i).velocity; // first last point, one before last, two before last....
                 if ( vel == null ){
                     return false; // don't have enough measurements yet
                 }

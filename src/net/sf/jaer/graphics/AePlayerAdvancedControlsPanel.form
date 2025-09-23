@@ -55,6 +55,7 @@
               </Properties>
               <Events>
                 <EventHandler event="stateChanged" listener="javax.swing.event.ChangeListener" parameters="javax.swing.event.ChangeEvent" handler="playerSliderStateChanged"/>
+                <EventHandler event="mouseWheelMoved" listener="java.awt.event.MouseWheelListener" parameters="java.awt.event.MouseWheelEvent" handler="playerSliderMouseWheelMoved"/>
                 <EventHandler event="mousePressed" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="playerSliderMousePressed"/>
                 <EventHandler event="mouseReleased" listener="java.awt.event.MouseListener" parameters="java.awt.event.MouseEvent" handler="playerSliderMouseReleased"/>
               </Events>
@@ -270,6 +271,21 @@
                     </Property>
                     <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
                       <Image iconType="3" name="/net/sf/jaer/graphics/icons/MarkOut16.gif"/>
+                    </Property>
+                    <Property name="hideActionText" type="boolean" value="true"/>
+                    <Property name="iconTextGap" type="int" value="2"/>
+                    <Property name="margin" type="java.awt.Insets" editor="org.netbeans.beaninfo.editors.InsetsEditor">
+                      <Insets value="[2, 5, 2, 5]"/>
+                    </Property>
+                  </Properties>
+                </Component>
+                <Component class="javax.swing.JButton" name="toggleMarkerB">
+                  <Properties>
+                    <Property name="action" type="javax.swing.Action" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
+                      <Connection code="aePlayer.markOutAction" type="code"/>
+                    </Property>
+                    <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
+                      <Image iconType="3" name="/net/sf/jaer/graphics/icons/ToggleMarker16.gif"/>
                     </Property>
                     <Property name="hideActionText" type="boolean" value="true"/>
                     <Property name="iconTextGap" type="int" value="2"/>
