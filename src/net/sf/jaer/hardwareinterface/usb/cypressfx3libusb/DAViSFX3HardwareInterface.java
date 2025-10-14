@@ -28,9 +28,6 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * @author Christian/Tobi
  */
 public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
-    
-    private int warningCount=0;
-    private static final int WARNING_INTERVAL=10000;
 
     private int warningCount = 0;
     private static final int WARNING_INTERVAL = 100000;
@@ -51,6 +48,7 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
      */
     static public final short PID_FX3 = (short) 0x841A;
     static public final short PID_FX2 = (short) 0x841B;
+    static public final short PID_FX2_GAER = (short) 0x841C;
     static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 6;
     static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 4;
     static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;

@@ -43,6 +43,7 @@ public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 	/** The USB product ID of this device */
 	static public final short PID_FX3 = (short) 0x841A;
 	static public final short PID_FX2 = (short) 0x841B;
+	static public final short PID_FX2_GAER = (short) 0x841C;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX3 = 6;
 	static public final int REQUIRED_FIRMWARE_VERSION_FX2 = 4;
 	static public final int REQUIRED_LOGIC_REVISION_FX3 = 18;
@@ -172,7 +173,7 @@ public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 		private byte imuTmpData;
 
         private boolean DEBUGUSB = false;
-        //private boolean DEBUGUSB = true;
+        //        private boolean DEBUGUSB = true;
 
 		public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
@@ -478,7 +479,7 @@ public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 						        final byte onEvents = (byte) ((event & 0x00F0) >>> 4);
 						        final byte offEvents = (byte) (event & 0x000F);
 						        final byte allEvents = (byte) (event & 0x00FF);
-				                if (DEBUGUSB) CypressFX3.log.info("it's a GAER event, group address: 0x" + Integer.toHexString(groupAddr) + " (dec: " + groupAddr + ")" + " OFF events 0x" + Integer.toHexString(onEvents) + " OFF events 0x" + Integer.toHexString(offEvents));
+				                if (DEBUGUSB) CypressFX3.log.info("it's a GAER event, group address: 0x" + Integer.toHexString(groupAddr) + " (dec: " + groupAddr + ")" + " ON events 0x" + Integer.toHexString(onEvents) + " OFF events 0x" + Integer.toHexString(offEvents) + " last Y: " + dvsLastY);
                                 int dvsAddrOffsetX = (int) (groupAddr*4);
 
 								// Check range conformity.
@@ -498,7 +499,7 @@ public class SciDVSHardwareInterface extends CypressFX3Biasgen {
                                             polarity = 1;
                                             addrX= (int) (dvsAddrOffsetX+iter-GAER_EVENT_WIDTH);
                                         }
-				                        if (DEBUGUSB) CypressFX3.log.info("Event of polarity " + polarity + ". X address: " + addrX);
+				                        //if (DEBUGUSB) CypressFX3.log.info("Event of polarity " + polarity + ". X address: " + addrX);
                                             
 
 								        // Check that the buffer has space for this event. Enlarge if needed.

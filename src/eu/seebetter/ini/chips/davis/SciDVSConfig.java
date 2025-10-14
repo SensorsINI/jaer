@@ -43,6 +43,7 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.SciDVSHardwareInterface;
 import net.sf.jaer.stereopsis.MultiCameraBiasgenHardwareInterface;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.HasPropertyTooltips;
@@ -76,15 +77,15 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 
         ipots = new AddressedIPotArray(this);
 
-		ipots.addPot(new TowerOnChip6BitVDAC(this, "VgMfb", 0, 0,
-			"Gate voltage of the photoreceptor feedback transistor."));
-		ipots.addPot(new TowerOnChip6BitVDAC(this, "VCascPr", 1, 0,
-			"Gate voltage of Photoreceptor feedback amplifier cascode transistor."));
-		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 0, "on-chip column-parallel APS ADC upper conversion limit"));
-		ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 0, "on-chip column-parallel APS ADC ADC lower limit"));
-		ipots.addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 4, 0,
-			"Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
-		ipots.addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltage", 5, 0, "Voltage supply for testing the ADC"));
+        ipots.addPot(new TowerOnChip6BitVDAC(this, "VgMfb", 0, 0,
+            "Gate voltage of the photoreceptor feedback transistor."));
+        ipots.addPot(new TowerOnChip6BitVDAC(this, "VCascPr", 1, 0,
+            "Gate voltage of Photoreceptor feedback amplifier cascode transistor."));
+        ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefHigh", 2, 0, "on-chip column-parallel APS ADC upper conversion limit"));
+        ipots.addPot(new TowerOnChip6BitVDAC(this, "ADC_RefLow", 3, 0, "on-chip column-parallel APS ADC ADC lower limit"));
+        ipots.addPot(new TowerOnChip6BitVDAC(this, "apsOverflowLevel", 4, 0,
+            "Sets reset level gate voltage of APS reset FET to prevent overflow causing DVS events"));
+        ipots.addPot(new TowerOnChip6BitVDAC(this, "AdcTestVoltage", 5, 0, "Voltage supply for testing the ADC"));
 
         diff = SciDVSConfig.addAIPot(ipots, this, "DiffBn,8,n,normal,differencing amp");
         diffOff = SciDVSConfig.addAIPot(ipots, this, "OffBn,9,n,normal,DVS darker threshold");
@@ -97,20 +98,20 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         SciDVSConfig.addAIPot(ipots, this, "IFThrBn,16,n,normal,Integrate and fire intensity neuron threshold");
         SciDVSConfig.addAIPot(ipots, this, "LocalBufBn,17,n,normal,Local buffer bias");
         SciDVSConfig.addAIPot(ipots, this, "PadFollBn,18,n,normal,Follower-pad buffer bias current");
-		SciDVSConfig.addAIPot(ipots, this, "ADCcompBp,19,p,normal,ADC comparator bias");
-		SciDVSConfig.addAIPot(ipots, this, "ColSelLowBn,20,n,normal,Column arbiter request pull-down");
-		SciDVSConfig.addAIPot(ipots, this, "DACBufBp,21,p,normal,Row request pull up");
-		SciDVSConfig.addAIPot(ipots, this, "ReadoutBufBP,22,p,normal,APS readout OTA follower bias");
-		SciDVSConfig.addAIPot(ipots, this, "AEPuYBp,23,p,normal,AER column pullup");
-		SciDVSConfig.addAIPot(ipots, this, "AEPdYBn,24,n,normal,Request encoder pulldown static current");
-		SciDVSConfig.addAIPot(ipots, this, "AEPuXBp,25,p,normal,AER row pullup");
+        SciDVSConfig.addAIPot(ipots, this, "ADCcompBp,19,p,normal,ADC comparator bias");
+        SciDVSConfig.addAIPot(ipots, this, "ColSelLowBn,20,n,normal,Column arbiter request pull-down");
+        SciDVSConfig.addAIPot(ipots, this, "DACBufBp,21,p,normal,Row request pull up");
+        SciDVSConfig.addAIPot(ipots, this, "ReadoutBufBP,22,p,normal,APS readout OTA follower bias");
+        SciDVSConfig.addAIPot(ipots, this, "AEPuYBp,23,p,normal,AER column pullup");
+        SciDVSConfig.addAIPot(ipots, this, "AEPdYBn,24,n,normal,Request encoder pulldown static current");
+        SciDVSConfig.addAIPot(ipots, this, "AEPuXBp,25,p,normal,AER row pullup");
 
 
         pr = SciDVSConfig.addAIPot(ipots, this, "PrBp,30,p,normal,Photoreceptor bias current");
         lpBuf = SciDVSConfig.addAIPot(ipots, this, "PrBufBp,31,p,normal,Photoreceptor buffer (low-pass) bias current");
         SciDVSConfig.addAIPot(ipots, this, "PrMirrBn,32,n,normal,Photoreceptor mirror amplifier bias current");
 
-		SciDVSConfig.addAIPot(ipots, this, "biasBuffer,34,n,normal,special buffer bias ");
+        SciDVSConfig.addAIPot(ipots, this, "biasBuffer,34,n,normal,special buffer bias ");
 
         setPotArray(ipots);
 
@@ -142,32 +143,61 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         chipControl.add(new SPIConfigBit("Chip.ResetShorted", "Keep all pixels in a group of 2x2 in reset state but one.", CypressFX3.FPGA_CHIPBIAS, (short) 142, false, this));
         chipControl.add(new SPIConfigBit("Chip.nDisableMirr", "Activate pre-amplifier.", CypressFX3.FPGA_CHIPBIAS, (short) 143, false, this));
         chipControl.add(new SPIConfigBit("Chip.ShortGroup", "Short-circuit pxels in groups of 2x2.", CypressFX3.FPGA_CHIPBIAS, (short) 144, true, this));
-		chipControl.add(new SPIConfigBit("Chip.SelectGrayCounter", "Select internal gray counter, if disabled, external gray code is used.", CypressFX3.FPGA_CHIPBIAS, (short) 145, true, this));
-		chipControl.add(new SPIConfigBit("Chip.TestADC", "Pass ADC Test Voltage to internal ADC instead of pixel voltage.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
+        chipControl.add(new SPIConfigBit("Chip.SelectGrayCounter", "Select internal gray counter, if disabled, external gray code is used.", CypressFX3.FPGA_CHIPBIAS, (short) 145, true, this));
+        chipControl.add(new SPIConfigBit("Chip.TestADC", "Pass ADC Test Voltage to internal ADC instead of pixel voltage.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
 
         for (final SPIConfigValue cfgVal : chipControl) {
+        
             cfgVal.addObserver(this);
             allPreferencesList.add(cfgVal);
         }
     }
+    /**
+    * Applies the same bit inversion and rearrangement that was done by FPGA but there is not enough space forr it in fx2.
+    */
+    private static int adjustBiasBits_SciDVSFX2(int param) {
+        int b0 = (param >> 8) & 0xFF;   // corresponds to currentBiasArray[biasAddress][2]
+        int b1 = (param >> 0) & 0xFF;   // corresponds to currentBiasArray[biasAddress][3]
+    
+        int inv_b1 = (~b1) & 0xFF;
+        int inv_b0 = (~b0) & 0xFF;
+    
+        int tmpBiasValue_first =
+                ((inv_b1 & 0x40) << 8) |   // bit6 → bit14
+                ((inv_b1 & 0x80) << 6) |   // bit7 → bit13
+                ((inv_b0 & 0x01) << 12);   // bit0 → bit12
+    
+        int tmpBiasValue_second = b1 & 0x3F; // lower 6 bits
+    
+        int reshaped = (tmpBiasValue_first | tmpBiasValue_second) & 0xFFFF;
+        return reshaped;
+    }
 
-	@Override
-	public synchronized void update(final Observable observable, final Object object) {
-		super.update(observable, object);
 
-		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
-			final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+    @Override
+    public synchronized void update(final Observable observable, final Object object) {
+        super.update(observable, object);
 
-			try {
-				if (observable instanceof TowerOnChip6BitVDAC) {
-					final TowerOnChip6BitVDAC vdPot = (TowerOnChip6BitVDAC) observable;
+        if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+            final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
-					fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) vdPot.getAddress(), vdPot.computeBinaryRepresentation());
-				}
-			}
-			catch (final HardwareInterfaceException e) {
-				Biasgen.log.warning("On update() caught " + e.toString());
-			}
-		}
-	}
+            try {
+                if (observable instanceof TowerOnChip6BitVDAC) {
+                    int adjustedBiasBits;
+                    final TowerOnChip6BitVDAC vdPot = (TowerOnChip6BitVDAC) observable;
+                    if (fx3HwIntf.getPID() == SciDVSHardwareInterface.PID_FX2_GAER) {
+                        adjustedBiasBits = adjustBiasBits_SciDVSFX2(vdPot.computeBinaryRepresentation());
+                    } else {
+                        adjustedBiasBits = vdPot.computeBinaryRepresentation();
+                    }
+                            
+
+					fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) vdPot.getAddress(), adjustedBiasBits);
+                }
+            }
+            catch (final HardwareInterfaceException e) {
+                Biasgen.log.warning("On update() caught " + e.toString());
+            }
+        }
+    }
 }

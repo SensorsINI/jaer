@@ -73,7 +73,15 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
             log.info("Loading normal AER mode");
         }
 
-        addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
+        addDeviceToMap(CypressFX3.VID, SciDVSHardwareInterface.PID_FX2_GAER, SciDVSHardwareInterface.class);
+
+        if (Boolean.parseBoolean(System.getProperty("aer.mode.gaer"))) {
+            log.info("Loading GAER mode");
+            addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, SciDVSHardwareInterface.class);
+        } else {
+            addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
+            log.info("Loading normal AER mode");
+        }
 
         addDeviceToMap(CypressFX3.VID, CochleaFX3HardwareInterface.PID_FX3, CochleaFX3HardwareInterface.class);
 
