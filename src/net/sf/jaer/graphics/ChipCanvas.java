@@ -470,7 +470,6 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         checkGLError(gl, glu, "start of display");
 
-
         gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
         gl.glLoadIdentity();
         // log.info("display");

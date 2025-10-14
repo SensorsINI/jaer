@@ -673,10 +673,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void cleanup() {
         log.fine("cleanup()");
         stopLogging(true); // in case logging, make sure we give chance to save file
-        if (chip != null) {
-            log.info("Running .cleanup for " + chip);
-            chip.cleanup();
-        }
         if ((aemon != null) && aemon.isOpen()) {
             log.fine("closing device " + aemon);
             aemon.close();

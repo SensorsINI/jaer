@@ -272,8 +272,6 @@ abstract public class AbstractMotionFlowIMU extends EventFilter2DMouseAdaptor im
     // for drawing GT flow at a point
     private volatile MotionOrientationEventInterface mouseVectorEvent = new ApsDvsMotionOrientationEvent();
     private volatile String mouseVectorString = null;
-    
-    private boolean warnNonmonotonicTimestamps=true;
 
     private boolean warnNonmonotonicTimestamps = true;
 

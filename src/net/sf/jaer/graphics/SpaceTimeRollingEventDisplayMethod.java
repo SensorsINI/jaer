@@ -134,14 +134,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private TextRenderer textRenderer = null;
 
-    private boolean displayEvents = true;
-    private boolean displayFrames = true;
-//    private boolean displayAnnotation = false;
-
-    final private FramesInTimeWindow framesInTimeWindow = new FramesInTimeWindow(); // linked list of frames in time window
-    private float framesAlpha = prefs.getFloat("framesAlpha", .5f);
-    private boolean drawFramesOnOwnAxes = prefs.getBoolean("drawFramesOnOwnAxes", false);
-
     /**
      * Creates a new instance of SpaceTimeEventDisplayMethod
      *

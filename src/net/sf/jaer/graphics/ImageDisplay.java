@@ -64,11 +64,11 @@ import static net.sf.jaer.graphics.ImageDisplay.log;
  *
  *     public static void main(String[] args) {
  *
-        * final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
-        * JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
-        * frame.setPreferredSize(new Dimension(400, 400));  // set the window size
-        * frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
-        * int size = 200;  // used later to define image size
+ * final ImageDisplay disp = ImageDisplay.createOpenGLCanvas(); // makde a new ImageDisplay GLCanvas with default OpenGL capabilities
+ * JFrame frame = new JFrame("ImageFrame");  // make a JFrame to hold it
+ * frame.setPreferredSize(new Dimension(400, 400));  // set the window size
+ * frame.getContentPane().add(disp, BorderLayout.CENTER); // add the GLCanvas to the center of the window
+ * int size = 200;  // used later to define image size
  *
  *      disp.setSize(size,size); // set dimensions of image
  *
