@@ -107,14 +107,14 @@
                 <entry key="SciDVS.AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.LocalBufBn.Sex" value="N"/>
                 <entry key="SciDVS.AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
-                <entry key="SciDVS.AddressedIPotCF.OffBn.BitValueCoarse" value="4"/>
-                <entry key="SciDVS.AddressedIPotCF.OffBn.BitValueFine" value="87"/>
+                <entry key="SciDVS.AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
+                <entry key="SciDVS.AddressedIPotCF.OffBn.BitValueFine" value="0"/>
                 <entry key="SciDVS.AddressedIPotCF.OffBn.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.OffBn.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.OffBn.Sex" value="N"/>
                 <entry key="SciDVS.AddressedIPotCF.OffBn.Type" value="NORMAL"/>
-                <entry key="SciDVS.AddressedIPotCF.OnBn.BitValueCoarse" value="3"/>
-                <entry key="SciDVS.AddressedIPotCF.OnBn.BitValueFine" value="170"/>
+                <entry key="SciDVS.AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
+                <entry key="SciDVS.AddressedIPotCF.OnBn.BitValueFine" value="255"/>
                 <entry key="SciDVS.AddressedIPotCF.OnBn.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.OnBn.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.OnBn.Sex" value="N"/>
@@ -137,13 +137,13 @@
                 <entry key="SciDVS.AddressedIPotCF.PrBp.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.PrBp.Sex" value="P"/>
                 <entry key="SciDVS.AddressedIPotCF.PrBp.Type" value="NORMAL"/>
-                <entry key="SciDVS.AddressedIPotCF.PrBufBp.BitValueCoarse" value="5"/>
-                <entry key="SciDVS.AddressedIPotCF.PrBufBp.BitValueFine" value="18"/>
+                <entry key="SciDVS.AddressedIPotCF.PrBufBp.BitValueCoarse" value="7"/>
+                <entry key="SciDVS.AddressedIPotCF.PrBufBp.BitValueFine" value="0"/>
                 <entry key="SciDVS.AddressedIPotCF.PrBufBp.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.PrBufBp.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.PrBufBp.Sex" value="P"/>
                 <entry key="SciDVS.AddressedIPotCF.PrBufBp.Type" value="NORMAL"/>
-                <entry key="SciDVS.AddressedIPotCF.PrMirrBn.BitValueCoarse" value="2"/>
+                <entry key="SciDVS.AddressedIPotCF.PrMirrBn.BitValueCoarse" value="5"/>
                 <entry key="SciDVS.AddressedIPotCF.PrMirrBn.BitValueFine" value="89"/>
                 <entry key="SciDVS.AddressedIPotCF.PrMirrBn.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.PrMirrBn.LowCurrent" value="false"/>
@@ -167,14 +167,14 @@
                 <entry key="SciDVS.AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrBp.Sex" value="P"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
-                <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.BitValueCoarse" value="4"/>
-                <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.BitValueFine" value="142"/>
+                <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.BitValueCoarse" value="5"/>
+                <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.BitValueFine" value="118"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.Sex" value="P"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrChAmpBp.Type" value="NORMAL"/>
-                <entry key="SciDVS.AddressedIPotCF.RefrMirrAmpBp.BitValueCoarse" value="0"/>
-                <entry key="SciDVS.AddressedIPotCF.RefrMirrAmpBp.BitValueFine" value="255"/>
+                <entry key="SciDVS.AddressedIPotCF.RefrMirrAmpBp.BitValueCoarse" value="4"/>
+                <entry key="SciDVS.AddressedIPotCF.RefrMirrAmpBp.BitValueFine" value="172"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrMirrAmpBp.Enabled" value="true"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrMirrAmpBp.LowCurrent" value="false"/>
                 <entry key="SciDVS.AddressedIPotCF.RefrMirrAmpBp.Sex" value="P"/>
@@ -203,7 +203,7 @@
                 <entry key="SciDVS.Chip.TestADC" value="false"/>
                 <entry key="SciDVS.Chip.TypeNCalibNeuron" value="true"/>
                 <entry key="SciDVS.Chip.UseAOut" value="true"/>
-                <entry key="SciDVS.Chip.nDisableMirr" value="false"/>
+                <entry key="SciDVS.Chip.nDisableMirr" value="true"/>
                 <entry key="SciDVS.Chip.nShortGroup" value="true"/>
                 <entry key="SciDVS.DVS.AckDelayColumn" value="0"/>
                 <entry key="SciDVS.DVS.AckDelayRow" value="4"/>
@@ -278,7 +278,7 @@
                 <entry key="SciDVS.VDACBias.VgCascPr.BufBitValue" value="7"/>
                 <entry key="SciDVS.VDACBias.VgCascPr.VdacBitValue" value="13"/>
                 <entry key="SciDVS.VDACBias.VgMfb.BufBitValue" value="7"/>
-                <entry key="SciDVS.VDACBias.VgMfb.VdacBitValue" value="0"/>
+                <entry key="SciDVS.VDACBias.VgMfb.VdacBitValue" value="4"/>
                 <entry key="SciDVS.VDACBias.apsOverflowLevel.BufBitValue" value="7"/>
                 <entry key="SciDVS.VDACBias.apsOverflowLevel.VdacBitValue" value="0"/>
                 <entry key="SciDVS.VideoControl.autoWhiteBalance" value="true"/>

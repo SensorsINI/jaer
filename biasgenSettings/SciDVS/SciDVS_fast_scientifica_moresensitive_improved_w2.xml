@@ -103,14 +103,14 @@
             <entry key="AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.LocalBufBn.Sex" value="N"/>
             <entry key="AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.OffBn.BitValueCoarse" value="5"/>
-            <entry key="AddressedIPotCF.OffBn.BitValueFine" value="158"/>
+            <entry key="AddressedIPotCF.OffBn.BitValueCoarse" value="3"/>
+            <entry key="AddressedIPotCF.OffBn.BitValueFine" value="73"/>
             <entry key="AddressedIPotCF.OffBn.Enabled" value="true"/>
             <entry key="AddressedIPotCF.OffBn.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.OffBn.Sex" value="N"/>
             <entry key="AddressedIPotCF.OffBn.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.OnBn.BitValueCoarse" value="3"/>
-            <entry key="AddressedIPotCF.OnBn.BitValueFine" value="93"/>
+            <entry key="AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
+            <entry key="AddressedIPotCF.OnBn.BitValueFine" value="208"/>
             <entry key="AddressedIPotCF.OnBn.Enabled" value="true"/>
             <entry key="AddressedIPotCF.OnBn.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.OnBn.Sex" value="N"/>
@@ -133,14 +133,14 @@
             <entry key="AddressedIPotCF.PrBp.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.PrBp.Sex" value="P"/>
             <entry key="AddressedIPotCF.PrBp.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.PrBufBp.BitValueCoarse" value="4"/>
-            <entry key="AddressedIPotCF.PrBufBp.BitValueFine" value="255"/>
+            <entry key="AddressedIPotCF.PrBufBp.BitValueCoarse" value="7"/>
+            <entry key="AddressedIPotCF.PrBufBp.BitValueFine" value="185"/>
             <entry key="AddressedIPotCF.PrBufBp.Enabled" value="true"/>
             <entry key="AddressedIPotCF.PrBufBp.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.PrBufBp.Sex" value="P"/>
             <entry key="AddressedIPotCF.PrBufBp.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.PrMirrBn.BitValueCoarse" value="2"/>
-            <entry key="AddressedIPotCF.PrMirrBn.BitValueFine" value="89"/>
+            <entry key="AddressedIPotCF.PrMirrBn.BitValueCoarse" value="5"/>
+            <entry key="AddressedIPotCF.PrMirrBn.BitValueFine" value="226"/>
             <entry key="AddressedIPotCF.PrMirrBn.Enabled" value="true"/>
             <entry key="AddressedIPotCF.PrMirrBn.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.PrMirrBn.Sex" value="N"/>
@@ -163,25 +163,25 @@
             <entry key="AddressedIPotCF.RefrBp.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.RefrBp.Sex" value="P"/>
             <entry key="AddressedIPotCF.RefrBp.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.RefrChAmpBp.BitValueCoarse" value="3"/>
-            <entry key="AddressedIPotCF.RefrChAmpBp.BitValueFine" value="103"/>
+            <entry key="AddressedIPotCF.RefrChAmpBp.BitValueCoarse" value="4"/>
+            <entry key="AddressedIPotCF.RefrChAmpBp.BitValueFine" value="107"/>
             <entry key="AddressedIPotCF.RefrChAmpBp.Enabled" value="true"/>
             <entry key="AddressedIPotCF.RefrChAmpBp.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.RefrChAmpBp.Sex" value="P"/>
             <entry key="AddressedIPotCF.RefrChAmpBp.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.RefrMirrAmpBp.BitValueCoarse" value="0"/>
-            <entry key="AddressedIPotCF.RefrMirrAmpBp.BitValueFine" value="255"/>
+            <entry key="AddressedIPotCF.RefrMirrAmpBp.BitValueCoarse" value="4"/>
+            <entry key="AddressedIPotCF.RefrMirrAmpBp.BitValueFine" value="204"/>
             <entry key="AddressedIPotCF.RefrMirrAmpBp.Enabled" value="true"/>
             <entry key="AddressedIPotCF.RefrMirrAmpBp.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.RefrMirrAmpBp.Sex" value="P"/>
             <entry key="AddressedIPotCF.RefrMirrAmpBp.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.biasBuffer.BitValueCoarse" value="3"/>
+            <entry key="AddressedIPotCF.biasBuffer.BitValueCoarse" value="2"/>
             <entry key="AddressedIPotCF.biasBuffer.BitValueFine" value="254"/>
             <entry key="AddressedIPotCF.biasBuffer.Enabled" value="true"/>
             <entry key="AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.biasBuffer.Sex" value="N"/>
             <entry key="AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
-            <entry key="BiasgenFrame.lastFile" value="/home/rpgraca/git/jaer_scidvs/jaer/biasgenSettings/SciDVS/SciDVS_fast_scientifica_moresensitive_improved.xml"/>
+            <entry key="BiasgenFrame.lastFile" value="/home/rpgraca/git/jaer_scidvs/jaer/biasgenSettings/SciDVS/SciDVS_fast_scientifica_moresensitive_improved_w2.xml"/>
             <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
             <entry key="Chip.AERnArow" value="false"/>
             <entry key="Chip.AnalogMux0" value="8"/>
@@ -201,7 +201,7 @@
             <entry key="Chip.TestADC" value="false"/>
             <entry key="Chip.TypeNCalibNeuron" value="true"/>
             <entry key="Chip.UseAOut" value="true"/>
-            <entry key="Chip.nDisableMirr" value="false"/>
+            <entry key="Chip.nDisableMirr" value="true"/>
             <entry key="Chip.nShortGroup" value="true"/>
             <entry key="ChipCanvas.origin3dx" value="0"/>
             <entry key="ChipCanvas.origin3dy" value="0"/>
@@ -249,13 +249,13 @@
             <entry key="IMU.LPCycle" value="false"/>
             <entry key="IMU.LPWakeup" value="1"/>
             <entry key="IMU.Run" value="false"/>
-            <entry key="IMU.RunAccel" value="false"/>
-            <entry key="IMU.RunGyro" value="false"/>
-            <entry key="IMU.RunTemp" value="false"/>
+            <entry key="IMU.RunAccel" value="true"/>
+            <entry key="IMU.RunGyro" value="true"/>
+            <entry key="IMU.RunTemp" value="true"/>
             <entry key="IMU.SampleRateDivider" value="0"/>
             <entry key="IMU.TempStandby" value="false"/>
             <entry key="IMU.displayEnabled" value="false"/>
-            <entry key="IMU.enabled" value="false"/>
+            <entry key="IMU.enabled" value="true"/>
             <entry key="Masterbias.internalResistorUsed" value="false"/>
             <entry key="Masterbias.rint" value="0.0"/>
             <entry key="Masterbias.rx" value="100000.0"/>
@@ -287,7 +287,7 @@
             <entry key="VDACBias.VgCascPr.BufBitValue" value="7"/>
             <entry key="VDACBias.VgCascPr.VdacBitValue" value="63"/>
             <entry key="VDACBias.VgMfb.BufBitValue" value="7"/>
-            <entry key="VDACBias.VgMfb.VdacBitValue" value="9"/>
+            <entry key="VDACBias.VgMfb.VdacBitValue" value="1"/>
             <entry key="VDACBias.apsOverflowLevel.BufBitValue" value="7"/>
             <entry key="VDACBias.apsOverflowLevel.VdacBitValue" value="0"/>
             <entry key="VideoControl.autoWhiteBalance" value="true"/>
@@ -298,11 +298,11 @@
             <entry key="autoWhiteBalance" value="true"/>
             <entry key="borderSpacePixels" value="20"/>
             <entry key="colorCorrection" value="true"/>
-            <entry key="colorScale" value="3"/>
+            <entry key="colorScale" value="103"/>
             <entry key="displayEvents" value="true"/>
-            <entry key="displayFrames" value="false"/>
+            <entry key="displayFrames" value="true"/>
             <entry key="monochrome" value="true"/>
-            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAGdwQAAAAGc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA5L2hvbWUvcnBncmFjYS9naXQvamFlcl9zY2lkdnMvamFlci9iaWFzZ2VuU2V0dGluZ3MvU2NpRFZTdwIAL3hzcQB+AAJ0AGwvaG9tZS9ycGdyYWNhL2dpdC9qYWVyX3NjaWR2cy9qYWVyL2JpYXNnZW5TZXR0aW5ncy9TY2lEVlMvU2NpRFZTX2Zhc3Rfc2NpZW50aWZpY2FfbW9yZXNlbnNpdGl2ZV9pbXByb3ZlZC54bWx3AgAveHNxAH4AAnQAby9ob21lL3JwZ3JhY2EvZ2l0L2phZXJfc2NpZHZzL2phZXIvYmlhc2dlblNldHRpbmdzL1NjaURWUy9TY2lEVlNfZmFzdF9zY2llbnRpZmljYV9tb3Jlc2Vuc2l0aXZlX2ltcHJvdmVkX3cyLnhtbHcCAC94c3EAfgACdAAyL2hvbWUvcnBncmFjYS9naXQvamFlcl9zY2lkdnMvamFlci9iaWFzZ2VuU2V0dGluZ3N3AgAveHNxAH4AAnQAWS9ob21lL3JwZ3JhY2EvZ2l0L2phZXJfc2NpZHZzL2phZXIvYmlhc2dlblNldHRpbmdzL1NjaURWU19taXJyQW1wX3Zlcnlfc2Vuc2l0aXZlX3Nsb3cueG1sdwIAL3hzcQB+AAJ0AIEvaG9tZS9ycGdyYWNhL2dpdC9qYWVyX3NjaWR2cy9qYWVyL2JpYXNnZW5TZXR0aW5ncy9TY2lEVlMvU2NpRFZTX21pcnJBbXBfdmVyeV9zZW5zaXRpdmVfcm90YXRpbmdjaGFydF9zaG9ydGVkR3JvdXBfZGFya2luZG9vci54bWx3AgAveHg="/>
+            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAFdwQAAAAFc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA5L2hvbWUvcnBncmFjYS9naXQvamFlcl9zY2lkdnMvamFlci9iaWFzZ2VuU2V0dGluZ3MvU2NpRFZTdwIAL3hzcQB+AAJ0AG8vaG9tZS9ycGdyYWNhL2dpdC9qYWVyX3NjaWR2cy9qYWVyL2JpYXNnZW5TZXR0aW5ncy9TY2lEVlMvU2NpRFZTX2Zhc3Rfc2NpZW50aWZpY2FfbW9yZXNlbnNpdGl2ZV9pbXByb3ZlZF93Mi54bWx3AgAveHNxAH4AAnQAMi9ob21lL3JwZ3JhY2EvZ2l0L2phZXJfc2NpZHZzL2phZXIvYmlhc2dlblNldHRpbmdzdwIAL3hzcQB+AAJ0AFkvaG9tZS9ycGdyYWNhL2dpdC9qYWVyX3NjaWR2cy9qYWVyL2JpYXNnZW5TZXR0aW5ncy9TY2lEVlNfbWlyckFtcF92ZXJ5X3NlbnNpdGl2ZV9zbG93LnhtbHcCAC94c3EAfgACdACBL2hvbWUvcnBncmFjYS9naXQvamFlcl9zY2lkdnMvamFlci9iaWFzZ2VuU2V0dGluZ3MvU2NpRFZTL1NjaURWU19taXJyQW1wX3Zlcnlfc2Vuc2l0aXZlX3JvdGF0aW5nY2hhcnRfc2hvcnRlZEdyb3VwX2RhcmtpbmRvb3IueG1sdwIAL3h4"/>
             <entry key="separateAPSByColor" value="false"/>
           </map>
         </node>
