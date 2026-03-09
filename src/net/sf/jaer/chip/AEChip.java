@@ -507,6 +507,11 @@ public class AEChip extends Chip2D {
     public void writeAdditionalAEFileOutputStreamHeader(AEFileOutputStream os) throws IOException, BackingStoreException {
         log.info("writing preferences for " + this.toString());
         long start = System.currentTimeMillis();
+        // Flush current (possibly unsaved) bias values to Java Preferences before reading them,
+        // so the recording header reflects the actual current bias state, not the last saved state.
+        if (getBiasgen() != null) {
+            getBiasgen().storePreferences();
+        }
         os.writeHeaderLine(" AEChip: " + this.getClass().getName());
         os.writeHeaderLine("Start of Preferences for this AEChip (search for \"End of Preferences\" to find end of this block)"); // write header to AE data file for prefs
         // write only the hardware preferences for this particular device, which is mixed with all other devices in same package in Java Preferences.
