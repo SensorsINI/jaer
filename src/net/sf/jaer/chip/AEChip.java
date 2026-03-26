@@ -22,6 +22,7 @@ import javax.swing.ProgressMonitor;
 import net.sf.jaer.Description;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.eventio.AEDataFile;
+import net.sf.jaer.eventio.AEDZInputStream;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
@@ -484,12 +485,14 @@ public class AEChip extends Chip2D {
                 log.warning(ex.toString());
                 throw new IOException("Could not open " + file + ": got " + ex.toString(), ex);
             }
+        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDZ.substring(1))) {
+            aeInputStream = new AEDZInputStream(file);
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT2.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {
             aeInputStream = new AEFileInputStream(file, this);
         } else {
-            throw new FileNotFoundException("file " + file + " file type is not known; .dat, .aedat, .aedat2, or .bag files are currently supported");
+            throw new FileNotFoundException("file " + file + " file type is not known; .dat, .aedat, .aedat2, .aedz, or .bag files are currently supported");
         }
         return aeInputStream;
     }

@@ -122,6 +122,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 colorMode = c;
             }
         }
+        if (colorMode == null) {
+            colorMode = ColorMode.GrayLevel;
+        }
     }
 
     /**
@@ -202,6 +205,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         colorModeMenu = contructColorModeMenu();
         getSupport().addPropertyChangeListener(this);
+        // Set grayValue from colorMode without calling setGrayValue(), which would
+        // trigger resetPixmapGrayLevel(). In subclasses like DavisRenderer, that
+        // overridden method accesses fields (textureWidth, canvas, etc.) not yet
+        // initialized, causing NPE during construction. The pixmap will be properly
+        // reset later when the subclass constructor or first render call runs.
+        if (colorMode != null) {
+            grayValue = colorMode.backgroundGrayLevel;
+        }
     }
 
     /**

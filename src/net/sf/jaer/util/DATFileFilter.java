@@ -32,7 +32,8 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         
         String extension = getExtension(f);
         if (extension != null) {
-            if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(OLDEXTENSION) 
+            if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(OLDEXTENSION)
+                    || extension.equals(EXTENSION_AEDZ)
                     || extension.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
                     || extension.equals(TextFileInputStream.FILE_EXTENSION_CSV) || extension.equals(TextFileInputStream.FILE_EXTENSION_TXT)){
                 return true;
@@ -55,7 +56,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     public String getDescription() {
-        return "AEDAT-2.0 raw binary data file (.aedat), ROS bag (.bag) file, or text file (.csv or .txt)";
+        return "AEDAT-2.0 raw binary data file (.aedat), AEDZ compressed (.aedz), ROS bag (.bag) file, or text file (.csv or .txt)";
     }
     
     /** The extension, including the dot, ".aedat"
@@ -68,6 +69,12 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     public static final String EXTENSION2;
     static{
         EXTENSION2=AEDataFile.DATA_FILE_EXTENSION_AEDAT2.substring(AEDataFile.DATA_FILE_EXTENSION_AEDAT2.lastIndexOf(".")+1,AEDataFile.DATA_FILE_EXTENSION_AEDAT2.length());
+    }
+
+    /** AEDZ compressed format extension "aedz" */
+    public static final String EXTENSION_AEDZ;
+    static{
+        EXTENSION_AEDZ=AEDataFile.DATA_FILE_EXTENSION_AEDZ.substring(AEDataFile.DATA_FILE_EXTENSION_AEDZ.lastIndexOf(".")+1,AEDataFile.DATA_FILE_EXTENSION_AEDZ.length());
     }
 
     /** The original extension for AE data files */
