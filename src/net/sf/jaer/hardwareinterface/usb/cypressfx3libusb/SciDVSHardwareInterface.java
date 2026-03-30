@@ -29,7 +29,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  */
 public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 
-	protected SciDVSHardwareInterface(final Device device) {
+	public SciDVSHardwareInterface(final Device device) {
 		super(device);
 	}
 

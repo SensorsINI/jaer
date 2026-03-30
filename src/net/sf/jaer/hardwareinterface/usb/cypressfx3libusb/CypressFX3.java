@@ -293,6 +293,15 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     protected DeviceHandle deviceHandle = null;
 
     /**
+     * Returns the underlying LibUsb Device.
+     *
+     * @return the USB device
+     */
+    public Device getDevice() {
+        return device;
+    }
+
+    /**
      * This constructor is protected because these instances should be
      * constructed by the CypressFX3Factory. Creates a new instance of
      * USBAEMonitor. Note that it is possible to construct several instances and
