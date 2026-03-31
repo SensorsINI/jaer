@@ -159,19 +159,29 @@ public class AEDZInputStream implements AEFileInputStreamInterface {
             throw new IOException("Bad AEDZ footer magic");
         }
 
-        // Read chunk index
+        // Read chunk index — detect format: 12 bytes (legacy) or 20 bytes
+        // (extended, with first_ts/last_ts per chunk as written by eventually)
         chunkOffsets = new long[nChunks];
         chunkEventCounts = new int[nChunks];
         chunkEventStarts = new long[nChunks];
 
+        long indexSize = summaryOffset - indexOffset;
+        int entrySize;
+        if (nChunks > 0 && indexSize == (long) nChunks * 20) {
+            entrySize = 20; // extended format: offset(8) + n_events(4) + first_ts(4) + last_ts(4)
+        } else {
+            entrySize = 12; // legacy format: offset(8) + n_events(4)
+        }
+
         raf.seek(indexOffset);
-        byte[] indexBuf = new byte[nChunks * 12]; // 8 + 4 per chunk
+        byte[] indexBuf = new byte[nChunks * entrySize];
         raf.readFully(indexBuf);
 
         long cumEvents = 0;
         for (int i = 0; i < nChunks; i++) {
-            chunkOffsets[i] = getLongLE(indexBuf, i * 12);
-            chunkEventCounts[i] = getIntLE(indexBuf, i * 12 + 8);
+            chunkOffsets[i] = getLongLE(indexBuf, i * entrySize);
+            chunkEventCounts[i] = getIntLE(indexBuf, i * entrySize + 8);
+            // Extended format has first_ts(4) + last_ts(4) at offset 12..19 — skip them
             chunkEventStarts[i] = cumEvents;
             cumEvents += chunkEventCounts[i];
         }
