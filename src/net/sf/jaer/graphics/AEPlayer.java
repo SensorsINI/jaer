@@ -372,7 +372,13 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 //                    progressMonitor.setNote("Opening " + file);
                     progressMonitor.setProgress(0);
 //                    TimeUnit.SECONDS.sleep(10);
-                    aeInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
+                    try {
+                        aeInputStream = viewer.getChip().constuctFileInputStream(file, progressMonitor); // new AEFileInputStream(file);
+                    } catch (Exception e) {
+                        log.warning(String.format("Could not contruct input stream, got exception {e}"));
+                        e.printStackTrace();
+                        return null;
+                    }
                     aeInputStream.setFile(file);
                     if (aeInputStream instanceof AEFileInputStream s) {
                         s.marksInitialize();
@@ -403,7 +409,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         viewer.getChip().getRenderer().resetFrame(0);
                     } catch (Exception e) {
                         log.warning("tried to reset renderer but caught " + e.toString());
-                    }
+                    } 
                     // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
                     if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
                         try {
@@ -434,11 +440,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         renderer.showRenderingModeTextOnAeViewer();
                     }
                     getSupport().firePropertyChange(EVENT_FILEOPEN, null, file);
-                } catch (IOException e) {
-                    exception = e;
-                    log.warning("Error opening file: " + e.toString());
-                } catch (InterruptedException e) {
-                    log.info("Interrupted opening file: " + e.toString());
                 } catch (Exception e) {
                     exception = e;
                     log.warning("other type of exception " + e.toString());
