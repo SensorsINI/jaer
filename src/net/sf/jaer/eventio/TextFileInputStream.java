@@ -167,7 +167,7 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
 
     private final static int ERROR_DELAY_MS = 1000;
 
-    protected boolean checkNonMonotonicTimestamps = prefs.getBoolean("checkNonMonotonicTimestamps", true);
+    protected boolean checkNonMonotonicTimestamps = prefs != null ? prefs.getBoolean("checkNonMonotonicTimestamps", true) : true;
     private boolean openFileAndRecordAedat = false;
 
     protected boolean flipPolarity;
@@ -330,6 +330,10 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         try {
             if (line.charAt(line.length() - 1) == '\r') { // tobi work around bug in BufferedRandomAccessFile that can end line with \r at end of buffer
                 line = line.substring(0, line.length() - 1);
+            }
+            while (line.startsWith("#")) {
+                log.log(Level.INFO, "Comment: {0}", line);
+                line = reader.getNextLine();
             }
             String[] split = useCSV ? line.split(",") : line.split(" "); // split by comma or space
             if (split == null || (!isSpecialEvents() && split.length != 4) || (isSpecialEvents() && split.length != 5)) {
