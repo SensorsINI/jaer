@@ -26,6 +26,7 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.filter.BackgroundActivityFilter;
+import net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter;
 import net.sf.jaer.graphics.AEChipRenderer;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipCanvas;
@@ -85,7 +86,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
 
     public ATanHelper atanHelper;
     private FilterChain filterChain;
-    private final BackgroundActivityFilter backgroundFilter;
+    private final SpatioTemporalCorrelationFilter backgroundFilter;
     private final BufferSizeEstimator bufferSizeEstimator;
     static final private TobiLogger logger = new TobiLogger("ELiSeD-Log", "Log of the support regions");
     private AEChipRenderer renderer;
@@ -152,7 +153,7 @@ public class ELiSeD extends EventFilter2D implements FrameAnnotater {
         renderer = (AEChipRenderer) chip.getRenderer();
 
         filterChain = new FilterChain(chip);
-        backgroundFilter = new BackgroundActivityFilter(chip);
+        backgroundFilter = new SpatioTemporalCorrelationFilter(chip);
         bufferSizeEstimator = new BufferSizeEstimator(this.chip);
         filterChain.add(backgroundFilter);
         filterChain.add(bufferSizeEstimator);
