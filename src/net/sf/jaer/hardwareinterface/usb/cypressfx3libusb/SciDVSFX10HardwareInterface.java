@@ -2,7 +2,7 @@
  * SciDVSFX10HardwareInterface.java
  *
  * Hardware interface for the SciDVS camera on the Infineon EZ-USB FX10
- * (CYUSB4014) USB controller, VID 0x152A PID 0x8420.
+ * (CYUSB4014) USB controller, VID 0x152A PID 0x841E.
  *
  * The FX10 firmware (see scidvs_fx10 ModusToolbox project) implements an
  * FX3-compatible vendor-request set on EP0:
@@ -59,7 +59,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 
 	/** USB product ID of the SciDVS-FX10 device (VID is the Thesycon 0x152A). */
-	static public final short PID_FX10 = (short) 0x8420;
+	static public final short PID_FX10 = (short) 0x841E;
 
 	/** FX10 vendor requests beyond the VR_FPGA_CONFIG(_MULTIPLE) inherited from CypressFX3. */
 	public static final byte VR_DEVICE_RESET = (byte) 0xB2;

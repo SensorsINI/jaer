@@ -5,7 +5,8 @@ FX10 (CYUSB4014) controller, replacing the FX2/FX3 + ECP3 FPGA stack.
 Firmware lives in the ModusToolbox project `~/mtw/scidvs_fx10`
 (`scidvs_vendor.h` / `scidvs_vendor.c` are the authoritative protocol map).
 
-**Device:** VID `0x152A` (Thesycon, same as all jAER cameras), PID `0x8420`.
+**Device:** VID `0x152A` (Thesycon, same as all jAER cameras), PID `0x841E`
+(changed from `0x8420`, which is outside the official iniVation udev range).
 
 ## Classes
 
@@ -13,11 +14,11 @@ Firmware lives in the ModusToolbox project `~/mtw/scidvs_fx10`
 |---|---|
 | `net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.SciDVSFX10HardwareInterface` | `CypressFX3Biasgen` subclass: vendor requests, run/stop, mode select, event reader on bulk EP1-IN (0x81) |
 | `eu.seebetter.ini.chips.davis.SciDVSFX10` | Chip class (subclass of `SciDVS`, 112x126, same `SciDVSConfig` bias set) |
-| `LibUsb3HardwareInterfaceFactory` | Registers PID 0x8420 (unconditional, independent of `aer.mode.gaer`) |
+| `LibUsb3HardwareInterfaceFactory` | Registers PID 0x841E (unconditional, independent of `aer.mode.gaer`) |
 
 ## How to use
 
-1. Make sure the udev rule for `152a:8420` is installed (see the fx10 session
+1. Make sure the udev rule for `152a:841e` is installed (see the fx10 session
    artifact `setup-fx10-udev.sh`) so libusb can open the device without root.
 2. Build and launch:
 
@@ -42,14 +43,14 @@ vendor request `0xBF VR_CHIP_CONFIG` with `wValue=moduleAddr`,
 `wIndex=paramAddr` and a 4-byte value — identical framing to the FX3
 `VR_FPGA_CONFIG`, with the SystemLogic2 module numbering preserved
 (`FPGA_CHIPBIAS = 5` is the chip-bias module; bias addresses 0–36, chip
-config 128–146, exactly as in `SciDVSConfig`).
+config 128–147, exactly as in `SciDVSConfig`).
 
-**Current firmware caveat:** writes land in a shadow table on the device
-(readable back via the same request) — they are *not yet applied to the
-sensor*. The bias shift-register bit-bang is wired up once the sensor is on
-the FMC connector. Out-of-range modules (≥8, e.g. the FPGA_USB/FPGA_ADC
-writes from the generic DAVIS config path) are silently ignored by the
-firmware; this is harmless.
+Writes land in a shadow table on the device (readable back via the same
+request) AND — since firmware 2026-06-11 — module-5 writes are bit-banged
+onto the bias shift-register pins (`scidvs_bias.c`: 8-bit address + 16-bit
+encoded value per bias, 56-bit chain for chip config). Out-of-range modules
+(≥8, e.g. the FPGA_USB/FPGA_ADC writes from the generic DAVIS config path)
+are silently ignored by the firmware; this is harmless.
 
 ## Capture modes (`VR_MODE_SELECT 0xC1`)
 
