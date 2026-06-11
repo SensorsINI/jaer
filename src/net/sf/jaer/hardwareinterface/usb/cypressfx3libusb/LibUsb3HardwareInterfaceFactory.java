@@ -75,6 +75,9 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 
         addDeviceToMap(CypressFX3.VID, SciDVSHardwareInterface.PID_FX2_GAER, SciDVSHardwareInterface.class);
 
+        // SciDVS camera on Infineon EZ-USB FX10 controller (FX3-compatible vendor requests, own event format).
+        addDeviceToMap(CypressFX3.VID, SciDVSFX10HardwareInterface.PID_FX10, SciDVSFX10HardwareInterface.class);
+
         if (Boolean.parseBoolean(System.getProperty("aer.mode.gaer"))) {
             log.info("Loading GAER mode");
             addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, SciDVSHardwareInterface.class);
