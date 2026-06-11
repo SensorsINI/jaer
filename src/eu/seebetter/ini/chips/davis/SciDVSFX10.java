@@ -1,5 +1,7 @@
 package eu.seebetter.ini.chips.davis;
 
+import java.awt.Point;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
@@ -19,6 +21,16 @@ public class SciDVSFX10 extends SciDVS {
 	public SciDVSFX10() {
 		super();
 		setName("SciDVSFX10");
+
+		// The FX10 firmware streams APS frames row-major with the 112-valued
+		// address (jAER x) in the outer loop and the 126-valued address
+		// (jAER y) in the inner loop, so the first sample of each frame is
+		// jAER (0,0) and the last is (sizeX-1, sizeY-1) = (111,125). The
+		// DavisEventExtractor synthesizes the SOF/EOF frame markers from
+		// these two addresses (firstFrameAddress/lastFrameAddress), which is
+		// what makes the DavisRenderer display complete frames.
+		setApsFirstPixelReadOut(new Point(0, 0));
+		setApsLastPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
 	}
 
 	public SciDVSFX10(final HardwareInterface hardwareInterface) {

@@ -25,10 +25,16 @@
  *
  * Event stream: bulk EP1-IN (0x81), 8-byte little-endian events:
  *   word0 = 32-bit microsecond timestamp
- *   word1 = [31:28 type][27 pol][26:20 addr112][19:13 addr126][12:0 seq]
- * type 0x0 = DVS, type 0xF = buffer padding (skipped). The 7-bit field at
- * bit 13 carries the 126-valued address and the 7-bit field at bit 20 the
- * 112-valued one (firmware scidvs_vendor.c is the authoritative map).
+ *   word1 (DVS, type 0x0) = [31:28 type][27 pol][26:20 addr112][19:13 addr126][12:0 seq]
+ *   word1 (APS, type 0x1) = [31:28 type][27 SOF][26:20 addr112][19:13 addr126][9:0 ADC sample]
+ * type 0x0 = DVS, type 0x1 = APS sample, type 0xF = buffer padding (skipped).
+ * The 7-bit field at bit 13 carries the 126-valued address and the 7-bit
+ * field at bit 20 the 112-valued one (firmware scidvs_vendor.c is the
+ * authoritative map). APS frames are scanned row-major with the 112-valued
+ * address in the outer loop and the 126-valued address in the inner loop,
+ * so the first wire sample of each frame is (0,0) and the last is
+ * (111,125) in jAER coordinates; bit 27 (SOF) is set on the first sample
+ * of each frame.
  */
 package net.sf.jaer.hardwareinterface.usb.cypressfx3libusb;
 
@@ -42,6 +48,7 @@ import org.usb4java.LibUsb;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisConfig;
+import net.sf.jaer.event.ApsDvsEvent;
 import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -81,8 +88,136 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 	public static final int SIZE_126 = 126;
 
 	/** Event type codes (top nibble of word1). */
-	private static final int EVT_DVS = 0x0;
-	private static final int EVT_PAD = 0xF;
+	static final int EVT_DVS = 0x0;
+	static final int EVT_APS = 0x1;
+	static final int EVT_PAD = 0xF;
+
+	/** Mask for the 10-bit ADC sample in an APS word1. */
+	static final int APS_SAMPLE_MASK = 0x3FF;
+
+	// ------------------------------------------------------------------
+	// Static, hardware-free decode core. Used both by the AE reader below
+	// and by the offline harness SciDVSFX10DecoderSelfTest, so the decode
+	// can be sanity-checked without USB hardware.
+	// ------------------------------------------------------------------
+
+	/** Returns the event type code (top nibble) of an FX10 word1. */
+	static int eventType(final int word1) {
+		return (word1 >>> 28) & 0x0F;
+	}
+
+	/** Returns the 112-valued address field word1[26:20], which maps to jAER x (chip sizeX=112). */
+	static int addr112(final int word1) {
+		return (word1 >>> 20) & 0x7F;
+	}
+
+	/** Returns the 126-valued address field word1[19:13], which maps to jAER y (chip sizeY=126). */
+	static int addr126(final int word1) {
+		return (word1 >>> 13) & 0x7F;
+	}
+
+	/** Returns true if the APS start-of-frame flag (word1 bit 27) is set. */
+	static boolean isApsStartOfFrame(final int word1) {
+		return ((word1 >>> 27) & 0x01) != 0;
+	}
+
+	/** Throttle counter for bad-address warnings (shared; there is only one device). */
+	private static int badAddressCount = 0;
+
+	private static boolean checkAddressInRange(final int word1) {
+		final int a112 = SciDVSFX10HardwareInterface.addr112(word1);
+		final int a126 = SciDVSFX10HardwareInterface.addr126(word1);
+		if ((a112 >= SciDVSFX10HardwareInterface.SIZE_112) || (a126 >= SciDVSFX10HardwareInterface.SIZE_126)) {
+			if ((SciDVSFX10HardwareInterface.badAddressCount++ % 1000) == 0) {
+				CypressFX3.log.severe("SciDVSFX10: event address out of range: x=" + a112 + " y=" + a126 + " (count="
+					+ SciDVSFX10HardwareInterface.badAddressCount + ")");
+			}
+			return false;
+		}
+		return true;
+	}
+
+	/** Throttle counter for SOF-flag/address mismatch warnings. */
+	private static int sofMismatchCount = 0;
+
+	/**
+	 * Translates one FX10 wire event (tsUs, word1) into 0..2 jAER raw events
+	 * in the DavisChip address format, appended to the given arrays starting
+	 * at index count. The arrays must have room for at least count+2 entries.
+	 *
+	 * <ul>
+	 * <li>DVS (type 0x0): one raw DVS address. The X field is stored flipped
+	 * because the DavisBaseCamera extractor computes x = sizeX-1-rawX for DVS
+	 * events (it does NOT flip APS events).</li>
+	 * <li>APS (type 0x1): two raw ADC samples, a ResetRead carrying the
+	 * 10-bit sample followed by a SignalRead carrying 0, so the DAVIS frame
+	 * renderer's digital CDS (reset - signal) reproduces the sample and
+	 * brighter pixels get larger values in the 0..1023 = 0..MAX_ADC range.
+	 * The extractor synthesizes SOF from the (0,0) ResetRead and EOF from
+	 * the (111,125) SignalRead (see SciDVSFX10's apsFirstPixelReadOut /
+	 * apsLastPixelReadOut), so frames display exactly like on stock DAVIS
+	 * cameras and coexist with DVS events.</li>
+	 * <li>padding (type 0xF) and unknown types: nothing appended.</li>
+	 * </ul>
+	 *
+	 * @return the new event count
+	 */
+	static int translateWordToRawEvents(final int tsUs, final int word1, final int[] addresses, final int[] timestamps,
+		final int count) {
+		final int type = SciDVSFX10HardwareInterface.eventType(word1);
+
+		switch (type) {
+			case EVT_DVS: {
+				if (!SciDVSFX10HardwareInterface.checkAddressInRange(word1)) {
+					return count;
+				}
+				final int pol = (word1 >>> 27) & 0x01;
+				addresses[count] = ((((SciDVSFX10HardwareInterface.SIZE_112 - 1) - SciDVSFX10HardwareInterface.addr112(word1)) << DavisChip.XSHIFT)
+					& DavisChip.XMASK) | ((SciDVSFX10HardwareInterface.addr126(word1) << DavisChip.YSHIFT) & DavisChip.YMASK)
+					| ((pol << DavisChip.POLSHIFT) & DavisChip.POLMASK);
+				timestamps[count] = tsUs;
+				return count + 1;
+			}
+
+			case EVT_APS: {
+				if (!SciDVSFX10HardwareInterface.checkAddressInRange(word1)) {
+					return count;
+				}
+				final boolean firstPixel = (SciDVSFX10HardwareInterface.addr112(word1) == 0)
+					&& (SciDVSFX10HardwareInterface.addr126(word1) == 0);
+				if (SciDVSFX10HardwareInterface.isApsStartOfFrame(word1) != firstPixel) {
+					// SOF flag should be set exactly on the (0,0) sample; flag/address mismatch
+					// indicates dropped samples or a firmware/format inconsistency.
+					if ((SciDVSFX10HardwareInterface.sofMismatchCount++ % 1000) == 0) {
+						CypressFX3.log.warning("SciDVSFX10: APS SOF flag/address mismatch: SOF="
+							+ SciDVSFX10HardwareInterface.isApsStartOfFrame(word1) + " at x="
+							+ SciDVSFX10HardwareInterface.addr112(word1) + " y=" + SciDVSFX10HardwareInterface.addr126(word1)
+							+ " (count=" + SciDVSFX10HardwareInterface.sofMismatchCount + ")");
+					}
+				}
+
+				final int baseAddress = DavisChip.ADDRESS_TYPE_APS
+					| ((SciDVSFX10HardwareInterface.addr112(word1) << DavisChip.XSHIFT) & DavisChip.XMASK)
+					| ((SciDVSFX10HardwareInterface.addr126(word1) << DavisChip.YSHIFT) & DavisChip.YMASK);
+
+				// ResetRead carries the sample, SignalRead carries 0: renderer shows (reset - signal) = sample.
+				addresses[count] = baseAddress | (ApsDvsEvent.ReadoutType.ResetRead.code << DavisChip.ADC_READCYCLE_SHIFT)
+					| (word1 & SciDVSFX10HardwareInterface.APS_SAMPLE_MASK);
+				timestamps[count] = tsUs;
+				addresses[count + 1] = baseAddress | (ApsDvsEvent.ReadoutType.SignalRead.code << DavisChip.ADC_READCYCLE_SHIFT);
+				timestamps[count + 1] = tsUs;
+				return count + 2;
+			}
+
+			case EVT_PAD:
+				// DMA buffer padding (expected, silently skipped).
+				return count;
+
+			default:
+				CypressFX3.log.fine("SciDVSFX10: skipping unhandled event type 0x" + Integer.toHexString(type));
+				return count;
+		}
+	}
 
 	/**
 	 * Capture mode sent to the device on open. Persisted preference;
@@ -202,8 +337,6 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 		private final byte[] pendingEvent = new byte[8];
 		private int pendingCount = 0;
 
-		private int badAddressCount = 0;
-
 		public Fx10AEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
 			// No firmware/logic revision check and no SPI SYSINFO reads here:
@@ -297,46 +430,18 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 		}
 
 		/**
-		 * Translate one 8-byte event. word1 layout (firmware scidvs_vendor.c):
-		 * [31:28]=type, [27]=polarity, [26:20]=112-valued address,
-		 * [19:13]=126-valued address, [12:0]=sequence/sub-us. The SciDVS chip
-		 * class is 112 wide (sizeX) by 126 tall (sizeY), so the 112-valued
-		 * field maps to jAER x and the 126-valued field to jAER y. The X
-		 * address is stored flipped because the DavisBaseCamera extractor
-		 * computes x = sizeX-1-rawX.
+		 * Translate one 8-byte event into jAER raw events via the static,
+		 * hardware-free {@link SciDVSFX10HardwareInterface#translateWordToRawEvents}
+		 * core (DVS = 1 raw event, APS sample = ResetRead + SignalRead pair,
+		 * padding = nothing). Device timestamps are already in microseconds.
 		 */
 		private void processEvent(final AEPacketRaw buffer, final int tsUs, final int word1) {
-			final int type = (word1 >>> 28) & 0x0F;
-
-			if (type != SciDVSFX10HardwareInterface.EVT_DVS) {
-				// 0xF = DMA buffer padding (expected, silently skipped).
-				// APS/IMU/timestamp event types are not handled in v1.
-				if (type != SciDVSFX10HardwareInterface.EVT_PAD) {
-					CypressFX3.log.fine("SciDVSFX10: skipping unhandled event type 0x" + Integer.toHexString(type));
-				}
-				return;
-			}
-
-			final int pol = (word1 >>> 27) & 0x01;
-			final int addr112 = (word1 >>> 20) & 0x7F; // jAER x, 0..111
-			final int addr126 = (word1 >>> 13) & 0x7F; // jAER y, 0..125
-
-			if ((addr112 >= SciDVSFX10HardwareInterface.SIZE_112) || (addr126 >= SciDVSFX10HardwareInterface.SIZE_126)) {
-				if ((badAddressCount++ % 1000) == 0) {
-					CypressFX3.log.severe("SciDVSFX10: event address out of range: x=" + addr112 + " y=" + addr126 + " (count="
-						+ badAddressCount + ")");
-				}
-				return;
-			}
-
-			if (!ensureCapacity(buffer, eventCounter + 1)) {
+			if (!ensureCapacity(buffer, eventCounter + 2)) {
 				return; // Buffer overrun.
 			}
 
-			buffer.getAddresses()[eventCounter] = ((((SciDVSFX10HardwareInterface.SIZE_112 - 1) - addr112) << DavisChip.XSHIFT)
-				& DavisChip.XMASK) | ((addr126 << DavisChip.YSHIFT) & DavisChip.YMASK)
-				| ((pol << DavisChip.POLSHIFT) & DavisChip.POLMASK);
-			buffer.getTimestamps()[eventCounter++] = tsUs; // Device timestamps are already in microseconds.
+			eventCounter = SciDVSFX10HardwareInterface.translateWordToRawEvents(tsUs, word1, buffer.getAddresses(),
+				buffer.getTimestamps(), eventCounter);
 		}
 	}
 }
