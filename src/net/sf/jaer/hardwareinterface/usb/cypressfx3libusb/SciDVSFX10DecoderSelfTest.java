@@ -57,6 +57,11 @@ public final class SciDVSFX10DecoderSelfTest {
 			| ((addr126 & 0x7F) << 13) | (sample & SciDVSFX10HardwareInterface.APS_SAMPLE_MASK);
 	}
 
+	/** Encodes an external-input edge word: [31:28]=0x2, [27]=polarity, [12:0]=seq snapshot. */
+	private static int extWord(final int rising, final int seq) {
+		return (SciDVSFX10HardwareInterface.EVT_EXT << 28) | ((rising & 0x01) << 27) | (seq & 0x1FFF);
+	}
+
 	/** The synthetic test pattern: sample value at jAER pixel (x, y). */
 	private static int expectedSample(final int x, final int y) {
 		return ((x * SIZE_Y) + y) % (DavisChip.MAX_ADC + 1);
@@ -74,8 +79,9 @@ public final class SciDVSFX10DecoderSelfTest {
 		final int numDvs = dvsBefore + dvsInterleaved + dvsAfter;
 		final int numPad = 4;
 		final int numBogus = 2; // unknown type + out-of-range address, both must be dropped
+		final int numExt = 2; // one rising + one falling external-input edge
 
-		final ByteBuffer stream = ByteBuffer.allocate((numPixels + numDvs + numPad + numBogus) * 8)
+		final ByteBuffer stream = ByteBuffer.allocate((numPixels + numDvs + numPad + numBogus + numExt) * 8)
 			.order(ByteOrder.LITTLE_ENDIAN);
 
 		int ts = 1000;
@@ -85,6 +91,8 @@ public final class SciDVSFX10DecoderSelfTest {
 		for (int i = 0; i < dvsBefore; i++) {
 			stream.putInt(ts++).putInt(dvsWord(i, 2 * i, i & 1, seq++));
 		}
+		stream.putInt(ts++).putInt(extWord(1, seq)); // external-input rising edge
+		stream.putInt(ts++).putInt(extWord(0, seq)); // external-input falling edge
 		stream.putInt(ts++).putInt(0x70000000); // unknown type 0x7, must be skipped
 		stream.putInt(ts++).putInt(apsWord(0x7F, 0, false, 7)); // addr112=127 out of range, must be dropped
 
@@ -130,11 +138,23 @@ public final class SciDVSFX10DecoderSelfTest {
 		}
 		int expectedDvsIdx = 0;
 		int lastApsLinear = -1;
+		int extCount = 0;
 
 		for (int i = 0; i < count; i++) {
 			final int data = addresses[i];
 
 			if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
+				if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) {
+					// External-input special event (extractor marks it special via bit 10)
+					if (extCount == 0) {
+						check(data == (DavisChip.EXTERNAL_INPUT_EVENT_ADDR + 3), "first ext event is rising (addr=" + data + ")");
+					}
+					else {
+						check(data == (DavisChip.EXTERNAL_INPUT_EVENT_ADDR + 2), "second ext event is falling (addr=" + data + ")");
+					}
+					extCount++;
+					continue;
+				}
 				// Extractor: x = sizeX-1-rawX (DVS only), y = rawY.
 				final int x = (SIZE_X - 1) - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT);
 				final int y = (data & DavisChip.YMASK) >>> DavisChip.YSHIFT;
@@ -232,9 +252,10 @@ public final class SciDVSFX10DecoderSelfTest {
 		System.out.println("  EOF markers (" + (SIZE_X - 1) + "," + (SIZE_Y - 1) + "): " + eofCount);
 		System.out.println("  missing frame pixels:" + missingPixels);
 
-		check(count == ((numPixels * 2) + numDvs), "total raw event count: got " + count + ", expected " + ((numPixels * 2) + numDvs)
+		check(count == ((numPixels * 2) + numDvs + numExt), "total raw event count: got " + count + ", expected " + ((numPixels * 2) + numDvs + numExt)
 			+ " (pad/bogus words must produce nothing)");
 		check(dvsCount == numDvs, "DVS count: got " + dvsCount + ", expected " + numDvs);
+		check(extCount == numExt, "external-input count: got " + extCount + ", expected " + numExt);
 		check(resetReads == numPixels, "ResetRead count: got " + resetReads + ", expected " + numPixels);
 		check(signalReads == numPixels, "SignalRead count: got " + signalReads + ", expected " + numPixels);
 		check(sofCount == 1, "exactly one SOF-generating sample, got " + sofCount);

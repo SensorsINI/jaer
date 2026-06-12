@@ -27,7 +27,8 @@
  *   word0 = 32-bit microsecond timestamp
  *   word1 (DVS, type 0x0) = [31:28 type][27 pol][26:20 addr112][19:13 addr126][12:0 seq]
  *   word1 (APS, type 0x1) = [31:28 type][27 SOF][26:20 addr112][19:13 addr126][9:0 ADC sample]
- * type 0x0 = DVS, type 0x1 = APS sample, type 0xF = buffer padding (skipped).
+ * type 0x0 = DVS, type 0x1 = APS sample, type 0x2 = external-input edge
+ * (word1 = [27]=polarity, [12:0]=shared seq snapshot), type 0xF = padding.
  * The 7-bit field at bit 13 carries the 126-valued address and the 7-bit
  * field at bit 20 the 112-valued one (firmware scidvs_vendor.c is the
  * authoritative map). APS frames are scanned row-major with the 112-valued
@@ -90,6 +91,14 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 	/** Event type codes (top nibble of word1). */
 	static final int EVT_DVS = 0x0;
 	static final int EVT_APS = 0x1;
+	/**
+	 * External-input edge (firmware 2026-06-12): emitted by the FX10 when the
+	 * ExtInput lane changes level, gated on the jAER ExtInput.RunDetector /
+	 * DetectRisingEdges / DetectFallingEdges config (module 4 params 0..2).
+	 * word1 = [31:28]=0x2 [27]=edge polarity (1 rising) [26:13]=0
+	 * [12:0]=current shared DVS sequence counter value (not consumed).
+	 */
+	static final int EVT_EXT = 0x2;
 	static final int EVT_PAD = 0xF;
 
 	/** Mask for the 10-bit ADC sample in an APS word1. */
@@ -207,6 +216,17 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 				addresses[count + 1] = baseAddress | (ApsDvsEvent.ReadoutType.SignalRead.code << DavisChip.ADC_READCYCLE_SHIFT);
 				timestamps[count + 1] = tsUs;
 				return count + 2;
+			}
+
+			case EVT_EXT: {
+				// External-input edge -> the DAVIS special-event address the
+				// DavisBaseCamera extractor turns into a special ApsDvsEvent
+				// (same encoding as DAViSFX3HardwareInterface: base address
+				// EXTERNAL_INPUT_EVENT_ADDR plus 3 = rising, 2 = falling).
+				final int rising = (word1 >>> 27) & 0x01;
+				addresses[count] = DavisChip.EXTERNAL_INPUT_EVENT_ADDR + ((rising != 0) ? 3 : 2);
+				timestamps[count] = tsUs;
+				return count + 1;
 			}
 
 			case EVT_PAD:
