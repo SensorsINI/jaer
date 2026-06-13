@@ -147,10 +147,52 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
         chipControl.add(new SPIConfigBit("Chip.TestADC", "Pass ADC Test Voltage to internal ADC instead of pixel voltage.", CypressFX3.FPGA_CHIPBIAS, (short) 146, false, this));
 
         for (final SPIConfigValue cfgVal : chipControl) {
-        
+
             cfgVal.addObserver(this);
             allPreferencesList.add(cfgVal);
         }
+
+        // SciDVS GlobalShutter chip-chain fix. DavisConfig's super-constructor
+        // installs a globalShutter observer that writes FPGA_CHIPBIAS param 142
+        // on every APS.GlobalShutter toggle. On the DAVIS chip 142 IS
+        // GlobalShutter, but on SciDVS param 142 is ResetShorted (see the
+        // Chip.ResetShorted control above) and GlobalShutter is param 147. The
+        // inherited observer therefore CORRUPTS ResetShorted on every
+        // APS.GlobalShutter toggle.
+        //
+        // We cannot remove just the parent's anonymous observer, and
+        // deleteObservers() would also drop the SPIConfigBit's biasgen/GUI
+        // observers (which send the real FPGA_APS param-7 write and update the
+        // UI). So instead we ADD two observers that run after the parent's:
+        //   1. write the CORRECT SciDVS GlobalShutter chip-chain param (147);
+        //   2. re-assert the correct ResetShorted (142) value to UNDO the
+        //      parent's spurious 142 write.
+        // (The FX10 firmware also mirrors APS module-2 param-7 onto chip-chain
+        // 147, so the silicon GS bit stays correct regardless.)
+        globalShutter.addObserver(new Observer() {
+            @Override
+            public void update(final Observable gsObs, final Object arg) {
+                if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
+                    final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
+                    try {
+                        final SPIConfigBit gsBit = (SPIConfigBit) gsObs;
+                        // SciDVS GlobalShutter is chip-chain param 147, NOT 142.
+                        fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 147, (gsBit.isSet()) ? (1) : (0));
+                        // Undo the parent observer's 142 (ResetShorted) write by
+                        // restoring ResetShorted to its own configured value.
+                        for (final SPIConfigValue cv : chipControl) {
+                            if ((cv instanceof SPIConfigBit) && "Chip.ResetShorted".equals(cv.getName())) {
+                                final SPIConfigBit rs = (SPIConfigBit) cv;
+                                fx3HwIntf.spiConfigSend(CypressFX3.FPGA_CHIPBIAS, (short) 142, rs.isSet() ? (1) : (0));
+                                break;
+                            }
+                        }
+                    } catch (final HardwareInterfaceException e) {
+                        Biasgen.log.warning("On SciDVS GS update() caught " + e.toString());
+                    }
+                }
+            }
+        });
     }
     /**
     * Applies the same bit inversion and rearrangement that was done by FPGA but there is not enough space forr it in fx2.
