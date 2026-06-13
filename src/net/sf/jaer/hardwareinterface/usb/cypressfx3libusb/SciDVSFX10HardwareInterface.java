@@ -593,6 +593,8 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 		private int apsRun = 0;
 		/** Cap APS frames pushed to jAER (the scan can complete ~700x/s; jAER renders ~30-60). */
 		private long apsLastEmitWord = 0;
+		/** Previous bit-15 (sync/ExtInput) level, to emit one special event per rising edge. */
+		private int sipLastSync = 0;
 
 		public Fx10AEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
 			super(cypress);
@@ -788,6 +790,15 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 			if (sipApsEnable) {
 				feedAps(buffer, w, tsUs);
 			}
+			// bit-15 = the FPGA-injected sync marker (ball wall-bounce). Emit one
+			// DAVIS external-input special event on each rising edge so it shows in
+			// jAER and carries the capture timestamp (rides on every word).
+			final int sync = (w >>> 15) & 0x1;
+			if ((sync != 0) && (sipLastSync == 0) && ensureCapacity(buffer, eventCounter + 1)) {
+				eventCounter = SciDVSFX10HardwareInterface.translateWordToRawEvents(tsUs,
+					(EVT_EXT << 28) | (1 << 27), buffer.getAddresses(), buffer.getTimestamps(), eventCounter);
+			}
+			sipLastSync = sync;
 			if (!SciDVSFX10HardwareInterface.sipValid(w)) {
 				return; // Valid==0 idle word: the overwhelming majority. Cheapest skip.
 			}
