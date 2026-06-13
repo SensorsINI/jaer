@@ -67,7 +67,75 @@ public final class SciDVSFX10DecoderSelfTest {
 		return ((x * SIZE_Y) + y) % (DavisChip.MAX_ADC + 1);
 	}
 
+	/** Builds a raw mode-3 (SIP) 32-bit word from logical fields. */
+	private static int sipWord(final int group, final int addrY, final int onNib, final int offNib, final boolean valid) {
+		final int b8 = group & 0x1;
+		final int b31 = (group >> 1) & 0x1;
+		final int b1210 = (group >> 2) & 0x7;
+		return (valid ? 0x2000 : 0) | (b8 << 8) | (b31 << 31) | (b1210 << 10) | ((addrY & 0x7F) << 16)
+			| ((onNib & 0xF) << 4) | (offNib & 0xF);
+	}
+
+	/** Asserts a decoded DVS raw address matches expected jAER (x,y,pol) after the extractor X-flip. */
+	private static void checkSipEvent(final int data, final int expX, final int expY, final int expPol, final String tag) {
+		final int x = SIZE_X - 1 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT); // DVS extractor flips X
+		final int y = (data & DavisChip.YMASK) >>> DavisChip.YSHIFT;
+		final int pol = (data & DavisChip.POLMASK) >>> DavisChip.POLSHIFT;
+		check((x == expX) && (y == expY) && (pol == expPol), "SIP " + tag + ": decoded (x=" + x + ",y=" + y + ",pol=" + pol
+			+ "), expected (" + expX + "," + expY + "," + expPol + ")");
+	}
+
+	/**
+	 * Pins the mode-3 SIP decoder against hand-computed expectations (mirrors
+	 * host/sip400_parse.py + dvs_addresses). For DVS the extractor re-flips X, so
+	 * decoded jAER (x,y,pol) = (y112, x126, pol).
+	 */
+	private static void testSipMode3() {
+		final int[] adr = new int[64];
+		final int[] tss = new int[64];
+
+		// V1: Valid=0 -> nothing.
+		check(SciDVSFX10HardwareInterface.translateSipWordToRawEvents(0, sipWord(15, 0, 0xF, 0xF, false), adr, tss, 0) == 0,
+			"SIP V1: invalid word must emit 0 events");
+
+		// V2: group 0, addrY 10, ON lane0 -> 1 ev: x126=0, y112=10, pol=1 -> jAER x=10,y=0,pol=1.
+		int n = SciDVSFX10HardwareInterface.translateSipWordToRawEvents(0, sipWord(0, 10, 0x1, 0x0, true), adr, tss, 0);
+		check(n == 1, "SIP V2: expected 1 event, got " + n);
+		checkSipEvent(adr[0], 10, 0, 1, "V2");
+
+		// V3: group 5, addrY 0, OFF lane0 -> x126=20, pol=0 -> jAER x=0,y=20,pol=0.
+		n = SciDVSFX10HardwareInterface.translateSipWordToRawEvents(0, sipWord(5, 0, 0x0, 0x1, true), adr, tss, 0);
+		check(n == 1, "SIP V3: expected 1 event, got " + n);
+		checkSipEvent(adr[0], 0, 20, 0, "V3");
+
+		// V4: group 2 (set via b31), addrY 50, ON=0xF + OFF=0xF -> 8 events, 4 ON + 4 OFF.
+		n = SciDVSFX10HardwareInterface.translateSipWordToRawEvents(0, sipWord(2, 50, 0xF, 0xF, true), adr, tss, 0);
+		check(n == 8, "SIP V4: expected 8 events, got " + n);
+		int on = 0, off = 0;
+		for (int i = 0; i < n; i++) {
+			if (((adr[i] & DavisChip.POLMASK) >>> DavisChip.POLSHIFT) == 1) {
+				on++;
+			}
+			else {
+				off++;
+			}
+		}
+		check((on == 4) && (off == 4), "SIP V4: expected 4 ON + 4 OFF, got " + on + "/" + off);
+
+		// V5: DEAD bit 9 set, otherwise identical to V2 -> DEAD ignored.
+		n = SciDVSFX10HardwareInterface.translateSipWordToRawEvents(0, sipWord(0, 10, 0x1, 0x0, true) | (1 << 9), adr, tss, 0);
+		check(n == 1, "SIP V5: DEAD bit must be ignored, expected 1 event, got " + n);
+		checkSipEvent(adr[0], 10, 0, 1, "V5");
+
+		// V6: group 31, addrY 5, ON=0xF -> x126 {124,125,126,127}; range check drops >=126 -> 2 events.
+		n = SciDVSFX10HardwareInterface.translateSipWordToRawEvents(0, sipWord(31, 5, 0xF, 0x0, true), adr, tss, 0);
+		check(n == 2, "SIP V6: group-31 lanes 2/3 (x126>=126) must be dropped, expected 2 events, got " + n);
+
+		System.out.println("SciDVS-FX10 SIP (mode-3) decoder test: " + (failures == 0 ? "checks ran" : "FAILURES present"));
+	}
+
 	public static void main(final String[] args) {
+		testSipMode3();
 		// ------------------------------------------------------------------
 		// 1. Build the synthetic wire stream (8-byte little-endian entries).
 		// Frame scan order per the firmware contract: the 112-valued address
