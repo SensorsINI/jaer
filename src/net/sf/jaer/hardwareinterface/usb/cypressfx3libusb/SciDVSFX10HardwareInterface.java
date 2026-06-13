@@ -591,6 +591,17 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 		private int apsPtr = 0;
 		private int apsLastAdc = -1;
 		private int apsRun = 0;
+		/**
+		 * Adaptive per-row scan dwell, in link words. One scan row holds a
+		 * constant ADC value for a fixed number of words (~61 at the 20 MHz
+		 * bring-up clock; scales with the link clock). Measured from single-row
+		 * runs so it survives clock-divider changes. Used to (a) split a single
+		 * constant run that spans several equal-value rows (flat gradient
+		 * regions) into the right row count, and (b) size the inter-frame idle
+		 * threshold. Without this the reconstruction mis-segments and frames
+		 * fragment/tear (see host/debug_full.py + analyze).
+		 */
+		private int apsDwell = 61;
 		/** Cap APS frames pushed to jAER (the scan can complete ~700x/s; jAER renders ~30-60). */
 		private long apsLastEmitWord = 0;
 		/** Previous bit-15 (sync/ExtInput) level, to emit one special event per rising edge. */
@@ -837,19 +848,46 @@ public class SciDVSFX10HardwareInterface extends CypressFX3Biasgen {
 				apsRun++;
 				return;
 			}
-			// The constant run that just ended was a scan window iff long enough.
-			if ((apsRun >= APS_MIN_RUN) && (apsLastAdc >= 0)) {
-				apsCol[apsPtr++] = grayDecode8(apsLastAdc);
-				if (apsPtr >= SIZE_112) {
-					// The scan can complete ~700x/s; only push ~30 fps to jAER so
-					// the renderer keeps up (the full column is always current).
-					final long minWords = (long) (getSipLinkHz() / 30.0);
-					if ((sipWordIndex - apsLastEmitWord) >= minWords) {
-						emitApsFrame(buffer, tsUs);
-						apsLastEmitWord = sipWordIndex;
+			// A constant run of apsRun words at value apsLastAdc just ended.
+			if (apsLastAdc >= 0) {
+				// Inter-frame idle is far longer than a whole column scan
+				// (112 rows * dwell). A constant run beyond that is the gap
+				// between frames, not scan data; anything shorter (down to a
+				// single dwell) is scan rows. A run can legitimately span
+				// several rows that share an ADC value (flat gradient regions),
+				// so expand it by the measured dwell instead of counting it as
+				// one row -- that is what kept frames from completing and tore
+				// them (validated against host/debug_full.py captures).
+				final int idleMin = Math.max(2000, (SciDVSFX10HardwareInterface.SIZE_112 * apsDwell * 5) / 4);
+				if (apsRun >= idleMin) {
+					// Column scan finished: emit it (paced ~30 fps) and realign
+					// the next frame to the scan start so frames never drift.
+					if (apsPtr >= (SciDVSFX10HardwareInterface.SIZE_112 / 2)) {
+						final long minWords = (long) (getSipLinkHz() / 30.0);
+						if ((sipWordIndex - apsLastEmitWord) >= minWords) {
+							// Pad a short tail so a partial scan still renders cleanly.
+							for (int r = apsPtr; r < SciDVSFX10HardwareInterface.SIZE_112; r++) {
+								apsCol[r] = (apsPtr > 0) ? apsCol[apsPtr - 1] : 0;
+							}
+							emitApsFrame(buffer, tsUs);
+							apsLastEmitWord = sipWordIndex;
+						}
 					}
 					apsPtr = 0;
 				}
+				else if (apsRun >= APS_MIN_RUN) {
+					final int rows = Math.max(1, Math.round(apsRun / (float) apsDwell));
+					// Adapt the dwell from single-row runs (robust to clkdiv).
+					if (rows == 1) {
+						apsDwell = Math.max(8, ((apsDwell * 7) + apsRun) / 8);
+					}
+					final int gv = grayDecode8(apsLastAdc);
+					for (int k = 0; (k < rows) && (apsPtr < SciDVSFX10HardwareInterface.SIZE_112); k++) {
+						apsCol[apsPtr++] = gv;
+					}
+				}
+				// Runs shorter than APS_MIN_RUN are DVS-active jitter in the
+				// shared ADC field, not scan rows; ignore them.
 			}
 			apsLastAdc = adc;
 			apsRun = 1;
