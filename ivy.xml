@@ -178,7 +178,10 @@ Please look at this repository: https://github.com/tensorflow/java-models-->
         
         <dependency org="org.apache.pdfbox" name="pdfbox" rev="3.0.1"/>-->
 
-        
+
+        <!-- zstd-jni for AEDZ compressed format support -->
+        <dependency org="com.github.luben" name="zstd-jni" rev="1.5.6-4" />
+
     </dependencies>
 </ivy-module>
 

@@ -39,6 +39,10 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
     private final Map<ImmutablePair<Short, Short>, Class<?>> vidPidToClassMap = new HashMap<>();
     private final List<Device> compatibleDevicesList = new ArrayList<>();
 
+    /** PIDs shared between SciDVS and DAVIS that need runtime auto-detection */
+    private static final java.util.Set<Short> AUTO_DETECT_PIDS = new java.util.HashSet<>(
+            java.util.Arrays.asList(SciDVSHardwareInterface.PID_FX3, DAViSFX3HardwareInterface.PID_FX2));
+
     private LibUsb3HardwareInterfaceFactory() throws LibUsbException {
 
         // Initialize LibUsb.
@@ -61,35 +65,63 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
             throw u;
         }
 
-        // Build a mapping of VID/PID pairs and corresponding
-        // HardwareInterfaces.
+        // Build a mapping of VID/PID pairs and corresponding HardwareInterfaces.
         addDeviceToMap(CypressFX3.VID, DVXplorerFX3HardwareInterface.PID_FX3, DVXplorerFX3HardwareInterface.class);
 
-        if (Boolean.parseBoolean(System.getProperty("aer.mode.gaer"))) {
-            log.info("Loading GAER mode");
-            addDeviceToMap(CypressFX3.VID, SciDVSHardwareInterface.PID_FX3, SciDVSHardwareInterface.class);
-        } else {
-            addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX3, DAViSFX3HardwareInterface.class);
-            log.info("Loading normal AER mode");
-        }
+        // Shared PIDs (0x841A FX3, 0x841B FX2): register as DAVIS by default.
+        // Actual class is resolved at runtime in getInterface() by reading the
+        // USB product string to distinguish SciDVS from DAVIS.
+        addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX3, DAViSFX3HardwareInterface.class);
+        addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
 
+        // Unique SciDVS PID — always SciDVS
         addDeviceToMap(CypressFX3.VID, SciDVSHardwareInterface.PID_FX2_GAER, SciDVSHardwareInterface.class);
 
-        // SciDVS camera on Infineon EZ-USB FX10 controller (FX3-compatible vendor requests, own event format).
+        // SciDVS camera on Infineon EZ-USB FX10 controller (VID 152A / PID 841E)
         addDeviceToMap(CypressFX3.VID, SciDVSFX10HardwareInterface.PID_FX10, SciDVSFX10HardwareInterface.class);
-
-        if (Boolean.parseBoolean(System.getProperty("aer.mode.gaer"))) {
-            log.info("Loading GAER mode");
-            addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, SciDVSHardwareInterface.class);
-        } else {
-            addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
-            log.info("Loading normal AER mode");
-        }
 
         addDeviceToMap(CypressFX3.VID, CochleaFX3HardwareInterface.PID_FX3, CochleaFX3HardwareInterface.class);
 
         // Build up first list of compatible devices.
         refreshCompatibleDevicesList();
+    }
+
+    /**
+     * Read the USB product string from a device. Returns null on failure.
+     */
+    private String getProductString(final Device dev) {
+        final DeviceDescriptor desc = new DeviceDescriptor();
+        LibUsb.getDeviceDescriptor(dev, desc);
+        if (desc.iProduct() == 0) {
+            return null;
+        }
+        final DeviceHandle handle = new DeviceHandle();
+        int rc = LibUsb.open(dev, handle);
+        if (rc != LibUsb.SUCCESS) {
+            return null;
+        }
+        try {
+            return LibUsb.getStringDescriptor(handle, desc.iProduct());
+        } finally {
+            LibUsb.close(handle);
+        }
+    }
+
+    /**
+     * For shared PIDs, determine the correct hardware interface class by
+     * reading the USB product string at runtime.
+     */
+    private Class<?> resolveClass(final Device dev, final short pid, final Class<?> defaultCls) {
+        if (!AUTO_DETECT_PIDS.contains(pid)) {
+            return defaultCls;
+        }
+        String product = getProductString(dev);
+        if (product != null && product.toLowerCase().contains("scidvs")) {
+            log.info("Auto-detected SciDVS device (product string: " + product + ")");
+            return SciDVSHardwareInterface.class;
+        }
+        log.info("Auto-detected DAVIS device (product string: " + (product != null ? product : "N/A") + ")");
+        return defaultCls;
     }
 
     private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
@@ -230,7 +262,7 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 
         final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
 
-        final Class<?> cls = vidPidToClassMap.get(vidPid);
+        final Class<?> cls = resolveClass(dev, devDesc.idProduct(), vidPidToClassMap.get(vidPid));
 
         Constructor<?> constr = null;
         try {

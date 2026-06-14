@@ -111,6 +111,8 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.eventio.AEDZInputStream;
+import net.sf.jaer.eventio.AEDZOutputStream;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.AEMulticastInput;
@@ -301,6 +303,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private File loggingFile = null;
     AEFileOutputStream loggingOutputStream;
+    AEDZOutputStream loggingAedzOutputStream;
     private boolean activeRenderingEnabled = prefs.getBoolean("AEViewer.activeRenderingEnabled", true);
     private boolean renderBlankFramesEnabled = prefs.getBoolean("AEViewer.renderBlankFramesEnabled", false);
 
@@ -1174,8 +1177,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         try {
             log.fine(String.format("Constructing instance AEChip using constructor %s", constructor));
             setChip(constructor.newInstance((java.lang.Object[]) null));
-        } catch (Exception e) {
-            log.log(Level.SEVERE, "AEViewer.constructChip exception " + e.getMessage(), e); // log stack trace
+        } catch (Throwable e) {
+            log.log(Level.SEVERE, "AEViewer.constructChip failed: " + e.getMessage(), e);
         }
     }
 
@@ -2138,21 +2141,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
-            synchronized (loggingOutputStream) {
+            Object logStream = (loggingAedzOutputStream != null) ? loggingAedzOutputStream : loggingOutputStream;
+            synchronized (logStream) {
                 try {
+                    AEPacketRaw packetToLog;
                     if (!isLogFilteredEventsEnabled()) {
-                        loggingOutputStream.writePacket(rawPacket); // log all events
+                        packetToLog = rawPacket;
                     } else {
-                        // log the reconstructed packet after filtering
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
-                        loggingOutputStream.writePacket(aeRawRecon);
+                        packetToLog = extractor.reconstructRawPacket(cookedPacket);
+                    }
+                    if (loggingAedzOutputStream != null) {
+                        loggingAedzOutputStream.writePacket(packetToLog);
+                    } else {
+                        loggingOutputStream.writePacket(packetToLog);
                     }
                 } catch (IOException e) {
                     log.log(Level.SEVERE, e.toString(), e);
 
                     setLoggingEnabled(false);
                     try {
-                        loggingOutputStream.close();
+                        if (loggingAedzOutputStream != null) {
+                            loggingAedzOutputStream.close();
+                        } else {
+                            loggingOutputStream.close();
+                        }
                     } catch (IOException e2) {
                         log.log(Level.SEVERE, "Exception closing file: " + e2.toString(), e2);
 
@@ -4762,14 +4774,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION)
                 && !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
-                && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)) {
+                && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
+                && !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ)) {
             // allow both extensions for  backward compatibility
-            filename = filename + AEDataFile.DATA_FILE_EXTENSION;
-            log.info("Appended extension " + AEDataFile.DATA_FILE_EXTENSION + " to make filename=" + filename);
+            if ("aedz".equals(dataFileVersionNum)) {
+                filename = filename + AEDataFile.DATA_FILE_EXTENSION_AEDZ;
+            } else {
+                filename = filename + AEDataFile.DATA_FILE_EXTENSION;
+            }
+            log.info("Appended extension to make filename=" + filename);
         }
         try {
             loggingFile = new File(filename);
-            loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+            if ("aedz".equals(dataFileVersionNum)) {
+                loggingAedzOutputStream = new AEDZOutputStream(new FileOutputStream(loggingFile), chip);
+                loggingOutputStream = null;
+            } else {
+                loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum);
+                loggingAedzOutputStream = null;
+            }
 
             if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop logging
                 getAePlayer().getAEInputStream().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, new PropertyChangeListener() {
@@ -4826,15 +4849,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         // The aedat file's format user want to use in the log file.
         String dataFileVersionNum;
-//        dataFileVersionNum = (String)JOptionPane.showInputDialog(this,
-//        "Choose the aedat file's format", "This is a format chooser dialog",
-//        JOptionPane.QUESTION_MESSAGE,null,
-//        new Object[]{"2.0","3.1"},"2.0");
-//        // User cancel the aedat format choosing dialog.
-//        if(dataFileVersionNum == null) {
-//            return null;
-//        }
-        dataFileVersionNum = "2.0";
+        dataFileVersionNum = (String) JOptionPane.showInputDialog(this,
+                "Choose recording format", "Recording Format",
+                JOptionPane.QUESTION_MESSAGE, null,
+                new Object[]{"2.0", "aedz"}, "aedz");
+        // User cancel the format choosing dialog.
+        if (dataFileVersionNum == null) {
+            return null;
+        }
 
         String dateString
                 = AEDataFile.DATE_FORMAT.format(new Date()); // uses local time zone on this computer (must be set correctly to be able to find true local time of recording later)
@@ -4864,9 +4886,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         boolean succeeded = false;
         String filename;
 
+        String fileExtension = "aedz".equals(dataFileVersionNum)
+                ? AEDataFile.DATA_FILE_EXTENSION_AEDZ
+                : AEDataFile.DATA_FILE_EXTENSION;
+
         do {
             // log files to tmp folder initially, later user will move or delete file on end of logging
-            filename = lastLoggingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + AEDataFile.DATA_FILE_EXTENSION;
+            filename = lastLoggingFolder + File.separator + className + "-" + dateString + serialNumber + "-" + suffixNumber + fileExtension;
             File lf = new File(filename);
             if (!lf.isFile()) {
                 succeeded = true;
@@ -5072,10 +5098,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingMenuItem.setText("Start logging data");
             try {
                 log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + loggingFile);
-                synchronized (loggingOutputStream) {
-                    setLoggingEnabled(false);
-                    loggingOutputStream.close();
-                    fileInfo = loggingOutputStream.toString();
+                // Disable logging before acquiring the stream lock so that the
+                // ViewLoop stops calling logPacket() immediately.  This avoids
+                // blocking the ViewLoop while close() flushes/patches the file,
+                // which could cause USB buffer overruns and lost timestamp-wrap
+                // events leading to non-monotonic timestamp errors.
+                setLoggingEnabled(false);
+                if (loggingAedzOutputStream != null) {
+                    synchronized (loggingAedzOutputStream) {
+                        loggingAedzOutputStream.close();
+                        fileInfo = loggingAedzOutputStream.toString();
+                    }
+                } else {
+                    synchronized (loggingOutputStream) {
+                        loggingOutputStream.close();
+                        fileInfo = loggingOutputStream.toString();
+                    }
                 }
                 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
@@ -5089,8 +5127,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     String fn
                             = loggingFile.getName();
                     //                System.out.println("fn="+fn);
-                    // strip off .aedat to make it easier to appendOfEventReferences comment to filename
-                    int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
+                    // strip off extension (.aedat or .aedz) to make it easier to appendOfEventReferences comment to filename
+                    int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION_AEDZ);
+                    if (extInd < 0) {
+                        extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
+                    }
                     String base = fn;
                     if (extInd > 0) {
                         base = fn.substring(0, extInd); // maybe trying to save old .dat extension
@@ -5120,9 +5161,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         retValue = chooser.showSaveDialog(AEViewer.this);
                         if (retValue == JFileChooser.APPROVE_OPTION) {
                             File newFile = chooser.getSelectedFile();
-                            // make sure filename ends with .aedat
-                            if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
-                                newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
+                            // make sure filename ends with .aedat or .aedz
+                            if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)
+                                    && !newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ)) {
+                                // Preserve original extension
+                                String origExt = loggingFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDZ)
+                                        ? AEDataFile.DATA_FILE_EXTENSION_AEDZ
+                                        : AEDataFile.DATA_FILE_EXTENSION;
+                                newFile = new File(newFile.getCanonicalPath() + origExt);
                             }
                             // we'll rename the logged data file to the selection
                             lastLoggingFolder = chooser.getCurrentDirectory();
