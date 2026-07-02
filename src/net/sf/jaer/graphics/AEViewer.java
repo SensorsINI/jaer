@@ -83,6 +83,7 @@ import java.util.logging.ConsoleHandler;
 import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.retina.*;
+import ch.unizh.ini.jaer.chip.nrv.NRVS5KRC1S;
 import com.google.common.collect.EvictingQueue;
 import eu.seebetter.ini.chips.davis.*;
 import java.awt.Container;
@@ -336,6 +337,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         DVXplorer.class.getName(),
         //        CochleaAMS1c.class.getName(),
         DVS640.class.getName(),
+        NRVS5KRC1S.class.getName(),
         DVS1280x720SD.class.getName()
     };
     /**

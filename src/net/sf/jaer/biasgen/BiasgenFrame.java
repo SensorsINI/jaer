@@ -38,6 +38,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.XMLFileFilter;
+import ch.unizh.ini.jaer.chip.nrv.NRVConfig;
+import net.sf.jaer.hardwareinterface.usb.nrv.NRVSettingsFileFilter;
 
 /**
  * A generic application frame for controlling a bias generator. You build the
@@ -89,6 +91,33 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         initComponents();
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_HARDWARE)).getImage());
         fixUndoRedo();
+        defaultFolder = System.getProperty("user.dir");
+        try {
+            File f = new File(defaultFolder + File.separator + "biasgenSettings");
+            if (biasgen instanceof NRVConfig) {
+                f = new File(f, "NRV");
+            }
+            defaultFolder = f.getPath();
+            log.info("default hardware configuration file path is " + defaultFolder);
+        } catch (Exception e) {
+        }
+
+        String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
+        lastFile = new File(lastFilePath);
+        if (!lastFile.exists()) {
+            log.info("lastFile " + lastFile + " does not exist, setting it to " + defaultFolder);
+            lastFile = new File(defaultFolder);
+        }
+        if (biasgen instanceof NRVConfig) {
+            final NRVConfig nrvConfig = (NRVConfig) biasgen;
+            if (nrvConfig.loadLastSettingsFromPreferences(lastFile)) {
+                lastFile = nrvConfig.getLoadedFile();
+                if (lastFile != null) {
+                    currentFile = lastFile;
+                    prefs.put("BiasgenFrame.lastFile", lastFile.toString());
+                }
+            }
+        }
         buildControlPanel(biasgen);
         setViewFunctionalBiasesEnabled(isViewFunctionalBiasesEnabled()); // adds it to the frame content panel - don't replace or we lose toolbar
 //        JMenu viewBiasOptionsMenu = PotGUIControl.viewMenu; // TODO assumes POTGUIControl is only type of control, not true anymore
@@ -117,20 +146,6 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 //                //                System.out.println("view menu canceled");
 //            }
 //        });
-        defaultFolder = System.getProperty("user.dir");
-        try {
-            File f = new File(defaultFolder + File.separator + "biasgenSettings");
-            defaultFolder = f.getPath();
-            log.info("default hardware configuration file path is " + defaultFolder);
-        } catch (Exception e) {
-        }
-
-        String lastFilePath = prefs.get("BiasgenFrame.lastFile", defaultFolder);
-        lastFile = new File(lastFilePath);
-        if (!lastFile.exists()) {
-            log.info("lastFile " + lastFile + " does not exist, setting it to " + defaultFolder);
-            lastFile = new File(defaultFolder);
-        }
         recentFiles = new RecentFiles(prefs, fileMenu, new ActionListener() {
 
             @Override
@@ -154,6 +169,9 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
                 }
             }
         });
+        if (currentFile != null) {
+            recentFiles.addFile(currentFile);
+        }
         setTitle(chip.getName() + " - " + lastFile.getName() + " - Biases ");
         //        saveMenuItem.setEnabled(false); // until we load or save a file
         pack();
@@ -268,6 +286,13 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
     void importPreferencesFromFile(File f) throws Exception {
         log.info("Current chip object is class " + chip == null ? null : chip.getClass() + "; importing biasgen settings from File " + f);
+        if (biasgen instanceof NRVConfig && f.getName().toLowerCase().endsWith(NRVSettingsFileFilter.EXTENSION)) {
+            ((NRVConfig) biasgen).loadSettingsFile(f);
+            setCurrentFile(f);
+            setFileModified(false);
+            recentFiles.addFile(f);
+            return;
+        }
         InputStream is = new BufferedInputStream(new FileInputStream(f));
         biasgen.importPreferences(is);
         setCurrentFile(f);
@@ -365,7 +390,13 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         }
         chooser.addChoosableFileFilter(xmlFilter);
         chooser.addChoosableFileFilter(xmlOrAedatFilter);
-        chooser.setFileFilter(xmlFilter);
+        if (biasgen instanceof NRVConfig) {
+            NRVSettingsFileFilter nrvFilter = new NRVSettingsFileFilter();
+            chooser.addChoosableFileFilter(nrvFilter);
+            chooser.setFileFilter(nrvFilter);
+        } else {
+            chooser.setFileFilter(xmlFilter);
+        }
         chooser.setCurrentDirectory(lastFile);
         int retValue = chooser.showOpenDialog(this);
         if (retValue == JFileChooser.APPROVE_OPTION) {

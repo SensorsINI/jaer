@@ -1,0 +1,161 @@
+//@ DVS_VERSION S5KRC1S
+//@ Single
+//@ Description S5KRC1S_600
+//////////////////////////////////////////////////////////////////
+//////////////        System Setting       ///////////////////////
+//////////////////////////////////////////////////////////////////
+
+//20:3225=12 // DTAG_GR_ON_NUM_r
+//20:0166=31 // EVTH_REF_LSB_r
+20:300c=00 // STREAM_OUT_MODE_r(0 : MIPI, 1 : PARALLEL)
+20:30a1=00 // [0] : OUTIF_PARA_ENABLE
+
+20:3070=04 // PLL_P
+20:3071=01 // PLL_M_MSB
+20:3072=2C // PLL_M_LSB
+20:3073=01 // PLL_S
+
+20:3079=61 // [7:4] PLL_DIV_G , [3:0] PLL_DIV_DBR
+20:307a=11 // [7:4] PLL_DIV_OP, [3:0] PLL_DIV_OS
+20:307b=25 // [7:4] PLL_DIV_VS, [3:0] PLL_DIV_VP
+20:307e=00 // PLL_PD
+20:30a0=01 // OUTIF_ENABLE
+20:30a2=11 // DPHY_ENABLE
+20:30a3=1f // DPHY_ENABLE
+///////////////////////////////////
+20:30a5=00 // DPHY_PLL_PMS
+20:30a6=67 // DPHY_PLL_PMS
+20:30a7=89 // DPHY_PLL_PMS
+///////////////////////////////////
+
+20:3080=3F // CLOCK_ENABLE ([0] : MULTICLK_ENABLE)
+20:3081=06 // CLOCK_ENABLE ([3] : DTPDTAG_ENABLE)
+20:3083=6c // CLOCK_ENABLE
+
+//////////////////////////////////////////////////////////////////
+//////////////        OUTIF Setting        ///////////////////////
+//////////////////////////////////////////////////////////////////
+
+20:3915=24 // [5:4] mipi_ck_mode, [3] : use_line, [2] : use_frm, [1] : use_2_lane, [0] : use_1_lane
+20:392C=08 // [3] MGROUP ENABLE
+20:3901=2a // MIPI_CSI2_DI_r
+20:3902=00 // csi2_pkt_size_low
+20:3903=08 // csi2_pkt_size_high
+20:3908=00 // DPHY ULPS disable
+20:391A=06 // frm_cnt_low
+20:391B=00 // frm_cnt_high
+20:3910=81 // use_timeout, use_big_endian
+20:3911=7C // to_scnt0 (event clock) (1us)
+20:3912=E7 // to_scnt1_low 
+20:3913=03 // to_scnt1_high (1ms)
+20:3914=01 // to_mcnt
+20:3916=40 // pkt_gap_low
+20:3917=00 // pkt_gap_high
+20:3918=40 // frm_gap_low
+20:3919=00 // frm_gap_high
+20:3930=60 // TX Regulator settings
+//20:3931=4c // TX Regulator settings
+20:3935=00 // set to 0 for mipi below 1.5Gbps
+20:3936=00 // set to 0 for mipi below 1.5Gbps
+
+//////////////////////////////////////////////////////////////////
+//////////////     Scan Rate Setting       ///////////////////////
+//////////////////////////////////////////////////////////////////
+20:320C=1D
+
+20:3210=1E
+20:3211=00
+20:3212=07
+20:3213=1D
+20:3214=00
+20:3215=00
+
+20:3216=04 // DTAG_SELX_r
+20:3217=1C // DTAG_SENSE_r
+20:3218=0C // DTAG_AY_r
+20:3219=05 // DTAG_AY_RST_GAP_r
+20:321A=07 // DTAG_APS_RST_r
+20:321C=02 // DTAG_COL_MARGIN_r
+
+20:321D=00 // DTAG_FRM_MARGIN_r_MSB
+20:321E=0F // DTAG_FRM_MARGIN_r_LSB
+
+//////////////////////////////////////////////////////////////////
+//////////////        Analog Setting       ///////////////////////
+//////////////////////////////////////////////////////////////////
+20:0157=1F // CRGS Setting
+20:0166=0F // REG_DIV_BCM_BOT_UNIT_AMP
+20:0167=07 // REG_DIV_BCM_BOT_UNIT_ON
+20:0168=1F // REG_DIV_BCM_BOT_UNIT_nOFF
+
+//////////////////////////////////////////////////////////////////
+//////////////        TimeStamp Setting    /////////////////////
+//////////////////////////////////////////////////////////////////
+
+//20:32B1=00 // TSTAMP_SUB_UNIT_VAL_r_MSB
+//20:32B2=7D // TSTAMP_SUB_UNIT_VAL_r_LSB
+//20:32B3=03 // TSTAMP_REF_UNIT_VAL_r_MSB
+//20:32B4=E7 // TSTAMP_REF_UNIT_VAL_r_LSB
+
+20:32B1=00 // TSTAMP_SUB_UNIT_VAL_r_MSB
+20:32B2=42 // TSTAMP_SUB_UNIT_VAL_r_LSB
+20:32B3=03 // TSTAMP_REF_UNIT_VAL_r_MSB
+20:32B4=E7 // TSTAMP_REF_UNIT_VAL_r_LSB
+
+//////////////////////////////////////////////////////////////////
+//////////////        ESP Setting          ///////////////////////
+//////////////////////////////////////////////////////////////////
+
+20:311f=00 // IP_OUT_MUX (0 : Crop, 2 : AER, 3 : ESP)
+20:3040=01 // ESP_ENABLE
+20:4308=01 // a2s_0_external_ts_mode
+20:4300=01 // a2s_0_enable
+20:4900=01 // aflckr_dvsv12_8bit_bypass
+
+
+//////////////////////////////////////////////////////////////////
+//////////////        CROP Setting    /////////////////////
+//////////////////////////////////////////////////////////////////
+
+20:3300=01 // CROP_BYPASS_r
+20:3301=00 // CROP_Y_GROUP_START_r
+20:3302=FF // CROP_Y_START_MASK_r
+20:3303=59 // CROP_Y_GROUP_END_r
+20:3304=FF // CROP_Y_END_MASK_r
+20:3305=00 // CROP_START_X_r_MSB
+20:3306=00 // CROP_START_X_r_LSB
+20:3307=03 // CROP_END_X_r_MSB
+20:3308=BF // CROP_END_X_r_LSB
+20:3309=00 // CROP_FRAME_SKIP_ENABLE_r
+20:330A=01 // CROP_FRAME_REPEAT_NUM_r
+20:330B=00 // CROP_VALID_FRAME_START_NUM_r
+20:330C=00 // CROP_VALID_FRAME_END_NUM_r
+
+
+//////////////////////////////////////////////////////////////////
+//////////////        Slave Mode Setting          //////////////
+/////////////////////////////////////////////////////////////////
+
+20:3A00=00 // EXT_SYNC_IN_EN_r
+20:3A01=01 // EXT_SYNC_RISING_SEL_r
+
+20:3A02=00 // BURST_TRIGGER_MODE_EN_r
+
+20:3A0C=00 // ECLK_FINE_COUNT_WIDTH_r_MSB
+20:3A0D=7D // ECLK_FINE_COUNT_WIDTH_r_LSB
+20:3A0E=00 // ECLK_COARSE_COUNT_WIDTH_r_MSB
+20:3A0F=08 // ECLK_COARSE_COUNT_WIDTH_r_LSB
+
+20:3A10=01 // FRAME_WIDTH_r
+20:3283=00 // DTAG_MULTI_SENSOR_r
+20:303B=40 // EXT_SYNC_IN_EN_r
+//20:32B6=00 // TSTAMP_EXT_RESET_r
+20:4C00=01 // DNS Bypass
+
+
+//////////////////////////////////////////////////////////////////
+//////////////       Streaming ON Setting   ///////////////////
+//////////////////////////////////////////////////////////////////
+
+20:3091=6C // CCI_ADDRESS_CONTROL_2ND_r
+20:0100=01 // MODE_SELECT_r (Stream on)
