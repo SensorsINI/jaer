@@ -13,8 +13,13 @@ import java.awt.event.KeyEvent;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.Scanner;
 import java.util.logging.Level;
 
 import javax.swing.AbstractAction;
@@ -27,7 +32,9 @@ import javax.swing.ProgressMonitor;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GL2ES2;
 import com.jogamp.opengl.GLAutoDrawable;
+import com.jogamp.opengl.GLException;
 import com.jogamp.opengl.glu.GLU;
 import com.jogamp.opengl.glu.GLUquadric;
 import com.jogamp.opengl.util.awt.TextRenderer;
@@ -50,6 +57,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
+import net.sf.jaer.graphics.Chip2DRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
@@ -79,7 +87,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
     private final String CMD_GET_IMU_TEMPERATURE_C = "getImuTemperature";
     private final String CMD_SET_APS_ENABLED = "setApsEnabled", CMD_SET_DVS_ENABLED = "setDvsEnabled", CMD_SET_IMU_ENABLED = "setImuEnabled";
 
-    protected final DavisDisplayMethod davisDisplayMethod;
+    protected DavisDisplayMethod davisDisplayMethod;
     protected DavisConfig davisConfig;
     protected DavisRenderer davisRenderer = null; // renderer is set by child subclasses of particular cameras
 
@@ -1142,11 +1150,20 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         @Override
         public void display(final GLAutoDrawable drawable) {
-            // must call here since the chip dimensions for adding extra space are not known on construction
             getCanvas().setBorderSpacePixels(getPrefs().getInt("borderSpacePixels", 10));
-            super.display(drawable);
+            displayFrameLayers(drawable);
+            displayDavisOverlays(drawable);
+        }
 
-            if (exposureTextRenderer == null) { // recreate every frame, memory hog otherwise
+        /**
+         * APS frame, DVS events, and annotation layers. Override for GPU compositing.
+         */
+        protected void displayFrameLayers(final GLAutoDrawable drawable) {
+            super.display(drawable);
+        }
+
+        protected void displayDavisOverlays(final GLAutoDrawable drawable) {
+            if (exposureTextRenderer == null) {
                 exposureTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, DavisDisplayMethod.FONTSIZE), true, true);
             }
 
@@ -1160,16 +1177,14 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     exposureTextRenderer.end3DRendering();
                 }
             }
-            checkedCameraPresent = true; // tobi: only check once
+            checkedCameraPresent = true;
 
             if ((getDavisConfig().getVideoControl() != null) && getDavisConfig().getVideoControl().isDisplayFrames()) {
                 final GL2 gl = drawable.getGL().getGL2();
                 exposureRender(gl, exposureTextRenderer);
             }
 
-            // draw sample histogram
             if (isShowImageHistogram() && getDavisConfig().isDisplayFrames() && (renderer instanceof DavisRenderer)) {
-                // System.out.println("drawing hist");
                 final int size = 100;
                 final AbstractHistogram hist = ((DavisRenderer) renderer).getAdcSampleValueHistogram();
                 final GL2 gl = drawable.getGL().getGL2();
@@ -1180,14 +1195,12 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 gl.glPopAttrib();
             }
 
-            // Draw last IMU output
             if ((getDavisConfig() != null) && getDavisConfig().isDisplayImu() && (chip instanceof DavisBaseCamera)) {
                 final IMUSample imuSampleRender = ((DavisBaseCamera) chip).getImuSample();
                 if (imuSampleRender != null) {
                     imuRender(drawable, imuSampleRender);
                 }
             }
-
         }
 
         GLUquadric accelCircle = null;
@@ -1805,6 +1818,330 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             getDavisConfig().setDisplayImu(!old);
             davisDisplayMethod.showActionText("IMU enabled = " + getDavisConfig().isImuEnabled());
             putValue(Action.SELECTED_KEY, getDavisConfig().isImuEnabled());
+        }
+    }
+
+    /**
+     * CDAVIS GPU display: CFA demosaic, AWB, color correction, and DVS event overlay in one shader.
+     */
+    public class CDavisGpuDisplayMethod extends DavisDisplayMethod {
+
+        private static final int TEX_MOSAIC = 1;
+        private static final int TEX_EVENTS = 2;
+        private static final int TEX_ANNOTATE = 3;
+
+        private boolean shadersInstalled = false;
+        private int shaderProgram;
+        private int vbo;
+        private int idMosaic;
+        private int idEvents;
+        private int idChipSize;
+        private int idTextureSize;
+        private int idCfa;
+        private int idDisplayFrames;
+        private int idDisplayEvents;
+        private int idAwbEnabled;
+        private int idCcEnabled;
+        private int idMonochrome;
+        private int idAwbGR;
+        private int idAwbGB;
+        private int idCcMatrix;
+        private int idCcOffset;
+        private boolean mosaicTextureAllocated;
+        private boolean eventsTextureAllocated;
+
+        public CDavisGpuDisplayMethod(final DavisBaseCamera chip) {
+            super(chip);
+        }
+
+        @Override
+        protected void displayFrameLayers(final GLAutoDrawable drawable) {
+            final Chip2DRenderer r = getRenderer();
+            if (!(r instanceof DavisColorRenderer)) {
+                super.displayFrameLayers(drawable);
+                return;
+            }
+            final DavisColorRenderer colorRenderer = (DavisColorRenderer) r;
+            if (!colorRenderer.isGpuDemosaicEnabled() || getDavisConfig().isSeparateAPSByColor()) {
+                super.displayFrameLayers(drawable);
+                return;
+            }
+            try {
+                displayGpuComposite(drawable, colorRenderer);
+            } catch (IOException | GLException ex) {
+                log.warning("GPU display failed, falling back to CPU path: " + ex);
+                super.displayFrameLayers(drawable);
+            }
+            displayStatusChangeText(drawable);
+        }
+
+        private void displayGpuComposite(final GLAutoDrawable drawable, final DavisColorRenderer colorRenderer)
+                throws IOException {
+            final int width = colorRenderer.getWidth();
+            final int height = colorRenderer.getHeight();
+            if ((width == 0) || (height == 0)) {
+                return;
+            }
+
+            final GL2 gl = drawable.getGL().getGL2();
+            final float gray = colorRenderer.getGrayValue();
+            gl.glClearColor(gray, gray, gray, 1f);
+            gl.glClear(GL.GL_COLOR_BUFFER_BIT);
+            getChipCanvas().checkGLError(gl, glu, "cdavis gpu before composite");
+
+            gl.glDisable(GL.GL_DEPTH_TEST);
+            installShaders(gl);
+
+            synchronized (colorRenderer) {
+                uploadTextures(gl, colorRenderer, width, height);
+            }
+            setUniforms(gl, colorRenderer);
+
+            gl.glPushMatrix();
+            final ChipRendererDisplayMethodRGBA.ImageTransform transform = getImageTransform();
+            if (transform != null) {
+                final int sx = chip.getSizeX() / 2;
+                final int sy = chip.getSizeY() / 2;
+                gl.glTranslatef(sx, sy, 0);
+                gl.glRotatef((float) ((transform.rotationRad * 180) / Math.PI), 0, 0, 1);
+                gl.glTranslatef(transform.translationPixels.x - sx, transform.translationPixels.y - sy, 0);
+            }
+            updateQuadBuffer(gl, colorRenderer.textureWidth, colorRenderer.textureHeight);
+
+            gl.glUseProgram(shaderProgram);
+            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
+            gl.glEnableVertexAttribArray(0);
+            gl.glEnableVertexAttribArray(1);
+            gl.glVertexAttribPointer(0, 2, GL.GL_FLOAT, false, 4 * 4, 0);
+            gl.glVertexAttribPointer(1, 2, GL.GL_FLOAT, false, 4 * 4, 2 * 4);
+
+            gl.glActiveTexture(GL.GL_TEXTURE0);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_MOSAIC);
+            gl.glUniform1i(idMosaic, 0);
+            gl.glActiveTexture(GL.GL_TEXTURE1);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_EVENTS);
+            gl.glUniform1i(idEvents, 1);
+
+            gl.glDrawArrays(GL.GL_TRIANGLE_STRIP, 0, 4);
+
+            gl.glDisableVertexAttribArray(0);
+            gl.glDisableVertexAttribArray(1);
+            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
+            gl.glUseProgram(0);
+            gl.glPopMatrix();
+
+            displayAnnotationLayer(drawable, colorRenderer, width, height);
+            displayChipOutline(gl);
+            getChipCanvas().checkGLError(gl, glu, "cdavis gpu after composite");
+        }
+
+        private void uploadTextures(final GL2 gl, final DavisColorRenderer colorRenderer, final int width, final int height) {
+            final int chipSx = chip.getSizeX();
+            final int chipSy = chip.getSizeY();
+            // Use endFrame snapshot, not live pixBuffer (rolling shutter updates pixBuffer mid-frame).
+            final FloatBuffer frameSnapshot = colorRenderer.getGpuDisplayPixmap();
+            final FloatBuffer dvsEventsMap = colorRenderer.getGpuDisplayDvsEventsMap();
+
+            gl.glActiveTexture(GL.GL_TEXTURE0);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_MOSAIC);
+            gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+            gl.glPixelStorei(GL2.GL_UNPACK_ROW_LENGTH, width);
+            setTextureParams(gl);
+            if (!mosaicTextureAllocated) {
+                gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, frameSnapshot);
+                mosaicTextureAllocated = true;
+            } else {
+                gl.glTexSubImage2D(GL.GL_TEXTURE_2D, 0, 0, 0, chipSx, chipSy, GL.GL_RGBA, GL.GL_FLOAT, frameSnapshot);
+            }
+
+            gl.glActiveTexture(GL.GL_TEXTURE1);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_EVENTS);
+            gl.glPixelStorei(GL2.GL_UNPACK_ROW_LENGTH, width);
+            setTextureParams(gl);
+            if (dvsEventsMap != null) {
+                if (!eventsTextureAllocated) {
+                    gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, dvsEventsMap);
+                    eventsTextureAllocated = true;
+                } else {
+                    gl.glTexSubImage2D(GL.GL_TEXTURE_2D, 0, 0, 0, width, height, GL.GL_RGBA, GL.GL_FLOAT, dvsEventsMap);
+                }
+            }
+            gl.glPixelStorei(GL2.GL_UNPACK_ROW_LENGTH, 0);
+        }
+
+        private static void setTextureParams(final GL2 gl) {
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP_TO_EDGE);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP_TO_EDGE);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
+        }
+
+        private void setUniforms(final GL2 gl, final DavisColorRenderer colorRenderer) {
+            gl.glUseProgram(shaderProgram);
+            final ColorFilter[] cfa = colorRenderer.getColorFilterSequence();
+            gl.glUniform2f(idChipSize, chip.getSizeX(), chip.getSizeY());
+            gl.glUniform2f(idTextureSize, colorRenderer.textureWidth, colorRenderer.textureHeight);
+            gl.glUniform4f(idCfa, cfa[0].ordinal(), cfa[1].ordinal(), cfa[2].ordinal(), cfa[3].ordinal());
+            gl.glUniform1i(idDisplayFrames, colorRenderer.isDisplayFrames() ? 1 : 0);
+            gl.glUniform1i(idDisplayEvents, colorRenderer.isDisplayEvents() ? 1 : 0);
+            gl.glUniform1i(idAwbEnabled, colorRenderer.isAutoWhiteBalance() && !colorRenderer.isMonochrome() ? 1 : 0);
+            gl.glUniform1i(idCcEnabled, colorRenderer.isColorCorrection() ? 1 : 0);
+            gl.glUniform1i(idMonochrome, colorRenderer.isMonochrome() ? 1 : 0);
+            gl.glUniform1f(idAwbGR, colorRenderer.getAwbGreenOverRed());
+            gl.glUniform1f(idAwbGB, colorRenderer.getAwbGreenOverBlue());
+
+            final float[][] cc = colorRenderer.getColorCorrectionMatrix();
+            final float[] mat = new float[]{
+                cc[0][0], cc[1][0], cc[2][0],
+                cc[0][1], cc[1][1], cc[2][1],
+                cc[0][2], cc[1][2], cc[2][2]
+            };
+            final float[] off = new float[]{cc[0][3], cc[1][3], cc[2][3]};
+            gl.glUniformMatrix3fv(idCcMatrix, 1, false, mat, 0);
+            gl.glUniform3fv(idCcOffset, 1, off, 0);
+        }
+
+        private void updateQuadBuffer(final GL2 gl, final int textureWidth, final int textureHeight) {
+            final float xRatio = (float) chip.getSizeX() / (float) textureWidth;
+            final float yRatio = (float) chip.getSizeY() / (float) textureHeight;
+            final float cx = chip.getSizeX();
+            final float cy = chip.getSizeY();
+            final float[] quad = {
+                0f, 0f, 0f, 0f,
+                cx, 0f, xRatio, 0f,
+                0f, cy, 0f, yRatio,
+                cx, cy, xRatio, yRatio
+            };
+            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, vbo);
+            gl.glBufferData(GL.GL_ARRAY_BUFFER, (long) quad.length * 4, FloatBuffer.wrap(quad), GL.GL_DYNAMIC_DRAW);
+            gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
+        }
+
+        private void displayAnnotationLayer(final GLAutoDrawable drawable, final DavisColorRenderer colorRenderer,
+                final int width, final int height) {
+            final FloatBuffer annotateMap = colorRenderer.getGpuDisplayAnnotateMap();
+            if (annotateMap == null || !colorRenderer.isDisplayAnnotation()) {
+                return;
+            }
+            final GL2 gl = drawable.getGL().getGL2();
+            final int nearestFilter = GL.GL_NEAREST;
+            gl.glEnable(GL.GL_BLEND);
+            gl.glBlendFuncSeparate(GL.GL_SRC_COLOR, GL.GL_ONE_MINUS_SRC_COLOR, GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+            gl.glEnable(GL2.GL_ALPHA_TEST);
+            gl.glAlphaFunc(GL2.GL_GREATER, 0);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, TEX_ANNOTATE);
+            gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, nearestFilter);
+            gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, nearestFilter);
+            gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0, GL.GL_RGBA, GL.GL_FLOAT, annotateMap);
+            gl.glEnable(GL.GL_TEXTURE_2D);
+            drawPolygon(gl, width, height);
+            gl.glDisable(GL.GL_TEXTURE_2D);
+            gl.glDisable(GL2.GL_ALPHA_TEST);
+            gl.glDisable(GL.GL_BLEND);
+        }
+
+        private void displayChipOutline(final GL2 gl) {
+            gl.glColor3f(0, 0, 1f);
+            gl.glLineWidth(1f);
+            gl.glBegin(GL.GL_LINE_LOOP);
+            final float o = 0f;
+            final float w = chip.getSizeX();
+            final float h = chip.getSizeY();
+            gl.glVertex2f(-o, -o);
+            gl.glVertex2f(w + o, -o);
+            gl.glVertex2f(w + o, h + o);
+            gl.glVertex2f(-o, h + o);
+            gl.glEnd();
+        }
+
+        private void installShaders(final GL2 gl) throws IOException {
+            if (shadersInstalled) {
+                return;
+            }
+            final IntBuffer b = IntBuffer.allocate(4);
+            shaderProgram = gl.glCreateProgram();
+            final int vertexShader = gl.glCreateShader(GL2ES2.GL_VERTEX_SHADER);
+            final int fragmentShader = gl.glCreateShader(GL2ES2.GL_FRAGMENT_SHADER);
+
+            final String vsrc = readShaderResource("cdavis_composite.vert");
+            gl.glShaderSource(vertexShader, 1, new String[]{vsrc}, (int[]) null, 0);
+            gl.glCompileShader(vertexShader);
+            b.clear();
+            gl.glGetShaderiv(vertexShader, GL2ES2.GL_COMPILE_STATUS, b);
+            if (b.get(0) != GL.GL_TRUE) {
+                log.warning("CDAVIS vertex shader: " + shaderInfoLog(gl, vertexShader, 1024));
+                throw new GLException("CDAVIS vertex shader compile failed");
+            }
+
+            final String fsrc = readShaderResource("cdavis_composite.frag");
+            gl.glShaderSource(fragmentShader, 1, new String[]{fsrc}, (int[]) null, 0);
+            gl.glCompileShader(fragmentShader);
+            b.clear();
+            gl.glGetShaderiv(fragmentShader, GL2ES2.GL_COMPILE_STATUS, b);
+            if (b.get(0) != GL.GL_TRUE) {
+                log.warning("CDAVIS fragment shader: " + shaderInfoLog(gl, fragmentShader, 1024));
+                throw new GLException("CDAVIS fragment shader compile failed");
+            }
+
+            gl.glAttachShader(shaderProgram, vertexShader);
+            gl.glAttachShader(shaderProgram, fragmentShader);
+            gl.glBindAttribLocation(shaderProgram, 0, "aPos");
+            gl.glBindAttribLocation(shaderProgram, 1, "aTexCoord");
+            gl.glLinkProgram(shaderProgram);
+            b.clear();
+            gl.glGetProgramiv(shaderProgram, GL2ES2.GL_LINK_STATUS, b);
+            if (b.get(0) != GL.GL_TRUE) {
+                log.warning("CDAVIS shader program: " + programInfoLog(gl, shaderProgram, 1024));
+                throw new GLException("CDAVIS shader link failed");
+            }
+
+            idMosaic = gl.glGetUniformLocation(shaderProgram, "uMosaic");
+            idEvents = gl.glGetUniformLocation(shaderProgram, "uEvents");
+            idChipSize = gl.glGetUniformLocation(shaderProgram, "uChipSize");
+            idTextureSize = gl.glGetUniformLocation(shaderProgram, "uTextureSize");
+            idCfa = gl.glGetUniformLocation(shaderProgram, "uCfa");
+            idDisplayFrames = gl.glGetUniformLocation(shaderProgram, "uDisplayFrames");
+            idDisplayEvents = gl.glGetUniformLocation(shaderProgram, "uDisplayEvents");
+            idAwbEnabled = gl.glGetUniformLocation(shaderProgram, "uAwbEnabled");
+            idCcEnabled = gl.glGetUniformLocation(shaderProgram, "uCcEnabled");
+            idMonochrome = gl.glGetUniformLocation(shaderProgram, "uMonochrome");
+            idAwbGR = gl.glGetUniformLocation(shaderProgram, "uAwbGR");
+            idAwbGB = gl.glGetUniformLocation(shaderProgram, "uAwbGB");
+            idCcMatrix = gl.glGetUniformLocation(shaderProgram, "uCcMatrix");
+            idCcOffset = gl.glGetUniformLocation(shaderProgram, "uCcOffset");
+
+            b.clear();
+            gl.glGenBuffers(1, b);
+            vbo = b.get(0);
+
+            shadersInstalled = true;
+        }
+
+        private static String readShaderResource(final String name) throws IOException {
+            final InputStream ins = DavisBaseCamera.class.getResourceAsStream(name);
+            if (ins == null) {
+                throw new IOException("shader resource not found: " + name);
+            }
+            try (InputStream in = ins; Scanner s = new Scanner(in).useDelimiter("\\A")) {
+                return s.hasNext() ? s.next() : "";
+            }
+        }
+
+        private static String shaderInfoLog(final GL2 gl, final int shader, final int logLen) {
+            final IntBuffer len = IntBuffer.allocate(1);
+            final ByteBuffer buf = ByteBuffer.allocate(logLen);
+            gl.glGetShaderInfoLog(shader, logLen, len, buf);
+            return new String(buf.array(), 0, len.get(0), java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        private static String programInfoLog(final GL2 gl, final int program, final int logLen) {
+            final IntBuffer len = IntBuffer.allocate(1);
+            final ByteBuffer buf = ByteBuffer.allocate(logLen);
+            gl.glGetProgramInfoLog(program, logLen, len, buf);
+            return new String(buf.array(), 0, len.get(0), java.nio.charset.StandardCharsets.UTF_8);
         }
     }
 

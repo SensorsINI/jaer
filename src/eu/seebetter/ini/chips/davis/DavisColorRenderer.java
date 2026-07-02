@@ -10,6 +10,8 @@ package eu.seebetter.ini.chips.davis;
 
 import java.util.Random;
 
+import java.nio.FloatBuffer;
+
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -55,19 +57,61 @@ public class DavisColorRenderer extends DavisRenderer {
     // fast lookup later on.
     private final static int NEIGHBORHOOD_SIZE = 9;
 
-    private final ColorFilter[] colors0 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
-    private final ColorFilter[] colors1 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
-    private final ColorFilter[] colors2 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
-    private final ColorFilter[] colors3 = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+    /** 3x3 neighborhood offsets from center pixel; index layout matches original endFrame. */
+    private static final int[] NEIGHBOR_DX = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
+    private static final int[] NEIGHBOR_DY = {1, 1, 1, 0, 0, 0, -1, -1, -1};
 
-    // Given a pixel, what is its R or G or B color value, as well as the corresponding color values
-    // of all its neighbors? Held in this array for fast lookup and to have the same structure as
-    // the color information above.
-    private final float[] valuesR = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
-    private final float[] valuesG = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
-    private final float[] valuesB = new float[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+    /** Precomputed CFA neighbor stencils for the four 2x2 phase positions. */
+    private final CfaPhaseStencil[] phaseStencils = new CfaPhaseStencil[4];
 
     private final float[] onColor, offColor;
+
+    /** When true, demosaic runs in GPU display; pixBuffer stays raw CFA luminance. */
+    private boolean gpuDemosaicEnabled = false;
+
+    /** AWB scale factors for GPU shader (gR, gB). */
+    private float awbGreenOverRed = 1f;
+    private float awbGreenOverBlue = 1f;
+
+    /**
+     * Neighbor offsets for demosaic averaging, derived once from the CFA 2x2 pattern.
+     */
+    private static final class CfaPhaseStencil {
+
+        final ColorFilter center;
+        final int[] rDx = new int[4];
+        final int[] rDy = new int[4];
+        int rCount;
+        final int[] gDx = new int[4];
+        final int[] gDy = new int[4];
+        int gCount;
+        final int[] bDx = new int[4];
+        final int[] bDy = new int[4];
+        int bCount;
+
+        CfaPhaseStencil(final ColorFilter[] pattern) {
+            center = pattern[4];
+            for (int i = 0; i < NEIGHBORHOOD_SIZE; i++) {
+                if (i == 4) {
+                    continue;
+                }
+                final ColorFilter cf = pattern[i];
+                if (cf == ColorFilter.R) {
+                    rDx[rCount] = NEIGHBOR_DX[i];
+                    rDy[rCount] = NEIGHBOR_DY[i];
+                    rCount++;
+                } else if (cf == ColorFilter.G) {
+                    gDx[gCount] = NEIGHBOR_DX[i];
+                    gDy[gCount] = NEIGHBOR_DY[i];
+                    gCount++;
+                } else if (cf == ColorFilter.B) {
+                    bDx[bCount] = NEIGHBOR_DX[i];
+                    bDy[bCount] = NEIGHBOR_DY[i];
+                    bCount++;
+                }
+            }
+        }
+    }
 
     public DavisColorRenderer(final AEChip chip, final boolean isDVSQuarterOfAPS, final ColorFilter[] colorFilterSequence,
             final boolean isCDavisReadout, final float[][] colorCorrectionMatrix) {
@@ -96,46 +140,70 @@ public class DavisColorRenderer extends DavisRenderer {
         this.offColor = new float[4];
         this.onColor = new float[4];
 
-        // Pre-compute all the possible color patterns of the neighbors.
-        colors0[0] = colorFilterSequence[2];
-        colors0[1] = colorFilterSequence[3];
-        colors0[2] = colorFilterSequence[2];
-        colors0[3] = colorFilterSequence[1];
-        colors0[4] = colorFilterSequence[0];
-        colors0[5] = colorFilterSequence[1];
-        colors0[6] = colorFilterSequence[2];
-        colors0[7] = colorFilterSequence[3];
-        colors0[8] = colorFilterSequence[2];
+        phaseStencils[0] = new CfaPhaseStencil(buildCfaNeighborPattern(colorFilterSequence, 0));
+        phaseStencils[1] = new CfaPhaseStencil(buildCfaNeighborPattern(colorFilterSequence, 1));
+        phaseStencils[2] = new CfaPhaseStencil(buildCfaNeighborPattern(colorFilterSequence, 2));
+        phaseStencils[3] = new CfaPhaseStencil(buildCfaNeighborPattern(colorFilterSequence, 3));
+    }
 
-        colors1[0] = colorFilterSequence[3];
-        colors1[1] = colorFilterSequence[2];
-        colors1[2] = colorFilterSequence[3];
-        colors1[3] = colorFilterSequence[0];
-        colors1[4] = colorFilterSequence[1];
-        colors1[5] = colorFilterSequence[0];
-        colors1[6] = colorFilterSequence[3];
-        colors1[7] = colorFilterSequence[2];
-        colors1[8] = colorFilterSequence[3];
+    private static ColorFilter[] buildCfaNeighborPattern(final ColorFilter[] colorFilterSequence, final int phase) {
+        final ColorFilter[] pattern = new ColorFilter[NEIGHBORHOOD_SIZE];
+        switch (phase) {
+            case 0:
+                pattern[0] = colorFilterSequence[2];
+                pattern[1] = colorFilterSequence[3];
+                pattern[2] = colorFilterSequence[2];
+                pattern[3] = colorFilterSequence[1];
+                pattern[4] = colorFilterSequence[0];
+                pattern[5] = colorFilterSequence[1];
+                pattern[6] = colorFilterSequence[2];
+                pattern[7] = colorFilterSequence[3];
+                pattern[8] = colorFilterSequence[2];
+                break;
+            case 1:
+                pattern[0] = colorFilterSequence[3];
+                pattern[1] = colorFilterSequence[2];
+                pattern[2] = colorFilterSequence[3];
+                pattern[3] = colorFilterSequence[0];
+                pattern[4] = colorFilterSequence[1];
+                pattern[5] = colorFilterSequence[0];
+                pattern[6] = colorFilterSequence[3];
+                pattern[7] = colorFilterSequence[2];
+                pattern[8] = colorFilterSequence[3];
+                break;
+            case 2:
+                pattern[0] = colorFilterSequence[0];
+                pattern[1] = colorFilterSequence[1];
+                pattern[2] = colorFilterSequence[0];
+                pattern[3] = colorFilterSequence[3];
+                pattern[4] = colorFilterSequence[2];
+                pattern[5] = colorFilterSequence[3];
+                pattern[6] = colorFilterSequence[0];
+                pattern[7] = colorFilterSequence[1];
+                pattern[8] = colorFilterSequence[0];
+                break;
+            case 3:
+                pattern[0] = colorFilterSequence[1];
+                pattern[1] = colorFilterSequence[0];
+                pattern[2] = colorFilterSequence[1];
+                pattern[3] = colorFilterSequence[2];
+                pattern[4] = colorFilterSequence[3];
+                pattern[5] = colorFilterSequence[2];
+                pattern[6] = colorFilterSequence[1];
+                pattern[7] = colorFilterSequence[0];
+                pattern[8] = colorFilterSequence[1];
+                break;
+            default:
+                throw new IllegalArgumentException("phase=" + phase);
+        }
+        return pattern;
+    }
 
-        colors2[0] = colorFilterSequence[0];
-        colors2[1] = colorFilterSequence[1];
-        colors2[2] = colorFilterSequence[0];
-        colors2[3] = colorFilterSequence[3];
-        colors2[4] = colorFilterSequence[2];
-        colors2[5] = colorFilterSequence[3];
-        colors2[6] = colorFilterSequence[0];
-        colors2[7] = colorFilterSequence[1];
-        colors2[8] = colorFilterSequence[0];
-
-        colors3[0] = colorFilterSequence[1];
-        colors3[1] = colorFilterSequence[0];
-        colors3[2] = colorFilterSequence[1];
-        colors3[3] = colorFilterSequence[2];
-        colors3[4] = colorFilterSequence[3];
-        colors3[5] = colorFilterSequence[2];
-        colors3[6] = colorFilterSequence[1];
-        colors3[7] = colorFilterSequence[0];
-        colors3[8] = colorFilterSequence[1];
+    private static int cfaPhaseIndex(final int x, final int y) {
+        if ((y & 1) == 0) {
+            return (x & 1) == 0 ? 0 : 1;
+        }
+        return (x & 1) == 0 ? 3 : 2;
     }
 
     @Override
@@ -543,313 +611,248 @@ public class DavisColorRenderer extends DavisRenderer {
         return ((DavisDisplayConfigInterface) chip.getBiasgen()).isGlobalShutter();
     }
 
-    // Allocate memory for this only once!
-    private final ColorFilter[] colors = new ColorFilter[DavisColorRenderer.NEIGHBORHOOD_SIZE];
+    /**
+     * Runs AWB, demosaic, and optional color correction on pixBuffer.
+     * Called from endFrame; exposed for headless benchmark.
+     */
+    public void processColorFrame() {
+        if (isSeparateAPSByColor()) {
+            return;
+        }
+        final float[] image = pixBuffer.array();
+        if (isAutoWhiteBalance() && !isMonochrome()) {
+            applyAutoWhiteBalance(image);
+        }
+        if (!isMonochrome()) {
+            demosaicColorFrame(image);
+        } else {
+            applyMonochromeQuads(image);
+        }
+    }
+
+    public void setGpuDemosaicEnabled(final boolean gpuDemosaicEnabled) {
+        this.gpuDemosaicEnabled = gpuDemosaicEnabled;
+    }
+
+    public boolean isGpuDemosaicEnabled() {
+        return gpuDemosaicEnabled;
+    }
+
+    public float getAwbGreenOverRed() {
+        return awbGreenOverRed;
+    }
+
+    public float getAwbGreenOverBlue() {
+        return awbGreenOverBlue;
+    }
+
+    public float[][] getColorCorrectionMatrix() {
+        return colorCorrectionMatrix;
+    }
+
+    public ColorFilter[] getColorFilterSequence() {
+        return colorFilterSequence;
+    }
+
+    public FloatBuffer getGpuDisplayPixBuffer() {
+        return pixBuffer;
+    }
+
+    /** Stable APS frame snapshot; updated only at endFrame. */
+    public FloatBuffer getGpuDisplayPixmap() {
+        return pixmap;
+    }
+
+    public FloatBuffer getGpuDisplayDvsEventsMap() {
+        return dvsEventsMap;
+    }
+
+    public FloatBuffer getGpuDisplayAnnotateMap() {
+        return annotateMap;
+    }
+
+    /**
+     * Computes AWB scale factors from raw CFA in pixBuffer; does not modify the buffer.
+     */
+    public void computeAutoWhiteBalanceFactors() {
+        final float[] image = pixBuffer.array();
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        final int tw = textureWidth;
+        final float[] wrgbTotal = new float[4];
+        final int[] wrgbCount = new int[4];
+
+        for (int y = 0; y < sy; y += 2) {
+            for (int x = 0; x < sx; x += 2) {
+                wrgbTotal[colorFilterSequence[0].ordinal()] += image[4 * (y * tw + x)];
+                wrgbTotal[colorFilterSequence[1].ordinal()] += image[4 * (y * tw + x + 1)];
+                wrgbTotal[colorFilterSequence[2].ordinal()] += image[4 * ((y + 1) * tw + x + 1)];
+                wrgbTotal[colorFilterSequence[3].ordinal()] += image[4 * ((y + 1) * tw + x)];
+                wrgbCount[colorFilterSequence[0].ordinal()]++;
+                wrgbCount[colorFilterSequence[1].ordinal()]++;
+                wrgbCount[colorFilterSequence[2].ordinal()]++;
+                wrgbCount[colorFilterSequence[3].ordinal()]++;
+            }
+        }
+
+        wrgbTotal[ColorFilter.R.ordinal()] /= wrgbCount[ColorFilter.R.ordinal()];
+        wrgbTotal[ColorFilter.G.ordinal()] /= wrgbCount[ColorFilter.G.ordinal()];
+        wrgbTotal[ColorFilter.B.ordinal()] /= wrgbCount[ColorFilter.B.ordinal()];
+
+        awbGreenOverRed = wrgbTotal[ColorFilter.G.ordinal()] / wrgbTotal[ColorFilter.R.ordinal()];
+        awbGreenOverBlue = wrgbTotal[ColorFilter.G.ordinal()] / wrgbTotal[ColorFilter.B.ordinal()];
+    }
+
+    private void applyAutoWhiteBalance(final float[] image) {
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        final int tw = textureWidth;
+        final float[] wrgbTotal = new float[4];
+        final int[] wrgbCount = new int[4];
+
+        for (int y = 0; y < sy; y += 2) {
+            for (int x = 0; x < sx; x += 2) {
+                wrgbTotal[colorFilterSequence[0].ordinal()] += image[4 * (y * tw + x)];
+                wrgbTotal[colorFilterSequence[1].ordinal()] += image[4 * (y * tw + x + 1)];
+                wrgbTotal[colorFilterSequence[2].ordinal()] += image[4 * ((y + 1) * tw + x + 1)];
+                wrgbTotal[colorFilterSequence[3].ordinal()] += image[4 * ((y + 1) * tw + x)];
+                wrgbCount[colorFilterSequence[0].ordinal()]++;
+                wrgbCount[colorFilterSequence[1].ordinal()]++;
+                wrgbCount[colorFilterSequence[2].ordinal()]++;
+                wrgbCount[colorFilterSequence[3].ordinal()]++;
+            }
+        }
+
+        wrgbTotal[ColorFilter.R.ordinal()] /= wrgbCount[ColorFilter.R.ordinal()];
+        wrgbTotal[ColorFilter.G.ordinal()] /= wrgbCount[ColorFilter.G.ordinal()];
+        wrgbTotal[ColorFilter.B.ordinal()] /= wrgbCount[ColorFilter.B.ordinal()];
+
+        final float gR = wrgbTotal[ColorFilter.G.ordinal()] / wrgbTotal[ColorFilter.R.ordinal()];
+        final float gB = wrgbTotal[ColorFilter.G.ordinal()] / wrgbTotal[ColorFilter.B.ordinal()];
+
+        for (int y = 0; y < sy; y += 2) {
+            for (int x = 0; x < sx; x += 2) {
+                applyWhiteBalanceToQuadPixel(image, tw, x, y, colorFilterSequence[0], gR, gB);
+                applyWhiteBalanceToQuadPixel(image, tw, x + 1, y, colorFilterSequence[1], gR, gB);
+                applyWhiteBalanceToQuadPixel(image, tw, x + 1, y + 1, colorFilterSequence[2], gR, gB);
+                applyWhiteBalanceToQuadPixel(image, tw, x, y + 1, colorFilterSequence[3], gR, gB);
+            }
+        }
+    }
+
+    private static void applyWhiteBalanceToQuadPixel(final float[] image, final int tw, final int x, final int y,
+            final ColorFilter cf, final float gR, final float gB) {
+        final int idx = 4 * (y * tw + x);
+        if (cf == ColorFilter.R) {
+            image[idx] *= gR;
+        } else if (cf == ColorFilter.B) {
+            image[idx + 2] *= gB;
+        }
+    }
+
+    private void demosaicColorFrame(final float[] image) {
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        final int tw = textureWidth;
+        final boolean cc = isColorCorrection();
+        for (int y = 0; y < sy; y++) {
+            for (int x = 0; x < sx; x++) {
+                final CfaPhaseStencil st = phaseStencils[cfaPhaseIndex(x, y)];
+                final int idx = 4 * (y * tw + x);
+                final float lum = image[idx];
+                final float r = interpolateChannel(ColorFilter.R, st, image, tw, sx, sy, x, y, lum);
+                final float g = interpolateChannel(ColorFilter.G, st, image, tw, sx, sy, x, y, lum);
+                final float b = interpolateChannel(ColorFilter.B, st, image, tw, sx, sy, x, y, lum);
+                if (cc) {
+                    writeColorCorrectedPixel(image, idx, r, g, b);
+                } else {
+                    image[idx] = r;
+                    image[idx + 1] = g;
+                    image[idx + 2] = b;
+                }
+            }
+        }
+    }
+
+    private float interpolateChannel(final ColorFilter channel, final CfaPhaseStencil st, final float[] image,
+            final int tw, final int sx, final int sy, final int x, final int y, final float centerLum) {
+        if (st.center == channel) {
+            return centerLum;
+        }
+        final int[] dx;
+        final int[] dy;
+        final int n;
+        switch (channel) {
+            case R:
+                dx = st.rDx;
+                dy = st.rDy;
+                n = st.rCount;
+                break;
+            case G:
+                dx = st.gDx;
+                dy = st.gDy;
+                n = st.gCount;
+                break;
+            case B:
+                dx = st.bDx;
+                dy = st.bDy;
+                n = st.bCount;
+                break;
+            default:
+                return centerLum;
+        }
+        float sum = 0;
+        int count = 0;
+        for (int i = 0; i < n; i++) {
+            final int nx = x + dx[i];
+            final int ny = y + dy[i];
+            if ((nx >= 0) && (nx < sx) && (ny >= 0) && (ny < sy)) {
+                sum += image[4 * (ny * tw + nx)];
+                count++;
+            }
+        }
+        return sum / count;
+    }
+
+    private void writeColorCorrectedPixel(final float[] image, final int idx, final float r, final float g, final float b) {
+        image[idx] = (colorCorrectionMatrix[0][0] * r) + (colorCorrectionMatrix[0][1] * g)
+                + (colorCorrectionMatrix[0][2] * b) + colorCorrectionMatrix[0][3];
+        image[idx + 1] = (colorCorrectionMatrix[1][0] * r) + (colorCorrectionMatrix[1][1] * g)
+                + (colorCorrectionMatrix[1][2] * b) + colorCorrectionMatrix[1][3];
+        image[idx + 2] = (colorCorrectionMatrix[2][0] * r) + (colorCorrectionMatrix[2][1] * g)
+                + (colorCorrectionMatrix[2][2] * b) + colorCorrectionMatrix[2][3];
+    }
+
+    private void applyMonochromeQuads(final float[] image) {
+        final int sx = chip.getSizeX();
+        final int sy = chip.getSizeY();
+        for (int y = 0; y < sy; y += 2) {
+            for (int x = 0; x < sx; x += 2) {
+                final float val1 = image[getPixMapIndex(x + 1, y)];
+                final float val2 = image[getPixMapIndex(x + 1, y + 1)];
+                final float val3 = image[getPixMapIndex(x, y + 1)];
+                final float gray = (val1 + val2 + val3) / 3;
+                final int index = getPixMapIndex(x + 1, y);
+                image[index] = gray;
+                image[index + 1] = gray;
+                image[index + 2] = gray;
+                image[index + 3] = 1;
+            }
+        }
+    }
 
     @Override
     protected void endFrame(final int ts) {
-        // No color operation makes sense if we separate APS by color!
-        if (!isSeparateAPSByColor()) {
-            final float[] image = pixBuffer.array();
-
+        if (gpuDemosaicEnabled && !isSeparateAPSByColor()) {
             if (isAutoWhiteBalance() && !isMonochrome()) {
-                // Automatic white balance support.
-                final float WRGBtotal[] = new float[4];
-                final int WRGBcount[] = new int[4];
-
-                for (int y = 0; y < chip.getSizeY(); y += 2) {
-                    for (int x = 0; x < chip.getSizeX(); x += 2) {
-                        // We always look at a full 2x2 square and update all the required counters.
-                        WRGBtotal[colorFilterSequence[0].ordinal()] += image[getPixMapIndex(x, y)];
-                        WRGBtotal[colorFilterSequence[1].ordinal()] += image[getPixMapIndex(x + 1, y)];
-                        WRGBtotal[colorFilterSequence[2].ordinal()] += image[getPixMapIndex(x + 1, y + 1)];
-                        WRGBtotal[colorFilterSequence[3].ordinal()] += image[getPixMapIndex(x, y + 1)];
-
-                        // Also count how many times, since certain colors may appear twice (RGBG for example).
-                        WRGBcount[colorFilterSequence[0].ordinal()]++;
-                        WRGBcount[colorFilterSequence[1].ordinal()]++;
-                        WRGBcount[colorFilterSequence[2].ordinal()]++;
-                        WRGBcount[colorFilterSequence[3].ordinal()]++;
-                    }
-                }
-
-                // Normalize values, to account for double G for example (RGBG).
-                // WRGBtotal[ColorFilter.W.ordinal()] /= WRGBcount[ColorFilter.W.ordinal()]; // WHITE (currently
-                // unused).
-                WRGBtotal[ColorFilter.R.ordinal()] /= WRGBcount[ColorFilter.R.ordinal()]; // RED
-                WRGBtotal[ColorFilter.G.ordinal()] /= WRGBcount[ColorFilter.G.ordinal()]; // GREEN
-                WRGBtotal[ColorFilter.B.ordinal()] /= WRGBcount[ColorFilter.B.ordinal()]; // BLUE
-
-                // Calculate ratios between G/R and G/B. Ignore W for now.
-                final float G_R = WRGBtotal[ColorFilter.G.ordinal()] / WRGBtotal[ColorFilter.R.ordinal()];
-                final float G_B = WRGBtotal[ColorFilter.G.ordinal()] / WRGBtotal[ColorFilter.B.ordinal()];
-
-                for (int y = 0; y < chip.getSizeY(); y += 2) {
-                    for (int x = 0; x < chip.getSizeX(); x += 2) {
-                        // Apply ratios to R and B pixels' R and B component values. Ignore W for now.
-                        if (colorFilterSequence[0] == ColorFilter.R) {
-                            image[getPixMapIndex(x, y)] *= G_R;
-                        } else if (colorFilterSequence[0] == ColorFilter.B) {
-                            image[getPixMapIndex(x, y) + 2] *= G_B;
-                        }
-
-                        if (colorFilterSequence[1] == ColorFilter.R) {
-                            image[getPixMapIndex(x + 1, y)] *= G_R;
-                        } else if (colorFilterSequence[1] == ColorFilter.B) {
-                            image[getPixMapIndex(x + 1, y) + 2] *= G_B;
-                        }
-
-                        if (colorFilterSequence[2] == ColorFilter.R) {
-                            image[getPixMapIndex(x + 1, y + 1)] *= G_R;
-                        } else if (colorFilterSequence[2] == ColorFilter.B) {
-                            image[getPixMapIndex(x + 1, y + 1) + 2] *= G_B;
-                        }
-
-                        if (colorFilterSequence[3] == ColorFilter.R) {
-                            image[getPixMapIndex(x, y + 1)] *= G_R;
-                        } else if (colorFilterSequence[3] == ColorFilter.B) {
-                            image[getPixMapIndex(x, y + 1) + 2] *= G_B;
-                        }
-                    }
-                }
+                computeAutoWhiteBalanceFactors();
             }
-
-            if (!isMonochrome()) {
-                // Color interpolation support.
-                final int sx = chip.getSizeX(), sy = chip.getSizeY();
-                for (int y = 0; y < sy; y++) {
-                    for (int x = 0; x < sx; x++) {
-                        // What pixel am I? Get color information and color values on pixel
-                        // itself and all its neighbors to pass to interpolation function.
-
-                        // Copy right array over, so that we can modify values without impacting original.
-                        if ((y % 2) == 0) {
-                            if ((x % 2) == 0) {
-                                // Lower left.
-                                System.arraycopy(colors0, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                            } else {
-                                // Lower right.
-                                System.arraycopy(colors1, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                            }
-                        } else {
-                            if ((x % 2) == 0) {
-                                // Upper left.
-                                System.arraycopy(colors3, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                            } else {
-                                // Upper right.
-                                System.arraycopy(colors2, 0, colors, 0, DavisColorRenderer.NEIGHBORHOOD_SIZE);
-                            }
-                        }
-
-                        // Handle borders, by setting color filter value to NULL for pixels outside image edge.
-                        if (y == 0) {
-                            colors[6] = null;
-                            colors[7] = null;
-                            colors[8] = null;
-                        } else if (y == (sy - 1)) {
-                            colors[0] = null;
-                            colors[1] = null;
-                            colors[2] = null;
-                        }
-
-                        if (x == 0) {
-                            colors[0] = null;
-                            colors[3] = null;
-                            colors[6] = null;
-                        } else if (x == (sx - 1)) {
-                            colors[2] = null;
-                            colors[5] = null;
-                            colors[8] = null;
-                        }
-
-                        // Color values for R/G/B channels are simply based on pixel position,
-                        // the color filter pattern doesn't matter here. To avoid getting invalid
-                        // pixel indexes and values when on image edges, we simply check that the
-                        // color value is not NULL for that pixel. If it is, we just set the
-                        // corresponding value to zero.
-                        int index = 0;
-
-                        if (colors[0] != null) {
-                            index = getPixMapIndex(x - 1, y + 1);
-                            valuesR[0] = image[index];
-                            valuesG[0] = image[index + 1];
-                            valuesB[0] = image[index + 2];
-                        }
-
-                        if (colors[1] != null) {
-                            index = getPixMapIndex(x, y + 1);
-                            valuesR[1] = image[index];
-                            valuesG[1] = image[index + 1];
-                            valuesB[1] = image[index + 2];
-                        }
-
-                        if (colors[2] != null) {
-                            index = getPixMapIndex(x + 1, y + 1);
-                            valuesR[2] = image[index];
-                            valuesG[2] = image[index + 1];
-                            valuesB[2] = image[index + 2];
-                        }
-
-                        if (colors[3] != null) {
-                            index = getPixMapIndex(x - 1, y);
-                            valuesR[3] = image[index];
-                            valuesG[3] = image[index + 1];
-                            valuesB[3] = image[index + 2];
-                        }
-
-                        if (colors[5] != null) {
-                            index = getPixMapIndex(x + 1, y);
-                            valuesR[5] = image[index];
-                            valuesG[5] = image[index + 1];
-                            valuesB[5] = image[index + 2];
-                        }
-
-                        if (colors[6] != null) {
-                            index = getPixMapIndex(x - 1, y - 1);
-                            valuesR[6] = image[index];
-                            valuesG[6] = image[index + 1];
-                            valuesB[6] = image[index + 2];
-                        }
-
-                        if (colors[7] != null) {
-                            index = getPixMapIndex(x, y - 1);
-                            valuesR[7] = image[index];
-                            valuesG[7] = image[index + 1];
-                            valuesB[7] = image[index + 2];
-                        }
-
-                        if (colors[8] != null) {
-                            index = getPixMapIndex(x + 1, y - 1);
-                            valuesR[8] = image[index];
-                            valuesG[8] = image[index + 1];
-                            valuesB[8] = image[index + 2];
-                        }
-
-                        // CENTER PIXEL (CURRENT). Can never be NULL.
-                        index = getPixMapIndex(x, y);
-                        valuesR[4] = image[index];
-                        valuesG[4] = image[index + 1];
-                        valuesB[4] = image[index + 2];
-
-                        // Call R/G/B generators for each pixel.
-                        image[index] = DavisColorRenderer.generateRForPixel(colors, valuesR);
-                        image[index + 1] = DavisColorRenderer.generateGForPixel(colors, valuesG);
-                        image[index + 2] = DavisColorRenderer.generateBForPixel(colors, valuesB);
-                    }
-                }
-
-                if (isColorCorrection()) {
-                    for (int y = 0; y < chip.getSizeY(); y++) {
-                        for (int x = 0; x < chip.getSizeX(); x++) {
-                            // Get current RGB values, since we modify them later on.
-                            final int index = getPixMapIndex(x, y);
-
-                            final float R_original = image[index];
-                            final float G_original = image[index + 1];
-                            final float B_original = image[index + 2];
-
-                            image[index] = (colorCorrectionMatrix[0][0] * R_original) + (colorCorrectionMatrix[0][1] * G_original)
-                                    + (colorCorrectionMatrix[0][2] * B_original) + colorCorrectionMatrix[0][3];
-                            image[index + 1] = (colorCorrectionMatrix[1][0] * R_original) + (colorCorrectionMatrix[1][1] * G_original)
-                                    + (colorCorrectionMatrix[1][2] * B_original) + colorCorrectionMatrix[1][3];
-                            image[index + 2] = (colorCorrectionMatrix[2][0] * R_original) + (colorCorrectionMatrix[2][1] * G_original)
-                                    + (colorCorrectionMatrix[2][2] * B_original) + colorCorrectionMatrix[2][3];
-                        }
-                    }
-                }
-            } // end color processing
-            else if (isMonochrome() && !isSeparateAPSByColor()) {
-                for (int y = 0; y < chip.getSizeY(); y += 2) { // go to each quad of pixels
-                    for (int x = 0; x < chip.getSizeX(); x += 2) {
-                        // get the gray leval of each RGB pixel and average them
-                        float val1 = image[getPixMapIndex(x + 1, y)];
-                        float val2 = image[getPixMapIndex(x + 1, y + 1)];
-                        float val3 = image[getPixMapIndex(x, y + 1)];
-                        float gray = (val1 + val2 + val3) / 3; // use only APS pixels, not DAVIS white pixel APS value which is DDS and higher noise
-
-                        // now set the white pixel to average
-                        final int index = getPixMapIndex(x + 1, y);
-                        image[index] = gray;
-                        image[index + 1] = gray;
-                        image[index + 2] = gray;
-                        image[index + 3] = 1;
-//                        for (int xx = x; xx <= x + 1; xx++) {
-//                            for (int yy = y; yy <= y + 1; yy++) {
-//                                final int index = getPixMapIndex(xx, yy);
-//                                image[index] = gray;
-//                                image[index + 1] = gray;
-//                                image[index + 2] = gray;
-//                                image[index + 3] = 1; // alpha
-//                            }
-//                        }
-                    }
-                }
-
-            }
+            // Snapshot raw CFA to pixmap for stable GPU/CPU display (pixBuffer changes during rolling readout).
+            super.endFrame(ts, true);
+        } else {
+            processColorFrame();
+            super.endFrame(ts);
         }
-
-        // End frame, copy pixBuffer for display.
-        super.endFrame(ts);
-    }
-
-    private static float generateRForPixel(final ColorFilter[] pixelColors, final float[] redValues) {
-        // Simple for now, if we're already a pixel of this color, we don't do anything.
-        // If we aren't, we just average all neighbor pixels with that color.
-        if (pixelColors[4] == ColorFilter.R) {
-            return (redValues[4]);
-        }
-
-        float redSum = 0;
-        int redCount = 0;
-
-        for (int i = 0; i < DavisColorRenderer.NEIGHBORHOOD_SIZE; i++) {
-            if (pixelColors[i] == ColorFilter.R) {
-                redSum += redValues[i];
-                redCount++;
-            }
-        }
-
-        return (redSum / redCount);
-    }
-
-    private static float generateGForPixel(final ColorFilter[] pixelColors, final float[] greenValues) {
-        // Simple for now, if we're already a pixel of this color, we don't do anything.
-        // If we aren't, we just average all neighbor pixels with that color.
-        if (pixelColors[4] == ColorFilter.G) {
-            return (greenValues[4]);
-        }
-
-        float greenSum = 0;
-        int greenCount = 0;
-
-        for (int i = 0; i < DavisColorRenderer.NEIGHBORHOOD_SIZE; i++) {
-            if (pixelColors[i] == ColorFilter.G) {
-                greenSum += greenValues[i];
-                greenCount++;
-            }
-        }
-
-        return (greenSum / greenCount);
-    }
-
-    private static float generateBForPixel(final ColorFilter[] pixelColors, final float[] blueValues) {
-        // Simple for now, if we're already a pixel of this color, we don't do anything.
-        // If we aren't, we just average all neighbor pixels with that color.
-        if (pixelColors[4] == ColorFilter.B) {
-            return (blueValues[4]);
-        }
-
-        float blueSum = 0;
-        int blueCount = 0;
-
-        for (int i = 0; i < DavisColorRenderer.NEIGHBORHOOD_SIZE; i++) {
-            if (pixelColors[i] == ColorFilter.B) {
-                blueSum += blueValues[i];
-                blueCount++;
-            }
-        }
-
-        return (blueSum / blueCount);
     }
 
     /**
@@ -857,6 +860,16 @@ public class DavisColorRenderer extends DavisRenderer {
      */
     public boolean isMonochrome() {
         return ((DavisConfig) chip.getBiasgen()).getVideoControl().isMonochrome();
+    }
+
+    /** Benchmark access to CFA sequence. */
+    ColorFilter[] benchmarkCfaSequence() {
+        return colorFilterSequence;
+    }
+
+    /** Benchmark access to color correction matrix. */
+    float[][] benchmarkColorCorrectionMatrix() {
+        return colorCorrectionMatrix;
     }
 
 }

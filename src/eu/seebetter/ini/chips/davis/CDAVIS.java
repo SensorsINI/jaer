@@ -55,6 +55,12 @@ public class CDAVIS extends DavisBaseCamera {
 
         setApsFirstPixelReadOut(new Point(0, 0));
         setApsLastPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
+
+        getCanvas().removeDisplayMethod(davisDisplayMethod);
+        davisDisplayMethod = new CDavisGpuDisplayMethod(this);
+        getCanvas().addDisplayMethod(davisDisplayMethod);
+        getCanvas().setDisplayMethod(davisDisplayMethod);
+        ((DavisColorRenderer) davisRenderer).setGpuDemosaicEnabled(true);
     }
 
     public CDAVIS(final HardwareInterface hardwareInterface) {

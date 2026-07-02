@@ -551,8 +551,14 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     protected void endFrame(final int ts) {
+        endFrame(ts, true);
+    }
+
+    protected void endFrame(final int ts, final boolean copyPixmap) {
         timestampFrameEnd = ts;
-        System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
+        if (copyPixmap) {
+            System.arraycopy(pixBuffer.array(), 0, pixmap.array(), 0, pixBuffer.array().length);
+        }
 
         if ((contrastController != null) && (minValue != Float.MAX_VALUE) && (maxValue != Float.MIN_VALUE)) {
             contrastController.endFrame(minValue, maxValue, timestampFrameEnd);

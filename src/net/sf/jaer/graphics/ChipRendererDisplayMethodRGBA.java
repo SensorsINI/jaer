@@ -75,7 +75,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
         return gray;
     }
 
-    private void displayQuad(final GLAutoDrawable drawable) {
+        protected void displayQuad(final GLAutoDrawable drawable) {
         final Chip2DRenderer renderer = getChipCanvas().getRenderer();
         final FloatBuffer pixmap = renderer.getPixmap();
         FloatBuffer dvsEventsMap = null;
