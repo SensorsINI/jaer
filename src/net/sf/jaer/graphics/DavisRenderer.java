@@ -274,7 +274,6 @@ public class DavisRenderer extends AEChipRenderer {
         } else {
             renderPureDvsEvents(pkt);
         }
-        adaptRenderSkipping();
     }
 
     protected void renderApsDvsEvents(final EventPacket pkt) {
@@ -408,6 +407,9 @@ public class DavisRenderer extends AEChipRenderer {
 //        slidingWindowPacketFifo.add(packetCopy);
 //    }
     protected void renderPureDvsEvents(final EventPacket pkt) {
+        if (skipFrame()) {
+            return;
+        }
         if (resetAccumulationFlag || (!isAccumulateEnabled() && !isFadingEnabled())) {
             resetMaps();
             resetAccumulationFlag = false;
@@ -1178,6 +1180,11 @@ public class DavisRenderer extends AEChipRenderer {
      */
     public int getTimestampFrameEnd() {
         return timestampFrameEnd;
+    }
+
+    @Override
+    public boolean isPacketLevelRenderSkipping() {
+        return isAdaptiveRenderSkippingEnabled() && !isDisplayFrames();
     }
 
     private void adaptDvsDownsampling() {

@@ -604,6 +604,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         setJogNCount.setText("Set forward/reverse jog packet count N... (currently " + getAePlayer().getJogPacketCount() + ")");
 
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
+        if (getRenderer().isAdaptiveRenderSkippingEnabled()) {
+            skipPacketsRenderingCheckBoxMenuItem.setSelected(true);
+        }
+        fixSkipPacketsRenderingMenuItems();
 
         // start the server thread for incoming socket connections for remote consumers of events
         if (aeServerSocket == null) {
@@ -1786,6 +1790,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
             }
             while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
+                getRenderer().clearPacketRenderSkipDecision();
+                boolean skipRendering = false;
                 setTitleAccordingToState();
                 fpsDelay(); // delay at start so all the below that breaks out of loop still has a delay to avoid CPU hog
                 if (stop) {
@@ -1827,6 +1833,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                         numRawEvents = rawPacket.getNumEvents();
+                        final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isLogFilteredEventsEnabled();
+                        if (!isPaused() && getRenderer().isPacketLevelRenderSkipping()) {
+                            skipRendering = getRenderer().advanceSkipRenderSlot();
+                        }
+                        if (skipRendering && !filtersNeeded) {
+                            numEvents = numRawEvents;
+                            numFilteredEvents = numRawEvents;
+                            chip.setLastData(cookedPacket);
+                            if (isLoggingEnabled() & !isLoggingPaused()) {
+                                logPacket(rawPacket, null);
+                            }
+                            boolean breakout = writeOutputStreams(rawPacket, null);
+                            if (breakout) {
+                                break;
+                            }
+                            singleStepDone();
+                            makeStatisticsLabel(cookedPacket);
+                            getFrameRater().takeAfter();
+                            getRenderer().adaptRenderSkipping();
+                            renderCount++;
+                            continue;
+                        }
                         cookedPacket = extractPacket(rawPacket);
                         if (cookedPacket == null) {
                             log.warning("packet became null after extracting events from raw input packet");
@@ -1865,7 +1893,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if ((cookedPacket != null)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
-                        renderPacket(cookedPacket);
+                        if (!skipRendering) {
+                            renderPacket(cookedPacket);
+                        }
                     } catch (RuntimeException e) {
                         String cause = " unknown cause";
                         if (e.getCause() != null) {
@@ -1882,6 +1912,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     makeStatisticsLabel(cookedPacket);
                 }
                 getFrameRater().takeAfter();
+                getRenderer().adaptRenderSkipping();
                 renderCount++;
             } // while (stop == false): end of run() loop - main loop of AEViewer.ViewLoop
 
@@ -2411,16 +2442,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
 
                 FrameRater fr = getFrameRater();
+                AEChipRenderer renderer = getRenderer();
+                String arsString;
+                if (renderer.isAdaptiveRenderSkippingEnabled()) {
+                    arsString = String.format(" ARS %d/%d ld=%.1f",
+                            renderer.getSkipFrameRenderingNumberCurrent(),
+                            renderer.getSkipFrameRenderingNumberMax(),
+                            fr.getLastLoopLoad());
+                } else {
+                    arsString = " ARS off";
+                }
 
-                String frameRateString = String.format("%3.0f/%dfps,%2dms skip %d ",
+                String frameRateString = String.format("%3.0f/%dfps,%2dms",
                         fr.getAverageFPS(),
                         fr.getDesiredFPS(),
-                        fr.getLastDelayMs(), getRenderer().getSkipFrameRenderingNumberCurrent());
+                        fr.getLastDelayMs());
 
                 String colorScaleString = (getRenderer().isAutoscaleEnabled() ? "AS=" : "FS=") + Integer.toString(cs);
 
                 sb.delete(0, sb.length());
-                sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString).append(timeExpansionString).append(frameRateString).append(colorScaleString);
+                sb.append(timeSliceString).append('@').append(thisTimeString).append(numEventsString).append(ovstring).append(rateString).append(timeExpansionString).append(frameRateString).append(arsString).append(' ').append(colorScaleString);
 
                 //               statLabel = String.format("%8ss@%-8s,%s%s,%s,%3.0f/%dfps,%4s,%2dms,%s=%2d",
                 //                        timeSliceString,
@@ -2731,6 +2772,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          */
         final long getLastDtNs() {
             return lastdt;
+        }
+
+        /**
+         * Ratio of last loop time to desired frame period; values &gt; 1 mean
+         * the pipeline is falling behind the target frame rate.
+         */
+        public final float getLastLoopLoad() {
+            if (desiredPeriodMs <= 0) {
+                return 0f;
+            }
+            return (lastdt / 1e6f) / desiredPeriodMs;
         }
 
         //  call this ONCE after capture/render. it will store the time since the last call
@@ -3478,7 +3530,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         graphicsSubMenu.add(setFrameRateMenuItem);
 
         skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("Enables skipping rendering of packets to speed up frame rate");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Skip extract/render of some packets when overloaded to maintain frame rate.<br>Raw .aedat logging is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
@@ -6192,17 +6244,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getRenderer().setSkipFrameRenderingNumberMax(0);
             return;
         }
+        int currentMax = getRenderer().getSkipFrameRenderingNumberMax();
+        if (currentMax <= 0) {
+            currentMax = 10;
+        }
         String s = "Maximum number of packets to skip over between rendering (currently "
                 + getRenderer().getSkipFrameRenderingNumberMax() + ")";
         boolean gotIt = false;
         while (!gotIt) {
-            String retString = JOptionPane.showInputDialog(this, s, Integer.toString(getRenderer().getSkipFrameRenderingNumberMax()));
+            String retString = JOptionPane.showInputDialog(this, s, Integer.toString(currentMax));
             if (retString == null) {
                 return;
             } // cancelled
             try {
                 getRenderer().setSkipFrameRenderingNumberMax(Integer.parseInt(retString));
                 gotIt = true;
+                fixSkipPacketsRenderingMenuItems();
             } catch (NumberFormatException e) {
                 log.warning(e.toString());
             }
