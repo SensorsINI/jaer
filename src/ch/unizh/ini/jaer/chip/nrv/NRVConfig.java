@@ -16,6 +16,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.nrv.NRVHardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.nrv.NRVRegisterSetting;
 import net.sf.jaer.hardwareinterface.usb.nrv.NRVSettingsParser;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.biasgen.PotTweakerUtilities;
 import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 
 /**
@@ -27,6 +29,22 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public static final String PREFS_LAST_SETTINGS_FILE = "NRVConfig.lastSettingsFile";
     public static final String DEFAULT_SETTINGS_FILENAME = "S5KRC1S_300_CX3.txt";
 
+    public static final int I2C_SLAVE = 0x20;
+    /** REG_DIV_BCM_BOT_UNIT_AMP — brightness change threshold. */
+    public static final int REG_BRIGHTNESS_THRESHOLD = 0x0166;
+    /** REG_DIV_BCM_BOT_UNIT_ON */
+    public static final int REG_ON_UNIT = 0x0167;
+    /** REG_DIV_BCM_BOT_UNIT_nOFF / OFF */
+    public static final int REG_OFF_UNIT = 0x0168;
+
+    public static final String PROPERTY_THRESHOLD = "nrvThreshold";
+    public static final String PROPERTY_ON_OFF_BALANCE = "nrvOnOffBalance";
+    public static final String PROPERTY_REGISTER_UPDATED = "nrvRegisterUpdated";
+
+    private static final float TWEAK_MAX_RATIO = 8f;
+    private static final int REG_VALUE_MIN = 1;
+    private static final int REG_VALUE_MAX = 0x3F;
+
     private NRVControlPanel controlPanel;
     private String settingsDescription = "";
     private List<NRVRegisterSetting> loadedSettings;
@@ -37,11 +55,17 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     private float contrast = 1.0f;
     private float brightness = 0.0f;
     private float gamma = 1.0f;
+    private float thresholdTweak = 0f;
+    private float onOffBalanceTweak = 0f;
+    private int baselineThreshold = 0x0F;
+    private int baselineOnUnit = 0x07;
+    private int baselineOffUnit = 0x1F;
 
     public NRVConfig(Chip chip) {
         super(chip);
         setName("NRVConfig");
         setPotArray(new PotArray(this));
+        tryEnsureSettingsParsedFromPreferences();
     }
 
     @Override
@@ -53,24 +77,217 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     public void loadSettingsFile(File file) throws IOException, HardwareInterfaceException {
+        parseSettingsFile(file);
+        getChip().getPrefs().put(PREFS_LAST_SETTINGS_FILE, file.getAbsolutePath());
+        applyLoadedSettingsToHardware();
+        support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, file);
+        support.firePropertyChange(PROPERTY_THRESHOLD, null, thresholdTweak);
+        support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, null, onOffBalanceTweak);
+    }
+
+    private void parseSettingsFile(File file) throws IOException {
         final NRVSettingsParser.ParseResult result = NRVSettingsParser.parseFile(file);
         loadedSettings = result.getSettings();
         settingsDescription = result.getDescription();
         loadedFile = file;
-        getChip().getPrefs().put(PREFS_LAST_SETTINGS_FILE, file.getAbsolutePath());
+        captureBaselinesFromSettings();
+        thresholdTweak = 0f;
+        onOffBalanceTweak = 0f;
+        if (controlPanel != null) {
+            controlPanel.updateSettings(loadedSettings, settingsDescription, loadedFile);
+        }
+    }
 
-        if (getHardwareInterface() instanceof NRVHardwareInterface) {
-            final NRVHardwareInterface hw = (NRVHardwareInterface) getHardwareInterface();
+    private void applyLoadedSettingsToHardware() throws HardwareInterfaceException {
+        if (loadedSettings == null) {
+            return;
+        }
+        if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
             if (!hw.isOpen()) {
                 hw.open();
             }
             hw.applySettings(loadedSettings);
         }
+    }
 
-        if (controlPanel != null) {
-            controlPanel.updateSettings(loadedSettings, settingsDescription, loadedFile);
+    /**
+     * Parse settings from preferences / default folder if not already in memory.
+     * Does not require hardware to be connected.
+     */
+    private void tryEnsureSettingsParsedFromPreferences() {
+        if (loadedSettings != null) {
+            return;
         }
-        support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, file);
+        final File settingsFile = resolveLastSettingsFile(null);
+        if (settingsFile == null) {
+            return;
+        }
+        try {
+            parseSettingsFile(settingsFile);
+            log.info("Pre-loaded NRV settings from " + settingsFile);
+        } catch (IOException e) {
+            log.warning("Could not pre-load NRV settings from " + settingsFile + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Load settings when hardware attaches and Biases frame was never opened.
+     */
+    public boolean autoLoadSettingsIfNeeded() {
+        if (loadedSettings != null) {
+            return true;
+        }
+        final File settingsFile = resolveLastSettingsFile(getBiasgenFrameLastFile());
+        if (settingsFile == null) {
+            log.warning("NRV camera attached but no settings .txt found (check biasgenSettings/NRV)");
+            return false;
+        }
+        try {
+            loadSettingsFile(settingsFile);
+            log.info("Auto-loaded NRV settings from " + settingsFile);
+            return true;
+        } catch (IOException | HardwareInterfaceException e) {
+            log.warning("Could not auto-load NRV settings from " + settingsFile + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    private File getBiasgenFrameLastFile() {
+        if (getChip() instanceof AEChip aeChip && aeChip.getAeViewer() != null
+                && aeChip.getAeViewer().getBiasgenFrame() != null) {
+            return aeChip.getAeViewer().getBiasgenFrame().getLastFile();
+        }
+        return null;
+    }
+
+    private void captureBaselinesFromSettings() {
+        baselineThreshold = registerValueOrDefault(REG_BRIGHTNESS_THRESHOLD, 0x0F);
+        baselineOnUnit = registerValueOrDefault(REG_ON_UNIT, 0x07);
+        baselineOffUnit = registerValueOrDefault(REG_OFF_UNIT, 0x1F);
+    }
+
+    private int registerValueOrDefault(int regAddr, int defaultValue) {
+        final NRVRegisterSetting setting = findRegisterSetting(regAddr);
+        return setting == null ? defaultValue : (setting.getValue() & 0xff);
+    }
+
+    public NRVRegisterSetting findRegisterSetting(int regAddr) {
+        if (loadedSettings == null) {
+            return null;
+        }
+        for (NRVRegisterSetting setting : loadedSettings) {
+            if (!setting.isWait() && setting.getRegAddr() == regAddr) {
+                return setting;
+            }
+        }
+        return null;
+    }
+
+    public int getRegisterValue(int regAddr) {
+        final NRVRegisterSetting setting = findRegisterSetting(regAddr);
+        return setting == null ? 0 : (setting.getValue() & 0xff);
+    }
+
+    public int getBaselineThreshold() {
+        return baselineThreshold;
+    }
+
+    public int getBaselineOnUnit() {
+        return baselineOnUnit;
+    }
+
+    public int getBaselineOffUnit() {
+        return baselineOffUnit;
+    }
+
+    public float getThresholdTweak() {
+        return thresholdTweak;
+    }
+
+    public float getOnOffBalanceTweak() {
+        return onOffBalanceTweak;
+    }
+
+    /**
+     * Tweaks brightness change threshold around the value loaded from file.
+     *
+     * @param val slider value in -1..1 (higher → fewer events)
+     */
+    public void setThresholdTweak(float val) {
+        val = clampTweak(val);
+        if (thresholdTweak == val) {
+            return;
+        }
+        final float old = thresholdTweak;
+        thresholdTweak = val;
+        final int newValue = tweakRegisterValue(baselineThreshold, val, TWEAK_MAX_RATIO);
+        try {
+            applyTweakRegister(REG_BRIGHTNESS_THRESHOLD, newValue);
+        } catch (HardwareInterfaceException e) {
+            thresholdTweak = old;
+            log.warning("NRV threshold tweak failed: " + e.getMessage());
+            return;
+        }
+        support.firePropertyChange(PROPERTY_THRESHOLD, old, val);
+    }
+
+    /**
+     * Tweaks ON/OFF event balance around values loaded from file.
+     *
+     * @param val slider value in -1..1 (higher → more ON events)
+     */
+    public void setOnOffBalanceTweak(float val) {
+        val = clampTweak(val);
+        if (onOffBalanceTweak == val) {
+            return;
+        }
+        final float old = onOffBalanceTweak;
+        onOffBalanceTweak = val;
+        final float ratio = PotTweakerUtilities.getRatioTweak(val, TWEAK_MAX_RATIO);
+        final int onValue = clampRegister((int) Math.round(baselineOnUnit * ratio));
+        final int offValue = clampRegister((int) Math.round(baselineOffUnit / ratio));
+        try {
+            applyTweakRegister(REG_ON_UNIT, onValue);
+            applyTweakRegister(REG_OFF_UNIT, offValue);
+        } catch (HardwareInterfaceException e) {
+            onOffBalanceTweak = old;
+            log.warning("NRV ON/OFF balance tweak failed: " + e.getMessage());
+            return;
+        }
+        support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, old, val);
+    }
+
+    private static float clampTweak(float val) {
+        if (val > 1f) {
+            return 1f;
+        }
+        if (val < -1f) {
+            return -1f;
+        }
+        return val;
+    }
+
+    private static int tweakRegisterValue(int baseline, float tweak, float maxRatio) {
+        final float ratio = PotTweakerUtilities.getRatioTweak(tweak, maxRatio);
+        return clampRegister((int) Math.round(baseline * ratio));
+    }
+
+    private static int clampRegister(int value) {
+        if (value < REG_VALUE_MIN) {
+            return REG_VALUE_MIN;
+        }
+        if (value > REG_VALUE_MAX) {
+            return REG_VALUE_MAX;
+        }
+        return value;
+    }
+
+    private void applyTweakRegister(int regAddr, int newValue) throws HardwareInterfaceException {
+        final NRVRegisterSetting setting = findRegisterSetting(regAddr);
+        if (setting == null) {
+            throw new HardwareInterfaceException("Register not in loaded settings: 0x" + Integer.toHexString(regAddr));
+        }
+        writeRegisterValue(setting, newValue);
     }
 
     /**
@@ -128,12 +345,14 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     @Override
     public void setHardwareInterface(final BiasgenHardwareInterface hardwareInterface) {
         super.setHardwareInterface(hardwareInterface);
-        if (loadedSettings != null && hardwareInterface instanceof NRVHardwareInterface) {
+        if (!(hardwareInterface instanceof NRVHardwareInterface nrvHw)) {
+            return;
+        }
+        if (loadedSettings == null) {
+            autoLoadSettingsIfNeeded();
+        } else if (!nrvHw.isSettingsApplied()) {
             try {
-                if (!hardwareInterface.isOpen()) {
-                    hardwareInterface.open();
-                }
-                ((NRVHardwareInterface) hardwareInterface).applySettings(loadedSettings);
+                applyLoadedSettingsToHardware();
             } catch (HardwareInterfaceException e) {
                 log.warning("Could not apply NRV settings after hardware attach: " + e.getMessage());
             }
@@ -171,6 +390,52 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         setting.setApplied(true);
         log.info(String.format("Wrote NRV register %02x:%04x=%02x", setting.getSlaveAddr(),
                 setting.getRegAddr(), newValue & 0xff));
+        syncTweaksFromRegisterWrite(setting.getRegAddr(), newValue & 0xff);
+        if (controlPanel != null) {
+            controlPanel.updateRegisterRow(setting);
+        }
+        support.firePropertyChange(PROPERTY_REGISTER_UPDATED, null, setting);
+    }
+
+    NRVControlPanel getNrvControlPanel() {
+        if (controlPanel == null) {
+            getControlPanel();
+        }
+        return controlPanel;
+    }
+
+    private void syncTweaksFromRegisterWrite(int regAddr, int newValue) {
+        if (regAddr == REG_BRIGHTNESS_THRESHOLD) {
+            final float old = thresholdTweak;
+            thresholdTweak = tweakFromRegisterValue(newValue, baselineThreshold);
+            if (old != thresholdTweak) {
+                support.firePropertyChange(PROPERTY_THRESHOLD, old, thresholdTweak);
+            }
+        } else if (regAddr == REG_ON_UNIT || regAddr == REG_OFF_UNIT) {
+            final float onRatio = (float) getRegisterValue(REG_ON_UNIT) / baselineOnUnit;
+            final float offRatio = (float) baselineOffUnit / Math.max(1, getRegisterValue(REG_OFF_UNIT));
+            final float ratio = (float) Math.sqrt(onRatio * offRatio);
+            final float old = onOffBalanceTweak;
+            onOffBalanceTweak = tweakFromRatio(ratio);
+            if (old != onOffBalanceTweak) {
+                support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, old, onOffBalanceTweak);
+            }
+        }
+    }
+
+    private static float tweakFromRegisterValue(int current, int baseline) {
+        if (baseline <= 0) {
+            return 0f;
+        }
+        return tweakFromRatio((float) current / baseline);
+    }
+
+    private static float tweakFromRatio(float ratio) {
+        if (ratio <= 0f) {
+            return 0f;
+        }
+        final float logRatio = (float) (Math.log(ratio) / Math.log(TWEAK_MAX_RATIO));
+        return clampTweak(logRatio);
     }
 
     @Override

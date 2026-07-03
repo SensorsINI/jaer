@@ -324,6 +324,10 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         setTitle(chip.getName() + " - " + lastFile.getName() + " - Biases ");
     }
 
+    public File getLastFile() {
+        return lastFile;
+    }
+
     /**
      * Shows a dialog to choose a file to store preferences to. If the users
      * successfully writes the file, then the preferences are also stored in the
