@@ -150,6 +150,7 @@ public class DavisRenderer extends AEChipRenderer {
         } else {
             log.warning("cannot make a DavisVideoContrastController for this chip because it does not extend DavisChip");
         }
+        initializeGrayLevelFromColorMode();
     } // constructor
 
     /**
@@ -199,9 +200,9 @@ public class DavisRenderer extends AEChipRenderer {
         checkPixmapAllocation();
         final int n = 4 * textureWidth * textureHeight;
         if ((grayBuffer == null) || (grayBuffer.capacity() != n)) {
-            // Fill maps with fully transparent values
-            grayBuffer = FloatBuffer.allocate(n); // BufferUtil.newFloatBuffer(n);
-            Arrays.fill(grayBuffer.array(), 0);
+            final float bg = colorMode != null ? colorMode.getBackgroundGrayLevel() : grayValue;
+            resetPixmapGrayLevel(bg);
+            return;
         }
         grayBuffer.rewind();
         System.arraycopy(grayBuffer.array(), 0, dvsEventsMap.array(), 0, n);

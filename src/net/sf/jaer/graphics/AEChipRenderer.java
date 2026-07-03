@@ -122,6 +122,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 colorMode = c;
             }
         }
+        if (colorMode == null) {
+            colorMode = ColorMode.GrayLevel;
+        }
     }
 
     /**
@@ -205,6 +208,20 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         colorModeMenu = contructColorModeMenu();
         getSupport().addPropertyChangeListener(this);
+        // DavisRenderer re-initializes after pixmap allocation (power-of-2 texture size).
+        if (!(this instanceof DavisRenderer)) {
+            initializeGrayLevelFromColorMode();
+        }
+    }
+
+    /**
+     * Applies {@link ColorMode#getBackgroundGrayLevel()} to grayValue and pixmap.
+     * Called from the constructor and whenever the user selects a color mode.
+     */
+    protected void initializeGrayLevelFromColorMode() {
+        if (colorMode != null) {
+            setGrayValue(colorMode.getBackgroundGrayLevel());
+        }
     }
 
     /**
@@ -1397,11 +1414,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         int newSkip = oldSkip;
 
         final AEViewer viewer = chip.getAeViewer();
-        final float averageFPS = viewer.getFrameRater().getAverageFPS();
-        final int desiredFrameRate = viewer.getDesiredFrameRate();
         final float loopLoad = viewer.getFrameRater().getLastLoopLoad();
-        final boolean overloaded = averageFPS < (0.75f * desiredFrameRate) || loopLoad > 1.0f;
-        final boolean underloaded = averageFPS > (0.9f * desiredFrameRate) && loopLoad < 0.65f;
+        if (!viewer.getFrameRater().isPeriodFilterInitialized()) {
+            return;
+        }
+        // Use loop load only; comparing average FPS to desired FPS falsely overloads when
+        // the pipeline intentionally runs below target (e.g. 30/48 fps with low event rate).
+        final boolean overloaded = loopLoad > 1.05f;
+        final boolean underloaded = loopLoad < 0.80f;
         if (overloaded) {
             if (oldSkip == 0) {
                 newSkip = loopLoad > 1.5f ? 2 : 1;
@@ -1412,10 +1432,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 newSkip = getSkipFrameRenderingNumberMax();
             }
         } else if (underloaded) {
-            newSkip = (int) (0.5f * oldSkip);
-            if (newSkip < 0) {
-                newSkip = 0;
-            }
+            newSkip = oldSkip <= 1 ? 0 : oldSkip - 1;
         }
         skipFrameRenderingNumberCurrent = Math.round(skipFrameRenderingLPFilter.filter(newSkip, (int) System.currentTimeMillis() * 1000));
     }

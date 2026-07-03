@@ -168,19 +168,24 @@ public class NRVAEReader implements ReaderBufferControl {
 
     private class ProcessAEData implements RestrictedTransferCallback {
 
+        private volatile boolean active = true;
+
         @Override
         public void prepareTransfer(RestrictedTransfer transfer) {
         }
 
         @Override
         public void processTransfer(RestrictedTransfer transfer) {
+            if (!active || monitor.isUsbTransferFailed()) {
+                return;
+            }
             final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
             synchronized (aePacketRawPool) {
                 if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
                     translateEvents(transfer.buffer());
                 } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
-                    log.warning("NRV ProcessAEData: status=" + LibUsb.errorName(transfer.status())
-                            + " bytes=" + transfer.actualLength());
+                    active = false;
+                    monitor.markUsbDisconnected(transfer.status());
                 }
             }
         }

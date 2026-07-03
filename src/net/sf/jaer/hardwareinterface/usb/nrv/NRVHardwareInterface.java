@@ -48,6 +48,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     private boolean isOpened = false;
+    private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
     private boolean settingsApplied = false;
     private int buffersize = prefs.getInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
@@ -164,9 +165,33 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             log.warning("Could not read all USB string descriptors: " + e.getMessage());
         }
 
+        usbTransferFailed = false;
         isOpened = true;
         log.info("NRV device opened VID:PID="
                 + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
+    }
+
+    /**
+     * Called from the USB transfer thread when bulk reads fail (e.g. unplug).
+     * Must not call {@link #close()} on the transfer thread (would deadlock).
+     */
+    void markUsbDisconnected(int transferStatus) {
+        if (usbTransferFailed) {
+            return;
+        }
+        usbTransferFailed = true;
+        log.warning("NRV USB disconnected: " + LibUsb.errorName(transferStatus));
+        new Thread(() -> {
+            synchronized (NRVHardwareInterface.this) {
+                if (isOpen()) {
+                    close();
+                }
+            }
+        }, "NRV-USB-disconnect").start();
+    }
+
+    boolean isUsbTransferFailed() {
+        return usbTransferFailed;
     }
 
     private void selectI2CTransport(short pid) throws HardwareInterfaceException {
@@ -239,6 +264,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+        if (usbTransferFailed) {
+            throw new HardwareInterfaceException("NRV USB device disconnected");
+        }
         if (!isOpen()) {
             open();
         }

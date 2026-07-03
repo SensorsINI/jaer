@@ -49,6 +49,9 @@ public class NRVHardwareInterfaceFactory implements HardwareInterfaceFactoryInte
             throw u;
         }
 
+        if (!LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
+            log.info("NRV: LibUsb hotplug not supported on this platform; replug recovery relies on AEViewer WAITING poll");
+        }
         addDeviceToMap(NRVHardwareInterface.VID, NRVHardwareInterface.PID_FX20, NRVHardwareInterface.class);
         addDeviceToMap(NRVHardwareInterface.VID, NRVHardwareInterface.PID_CX3, NRVHardwareInterface.class);
         refreshCompatibleDevicesList();

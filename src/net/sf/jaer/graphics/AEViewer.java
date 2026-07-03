@@ -2445,10 +2445,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 AEChipRenderer renderer = getRenderer();
                 String arsString;
                 if (renderer.isAdaptiveRenderSkippingEnabled()) {
-                    arsString = String.format(" ARS %d/%d ld=%.1f",
-                            renderer.getSkipFrameRenderingNumberCurrent(),
-                            renderer.getSkipFrameRenderingNumberMax(),
-                            fr.getLastLoopLoad());
+                    final int lvl = renderer.getSkipFrameRenderingNumberCurrent();
+                    if (lvl <= 0) {
+                        arsString = String.format(" ARS off ld=%.1f", fr.getLastLoopLoad());
+                    } else {
+                        arsString = String.format(" ARS lvl=%d/%d sk=%d ld=%.1f",
+                                lvl,
+                                renderer.getSkipFrameRenderingNumberMax(),
+                                renderer.getSkipPacketsRenderingCount(),
+                                fr.getLastLoopLoad());
+                    }
                 } else {
                     arsString = " ARS off";
                 }
@@ -2783,6 +2789,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return 0f;
             }
             return (lastdt / 1e6f) / desiredPeriodMs;
+        }
+
+        public final boolean isPeriodFilterInitialized() {
+            return periodFilter.isInitialized();
         }
 
         //  call this ONCE after capture/render. it will store the time since the last call
