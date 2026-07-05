@@ -47,6 +47,23 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
+    /** I2C timestamp cadence registers (slave 0x20). */
+    public static final int REG_TSTAMP_SUB_UNIT_MSB = 0x32B1;
+    public static final int REG_TSTAMP_SUB_UNIT_LSB = 0x32B2;
+    public static final int REG_TSTAMP_REF_UNIT_MSB = 0x32B3;
+    public static final int REG_TSTAMP_REF_UNIT_LSB = 0x32B4;
+    public static final int REG_DTAG_FRM_MARGIN_LSB = 0x321E;
+
+    private static final long TIMESTAMP_LOG_INTERVAL_MS = 2000L;
+    private long lastTimestampLogMs = 0;
+    private int accumulatedUsbBytes;
+    private int accumulatedRefTs;
+    private int accumulatedSubTs;
+    private int accumulatedFrameEnd;
+    private int accumulatedGroupPkts;
+    private int accumulatedUsbEvents;
+    private S5KRC1SParser.TimestampSpread latestJaerSpread;
+
     private boolean isOpened = false;
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
@@ -91,6 +108,87 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     public List<NRVRegisterSetting> getLoadedSettings() {
         return loadedSettings;
+    }
+
+    /**
+     * Describes loaded TSTAMP register values for diagnostic logging.
+     * Samsung presets scale {@code 0x32B2} with output rate (100→0x0B, 1000→0x7D);
+     * lower SUB generally increases sub-timestamp packet rate in the USB stream.
+     */
+    String formatTimestampRegisterHint() {
+        final Integer subLsb = findLoadedRegisterValue(REG_TSTAMP_SUB_UNIT_LSB);
+        final Integer refMsb = findLoadedRegisterValue(REG_TSTAMP_REF_UNIT_MSB);
+        final Integer refLsb = findLoadedRegisterValue(REG_TSTAMP_REF_UNIT_LSB);
+        final Integer frmMargin = findLoadedRegisterValue(REG_DTAG_FRM_MARGIN_LSB);
+        if (subLsb == null) {
+            return "TSTAMP regs unknown until settings file is applied";
+        }
+        final int ref = refLsb != null ? (((refMsb != null ? refMsb : 0) << 8) | refLsb) : -1;
+        final String frm = frmMargin != null ? String.format(" 321E=0x%02X", frmMargin) : "";
+        return String.format("SUB=0x%02X  REF=0x%04X%s  (lower 32B2 -> finer ts; factory 100 preset 0x0B)",
+                subLsb, ref, frm);
+    }
+
+    void accumulateUsbParseStats(S5KRC1SParser.ParseStats stats) {
+        accumulatedUsbBytes += stats.usbBytes;
+        accumulatedRefTs += stats.refTimestampPackets;
+        accumulatedSubTs += stats.subTimestampPackets;
+        accumulatedFrameEnd += stats.frameEndPackets;
+        accumulatedGroupPkts += stats.groupEventPackets;
+        accumulatedUsbEvents += stats.eventsEmitted;
+    }
+
+    void maybeLogTimestampStatsTable() {
+        if (aeReader == null || !aeReader.isLogTimestampStats()) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if ((now - lastTimestampLogMs) < TIMESTAMP_LOG_INTERVAL_MS) {
+            return;
+        }
+        if (accumulatedUsbBytes == 0 && (latestJaerSpread == null || latestJaerSpread.count == 0)) {
+            return;
+        }
+        lastTimestampLogMs = now;
+        log.info(S5KRC1SParser.formatTimestampStatsTable(
+                TIMESTAMP_LOG_INTERVAL_MS / 1000L,
+                formatTimestampRegisterHint(),
+                accumulatedUsbBytes,
+                accumulatedRefTs,
+                accumulatedSubTs,
+                accumulatedFrameEnd,
+                accumulatedGroupPkts,
+                accumulatedUsbEvents,
+                latestJaerSpread));
+        accumulatedUsbBytes = 0;
+        accumulatedRefTs = 0;
+        accumulatedSubTs = 0;
+        accumulatedFrameEnd = 0;
+        accumulatedGroupPkts = 0;
+        accumulatedUsbEvents = 0;
+    }
+
+    private Integer findLoadedRegisterValue(int regAddr) {
+        if (loadedSettings == null) {
+            return null;
+        }
+        for (NRVRegisterSetting setting : loadedSettings) {
+            if (!setting.isWait() && setting.getRegAddr() == regAddr) {
+                return setting.getValue();
+            }
+        }
+        return null;
+    }
+
+    private void noteJaerPacketTimestampStats(AEPacketRaw packet) {
+        if (packet == null) {
+            return;
+        }
+        final int n = packet.getNumEvents();
+        if (n == 0) {
+            return;
+        }
+        latestJaerSpread = S5KRC1SParser.computeTimestampSpread(packet.getTimestamps(), 0, n);
     }
 
     public void applySettings(List<NRVRegisterSetting> settings) throws HardwareInterfaceException {
@@ -278,6 +376,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         final int nEvents = lastEventsAcquired.getNumEvents();
         eventCounter = 0;
         computeEstimatedEventRate(lastEventsAcquired);
+        noteJaerPacketTimestampStats(lastEventsAcquired);
+        maybeLogTimestampStatsTable();
         if (nEvents != 0) {
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         }

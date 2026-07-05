@@ -98,6 +98,10 @@
 //20:32B3=03 // TSTAMP_REF_UNIT_VAL_r_MSB
 //20:32B4=E7 // TSTAMP_REF_UNIT_VAL_r_LSB
 
+// SUB (0x32B2): interval between sub-timestamp USB packets; LOWER = more frequent updates.
+// Factory presets scale SUB with output rate: 100→0x0B, 300→0x21, 600→0x42, 1000→0x7D.
+// REF (0x32B3:32B4)=0x03E7 (999): sub-timestamp field spans 0..999 µs within each ref ms.
+// For finer timing than ~4 ms, try 32B2=0x21 or 0x0B (from 300/100 presets), re-apply settings.
 20:32B1=00 // TSTAMP_SUB_UNIT_VAL_r_MSB
 20:32B2=7D // TSTAMP_SUB_UNIT_VAL_r_LSB
 20:32B3=03 // TSTAMP_REF_UNIT_VAL_r_MSB

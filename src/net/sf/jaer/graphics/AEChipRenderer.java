@@ -1432,9 +1432,16 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 newSkip = getSkipFrameRenderingNumberMax();
             }
         } else if (underloaded) {
-            newSkip = oldSkip <= 1 ? 0 : oldSkip - 1;
+            if (loopLoad < 0.35f) {
+                newSkip = 0;
+            } else if (oldSkip <= 1) {
+                newSkip = 0;
+            } else {
+                newSkip = (oldSkip + 1) / 2;
+            }
         }
-        skipFrameRenderingNumberCurrent = Math.round(skipFrameRenderingLPFilter.filter(newSkip, (int) System.currentTimeMillis() * 1000));
+        skipFrameRenderingNumberCurrent = Math.round(skipFrameRenderingLPFilter.filter(newSkip,
+                (int) (System.nanoTime() / 1000L)));
     }
     
         /**

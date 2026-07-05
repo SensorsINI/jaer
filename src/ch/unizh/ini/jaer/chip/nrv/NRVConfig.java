@@ -36,9 +36,15 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public static final int REG_ON_UNIT = 0x0167;
     /** REG_DIV_BCM_BOT_UNIT_nOFF / OFF */
     public static final int REG_OFF_UNIT = 0x0168;
+    /** TSTAMP_SUB_UNIT_VAL_r LSB — interval between sub-timestamp USB packets. */
+    public static final int REG_TSTAMP_SUB_UNIT_LSB = 0x32B2;
+    /** DTAG_FRM_MARGIN_r LSB — frame period (lower → faster frames / finer event timestamps). */
+    public static final int REG_DTAG_FRM_MARGIN_LSB = 0x321E;
 
     public static final String PROPERTY_THRESHOLD = "nrvThreshold";
     public static final String PROPERTY_ON_OFF_BALANCE = "nrvOnOffBalance";
+    public static final String PROPERTY_TIMESTAMP_SUB = "nrvTimestampSub";
+    public static final String PROPERTY_FRAME_MARGIN = "nrvFrameMargin";
     public static final String PROPERTY_REGISTER_UPDATED = "nrvRegisterUpdated";
 
     private static final float TWEAK_MAX_RATIO = 8f;
@@ -60,6 +66,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     private int baselineThreshold = 0x0F;
     private int baselineOnUnit = 0x07;
     private int baselineOffUnit = 0x1F;
+    private int baselineTimestampSub = 0x21;
+    private int baselineFrameMargin = 0x02;
 
     public NRVConfig(Chip chip) {
         super(chip);
@@ -164,6 +172,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         baselineThreshold = registerValueOrDefault(REG_BRIGHTNESS_THRESHOLD, 0x0F);
         baselineOnUnit = registerValueOrDefault(REG_ON_UNIT, 0x07);
         baselineOffUnit = registerValueOrDefault(REG_OFF_UNIT, 0x1F);
+        baselineTimestampSub = registerValueOrDefault(REG_TSTAMP_SUB_UNIT_LSB, 0x21);
+        baselineFrameMargin = registerValueOrDefault(REG_DTAG_FRM_MARGIN_LSB, 0x02);
     }
 
     private int registerValueOrDefault(int regAddr, int defaultValue) {
@@ -198,6 +208,71 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
 
     public int getBaselineOffUnit() {
         return baselineOffUnit;
+    }
+
+    public int getBaselineTimestampSub() {
+        return baselineTimestampSub;
+    }
+
+    public int getBaselineFrameMargin() {
+        return baselineFrameMargin;
+    }
+
+    public int getTimestampSubUnit() {
+        return getRegisterValue(REG_TSTAMP_SUB_UNIT_LSB);
+    }
+
+    public int getFrameMargin() {
+        return getRegisterValue(REG_DTAG_FRM_MARGIN_LSB);
+    }
+
+    /**
+     * Sets TSTAMP sub-unit (0x32B2). Lower values can increase sub-timestamp rate within a frame;
+     * factory presets use 0x0B..0x7D. Values below ~0x0B may behave poorly.
+     */
+    public void setTimestampSubUnit(int value) {
+        applyDirectRegisterValue(REG_TSTAMP_SUB_UNIT_LSB, clampTimestampSub(value), PROPERTY_TIMESTAMP_SUB);
+    }
+
+    /**
+     * Sets frame margin (0x321E). Lower values shorten the sensor frame period (~400 Hz at 0x02).
+     */
+    public void setFrameMargin(int value) {
+        applyDirectRegisterValue(REG_DTAG_FRM_MARGIN_LSB, clampFrameMargin(value), PROPERTY_FRAME_MARGIN);
+    }
+
+    private static int clampTimestampSub(int value) {
+        if (value < 1) {
+            return 1;
+        }
+        if (value > 0xFF) {
+            return 0xFF;
+        }
+        return value;
+    }
+
+    private static int clampFrameMargin(int value) {
+        if (value < 1) {
+            return 1;
+        }
+        if (value > 0xFF) {
+            return 0xFF;
+        }
+        return value;
+    }
+
+    private void applyDirectRegisterValue(int regAddr, int newValue, String propertyName) {
+        final int current = getRegisterValue(regAddr);
+        if (current == newValue) {
+            return;
+        }
+        try {
+            applyTweakRegister(regAddr, newValue);
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV register 0x" + Integer.toHexString(regAddr) + " write failed: " + e.getMessage());
+            return;
+        }
+        support.firePropertyChange(propertyName, current, newValue);
     }
 
     public float getThresholdTweak() {

@@ -1793,9 +1793,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 getRenderer().clearPacketRenderSkipDecision();
                 boolean skipRendering = false;
                 setTitleAccordingToState();
-                fpsDelay(); // delay at start so all the below that breaks out of loop still has a delay to avoid CPU hog
+                pauseIdleWaitIfNeeded();
                 if (stop) {
-                    log.info("breaking out of view loop after fpsDelay() because stop=true");
+                    log.info("breaking out of view loop after pauseIdleWaitIfNeeded() because stop=true");
                     break;
                 }
                 // unless fastForward is set, in which case there is no delay
@@ -1829,6 +1829,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         rawPacket = grabInput();
                         if (rawPacket == null) {
                             log.fine("null rawPacket, probably at OUT marker or end of file");
+                            paceViewLoopFrame();
                             continue;
                         }
 
@@ -1853,18 +1854,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             getFrameRater().takeAfter();
                             getRenderer().adaptRenderSkipping();
                             renderCount++;
+                            paceViewLoopFrame();
                             continue;
                         }
                         cookedPacket = extractPacket(rawPacket);
                         if (cookedPacket == null) {
                             log.warning("packet became null after extracting events from raw input packet");
+                            paceViewLoopFrame();
                             continue;
                         }
                         numEvents = cookedPacket.getSize();
 
                         cookedPacket = filterPacket(cookedPacket);
                         if (fastForward) { // maybe a filter set this flag.
-                            // in fpsDelay we also skip the pause, and reset the fastForward flag
+                            fastForward = false;
                             continue;
                         }
 
@@ -1906,6 +1909,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     if (cookedPacket == null) {
                         log.warning("packet became null after rendering");
+                        paceViewLoopFrame();
                         continue;
                     }
                     numFilteredEvents = cookedPacket.getSizeNotFilteredOut();
@@ -1914,6 +1918,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 getFrameRater().takeAfter();
                 getRenderer().adaptRenderSkipping();
                 renderCount++;
+                paceViewLoopFrame();
             } // while (stop == false): end of run() loop - main loop of AEViewer.ViewLoop
 
             // Loop Cleanup
@@ -2317,10 +2322,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         }
 
-        void fpsDelay() {
-            if (!isPaused()) {
-                getFrameRater().delayForDesiredFPS();
-            } else if (!interrupted()) {
+        /** Idle wait while paused (no acquisition). */
+        void pauseIdleWaitIfNeeded() {
+            if (isPaused() && !interrupted()) {
                 synchronized (this) { // reason for grabbing monitor is because if we are sliding the slider, we need to make sure we have control of the view loop
                     try {
                         wait(1000);
@@ -2329,6 +2333,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 }
             }
+        }
+
+        /**
+         * Pace the loop to the desired FPS after work time was measured by
+         * {@link FrameRater#takeAfter()}. Called at the end of each iteration so
+         * sleep uses the current frame's work time (not the previous frame's).
+         */
+        void paceViewLoopFrame() {
+            if (!isPaused()) {
+                getFrameRater().delayForDesiredFPS();
+            }
+        }
+
+        /** Used by FILTER_INPUT grab path; combines idle wait and pacing. */
+        void fpsDelay() {
+            pauseIdleWaitIfNeeded();
+            paceViewLoopFrame();
         }
         private int lastPacketLastTs = 0; // last timestamp of previous packet, used by getDtMs
         private float lastDtMs = 0;
@@ -2833,7 +2854,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             delayMs = Math.round(desiredPeriodMs - ((float) lastdt / 1000000));
             if (delayMs < 0) {
-                delayMs = 1;
+                delayMs = 0;
             }
             try {
                 Thread.sleep(delayMs);

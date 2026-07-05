@@ -24,12 +24,14 @@ public class NRVAEReader implements ReaderBufferControl {
     private static final byte ENDPOINT_IN = (byte) 0x81;
     private static final int DEFAULT_FIFO_SIZE = 16384;
     private static final int DEFAULT_NUM_BUFFERS = 4;
+    private static final long TIMESTAMP_LOG_INTERVAL_MS = 2000L;
 
     private final NRVHardwareInterface monitor;
     private final S5KRC1SParser parser = new S5KRC1SParser();
     private USBTransferThread usbTransfer;
     private int fifoSize = JaerConstants.PREFS_ROOT_HARDWARE.getInt("NRV.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
     private int numBuffers = JaerConstants.PREFS_ROOT_HARDWARE.getInt("NRV.AEReader.numBuffers", DEFAULT_NUM_BUFFERS);
+    private boolean logTimestampStats = JaerConstants.PREFS_ROOT_HARDWARE.getBoolean("NRV.logTimestampStats", true);
 
     public NRVAEReader(NRVHardwareInterface monitor) {
         this.monitor = monitor;
@@ -42,7 +44,8 @@ public class NRVAEReader implements ReaderBufferControl {
         if (usbTransfer != null) {
             return;
         }
-        log.info("Starting NRV AEReader on endpoint 0x81");
+        log.info("Starting NRV AEReader on endpoint 0x81 (timestamp stats logging="
+                + logTimestampStats + ", interval=" + TIMESTAMP_LOG_INTERVAL_MS + "ms)");
         usbTransfer = new USBTransferThread(
                 monitor.getDeviceHandle(),
                 ENDPOINT_IN,
@@ -76,6 +79,15 @@ public class NRVAEReader implements ReaderBufferControl {
 
     S5KRC1SParser getParser() {
         return parser;
+    }
+
+    public boolean isLogTimestampStats() {
+        return logTimestampStats;
+    }
+
+    public void setLogTimestampStats(boolean logTimestampStats) {
+        this.logTimestampStats = logTimestampStats;
+        JaerConstants.PREFS_ROOT_HARDWARE.putBoolean("NRV.logTimestampStats", logTimestampStats);
     }
 
     @Override
@@ -150,6 +162,9 @@ public class NRVAEReader implements ReaderBufferControl {
 
         final int maxEvents = monitor.getAEBufferSize();
         final int parsed = parser.parse(raw, raw.length, addresses, timestamps, startEvent, maxEvents);
+        monitor.accumulateUsbParseStats(parser.takeParseStats());
+        monitor.maybeLogTimestampStatsTable();
+
         if (parsed < 0) {
             writeBuffer.overrunOccuredFlag = true;
             log.warning("NRV AEPacketRaw buffer overrun at event index " + startEvent

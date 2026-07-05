@@ -16,6 +16,11 @@ package net.sf.jaer.hardwareinterface.usb.nrv;
  * <p>Reference/sub timestamp packets are normal packets (P=0). Group event packets
  * (P=1) can also have {@code pkt[0] & 0x7C == 0x08} when the group-2 row offset is 2;
  * they must not be parsed as timestamps (see NRV FileStream timestamp detection).
+ *
+ * <p>Hardware timestamp cadence is controlled by I2C registers
+ * {@code TSTAMP_SUB_UNIT_VAL} (0x32B1:32B2) and {@code TSTAMP_REF_UNIT_VAL} (0x32B3:32B4).
+ * Samsung factory presets scale SUB with output rate (e.g. 100→0x0B, 1000→0x7D); lower SUB
+ * generally yields more frequent sub-timestamp packets in the USB stream.
  */
 public class S5KRC1SParser {
 
@@ -27,6 +32,19 @@ public class S5KRC1SParser {
     /** Microseconds added when the 22-bit reference millisecond counter wraps. */
     private static final long REF_WRAP_US = (REF_MS_MASK + 1L) * 1000L;
     private static final int SENSOR_COUNT = 2;
+
+    /** Per-USB-chunk parse counters; cleared after {@link #takeParseStats()}. */
+    public static final class ParseStats {
+        public int usbBytes;
+        public int refTimestampPackets;
+        public int subTimestampPackets;
+        public int frameEndPackets;
+        public int columnAddressPackets;
+        public int groupEventPackets;
+        public int eventsEmitted;
+    }
+
+    private final ParseStats parseStats = new ParseStats();
 
     private final long[] refTimeStampMs = new long[SENSOR_COUNT];
     private final long[] refWrapUs = new long[SENSOR_COUNT];
@@ -57,6 +75,7 @@ public class S5KRC1SParser {
         mirrorFlag = false;
         timestampOriginUs = -1;
         lastOutputAbsoluteUs = -1;
+        clearParseStats();
     }
 
     /**
@@ -81,6 +100,30 @@ public class S5KRC1SParser {
         return skipPeriodMs;
     }
 
+    /** Returns accumulated USB-chunk counters and clears them for the next chunk. */
+    public ParseStats takeParseStats() {
+        final ParseStats copy = new ParseStats();
+        copy.usbBytes = parseStats.usbBytes;
+        copy.refTimestampPackets = parseStats.refTimestampPackets;
+        copy.subTimestampPackets = parseStats.subTimestampPackets;
+        copy.frameEndPackets = parseStats.frameEndPackets;
+        copy.columnAddressPackets = parseStats.columnAddressPackets;
+        copy.groupEventPackets = parseStats.groupEventPackets;
+        copy.eventsEmitted = parseStats.eventsEmitted;
+        clearParseStats();
+        return copy;
+    }
+
+    private void clearParseStats() {
+        parseStats.usbBytes = 0;
+        parseStats.refTimestampPackets = 0;
+        parseStats.subTimestampPackets = 0;
+        parseStats.frameEndPackets = 0;
+        parseStats.columnAddressPackets = 0;
+        parseStats.groupEventPackets = 0;
+        parseStats.eventsEmitted = 0;
+    }
+
     /** Normal-packet reference/sub timestamp (P=0 and header 0x08). */
     static boolean isTimestampPacket(byte pkt0) {
         return (pkt0 & 0x80) == 0 && (pkt0 & 0x7C) == 0x08;
@@ -90,6 +133,7 @@ public class S5KRC1SParser {
      * @return number of events written to addresses/timestamps
      */
     public int parse(byte[] pkt, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
+        parseStats.usbBytes += len;
         int eventCount = eventOffset;
         for (int i = 0; i + 3 < len; i += 4) {
             final int header = pkt[i] & 0x7C;
@@ -97,8 +141,10 @@ public class S5KRC1SParser {
 
             if (isTimestampPacket(pkt[i])) {
                 if ((pkt[i + 1] & 0x80) != 0) {
+                    parseStats.subTimestampPackets++;
                     applySubTimestamp(sensorID, ((pkt[i + 2] & 0x03) << 8) | (pkt[i + 3] & 0xFF));
                 } else {
+                    parseStats.refTimestampPackets++;
                     applyReferenceTimestamp(sensorID,
                             ((pkt[i + 1] & 0x3F) << 16) | ((pkt[i + 2] & 0xFF) << 8) | (pkt[i + 3] & 0xFF));
                 }
@@ -110,6 +156,7 @@ public class S5KRC1SParser {
             }
 
             if ((pkt[i] & 0x80) != 0) {
+                parseStats.groupEventPackets++;
                 int grpAddr = ((pkt[i + 1] & 0xFC) >> 2) | ((pkt[i] & 0x01) << 6);
                 int posY0 = grpAddr << 3;
                 int pol = pkt[i + 1] & 0x01;
@@ -138,8 +185,10 @@ public class S5KRC1SParser {
 
             switch (header) {
                 case 0x0C:
+                    parseStats.frameEndPackets++;
                     break;
                 case 0x04:
+                    parseStats.columnAddressPackets++;
                     mirrorFlag = (pkt[i + 1] & 0x80) != 0;
                     final int sFlag = pkt[i + 1] & 0x20;
                     posX[sensorID] = ((pkt[i + 2] & 0x07) << 8) | (pkt[i + 3] & 0xFF);
@@ -151,6 +200,7 @@ public class S5KRC1SParser {
                     break;
             }
         }
+        parseStats.eventsEmitted += eventCount - eventOffset;
         return eventCount - eventOffset;
     }
 
@@ -247,5 +297,95 @@ public class S5KRC1SParser {
 
     public static int packAddress(int x, int y, int polarity) {
         return (x & 0x3FF) | ((y & 0x3FF) << 10) | ((1 - polarity) << 20);
+    }
+
+    /** Distinct timestamps and step sizes in a jAER event buffer slice. */
+    public static final class TimestampSpread {
+        public final int count;
+        public final int uniqueTs;
+        public final int spanUs;
+        public final int minStepUs;
+        public final int maxStepUs;
+
+        TimestampSpread(int count, int uniqueTs, int spanUs, int minStepUs, int maxStepUs) {
+            this.count = count;
+            this.uniqueTs = uniqueTs;
+            this.spanUs = spanUs;
+            this.minStepUs = minStepUs;
+            this.maxStepUs = maxStepUs;
+        }
+    }
+
+    public static TimestampSpread computeTimestampSpread(int[] timestamps, int start, int count) {
+        if (count <= 0) {
+            return new TimestampSpread(0, 0, 0, 0, 0);
+        }
+        if (count == 1) {
+            return new TimestampSpread(1, 1, 0, 0, 0);
+        }
+        int uniqueTs = 1;
+        int minStep = Integer.MAX_VALUE;
+        int maxStep = 0;
+        for (int i = start + 1; i < start + count; i++) {
+            final int step = timestamps[i] - timestamps[i - 1];
+            if (step > 0) {
+                if (step < minStep) {
+                    minStep = step;
+                }
+                if (step > maxStep) {
+                    maxStep = step;
+                }
+            }
+            if (timestamps[i] != timestamps[i - 1]) {
+                uniqueTs++;
+            }
+        }
+        final int spanUs = timestamps[start + count - 1] - timestamps[start];
+        if (minStep == Integer.MAX_VALUE) {
+            minStep = 0;
+        }
+        return new TimestampSpread(count, uniqueTs, spanUs, minStep, maxStep);
+    }
+
+    /** Summarize distinct timestamps and span in a jAER event buffer slice. */
+    public static String summarizeTimestampSpread(int[] timestamps, int start, int count) {
+        final TimestampSpread spread = computeTimestampSpread(timestamps, start, count);
+        if (spread.count <= 0) {
+            return "ev=0";
+        }
+        if (spread.count == 1) {
+            return String.format("ev=1 uniqueTs=1 span=0us ts=%d", timestamps[start]);
+        }
+        return String.format("ev=%d uniqueTs=%d span=%dus minStep=%dus maxStep=%dus",
+                spread.count, spread.uniqueTs, spread.spanUs, spread.minStepUs, spread.maxStepUs);
+    }
+
+    /**
+     * Aligned multi-line table for periodic NRV timestamp diagnostics.
+     * Leading newline keeps the block visually separate in console logs.
+     */
+    public static String formatTimestampStatsTable(
+            long intervalSec,
+            String registerHint,
+            int usbBytes,
+            int refPackets,
+            int subPackets,
+            int frameEndPackets,
+            int groupPackets,
+            int usbEvents,
+            TimestampSpread jaerSpread) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append('\n');
+        sb.append(String.format("NRV timestamp stats (%ds)%n", intervalSec));
+        sb.append(String.format("  %-11s %s%n", "registers", registerHint));
+        sb.append(String.format("  %-11s bytes=%10d  ref=%5d  sub=%5d  frmEnd=%5d  grp=%8d  events=%9d%n",
+                "USB stream", usbBytes, refPackets, subPackets, frameEndPackets, groupPackets, usbEvents));
+        if (jaerSpread != null && jaerSpread.count > 0) {
+            sb.append(String.format(
+                    "  %-11s events=%8d  uniqueTs=%5d  span=%6dus  minStep=%4dus  maxStep=%4dus%n",
+                    "jAER packet", jaerSpread.count, jaerSpread.uniqueTs, jaerSpread.spanUs,
+                    jaerSpread.minStepUs, jaerSpread.maxStepUs));
+        }
+        return sb.toString();
     }
 }
