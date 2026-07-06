@@ -1404,6 +1404,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             skipFrameRenderingNumberCurrent = 0;
             return;
         }
+        if (chip.getAeViewer() != null
+                && chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+            return;
+        }
         if (chip.getAeViewer() == null || chip.getAeViewer().isPaused()) {
             return;
         }
@@ -1476,8 +1480,18 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @param skipFrameRenderingNumberMax the skipFrameRenderingNumberMax to set
      */
     public void setSkipFrameRenderingNumberMax(int skipFrameRenderingNumberMax) {
+        setSkipFrameRenderingNumberMax(skipFrameRenderingNumberMax, true);
+    }
+
+    /**
+     * @param skipFrameRenderingNumberMax the skipFrameRenderingNumberMax to set
+     * @param persist when false, only changes runtime state (e.g. temporary off during playback)
+     */
+    public void setSkipFrameRenderingNumberMax(int skipFrameRenderingNumberMax, boolean persist) {
         this.skipFrameRenderingNumberMax = skipFrameRenderingNumberMax;
-        prefs.putInt(PREF_SKIP_PACKETS_RENDERING_MAX, skipFrameRenderingNumberMax);
+        if (persist) {
+            prefs.putInt(PREF_SKIP_PACKETS_RENDERING_MAX, skipFrameRenderingNumberMax);
+        }
         if (skipFrameRenderingNumberMax == 0) {
             skipFrameRenderingNumberCurrent = 0;
             skipFramesCounter = 0;
