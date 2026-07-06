@@ -9,6 +9,7 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.ChipControlPanel;
 import net.sf.jaer.biasgen.PotArray;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.prophesee.PropheseeBiases;
@@ -37,6 +38,8 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     private PropheseeControlPanel controlPanel;
     private PropheseeBiases biases = new PropheseeBiases();
     private PropheseeBiases chipBiases = new PropheseeBiases();
+    /** Last loaded or saved bias snapshot; Revert restores this without re-reading prefs. */
+    private PropheseeBiases savedBiases;
 
     private boolean displayEvents = true;
     private boolean displayFrames = false;
@@ -76,13 +79,44 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     private void commitBiasChange(Runnable revert, Runnable afterSuccess) {
         try {
             applyToHardware();
-            storePreferences();
+            markFileModified();
             if (afterSuccess != null) {
                 afterSuccess.run();
             }
         } catch (HardwareInterfaceException e) {
             revert.run();
             log.warning(e.getMessage());
+        }
+    }
+
+    private void updateSavedBiases() {
+        savedBiases = biases.copy();
+    }
+
+    /**
+     * Revert live bias values to the last loaded or saved snapshot (not current slider prefs).
+     */
+    public void revertToSavedBiases() {
+        if (savedBiases == null) {
+            loadPreferences();
+            return;
+        }
+        biases = savedBiases.copy();
+        if (controlPanel != null) {
+            controlPanel.refreshFromBiases();
+        }
+        try {
+            applyToHardware();
+        } catch (HardwareInterfaceException e) {
+            log.warning("Could not send reverted Prophesee biases to hardware: " + e.getMessage());
+        }
+        support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, null);
+    }
+
+    private void markFileModified() {
+        if (getChip() instanceof AEChip aeChip && aeChip.getAeViewer() != null
+                && aeChip.getAeViewer().getBiasgenFrame() != null) {
+            aeChip.getAeViewer().getBiasgenFrame().setFileModified(true);
         }
     }
 
@@ -257,6 +291,12 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
         if (controlPanel != null) {
             controlPanel.refreshFromBiases();
         }
+        try {
+            applyToHardware();
+        } catch (HardwareInterfaceException e) {
+            log.warning("Could not send reverted Prophesee biases to hardware: " + e.getMessage());
+        }
+        updateSavedBiases();
         support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, null);
     }
 
@@ -286,6 +326,7 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
         putPref("PropheseeConfig.brightness", brightness);
         putPref("PropheseeConfig.gamma", gamma);
 
+        updateSavedBiases();
         support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_STORED, null, null);
     }
 
@@ -311,6 +352,13 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     @Override
     public JPanel buildControlPanel() {
         return getControlPanel();
+    }
+
+    PropheseeControlPanel getPropheseeControlPanel() {
+        if (controlPanel == null) {
+            getControlPanel();
+        }
+        return controlPanel;
     }
 
     @Override

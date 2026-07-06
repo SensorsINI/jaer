@@ -39,6 +39,7 @@ import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.XMLFileFilter;
 import ch.unizh.ini.jaer.chip.nrv.NRVConfig;
+import ch.unizh.ini.jaer.chip.prophesee.PropheseeConfig;
 import net.sf.jaer.hardwareinterface.usb.nrv.NRVSettingsFileFilter;
 
 /**
@@ -783,7 +784,11 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
 
 	private void revertButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_revertButtonActionPerformed
             //        log.info("reverting settings");
-            biasgen.loadPreferences();
+            if (biasgen instanceof PropheseeConfig propheseeConfig) {
+                propheseeConfig.revertToSavedBiases();
+            } else {
+                biasgen.loadPreferences();
+            }
             biasgen.storePreferences(); // to generate PreferenceChange event so that listeners will update.
 	}//GEN-LAST:event_revertButtonActionPerformed
 
