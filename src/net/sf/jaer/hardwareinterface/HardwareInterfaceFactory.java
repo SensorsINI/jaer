@@ -22,6 +22,7 @@ import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactor
 import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.LibUsb3HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.nrv.NRVHardwareInterfaceFactory;
+import net.sf.jaer.hardwareinterface.usb.prophesee.PropheseeHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
 import es.us.atc.jaer.hardwareinterface.OpalKellyFX3Factory;
@@ -53,6 +54,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 		LibUsbHardwareInterfaceFactory.class,
 		LibUsb3HardwareInterfaceFactory.class,
 		NRVHardwareInterfaceFactory.class,
+		PropheseeHardwareInterfaceFactory.class,
 		UDPInterfaceFactory.class,
 		eDVS128_InterfaceFactory.class,
 		SpiNNaker_InterfaceFactory.class,

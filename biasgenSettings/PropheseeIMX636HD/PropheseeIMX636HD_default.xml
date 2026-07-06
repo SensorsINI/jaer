@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE preferences SYSTEM "http://java.sun.com/dtd/preferences.dtd">
+<preferences EXTERNAL_XML_VERSION="1.0">
+  <root type="user">
+    <map/>
+    <node name="jaer">
+      <map/>
+      <node name="chips">
+        <map/>
+        <node name="PropheseeIMX636HD">
+          <map>
+            <entry key="PropheseeConfig.bias.pr" value="124"/>
+            <entry key="PropheseeConfig.bias.fo" value="83"/>
+            <entry key="PropheseeConfig.bias.hpf" value="0"/>
+            <entry key="PropheseeConfig.bias.diffOn" value="102"/>
+            <entry key="PropheseeConfig.bias.diff" value="77"/>
+            <entry key="PropheseeConfig.bias.diffOff" value="73"/>
+            <entry key="PropheseeConfig.bias.inv" value="91"/>
+            <entry key="PropheseeConfig.bias.refr" value="20"/>
+            <entry key="PropheseeConfig.bias.reqpuy" value="140"/>
+            <entry key="PropheseeConfig.bias.reqpux" value="124"/>
+            <entry key="PropheseeConfig.bias.sendreqpdy" value="148"/>
+            <entry key="PropheseeConfig.bias.unknown1" value="116"/>
+            <entry key="PropheseeConfig.bias.unknown2" value="81"/>
+            <entry key="PropheseeConfig.displayEvents" value="true"/>
+            <entry key="PropheseeConfig.displayFrames" value="false"/>
+            <entry key="PropheseeConfig.useAutoContrast" value="false"/>
+            <entry key="PropheseeConfig.contrast" value="1.0"/>
+            <entry key="PropheseeConfig.brightness" value="0.0"/>
+            <entry key="PropheseeConfig.gamma" value="1.0"/>
+          </map>
+        </node>
+      </node>
+    </node>
+  </root>
+</preferences>
