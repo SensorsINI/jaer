@@ -2,6 +2,7 @@ package net.sf.jaer.hardwareinterface.usb.prophesee.evk4;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.logging.Logger;
 
 import org.usb4java.DeviceHandle;
 
@@ -12,6 +13,11 @@ import net.sf.jaer.hardwareinterface.usb.prophesee.PropheseeBiases;
  * IMX636 ISSD init/start/stop for EVK4 (port of neuromorphic-drivers prophesee_evk4.rs open/Drop).
  */
 public final class Imx636Init {
+
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
+
+    /** EdfReserved7004 with enable_external_trigger=true (prophesee_evk4 DEFAULT_CONFIGURATION). */
+    private static final int EDF_RESERVED_7004 = 0x0000C5FF;
 
     private static final int X_MASK_WORDS = 20;
     private static final int Y_MASK_WORDS = 12;
@@ -30,6 +36,20 @@ public final class Imx636Init {
     private static final int REG_BIAS_UNKNOWN2 = 0x1050;
 
     private Imx636Init() {
+    }
+
+    public static final class InitResult {
+        public final String serial;
+        public final PropheseeBiases chipBiases;
+
+        InitResult(String serial, PropheseeBiases chipBiases) {
+            this.serial = serial;
+            this.chipBiases = chipBiases;
+        }
+    }
+
+    private static void fineStep(String step, long stepStartMs) {
+        log.fine(String.format("Prophesee IMX636 init: %s (+%dms)", step, System.currentTimeMillis() - stepStartMs));
     }
 
     public static PropheseeBiases readDefaultBiases(DeviceHandle handle) throws HardwareInterfaceException {
@@ -71,25 +91,52 @@ public final class Imx636Init {
         Evk4BoardCommand.writeRegister(handle, address, Evk4BoardCommand.encodeBiasValue(idacCtl));
     }
 
-    public static void initializeAndStart(DeviceHandle handle, PropheseeBiases biases)
+    public static InitResult initializeAndStart(DeviceHandle handle, PropheseeBiases biases)
             throws HardwareInterfaceException {
+        long t0 = System.currentTimeMillis();
+        log.fine("Prophesee IMX636 init: begin");
         Evk4BoardCommand.readFirmwareInfo(handle);
-        Evk4BoardCommand.runDeviceDiscoveryHandshake(handle);
+        fineStep("firmware info", t0);
+        final String serial = Evk4BoardCommand.runDeviceDiscoveryHandshake(handle);
+        fineStep("handshake serial=" + serial, t0);
 
-        final PropheseeBiases chipBiases = readDefaultBiases(handle);
         if (biases == null) {
-            biases = chipBiases;
+            biases = new PropheseeBiases();
         }
 
+        // neuromorphic-drivers reads chip biases for metadata only (before ISSD stop).
+        final PropheseeBiases chipBiases = readDefaultBiases(handle);
+        fineStep("read chip biases", t0);
+
         issdStop(handle);
+        fineStep("issdStop", t0);
         issdDestroy(handle);
+        fineStep("issdDestroy", t0);
         issdInit(handle);
-        configureFiltersAndErc(handle);
-        Evk4BoardCommand.flushEventEndpoint(handle);
+        fineStep("issdInit", t0);
+        final int flushed = Evk4BoardCommand.flushEventEndpoint(handle);
+        fineStep("flush 0x81 flushedBytes=" + flushed, t0);
         Evk4BoardCommand.request(handle, new byte[] { 0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+        fineStep("post-flush 0x72", t0);
         applyBiases(handle, biases);
+        fineStep("apply DEFAULT biases", t0);
         applyDefaultRoiAndMasks(handle);
+        fineStep("apply ROI/masks", t0);
         issdStart(handle);
+        fineStep("issdStart", t0);
+        Evk4BoardCommand.clearEventEndpointHalt(handle);
+        log.fine(String.format("Prophesee IMX636 init: complete in %dms serial=%s",
+                System.currentTimeMillis() - t0, serial));
+        return new InitResult(serial, chipBiases);
+    }
+
+    /** Re-runs ISSD stop/start (configuration already applied). */
+    public static void restartStreaming(DeviceHandle handle, PropheseeBiases biases)
+            throws HardwareInterfaceException {
+        issdStop(handle);
+        sleepMs(10);
+        issdStart(handle);
+        Evk4BoardCommand.clearEventEndpointHalt(handle);
     }
 
     public static void shutdown(DeviceHandle handle) {
@@ -223,11 +270,13 @@ public final class Imx636Init {
         Evk4BoardCommand.writeRegister(handle, 0x9008, packTimeBaseCtrl(0, 0, 1, 0, 0x64));
         Evk4BoardCommand.writeRegister(handle, 0x0004, packRoiCtrl(1, 0, 1, 0, 0x1e000a));
         Evk4BoardCommand.writeRegister(handle, 0x0018, 0x00000200);
-        writeBias(handle, REG_BIAS_DIFF, 0x4d);
+        Evk4BoardCommand.writeRegister(handle, REG_BIAS_DIFF,
+                Evk4BoardCommand.encodeBiasDiffInitValue(0x4d));
         Evk4BoardCommand.writeRegister(handle, 0x9004, 0);
         sleepMs(1);
         Evk4BoardCommand.writeRegister(handle, 0x9000, 0x00000200);
         initThermometerAndLifo(handle);
+        configureFiltersAndErc(handle);
     }
 
     private static void initThermometerAndLifo(DeviceHandle handle) throws HardwareInterfaceException {
@@ -275,7 +324,7 @@ public final class Imx636Init {
         Evk4BoardCommand.writeRegister(handle, 0x6060, 0);
         Evk4BoardCommand.writeRegister(handle, 0x6070, 0);
         Evk4BoardCommand.writeRegister(handle, 0x6000, 0x00155401);
-        Evk4BoardCommand.writeRegister(handle, 0x7004, 0x000018ff);
+        Evk4BoardCommand.writeRegister(handle, 0x7004, EDF_RESERVED_7004);
     }
 
     /**

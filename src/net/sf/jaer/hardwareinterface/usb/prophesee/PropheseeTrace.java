@@ -4,19 +4,23 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Temporary EVK4 diagnostics. Enable with {@code -Djaer.prophesee.trace=true} or
- * {@code logging.properties}: {@code net.sf.jaer.level=FINER}.
+ * Temporary EVK4 diagnostics.
+ * <ul>
+ * <li>{@code -Djaer.prophesee.trace=true} — USB transfer FINER logs</li>
+ * <li>{@code -Djaer.prophesee.trace.timestamps=true} — EVT3 timestamp FINE logs (2s throttle)</li>
+ * </ul>
  * TODO(remove): delete this class once EVK4 live capture is verified stable.
  */
 final class PropheseeTrace {
 
     static final boolean ENABLED = Boolean.getBoolean("jaer.prophesee.trace");
+    static final boolean TIMESTAMP_ENABLED = Boolean.getBoolean("jaer.prophesee.trace.timestamps");
 
     private PropheseeTrace() {
     }
 
     static void fine(Logger log, String msg, Object... params) {
-        if (ENABLED) {
+        if (ENABLED || TIMESTAMP_ENABLED) {
             log.log(Level.FINE, msg, params);
         }
     }

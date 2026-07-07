@@ -21,7 +21,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
-import net.sf.jaer.hardwareinterface.usb.prophesee.evk4.Evk4BoardCommand;
+import net.sf.jaer.hardwareinterface.usb.nrv.S5KRC1SParser;
+import net.sf.jaer.hardwareinterface.usb.prophesee.evt3.Evt3Parser;
 import net.sf.jaer.hardwareinterface.usb.prophesee.evk4.Imx636Init;
 
 /**
@@ -44,6 +45,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private DeviceHandle deviceHandle;
     private DeviceDescriptor deviceDescriptor;
     private AEChip chip;
+    private volatile boolean closing;
     private PropheseeAEReader aeReader;
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -59,6 +61,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private int buffersize = loadAeBufferSizePref();
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
+    private long lastPacketTimestampLogMs;
     private String[] stringDescriptors = new String[3];
 
     public PropheseeHardwareInterface(Device device) {
@@ -132,6 +135,49 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         return usbTransferFailed;
     }
 
+    void restartEventStreaming() throws HardwareInterfaceException {
+        reinitializeStreaming(false);
+    }
+
+    void reinitializeStreaming(boolean includeHandshake) throws HardwareInterfaceException {
+        PropheseeAEReader reader;
+        final boolean wasAcquiring;
+        synchronized (this) {
+            if (!isOpen() || deviceHandle == null || closing) {
+                return;
+            }
+            wasAcquiring = eventAcquisitionEnabled;
+            reader = aeReader;
+            if (reader != null) {
+                reader.prepareForStop();
+            }
+        }
+        if (reader != null) {
+            reader.finishStop();
+        }
+        synchronized (this) {
+            if (!isOpen() || deviceHandle == null || closing) {
+                return;
+            }
+            if (includeHandshake) {
+                final Imx636Init.InitResult result = Imx636Init.initializeAndStart(deviceHandle, biases);
+                chipFirmwareBiases = result.chipBiases;
+            } else {
+                Imx636Init.restartStreaming(deviceHandle, biases);
+                chipFirmwareBiases = Imx636Init.readDefaultBiases(deviceHandle);
+            }
+        }
+        synchronized (this) {
+            if (!isOpen() || closing || !wasAcquiring) {
+                return;
+            }
+            if (aeReader == null) {
+                aeReader = new PropheseeAEReader(this);
+            }
+            aeReader.startThread();
+        }
+    }
+
     @Override
     public synchronized void open() throws HardwareInterfaceException {
         if (isOpen()) {
@@ -165,6 +211,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         }
 
         acquireDevice();
+        log.fine("Prophesee open: USB interface claimed");
 
         try {
             for (int i = 0; i < stringDescriptors.length; i++) {
@@ -174,12 +221,14 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             log.warning("Could not read all USB string descriptors: " + e.getMessage());
         }
 
-        serial = Evk4BoardCommand.readSerial(deviceHandle);
-        Imx636Init.initializeAndStart(deviceHandle, biases);
-        chipFirmwareBiases = Imx636Init.readDefaultBiases(deviceHandle);
+        log.fine("Prophesee open: running ISSD init pipeline");
+        final Imx636Init.InitResult initResult = Imx636Init.initializeAndStart(deviceHandle, biases);
+        serial = initResult.serial;
+        chipFirmwareBiases = initResult.chipBiases;
         deviceInitialized = true;
 
         usbTransferFailed = false;
+        closing = false;
         isOpened = true;
         log.info("Prophesee EVK4 opened serial=" + serial + " VID:PID="
                 + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
@@ -210,6 +259,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         if (!isOpen()) {
             return;
         }
+        closing = true;
         try {
             setEventAcquisitionEnabled(false);
         } catch (HardwareInterfaceException e) {
@@ -262,6 +312,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         }
         final int nEvents = lastEventsAcquired.getNumEvents();
         computeEstimatedEventRate(lastEventsAcquired);
+        maybeLogPacketTimestampStats(lastEventsAcquired);
         if (nEvents != 0) {
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         } else if (lastEventsAcquired.overrunOccuredFlag) {
@@ -282,6 +333,34 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         estimatedEventRate = dt <= 0 ? 0 : (int) ((1e6f * n) / dt);
     }
 
+    private void maybeLogPacketTimestampStats(AEPacketRaw packet) {
+        if (!PropheseeTrace.TIMESTAMP_ENABLED || packet == null || packet.getNumEvents() < 2) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if (now - lastPacketTimestampLogMs < 2000L) {
+            return;
+        }
+        lastPacketTimestampLogMs = now;
+        final int[] ts = packet.getTimestamps();
+        final int n = packet.getNumEvents();
+        final S5KRC1SParser.TimestampSpread spread = S5KRC1SParser.computeTimestampSpread(ts, 0, n);
+        long parserTUs = -1;
+        long parserOrigin = -1;
+        int parserOverflows = 0;
+        if (aeReader != null) {
+            final Evt3Parser parser = aeReader.getParser();
+            parserTUs = parser.getTUs();
+            parserOrigin = parser.getTimestampOriginUs();
+            parserOverflows = parser.getOverflows();
+        }
+        PropheseeTrace.fine(log,
+                "Prophesee packet ts: events={0} span={1}us unique={2} first={3} last={4} "
+                        + "parser tUs={5} origin={6} overflows={7}",
+                n, spread.spanUs, spread.uniqueTs, ts[0], ts[n - 1],
+                parserTUs, parserOrigin, parserOverflows);
+    }
+
     @Override
     public int getNumEventsAcquired() {
         return eventCounter;
@@ -296,6 +375,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     public void resetTimestamps() {
         if (aeReader != null) {
             aeReader.resetTimestamps();
+            log.info("Prophesee resetTimestamps(): zeroing jAER time at current EVT3 time");
         }
     }
 
@@ -330,9 +410,11 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
                     aePacketRawPool.allocateMemory();
                 }
             }
+            log.fine("Prophesee open: starting event reader thread");
             aeReader.startThread();
         } else if (aeReader != null) {
-            aeReader.stopThread();
+            aeReader.prepareForStop();
+            aeReader.finishStop();
             aeReader = null;
         }
         eventAcquisitionEnabled = enable;

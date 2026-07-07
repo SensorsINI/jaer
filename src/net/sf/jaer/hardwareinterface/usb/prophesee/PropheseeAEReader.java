@@ -4,41 +4,44 @@ import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
+import org.usb4java.BufferUtils;
 import org.usb4java.LibUsb;
 
-import li.longi.USBTransferThread.RestrictedTransfer;
-import li.longi.USBTransferThread.RestrictedTransferCallback;
-import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.nrv.S5KRC1SParser;
 import net.sf.jaer.hardwareinterface.usb.prophesee.evt3.Evt3Parser;
 import net.sf.jaer.hardwareinterface.usb.prophesee.evk4.Evk4BoardCommand;
 
 /**
  * USB bulk reader for Prophesee EVK4 (endpoint 0x81, EVT3).
+ * Uses synchronous bulk reads (same path as neuromorphic-drivers flush/poll).
  */
 public class PropheseeAEReader implements ReaderBufferControl {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final byte ENDPOINT_IN = Evk4BoardCommand.EP_EVENTS_IN;
     private static final int DEFAULT_FIFO_SIZE = 1 << 17;
     private static final int DEFAULT_NUM_BUFFERS = 32;
+    private static final long READ_TIMEOUT_MS = 1000L;
 
     private final PropheseeHardwareInterface monitor;
     private final Evt3Parser parser = new Evt3Parser();
-    private USBTransferThread usbTransfer;
+    private Thread readerThread;
+    private volatile boolean readerActive;
     private int fifoSize = JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
     private int numBuffers = JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.numBuffers", DEFAULT_NUM_BUFFERS);
 
-    // TODO(remove): temporary EVK4 USB/event diagnostics
     private long usbTransferCount;
     private long usbBytesTotal;
     private long usbEventsParsed;
+    private long readTimeouts;
     private long lastTraceLogMs;
+    private long lastTimeoutLogMs;
     private long lastOverrunLogMs;
+    private long lastTimestampTraceLogMs;
 
     public PropheseeAEReader(PropheseeHardwareInterface monitor) {
         this.monitor = monitor;
@@ -48,35 +51,112 @@ public class PropheseeAEReader implements ReaderBufferControl {
         if (!monitor.isOpen()) {
             monitor.open();
         }
-        if (usbTransfer != null) {
+        if (readerThread != null) {
             return;
         }
-        log.info("Starting Prophesee AEReader on endpoint 0x81 (EVT3)");
-        usbTransfer = new USBTransferThread(
-                monitor.getDeviceHandle(),
-                ENDPOINT_IN,
-                LibUsb.TRANSFER_TYPE_BULK,
-                new ProcessAEData(),
-                getNumBuffers(),
-                getFifoSize());
-        usbTransfer.setName("PropheseeAEReaderThread");
-        usbTransfer.start();
+        parser.reset();
+        usbTransferCount = 0;
+        usbBytesTotal = 0;
+        usbEventsParsed = 0;
+        readTimeouts = 0;
+        Evk4BoardCommand.clearEventEndpointHalt(monitor.getDeviceHandle());
+        log.info("Starting Prophesee AEReader on endpoint 0x81 (EVT3, sync bulk)");
+        log.fine("Prophesee AEReader: fifoSize=" + getFifoSize() + " readTimeoutMs=" + READ_TIMEOUT_MS);
+        readerActive = true;
+        readerThread = new Thread(this::readLoop, "PropheseeAEReader");
+        readerThread.setDaemon(true);
+        readerThread.start();
         monitor.getReaderSupportInternal().firePropertyChange("readerStarted", false, true);
     }
 
-    public void stopThread() {
-        if (usbTransfer == null) {
+    void prepareForStop() {
+        readerActive = false;
+        if (readerThread != null) {
+            readerThread.interrupt();
+        }
+    }
+
+    void finishStop() {
+        if (readerThread == null) {
             return;
         }
-        log.info("Stopping Prophesee AEReader");
-        usbTransfer.interrupt();
         try {
-            usbTransfer.join();
+            readerThread.join(3000L);
+            if (readerThread.isAlive()) {
+                log.warning("Prophesee AEReader thread did not stop within 3s");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        usbTransfer = null;
+        readerThread = null;
         monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
+    }
+
+    public void stopThread() {
+        if (readerThread == null) {
+            return;
+        }
+        log.info("Stopping Prophesee AEReader");
+        prepareForStop();
+        finishStop();
+    }
+
+    private void readLoop() {
+        final ByteBuffer buffer = BufferUtils.allocateByteBuffer(getFifoSize());
+        while (readerActive && monitor.isOpen() && !monitor.isUsbTransferFailed()) {
+            buffer.clear();
+            final int bytesRead;
+            try {
+                bytesRead = Evk4BoardCommand.readEventBulk(
+                        monitor.getDeviceHandle(), buffer, READ_TIMEOUT_MS);
+            } catch (HardwareInterfaceException e) {
+                if (readerActive) {
+                    log.warning("Prophesee event bulk read failed: " + e.getMessage());
+                }
+                break;
+            }
+            if (bytesRead == LibUsb.ERROR_TIMEOUT) {
+                readTimeouts++;
+                maybeLogReadTimeouts();
+                continue;
+            }
+            if (bytesRead == 0) {
+                continue;
+            }
+            if (bytesRead < 0) {
+                if (readerActive) {
+                    log.warning("Prophesee event bulk read: " + LibUsb.errorName(bytesRead));
+                    monitor.markUsbDisconnected(bytesRead);
+                }
+                break;
+            }
+            buffer.limit(bytesRead);
+            synchronized (monitor.getAePacketRawPool()) {
+                if (!readerActive) {
+                    return;
+                }
+                translateEvents(buffer);
+            }
+        }
+        if (readerActive) {
+            log.fine("Prophesee AEReader read loop exited: transfers=" + usbTransferCount
+                    + " timeouts=" + readTimeouts);
+        }
+    }
+
+    private void maybeLogReadTimeouts() {
+        final long now = System.currentTimeMillis();
+        if (now - lastTimeoutLogMs < 5000L) {
+            return;
+        }
+        lastTimeoutLogMs = now;
+        if (usbTransferCount == 0) {
+            log.fine("Prophesee AEReader: no USB bytes yet (readTimeouts=" + readTimeouts + ")");
+            if (readTimeouts >= 30) {
+                log.warning("Prophesee AEReader: still no USB bytes after " + readTimeouts
+                        + "s on endpoint 0x81; try Interface > Reset USB interface");
+            }
+        }
     }
 
     public void resetTimestamps() {
@@ -96,9 +176,6 @@ public class PropheseeAEReader implements ReaderBufferControl {
     public void setFifoSize(int fifoSize) {
         this.fifoSize = fifoSize;
         JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", fifoSize);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferSize(fifoSize);
-        }
     }
 
     @Override
@@ -110,9 +187,6 @@ public class PropheseeAEReader implements ReaderBufferControl {
     public void setNumBuffers(int numBuffers) {
         this.numBuffers = numBuffers;
         JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.numBuffers", numBuffers);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferNumber(numBuffers);
-        }
     }
 
     @Override
@@ -162,12 +236,41 @@ public class PropheseeAEReader implements ReaderBufferControl {
         writeBuffer.setNumEvents(monitor.getEventCounter());
         writeBuffer.lastCaptureLength = parsed;
 
-        if (parsed > 0 || bytesAvailable > 0) {
-            usbTransferCount++;
-            usbBytesTotal += bytesAvailable;
-            usbEventsParsed += Math.max(0, parsed);
-            maybeLogTraceStats(parsed, bytesAvailable);
+        if (usbTransferCount == 0) {
+            log.info(String.format(
+                    "Prophesee first USB event packet: %d bytes, %d events parsed",
+                    bytesAvailable, Math.max(0, parsed)));
+            if (bytesAvailable > 0 && parsed == 0) {
+                log.warning("Prophesee EVT3: received bytes but parsed 0 events (possible stream desync)");
+            }
         }
+        usbTransferCount++;
+        usbBytesTotal += bytesAvailable;
+        usbEventsParsed += Math.max(0, parsed);
+        maybeLogTraceStats(parsed, bytesAvailable);
+        maybeLogTimestampTrace(timestamps, startEvent, parsed);
+    }
+
+    private void maybeLogTimestampTrace(int[] timestamps, int start, int count) {
+        if (!PropheseeTrace.TIMESTAMP_ENABLED || count <= 0) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if (now - lastTimestampTraceLogMs < 2000L) {
+            return;
+        }
+        lastTimestampTraceLogMs = now;
+        final S5KRC1SParser.TimestampSpread spread = S5KRC1SParser.computeTimestampSpread(timestamps, start, count);
+        PropheseeTrace.fine(log,
+                "EVT3 ts: tUs={0} origin={1} overflows={2} lsb={3} msb={4} rejected={5} "
+                        + "vect12={6} othersSkip={7} batch events={8} span={9}us unique={10} "
+                        + "steps=[{11},{12}]us first={13} last={14}",
+                parser.getTUs(), parser.getTimestampOriginUs(), parser.getOverflows(),
+                parser.getTraceLsbUpdates(), parser.getTraceMsbUpdates(), parser.getTraceBackwardRejections(),
+                parser.getTraceVect12Triples(), parser.getTraceOthersSkipped(),
+                count, spread.spanUs, spread.uniqueTs, spread.minStepUs, spread.maxStepUs,
+                timestamps[start], timestamps[start + count - 1]);
+        parser.clearTraceCounters();
     }
 
     private void logOverrun(int startEvent, int maxEvents, int committed) {
@@ -195,32 +298,5 @@ public class PropheseeAEReader implements ReaderBufferControl {
                 "Prophesee USB: transfers={0} bytes={1} parsedEvents={2} lastTransfer bytes={3} events={4} poolEvents={5}",
                 usbTransferCount, usbBytesTotal, usbEventsParsed, bytesAvailable, parsed,
                 monitor.getEventCounter());
-    }
-
-    private class ProcessAEData implements RestrictedTransferCallback {
-
-        private volatile boolean active = true;
-
-        @Override
-        public void prepareTransfer(RestrictedTransfer transfer) {
-        }
-
-        @Override
-        public void processTransfer(RestrictedTransfer transfer) {
-            if (!active || monitor.isUsbTransferFailed()) {
-                return;
-            }
-            final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
-            synchronized (aePacketRawPool) {
-                if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
-                    translateEvents(transfer.buffer());
-                } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
-                    PropheseeTrace.fine(log, "Prophesee USB transfer failed: status={0} ({1})",
-                            transfer.status(), LibUsb.errorName(transfer.status()));
-                    active = false;
-                    monitor.markUsbDisconnected(transfer.status());
-                }
-            }
-        }
     }
 }

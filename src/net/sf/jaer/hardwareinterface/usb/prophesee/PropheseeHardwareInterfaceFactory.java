@@ -119,6 +119,10 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
                                     + "Install the Prophesee WinUSB driver (wdi-simple) or replace with WinUSB via Zadig.",
                             devDesc.idVendor(), devDesc.idProduct()));
                 }
+            } else if (openStatus == LibUsb.ERROR_ACCESS || openStatus == LibUsb.ERROR_BUSY) {
+                log.fine(String.format(
+                        "Prophesee EVK4 HD %04x:%04x present but LibUsb.open failed: %s (device likely already open).",
+                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus)));
             } else {
                 log.warning(String.format(
                         "Prophesee EVK4 HD %04x:%04x detected but LibUsb.open failed: %s. "

@@ -2397,6 +2397,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     return;
                 }
                 if (packet.getSize() == 0) {
+                    if ((getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)
+                            && aemon != null && aemon.isOpen()) {
+                        setStatisticsLabel("Live: " + aemon + " — waiting for events");
+                    }
                     return;
                 }
                 float dtMs = getDtMs(packet);
