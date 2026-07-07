@@ -1,0 +1,6 @@
+{
+    "terminal.integrated.automationProfile.windows": {
+        "path": "cmd.exe",
+        "args": ["/d", "/c"]
+    }
+}

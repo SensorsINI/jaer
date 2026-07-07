@@ -62,7 +62,7 @@ public class PropheseeIMX636HD extends AETemporalConstastRetina implements Seria
             setTypemask(TYPEMASK);
             setTypeshift((byte) 22);
             setFlipx(false);
-            setFlipy(false);
+            setFlipy(true);
             setFliptype(false);
         }
 

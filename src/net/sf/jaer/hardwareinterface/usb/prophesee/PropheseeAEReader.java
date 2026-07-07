@@ -33,6 +33,13 @@ public class PropheseeAEReader implements ReaderBufferControl {
     private int fifoSize = JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
     private int numBuffers = JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.numBuffers", DEFAULT_NUM_BUFFERS);
 
+    // TODO(remove): temporary EVK4 USB/event diagnostics
+    private long usbTransferCount;
+    private long usbBytesTotal;
+    private long usbEventsParsed;
+    private long lastTraceLogMs;
+    private long lastOverrunLogMs;
+
     public PropheseeAEReader(PropheseeHardwareInterface monitor) {
         this.monitor = monitor;
     }
@@ -140,14 +147,54 @@ public class PropheseeAEReader implements ReaderBufferControl {
         final int parsed = parser.parse(raw, raw.length, addresses, timestamps, startEvent, maxEvents);
 
         if (parsed < 0) {
+            final int committed = maxEvents - startEvent;
+            if (committed > 0) {
+                monitor.setEventCounter(maxEvents);
+                writeBuffer.setNumEvents(maxEvents);
+                writeBuffer.lastCaptureLength = committed;
+            }
             writeBuffer.overrunOccuredFlag = true;
-            log.warning("Prophesee AEPacketRaw buffer overrun at event index " + startEvent);
+            logOverrun(startEvent, maxEvents, committed);
             return;
         }
 
         monitor.setEventCounter(startEvent + parsed);
         writeBuffer.setNumEvents(monitor.getEventCounter());
         writeBuffer.lastCaptureLength = parsed;
+
+        if (parsed > 0 || bytesAvailable > 0) {
+            usbTransferCount++;
+            usbBytesTotal += bytesAvailable;
+            usbEventsParsed += Math.max(0, parsed);
+            maybeLogTraceStats(parsed, bytesAvailable);
+        }
+    }
+
+    private void logOverrun(int startEvent, int maxEvents, int committed) {
+        final long now = System.currentTimeMillis();
+        if (now - lastOverrunLogMs < 2000L) {
+            return;
+        }
+        lastOverrunLogMs = now;
+        log.warning(String.format(
+                "Prophesee AEPacketRaw buffer overrun at event index %d (capacity %d, committed %d). "
+                        + "Increase via Control > Set rendering AE buffer size (EVK4 HD needs ~500k+).",
+                startEvent, maxEvents, committed));
+    }
+
+    private void maybeLogTraceStats(int parsed, int bytesAvailable) {
+        if (!PropheseeTrace.ENABLED) {
+            return;
+        }
+        final long now = System.currentTimeMillis();
+        if (now - lastTraceLogMs < 2000L) {
+            return;
+        }
+        lastTraceLogMs = now;
+        PropheseeTrace.finer(log,
+                "Prophesee USB: transfers={0} bytes={1} parsedEvents={2} lastTransfer bytes={3} events={4} poolEvents={5}",
+                usbTransferCount, usbBytesTotal, usbEventsParsed, bytesAvailable, parsed,
+                monitor.getEventCounter());
     }
 
     private class ProcessAEData implements RestrictedTransferCallback {
@@ -168,6 +215,8 @@ public class PropheseeAEReader implements ReaderBufferControl {
                 if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
                     translateEvents(transfer.buffer());
                 } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+                    PropheseeTrace.fine(log, "Prophesee USB transfer failed: status={0} ({1})",
+                            transfer.status(), LibUsb.errorName(transfer.status()));
                     active = false;
                     monitor.markUsbDisconnected(transfer.status());
                 }

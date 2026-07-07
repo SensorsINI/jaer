@@ -1,5 +1,8 @@
 package net.sf.jaer.hardwareinterface.usb.prophesee.evk4;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import org.usb4java.DeviceHandle;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -10,6 +13,8 @@ import net.sf.jaer.hardwareinterface.usb.prophesee.PropheseeBiases;
  */
 public final class Imx636Init {
 
+    private static final int X_MASK_WORDS = 20;
+    private static final int Y_MASK_WORDS = 12;
     private static final int REG_BIAS_PR = 0x1000;
     private static final int REG_BIAS_FO = 0x1004;
     private static final int REG_BIAS_HPF = 0x100C;
@@ -83,6 +88,7 @@ public final class Imx636Init {
         Evk4BoardCommand.flushEventEndpoint(handle);
         Evk4BoardCommand.request(handle, new byte[] { 0x72, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
         applyBiases(handle, biases);
+        applyDefaultRoiAndMasks(handle);
         issdStart(handle);
     }
 
@@ -270,6 +276,75 @@ public final class Imx636Init {
         Evk4BoardCommand.writeRegister(handle, 0x6070, 0);
         Evk4BoardCommand.writeRegister(handle, 0x6000, 0x00155401);
         Evk4BoardCommand.writeRegister(handle, 0x7004, 0x000018ff);
+    }
+
+    /**
+     * Programs full-frame ROI and clears pixel masks (neuromorphic-drivers update_configuration on first open).
+     */
+    private static void applyDefaultRoiAndMasks(DeviceHandle handle) throws HardwareInterfaceException {
+        final long[] xMask = new long[X_MASK_WORDS];
+        final long[] yMask = new long[Y_MASK_WORDS];
+
+        for (int offset = 0; offset < X_MASK_WORDS * 2; offset++) {
+            final int value = (offset % 2) == 0
+                    ? (int) (xMask[offset / 2] & 0xffffffffL)
+                    : (int) ((xMask[offset / 2] >>> 32) & 0xffffffffL);
+            Evk4BoardCommand.writeRegister(handle, 0x2000 + offset * 4, value);
+        }
+
+        for (int offset = 0; offset < Y_MASK_WORDS * 2 - 1; offset++) {
+            Evk4BoardCommand.writeRegister(handle, 0x4000 + offset * 4, encodeTdRoiY(yMask, offset));
+        }
+
+        // td_shadow_trigger=1, td_rstn=0 before final issdStart RoiCtrl write
+        Evk4BoardCommand.writeRegister(handle, 0x0004, packRoiCtrl(1, 1, 1, 0, 0x1e000a));
+
+        for (int offset = 0; offset < 64; offset++) {
+            Evk4BoardCommand.writeRegister(handle, 0x9100 + offset * 4, 0);
+        }
+    }
+
+    private static int encodeTdRoiY(long[] yMask, int offset) {
+        if (offset % 2 == 0) {
+            final byte[] hi = longToLeBytes(yMask[Y_MASK_WORDS - 1 - offset / 2]);
+            if (offset < Y_MASK_WORDS * 2 - 2) {
+                final byte[] lo = longToLeBytes(yMask[Y_MASK_WORDS - 2 - offset / 2]);
+                return packLeU32(
+                        reverseBits8(hi[3] & 0xff),
+                        reverseBits8(hi[2] & 0xff),
+                        reverseBits8(lo[1] & 0xff),
+                        reverseBits8(lo[0] & 0xff));
+            }
+            return packLeU32(
+                    reverseBits8(hi[3] & 0xff),
+                    reverseBits8(hi[2] & 0xff),
+                    0xff,
+                    0x00);
+        }
+        final byte[] mid = longToLeBytes(yMask[Y_MASK_WORDS - 2 - offset / 2]);
+        return packLeU32(
+                reverseBits8(mid[3] & 0xff),
+                reverseBits8(mid[2] & 0xff),
+                reverseBits8(mid[1] & 0xff),
+                reverseBits8(mid[0] & 0xff));
+    }
+
+    private static byte[] longToLeBytes(long value) {
+        final ByteBuffer buffer = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+        buffer.putLong(value);
+        return buffer.array();
+    }
+
+    private static int packLeU32(int b0, int b1, int b2, int b3) {
+        return (b0 & 0xff) | ((b1 & 0xff) << 8) | ((b2 & 0xff) << 16) | ((b3 & 0xff) << 24);
+    }
+
+    private static int reverseBits8(int value) {
+        int v = value & 0xff;
+        v = ((v & 0xf0) >>> 4) | ((v & 0x0f) << 4);
+        v = ((v & 0xcc) >>> 2) | ((v & 0x33) << 2);
+        v = ((v & 0xaa) >>> 1) | ((v & 0x55) << 1);
+        return v;
     }
 
     private static void issdStart(DeviceHandle handle) throws HardwareInterfaceException {

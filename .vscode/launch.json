@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "jAER (ant run)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "${env:ComSpec}",
+            "runtimeArgs": [
+                "/d",
+                "/c",
+                "scripts\\run-jaer.bat"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        }
+    ]
+}

@@ -34,7 +34,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     public static final short PID_EVK4_HD = (short) 0x00F5;
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int AE_BUFFER_SIZE = 100000;
+    private static final int AE_BUFFER_SIZE = 500_000;
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
             new PropertyChangeEvent(PropheseeHardwareInterface.class, "NewEvents", null, null);
@@ -56,13 +56,22 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private boolean isOpened = false;
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
-    private int buffersize = prefs.getInt("Prophesee.aeBufferSize", AE_BUFFER_SIZE);
+    private int buffersize = loadAeBufferSizePref();
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private String[] stringDescriptors = new String[3];
 
     public PropheseeHardwareInterface(Device device) {
         this.device = device;
+    }
+
+    private int loadAeBufferSizePref() {
+        final int saved = prefs.getInt("Prophesee.aeBufferSize", AE_BUFFER_SIZE);
+        if (saved == 100_000) {
+            prefs.putInt("Prophesee.aeBufferSize", AE_BUFFER_SIZE);
+            return AE_BUFFER_SIZE;
+        }
+        return saved;
     }
 
     public DeviceHandle getDeviceHandle() {
@@ -132,7 +141,12 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         int status = LibUsb.open(device, deviceHandle);
         if (status != LibUsb.SUCCESS) {
             deviceHandle = null;
-            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status));
+            final String driverHint = (status == LibUsb.ERROR_ACCESS
+                    || status == LibUsb.ERROR_NOT_SUPPORTED
+                    || status == LibUsb.ERROR_BUSY)
+                    ? " Install WinUSB for EVK4 (Prophesee wdi-simple or Zadig, VID 04B4 PID 00F5)."
+                    : "";
+            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + driverHint);
         }
 
         deviceDescriptor = new DeviceDescriptor();
@@ -240,12 +254,18 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         if (!eventAcquisitionEnabled) {
             setEventAcquisitionEnabled(true);
         }
-        aePacketRawPool.swap();
-        final AEPacketRaw lastEventsAcquired = aePacketRawPool.readBuffer();
+        final AEPacketRaw lastEventsAcquired;
+        synchronized (aePacketRawPool) {
+            aePacketRawPool.swap();
+            eventCounter = 0;
+            lastEventsAcquired = aePacketRawPool.readBuffer();
+        }
         final int nEvents = lastEventsAcquired.getNumEvents();
-        eventCounter = 0;
         computeEstimatedEventRate(lastEventsAcquired);
         if (nEvents != 0) {
+            support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
+        } else if (lastEventsAcquired.overrunOccuredFlag) {
+            // Buffer filled before swap; still notify so the viewer keeps polling.
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         }
         return lastEventsAcquired;
@@ -430,5 +450,19 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     @Override
     public PropertyChangeSupport getReaderSupport() {
         return aeReader != null ? aeReader.getReaderSupport() : support;
+    }
+
+    @Override
+    public String toString() {
+        if (deviceDescriptor != null) {
+            return String.format("Prophesee EVK4 HD %04x:%04x%s",
+                    deviceDescriptor.idVendor(), deviceDescriptor.idProduct(),
+                    serial.isEmpty() ? "" : " serial=" + serial);
+        }
+        final DeviceDescriptor dd = new DeviceDescriptor();
+        if (LibUsb.getDeviceDescriptor(device, dd) == LibUsb.SUCCESS) {
+            return String.format("Prophesee EVK4 HD %04x:%04x", dd.idVendor(), dd.idProduct());
+        }
+        return "Prophesee EVK4 HD";
     }
 }

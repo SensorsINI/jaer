@@ -107,16 +107,28 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
             if (!vidPidToClassMap.containsKey(vidPid)) {
                 continue;
             }
+
             final DeviceHandle devHandle = new DeviceHandle();
-            int status = LibUsb.open(dev, devHandle);
-            if (status != LibUsb.SUCCESS) {
-                continue;
+            final int openStatus = LibUsb.open(dev, devHandle);
+            if (openStatus == LibUsb.SUCCESS) {
+                final int driverStatus = LibUsb.kernelDriverActive(devHandle, 0);
+                LibUsb.close(devHandle);
+                if (driverStatus != LibUsb.ERROR_NOT_SUPPORTED && driverStatus != LibUsb.SUCCESS) {
+                    log.warning(String.format(
+                            "Prophesee EVK4 HD %04x:%04x found but a kernel driver is bound. "
+                                    + "Install the Prophesee WinUSB driver (wdi-simple) or replace with WinUSB via Zadig.",
+                            devDesc.idVendor(), devDesc.idProduct()));
+                }
+            } else {
+                log.warning(String.format(
+                        "Prophesee EVK4 HD %04x:%04x detected but LibUsb.open failed: %s. "
+                                + "On Windows, install WinUSB with: wdi-simple.exe -n \"EVK\" -m \"Prophesee\" -v 0x04b4 -p 0x00f5 "
+                                + "(admin Command Prompt), or use Zadig to assign WinUSB to the EVK4.",
+                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus)));
             }
-            status = LibUsb.kernelDriverActive(devHandle, 0);
-            LibUsb.close(devHandle);
-            if ((status == LibUsb.ERROR_NOT_SUPPORTED || status == LibUsb.SUCCESS)) {
-                list.add(LibUsb.refDevice(dev));
-            }
+
+            // List matching devices even when open fails so they appear in Interface menu.
+            list.add(LibUsb.refDevice(dev));
         }
         LibUsb.freeDeviceList(devList, true);
         return list;
