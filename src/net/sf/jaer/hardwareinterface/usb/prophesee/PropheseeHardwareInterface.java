@@ -541,9 +541,8 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
                     deviceDescriptor.idVendor(), deviceDescriptor.idProduct(),
                     serial.isEmpty() ? "" : " serial=" + serial);
         }
-        final DeviceDescriptor dd = new DeviceDescriptor();
-        if (LibUsb.getDeviceDescriptor(device, dd) == LibUsb.SUCCESS) {
-            return String.format("Prophesee EVK4 HD %04x:%04x", dd.idVendor(), dd.idProduct());
+        if (!serial.isEmpty()) {
+            return "Prophesee EVK4 HD serial=" + serial;
         }
         return "Prophesee EVK4 HD";
     }
