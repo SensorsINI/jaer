@@ -29,6 +29,7 @@ import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.EngineeringFormat;
+import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.util.TobiLogger;
 
 import java.awt.Color;
@@ -113,10 +114,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     @Preferred
     private boolean showAccumulatedEventCount = getBoolean("showAccumulatedEventCount", true);
     @Preferred
+    private boolean showPacketTimestampStats = getBoolean("showPacketTimestampStats", true);
+    @Preferred
     private boolean measureSparsity = getBoolean("measureSparsity", false);
     private boolean[][] sparsityMap = null;
     private DescriptiveStatistics sparsity = null;
     private double lastSparsity = Double.NaN;
+    private TimestampSpread lastPacketTimestampSpread = TimestampSpread.EMPTY;
 
     private long accumulatedDVSEventCount = 0, accumulatedAPSSampleCount = 0, accumulatedIMUSampleCount = 0;
     private long accumulatedDVSOnEventCount = 0, accumulatedDVSOffEventCount = 0;
@@ -158,7 +162,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip(rate, "showRateTrace", "shows a historical trace of event rate");
         setPropertyTooltip(rate, "maxSamples", "maximum number of samples before clearing rate history");
         setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
-        setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
+        setPropertyTooltip(rate, "showPacketTimestampStats", "<html>Shows per-packet timestamp statistics for the displayed packet:<br>unique timestamps and minimum positive timestamp interval (us).");
         setPropertyTooltip(time, "resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
         setPropertyTooltip(sparsity, "measureSparsity", "Report fraction of pixels with no events in last packet.");
         setPropertyTooltip(misc, "fontSize", "Font size for rendered text; scaled for chip size in pixels to render nicely.");
@@ -649,6 +653,11 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             lastSparsity = ((double) (chip.getNumPixels() - occupiedCount)) / chip.getNumPixels();
             sparsity.addValue(lastSparsity);
         }
+        if (showPacketTimestampStats) {
+            lastPacketTimestampSpread = TimestampSpread.computeDisplayedEvents(in);
+        } else {
+            lastPacketTimestampSpread = TimestampSpread.EMPTY;
+        }
         return in;
     }
 
@@ -661,6 +670,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             sparsity.clear();
         }
         lastSparsity = Double.NaN;
+        lastPacketTimestampSpread = TimestampSpread.EMPTY;
     }
 
     @Override
@@ -675,6 +685,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         GL2 gl = drawable.getGL().getGL2();
         drawClock(gl, clockTimeMs); // clockTimeMs is updated at the end of each packet, when the clock is displayed
         drawEventRateBars(drawable);
+        drawPacketTimestampStats(drawable);
         drawAccumulatedEventCount(drawable);
         if (chip.getAeViewer() != null) {
             drawTimeScaling(drawable, chip.getAeViewer().getTimeExpansion());
@@ -827,6 +838,24 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         }
         gl.glPopMatrix();
 
+    }
+
+    private void drawPacketTimestampStats(GLAutoDrawable drawable) {
+        if (!showPacketTimestampStats || lastPacketTimestampSpread.count <= 0) {
+            return;
+        }
+        final int sx = chip.getSizeX(), sy = chip.getSizeY();
+        final float yorig = .85f * sy;
+        final TimestampSpread ts = lastPacketTimestampSpread;
+        final String s;
+        if (ts.count == 1) {
+            s = String.format("Packet: %s events, %d unique timestamp",
+                    engFmt.format(ts.count), ts.uniqueTs);
+        } else {
+            s = String.format("Packet: %s events, %s unique timestamps, min interval %d us, span %d us",
+                    engFmt.format(ts.count), engFmt.format(ts.uniqueTs), ts.minStepUs, ts.spanUs);
+        }
+        DrawGL.drawString(fontSize, 0, yorig, 0, Color.white, s);
     }
 
     private void drawAccumulatedEventCount(GLAutoDrawable drawable) {
@@ -1059,6 +1088,21 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     public void setResetTimeOnRewind(boolean resetTimeOnRewind) {
         this.resetTimeOnRewind = resetTimeOnRewind;
         putBoolean("resetTimeOnRewind", resetTimeOnRewind);
+    }
+
+    /**
+     * @return the showPacketTimestampStats
+     */
+    public boolean isShowPacketTimestampStats() {
+        return showPacketTimestampStats;
+    }
+
+    /**
+     * @param showPacketTimestampStats the showPacketTimestampStats to set
+     */
+    public void setShowPacketTimestampStats(boolean showPacketTimestampStats) {
+        this.showPacketTimestampStats = showPacketTimestampStats;
+        putBoolean("showPacketTimestampStats", showPacketTimestampStats);
     }
 
     /**
