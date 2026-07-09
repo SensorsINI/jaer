@@ -228,10 +228,25 @@ public class Chip2DRenderer implements Observer {
      * FloatBuffer is allocated before accessing it.
      *
      */
+    /**
+     * Ensures the pixmap buffer matches the current chip size and is ready for
+     * OpenGL upload (position 0, limit set).
+     */
+    public void ensurePixmapReadyForDisplay() {
+        checkPixmapAllocation();
+    }
+
     protected void checkPixmapAllocation() {
         final int n = 3 * chip.getNumPixels();
-        if ((pixmap == null) || (pixmap.capacity() < n)) {
+        if (n <= 0) {
+            return;
+        }
+        if ((pixmap == null) || (pixmap.capacity() != n)) {
             pixmap = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
+            resetPixmapGrayLevel(grayValue);
+        } else if (pixmap.limit() != n) {
+            pixmap.limit(n);
+            pixmap.position(0);
         }
     }
     /**

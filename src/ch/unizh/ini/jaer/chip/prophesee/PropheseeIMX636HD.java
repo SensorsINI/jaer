@@ -9,10 +9,12 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.RetinaExtractor;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.TypedEvent;
-import net.sf.jaer.graphics.DavisRenderer;
+import net.sf.jaer.graphics.ChipRendererDisplayMethod;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
+import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.prophesee.evt3.Evt3Parser;
+import ch.unizh.ini.jaer.chip.EventOnlyChipDisplay;
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
@@ -35,11 +37,33 @@ public class PropheseeIMX636HD extends AETemporalConstastRetina implements Seria
             maybeLoadDefaultPreferences();
             config.loadPreferences();
         }
+        getRenderer().ensurePixmapReadyForDisplay();
 
-        setRenderer(new DavisRenderer(this));
-        final ChipRendererDisplayMethodRGBA displayMethod = new ChipRendererDisplayMethodRGBA(getCanvas());
-        getCanvas().addDisplayMethod(displayMethod);
-        getCanvas().setDisplayMethod(displayMethod);
+        EventOnlyChipDisplay.apply(this);
+    }
+
+    @Override
+    public void onRegistration() {
+        super.onRegistration();
+        EventOnlyChipDisplay.apply(this);
+    }
+
+    @Override
+    public DisplayMethod getPreferredDisplayMethod() {
+        EventOnlyChipDisplay.clearRgbaPreference(this);
+        return new ChipRendererDisplayMethod(getCanvas());
+    }
+
+    @Override
+    public void setPreferredDisplayMethod(Class<? extends DisplayMethod> clazz) {
+        if (clazz == null || ChipRendererDisplayMethodRGBA.class.isAssignableFrom(clazz)) {
+            EventOnlyChipDisplay.clearRgbaPreference(this);
+            return;
+        }
+        if (!ChipRendererDisplayMethod.class.isAssignableFrom(clazz)) {
+            return;
+        }
+        super.setPreferredDisplayMethod(clazz);
     }
 
     public PropheseeIMX636HD(HardwareInterface hardwareInterface) {

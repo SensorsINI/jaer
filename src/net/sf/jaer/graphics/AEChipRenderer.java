@@ -225,6 +225,21 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
+     * Ensures pixmap size and GrayLevel (or other mode) background are applied.
+     * The renderer is constructed before chip size is known, so the first
+     * allocation must use the color-mode background (e.g. 0.5 for GrayLevel),
+     * not the default grayValue of 0.
+     */
+    @Override
+    public void ensurePixmapReadyForDisplay() {
+        if (chip.getNumPixels() > 0 && colorMode != null) {
+            initializeGrayLevelFromColorMode();
+        } else {
+            checkPixmapAllocation();
+        }
+    }
+
+    /**
      * Does the rendering using selected method.
      *
      * @param packet a packet of events (already extracted from raw events)

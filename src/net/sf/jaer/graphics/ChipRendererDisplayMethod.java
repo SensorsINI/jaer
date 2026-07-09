@@ -66,21 +66,15 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
         clearDisplay(renderer, gl);
         final int ncol = chip.getSizeX();
         final int nrow = chip.getSizeY();
+        renderer.ensurePixmapReadyForDisplay();
+        final int requiredFloats = ncol * nrow * 3;
         // final int n = 3 * nrow * ncol;
         getChipCanvas().checkGLError(gl, glu, "before pixmap");
         // Zoom zoom = chip.getCanvas().getZoom();
         if (!getChipCanvas().getZoom().isZoomed()) {
-            final int wi = drawable.getSurfaceWidth(), hi = drawable.getSurfaceHeight();
-            float scale = 1;
-            // float ar=(float)hi/wi;
-            final float border = chip.getCanvas().getBorderSpacePixels();
-            if (chip.getCanvas().isFillsVertically()) {// tall chip, use chip height
-                scale = (hi - (2 * border)) / (chip.getSizeY());
-            } else if (chip.getCanvas().isFillsHorizontally()) {
-                scale = (wi - (2 * border)) / (chip.getSizeX());
-            }
-
-            gl.glPixelZoom(scale, scale);
+            // Match ortho clip: getScale() is in component pixels; glDrawPixels uses device pixels.
+            final ChipCanvas canvas = getChipCanvas();
+            gl.glPixelZoom(canvas.getPixelZoomX(drawable), canvas.getPixelZoomY(drawable));
             gl.glRasterPos2f(-.5f, -.5f); // to LL corner of chip, but must be inside viewport or else it is ignored,
             // breaks on zoom if (zoom.isZoomEnabled() == false) {
 
@@ -91,8 +85,9 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
                 try {
                     synchronized (renderer) {
                         FloatBuffer pixmap = renderer.getPixmap();
-                        if (pixmap != null) {
+                        if (pixmap != null && pixmap.capacity() >= requiredFloats) {
                             pixmap.position(0);
+                            pixmap.limit(requiredFloats);
                             // gl.glPixelTransferf(GL.GL_RED_SCALE, 2); // TODO to try out
                             // gl.glPixelTransferf(GL.GL_RED_BIAS, .3f); // TODO to try out
                             gl.glDrawPixels(ncol, nrow, GL.GL_RGB, GL.GL_FLOAT, pixmap);
@@ -102,9 +97,13 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
                     log.warning(e.toString());
                 }
             }
+            gl.glPixelZoom(1f, 1f);
         } else { // zoomed in, easiest to drawRect the pixels
             // float scale = zoom.zoomFactor * chip.getCanvas().getScale();
             float[] f = renderer.getPixmapArray();
+            if (f == null || f.length < requiredFloats) {
+                return;
+            }
             int sx = chip.getSizeX(), sy = chip.getSizeY();
             float gray = renderer.getGrayValue();
             int ind = 0;

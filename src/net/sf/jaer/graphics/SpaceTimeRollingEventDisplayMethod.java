@@ -340,9 +340,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkGLError(gl, "set uniform t0 and t1");
         }
         if (displayDvsFrames) {
-            DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
-            dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), renderer.getPacket().getLastTimestamp());
-            log.log(Level.FINE, "New DVS frame with timestamp {0}", renderer.getPacket().getLastTimestamp());
+            DavisRenderer renderer = getDavisRenderer();
+            if (renderer != null) {
+                dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), renderer.getPacket().getLastTimestamp());
+                log.log(Level.FINE, "New DVS frame with timestamp {0}", renderer.getPacket().getLastTimestamp());
+            }
         }
         renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
         displayStatusChangeText(drawable);
@@ -406,10 +408,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      * @param dtS the complete time window in seconds
      * @param zmax the scale of max time in past in units of pixels of array
      */
+    private DavisRenderer getDavisRenderer() {
+        final Chip2DRenderer renderer = chip.getRenderer();
+        return renderer instanceof DavisRenderer ? (DavisRenderer) renderer : null;
+    }
+
     synchronized void renderEventsAndFrames(GL2 gl, GLAutoDrawable drawable, ByteBuffer buffer, int nEvents, float dtS, float zmax) {
 
-        if (chip.getRenderer() instanceof DavisRenderer) {
-            final DavisRenderer frameRenderer = (DavisRenderer) chip.getRenderer();
+        final DavisRenderer frameRenderer = getDavisRenderer();
+        if (frameRenderer != null) {
             displayApsFrames = frameRenderer.isDisplayFrames();
             displayDvsEvents = frameRenderer.isDisplayEvents();
 //            displayAnnotation = frameRenderer.isDisplayAnnotation();
@@ -417,6 +424,9 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 log.warning("Both frame types and event display off, enabling events display so something shows");
                 frameRenderer.setDisplayEvents(true);
             }
+        } else {
+            displayApsFrames = false;
+            displayDvsFrames = false;
         }
         gl.glDepthMask(true);
         gl.glDepthFunc(GL.GL_GEQUAL);
@@ -546,6 +556,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         if (displayApsFrames) { // render APS frames
+            DavisRenderer renderer = getDavisRenderer();
+            if (renderer != null) {
             gl.glPushMatrix();
             if (isDrawFramesOnOwnAxes()) {
                 gl.glTranslatef(0, chip.getSizeY() * getFrameEventSpacing(), 0);
@@ -553,7 +565,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             int nFrames = 0;
 //            gl.glShadeModel(GL2.GL_FLAT);
-            DavisRenderer renderer = (DavisRenderer) chip.getRenderer();
             final EventPacket packet = (EventPacket) renderer.getPacket();
             int lastTimestamp = packet.getLastTimestamp();
             for (FrameWithTime frame : apsFramesInTimeWindow) {
@@ -620,9 +631,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //            glut.glutBitmapString(font, s);
             gl.glPopMatrix();
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
+            }
         }
 
-        if (displayDvsFrames) { // render APS frames
+        if (displayDvsFrames) { // render DVS constant-count frames
+            DavisRenderer renderer = getDavisRenderer();
+            if (renderer != null) {
             gl.glPushMatrix();
             if (isDrawFramesOnOwnAxes()) {
                 gl.glTranslatef(0, chip.getSizeY() * getFrameEventSpacing(), 0);
@@ -630,7 +644,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             int nFrames = 0;
 //            gl.glShadeModel(GL2.GL_FLAT);
-            DavisRenderer renderer = (DavisRenderer) chip.getRenderer();
             final EventPacket packet = (EventPacket) renderer.getPacket();
             int lastTimestamp = packet.getLastTimestamp();
             for (FrameWithTime frame : dvsFramesInTimeWindow) {
@@ -685,7 +698,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //            glut.glutBitmapString(font, s);
             gl.glPopMatrix();
 //            log.fine(String.format("rendered %d texture APS frames", nFrames));
-
+            }
         }
 
 //
@@ -930,7 +943,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         displayMenu.add(new JMenuItem(new SetTransparencyAction()));
         viewer.addMenu(displayMenu);
 
-        if (chip.getRenderer() != null) {
+        if (chip.getRenderer() instanceof DavisRenderer) {
             chip.getRenderer().getSupport().addPropertyChangeListener(DavisRenderer.EVENT_NEW_FRAME_AVAILBLE, this);
         }
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
@@ -944,11 +957,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     @Override
     synchronized public void propertyChange(PropertyChangeEvent evt) {
         if (displayApsFrames && evt.getPropertyName() == DavisRenderer.EVENT_NEW_FRAME_AVAILBLE) {
-            DavisRenderer renderer = (DavisRenderer) (chip.getRenderer());
+            DavisRenderer renderer = getDavisRenderer();
+            if (renderer != null) {
 //            float[] pixmap = renderer.getPixmapArray();
 //            FrameWithTime newFrame = new FrameWithTime(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
-            apsFramesInTimeWindow.add(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
-            log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
+                apsFramesInTimeWindow.add(renderer.getPixBuffer(), renderer.getTimestampFrameEnd());
+                log.log(Level.FINE, "New frame with timestamp {0}", renderer.getTimestampFrameEnd());
+            }
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             apsFramesInTimeWindow.clear();
             eventList.clear();

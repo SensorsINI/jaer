@@ -564,6 +564,20 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
+     * glPixelZoom factors for {@link GL2#glDrawPixels}: viewport uses surface
+     * (device) pixels while clip bounds use component (logical) pixels.
+     */
+    public float getPixelZoomX(GLAutoDrawable drawable) {
+        final int componentW = Math.max(1, getCanvas().getWidth());
+        return getScale() * drawable.getSurfaceWidth() / componentW;
+    }
+
+    public float getPixelZoomY(GLAutoDrawable drawable) {
+        final int componentH = Math.max(1, getCanvas().getHeight());
+        return getScale() * drawable.getSurfaceHeight() / componentH;
+    }
+
+    /**
      * A utility method that returns an AWT Color from float rgb values
      */
     protected final Color getPixelColor(final float red, final float green, final float blue) {
