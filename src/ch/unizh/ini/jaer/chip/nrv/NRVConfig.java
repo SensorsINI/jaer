@@ -2,6 +2,8 @@ package ch.unizh.ini.jaer.chip.nrv;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -390,11 +392,32 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     public static File getDefaultSettingsFolder() {
-        File folder = new File(System.getProperty("user.dir") + File.separator + "biasgenSettings" + File.separator + "NRV");
-        if (!folder.isDirectory()) {
-            folder = new File("biasgenSettings" + File.separator + "NRV");
+        final String rel = "biasgenSettings" + File.separator + "NRV";
+        final File fromUserDir = new File(System.getProperty("user.dir"), rel);
+        if (fromUserDir.isDirectory()) {
+            return fromUserDir;
         }
-        return folder;
+        final File relative = new File(rel);
+        if (relative.isDirectory()) {
+            return relative;
+        }
+        try {
+            final URL codeLocation = NRVConfig.class.getProtectionDomain().getCodeSource().getLocation();
+            File base = new File(codeLocation.toURI());
+            if (base.isFile()) {
+                base = base.getParentFile();
+            }
+            for (int depth = 0; depth < 5 && base != null; depth++) {
+                final File candidate = new File(base, rel);
+                if (candidate.isDirectory()) {
+                    return candidate;
+                }
+                base = base.getParentFile();
+            }
+        } catch (Exception e) {
+            log.fine("Could not resolve NRV settings folder from code location: " + e.getMessage());
+        }
+        return fromUserDir;
     }
 
     public boolean loadLastSettingsFromPreferences(File biasgenFrameLastFile) {

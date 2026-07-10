@@ -1,5 +1,7 @@
 package net.sf.jaer.hardwareinterface.usb.nrv;
 
+import java.util.logging.Logger;
+
 /**
  * Decodes S5KRC1S AER USB packets into jAER raw addresses and timestamps.
  * Port of PacketParser::S5KRC1SDataProcess and AnalyzeData from the NRV SDK.
@@ -53,6 +55,7 @@ public class S5KRC1SParser {
     private long frameStartTimeMs = 0;
     private int skipPeriodMs = DEFAULT_SKIP_PERIOD_MS;
     private boolean mirrorFlag = false;
+    private boolean droppedEventsBeforeColumnAddress;
     /** Absolute device time (µs) subtracted from output; jAER time 0 = this value. */
     private long timestampOriginUs = -1;
     /** Last emitted absolute timestamp (µs), for monotonic output. */
@@ -73,6 +76,7 @@ public class S5KRC1SParser {
         frameStartTimeMs = 0;
         skipPeriodMs = DEFAULT_SKIP_PERIOD_MS;
         mirrorFlag = false;
+        droppedEventsBeforeColumnAddress = false;
         timestampOriginUs = -1;
         lastOutputAbsoluteUs = -1;
         clearParseStats();
@@ -192,6 +196,9 @@ public class S5KRC1SParser {
                     mirrorFlag = (pkt[i + 1] & 0x80) != 0;
                     final int sFlag = pkt[i + 1] & 0x20;
                     posX[sensorID] = ((pkt[i + 2] & 0x07) << 8) | (pkt[i + 3] & 0xFF);
+                    if (posX[sensorID] >= WIDTH) {
+                        posX[sensorID] = WIDTH - 1;
+                    }
                     if (sFlag != 0) {
                         continue;
                     }
@@ -257,21 +264,31 @@ public class S5KRC1SParser {
     }
 
     private int toOutputTimestamp(long absoluteUs) {
-        if (lastOutputAbsoluteUs >= 0 && absoluteUs < lastOutputAbsoluteUs) {
-            absoluteUs = lastOutputAbsoluteUs;
+        if (lastOutputAbsoluteUs >= 0 && absoluteUs <= lastOutputAbsoluteUs) {
+            absoluteUs = lastOutputAbsoluteUs + 1;
         } else {
             lastOutputAbsoluteUs = absoluteUs;
         }
         if (timestampOriginUs < 0) {
             timestampOriginUs = absoluteUs;
         }
-        return (int) (absoluteUs - timestampOriginUs);
+        long outUs = absoluteUs - timestampOriginUs;
+        if (outUs > Integer.MAX_VALUE) {
+            outUs = Integer.MAX_VALUE;
+        }
+        return (int) outUs;
     }
 
     private int analyzeData(int mask, int posY0, int pol, int sensorID,
             int[] addresses, int[] timestamps, int eventCount, int maxEvents) {
         final int lastPosX = posX[sensorID];
         if (lastPosX < 0 || posY0 < 0) {
+            if (!droppedEventsBeforeColumnAddress) {
+                droppedEventsBeforeColumnAddress = true;
+                Logger.getLogger("net.sf.jaer").fine(
+                        "NRV parser: dropping group events until first column-address packet (posX="
+                                + lastPosX + ", posY0=" + posY0 + ")");
+            }
             return 0;
         }
         if (lastPosX >= WIDTH || posY0 + 7 >= HEIGHT) {

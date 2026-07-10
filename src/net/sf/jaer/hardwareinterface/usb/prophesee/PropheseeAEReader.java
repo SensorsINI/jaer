@@ -24,6 +24,9 @@ public class PropheseeAEReader implements ReaderBufferControl {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final int DEFAULT_FIFO_SIZE = 1 << 17;
+    private static final int MIN_FIFO_SIZE = 4096;
+    /** Cap avoids int overflow when doubling FIFO size from the Control menu. */
+    private static final int MAX_FIFO_SIZE = 1 << 22;
     private static final int DEFAULT_NUM_BUFFERS = 32;
     private static final long READ_TIMEOUT_MS = 1000L;
 
@@ -31,7 +34,8 @@ public class PropheseeAEReader implements ReaderBufferControl {
     private final Evt3Parser parser = new Evt3Parser();
     private Thread readerThread;
     private volatile boolean readerActive;
-    private int fifoSize = JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
+    private int fifoSize = sanitizeFifoSize(
+            JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE));
     private int numBuffers = JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.numBuffers", DEFAULT_NUM_BUFFERS);
 
     private long usbTransferCount;
@@ -174,8 +178,20 @@ public class PropheseeAEReader implements ReaderBufferControl {
 
     @Override
     public void setFifoSize(int fifoSize) {
-        this.fifoSize = fifoSize;
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", fifoSize);
+        this.fifoSize = sanitizeFifoSize(fifoSize);
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", this.fifoSize);
+    }
+
+    private static int sanitizeFifoSize(int fifoSize) {
+        if (fifoSize >= MIN_FIFO_SIZE && fifoSize <= MAX_FIFO_SIZE) {
+            return fifoSize;
+        }
+        log.warning(String.format(
+                "Invalid Prophesee USB FIFO size %d bytes; resetting to %d (valid range %d..%d). "
+                        + "This can happen after repeatedly increasing FIFO size in Control menu.",
+                fifoSize, DEFAULT_FIFO_SIZE, MIN_FIFO_SIZE, MAX_FIFO_SIZE));
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
+        return DEFAULT_FIFO_SIZE;
     }
 
     @Override

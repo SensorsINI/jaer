@@ -11,10 +11,11 @@
  */
 package net.sf.jaer.graphics;
 
-import java.nio.FloatBuffer;
+import java.nio.ByteBuffer;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
+import com.jogamp.opengl.GL2ES1;
 import com.jogamp.opengl.GLAutoDrawable;
 
 /**
@@ -30,11 +31,20 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
     public final float SPECIAL_BAR_LOCATION_Y = 0;
     public final float SPECIAL_BAR_LINE_WIDTH = 8;
 
+    private int histogramTextureId;
+    private byte[] textureUploadScratch;
+
     /**
      * Creates a new instance of ChipRendererDisplayMethod
      */
     public ChipRendererDisplayMethod(ChipCanvas chipCanvas) {
         super(chipCanvas);
+    }
+
+    @Override
+    public void onDeregistration() {
+        histogramTextureId = 0;
+        textureUploadScratch = null;
     }
 
     /**
@@ -66,40 +76,20 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
         clearDisplay(renderer, gl);
         final int ncol = chip.getSizeX();
         final int nrow = chip.getSizeY();
+        if (ncol <= 0 || nrow <= 0) {
+            return;
+        }
         renderer.ensurePixmapReadyForDisplay();
         final int requiredFloats = ncol * nrow * 3;
-        // final int n = 3 * nrow * ncol;
         getChipCanvas().checkGLError(gl, glu, "before pixmap");
-        // Zoom zoom = chip.getCanvas().getZoom();
         if (!getChipCanvas().getZoom().isZoomed()) {
-            // Match ortho clip: getScale() is in component pixels; glDrawPixels uses device pixels.
-            final ChipCanvas canvas = getChipCanvas();
-            gl.glPixelZoom(canvas.getPixelZoomX(drawable), canvas.getPixelZoomY(drawable));
-            gl.glRasterPos2f(-.5f, -.5f); // to LL corner of chip, but must be inside viewport or else it is ignored,
-            // breaks on zoom if (zoom.isZoomEnabled() == false) {
-
-            // gl.glMinmax(GL.GL_MINMAX,GL.GL_RGB,false);
-            // gl.glEnable(GL.GL_MINMAX);
-            // chipCanvas.checkGLError(gl, glu, "after minmax");
-            {
-                try {
-                    synchronized (renderer) {
-                        FloatBuffer pixmap = renderer.getPixmap();
-                        if (pixmap != null && pixmap.capacity() >= requiredFloats) {
-                            pixmap.position(0);
-                            pixmap.limit(requiredFloats);
-                            // gl.glPixelTransferf(GL.GL_RED_SCALE, 2); // TODO to try out
-                            // gl.glPixelTransferf(GL.GL_RED_BIAS, .3f); // TODO to try out
-                            gl.glDrawPixels(ncol, nrow, GL.GL_RGB, GL.GL_FLOAT, pixmap);
-                        }
-                    }
-                } catch (IndexOutOfBoundsException e) {
-                    log.warning(e.toString());
+            synchronized (renderer) {
+                float[] rgb = renderer.getPixmapArray();
+                if (rgb != null && rgb.length >= requiredFloats) {
+                    drawHistogramTexture(gl, rgb, ncol, nrow);
                 }
             }
-            gl.glPixelZoom(1f, 1f);
-        } else { // zoomed in, easiest to drawRect the pixels
-            // float scale = zoom.zoomFactor * chip.getCanvas().getScale();
+        } else {
             float[] f = renderer.getPixmapArray();
             if (f == null || f.length < requiredFloats) {
                 return;
@@ -117,11 +107,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
                 }
             }
         }
-        // FloatBuffer minMax=FloatBuffer.allocate(6);
-        // gl.glGetMinmax(GL.GL_MINMAX, true, GL.GL_RGB, GL.GL_FLOAT, minMax);
-        // gl.glDisable(GL.GL_MINMAX);
         getChipCanvas().checkGLError(gl, glu, "after rendering histogram rectangles");
-        // outline frame
         gl.glColor3f(0, 0, 1f);
         gl.glLineWidth(1f);
         {
@@ -150,5 +136,66 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
                 getChipCanvas().checkGLError(gl, glu, "after rendering special events");
             }
         }
+    }
+
+    /**
+     * Uploads the RGB float pixmap as an RGBA byte texture and draws a chip-sized
+     * quad. {@link GL2#glDrawPixels} is unreliable on HiDPI Windows; byte textures
+     * match the path used by {@link ChipRendererDisplayMethodRGBA}.
+     */
+    private void drawHistogramTexture(GL2 gl, float[] rgb, int width, int height) {
+        final int pixelCount = width * height;
+        final int byteLen = pixelCount * 4;
+        if (textureUploadScratch == null || textureUploadScratch.length < byteLen) {
+            textureUploadScratch = new byte[byteLen];
+        }
+        int di = 0;
+        final int rgbEnd = pixelCount * 3;
+        for (int si = 0; si < rgbEnd; si += 3) {
+            textureUploadScratch[di++] = floatToByte(rgb[si]);
+            textureUploadScratch[di++] = floatToByte(rgb[si + 1]);
+            textureUploadScratch[di++] = floatToByte(rgb[si + 2]);
+            textureUploadScratch[di++] = (byte) 0xFF;
+        }
+
+        if (histogramTextureId == 0) {
+            final int[] ids = new int[1];
+            gl.glGenTextures(1, ids, 0);
+            histogramTextureId = ids[0];
+        }
+        gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glBindTexture(GL.GL_TEXTURE_2D, histogramTextureId);
+        gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL2.GL_CLAMP);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
+        gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
+        gl.glTexEnvf(GL2ES1.GL_TEXTURE_ENV, GL2ES1.GL_TEXTURE_ENV_MODE, GL2ES1.GL_REPLACE);
+        gl.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, width, height, 0,
+                GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, ByteBuffer.wrap(textureUploadScratch, 0, byteLen));
+
+        gl.glColor4f(1f, 1f, 1f, 1f);
+        gl.glEnable(GL.GL_TEXTURE_2D);
+        gl.glBegin(GL2.GL_POLYGON);
+        gl.glTexCoord2f(0f, 0f);
+        gl.glVertex2f(0f, 0f);
+        gl.glTexCoord2f(1f, 0f);
+        gl.glVertex2f(width, 0f);
+        gl.glTexCoord2f(1f, 1f);
+        gl.glVertex2f(width, height);
+        gl.glTexCoord2f(0f, 1f);
+        gl.glVertex2f(0f, height);
+        gl.glEnd();
+        gl.glDisable(GL.GL_TEXTURE_2D);
+    }
+
+    private static byte floatToByte(float v) {
+        if (v <= 0f) {
+            return 0;
+        }
+        if (v >= 1f) {
+            return (byte) 0xFF;
+        }
+        return (byte) (v * 255f + 0.5f);
     }
 }

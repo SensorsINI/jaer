@@ -4618,7 +4618,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private void decreaseBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseBufferSizeMenuItemActionPerformed
             if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
                 ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = reader.getFifoSize() / 2;
+                int n = Math.max(4096, reader.getFifoSize() / 2);
                 reader.setFifoSize(n);
                 fixDeviceControlMenuItems();
 
@@ -4628,8 +4628,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private void increaseBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseBufferSizeMenuItemActionPerformed
             if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
                 ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = reader.getFifoSize() * 2;
-                reader.setFifoSize(n);
+                long n = (long) reader.getFifoSize() * 2L;
+                if (n > (1 << 22)) {
+                    n = 1 << 22;
+                }
+                reader.setFifoSize((int) n);
                 fixDeviceControlMenuItems();
 
             }

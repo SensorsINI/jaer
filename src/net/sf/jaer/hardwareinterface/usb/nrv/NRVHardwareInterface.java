@@ -18,6 +18,7 @@ import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
+import ch.unizh.ini.jaer.chip.nrv.NRVConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
@@ -32,7 +33,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     public static final short PID_CX3 = (short) 0x00F1;
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int AE_BUFFER_SIZE = 100000;
+    private static final int AE_BUFFER_SIZE = 500_000;
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
             new PropertyChangeEvent(NRVHardwareInterface.class, "NewEvents", null, null);
@@ -68,7 +69,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
     private boolean settingsApplied = false;
-    private int buffersize = prefs.getInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
+    private int buffersize = loadAeBufferSizePref();
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private String[] stringDescriptors = new String[3];
@@ -76,6 +77,15 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     public NRVHardwareInterface(Device device) {
         this.device = device;
+    }
+
+    private int loadAeBufferSizePref() {
+        final int saved = prefs.getInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
+        if (saved == 100_000) {
+            prefs.putInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
+            return AE_BUFFER_SIZE;
+        }
+        return saved;
     }
 
     public DeviceHandle getDeviceHandle() {
@@ -303,6 +313,12 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     }
 
     private void acquireDevice() throws HardwareInterfaceException {
+        if (LibUsb.kernelDriverActive(deviceHandle, 0) == 1) {
+            final int detach = LibUsb.detachKernelDriver(deviceHandle, 0);
+            if (detach != LibUsb.SUCCESS && detach != LibUsb.ERROR_NOT_SUPPORTED) {
+                log.warning("detachKernelDriver: " + LibUsb.errorName(detach));
+            }
+        }
         final int status = LibUsb.claimInterface(deviceHandle, 0);
         if (status != LibUsb.SUCCESS) {
             throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status));
@@ -368,20 +384,46 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         if (!isOpen()) {
             open();
         }
+        ensureSettingsBeforeAcquisition();
+        if (!settingsApplied) {
+            synchronized (aePacketRawPool) {
+                aePacketRawPool.swap();
+                eventCounter = 0;
+                return aePacketRawPool.readBuffer();
+            }
+        }
         if (!eventAcquisitionEnabled) {
             setEventAcquisitionEnabled(true);
         }
-        aePacketRawPool.swap();
-        final AEPacketRaw lastEventsAcquired = aePacketRawPool.readBuffer();
+        final AEPacketRaw lastEventsAcquired;
+        synchronized (aePacketRawPool) {
+            aePacketRawPool.swap();
+            eventCounter = 0;
+            lastEventsAcquired = aePacketRawPool.readBuffer();
+        }
         final int nEvents = lastEventsAcquired.getNumEvents();
-        eventCounter = 0;
         computeEstimatedEventRate(lastEventsAcquired);
         noteJaerPacketTimestampStats(lastEventsAcquired);
         maybeLogTimestampStatsTable();
         if (nEvents != 0) {
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
+        } else if (lastEventsAcquired.overrunOccuredFlag) {
+            support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         }
         return lastEventsAcquired;
+    }
+
+    private void ensureSettingsBeforeAcquisition() throws HardwareInterfaceException {
+        if (settingsApplied) {
+            return;
+        }
+        if (chip != null && chip.getBiasgen() instanceof NRVConfig config) {
+            if (config.getLoadedSettings() != null) {
+                applySettings(config.getLoadedSettings());
+            } else {
+                config.autoLoadSettingsIfNeeded();
+            }
+        }
     }
 
     private void computeEstimatedEventRate(AEPacketRaw events) {
@@ -448,6 +490,12 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
         if (enable) {
+            ensureSettingsBeforeAcquisition();
+            if (!settingsApplied) {
+                log.warning("NRV: event reader not started until settings are applied "
+                        + "(Biases > File > Load settings, or biasgenSettings/NRV/S5KRC1S_300_CX3.txt)");
+                return;
+            }
             if (aeReader == null) {
                 aeReader = new NRVAEReader(this);
                 allocateAEBuffers();
@@ -530,6 +578,10 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public void sendConfiguration(Biasgen biasgen) throws HardwareInterfaceException {
+        if (biasgen instanceof NRVConfig config && config.getLoadedSettings() != null) {
+            applySettings(config.getLoadedSettings());
+            return;
+        }
         if (loadedSettings != null) {
             applySettings(loadedSettings);
         }
