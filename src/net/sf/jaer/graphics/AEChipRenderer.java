@@ -301,6 +301,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             playSpike(type);
                         }
                         int ind = getPixMapIndex(e.x, e.y);
+                        if (ind < 0) {
+                            continue;
+                        }
                         // float[] f = fr[e.y][e.x];
                         // setPixmapPosition(e.x, e.y);
                         float[] c = typeColorRGBComponents[type];
@@ -339,6 +342,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     playSpike(type);
                                 }
                                 int ind = getPixMapIndex(e.x, e.y);
+                                if (ind < 0) {
+                                    continue;
+                                }
                                 a = f[ind];
                                 if (!ignorePolarity) {
                                     a += colorContrastAdditiveStep * (type - grayValue); // type-.5 = -.5 or .5; colorContrastAdditiveStep*type= -.5, .5, (cs=1) or
@@ -371,6 +377,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     playSpike(type);
                                 }
                                 int ind = getPixMapIndex(e.x, e.y);
+                                if (ind < 0) {
+                                    continue;
+                                }
                                 f[ind + type] += colorContrastAdditiveStep;
                             }
                             break;
@@ -397,6 +406,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     playSpike(type);
                                 }
                                 int index = getPixMapIndex(e.x, e.y);
+                                if (index < 0) {
+                                    continue;
+                                }
                                 int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * (e.timestamp - ts0)) / dt);
                                 if (ind < 0) {
                                     ind = 0;

@@ -142,6 +142,9 @@ public class Chip2DRenderer implements Observer {
      * @see #getPixmapArray()
      */
     public int getPixMapIndex(int x, int y) {
+        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY) {
+            return -1;
+        }
         return 3 * (x + (y * sizeX));
     }
 
@@ -188,6 +191,9 @@ public class Chip2DRenderer implements Observer {
      */
     public void setAnnotateColorRGB(int x, int y, float[] value) {
         int index = getPixMapIndex(x, y);
+        if (index < 0) {
+            return;
+        }
         pixmap.put(index, value[0]);
         pixmap.put(index + 1, value[1]);
         pixmap.put(index + 2, value[2]);
@@ -237,7 +243,8 @@ public class Chip2DRenderer implements Observer {
     }
 
     protected void checkPixmapAllocation() {
-        final int n = 3 * chip.getNumPixels();
+        syncSizeFromChip();
+        final int n = 3 * sizeX * sizeY;
         if (n <= 0) {
             return;
         }
@@ -248,6 +255,19 @@ public class Chip2DRenderer implements Observer {
             pixmap.limit(n);
             pixmap.position(0);
         }
+    }
+
+    /**
+     * Keeps cached renderer dimensions aligned with the chip (DavisRenderer did
+     * this on every pixmap check; required when the renderer is constructed
+     * before chip size is set).
+     */
+    protected void syncSizeFromChip() {
+        if (chip == null) {
+            return;
+        }
+        sizeX = chip.getSizeX();
+        sizeY = chip.getSizeY();
     }
     /**
      * The gray value.
