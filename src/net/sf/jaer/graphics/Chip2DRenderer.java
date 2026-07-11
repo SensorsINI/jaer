@@ -93,6 +93,8 @@ public class Chip2DRenderer implements Observer {
      * 3*(chip.getSizeX()).
      */
     protected FloatBuffer grayBuffer;
+    /** Last gray level written into {@link #grayBuffer}; avoids stale pixmap fill. */
+    private float grayBufferFillValue = Float.NaN;
 
     public Chip2DRenderer() {
     }
@@ -216,12 +218,13 @@ public class Chip2DRenderer implements Observer {
             grayBuffer = FloatBuffer.allocate(n); // Buffers.newDirectFloatBuffer(n);
             madebuffer = true;
         }
-        if (madebuffer || (value != grayValue)) {
+        if (madebuffer || (value != grayBufferFillValue)) {
             grayBuffer.rewind();
             for (int i = 0; i < n; i++) {
                 grayBuffer.put(value);
             }
             grayBuffer.rewind();
+            grayBufferFillValue = value;
         }
         System.arraycopy(grayBuffer.array(), 0, pixmap.array(), 0, n);
         pixmap.rewind();

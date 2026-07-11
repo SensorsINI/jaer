@@ -61,7 +61,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
 
     private static float clearDisplay(Chip2DRenderer renderer, GL2 gl) {
         float gray = renderer.getGrayValue();
-        gl.glClearColor(gray, gray, gray, 0f);
+        gl.glClearColor(gray, gray, gray, 1f);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
         return gray;
     }

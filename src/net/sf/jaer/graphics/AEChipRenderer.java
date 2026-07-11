@@ -214,6 +214,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
     }
 
+    @Override
+    public float getGrayValue() {
+        if (colorMode != null) {
+            return colorMode.getBackgroundGrayLevel();
+        }
+        return super.getGrayValue();
+    }
+
     /**
      * Applies {@link ColorMode#getBackgroundGrayLevel()} to grayValue and pixmap.
      * Called from the constructor and whenever the user selects a color mode.
