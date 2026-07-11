@@ -2,6 +2,8 @@ package net.sf.jaer.hardwareinterface.usb.nrv;
 
 /**
  * One I2C register write (or wait pseudo-entry) from an NRV bias settings file.
+ *
+ * @see https://nrv.kr/
  */
 public class NRVRegisterSetting {
 

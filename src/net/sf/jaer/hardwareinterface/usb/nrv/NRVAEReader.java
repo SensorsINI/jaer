@@ -18,6 +18,8 @@ import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 
 /**
  * USB bulk reader for NRV DVS devices (endpoint 0x81).
+ *
+ * @see https://nrv.kr/
  */
 public class NRVAEReader implements ReaderBufferControl {
 
@@ -30,7 +32,6 @@ public class NRVAEReader implements ReaderBufferControl {
     private static final int DEFAULT_NUM_BUFFERS = 16;
     private static final int MAX_NUM_BUFFERS = 32;
     private static final long MAX_TOTAL_USB_BUFFER_BYTES = 64L * 1024L * 1024L;
-    private static final long TIMESTAMP_LOG_INTERVAL_MS = 2000L;
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
 
     private final NRVHardwareInterface monitor;
@@ -41,8 +42,9 @@ public class NRVAEReader implements ReaderBufferControl {
     private int numBuffers = sanitizeNumBuffers(
             JaerConstants.PREFS_ROOT_HARDWARE.getInt("NRV.AEReader.numBuffers", DEFAULT_NUM_BUFFERS),
             fifoSize);
-    private boolean logTimestampStats = JaerConstants.PREFS_ROOT_HARDWARE.getBoolean("NRV.logTimestampStats", true);
     private byte[] parseScratch;
+    private int[] stagingAddresses;
+    private int[] stagingTimestamps;
     private long lastOverrunLogMs;
 
     public NRVAEReader(NRVHardwareInterface monitor) {
@@ -59,8 +61,8 @@ public class NRVAEReader implements ReaderBufferControl {
         parser.reset();
         clearEndpointHalt(monitor.getDeviceHandle());
         log.info("Starting NRV AEReader on endpoint 0x81 (fifo=" + getFifoSize()
-                + " buffers=" + getNumBuffers() + ", timestamp stats logging="
-                + logTimestampStats + ", interval=" + TIMESTAMP_LOG_INTERVAL_MS + "ms)");
+                + " buffers=" + getNumBuffers()
+                + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED + ")");
         usbTransfer = new USBTransferThread(
                 monitor.getDeviceHandle(),
                 ENDPOINT_IN,
@@ -101,15 +103,6 @@ public class NRVAEReader implements ReaderBufferControl {
 
     S5KRC1SParser getParser() {
         return parser;
-    }
-
-    public boolean isLogTimestampStats() {
-        return logTimestampStats;
-    }
-
-    public void setLogTimestampStats(boolean logTimestampStats) {
-        this.logTimestampStats = logTimestampStats;
-        JaerConstants.PREFS_ROOT_HARDWARE.putBoolean("NRV.logTimestampStats", logTimestampStats);
     }
 
     @Override
@@ -185,7 +178,7 @@ public class NRVAEReader implements ReaderBufferControl {
     }
 
     private void checkTimestampOrder(int[] timestamps, int start, int count) {
-        if (count < 2) {
+        if (!NRVTrace.TIMESTAMP_ORDER_ENABLED || count < 2) {
             return;
         }
         for (int e = start + 1; e < start + count; e++) {
@@ -198,54 +191,113 @@ public class NRVAEReader implements ReaderBufferControl {
         }
     }
 
-    private void translateEvents(ByteBuffer buffer) {
-        final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
-        final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
-        if (writeBuffer.overrunOccuredFlag) {
+    private void ensureStaging(int eventCapacity) {
+        if (eventCapacity <= 0) {
             return;
         }
+        if (stagingAddresses == null || stagingAddresses.length < eventCapacity) {
+            stagingAddresses = new int[eventCapacity];
+            stagingTimestamps = new int[eventCapacity];
+        }
+    }
 
+    /**
+     * Copies USB bytes and parses into thread-local staging (outside {@link AEPacketRawPool} lock).
+     * {@link S5KRC1SParser} state is only touched on the USB transfer thread.
+     */
+    private ParsedChunk parseUsbChunk(ByteBuffer buffer) {
         final int bytesAvailable = buffer.remaining();
         if (bytesAvailable == 0) {
-            return;
+            return ParsedChunk.EMPTY;
         }
         if ((bytesAvailable % 4) != 0) {
             log.warning("NRV packet size " + bytesAvailable + " is not a multiple of 4");
+        }
+
+        final int parseLimit;
+        synchronized (monitor.getAePacketRawPool()) {
+            if (monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag) {
+                return ParsedChunk.EMPTY;
+            }
+            parseLimit = monitor.getAEBufferSize() - monitor.getEventCounter();
+            if (parseLimit <= 0) {
+                return ParsedChunk.OVERFLOW;
+            }
         }
 
         if (parseScratch == null || parseScratch.length < bytesAvailable) {
             parseScratch = new byte[bytesAvailable];
         }
         buffer.duplicate().get(parseScratch, 0, bytesAvailable);
+        ensureStaging(parseLimit);
 
-        final int[] addresses = writeBuffer.getAddresses();
-        final int[] timestamps = writeBuffer.getTimestamps();
-        final int startEvent = monitor.getEventCounter();
-        writeBuffer.lastCaptureIndex = startEvent;
-
-        final int maxEvents = monitor.getAEBufferSize();
-        final int parsed = parser.parse(parseScratch, bytesAvailable, addresses, timestamps, startEvent, maxEvents);
-        monitor.accumulateUsbParseStats(parser.takeParseStats());
-
-        if (parsed < 0) {
-            final int committed = maxEvents - startEvent;
-            if (committed > 0) {
-                monitor.setEventCounter(maxEvents);
-                writeBuffer.setNumEvents(maxEvents);
-                writeBuffer.lastCaptureLength = committed;
-            }
-            writeBuffer.overrunOccuredFlag = true;
-            logOverrun(startEvent, maxEvents, committed);
-            return;
-        }
+        final int parsed = parser.parse(parseScratch, bytesAvailable,
+                stagingAddresses, stagingTimestamps, 0, parseLimit);
 
         if (parsed > 0) {
-            checkTimestampOrder(timestamps, startEvent, parsed);
+            checkTimestampOrder(stagingTimestamps, 0, parsed);
         }
+        return new ParsedChunk(parsed, parseLimit);
+    }
 
-        monitor.setEventCounter(startEvent + parsed);
-        writeBuffer.setNumEvents(monitor.getEventCounter());
-        writeBuffer.lastCaptureLength = parsed;
+    private void commitParsedChunk(ParsedChunk chunk) {
+        if (chunk == ParsedChunk.EMPTY) {
+            return;
+        }
+        synchronized (monitor.getAePacketRawPool()) {
+            final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
+            final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
+            if (writeBuffer.overrunOccuredFlag) {
+                return;
+            }
+
+            final int maxEvents = monitor.getAEBufferSize();
+            final int startEvent = monitor.getEventCounter();
+            writeBuffer.lastCaptureIndex = startEvent;
+            final int remaining = maxEvents - startEvent;
+
+            if (chunk == ParsedChunk.OVERFLOW || remaining <= 0) {
+                writeBuffer.overrunOccuredFlag = true;
+                logOverrun(startEvent, maxEvents, 0);
+                return;
+            }
+
+            if (chunk.parsed < 0) {
+                final int committed = Math.min(chunk.parseLimit, remaining);
+                if (committed > 0) {
+                    System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, committed);
+                    System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, committed);
+                    monitor.setEventCounter(startEvent + committed);
+                    writeBuffer.setNumEvents(monitor.getEventCounter());
+                    writeBuffer.lastCaptureLength = committed;
+                }
+                writeBuffer.overrunOccuredFlag = true;
+                logOverrun(startEvent, maxEvents, committed);
+                return;
+            }
+
+            final int toCopy = Math.min(chunk.parsed, remaining);
+            if (toCopy > 0) {
+                System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
+                System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
+            }
+            monitor.setEventCounter(startEvent + toCopy);
+            writeBuffer.setNumEvents(monitor.getEventCounter());
+            writeBuffer.lastCaptureLength = toCopy;
+        }
+    }
+
+    private static final class ParsedChunk {
+        static final ParsedChunk EMPTY = new ParsedChunk(0, 0);
+        static final ParsedChunk OVERFLOW = new ParsedChunk(-1, 0);
+
+        final int parsed;
+        final int parseLimit;
+
+        ParsedChunk(int parsed, int parseLimit) {
+            this.parsed = parsed;
+            this.parseLimit = parseLimit;
+        }
     }
 
     private void logOverrun(int startEvent, int maxEvents, int committed) {
@@ -273,15 +325,11 @@ public class NRVAEReader implements ReaderBufferControl {
             if (!active || monitor.isUsbTransferFailed()) {
                 return;
             }
-            final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
-            synchronized (aePacketRawPool) {
-                if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
-                    translateEvents(transfer.buffer());
-                    monitor.maybeLogTimestampStatsTable();
-                } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
-                    active = false;
-                    monitor.markUsbDisconnected(transfer.status());
-                }
+            if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                commitParsedChunk(parseUsbChunk(transfer.buffer()));
+            } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+                active = false;
+                monitor.markUsbDisconnected(transfer.status());
             }
         }
     }

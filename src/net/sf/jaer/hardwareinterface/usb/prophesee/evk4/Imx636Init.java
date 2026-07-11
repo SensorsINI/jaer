@@ -11,6 +11,8 @@ import net.sf.jaer.hardwareinterface.usb.prophesee.PropheseeBiases;
 
 /**
  * IMX636 ISSD init/start/stop for EVK4 (port of neuromorphic-drivers prophesee_evk4.rs open/Drop).
+ *
+ * @see https://www.prophesee.ai/
  */
 public final class Imx636Init {
 

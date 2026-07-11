@@ -27,6 +27,8 @@ import net.sf.jaer.hardwareinterface.usb.prophesee.evk4.Imx636Init;
 
 /**
  * LibUsb driver for Prophesee EVK4 HD (Sony IMX636, VID 0x04B4 PID 0x00F5).
+ *
+ * @see https://www.prophesee.ai/
  */
 public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEMonitorInterface,
         ReaderBufferControl, USBInterface {

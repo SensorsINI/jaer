@@ -162,7 +162,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip(rate, "showRateTrace", "shows a historical trace of event rate");
         setPropertyTooltip(rate, "maxSamples", "maximum number of samples before clearing rate history");
         setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
-        setPropertyTooltip(rate, "showPacketTimestampStats", "<html>Shows per-packet timestamp statistics for the displayed packet:<br>unique timestamps and minimum positive timestamp interval (us).");
+        setPropertyTooltip(rate, "showPacketTimestampStats", "<html>Overlay statistics for the displayed event packet (after upstream filters):<br>event count, unique timestamps, min positive Δt (µs), and span (µs).<br>Excludes events marked filtered-out.");
         setPropertyTooltip(time, "resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
         setPropertyTooltip(sparsity, "measureSparsity", "Report fraction of pixels with no events in last packet.");
         setPropertyTooltip(misc, "fontSize", "Font size for rendered text; scaled for chip size in pixels to render nicely.");
@@ -844,15 +844,20 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         if (!showPacketTimestampStats || lastPacketTimestampSpread.count <= 0) {
             return;
         }
-        final int sx = chip.getSizeX(), sy = chip.getSizeY();
+        final int sy = chip.getSizeY();
         final float yorig = .85f * sy;
         final TimestampSpread ts = lastPacketTimestampSpread;
         final String s;
         if (ts.count == 1) {
-            s = String.format("Packet: %s events, %d unique timestamp",
-                    engFmt.format(ts.count), ts.uniqueTs);
+            s = String.format("Displayed packet: 1 event, 1 timestamp");
+        } else if (ts.uniqueTs == 1) {
+            s = String.format("Displayed packet: %s events, 1 shared timestamp, span %d us",
+                    engFmt.format(ts.count), ts.spanUs);
+        } else if (ts.minStepUs <= 0) {
+            s = String.format("Displayed packet: %s events, %s unique timestamps, span %d us (no positive Δt)",
+                    engFmt.format(ts.count), engFmt.format(ts.uniqueTs), ts.spanUs);
         } else {
-            s = String.format("Packet: %s events, %s unique timestamps, min interval %d us, span %d us",
+            s = String.format("Displayed packet: %s events, %s unique timestamps, min Δt %d us, span %d us",
                     engFmt.format(ts.count), engFmt.format(ts.uniqueTs), ts.minStepUs, ts.spanUs);
         }
         DrawGL.drawString(fontSize, 0, yorig, 0, Color.white, s);

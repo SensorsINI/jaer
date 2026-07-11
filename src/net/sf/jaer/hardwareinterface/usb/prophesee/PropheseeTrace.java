@@ -10,6 +10,8 @@ import java.util.logging.Logger;
  * <li>{@code -Djaer.prophesee.trace.timestamps=true} — EVT3 timestamp FINE logs (2s throttle)</li>
  * </ul>
  * TODO(remove): delete this class once EVK4 live capture is verified stable.
+ *
+ * @see https://www.prophesee.ai/
  */
 final class PropheseeTrace {
 

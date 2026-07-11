@@ -20,6 +20,8 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
  * IMX636 bias control for Prophesee EVK4 HD.
  * Bias values live in the chip Preferences node and can be exported/imported as XML
  * via the Biases frame File menu (same mechanism as DVS128).
+ *
+ * @see https://www.prophesee.ai/
  */
 public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDisplayConfigInterface {
 

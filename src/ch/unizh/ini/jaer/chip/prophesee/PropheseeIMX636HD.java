@@ -19,6 +19,8 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * Prophesee EVK4 HD with Sony IMX636 (1280x720) over Cypress USB3, EVT3 events.
+ *
+ * @see https://www.prophesee.ai/
  */
 @Description("Prophesee EVK4 HD IMX636 1280x720")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)

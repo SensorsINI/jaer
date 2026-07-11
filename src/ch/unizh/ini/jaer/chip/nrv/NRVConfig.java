@@ -24,6 +24,8 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
 
 /**
  * Bias/configuration control for NRV cameras using SDK text settings files.
+ *
+ * @see https://nrv.kr/
  */
 public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayConfigInterface {
 

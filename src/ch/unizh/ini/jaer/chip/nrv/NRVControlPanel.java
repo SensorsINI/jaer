@@ -27,6 +27,8 @@ import net.sf.jaer.hardwareinterface.usb.nrv.NRVRegisterSetting;
  * NRV hardware configuration: user-friendly sliders and full register table.
  * Slider moves use {@link net.sf.jaer.biasgen.PotTweaker} undo; table edits
  * post undoable edits to the Biases frame undo manager.
+ *
+ * @see https://nrv.kr/
  */
 public class NRVControlPanel extends JPanel {
 

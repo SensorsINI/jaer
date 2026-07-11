@@ -19,6 +19,8 @@ import net.sf.jaer.hardwareinterface.usb.prophesee.evk4.Evk4BoardCommand;
 /**
  * USB bulk reader for Prophesee EVK4 (endpoint 0x81, EVT3).
  * Uses synchronous bulk reads (same path as neuromorphic-drivers flush/poll).
+ *
+ * @see https://www.prophesee.ai/
  */
 public class PropheseeAEReader implements ReaderBufferControl {
 

@@ -73,6 +73,7 @@ public final class TimestampSpread {
         int count = 0;
         int uniqueTs = 0;
         int minStep = Integer.MAX_VALUE;
+        int maxStep = 0;
         int firstTs = 0;
         int lastTs = 0;
         int prevTs = 0;
@@ -91,8 +92,13 @@ public final class TimestampSpread {
                 first = false;
             } else {
                 final int step = ts - prevTs;
-                if (step > 0 && step < minStep) {
-                    minStep = step;
+                if (step > 0) {
+                    if (step < minStep) {
+                        minStep = step;
+                    }
+                    if (step > maxStep) {
+                        maxStep = step;
+                    }
                 }
                 if (ts != prevTs) {
                     uniqueTs++;
@@ -110,6 +116,6 @@ public final class TimestampSpread {
         if (minStep == Integer.MAX_VALUE) {
             minStep = 0;
         }
-        return new TimestampSpread(count, uniqueTs, lastTs - firstTs, minStep, 0);
+        return new TimestampSpread(count, uniqueTs, lastTs - firstTs, minStep, maxStep);
     }
 }

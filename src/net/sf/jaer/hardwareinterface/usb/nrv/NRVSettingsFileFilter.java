@@ -6,6 +6,8 @@ import javax.swing.filechooser.FileFilter;
 
 /**
  * File filter for NRV SDK bias settings files (*.txt).
+ *
+ * @see https://nrv.kr/
  */
 public class NRVSettingsFileFilter extends FileFilter {
 

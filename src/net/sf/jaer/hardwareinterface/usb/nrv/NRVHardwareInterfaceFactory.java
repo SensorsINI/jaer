@@ -23,6 +23,8 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 /**
  * Enumerates NRV DVS cameras (Cypress 0x04B4:0x00F0 and 0x04B4:0x00F1).
+ *
+ * @see https://nrv.kr/
  */
 public class NRVHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
 

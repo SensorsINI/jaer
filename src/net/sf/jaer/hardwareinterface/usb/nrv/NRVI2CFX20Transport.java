@@ -11,6 +11,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 /**
  * FX20 (PID 0x00F0) I2C via vendor requests 0xBA (write) / 0xAB (read).
  * Write uses a 4-byte payload: slave, addrH, addrL, value.
+ *
+ * @see https://nrv.kr/
  */
 public class NRVI2CFX20Transport implements NRVI2CTransport {
 

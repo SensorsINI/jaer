@@ -11,6 +11,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 /**
  * CX3 (PID 0x00F1) I2C via vendor requests 0xBA (write) / 0xAB (read).
  * wValue = slave address, wIndex = register address, 1–2 byte payload.
+ *
+ * @see https://nrv.kr/
  */
 public class NRVI2CCX3Transport implements NRVI2CTransport {
 

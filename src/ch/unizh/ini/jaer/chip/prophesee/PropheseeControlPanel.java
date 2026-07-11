@@ -25,6 +25,8 @@ import net.sf.jaer.chip.AEChip;
 /**
  * IMX636 bias sliders for Prophesee EVK4 HD.
  * Slider moves post undoable edits to the Biases frame toolbar; Revert reloads saved prefs.
+ *
+ * @see https://www.prophesee.ai/
  */
 public class PropheseeControlPanel extends JPanel implements PropertyChangeListener {
 

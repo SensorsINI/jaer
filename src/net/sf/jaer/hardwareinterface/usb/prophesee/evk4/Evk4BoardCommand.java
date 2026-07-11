@@ -13,6 +13,8 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
  * Treuzell bulk control for Prophesee EVK4 (port of neuromorphic-drivers request/register I/O).
+ *
+ * @see https://www.prophesee.ai/
  */
 public final class Evk4BoardCommand {
 

@@ -23,6 +23,8 @@ import net.sf.jaer.hardwareinterface.usb.USBInterface;
 
 /**
  * Enumerates Prophesee EVK4 HD cameras (Cypress 0x04B4:0x00F5).
+ *
+ * @see https://www.prophesee.ai/
  */
 public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
 

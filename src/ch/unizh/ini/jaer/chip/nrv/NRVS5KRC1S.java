@@ -19,6 +19,8 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
 
 /**
  * NRV S5KRC1S DVS sensor (960x720) over Cypress USB3.
+ *
+ * @see https://nrv.kr/
  */
 @Description("NRV S5KRC1S 960x720 DVS camera")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)

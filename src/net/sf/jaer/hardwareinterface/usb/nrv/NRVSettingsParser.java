@@ -9,6 +9,8 @@ import java.util.List;
 
 /**
  * Parses NRV SDK bias settings text files (//@ headers, slv:addr=val, wait N).
+ *
+ * @see https://nrv.kr/
  */
 public class NRVSettingsParser {
 

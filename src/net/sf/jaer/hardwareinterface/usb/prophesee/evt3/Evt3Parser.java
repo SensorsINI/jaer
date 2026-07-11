@@ -2,6 +2,8 @@ package net.sf.jaer.hardwareinterface.usb.prophesee.evt3;
 
 /**
  * EVT3 decoder for Prophesee IMX636 (Metavision/openeb evt3_decoder.h).
+ *
+ * @see https://www.prophesee.ai/
  */
 public class Evt3Parser {
 

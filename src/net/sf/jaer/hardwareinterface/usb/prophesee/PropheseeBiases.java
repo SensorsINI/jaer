@@ -2,6 +2,8 @@ package net.sf.jaer.hardwareinterface.usb.prophesee;
 
 /**
  * IMX636 bias values (idac_ctl bytes). Defaults from neuromorphic-drivers prophesee_evk4.
+ *
+ * @see https://www.prophesee.ai/
  */
 public class PropheseeBiases {
 

@@ -24,6 +24,8 @@ import net.sf.jaer.hardwareinterface.usb.nrv.NRVRegisterSetting;
 
 /**
  * Simplified NRV controls: brightness, ON/OFF balance, and timestamp timing.
+ *
+ * @see https://nrv.kr/
  */
 public class NRVUserControlPanel extends JPanel implements PropertyChangeListener {
 
