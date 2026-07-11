@@ -88,7 +88,7 @@ public class PreferencesMover {
     public static OldPrefsCheckResult hasOldChipPreferences(Chip chip) {
         try {
             Preferences prefs = chip.getPrefs();
-            Preferences oldPrefs = Preferences.userNodeForPackage(chip.getClass());
+            Preferences oldPrefs = Preferences.userRoot().node(chip.prefsNodeNameOriginal());
             boolean hasOldPref = false;
             String lastkey = null;
             for (String s : oldPrefs.keys()) {
@@ -120,7 +120,7 @@ public class PreferencesMover {
         try {
             Chip chip = filter.getChip();
             Preferences prefs = chip.getPrefs();
-            Preferences oldPrefs = Preferences.userNodeForPackage(chip.getClass());
+            Preferences oldPrefs = Preferences.userRoot().node(filter.getChip().prefsNodeNameOriginal());
             final String filterSimpleName = filter.getClass().getSimpleName();
             final String chipSimpleName = chip.getClass().getSimpleName();
             boolean hasOldPref = false;

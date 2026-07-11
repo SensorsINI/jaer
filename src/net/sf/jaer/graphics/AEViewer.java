@@ -83,8 +83,8 @@ import java.util.logging.ConsoleHandler;
 import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.retina.*;
-import ch.unizh.ini.jaer.chip.nrv.NRVS5KRC1S;
-import ch.unizh.ini.jaer.chip.prophesee.PropheseeIMX636HD;
+import nrv.chip.NRVS5KRC1S;
+import prophesee.chip.PropheseeIMX636HD;
 import com.google.common.collect.EvictingQueue;
 import eu.seebetter.ini.chips.davis.*;
 import java.awt.Container;

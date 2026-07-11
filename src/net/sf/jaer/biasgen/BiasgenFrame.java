@@ -38,9 +38,9 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.util.RecentFiles;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.XMLFileFilter;
-import ch.unizh.ini.jaer.chip.nrv.NRVConfig;
-import ch.unizh.ini.jaer.chip.prophesee.PropheseeConfig;
-import net.sf.jaer.hardwareinterface.usb.nrv.NRVSettingsFileFilter;
+import nrv.chip.NRVConfig;
+import prophesee.chip.PropheseeConfig;
+import nrv.usb.NRVSettingsFileFilter;
 
 /**
  * A generic application frame for controlling a bias generator. You build the
