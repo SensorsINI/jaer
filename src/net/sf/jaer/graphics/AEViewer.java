@@ -285,6 +285,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
     private ViewLoop viewLoop = new ViewLoop();
+    /** WIP experimental: max wait for ViewLoop exit before {@link System#exit(int)}. */
+    private static final long VIEWLOOP_EXIT_JOIN_TIMEOUT_MS = 3000;
     FilterChain filterChain = null;
     private FilterFrame filterFrame = null;
     RecentFiles recentFiles = null;
@@ -4390,7 +4392,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((biasgenFrame != null) && !biasgenFrame.isModificationsSaved()) {
                 return;
             }
-            viewLoop.stopThread();
+            stopViewLoopForExit();
             cleanup();
 
             if (jaerViewer.getViewers().size() == 1) {
@@ -5603,6 +5605,38 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
     }
 
+    /**
+     * WIP experimental: stop ViewLoop and wait briefly so JVM shutdown is not
+     * blocked by this non-daemon thread stuck in wait/sleep/USB/JOGL.
+     */
+    private void stopViewLoopForExit() {
+        if (viewLoop == null) {
+            return;
+        }
+        viewLoop.stopThread();
+        interruptViewloop();
+        synchronized (viewLoop) {
+            viewLoop.notifyAll();
+        }
+        if (!viewLoop.isAlive()) {
+            log.info("AEViewer.ViewLoop already exited before shutdown");
+            return;
+        }
+        try {
+            viewLoop.join(VIEWLOOP_EXIT_JOIN_TIMEOUT_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warning("interrupted while waiting for AEViewer.ViewLoop exit");
+        }
+        if (viewLoop.isAlive()) {
+            log.warning(String.format(
+                    "AEViewer.ViewLoop still alive after %d ms; JVM exit may hang",
+                    VIEWLOOP_EXIT_JOIN_TIMEOUT_MS));
+        } else {
+            log.info("AEViewer.ViewLoop exited before shutdown");
+        }
+    }
+
     public void reopenSocketInputStream() throws HeadlessException {
         log.info("closing and reopening socket " + aeSocket);
         if (aeSocket != null) {
@@ -5912,7 +5946,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
 
-            viewLoop.stopThread();
+            stopViewLoopForExit();
             cleanup();
 
             dispose();
