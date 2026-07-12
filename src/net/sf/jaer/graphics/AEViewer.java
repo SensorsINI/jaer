@@ -2389,22 +2389,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         //        private String statLabel = null;
         private StringBuilder sb = new StringBuilder(100);
         private float thisTime = Float.NaN;
+        /** Empty live polls before status shows "waiting for events" (not one empty swap). */
+        private static final int LIVE_WAITING_LABEL_EMPTY_PACKET_THRESHOLD = 50;
+        private int consecutiveEmptyLivePackets = 0;
 
         private void makeStatisticsLabel(EventPacket packet) {
-            if (((renderCount % 10) == 0) || isPaused() || isSingleStep() || (getFrameRater().getDesiredFPS() <= 30) || (getFrameRater().getLastDtNs() > 10000000L)) {  // don't draw stats too fast
-                if (getAePlayer().isChoosingFile()) {
-                    return;
-                } // don't render stats while user is choosing file
-                if (packet == null) {
-                    return;
-                }
-                if (packet.getSize() == 0) {
-                    if ((getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)
-                            && aemon != null && aemon.isOpen()) {
+            if (getAePlayer().isChoosingFile()) {
+                return;
+            }
+            if (packet == null) {
+                return;
+            }
+            if (packet.getSize() == 0) {
+                if ((getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING)
+                        && aemon != null && aemon.isOpen()) {
+                    consecutiveEmptyLivePackets++;
+                    if (consecutiveEmptyLivePackets >= LIVE_WAITING_LABEL_EMPTY_PACKET_THRESHOLD) {
                         setStatisticsLabel("Live: " + aemon + " — waiting for events");
                     }
-                    return;
                 }
+                return;
+            }
+            consecutiveEmptyLivePackets = 0;
+            appendStatisticsLabelForPacket(packet);
+        }
+
+        private void appendStatisticsLabelForPacket(EventPacket packet) {
                 float dtMs = getDtMs(packet);
                 String timeSliceString = String.format("%10ss", engFmt.format(dtMs / 1000));
 
@@ -2512,7 +2522,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 } else {
                     statisticsLabel.setForeground(Color.BLACK);
                 }
-            }
         }
     }
 
