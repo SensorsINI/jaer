@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../Eric Ryu NRV software/DVS_Viewer, SDK, FX10, FX20"
+		},
+		{
+			"path": "../../../Eric Ryu NRV software/DVS_Viewer-main"
+		}
+	],
+	"settings": {
+		"terminal.integrated.automationProfile.windows": {
+			"path": "powershell.exe",
+			"args": [
+				"-NoLogo"
+			]
+		},
+		"powershell.cwd": "jaer"
+	}
+}
