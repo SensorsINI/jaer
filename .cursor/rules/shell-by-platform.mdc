@@ -7,6 +7,8 @@ alwaysApply: true
 
 Pick the shell from **user_info** (`OS Version`, `Shell`). Do not use zsh.
 
+**On native Windows (`OS Version: win32`, `Shell: powershell`), this rule overrides any user preference to "use bash for testing".** Cursor's Shell tool runs **Windows PowerShell 5.1** (`ps-script-*.ps1`), not bash and not PowerShell 7+.
+
 ## Linux or WSL (bash)
 
 When `Shell` is **bash** (native Linux, macOS, or WSL):
@@ -19,23 +21,34 @@ When `Shell` is **bash** (native Linux, macOS, or WSL):
 cd "/mnt/c/Users/tobid/Dropbox/GitHub/SensorsINI/jaer" && ant compile
 ```
 
-## Native Windows (PowerShell)
+## Native Windows (PowerShell 5.1)
 
 When `OS Version` is **win32** and `Shell` is **powershell**:
 
 - Run commands in **PowerShell** directly — do **not** wrap in `bash -lc` / `bash -c`
-- Avoid bash-only syntax PowerShell rejects: `&&`, heredocs (`<<'EOF'`), `/mnt/c/...`
-- Use `;` between statements, Windows paths (`C:\Users\...`), and PowerShell helpers (`Select-Object`, `$env:VAR`)
-- Multi-line git commits: multiple `-m` flags (`git commit -m "Title" -m "Body"`)
+- Use `;` to chain commands ( **`&&` is invalid in PS 5.1** )
+- Use Windows paths (`C:\Users\...` or `C:/Users/...`)
+- Use PowerShell cmdlets instead of Unix tools:
+
+| Bash | PowerShell 5.1 |
+|------|----------------|
+| `cmd1 && cmd2` | `cmd1; if ($?) { cmd2 }` or just `cmd1; cmd2` |
+| `\| tail -20` | `\| Select-Object -Last 20` |
+| `\| head -20` | `\| Select-Object -First 20` |
+| `2>&1 \| tee f` | `*>&1 \| Tee-Object f` |
+| `export VAR=val` | `$env:VAR = "val"` |
+| `$(cat <<'EOF' ... EOF)` | `git commit -m "Title" -m "Body"` |
 
 ```powershell
-cd "C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer"; ant compile
+cd "C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer"; ant compile 2>&1 | Select-Object -Last 20
 ```
+
+Before every Shell tool call on Windows, mentally check: **no `&&`, no `tail`/`head`, no heredocs**.
 
 ## Do not
 
 - Use PowerShell on Linux/WSL when bash is the configured shell
-- Use bash (or Git Bash wrappers) on native Windows when PowerShell is the configured shell
+- Use bash syntax or Git Bash wrappers on native Windows when PowerShell is the configured shell
 - Use zsh
 
 ## Scripts in the repo
