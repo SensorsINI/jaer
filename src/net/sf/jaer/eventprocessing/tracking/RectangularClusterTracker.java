@@ -124,7 +124,7 @@ public class RectangularClusterTracker extends EventFilter2D
     @Preferred
     protected boolean useVelocity = getBoolean("useVelocity", true); // enabling this enables both computation and rendering of cluster velocities event, not the first containing it will cause cluster to substantially lead the events, then slow down, speedup, etc.
     @Preferred
-    protected boolean showAllClusters = getBoolean("showAllClusters", false);
+    protected boolean showAllClusters = getBoolean("showAllClusters", true);
     @Preferred
     protected boolean useNearestCluster = getBoolean("useNearestCluster", true); // use the nearest cluster to an
     protected float predictiveVelocityFactor = getFloat("predictiveVelocityFactor", 1);
@@ -142,6 +142,15 @@ public class RectangularClusterTracker extends EventFilter2D
     private float eventRatePerPixelLowpassTauS = getFloat("eventRatePerPixelLowpassTauS", 0.1f);
     @Preferred
     private float thresholdEventRatePerPixelForVisibleClusterHz = getFloat("thresholdEventRatePerPixelForVisibleClusterHz", 10f);
+    
+    @Preferred
+    @Description("Limit the cluster speed to nearby cluster speeds to avoid outliers")
+    private boolean limitSpeedByNearbyClusters = getBoolean("limitSpeedByNearbyClusters", true);
+    /**
+     * Clusters within this multiple of (radius + other.radius) are nearby for
+     * {@link #limitSpeedByNearbyClusters}.
+     */
+    private float nearbySpeedLimitRadiusScale = getFloat("nearbySpeedLimitRadiusScale", 3f);
 
     @Preferred
     protected float thresholdVelocityForVisibleCluster = getFloat("thresholdVelocityForVisibleCluster", 0);
@@ -319,6 +328,10 @@ public class RectangularClusterTracker extends EventFilter2D
         setPropertyTooltip(mov, "useOnePolarityOnlyEnabled", "use only one event polarity");
         setPropertyTooltip(mov, "useOffPolarityOnlyEnabled", "use only OFF events, not ON - if useOnePolarityOnlyEnabled");
         setPropertyTooltip(mov, "velocityInitialization", "Method to initialize cluster velocity vector");
+        setPropertyTooltipBold(mov, "limitSpeedByNearbyClusters",
+                "if a cluster is faster than every nearby visible cluster, cap its speed to that nearby maximum to reject velocity outliers");
+        setPropertyTooltip(mov, "nearbySpeedLimitRadiusScale",
+                "clusters within this multiple of (radius1+radius2) count as nearby for limitSpeedByNearbyClusters");
 
         setPropertyTooltip(mov, "angleFollowsVelLead", "How much to lead the velocity to catch fast movements; 1 leads completely, 0 lags.");
         setPropertyTooltip(mov, "angleFollowsVelocity", "cluster angle is set by velocity vector angle; requires that useVelocity is on");
@@ -927,6 +940,7 @@ public class RectangularClusterTracker extends EventFilter2D
         }
         log.fine(String.format("Updating clusters at t=%,d", t));
 
+        limitClusterSpeedsByNearbyClusters(); // before location prediction so outliers do not jump ahead
         updateClusterLocations(t);
         updateClusterPaths(t);
         updateClusterMasses(t);
@@ -935,6 +949,52 @@ public class RectangularClusterTracker extends EventFilter2D
         mergeClusters(); // adds pruned clusters to list
         pruneClusters(t); // clears pruneList after pruning
         lastUpdateTimestamp = t;
+    }
+
+    /**
+     * Caps each cluster's speed to the maximum speed of nearby visible
+     * clusters. A cluster with no nearby visible reference clusters is left
+     * unchanged. Nearby means distance &lt;=
+     * {@code nearbySpeedLimitRadiusScale} * (r1 + r2). Velocity lowpass
+     * filters are synced so the limit sticks across subsequent events.
+     */
+    protected void limitClusterSpeedsByNearbyClusters() {
+        if (!limitSpeedByNearbyClusters || (clusters.size() < 2)) {
+            return;
+        }
+        for (Cluster c : clusters) {
+            if (!c.isVelocityValid()) {
+                continue;
+            }
+            float mySpeed = c.getSpeedPPS();
+            if (mySpeed <= 0) {
+                continue;
+            }
+            float maxNearbySpeed = 0;
+            int nearbyCount = 0;
+            for (Cluster other : clusters) {
+                if ((other == c) || !other.isVelocityValid() || !other.isVisible()) {
+                    continue;
+                }
+                float nearThresh = nearbySpeedLimitRadiusScale * (c.getRadius() + other.getRadius());
+                if (c.distanceTo(other) <= nearThresh) {
+                    float s = other.getSpeedPPS();
+                    if (s > maxNearbySpeed) {
+                        maxNearbySpeed = s;
+                    }
+                    nearbyCount++;
+                }
+            }
+            if ((nearbyCount == 0) || (mySpeed <= maxNearbySpeed)) {
+                continue;
+            }
+            // maxNearbySpeed can be 0 if all nearby visible clusters are stopped
+            float scale = (maxNearbySpeed > 0) ? (maxNearbySpeed / mySpeed) : 0;
+            c.velocity.x *= scale;
+            c.velocity.y *= scale;
+            c.velFilterX.setInternalValue(c.velocity.x);
+            c.velFilterY.setInternalValue(c.velocity.y);
+        }
     }
 
     private void updateVisibilities(int t) {
@@ -4306,6 +4366,43 @@ public class RectangularClusterTracker extends EventFilter2D
     public void setZoomHUD(boolean zoomHUD) {
         this.zoomHUD = zoomHUD;
         putBoolean("zoomHUD", zoomHUD);
+    }
+
+    /**
+     * @return the limitSpeedByNearbyClusters
+     */
+    public boolean isLimitSpeedByNearbyClusters() {
+        return limitSpeedByNearbyClusters;
+    }
+
+    /**
+     * @param limitSpeedByNearbyClusters the limitSpeedByNearbyClusters to set
+     */
+    public void setLimitSpeedByNearbyClusters(boolean limitSpeedByNearbyClusters) {
+        boolean old = this.limitSpeedByNearbyClusters;
+        this.limitSpeedByNearbyClusters = limitSpeedByNearbyClusters;
+        putBoolean("limitSpeedByNearbyClusters", limitSpeedByNearbyClusters);
+        getSupport().firePropertyChange("limitSpeedByNearbyClusters", old, limitSpeedByNearbyClusters);
+    }
+
+    /**
+     * @return the nearbySpeedLimitRadiusScale
+     */
+    public float getNearbySpeedLimitRadiusScale() {
+        return nearbySpeedLimitRadiusScale;
+    }
+
+    /**
+     * @param nearbySpeedLimitRadiusScale the nearbySpeedLimitRadiusScale to set
+     */
+    public void setNearbySpeedLimitRadiusScale(float nearbySpeedLimitRadiusScale) {
+        float old = this.nearbySpeedLimitRadiusScale;
+        if (nearbySpeedLimitRadiusScale < 0) {
+            nearbySpeedLimitRadiusScale = 0;
+        }
+        this.nearbySpeedLimitRadiusScale = nearbySpeedLimitRadiusScale;
+        putFloat("nearbySpeedLimitRadiusScale", nearbySpeedLimitRadiusScale);
+        getSupport().firePropertyChange("nearbySpeedLimitRadiusScale", old, nearbySpeedLimitRadiusScale);
     }
 
     private ZoomHUDObject zoomHUDObject = null;
