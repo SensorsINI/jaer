@@ -2,5 +2,16 @@
     "terminal.integrated.automationProfile.windows": {
         "path": "cmd.exe",
         "args": ["/d", "/c"]
-    }
+    },
+    "java.project.sourcePaths": [
+        "src"
+    ],
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "jars/**/*.jar",
+        "subprojects/**/jars/**/*.jar"
+    ],
+    "java.import.gradle.enabled": false,
+    "java.import.maven.enabled": false,
+    "java.configuration.updateBuildConfiguration": "automatic"
 }
