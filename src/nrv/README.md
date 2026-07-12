@@ -44,7 +44,9 @@ Notes learned in practice:
 - jAER relative timestamps wrap at signed 32-bit (~2147 s) unless the user re-zeros with **`0`** (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV).
 - Timestamp cadence in the USB stream is set by I2C **`TSTAMP_SUB_UNIT_VAL`** (`0x32B1:32B2`, LSB exposed in UI as `0x32B2`) and **`TSTAMP_REF_UNIT_VAL`** (`0x32B3:32B4`). Factory presets scale SUB with nominal output rate (e.g. 100 fps → `0x0B`, 1000 fps → `0x7D`); **lower SUB → more frequent sub-timestamp packets**.
 
-Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk.
+Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). With timing trace, each USB chunk also logs `NRV chunk ts span: … spanUs=…`. Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).
+
+**Sub-timestamp scaling:** 10-bit sub fields (ref/sub packets and column `0x04` embed) are scaled as `index × (TSTAMP_REF+1) / TSTAMP_SUB` µs within each ref ms (not raw µs when SUB is low). Column packets update `fullTimeStampUs` at each column address. Timing trace reports `maxChunkSpanUs` per interval.
 
 ## Biasing and settings files
 
