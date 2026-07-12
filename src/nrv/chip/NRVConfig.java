@@ -45,11 +45,23 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public static final int REG_ON_UNIT = 0x0167;
     /** EVTH_OFF_LSB_r [5:0] (SDK: REG_DIV_BCM_BOT_UNIT_nOFF). */
     public static final int REG_OFF_UNIT = 0x0168;
-    /** TSTAMP_SUB_UNIT_VAL_r LSB — interval between sub-timestamp USB packets. */
+    /** TSTAMP_SUB_UNIT_VAL_r MSB/LSB — interval between sub-timestamp USB packets. */
+    public static final int REG_TSTAMP_SUB_UNIT_MSB = 0x32B1;
     public static final int REG_TSTAMP_SUB_UNIT_LSB = 0x32B2;
-    /** DTAG_FRM_MARGIN_r LSB — frame period (lower → faster frames / finer event timestamps). */
+    /**
+     * DTAG_FRM_MARGIN_r MSB/LSB ({@code 0x321D:321E}) — primary scan-rate / readout frame period.
+     * SDK: {@code 1 LSB × 2^12 × event_clock_period}.
+     */
     public static final int REG_DTAG_FRM_MARGIN_MSB = 0x321D;
     public static final int REG_DTAG_FRM_MARGIN_LSB = 0x321E;
+    /** Other Scan Rate Setting registers (from settings .txt; editable in full table). */
+    public static final int REG_DTAG_MODE = 0x320C;
+    public static final int REG_DTAG_SELX = 0x3216;
+    public static final int REG_DTAG_SENSE = 0x3217;
+    public static final int REG_DTAG_AY = 0x3218;
+    public static final int REG_DTAG_AY_RST_GAP = 0x3219;
+    public static final int REG_DTAG_APS_RST = 0x321A;
+    public static final int REG_DTAG_COL_MARGIN = 0x321C;
     /** OUTIF to_scnt0 — event-clock tick (factory presets: 0x7C → 1 µs). */
     public static final int REG_TO_SCNT0 = 0x3911;
     /** TSTAMP_REF_UNIT_VAL_r MSB/LSB — sub-µs field spans 0..ref within each ref ms. */
@@ -71,11 +83,43 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public static final String PROPERTY_ON_OFF_BALANCE = "nrvOnOffBalance";
     public static final String PROPERTY_TIMESTAMP_SUB = "nrvTimestampSub";
     public static final String PROPERTY_FRAME_MARGIN = "nrvFrameMargin";
+    public static final String PROPERTY_SCAN_RATE_HZ = "nrvScanRateHz";
     public static final String PROPERTY_REGISTER_UPDATED = "nrvRegisterUpdated";
 
     private static final float TWEAK_MAX_RATIO = 8f;
     private static final int REG_VALUE_MIN = 1;
     private static final int REG_VALUE_MAX = 0x3F;
+
+    /** Scan-rate slider range (vendor presets claim ~100–2000 fps; NRV marketing cites up to 2 kHz). */
+    public static final int SCAN_RATE_HZ_MIN = 100;
+    public static final int SCAN_RATE_HZ_MAX = 2000;
+
+    /**
+     * Registers in the settings-file “Scan Rate Setting” block that dominate column/frame timing.
+     * {@code DTAG_FRM_MARGIN} alone cannot reach 1–2 kHz under the ×2^12 padding formula.
+     */
+    private static final int[] SCAN_RATE_REGS = {
+            0x320C, 0x3210, 0x3211, 0x3212, 0x3213, 0x3214, 0x3215,
+            REG_DTAG_SELX, REG_DTAG_SENSE, REG_DTAG_AY, REG_DTAG_AY_RST_GAP, REG_DTAG_APS_RST,
+            REG_DTAG_COL_MARGIN, REG_DTAG_FRM_MARGIN_MSB, REG_DTAG_FRM_MARGIN_LSB
+    };
+
+    /**
+     * Known Scan Rate Setting anchors from factory {@code S5KRC1S_*} files (nominal Hz → register bytes).
+     * {@code -1} = not present in that preset (keep / take other endpoint when interpolating).
+     * <p>
+     * Note: CX3 100/300/600 share the same scan-rate registers (only {@code TSTAMP_SUB} differs);
+     * 1000 and 2000 change the full DTAG timing block. The ×2^12 FRM_MARGIN note is padding only.
+     */
+    private static final int[] SCAN_ANCHOR_HZ = {100, 1000, 2000};
+    private static final int[][] SCAN_ANCHOR_REGS = {
+            // 100 (CX3 slow block; also used by 300/600 scan section)
+            {0x1D, 0x1E, 0x00, 0x07, 0x1D, 0x00, 0x00, 0x04, 0x1C, 0x0C, 0x05, 0x07, 0x02, 0x00, 0x0F},
+            // 1000 CX3
+            {0x1D, 0x19, 0x00, 0x00, 0x04, 0x00, 0x00, 0x1A, 0x1B, 0x0C, 0x14, 0x1C, 0x02, 0x00, 0x02},
+            // 2000 FX10
+            {0x7D, -1, -1, -1, -1, -1, -1, 0x04, 0x02, 0x0C, 0x05, 0x07, 0x04, 0x00, 0x01}
+    };
 
     private NRVControlPanel controlPanel;
     private String settingsDescription = "";
@@ -96,6 +140,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     private int baselineOffUnit = 0x1F;
     private int baselineTimestampSub = 0x21;
     private int baselineFrameMargin = 0x02;
+    /** Target sensor scan / frame-end rate from the user slider (nominal Hz). */
+    private int scanRateHz = 300;
 
     public NRVConfig(Chip chip) {
         super(chip);
@@ -119,6 +165,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, file);
         support.firePropertyChange(PROPERTY_THRESHOLD, null, thresholdTweak);
         support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, null, onOffBalanceTweak);
+        support.firePropertyChange(PROPERTY_SCAN_RATE_HZ, null, scanRateHz);
     }
 
     private void parseSettingsFile(File file) throws IOException {
@@ -129,6 +176,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         captureBaselinesFromSettings();
         thresholdTweak = 0f;
         onOffBalanceTweak = 0f;
+        scanRateHz = estimateNominalScanRateHzFromFile();
         if (controlPanel != null) {
             controlPanel.updateSettings(loadedSettings, settingsDescription, loadedFile);
         }
@@ -201,7 +249,11 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         baselineOnUnit = registerValueOrDefault(REG_ON_UNIT, 0x07);
         baselineOffUnit = registerValueOrDefault(REG_OFF_UNIT, 0x1F);
         baselineTimestampSub = registerValueOrDefault(REG_TSTAMP_SUB_UNIT_LSB, 0x21);
-        baselineFrameMargin = registerValueOrDefault(REG_DTAG_FRM_MARGIN_LSB, 0x02);
+        baselineFrameMargin = ((registerValueOrDefault(REG_DTAG_FRM_MARGIN_MSB, 0) & 0xFF) << 8)
+                | (registerValueOrDefault(REG_DTAG_FRM_MARGIN_LSB, 0x02) & 0xFF);
+        if (baselineFrameMargin <= 0) {
+            baselineFrameMargin = 0x02;
+        }
     }
 
     private int registerValueOrDefault(int regAddr, int defaultValue) {
@@ -250,8 +302,17 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         return getRegisterValue(REG_TSTAMP_SUB_UNIT_LSB);
     }
 
+    /** Combined TSTAMP_SUB_UNIT_VAL ({@code 0x32B1:32B2}). */
+    public int getTimestampSubUnitCombined() {
+        return (getRegisterValue(REG_TSTAMP_SUB_UNIT_MSB) << 8)
+                | (getRegisterValue(REG_TSTAMP_SUB_UNIT_LSB) & 0xFF);
+    }
+
+    /**
+     * Combined DTAG_FRM_MARGIN ({@code 0x321D:321E}). Prefer {@link #getFrameMarginCombined()}.
+     */
     public int getFrameMargin() {
-        return getRegisterValue(REG_DTAG_FRM_MARGIN_LSB);
+        return getFrameMarginCombined();
     }
 
     /** EVTH MSB bit from {@link #REG_EVTH_MSB}: 4=REF, 3=ON, 2=OFF. */
@@ -368,37 +429,50 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     /**
-     * Sensor frame period in µs: {@code DTAG_FRM_MARGIN × 2^12 × event_clock_period}
-     * (SDK note on DTAG_FRM_MARGIN_r_LSB).
+     * FRM_MARGIN padding duration in µs from the SDK note
+     * {@code 1 LSB × 2^12 × event_clock}. This is <b>not</b> the full sensor frame period —
+     * column scan timing ({@code 0x3216}–{@code 0x321C}, etc.) dominates at high rates.
      */
-    public float getFramePeriodUs() {
-        final int margin = getFrameMarginCombined();
-        if (margin <= 0) {
-            return Float.NaN;
-        }
-        return margin * 4096f * getEventClockPeriodUs();
+    public float getFrmMarginPaddingUs() {
+        return getFrmMarginPaddingUsForMargin(getFrameMarginCombined());
     }
 
-    /** Readout frame rate in Hz from frame-margin and event-clock registers. */
-    public float getReadoutFrameRateHz() {
-        return getReadoutFrameRateHzForMargin(getFrameMarginCombined());
-    }
-
-    /** Frame rate for a combined DTAG_FRM_MARGIN value (for slider preview). */
-    public float getReadoutFrameRateHzForMargin(int marginCombined) {
-        if (marginCombined <= 0) {
-            return Float.NaN;
-        }
-        final float periodUs = marginCombined * 4096f * getEventClockPeriodUs();
-        return 1_000_000f / periodUs;
-    }
-
-    /** Frame period in µs for a combined DTAG_FRM_MARGIN value. */
-    public float getFramePeriodUsForMargin(int marginCombined) {
+    public float getFrmMarginPaddingUsForMargin(int marginCombined) {
         if (marginCombined <= 0) {
             return Float.NaN;
         }
         return marginCombined * 4096f * getEventClockPeriodUs();
+    }
+
+    /**
+     * @deprecated Misleading: only FRM_MARGIN padding under ×2^12, not true scan rate.
+     * Use {@link #getScanRateHz()} / {@link #setScanRateHz(int)}.
+     */
+    @Deprecated
+    public float getFramePeriodUs() {
+        return getFrmMarginPaddingUs();
+    }
+
+    /** @deprecated Use {@link #getScanRateHz()}. */
+    @Deprecated
+    public float getReadoutFrameRateHz() {
+        return scanRateHz;
+    }
+
+    /** @deprecated Use {@link #getScanRateHz()}. */
+    @Deprecated
+    public float getReadoutFrameRateHzForMargin(int marginCombined) {
+        final float pad = getFrmMarginPaddingUsForMargin(marginCombined);
+        if (Float.isNaN(pad) || pad <= 0) {
+            return Float.NaN;
+        }
+        return 1_000_000f / pad;
+    }
+
+    /** @deprecated Use {@link #getFrmMarginPaddingUsForMargin(int)}. */
+    @Deprecated
+    public float getFramePeriodUsForMargin(int marginCombined) {
+        return getFrmMarginPaddingUsForMargin(marginCombined);
     }
 
     /** Combined TSTAMP_REF_UNIT_VAL (0x32B3:32B4). */
@@ -423,19 +497,214 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         return (getTstampRefUnitVal() + 1f) / subUnit;
     }
 
+    public int getScanRateHz() {
+        return scanRateHz;
+    }
+
     /**
-     * Sets TSTAMP sub-unit (0x32B2). Lower values can increase sub-timestamp rate within a frame;
-     * factory presets use 0x0B..0x7D. Values below ~0x0B may behave poorly.
+     * Sets the nominal sensor scan / frame-end rate by interpolating the full
+     * Scan Rate Setting register block between factory anchors (100 / 1000 / 2000 Hz).
+     * Also updates {@code TSTAMP_SUB} to the vendor pairing for that rate.
+     * <p>
+     * True frame-end rate should be verified from USB {@code 0x0C} frame-end packets;
+     * {@code DTAG_FRM_MARGIN × 2^12 × clk} alone cannot explain 1–2 kHz.
+     */
+    public void setScanRateHz(int hz) {
+        hz = clampScanRateHz(hz);
+        final int old = scanRateHz;
+        if (old == hz) {
+            return;
+        }
+        scanRateHz = hz;
+        try {
+            applyScanRateRegisters(hz);
+            final int sub = timestampSubForScanRateHz(hz);
+            if (getTimestampSubUnit() != sub) {
+                applyTweakRegister(REG_TSTAMP_SUB_UNIT_LSB, sub);
+            }
+        } catch (HardwareInterfaceException e) {
+            scanRateHz = old;
+            log.warning("NRV scan-rate apply failed: " + e.getMessage());
+            return;
+        }
+        support.firePropertyChange(PROPERTY_SCAN_RATE_HZ, old, hz);
+        support.firePropertyChange(PROPERTY_FRAME_MARGIN, null, getFrameMarginCombined());
+        support.firePropertyChange(PROPERTY_TIMESTAMP_SUB, null, getTimestampSubUnit());
+    }
+
+    private static int clampScanRateHz(int hz) {
+        if (hz < SCAN_RATE_HZ_MIN) {
+            return SCAN_RATE_HZ_MIN;
+        }
+        if (hz > SCAN_RATE_HZ_MAX) {
+            return SCAN_RATE_HZ_MAX;
+        }
+        return hz;
+    }
+
+    private void applyScanRateRegisters(int hz) throws HardwareInterfaceException {
+        final int[] values = interpolateScanRateRegs(hz);
+        for (int i = 0; i < SCAN_RATE_REGS.length; i++) {
+            if (values[i] < 0) {
+                continue;
+            }
+            writeOrCreateRegister(SCAN_RATE_REGS[i], values[i] & 0xFF);
+        }
+    }
+
+    private static int[] interpolateScanRateRegs(int hz) {
+        hz = clampScanRateHz(hz);
+        int hi = SCAN_ANCHOR_HZ.length - 1;
+        int lo = 0;
+        for (int i = 0; i < SCAN_ANCHOR_HZ.length; i++) {
+            if (hz <= SCAN_ANCHOR_HZ[i]) {
+                hi = i;
+                lo = Math.max(0, i - 1);
+                break;
+            }
+        }
+        if (hz <= SCAN_ANCHOR_HZ[0]) {
+            return SCAN_ANCHOR_REGS[0].clone();
+        }
+        if (hz >= SCAN_ANCHOR_HZ[SCAN_ANCHOR_HZ.length - 1]) {
+            return fillMissingFromLower(SCAN_ANCHOR_REGS[SCAN_ANCHOR_HZ.length - 1],
+                    SCAN_ANCHOR_REGS[SCAN_ANCHOR_HZ.length - 2]);
+        }
+        final int hzLo = SCAN_ANCHOR_HZ[lo];
+        final int hzHi = SCAN_ANCHOR_HZ[hi];
+        final float t = hzHi == hzLo ? 0f : (hz - hzLo) / (float) (hzHi - hzLo);
+        final int[] a = SCAN_ANCHOR_REGS[lo];
+        final int[] b = fillMissingFromLower(SCAN_ANCHOR_REGS[hi], a);
+        final int[] out = new int[SCAN_RATE_REGS.length];
+        for (int i = 0; i < out.length; i++) {
+            final int va = a[i];
+            final int vb = b[i];
+            if (va < 0 && vb < 0) {
+                out[i] = -1;
+            } else if (va < 0) {
+                out[i] = vb;
+            } else if (vb < 0) {
+                out[i] = va;
+            } else {
+                out[i] = Math.round(va + t * (vb - va));
+            }
+        }
+        return out;
+    }
+
+    private static int[] fillMissingFromLower(int[] upper, int[] lower) {
+        final int[] out = upper.clone();
+        for (int i = 0; i < out.length; i++) {
+            if (out[i] < 0 && lower[i] >= 0) {
+                out[i] = lower[i];
+            }
+        }
+        return out;
+    }
+
+    /** Vendor pairing of TSTAMP_SUB LSB with nominal scan-rate presets. */
+    public static int timestampSubForScanRateHz(int hz) {
+        hz = clampScanRateHz(hz);
+        // piecewise linear through 100→0x0B, 300→0x21, 600→0x42, 1000→0x7D
+        final int[] hzPts = {100, 300, 600, 1000, 2000};
+        final int[] subPts = {0x0B, 0x21, 0x42, 0x7D, 0x7D};
+        for (int i = 0; i < hzPts.length; i++) {
+            if (hz <= hzPts[i]) {
+                if (i == 0) {
+                    return subPts[0];
+                }
+                final float t = (hz - hzPts[i - 1]) / (float) (hzPts[i] - hzPts[i - 1]);
+                return Math.round(subPts[i - 1] + t * (subPts[i] - subPts[i - 1]));
+            }
+        }
+        return subPts[subPts.length - 1];
+    }
+
+    private int estimateNominalScanRateHzFromFile() {
+        final String name = loadedFile != null ? loadedFile.getName().toLowerCase() : "";
+        final String desc = settingsDescription != null ? settingsDescription.toLowerCase() : "";
+        if (name.contains("2000") || desc.contains("2000")) {
+            return 2000;
+        }
+        if (name.contains("1000") || desc.contains("1000")) {
+            return 1000;
+        }
+        if (name.contains("600") || desc.contains("600")) {
+            return 600;
+        }
+        if (name.contains("300") || desc.contains("300")) {
+            return 300;
+        }
+        if (name.contains("100") || desc.contains("100")) {
+            return 100;
+        }
+        return nearestAnchorHzFromCurrentRegs();
+    }
+
+    private int nearestAnchorHzFromCurrentRegs() {
+        int bestHz = 300;
+        long bestDist = Long.MAX_VALUE;
+        for (int a = 0; a < SCAN_ANCHOR_HZ.length; a++) {
+            long dist = 0;
+            int compared = 0;
+            for (int i = 0; i < SCAN_RATE_REGS.length; i++) {
+                final int anchorVal = SCAN_ANCHOR_REGS[a][i];
+                if (anchorVal < 0) {
+                    continue;
+                }
+                dist += Math.abs(getRegisterValue(SCAN_RATE_REGS[i]) - anchorVal);
+                compared++;
+            }
+            if (compared > 0 && dist < bestDist) {
+                bestDist = dist;
+                bestHz = SCAN_ANCHOR_HZ[a];
+            }
+        }
+        return bestHz;
+    }
+
+    private void writeOrCreateRegister(int regAddr, int value) throws HardwareInterfaceException {
+        NRVRegisterSetting setting = findRegisterSetting(regAddr);
+        if (setting == null) {
+            if (loadedSettings == null) {
+                throw new HardwareInterfaceException("No settings loaded; cannot write 0x"
+                        + Integer.toHexString(regAddr));
+            }
+            setting = new NRVRegisterSetting(I2C_SLAVE, regAddr, value, "scan-rate");
+            loadedSettings.add(setting);
+        }
+        writeRegisterValue(setting, value);
+    }
+
+    /**
+     * Sets TSTAMP_SUB_UNIT LSB ({@code 0x32B2}); MSB {@code 0x32B1} is left as loaded (usually 0).
+     * Lower values increase sub-timestamp USB packet rate within each ref ms.
+     * Factory presets: 100→0x0B, 300→0x21, 600→0x42, 1000→0x7D.
      */
     public void setTimestampSubUnit(int value) {
         applyDirectRegisterValue(REG_TSTAMP_SUB_UNIT_LSB, clampTimestampSub(value), PROPERTY_TIMESTAMP_SUB);
     }
 
     /**
-     * Sets frame margin (0x321E). Lower values shorten the sensor frame period (~400 Hz at 0x02).
+     * Sets combined DTAG_FRM_MARGIN ({@code 0x321D:321E}), writing both MSB and LSB.
+     * Prefer {@link #setScanRateHz(int)} to change the full scan-rate block.
      */
-    public void setFrameMargin(int value) {
-        applyDirectRegisterValue(REG_DTAG_FRM_MARGIN_LSB, clampFrameMargin(value), PROPERTY_FRAME_MARGIN);
+    public void setFrameMargin(int combined) {
+        combined = clampFrameMarginCombined(combined);
+        final int old = getFrameMarginCombined();
+        if (old == combined) {
+            return;
+        }
+        final int msb = (combined >> 8) & 0xFF;
+        final int lsb = combined & 0xFF;
+        try {
+            writeOrCreateRegister(REG_DTAG_FRM_MARGIN_MSB, msb);
+            writeOrCreateRegister(REG_DTAG_FRM_MARGIN_LSB, lsb);
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV DTAG_FRM_MARGIN write failed: " + e.getMessage());
+            return;
+        }
+        support.firePropertyChange(PROPERTY_FRAME_MARGIN, old, combined);
     }
 
     private static int clampTimestampSub(int value) {
@@ -448,12 +717,12 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         return value;
     }
 
-    private static int clampFrameMargin(int value) {
+    private static int clampFrameMarginCombined(int value) {
         if (value < 1) {
             return 1;
         }
-        if (value > 0xFF) {
-            return 0xFF;
+        if (value > 0xFFFF) {
+            return 0xFFFF;
         }
         return value;
     }

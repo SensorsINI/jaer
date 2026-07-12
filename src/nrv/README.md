@@ -110,15 +110,24 @@ NRV silicon documentation sometimes writes OFF as `gain × ln(K_REF/K_OFF)`; tha
 
 UI shows e-folds and `100 × (e^Θ − 1)` percent intensity change. Sliders update live register K values.
 
-Frame timing (from loaded registers):
+Frame timing:
 
 ```
-frame_period_us = DTAG_FRM_MARGIN × 2^12 × event_clock_period_us
-readout_Hz      = 1e6 / frame_period_us
+# FRM_MARGIN padding only (SDK note) — NOT the full sensor frame period:
+frm_margin_padding_us = DTAG_FRM_MARGIN(0x321D:321E) × 2^12 × event_clock_period_us
+
+# Full scan / frame-end rate is set by the whole Scan Rate Setting block
+# (0x320C, 0x3210–0x321E). jAER’s scan-rate slider (100–2000 Hz) interpolates
+# that block between factory anchors from S5KRC1S_100 / _1000 / _2000 presets.
+
 sub_interval_us = (TSTAMP_REF_UNIT + 1) / TSTAMP_SUB_UNIT
 ```
 
 `event_clock_period_us` is derived from OUTIF `0x3911` (factory `0x7C` → 1 µs).
+
+**Why “1000 fps” ≠ 244 Hz:** Interpreting `DTAG_FRM_MARGIN × 4096 × 1 µs` as the *full* frame period gives ~244 Hz at margin=`0x0001` and ~122 Hz at the 1000-preset margin=`0x0002`. That cannot be the vendor’s 1000/2000 fps claim (NRV marketing: up to 2 kHz imaging). Those presets change **SELX / SENSE / AY / APS_RST / MODE / FRM_MARGIN together**. CX3 files named 100/300/600 share the *same* scan-rate registers and differ mainly in `TSTAMP_SUB`. Measure true rate from USB frame-end packets (`header==0x0C`).
+
+**Scan rate vs SDK “frame period”:** In NRV’s `DVSDevice.cpp`, `PARA_TYPE_FRAME_PERIOD` is a *software* packaging parameter (e.g. “33 → collect 33 ms of events into one viewer frame”). It does **not** program the sensor.
 
 Qualitative behavior (with MSBs fixed as in presets):
 
@@ -141,8 +150,10 @@ Beyond the full register table (`NRVControlPanel`), the user panel maps sliders 
 | `0x0166` | `EVTH_REF_LSB_r` / `REG_DIV_BCM_BOT_UNIT_AMP` | *(from file / table)* | `K_REF` — not on sliders |
 | `0x0167` | `EVTH_ON_LSB_r` / `REG_DIV_BCM_BOT_UNIT_ON` | Event threshold + balance | `K_ON` |
 | `0x0168` | `EVTH_OFF_LSB_r` / `REG_DIV_BCM_BOT_UNIT_nOFF` | Event threshold + balance | `K_OFF` |
-| `0x32B2` | `TSTAMP_SUB_UNIT_VAL` LSB | Sub-timestamp interval | Lower → denser timestamp packets in USB stream |
-| `0x321E` | `DTAG_FRM_MARGIN` LSB | Frame margin | Lower → shorter frame period / finer event timing |
+| `0x320C`, `0x3210`–`0x321E` | Scan Rate Setting block | **Scan rate (100–2000 Hz)** | Interpolated from factory 100/1000/2000 anchors |
+| `0x321D:321E` | `DTAG_FRM_MARGIN_r` MSB:LSB | *(part of scan-rate block)* | Padding term (×2^12×clk); not full period alone |
+| `0x32B1:32B2` | `TSTAMP_SUB_UNIT_VAL` MSB:LSB | Sub-timestamp + auto with scan rate | Lower LSB → denser sub-timestamp packets |
+| `0x32B3:32B4` | `TSTAMP_REF_UNIT_VAL` | *(from file)* | Sub-µs field span within each ref ms |
 
 Slider tweaks use `PotTweaker` ratios (up to 8×) around LSB values captured when a settings file is loaded; LSB writes are clamped to `0x01`–`0x3F`. Direct register edits are available in the full table with undo support.
 
