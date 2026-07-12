@@ -37,16 +37,35 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public static final String DEFAULT_SETTINGS_FILENAME = "S5KRC1S_300_CX3.txt";
 
     public static final int I2C_SLAVE = 0x20;
-    /** REG_DIV_BCM_BOT_UNIT_AMP — brightness change threshold. */
+    /** EVTH MSB range bits: REF[4], ON[3], OFF[2] (SDK: CRGS Setting). */
+    public static final int REG_EVTH_MSB = 0x0157;
+    /** EVTH_REF_LSB_r [5:0] — reference / brightness threshold (SDK: REG_DIV_BCM_BOT_UNIT_AMP). */
     public static final int REG_BRIGHTNESS_THRESHOLD = 0x0166;
-    /** REG_DIV_BCM_BOT_UNIT_ON */
+    /** EVTH_ON_LSB_r [5:0] (SDK: REG_DIV_BCM_BOT_UNIT_ON). */
     public static final int REG_ON_UNIT = 0x0167;
-    /** REG_DIV_BCM_BOT_UNIT_nOFF / OFF */
+    /** EVTH_OFF_LSB_r [5:0] (SDK: REG_DIV_BCM_BOT_UNIT_nOFF). */
     public static final int REG_OFF_UNIT = 0x0168;
     /** TSTAMP_SUB_UNIT_VAL_r LSB — interval between sub-timestamp USB packets. */
     public static final int REG_TSTAMP_SUB_UNIT_LSB = 0x32B2;
     /** DTAG_FRM_MARGIN_r LSB — frame period (lower → faster frames / finer event timestamps). */
+    public static final int REG_DTAG_FRM_MARGIN_MSB = 0x321D;
     public static final int REG_DTAG_FRM_MARGIN_LSB = 0x321E;
+    /** OUTIF to_scnt0 — event-clock tick (factory presets: 0x7C → 1 µs). */
+    public static final int REG_TO_SCNT0 = 0x3911;
+    /** TSTAMP_REF_UNIT_VAL_r MSB/LSB — sub-µs field spans 0..ref within each ref ms. */
+    public static final int REG_TSTAMP_REF_MSB = 0x32B3;
+    public static final int REG_TSTAMP_REF_LSB = 0x32B4;
+
+    /**
+     * Gain on ln(K ratio) terms — analogous to DVS {@code κ_n C_2 / (κ_p² C_1)} (≈ 0.05–0.1),
+     * not the literal “10” sometimes seen in NRV register numerators.
+     */
+    public static final float EVTH_THRESHOLD_GAIN = 0.07f;
+    /** Initial offset for EVTH ln-threshold display. */
+    public static final float EVTH_THRESHOLD_OFFSET = 0f;
+    /** Factory presets use {@code 3911=0x7C} for a 1 µs event-clock period. */
+    private static final float EVENT_CLOCK_PERIOD_US_AT_7C = 1f;
+    private static final int TO_SCNT0_NOMINAL = 0x7C;
 
     public static final String PROPERTY_THRESHOLD = "nrvThreshold";
     public static final String PROPERTY_ON_OFF_BALANCE = "nrvOnOffBalance";
@@ -70,6 +89,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     private float gamma = 1.0f;
     private float thresholdTweak = 0f;
     private float onOffBalanceTweak = 0f;
+    /** True while slider-driven ON/OFF writes are in flight (skip inverse slider sync). */
+    private boolean applyingOnOffTweaks = false;
     private int baselineThreshold = 0x0F;
     private int baselineOnUnit = 0x07;
     private int baselineOffUnit = 0x1F;
@@ -233,6 +254,175 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         return getRegisterValue(REG_DTAG_FRM_MARGIN_LSB);
     }
 
+    /** EVTH MSB bit from {@link #REG_EVTH_MSB}: 4=REF, 3=ON, 2=OFF. */
+    private int evthMsb(int bitIndex) {
+        return (getRegisterValue(REG_EVTH_MSB) >> bitIndex) & 1;
+    }
+
+    private static int evthLsb(int regValue) {
+        return regValue & 0x3F;
+    }
+
+    /** Relative reference bias current K_REF (Id) from EVTH REF MSB/LSB. */
+    private static double kRef(int refMsb, int refLsb) {
+        final double numerator = refMsb * 10.0 + (1 - refMsb) * 2.5;
+        return numerator / ((1 + refLsb) * 176.0);
+    }
+
+    /** Relative ON bias current K_ON (Ion) from EVTH ON MSB/LSB. */
+    private static double kOn(int onMsb, int onLsb) {
+        final double numerator = onMsb * 50.0 + (1 - onMsb) * 12.5;
+        return numerator / ((1 + onLsb) * 88.0);
+    }
+
+    /** Relative OFF bias current K_OFF (Ioff) from EVTH OFF MSB/LSB. */
+    private static double kOff(int offMsb, int offLsb) {
+        final double numerator = offMsb * 5.0 + (1 - offMsb) * 1.25;
+        return numerator / ((1 + offLsb) * 880.0);
+    }
+
+    private double currentKRef() {
+        return kRef(evthMsb(4), evthLsb(getRegisterValue(REG_BRIGHTNESS_THRESHOLD)));
+    }
+
+    private double currentKOn() {
+        return kOn(evthMsb(3), evthLsb(getRegisterValue(REG_ON_UNIT)));
+    }
+
+    private double currentKOff() {
+        return kOff(evthMsb(2), evthLsb(getRegisterValue(REG_OFF_UNIT)));
+    }
+
+    /** Relative bias current K_REF (Id) from EVTH REF registers. */
+    public double getKRef() {
+        return currentKRef();
+    }
+
+    /** Relative bias current K_ON (Ion) from EVTH ON registers. */
+    public double getKOn() {
+        return currentKOn();
+    }
+
+    /** Relative bias current K_OFF (Ioff) from EVTH OFF registers. */
+    public double getKOff() {
+        return currentKOff();
+    }
+
+    /**
+     * ON temporal-contrast threshold Θ_ON (Nozaki &amp; Delbruck, IEEE TED 2018):
+     * {@code gain × ln(K_ON/K_REF)} with K ∝ bias current.
+     *
+     * @see <a href="https://ieeexplore.ieee.org/document/7962235">7962235</a>
+     */
+    public float getOnThresholdLogE() {
+        final double kRef = currentKRef();
+        final double kOn = currentKOn();
+        if (kRef <= 0 || kOn <= 0) {
+            return Float.NaN;
+        }
+        return (float) (EVTH_THRESHOLD_GAIN * Math.log(kOn / kRef) + EVTH_THRESHOLD_OFFSET);
+    }
+
+    /**
+     * OFF temporal-contrast threshold Θ_OFF (signed, negative when K_OFF &lt; K_REF):
+     * {@code gain × ln(K_OFF/K_REF)} — same form as DAVIS {@code ln(I_OFF/I_d)}.
+     * <p>
+     * NRV vendor docs often write {@code gain × ln(K_REF/K_OFF)} (= −Θ_OFF), i.e. magnitude only.
+     */
+    public float getOffThresholdLogE() {
+        final double kRef = currentKRef();
+        final double kOff = currentKOff();
+        if (kRef <= 0 || kOff <= 0) {
+            return Float.NaN;
+        }
+        return (float) (EVTH_THRESHOLD_GAIN * Math.log(kOff / kRef) + EVTH_THRESHOLD_OFFSET);
+    }
+
+    /** NRV vendor-documented OFF magnitude: {@code gain × ln(K_REF/K_OFF) = −Θ_OFF}. */
+    public float getOffThresholdLogEVendorMagnitude() {
+        final float off = getOffThresholdLogE();
+        return Float.isNaN(off) ? Float.NaN : -off;
+    }
+
+    /** Percent intensity change from memorized log value: {@code 100 × (e^lnThr − 1)} (DAVIS convention). */
+    public static float logThresholdToPercentChange(float logE) {
+        if (Float.isNaN(logE)) {
+            return Float.NaN;
+        }
+        return (float) (100.0 * (Math.exp(logE) - 1.0));
+    }
+
+    /** Event-clock period in µs from register 0x3911 (1 µs at factory 0x7C). */
+    public float getEventClockPeriodUs() {
+        final int toScnt0 = getRegisterValue(REG_TO_SCNT0);
+        if (toScnt0 <= 0) {
+            return EVENT_CLOCK_PERIOD_US_AT_7C;
+        }
+        return EVENT_CLOCK_PERIOD_US_AT_7C * toScnt0 / TO_SCNT0_NOMINAL;
+    }
+
+    /** Combined DTAG_FRM_MARGIN register (MSB:LSB). */
+    public int getFrameMarginCombined() {
+        return (getRegisterValue(REG_DTAG_FRM_MARGIN_MSB) << 8)
+                | (getRegisterValue(REG_DTAG_FRM_MARGIN_LSB) & 0xFF);
+    }
+
+    /**
+     * Sensor frame period in µs: {@code DTAG_FRM_MARGIN × 2^12 × event_clock_period}
+     * (SDK note on DTAG_FRM_MARGIN_r_LSB).
+     */
+    public float getFramePeriodUs() {
+        final int margin = getFrameMarginCombined();
+        if (margin <= 0) {
+            return Float.NaN;
+        }
+        return margin * 4096f * getEventClockPeriodUs();
+    }
+
+    /** Readout frame rate in Hz from frame-margin and event-clock registers. */
+    public float getReadoutFrameRateHz() {
+        return getReadoutFrameRateHzForMargin(getFrameMarginCombined());
+    }
+
+    /** Frame rate for a combined DTAG_FRM_MARGIN value (for slider preview). */
+    public float getReadoutFrameRateHzForMargin(int marginCombined) {
+        if (marginCombined <= 0) {
+            return Float.NaN;
+        }
+        final float periodUs = marginCombined * 4096f * getEventClockPeriodUs();
+        return 1_000_000f / periodUs;
+    }
+
+    /** Frame period in µs for a combined DTAG_FRM_MARGIN value. */
+    public float getFramePeriodUsForMargin(int marginCombined) {
+        if (marginCombined <= 0) {
+            return Float.NaN;
+        }
+        return marginCombined * 4096f * getEventClockPeriodUs();
+    }
+
+    /** Combined TSTAMP_REF_UNIT_VAL (0x32B3:32B4). */
+    public int getTstampRefUnitVal() {
+        return (getRegisterValue(REG_TSTAMP_REF_MSB) << 8)
+                | (getRegisterValue(REG_TSTAMP_REF_LSB) & 0xFF);
+    }
+
+    /**
+     * Sub-timestamp interval in µs within each reference millisecond:
+     * {@code (TSTAMP_REF_UNIT + 1) / TSTAMP_SUB_UNIT}.
+     */
+    public float getSubTimestampIntervalUs() {
+        return getSubTimestampIntervalUsForSubUnit(getTimestampSubUnit());
+    }
+
+    /** Sub-timestamp interval for a SUB register value (for slider preview). */
+    public float getSubTimestampIntervalUsForSubUnit(int subUnit) {
+        if (subUnit <= 0) {
+            return Float.NaN;
+        }
+        return (getTstampRefUnitVal() + 1f) / subUnit;
+    }
+
     /**
      * Sets TSTAMP sub-unit (0x32B2). Lower values can increase sub-timestamp rate within a frame;
      * factory presets use 0x0B..0x7D. Values below ~0x0B may behave poorly.
@@ -291,7 +481,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     /**
-     * Tweaks brightness change threshold around the value loaded from file.
+     * Tweaks ON and OFF thresholds together from file baselines (like DVS {@code diffOn}/{@code diffOff}).
+     * Does not modify {@code K_REF} ({@code 0x0166}) or the ON/OFF balance slider value.
      *
      * @param val slider value in -1..1 (higher → fewer events)
      */
@@ -302,9 +493,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         }
         final float old = thresholdTweak;
         thresholdTweak = val;
-        final int newValue = tweakRegisterValue(baselineThreshold, val, TWEAK_MAX_RATIO);
         try {
-            applyTweakRegister(REG_BRIGHTNESS_THRESHOLD, newValue);
+            applyOnOffFromTweaks();
         } catch (HardwareInterfaceException e) {
             thresholdTweak = old;
             log.warning("NRV threshold tweak failed: " + e.getMessage());
@@ -314,7 +504,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     /**
-     * Tweaks ON/OFF event balance around values loaded from file.
+     * Tweaks ON/OFF event balance from file baselines (like DVS {@code diff} pot).
+     * Does not modify {@code K_REF} ({@code 0x0166}) or the event-threshold slider value.
      *
      * @param val slider value in -1..1 (higher → more ON events)
      */
@@ -325,18 +516,46 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         }
         final float old = onOffBalanceTweak;
         onOffBalanceTweak = val;
-        final float ratio = PotTweakerUtilities.getRatioTweak(val, TWEAK_MAX_RATIO);
-        final int onValue = clampRegister((int) Math.round(baselineOnUnit * ratio));
-        final int offValue = clampRegister((int) Math.round(baselineOffUnit / ratio));
         try {
-            applyTweakRegister(REG_ON_UNIT, onValue);
-            applyTweakRegister(REG_OFF_UNIT, offValue);
+            applyOnOffFromTweaks();
         } catch (HardwareInterfaceException e) {
             onOffBalanceTweak = old;
             log.warning("NRV ON/OFF balance tweak failed: " + e.getMessage());
             return;
         }
         support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, old, val);
+    }
+
+    /**
+     * Applies both sliders to ON/OFF LSB registers from file baselines (DVS-style preferred ratios).
+     * Higher LSB → lower K → lower |threshold| for that polarity.
+     * <ul>
+     * <li>Threshold right: lower ON LSB, higher OFF LSB → both |Θ| up (like DVS {@code diffOn↑}/{@code diffOff↓})</li>
+     * <li>Balance right: higher ON and OFF LSB → Θ_ON down, |Θ_OFF| up (more ON / fewer OFF; like raising DVS {@code diff}/Id)</li>
+     * </ul>
+     */
+    private void applyOnOffFromTweaks() throws HardwareInterfaceException {
+        applyingOnOffTweaks = true;
+        try {
+            applyTweakRegister(REG_ON_UNIT, onRegisterFromTweaks());
+            applyTweakRegister(REG_OFF_UNIT, offRegisterFromTweaks());
+        } finally {
+            applyingOnOffTweaks = false;
+        }
+    }
+
+    /** {@code 0x0167}: baseline × balance / threshold. */
+    private int onRegisterFromTweaks() {
+        final float thrRatio = PotTweakerUtilities.getRatioTweak(thresholdTweak, TWEAK_MAX_RATIO);
+        final float balRatio = PotTweakerUtilities.getRatioTweak(onOffBalanceTweak, TWEAK_MAX_RATIO);
+        return clampRegister(Math.round(baselineOnUnit * balRatio / thrRatio));
+    }
+
+    /** {@code 0x0168}: baseline × balance × threshold (OFF LSB polarity opposite ON for threshold). */
+    private int offRegisterFromTweaks() {
+        final float thrRatio = PotTweakerUtilities.getRatioTweak(thresholdTweak, TWEAK_MAX_RATIO);
+        final float balRatio = PotTweakerUtilities.getRatioTweak(onOffBalanceTweak, TWEAK_MAX_RATIO);
+        return clampRegister(Math.round(baselineOffUnit * balRatio * thrRatio));
     }
 
     private static float clampTweak(float val) {
@@ -347,11 +566,6 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             return -1f;
         }
         return val;
-    }
-
-    private static int tweakRegisterValue(int baseline, float tweak, float maxRatio) {
-        final float ratio = PotTweakerUtilities.getRatioTweak(tweak, maxRatio);
-        return clampRegister((int) Math.round(baseline * ratio));
     }
 
     private static int clampRegister(int value) {
@@ -453,13 +667,28 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         }
         if (loadedSettings == null) {
             autoLoadSettingsIfNeeded();
-        } else if (!nrvHw.isSettingsApplied()) {
+        } else if (needsApplyToHardware(nrvHw)) {
             try {
                 applyLoadedSettingsToHardware();
             } catch (HardwareInterfaceException e) {
                 log.warning("Could not apply NRV settings after hardware attach: " + e.getMessage());
             }
         }
+    }
+
+    private boolean needsApplyToHardware(NRVHardwareInterface hw) {
+        if (!hw.isSettingsApplied()) {
+            return true;
+        }
+        if (loadedSettings == null) {
+            return false;
+        }
+        for (NRVRegisterSetting setting : loadedSettings) {
+            if (!setting.isWait() && !setting.isApplied()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public List<NRVRegisterSetting> getLoadedSettings() {
@@ -475,7 +704,8 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     /**
-     * Sends a single register value to the camera. Updates in-memory setting only.
+     * Updates a register in the loaded settings list and writes it to hardware when connected.
+     * Offline edits are kept in memory ({@code applied=false}) and pushed on the next connect/apply.
      */
     public void writeRegisterValue(NRVRegisterSetting setting, int newValue) throws HardwareInterfaceException {
         if (setting == null || setting.isWait()) {
@@ -484,15 +714,24 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         if (newValue < 0 || newValue > 0xFF) {
             throw new HardwareInterfaceException("Register value out of range: " + newValue);
         }
-        if (!(getHardwareInterface() instanceof NRVHardwareInterface)) {
-            throw new HardwareInterfaceException("NRV hardware not connected");
+        final int oldValue = setting.getValue() & 0xff;
+        if (oldValue == (newValue & 0xff)) {
+            return;
         }
-        final NRVHardwareInterface hw = (NRVHardwareInterface) getHardwareInterface();
-        hw.writeRegister(setting.getSlaveAddr(), setting.getRegAddr(), newValue);
+
         setting.setValue(newValue);
-        setting.setApplied(true);
-        log.info(String.format("Wrote NRV register %02x:%04x=%02x", setting.getSlaveAddr(),
-                setting.getRegAddr(), newValue & 0xff));
+
+        if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
+            hw.writeRegister(setting.getSlaveAddr(), setting.getRegAddr(), newValue);
+            setting.setApplied(true);
+            log.info(String.format("Wrote NRV register %02x:%04x=%02x", setting.getSlaveAddr(),
+                    setting.getRegAddr(), newValue & 0xff));
+        } else {
+            setting.setApplied(false);
+            log.fine(String.format("Stored NRV register %02x:%04x=%02x (hardware not connected)",
+                    setting.getSlaveAddr(), setting.getRegAddr(), newValue & 0xff));
+        }
+
         syncTweaksFromRegisterWrite(setting.getRegAddr(), newValue & 0xff);
         if (controlPanel != null) {
             controlPanel.updateRegisterRow(setting);
@@ -508,29 +747,34 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     private void syncTweaksFromRegisterWrite(int regAddr, int newValue) {
-        if (regAddr == REG_BRIGHTNESS_THRESHOLD) {
-            final float old = thresholdTweak;
-            thresholdTweak = tweakFromRegisterValue(newValue, baselineThreshold);
-            if (old != thresholdTweak) {
-                support.firePropertyChange(PROPERTY_THRESHOLD, old, thresholdTweak);
-            }
-        } else if (regAddr == REG_ON_UNIT || regAddr == REG_OFF_UNIT) {
-            final float onRatio = (float) getRegisterValue(REG_ON_UNIT) / baselineOnUnit;
-            final float offRatio = (float) baselineOffUnit / Math.max(1, getRegisterValue(REG_OFF_UNIT));
-            final float ratio = (float) Math.sqrt(onRatio * offRatio);
-            final float old = onOffBalanceTweak;
-            onOffBalanceTweak = tweakFromRatio(ratio);
-            if (old != onOffBalanceTweak) {
-                support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, old, onOffBalanceTweak);
-            }
+        if (applyingOnOffTweaks) {
+            return;
         }
-    }
+        if (regAddr != REG_ON_UNIT && regAddr != REG_OFF_UNIT) {
+            return;
+        }
+        final int on = Math.max(1, getRegisterValue(REG_ON_UNIT));
+        final int off = Math.max(1, getRegisterValue(REG_OFF_UNIT));
+        if (baselineOnUnit <= 0 || baselineOffUnit <= 0) {
+            return;
+        }
+        // on/baselineOn = bal/thr , off/baselineOff = bal*thr
+        final float onRatio = (float) on / baselineOnUnit;
+        final float offRatio = (float) off / baselineOffUnit;
+        final float balRatio = (float) Math.sqrt(onRatio * offRatio);
+        final float thrRatio = (float) Math.sqrt(offRatio / onRatio);
 
-    private static float tweakFromRegisterValue(int current, int baseline) {
-        if (baseline <= 0) {
-            return 0f;
+        final float oldBalance = onOffBalanceTweak;
+        onOffBalanceTweak = tweakFromRatio(balRatio);
+        if (oldBalance != onOffBalanceTweak) {
+            support.firePropertyChange(PROPERTY_ON_OFF_BALANCE, oldBalance, onOffBalanceTweak);
         }
-        return tweakFromRatio((float) current / baseline);
+
+        final float oldThreshold = thresholdTweak;
+        thresholdTweak = tweakFromRatio(thrRatio);
+        if (oldThreshold != thresholdTweak) {
+            support.firePropertyChange(PROPERTY_THRESHOLD, oldThreshold, thresholdTweak);
+        }
     }
 
     private static float tweakFromRatio(float ratio) {

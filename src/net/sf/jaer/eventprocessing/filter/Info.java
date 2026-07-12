@@ -162,7 +162,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
         setPropertyTooltip(rate, "showRateTrace", "shows a historical trace of event rate");
         setPropertyTooltip(rate, "maxSamples", "maximum number of samples before clearing rate history");
         setPropertyTooltip(rate, "showAccumulatedEventCount", "Shows accumulated event count since the last reset or rewind. Use it to Mark a location in a file, and then see how many events have been recieved.");
-        setPropertyTooltip(rate, "showPacketTimestampStats", "<html>Overlay statistics for the displayed event packet (after upstream filters):<br>event count, unique timestamps, min positive Δt (µs), and span (µs).<br>Excludes events marked filtered-out.");
+        setPropertyTooltip(rate, "showPacketTimestampStats", "<html>Overlay statistics for the displayed event packet (after upstream filters):<br>event count, unique timestamps, min positive Δt between <b>distinct</b> timestamps (µs), and span (µs).<br>Excludes events marked filtered-out.");
         setPropertyTooltip(time, "resetTimeOnRewind", "Resets the clock with each rewind to show relative time on stopwatch.");
         setPropertyTooltip(sparsity, "measureSparsity", "Report fraction of pixels with no events in last packet.");
         setPropertyTooltip(misc, "fontSize", "Font size for rendered text; scaled for chip size in pixels to render nicely.");
@@ -857,7 +857,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             s = String.format("Displayed packet: %s events, %s unique timestamps, span %d us (no positive Δt)",
                     engFmt.format(ts.count), engFmt.format(ts.uniqueTs), ts.spanUs);
         } else {
-            s = String.format("Displayed packet: %s events, %s unique timestamps, min Δt %d us, span %d us",
+            s = String.format("Displayed packet: %s events, %s unique timestamps, min unique Δt %d us, span %d us",
                     engFmt.format(ts.count), engFmt.format(ts.uniqueTs), ts.minStepUs, ts.spanUs);
         }
         DrawGL.drawString(fontSize, 0, yorig, 0, Color.white, s);

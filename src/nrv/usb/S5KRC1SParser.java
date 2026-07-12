@@ -221,9 +221,11 @@ public class S5KRC1SParser {
     }
 
     private int toOutputTimestamp(long absoluteUs) {
-        if (lastOutputAbsoluteUs >= 0 && absoluteUs <= lastOutputAbsoluteUs) {
-            absoluteUs = lastOutputAbsoluteUs + 1;
-        } else {
+        // Allow equal timestamps for events in the same hardware time bucket (like EVT3).
+        // Only clamp backward jumps so output stays weakly monotonic.
+        if (lastOutputAbsoluteUs >= 0 && absoluteUs < lastOutputAbsoluteUs) {
+            absoluteUs = lastOutputAbsoluteUs;
+        } else if (absoluteUs > lastOutputAbsoluteUs) {
             lastOutputAbsoluteUs = absoluteUs;
         }
         if (timestampOriginUs < 0) {
