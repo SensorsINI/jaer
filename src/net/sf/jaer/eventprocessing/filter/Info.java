@@ -845,7 +845,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             return;
         }
         final int sy = chip.getSizeY();
-        final float yorig = .85f * sy;
+        final float yorig = .82f * sy;
         final TimestampSpread ts = lastPacketTimestampSpread;
         final String s;
         if (ts.count == 1) {
