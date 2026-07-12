@@ -1,0 +1,44 @@
+---
+description: Use bash on Linux/WSL and PowerShell on native Windows for terminal commands
+alwaysApply: true
+---
+
+# Shell by platform
+
+Pick the shell from **user_info** (`OS Version`, `Shell`). Do not use zsh.
+
+## Linux or WSL (bash)
+
+When `Shell` is **bash** (native Linux, macOS, or WSL):
+
+- Run tests and terminal commands in **bash**
+- Use bash syntax: `&&`, `|`, heredocs, `/home/...` or `/mnt/c/...` paths in WSL
+- Prefer bash for scripts and interactive commands in this environment
+
+```bash
+cd "/mnt/c/Users/tobid/Dropbox/GitHub/SensorsINI/jaer" && ant compile
+```
+
+## Native Windows (PowerShell)
+
+When `OS Version` is **win32** and `Shell` is **powershell**:
+
+- Run commands in **PowerShell** directly — do **not** wrap in `bash -lc` / `bash -c`
+- Avoid bash-only syntax PowerShell rejects: `&&`, heredocs (`<<'EOF'`), `/mnt/c/...`
+- Use `;` between statements, Windows paths (`C:\Users\...`), and PowerShell helpers (`Select-Object`, `$env:VAR`)
+- Multi-line git commits: multiple `-m` flags (`git commit -m "Title" -m "Body"`)
+
+```powershell
+cd "C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer"; ant compile
+```
+
+## Do not
+
+- Use PowerShell on Linux/WSL when bash is the configured shell
+- Use bash (or Git Bash wrappers) on native Windows when PowerShell is the configured shell
+- Use zsh
+
+## Scripts in the repo
+
+- `.sh` files: bash (Linux/WSL/CI); edit with bash syntax regardless of host OS
+- `.ps1` files: PowerShell on Windows
