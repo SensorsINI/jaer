@@ -2,7 +2,7 @@
 <!-- You may freely edit this file. See commented blocks below for -->
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
-<project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant">
+<project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3">
     
 
     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
@@ -131,9 +131,114 @@
         <property name="libs.junit_4.classpath" value="${ivy.lib}/junit-4.10.jar"/>
     </target>-->
     
-    <target name="-pre-compile" depends="download-deps"/>
+    <!-- Ivy hook for normal compile (overrides empty NetBeans placeholders in build-impl.xml). -->
+    <target name="-pre-compile-ivy" depends="download-deps"/>
+    <target name="-pre-compile" depends="-pre-compile-ivy"/>
 
-    <target name="-pre-compile-single" depends="download-deps"/>
+    <target name="-pre-compile-single-ivy" depends="download-deps"/>
+    <target name="-pre-compile-single" depends="-pre-compile-single-ivy"/>
+
+    <!-- Same javac/copy as -do-compile but without -pre-compile (no Ivy). lib/ must exist; run download-deps after ivy.xml changes. -->
+    <target depends="init,deps-jar,-pre-pre-compile,-copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile-without-ivy">
+        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}"/>
+        <copy todir="${build.classes.dir}">
+            <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
+        </copy>
+    </target>
+
+    <target name="compile-fast"
+            depends="init,deps-jar,-pre-pre-compile,-do-compile-without-ivy,-post-compile"
+            description="Compile Java only without Ivy resolve/retrieve."/>
+
+    <target name="compile-single-fast"
+            depends="init,deps-jar,-verify-automatic-build,-pre-pre-compile,-do-compile-single,-post-compile-single"
+            description="Compile selected files without Ivy resolve/retrieve."/>
+
+    <!-- Fast JAR: store-only pack (jar cvfM0) avoids single-threaded DEFLATE; optional 7z if on PATH. -->
+    <property name="jar.fast.7z.level" value="5"/>
+
+    <target name="jar-fast"
+            depends="init,compile-fast,-pre-pre-jar,-pre-jar,-fast-jar-prepare-manifest,-do-jar-fast,-fast-jar-7z"
+            description="Build JAR with jar cvfM0; 7z-compress to dist/jAER.jar.7z when 7z is on PATH."/>
+
+    <target name="-fast-jar-prepare-manifest"
+            depends="-do-jar-create-manifest,-do-jar-copy-manifest,-do-jar-set-mainclass,-do-jar-set-profile,-do-jar-set-splashscreen">
+        <mkdir dir="${build.classes.dir}/META-INF"/>
+        <copy encoding="UTF-8" file="${tmp.manifest.file}" overwrite="true"
+              tofile="${build.classes.dir}/META-INF/MANIFEST.MF"/>
+    </target>
+
+    <target name="-resolve-jar-tool" depends="init">
+        <available file="${java.home}/bin/jar.exe" property="jar.tool" value="${java.home}/bin/jar.exe"/>
+        <available file="${java.home}/bin/jar" property="jar.tool" value="${java.home}/bin/jar"/>
+        <available file="${java.home}/../bin/jar.exe" property="jar.tool" value="${java.home}/../bin/jar.exe"/>
+        <available file="${java.home}/../bin/jar" property="jar.tool" value="${java.home}/../bin/jar"/>
+        <fail unless="jar.tool" message="jar tool not found under ${java.home} (expected bin/jar or bin/jar.exe)"/>
+    </target>
+
+    <target name="-do-jar-fast" depends="-resolve-jar-tool,-fast-jar-prepare-manifest">
+        <echo message="Creating store-only JAR (jar cfM0): ${dist.jar}"/>
+        <delete file="${dist.jar}" quiet="true"/>
+        <exec executable="${jar.tool}" failonerror="true">
+            <arg value="cfM0"/>
+            <arg file="${dist.jar}"/>
+            <arg value="-C"/>
+            <arg file="${build.classes.dir}"/>
+            <arg value="."/>
+        </exec>
+        <delete quiet="true">
+            <fileset file="${tmp.manifest.file}"/>
+        </delete>
+        <echo message="Store-only JAR ready: ${dist.jar}"/>
+        <echo message="Run: java -jar &quot;${dist.jar}&quot;"/>
+    </target>
+
+    <target name="-detect-sevenz" depends="checkos">
+        <exec executable="7z" failifexecutionfails="false" failonerror="false"
+              resultproperty="sevenz.result" outputproperty="sevenz.out" errorproperty="sevenz.err">
+            <arg value="-h"/>
+        </exec>
+        <condition property="have.sevenz">
+            <equals arg1="${sevenz.result}" arg2="0"/>
+        </condition>
+        <condition property="sevenz.executable" value="7z">
+            <equals arg1="${sevenz.result}" arg2="0"/>
+        </condition>
+    </target>
+
+    <target name="-detect-sevenz-win" depends="-detect-sevenz" if="isWindows" unless="have.sevenz">
+        <exec executable="7z.exe" failifexecutionfails="false" failonerror="false"
+              resultproperty="sevenz.result">
+            <arg value="-h"/>
+        </exec>
+        <condition property="have.sevenz">
+            <equals arg1="${sevenz.result}" arg2="0"/>
+        </condition>
+        <condition property="sevenz.executable" value="7z.exe">
+            <equals arg1="${sevenz.result}" arg2="0"/>
+        </condition>
+    </target>
+
+    <target name="-fast-jar-7z-compress" depends="-detect-sevenz,-detect-sevenz-win" if="have.sevenz">
+        <property name="dist.jar.7z" value="${dist.jar}.7z"/>
+        <delete file="${dist.jar.7z}" quiet="true"/>
+        <echo message="7-Zip: ${dist.jar} -&gt; ${dist.jar.7z} (-mmt=on -mx=${jar.fast.7z.level})"/>
+        <exec executable="${sevenz.executable}" failonerror="true">
+            <arg value="a"/>
+            <arg value="-t7z"/>
+            <arg value="-mx=${jar.fast.7z.level}"/>
+            <arg value="-mmt=on"/>
+            <arg value="-y"/>
+            <arg file="${dist.jar.7z}"/>
+            <arg file="${dist.jar}"/>
+        </exec>
+    </target>
+
+    <target name="-fast-jar-7z-skipped" depends="-detect-sevenz,-detect-sevenz-win" unless="have.sevenz">
+        <echo message="7-Zip not on PATH (tried 7z and 7z.exe); uncompressed ${dist.jar} only"/>
+    </target>
+
+    <target name="-fast-jar-7z" depends="-fast-jar-7z-compress,-fast-jar-7z-skipped"/>
 
     <target name="-pre-init">
         <tstamp/>
