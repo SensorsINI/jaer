@@ -2418,7 +2418,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 float dtMs = getDtMs(packet);
                 String timeSliceString = String.format("%10ss", engFmt.format(dtMs / 1000));
 
-                float ratekeps = packet.getEventRateHz() / 1e3f;
                 switch (getPlayMode()) {
                     case SEQUENCING:
                     case LIVE:
@@ -2437,12 +2436,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 String thisTimeString = String.format("%5.3fs ", thisTime);
 
-                String rateString = null;
-                if (ratekeps >= 100e3f) {
-                    rateString = "   >=100 Meps ";
-                } else {
-                    rateString = String.format("%7.1fKeps", ratekeps); //String.format("%6.2fkeps ",ratekeps);
-                }
+                String rateString = String.format("%9seps ", engFmt.format(packet.getEventRateHz()));
 
                 int cs = getRenderer().getColorScale();
 
