@@ -154,6 +154,26 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         i2cTransport.writeReg(slaveAddr, regAddr, value);
     }
 
+    /**
+     * Notifies the USB parser to drop stale ref/full timestamp state after timing I2C writes.
+     */
+    public void notifyTimingRegisterChanged(int regAddr, String reason) {
+        if (aeReader != null) {
+            syncParserTimestampScale();
+            aeReader.resyncTimingAfterRegisterChange(regAddr, reason);
+        }
+    }
+
+    /** Push TSTAMP_REF / TSTAMP_SUB from loaded settings into the live USB parser. */
+    public void syncParserTimestampScale() {
+        if (aeReader == null || chip == null || !(chip.getBiasgen() instanceof NRVConfig config)) {
+            return;
+        }
+        aeReader.getParser().setTimestampScale(
+                config.getTstampRefUnitVal(),
+                config.getTimestampSubUnit());
+    }
+
     @Override
     public synchronized void open() throws HardwareInterfaceException {
         if (isOpen()) {
@@ -410,6 +430,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
                 aeReader = new NRVAEReader(this);
                 allocateAEBuffers();
             }
+            syncParserTimestampScale();
             aeReader.startThread();
         } else if (aeReader != null) {
             aeReader.stopThread();

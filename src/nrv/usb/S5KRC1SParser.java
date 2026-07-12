@@ -37,6 +37,37 @@ public class S5KRC1SParser {
     private static final long REF_WRAP_US = (REF_MS_MASK + 1L) * 1000L;
     private static final int SENSOR_COUNT = 2;
 
+    /** Per-interval USB packet counters (development trace). */
+    public static final class TimingStats {
+        int refPackets;
+        int subPackets;
+        int frameEndPackets;
+        int colPackets;
+        int eventCount;
+        long refMs0;
+        long fullUs0;
+        long lastOutUs;
+        int posX0;
+        int maxChunkSpanUs;
+
+        void resetIntervalCounters() {
+            refPackets = 0;
+            subPackets = 0;
+            frameEndPackets = 0;
+            colPackets = 0;
+            eventCount = 0;
+            maxChunkSpanUs = 0;
+        }
+
+        void noteChunkSpanUs(int spanUs) {
+            if (spanUs > maxChunkSpanUs) {
+                maxChunkSpanUs = spanUs;
+            }
+        }
+    }
+
+    private final TimingStats timingStats = new TimingStats();
+
     private final long[] refTimeStampMs = new long[SENSOR_COUNT];
     private final long[] refWrapUs = new long[SENSOR_COUNT];
     private final long[] fullTimeStampUs = new long[SENSOR_COUNT];
@@ -45,6 +76,10 @@ public class S5KRC1SParser {
     private int skipPeriodMs = DEFAULT_SKIP_PERIOD_MS;
     private boolean mirrorFlag = false;
     private boolean droppedEventsBeforeColumnAddress;
+    /** {@code TSTAMP_REF_UNIT_VAL} (0x32B3:32B4); factory presets use 0x03E7 (999). */
+    private int tstampRefUnitVal = 999;
+    /** {@code TSTAMP_SUB_UNIT_VAL} LSB (0x32B2); scales 10-bit sub fields to µs within each ref ms. */
+    private int tstampSubUnitVal = 0x7D;
     /** Absolute device time (µs) subtracted from output; jAER time 0 = this value. */
     private long timestampOriginUs = -1;
     /** Last emitted absolute timestamp (µs), for monotonic output. */
@@ -54,8 +89,33 @@ public class S5KRC1SParser {
         reset();
     }
 
+    /**
+     * Clears reference/full timestamp state after a live timing-register write.
+     * Keeps column position and jAER session origin so the next USB ref/sub packets re-base event time.
+     */
+    public synchronized void resyncTimingState(int regAddr, String reason) {
+        final long savedOrigin = timestampOriginUs;
+        final long savedLastOut = lastOutputAbsoluteUs;
+        final int savedPosX0 = posX[0];
+        for (int i = 0; i < SENSOR_COUNT; i++) {
+            refTimeStampMs[i] = 0;
+            refWrapUs[i] = 0;
+            fullTimeStampUs[i] = 0;
+        }
+        frameStartTimeMs = 0;
+        NRVTrace.logTimingResync(regAddr, reason, savedOrigin, savedLastOut, savedPosX0);
+    }
+
+    TimingStats getTimingStats() {
+        return timingStats;
+    }
+
+    void noteChunkTimestampSpanUs(int spanUs) {
+        timingStats.noteChunkSpanUs(spanUs);
+    }
+
     /** Clears all parser state (stream restart). */
-    public void reset() {
+    public synchronized void reset() {
         for (int i = 0; i < SENSOR_COUNT; i++) {
             refTimeStampMs[i] = 0;
             refWrapUs[i] = 0;
@@ -75,7 +135,7 @@ public class S5KRC1SParser {
      * column position or reference-timestamp tracking. Used when the user presses '0'.
      * NRV CX3/FX20 firmware exposes no DAVIS-style hardware timestamp-reset command.
      */
-    public void resetTimestampOrigin() {
+    public synchronized void resetTimestampOrigin() {
         long anchorUs = lastOutputAbsoluteUs;
         if (anchorUs < 0) {
             anchorUs = Math.max(fullTimeStampUs[0], fullTimeStampUs[1]);
@@ -86,6 +146,21 @@ public class S5KRC1SParser {
 
     public void setSkipPeriodMs(int skipPeriodMs) {
         this.skipPeriodMs = skipPeriodMs;
+    }
+
+    /**
+     * Updates sub-timestamp scaling from I2C {@code TSTAMP_REF_UNIT_VAL} / {@code TSTAMP_SUB_UNIT_VAL}.
+     * Sub fields on the wire are slot indices; true offset within the ref ms is
+     * {@code index × (refUnit + 1) / subUnit} µs.
+     */
+    public void setTimestampScale(int refUnitVal, int subUnitVal) {
+        this.tstampRefUnitVal = Math.max(0, refUnitVal);
+        this.tstampSubUnitVal = Math.max(0, subUnitVal);
+    }
+
+    /** Column packet embeds a 10-bit sub field: {@code --ST TTTT | TTTT T-CC | CCCC CCCC}. */
+    static int decodeColumnSubTimestamp(byte pkt1, byte pkt2) {
+        return ((pkt1 & 0x0F) << 6) | ((pkt2 & 0xFC) >> 2);
     }
 
     public int getSkipPeriodMs() {
@@ -100,7 +175,7 @@ public class S5KRC1SParser {
     /**
      * @return number of events written to addresses/timestamps
      */
-    public int parse(byte[] pkt, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
+    public synchronized int parse(byte[] pkt, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
         int eventCount = eventOffset;
         for (int i = 0; i + 3 < len; i += 4) {
             final int header = pkt[i] & 0x7C;
@@ -108,10 +183,15 @@ public class S5KRC1SParser {
 
             if (isTimestampPacket(pkt[i])) {
                 if ((pkt[i + 1] & 0x80) != 0) {
-                    applySubTimestamp(sensorID, ((pkt[i + 2] & 0x03) << 8) | (pkt[i + 3] & 0xFF));
+                    final int subTs = ((pkt[i + 2] & 0x03) << 8) | (pkt[i + 3] & 0xFF);
+                    applySubTimestamp(sensorID, subTs);
+                    timingStats.subPackets++;
+                    NRVTrace.logTimingRefSub(sensorID, true, refTimeStampMs[sensorID], subTs, fullTimeStampUs[sensorID]);
                 } else {
-                    applyReferenceTimestamp(sensorID,
-                            ((pkt[i + 1] & 0x3F) << 16) | ((pkt[i + 2] & 0xFF) << 8) | (pkt[i + 3] & 0xFF));
+                    final long refMs = ((pkt[i + 1] & 0x3F) << 16) | ((pkt[i + 2] & 0xFF) << 8) | (pkt[i + 3] & 0xFF);
+                    applyReferenceTimestamp(sensorID, refMs);
+                    timingStats.refPackets++;
+                    NRVTrace.logTimingRefSub(sensorID, false, refTimeStampMs[sensorID], 0, fullTimeStampUs[sensorID]);
                 }
             }
 
@@ -149,6 +229,7 @@ public class S5KRC1SParser {
 
             switch (header) {
                 case 0x0C:
+                    timingStats.frameEndPackets++;
                     break;
                 case 0x04:
                     mirrorFlag = (pkt[i + 1] & 0x80) != 0;
@@ -156,6 +237,10 @@ public class S5KRC1SParser {
                     posX[sensorID] = ((pkt[i + 2] & 0x07) << 8) | (pkt[i + 3] & 0xFF);
                     if (posX[sensorID] >= WIDTH) {
                         posX[sensorID] = WIDTH - 1;
+                    }
+                    timingStats.colPackets++;
+                    if (sFlag == 0) {
+                        applySubTimestamp(sensorID, decodeColumnSubTimestamp(pkt[i + 1], pkt[i + 2]));
                     }
                     if (sFlag != 0) {
                         continue;
@@ -165,6 +250,11 @@ public class S5KRC1SParser {
                     break;
             }
         }
+        timingStats.refMs0 = refTimeStampMs[0];
+        timingStats.fullUs0 = fullTimeStampUs[0];
+        timingStats.lastOutUs = lastOutputAbsoluteUs;
+        timingStats.posX0 = posX[0];
+        NRVTrace.logTimingSummary(timingStats);
         return eventCount - eventOffset;
     }
 
@@ -202,8 +292,19 @@ public class S5KRC1SParser {
         }
     }
 
+    private long subFieldToMicros(int subField) {
+        if (tstampSubUnitVal <= 0) {
+            return subField;
+        }
+        return (long) subField * (tstampRefUnitVal + 1L) / tstampSubUnitVal;
+    }
+
     private void applySubTimestamp(int sensorID, int subTs) {
-        long newTs = absoluteRefUs(sensorID) + subTs;
+        long subUs = subFieldToMicros(subTs);
+        if (subUs > 999) {
+            subUs = 999;
+        }
+        long newTs = absoluteRefUs(sensorID) + subUs;
         if (newTs <= fullTimeStampUs[sensorID]) {
             final long prevRefMs = fullTimeStampUs[sensorID] / 1000L;
             final long currentRefBucketMs = absoluteRefUs(sensorID) / 1000L;
@@ -213,7 +314,7 @@ public class S5KRC1SParser {
                     refTimeStampMs[sensorID] = 0;
                     refWrapUs[sensorID] += REF_WRAP_US;
                 }
-                newTs = absoluteRefUs(sensorID) + subTs;
+                newTs = absoluteRefUs(sensorID) + subUs;
             }
         }
         fullTimeStampUs[sensorID] = newTs;
@@ -267,6 +368,7 @@ public class S5KRC1SParser {
             addresses[eventCount + added] = packAddress(lastPosX, posY, pol);
             timestamps[eventCount + added] = outputTs;
             added++;
+            timingStats.eventCount++;
         }
         return added;
     }

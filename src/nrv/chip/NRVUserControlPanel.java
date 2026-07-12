@@ -3,6 +3,7 @@ package nrv.chip;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.beans.PropertyChangeEvent;
@@ -56,8 +57,7 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
     private final JSlider timestampSubSlider = new JSlider(SUB_UNIT_MIN, SUB_UNIT_MAX, 0x21);
     private final JLabel thresholdValueLabel = new JLabel();
     private final JLabel onOffValueLabel = new JLabel();
-    private final JLabel onThresholdLabel = new JLabel();
-    private final JLabel offThresholdLabel = new JLabel();
+    private final JLabel thresholdReadoutLabel = new JLabel();
     private final JLabel scanRateValueLabel = new JLabel();
     private final JLabel scanRateDetailLabel = new JLabel();
     private final JLabel timestampSubValueLabel = new JLabel();
@@ -193,16 +193,9 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         section.add(Box.createVerticalStrut(6));
         section.add(wrapPotTweaker("ON / OFF balance", onOffBalanceTweaker, onOffValueLabel));
         section.add(Box.createVerticalStrut(8));
-        section.add(centerComponent(buildThresholdReadoutRow()));
+        section.add(buildThresholdReadoutPanel());
         stretchChildren(section);
         return section;
-    }
-
-    private static JPanel centerComponent(JComponent component) {
-        final JPanel wrap = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 0, 0));
-        wrap.add(component);
-        wrap.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return wrap;
     }
 
     private JPanel buildTimingSection() {
@@ -222,20 +215,17 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         return section;
     }
 
-    private JPanel buildThresholdReadoutRow() {
-        final JPanel inner = new JPanel();
-        inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
-        onThresholdLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        offThresholdLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        inner.add(onThresholdLabel);
-        inner.add(Box.createVerticalStrut(2));
-        inner.add(offThresholdLabel);
+    private JPanel buildThresholdReadoutPanel() {
+        thresholdReadoutLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN,
+                thresholdReadoutLabel.getFont().getSize()));
+        thresholdReadoutLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        final JPanel row = new JPanel(new BorderLayout());
-        row.setBorder(BorderFactory.createTitledBorder("Estimated thresholds"));
-        row.add(inner, BorderLayout.CENTER);
-        stretchChildren(row);
-        return row;
+        final JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createTitledBorder("Estimated thresholds"));
+        panel.add(thresholdReadoutLabel);
+        stretchHorizontal(thresholdReadoutLabel);
+        return panel;
     }
 
     private static JPanel wrapPotTweaker(String title, PotTweaker tweaker, JLabel valueLabel) {
@@ -397,22 +387,19 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
     private void updateThresholdReadoutLabels() {
         final float onLogE = config.getOnThresholdLogE();
         final float offLogE = config.getOffThresholdLogE();
-        if (Float.isNaN(onLogE)) {
-            onThresholdLabel.setText("ON: —");
-        } else {
-            final float onPct = NRVConfig.logThresholdToPercentChange(onLogE);
-            onThresholdLabel.setText(String.format(
-                    "<html><center>ON: %.2f e-folds (%.2f%%)<br>K_ON/K_REF = %.2g</center>",
-                    onLogE, onPct, config.getKOn() / config.getKRef()));
+        if (Float.isNaN(onLogE) || Float.isNaN(offLogE)) {
+            thresholdReadoutLabel.setText("ON:  —\nOFF: —");
+            return;
         }
-        if (Float.isNaN(offLogE)) {
-            offThresholdLabel.setText("OFF: —");
-        } else {
-            final float offPct = NRVConfig.logThresholdToPercentChange(offLogE);
-            offThresholdLabel.setText(String.format(
-                    "<html><center>OFF: %.2f e-folds (%.2f%%)<br>K_OFF/K_REF = %.2g</center>",
-                    offLogE, offPct, config.getKOff() / config.getKRef()));
-        }
+        final float onPct = NRVConfig.logThresholdToPercentChange(onLogE);
+        final float offPct = NRVConfig.logThresholdToPercentChange(offLogE);
+        final float kOnRatio = (float) (config.getKOn() / config.getKRef());
+        final float kOffRatio = (float) (config.getKOff() / config.getKRef());
+        thresholdReadoutLabel.setText(String.format(
+                "ON:  %6.2f e-folds (%7.2f%%)   K_ON/K_REF = %8.4g%n"
+                + "OFF: %6.2f e-folds (%7.2f%%)   K_OFF/K_REF = %8.4g",
+                onLogE, onPct, kOnRatio,
+                offLogE, offPct, kOffRatio));
     }
 
     private void updateSubTimestampTimingLabel(int subUnit) {

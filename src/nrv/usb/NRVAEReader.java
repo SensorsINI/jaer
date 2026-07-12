@@ -62,7 +62,10 @@ public class NRVAEReader implements ReaderBufferControl {
         clearEndpointHalt(monitor.getDeviceHandle());
         log.info("Starting NRV AEReader on endpoint 0x81 (fifo=" + getFifoSize()
                 + " buffers=" + getNumBuffers()
-                + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED + ")");
+                + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED
+                + ", timingTrace=" + NRVTrace.TIMING_ENABLED
+                + (NRVTrace.TIMING_ENABLED ? ", timingIntervalMs=" + NRVTrace.TIMING_INTERVAL_MS : "")
+                + ")");
         usbTransfer = new USBTransferThread(
                 monitor.getDeviceHandle(),
                 ENDPOINT_IN,
@@ -99,6 +102,11 @@ public class NRVAEReader implements ReaderBufferControl {
 
     public void resetTimestamps() {
         parser.resetTimestampOrigin();
+    }
+
+    /** Re-base ref/full timestamp tracking after live timing-register I2C writes. */
+    void resyncTimingAfterRegisterChange(int regAddr, String reason) {
+        parser.resyncTimingState(regAddr, reason);
     }
 
     S5KRC1SParser getParser() {
@@ -236,6 +244,15 @@ public class NRVAEReader implements ReaderBufferControl {
 
         if (parsed > 0) {
             checkTimestampOrder(stagingTimestamps, 0, parsed);
+            if (NRVTrace.TIMING_ENABLED) {
+                int minTs = stagingTimestamps[0];
+                int maxTs = stagingTimestamps[0];
+                for (int e = 1; e < parsed; e++) {
+                    minTs = Math.min(minTs, stagingTimestamps[e]);
+                    maxTs = Math.max(maxTs, stagingTimestamps[e]);
+                }
+                parser.noteChunkTimestampSpanUs(maxTs - minTs);
+            }
         }
         return new ParsedChunk(parsed, parseLimit);
     }

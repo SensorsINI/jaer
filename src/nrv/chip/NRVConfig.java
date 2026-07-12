@@ -104,6 +104,20 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             REG_DTAG_COL_MARGIN, REG_DTAG_FRM_MARGIN_MSB, REG_DTAG_FRM_MARGIN_LSB
     };
 
+    /** True for scan-rate block and TSTAMP ref/sub registers that affect USB timestamp cadence. */
+    public static boolean isTimingRegister(int regAddr) {
+        if (regAddr == REG_TSTAMP_SUB_UNIT_MSB || regAddr == REG_TSTAMP_SUB_UNIT_LSB
+                || regAddr == REG_TSTAMP_REF_MSB || regAddr == REG_TSTAMP_REF_LSB) {
+            return true;
+        }
+        for (int scanReg : SCAN_RATE_REGS) {
+            if (scanReg == regAddr) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Known Scan Rate Setting anchors from factory {@code S5KRC1S_*} files (nominal Hz → register bytes).
      * {@code -1} = not present in that preset (keep / take other endpoint when interpolating).
@@ -135,6 +149,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     private float onOffBalanceTweak = 0f;
     /** True while slider-driven ON/OFF writes are in flight (skip inverse slider sync). */
     private boolean applyingOnOffTweaks = false;
+    private boolean applyingScanRateBatch = false;
     private int baselineThreshold = 0x0F;
     private int baselineOnUnit = 0x07;
     private int baselineOffUnit = 0x1F;
@@ -517,6 +532,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         }
         scanRateHz = hz;
         try {
+            applyingScanRateBatch = true;
             applyScanRateRegisters(hz);
             final int sub = timestampSubForScanRateHz(hz);
             if (getTimestampSubUnit() != sub) {
@@ -526,7 +542,10 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             scanRateHz = old;
             log.warning("NRV scan-rate apply failed: " + e.getMessage());
             return;
+        } finally {
+            applyingScanRateBatch = false;
         }
+        notifyTimingRegisterChange(-1, "scanRateHz=" + hz);
         support.firePropertyChange(PROPERTY_SCAN_RATE_HZ, old, hz);
         support.firePropertyChange(PROPERTY_FRAME_MARGIN, null, getFrameMarginCombined());
         support.firePropertyChange(PROPERTY_TIMESTAMP_SUB, null, getTimestampSubUnit());
@@ -1006,6 +1025,15 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             controlPanel.updateRegisterRow(setting);
         }
         support.firePropertyChange(PROPERTY_REGISTER_UPDATED, null, setting);
+        if (!applyingScanRateBatch && isTimingRegister(setting.getRegAddr())) {
+            notifyTimingRegisterChange(setting.getRegAddr(), "registerWrite");
+        }
+    }
+
+    private void notifyTimingRegisterChange(int regAddr, String reason) {
+        if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
+            hw.notifyTimingRegisterChanged(regAddr, reason);
+        }
     }
 
     NRVControlPanel getNrvControlPanel() {
