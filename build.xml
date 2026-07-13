@@ -95,10 +95,10 @@
             <path>
                 <fileset dir="${ivy.lib}" includes="*.jar"/>
             </path>
-            <map from="${basedir}${file.separator}" to=""/>
+            <map from="${basedir}/" to=""/>
+            <map from="${basedir}\" to=""/>
         </pathconvert>
 
-        <echo message="ivy.classpath.computed = ${line.separator} ${ivy.classpath.computed}" />
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
         </propertyfile>
@@ -118,13 +118,9 @@
     </target>
 
     <target name="clean-ivy" depends="clean-deps" description="Clean ivy.">
-        <!--<delete dir="${ivy.jar.dir}"/>-->
-        <!--<ivy:cleancache/>-->
-        <propertyfile file="${basedir}/nbproject/project.properties">
-            <entry operation="=" key="ivy.classpath" value=""/>
-        </propertyfile>
-        <!--        <antcall target="remove-properties-datestamp"/>-->
-
+        <!-- Do not clear ivy.classpath here: init loads it before download-deps on compile,
+             and Ant properties are immutable once set, so an empty value breaks the first compile
+             after clean. lib/*.jar paths stay valid once Ivy retrieve repopulates lib/. -->
     </target>
 
     <!--    <target name="-use-ivy-junit" depends="download-deps" unless="netbeans.home">
