@@ -663,6 +663,16 @@ public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnno
         setXEnabled(false);
         setYEnabled(false);
         setTypeEnabled(false);
+        setCircularShapeFilter(false);
+        // Drop persisted multi-ROI so a later initFilter() doLoadMultiSelection cannot restore it
+        try {
+            final String key = prefsKeyHeader() + "multiSelection";
+            if (getPrefs().nodeExists(key)) {
+                getPrefs().node(key).removeNode();
+            }
+        } catch (Exception e) {
+            log.fine("could not clear multiSelection preference: " + e.toString());
+        }
     }
 
     public final synchronized void doLoadMultiSelection() {

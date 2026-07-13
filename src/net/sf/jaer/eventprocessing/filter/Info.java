@@ -41,10 +41,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import net.sf.jaer.Preferred;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
@@ -588,28 +585,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 Arrays.fill(b, false);
             }
         }
-        if (in instanceof ApsDvsEventPacket) {
-            ApsDvsEventPacket apsPkt = (ApsDvsEventPacket) in;
-            Iterator<ApsDvsEvent> i = apsPkt.fullIterator();
-            while (i.hasNext()) {
-                ApsDvsEvent e = i.next();
-                if (e.isImuSample()) {
-                    accumulatedIMUSampleCount++;
-                } else if (e.isApsData()) {
-                    accumulatedAPSSampleCount++;
-                } else if (e.isDVSEvent()) {
-                    accumulatedDVSEventCount++;
-                    if (e.getPolarity() == Polarity.On) {
-                        accumulatedDVSOnEventCount++;
-                    } else if (e.getPolarity() == Polarity.Off) {
-                        accumulatedDVSOffEventCount++;
-                    }
-                    if (measureSparsity) {
-                        sparsityMap[e.x][e.y] = true;
-                    }
-                }
-            }
-        } else if (in.getEventPrototype() instanceof PolarityEvent) {
+        // Default iterator(): DVS events only (skips filteredOut; for ApsDvsEventPacket skips APS/IMU)
+        if (in.getEventPrototype() instanceof PolarityEvent) {
             for (BasicEvent be : in) {
                 PolarityEvent e = (PolarityEvent) be;
                 accumulatedDVSEventCount++;
@@ -676,6 +653,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     @Override
     public void initFilter() {
         sparsityMap = new boolean[chip.getSizeX()][chip.getSizeY()];
+        // Clear enclosed ROI so a prior XYTypeFilter selection cannot restrict Info's view.
+        // Runs before enclosed initFilters(); doEraseSelections also drops persisted multi-ROI.
+        xyTypeFilter.doEraseSelections();
     }
     GLU glu = null;
     GLUquadric wheelQuad;
