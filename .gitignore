@@ -42,3 +42,4 @@ nbproject/build-impl.xml
 nrv-timing-trace.log
 nbproject/genfiles.properties
 nbproject/build-impl.xml
+scripts/_testargs.bat
