@@ -2161,17 +2161,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection() == AbstractAEPlayer.PlaybackDirection.Backward) {
                 return inputPacket; // don't run filters if user is manipulating position or playing backwards
             }
+            FilterChain chain = filterChain;
+            if (chain == null && chip != null) {
+                chain = chip.getFilterChain();
+                filterChain = chain;
+            }
+            if (chain == null) {
+                return inputPacket;
+            }
             // filter events, do processing on them in rendering loop here
-            if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
+            if ((chain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
                 try {
-                    EventPacket p = filterChain.filterPacket(inputPacket);
+                    EventPacket p = chain.filterPacket(inputPacket);
                     return p;
                 } catch (Exception e) {
                     log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
                     log.log(Level.SEVERE, e.toString(), e);
 
                     log.log(Level.WARNING, "Filter exception", e);
-                    for (EventFilter f : filterChain) {
+                    for (EventFilter f : chain) {
                         f.setFilterEnabled(false);
                     }
                 }
@@ -6727,6 +6735,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getChip().setAeViewer(this);  // set this now so that chip has AEViewer for building BiasgenFrame etc properly
             extractor = chip.getEventExtractor();
             renderer = chip.getRenderer();
+            filterChain = chip.getFilterChain();
 
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
             if (chip.getFilterChain() != null) {
