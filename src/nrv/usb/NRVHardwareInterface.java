@@ -93,6 +93,13 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         return support;
     }
 
+    private NRVAEReader ensureAeReader() {
+        if (aeReader == null) {
+            aeReader = new NRVAEReader(this);
+        }
+        return aeReader;
+    }
+
     int getEventCounter() {
         return eventCounter;
     }
@@ -285,6 +292,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         }
         deviceDescriptor = null;
         i2cTransport = null;
+        settingsApplied = false;
         aePacketRawPool.reset();
         isOpened = false;
     }
@@ -347,11 +355,14 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         if (settingsApplied) {
             return;
         }
+        if (loadedSettings != null) {
+            applySettings(loadedSettings);
+            return;
+        }
         if (chip != null && chip.getBiasgen() instanceof NRVConfig config) {
-            if (config.getLoadedSettings() != null) {
-                applySettings(config.getLoadedSettings());
-            } else {
-                config.autoLoadSettingsIfNeeded();
+            if (!config.ensureAppliedToHardware()) {
+                log.warning("NRV: register settings not applied — load biasgenSettings/NRV/S5KRC1S_300_CX3.txt "
+                        + "via Biases > File > Load settings");
             }
         }
     }
@@ -434,7 +445,6 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             aeReader.startThread();
         } else if (aeReader != null) {
             aeReader.stopThread();
-            aeReader = null;
         }
         eventAcquisitionEnabled = enable;
     }
@@ -530,30 +540,26 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public int getFifoSize() {
-        return aeReader == null ? 0 : aeReader.getFifoSize();
+        return ensureAeReader().getFifoSize();
     }
 
     @Override
     public void setFifoSize(int fifoSize) {
-        if (aeReader != null) {
-            aeReader.setFifoSize(fifoSize);
-        }
+        ensureAeReader().setFifoSize(fifoSize);
     }
 
     @Override
     public int getNumBuffers() {
-        return aeReader == null ? 0 : aeReader.getNumBuffers();
+        return ensureAeReader().getNumBuffers();
     }
 
     @Override
     public void setNumBuffers(int numBuffers) {
-        if (aeReader != null) {
-            aeReader.setNumBuffers(numBuffers);
-        }
+        ensureAeReader().setNumBuffers(numBuffers);
     }
 
     @Override
     public PropertyChangeSupport getReaderSupport() {
-        return support;
+        return ensureAeReader().getReaderSupport();
     }
 }

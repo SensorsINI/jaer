@@ -157,6 +157,7 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
+import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.filter.LowpassFilter;
 import org.joda.time.Period;
@@ -418,9 +419,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // unfortunately this returns null always, seems no way to find out
 //        log.info(String.format("Preferences storage is located at %s",System.getProperty("java.util.prefs.userRoot")));
         if (chipClassName == null) {
-            aeChipClassName = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+            aeChipClassName = VendorPrefsMigration.migrateChipClassName(
+                    prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS));
         } else {
-            aeChipClassName = chipClassName;
+            aeChipClassName = VendorPrefsMigration.migrateChipClassName(chipClassName);
+        }
+        if (!aeChipClassName.equals(prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS))) {
+            prefs.put("AEViewer.aeChipClassName", aeChipClassName);
         }
         log.info("AEChip class name is " + aeChipClassName);
         try {

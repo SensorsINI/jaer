@@ -16,6 +16,7 @@ import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
+import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 
 /**
  * USB bulk reader for NRV DVS devices (endpoint 0x81).
@@ -27,22 +28,18 @@ public class NRVAEReader implements ReaderBufferControl {
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final byte ENDPOINT_IN = (byte) 0x81;
     private static final int DEFAULT_FIFO_SIZE = 1 << 17;
-    private static final int MIN_FIFO_SIZE = 4096;
-    /** Cap avoids OOM from Control-menu FIFO doubling or corrupted prefs. */
-    private static final int MAX_FIFO_SIZE = 1 << 22;
     private static final int DEFAULT_NUM_BUFFERS = 16;
-    private static final int MAX_NUM_BUFFERS = 32;
-    private static final long MAX_TOTAL_USB_BUFFER_BYTES = 64L * 1024L * 1024L;
+    private static final String PREF_FIFO_SIZE = "NRV.AEReader.fifoSize";
+    private static final String PREF_NUM_BUFFERS = "NRV.AEReader.numBuffers";
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
 
     private final NRVHardwareInterface monitor;
     private final S5KRC1SParser parser = new S5KRC1SParser();
     private USBTransferThread usbTransfer;
-    private int fifoSize = sanitizeFifoSize(
-            JaerConstants.PREFS_ROOT_HARDWARE.getInt("NRV.AEReader.fifoSize", DEFAULT_FIFO_SIZE));
-    private int numBuffers = sanitizeNumBuffers(
-            JaerConstants.PREFS_ROOT_HARDWARE.getInt("NRV.AEReader.numBuffers", DEFAULT_NUM_BUFFERS),
-            fifoSize);
+    private int fifoSize = UsbReaderBufferSettings.loadFifoSize(
+            JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE, log, "NRV");
+    private int numBuffers = UsbReaderBufferSettings.loadNumBuffers(
+            JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS, fifoSize, log, "NRV");
     private byte[] parseScratch;
     private int[] stagingAddresses;
     private int[] stagingTimestamps;
@@ -124,10 +121,13 @@ public class NRVAEReader implements ReaderBufferControl {
 
     @Override
     public void setFifoSize(int fifoSize) {
-        this.fifoSize = sanitizeFifoSize(fifoSize);
-        this.numBuffers = sanitizeNumBuffers(numBuffers, this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.fifoSize", this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.numBuffers", numBuffers);
+        this.fifoSize = UsbReaderBufferSettings.sanitizeFifoSize(
+                JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, fifoSize, DEFAULT_FIFO_SIZE, log, "NRV");
+        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
+                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, this.fifoSize,
+                DEFAULT_NUM_BUFFERS, log, "NRV");
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_FIFO_SIZE, this.fifoSize);
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, numBuffers);
         if (usbTransfer != null) {
             usbTransfer.setBufferSize(this.fifoSize);
             usbTransfer.setBufferNumber(numBuffers);
@@ -136,47 +136,13 @@ public class NRVAEReader implements ReaderBufferControl {
 
     @Override
     public void setNumBuffers(int numBuffers) {
-        this.numBuffers = sanitizeNumBuffers(numBuffers, fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.numBuffers", this.numBuffers);
+        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
+                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, fifoSize,
+                DEFAULT_NUM_BUFFERS, log, "NRV");
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, this.numBuffers);
         if (usbTransfer != null) {
             usbTransfer.setBufferNumber(this.numBuffers);
         }
-    }
-
-    private static int sanitizeFifoSize(int fifoSize) {
-        if (fifoSize >= MIN_FIFO_SIZE && fifoSize <= MAX_FIFO_SIZE) {
-            return fifoSize;
-        }
-        log.warning(String.format(
-                "Invalid NRV USB FIFO size %d bytes; resetting to %d (valid range %d..%d). "
-                        + "This can happen after repeatedly increasing FIFO size in Control menu.",
-                fifoSize, DEFAULT_FIFO_SIZE, MIN_FIFO_SIZE, MAX_FIFO_SIZE));
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
-        return DEFAULT_FIFO_SIZE;
-    }
-
-    private static int sanitizeNumBuffers(int numBuffers, int fifoSize) {
-        int n = numBuffers;
-        if (n < 1) {
-            n = 1;
-        }
-        if (n > MAX_NUM_BUFFERS) {
-            n = MAX_NUM_BUFFERS;
-        }
-        final int safeFifo = Math.max(MIN_FIFO_SIZE, Math.min(fifoSize, MAX_FIFO_SIZE));
-        if (safeFifo > 0) {
-            final long total = (long) safeFifo * n;
-            if (total > MAX_TOTAL_USB_BUFFER_BYTES) {
-                n = (int) (MAX_TOTAL_USB_BUFFER_BYTES / safeFifo);
-                if (n < 1) {
-                    n = 1;
-                }
-                log.warning(String.format(
-                        "NRV USB buffer count reduced to %d so fifo (%d) x buffers stays under %d MB",
-                        n, safeFifo, MAX_TOTAL_USB_BUFFER_BYTES / (1024 * 1024)));
-            }
-        }
-        return n;
     }
 
     @Override

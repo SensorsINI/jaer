@@ -59,6 +59,16 @@ public final class VendorPrefsMigration {
         }
     }
 
+    /** Rewrites legacy fully-qualified chip class names saved in viewer preferences. */
+    public static String migrateChipClassName(String className) {
+        if (className == null || className.isEmpty()) {
+            return className;
+        }
+        return className
+                .replace("ch.unizh.ini.jaer.chip.nrv.", "nrv.chip.")
+                .replace("ch.unizh.ini.jaer.chip.prophesee.", "prophesee.chip.");
+    }
+
     /** Rewrites legacy package node names in exported Java preferences XML. */
     public static InputStream rewriteLegacyPreferencesXml(InputStream is) throws IOException {
         final String xml = new String(is.readAllBytes(), StandardCharsets.UTF_8);

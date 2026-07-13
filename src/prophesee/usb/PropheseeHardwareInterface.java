@@ -99,6 +99,13 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         return support;
     }
 
+    private PropheseeAEReader ensureAeReader() {
+        if (aeReader == null) {
+            aeReader = new PropheseeAEReader(this);
+        }
+        return aeReader;
+    }
+
     int getEventCounter() {
         return eventCounter;
     }
@@ -425,7 +432,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         } else if (aeReader != null) {
             aeReader.prepareForStop();
             aeReader.finishStop();
-            aeReader = null;
         }
         eventAcquisitionEnabled = enable;
     }
@@ -517,31 +523,27 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     @Override
     public int getFifoSize() {
-        return aeReader == null ? 0 : aeReader.getFifoSize();
+        return ensureAeReader().getFifoSize();
     }
 
     @Override
     public void setFifoSize(int fifoSize) {
-        if (aeReader != null) {
-            aeReader.setFifoSize(fifoSize);
-        }
+        ensureAeReader().setFifoSize(fifoSize);
     }
 
     @Override
     public int getNumBuffers() {
-        return aeReader == null ? 0 : aeReader.getNumBuffers();
+        return ensureAeReader().getNumBuffers();
     }
 
     @Override
     public void setNumBuffers(int numBuffers) {
-        if (aeReader != null) {
-            aeReader.setNumBuffers(numBuffers);
-        }
+        ensureAeReader().setNumBuffers(numBuffers);
     }
 
     @Override
     public PropertyChangeSupport getReaderSupport() {
-        return aeReader != null ? aeReader.getReaderSupport() : support;
+        return ensureAeReader().getReaderSupport();
     }
 
     @Override

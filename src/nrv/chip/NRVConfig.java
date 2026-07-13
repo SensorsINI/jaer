@@ -210,6 +210,24 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     /**
+     * Ensures register settings are loaded and pushed over I2C before USB event capture.
+     *
+     * @return true when settings are applied to the connected device
+     */
+    public boolean ensureAppliedToHardware() throws HardwareInterfaceException {
+        if (loadedSettings == null && !autoLoadSettingsIfNeeded()) {
+            return false;
+        }
+        if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
+            if (!hw.isSettingsApplied()) {
+                applyLoadedSettingsToHardware();
+            }
+            return hw.isSettingsApplied();
+        }
+        return loadedSettings != null;
+    }
+
+    /**
      * Parse settings from preferences / default folder if not already in memory.
      * Does not require hardware to be connected.
      */
@@ -231,9 +249,18 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
 
     /**
      * Load settings when hardware attaches and Biases frame was never opened.
+     * Applies parsed settings to hardware when a device is already connected.
      */
     public boolean autoLoadSettingsIfNeeded() {
         if (loadedSettings != null) {
+            try {
+                if (getHardwareInterface() instanceof NRVHardwareInterface hw && !hw.isSettingsApplied()) {
+                    applyLoadedSettingsToHardware();
+                }
+            } catch (HardwareInterfaceException e) {
+                log.warning("Could not apply pre-loaded NRV settings to hardware: " + e.getMessage());
+                return false;
+            }
             return true;
         }
         final File settingsFile = resolveLastSettingsFile(getBiasgenFrameLastFile());
@@ -953,30 +980,11 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         if (!(hardwareInterface instanceof NRVHardwareInterface nrvHw)) {
             return;
         }
-        if (loadedSettings == null) {
-            autoLoadSettingsIfNeeded();
-        } else if (needsApplyToHardware(nrvHw)) {
-            try {
-                applyLoadedSettingsToHardware();
-            } catch (HardwareInterfaceException e) {
-                log.warning("Could not apply NRV settings after hardware attach: " + e.getMessage());
-            }
+        try {
+            ensureAppliedToHardware();
+        } catch (HardwareInterfaceException e) {
+            log.warning("Could not apply NRV settings after hardware attach: " + e.getMessage());
         }
-    }
-
-    private boolean needsApplyToHardware(NRVHardwareInterface hw) {
-        if (!hw.isSettingsApplied()) {
-            return true;
-        }
-        if (loadedSettings == null) {
-            return false;
-        }
-        for (NRVRegisterSetting setting : loadedSettings) {
-            if (!setting.isWait() && !setting.isApplied()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public List<NRVRegisterSetting> getLoadedSettings() {

@@ -16,6 +16,7 @@ import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
+import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import net.sf.jaer.util.TimestampSpread;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Evk4BoardCommand;
@@ -31,12 +32,9 @@ public class PropheseeAEReader implements ReaderBufferControl {
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final byte ENDPOINT_IN = Evk4BoardCommand.EP_EVENTS_IN;
     private static final int DEFAULT_FIFO_SIZE = 131072; // 128 KiB — tuned for low display latency
-    private static final int MIN_FIFO_SIZE = 4096;
-    /** Cap avoids int overflow when doubling FIFO size from the Control menu. */
-    private static final int MAX_FIFO_SIZE = 1 << 22;
     private static final int DEFAULT_NUM_BUFFERS = 16;
-    private static final int MAX_NUM_BUFFERS = 32;
-    private static final long MAX_TOTAL_USB_BUFFER_BYTES = 64L * 1024L * 1024L;
+    private static final String PREF_FIFO_SIZE = "Prophesee.AEReader.fifoSize";
+    private static final String PREF_NUM_BUFFERS = "Prophesee.AEReader.numBuffers";
     /** Bump when default fifo/buffer tuning changes; migrates stored hardware prefs once. */
     private static final int USB_READER_PREFS_VERSION = 1;
 
@@ -47,10 +45,13 @@ public class PropheseeAEReader implements ReaderBufferControl {
     private static void migrateUsbReaderPrefs() {
         final Preferences hw = JaerConstants.PREFS_ROOT_HARDWARE;
         if (hw.getInt("Prophesee.AEReader.prefsVersion", 0) >= USB_READER_PREFS_VERSION) {
+            UsbReaderBufferSettings.loadFifoSize(hw, PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE, log, "Prophesee");
+            UsbReaderBufferSettings.loadNumBuffers(hw, PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS,
+                    hw.getInt(PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE), log, "Prophesee");
             return;
         }
-        hw.putInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
-        hw.putInt("Prophesee.AEReader.numBuffers", DEFAULT_NUM_BUFFERS);
+        hw.putInt(PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE);
+        hw.putInt(PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS);
         hw.putInt("Prophesee.AEReader.prefsVersion", USB_READER_PREFS_VERSION);
     }
 
@@ -58,11 +59,10 @@ public class PropheseeAEReader implements ReaderBufferControl {
     private final Evt3Parser parser = new Evt3Parser();
     private USBTransferThread usbTransfer;
     private volatile boolean readerActive;
-    private int fifoSize = sanitizeFifoSize(
-            JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE));
-    private int numBuffers = sanitizeNumBuffers(
-            JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.numBuffers", DEFAULT_NUM_BUFFERS),
-            fifoSize);
+    private int fifoSize = UsbReaderBufferSettings.loadFifoSize(
+            JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE, log, "Prophesee");
+    private int numBuffers = UsbReaderBufferSettings.loadNumBuffers(
+            JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS, fifoSize, log, "Prophesee");
 
     private byte[] parseScratch;
     private int[] stagingAddresses;
@@ -305,26 +305,17 @@ public class PropheseeAEReader implements ReaderBufferControl {
 
     @Override
     public void setFifoSize(int fifoSize) {
-        this.fifoSize = sanitizeFifoSize(fifoSize);
-        this.numBuffers = sanitizeNumBuffers(numBuffers, this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.numBuffers", numBuffers);
+        this.fifoSize = UsbReaderBufferSettings.sanitizeFifoSize(
+                JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, fifoSize, DEFAULT_FIFO_SIZE, log, "Prophesee");
+        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
+                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, this.fifoSize,
+                DEFAULT_NUM_BUFFERS, log, "Prophesee");
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_FIFO_SIZE, this.fifoSize);
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, numBuffers);
         if (usbTransfer != null) {
             usbTransfer.setBufferSize(this.fifoSize);
             usbTransfer.setBufferNumber(numBuffers);
         }
-    }
-
-    private static int sanitizeFifoSize(int fifoSize) {
-        if (fifoSize >= MIN_FIFO_SIZE && fifoSize <= MAX_FIFO_SIZE) {
-            return fifoSize;
-        }
-        log.warning(String.format(
-                "Invalid Prophesee USB FIFO size %d bytes; resetting to %d (valid range %d..%d). "
-                        + "This can happen after repeatedly increasing FIFO size in Control menu.",
-                fifoSize, DEFAULT_FIFO_SIZE, MIN_FIFO_SIZE, MAX_FIFO_SIZE));
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
-        return DEFAULT_FIFO_SIZE;
     }
 
     @Override
@@ -334,35 +325,13 @@ public class PropheseeAEReader implements ReaderBufferControl {
 
     @Override
     public void setNumBuffers(int numBuffers) {
-        this.numBuffers = sanitizeNumBuffers(numBuffers, fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.numBuffers", this.numBuffers);
+        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
+                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, fifoSize,
+                DEFAULT_NUM_BUFFERS, log, "Prophesee");
+        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, this.numBuffers);
         if (usbTransfer != null) {
             usbTransfer.setBufferNumber(this.numBuffers);
         }
-    }
-
-    private static int sanitizeNumBuffers(int numBuffers, int fifoSize) {
-        int n = numBuffers;
-        if (n < 1) {
-            n = 1;
-        }
-        if (n > MAX_NUM_BUFFERS) {
-            n = MAX_NUM_BUFFERS;
-        }
-        final int safeFifo = Math.max(MIN_FIFO_SIZE, Math.min(fifoSize, MAX_FIFO_SIZE));
-        if (safeFifo > 0) {
-            final long total = (long) safeFifo * n;
-            if (total > MAX_TOTAL_USB_BUFFER_BYTES) {
-                n = (int) (MAX_TOTAL_USB_BUFFER_BYTES / safeFifo);
-                if (n < 1) {
-                    n = 1;
-                }
-                log.warning(String.format(
-                        "Prophesee USB buffer count reduced to %d so fifo (%d) x buffers stays under %d MB",
-                        n, safeFifo, MAX_TOTAL_USB_BUFFER_BYTES / (1024 * 1024)));
-            }
-        }
-        return n;
     }
 
     @Override
