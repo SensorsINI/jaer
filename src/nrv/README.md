@@ -46,6 +46,20 @@ Notes learned in practice:
 
 Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). With timing trace, each USB chunk also logs `NRV chunk ts span: … spanUs=…`. Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).
 
+**Pipeline microbenchmarks** (compare NRV vs EVK4 under load):
+
+```text
+-Djaer.usb.trace.pipeline=true
+-Djaer.usb.trace.file=C:/temp/jaer-usb-pipeline-nrv.csv
+-Djaer.usb.trace.intervalMs=2000
+```
+
+**Launch with trace (Windows):** use `scripts/run-jaer-usb-trace.bat nrv` (NRV) or `scripts/run-jaer-usb-trace.bat evk4` (Prophesee EVK4). Each camera writes a separate CSV under `C:/temp/` for later comparison. Or use `scripts/run-jaer-fast.bat` and append `-Djaer.usb.trace.pipeline=true` etc. **Do not** pass only trace flags via `ant -Drun.jvmargs=...` — that **replaces** the default `run.jvmargs` from `nbproject/project.properties` and drops required flags such as `-Djogl.disable.openglcore`, `-Djava.library.path=jars`, and `-Xmx10g`. Missing JOGL flags often shows `GLProfile[GL4bc]` and `makeCanvas` / `Unable to determine GraphicsConfiguration` on Windows.
+
+If using `ant run`, include the full JVM argument set from `project.properties` **plus** trace flags in one `-Drun.jvmargs="..."` string.
+
+Logs every 2 s (INFO): chunks/s, MB/s, keps, and average µs for `parse`, `commitLock`, `limitLock`, `byteCopy`, `arrayCopy`. CSV rows are per USB chunk with thread name. NRV and EVK4 both use async `USBTransferThread` (threads `NRVAEReaderThread` / `PropheseeAEReader`); `usbReadNs` is only non-zero on legacy sync paths.
+
 **Sub-timestamp scaling:** 10-bit sub fields (ref/sub packets and column `0x04` embed) are scaled as `index × (TSTAMP_REF+1) / TSTAMP_SUB` µs within each ref ms (not raw µs when SUB is low). Column packets update `fullTimeStampUs` at each column address. Timing trace reports `maxChunkSpanUs` per interval.
 
 ## Biasing and settings files

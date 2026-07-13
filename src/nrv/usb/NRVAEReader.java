@@ -15,6 +15,7 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
 
 /**
  * USB bulk reader for NRV DVS devices (endpoint 0x81).
@@ -65,6 +66,9 @@ public class NRVAEReader implements ReaderBufferControl {
                 + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED
                 + ", timingTrace=" + NRVTrace.TIMING_ENABLED
                 + (NRVTrace.TIMING_ENABLED ? ", timingIntervalMs=" + NRVTrace.TIMING_INTERVAL_MS : "")
+                + ", pipelineBench=" + UsbPipelineBench.ENABLED
+                + (UsbPipelineBench.ENABLED && System.getProperty("jaer.usb.trace.file") != null
+                        ? ", traceFile=" + System.getProperty("jaer.usb.trace.file") : "")
                 + ")");
         usbTransfer = new USBTransferThread(
                 monitor.getDeviceHandle(),
@@ -213,7 +217,7 @@ public class NRVAEReader implements ReaderBufferControl {
      * Copies USB bytes and parses into thread-local staging (outside {@link AEPacketRawPool} lock).
      * {@link S5KRC1SParser} state is only touched on the USB transfer thread.
      */
-    private ParsedChunk parseUsbChunk(ByteBuffer buffer) {
+    private ParsedChunk parseUsbChunk(ByteBuffer buffer, UsbPipelineBench.Sample sample) {
         final int bytesAvailable = buffer.remaining();
         if (bytesAvailable == 0) {
             return ParsedChunk.EMPTY;
@@ -221,9 +225,16 @@ public class NRVAEReader implements ReaderBufferControl {
         if ((bytesAvailable % 4) != 0) {
             log.warning("NRV packet size " + bytesAvailable + " is not a multiple of 4");
         }
+        if (sample != null) {
+            sample.usbBytes = bytesAvailable;
+        }
 
         final int parseLimit;
+        final long limitLockStart = sample != null ? System.nanoTime() : 0;
         synchronized (monitor.getAePacketRawPool()) {
+            if (sample != null) {
+                sample.limitLockNs = System.nanoTime() - limitLockStart;
+            }
             if (monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag) {
                 return ParsedChunk.EMPTY;
             }
@@ -233,14 +244,23 @@ public class NRVAEReader implements ReaderBufferControl {
             }
         }
 
+        final long copyStart = sample != null ? System.nanoTime() : 0;
         if (parseScratch == null || parseScratch.length < bytesAvailable) {
             parseScratch = new byte[bytesAvailable];
         }
-        buffer.duplicate().get(parseScratch, 0, bytesAvailable);
+        buffer.get(parseScratch, 0, bytesAvailable);
+        if (sample != null) {
+            sample.byteCopyNs = System.nanoTime() - copyStart;
+        }
         ensureStaging(parseLimit);
 
+        final long parseStart = sample != null ? System.nanoTime() : 0;
         final int parsed = parser.parse(parseScratch, bytesAvailable,
                 stagingAddresses, stagingTimestamps, 0, parseLimit);
+        if (sample != null) {
+            sample.parseNs = System.nanoTime() - parseStart;
+            sample.eventsParsed = Math.max(0, parsed);
+        }
 
         if (parsed > 0) {
             checkTimestampOrder(stagingTimestamps, 0, parsed);
@@ -257,10 +277,12 @@ public class NRVAEReader implements ReaderBufferControl {
         return new ParsedChunk(parsed, parseLimit);
     }
 
-    private void commitParsedChunk(ParsedChunk chunk) {
+    private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
         if (chunk == ParsedChunk.EMPTY) {
             return;
         }
+        final long commitStart = sample != null ? System.nanoTime() : 0;
+        long arrayCopyNs = 0;
         synchronized (monitor.getAePacketRawPool()) {
             final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
             final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
@@ -282,8 +304,12 @@ public class NRVAEReader implements ReaderBufferControl {
             if (chunk.parsed < 0) {
                 final int committed = Math.min(chunk.parseLimit, remaining);
                 if (committed > 0) {
+                    final long acStart = sample != null ? System.nanoTime() : 0;
                     System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, committed);
                     System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, committed);
+                    if (sample != null) {
+                        arrayCopyNs += System.nanoTime() - acStart;
+                    }
                     monitor.setEventCounter(startEvent + committed);
                     writeBuffer.setNumEvents(monitor.getEventCounter());
                     writeBuffer.lastCaptureLength = committed;
@@ -295,12 +321,20 @@ public class NRVAEReader implements ReaderBufferControl {
 
             final int toCopy = Math.min(chunk.parsed, remaining);
             if (toCopy > 0) {
+                final long acStart = sample != null ? System.nanoTime() : 0;
                 System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
                 System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
+                if (sample != null) {
+                    arrayCopyNs += System.nanoTime() - acStart;
+                }
             }
             monitor.setEventCounter(startEvent + toCopy);
             writeBuffer.setNumEvents(monitor.getEventCounter());
             writeBuffer.lastCaptureLength = toCopy;
+        }
+        if (sample != null) {
+            sample.commitLockNs = System.nanoTime() - commitStart;
+            sample.arrayCopyNs = arrayCopyNs;
         }
     }
 
@@ -343,7 +377,14 @@ public class NRVAEReader implements ReaderBufferControl {
                 return;
             }
             if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
-                commitParsedChunk(parseUsbChunk(transfer.buffer()));
+                final UsbPipelineBench.Sample sample = UsbPipelineBench.newSample("NRV");
+                final long totalStart = sample != null ? System.nanoTime() : 0;
+                final ParsedChunk chunk = parseUsbChunk(transfer.buffer(), sample);
+                commitParsedChunk(chunk, sample);
+                if (sample != null) {
+                    sample.totalNs = System.nanoTime() - totalStart;
+                    UsbPipelineBench.record(sample);
+                }
             } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
                 active = false;
                 monitor.markUsbDisconnected(transfer.status());
