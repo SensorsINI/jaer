@@ -1,0 +1,23 @@
+file_identifier "IOHE";
+
+namespace dv;
+
+enum Constants : int32 {
+	AEDAT_VERSION_LENGTH = 14
+}
+
+enum CompressionType : int32 {
+	NONE,
+	LZ4,
+	LZ4_HIGH,
+	ZSTD,
+	ZSTD_HIGH
+}
+
+table IOHeader {
+	compression: CompressionType = NONE;
+	dataTablePosition: int64 = -1;
+	infoNode: string;
+}
+
+root_type IOHeader;

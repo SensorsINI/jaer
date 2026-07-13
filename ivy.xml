@@ -56,6 +56,9 @@ MA 02110-1301  USA
 
 
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
+
+        <!-- AEDAT-4 FlatBuffers (DV-compatible) -->
+        <dependency org="com.google.flatbuffers" name="flatbuffers-java" rev="23.5.26" />
         
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />

@@ -25,7 +25,7 @@ public interface AEDataFile {
 
 
     /** file extension for data files, including ".", e.g. ".aedat" */
-    public static final String DATA_FILE_EXTENSION = ".aedat", DATA_FILE_EXTENSION_AEDAT2=".aedat2";  // changed from .dat Apr 2010
+    public static final String DATA_FILE_EXTENSION = ".aedat", DATA_FILE_EXTENSION_AEDAT2=".aedat2", DATA_FILE_EXTENSION_AEDAT4=".aedat4";  // changed from .dat Apr 2010
     public static final String OLD_DATA_FILE_EXTENSION=".dat";
     /** file extension for index files that contain information about a set of related data files, ".adidx", including '.'. */
     public static final String INDEX_FILE_EXTENSION = ".aeidx"; // changed from .dat Apr 2010
@@ -41,8 +41,12 @@ public interface AEDataFile {
     the "!AER-DAT" is defined here 
      */
     public static final String DATA_FILE_FORMAT_HEADER = "!AER-DAT";
-    /** The most recent format version number string */
-    public static final String DATA_FILE_VERSION_NUMBER = "2.0";
+    /** Legacy AEDAT-2 file version number string */
+    public static final String DATA_FILE_VERSION_NUMBER_AEDAT2 = "2.0";
+    /** AEDAT-4 file version number string */
+    public static final String DATA_FILE_VERSION_NUMBER_AEDAT4 = "4.0";
+    /** The default format version number string */
+    public static final String DATA_FILE_VERSION_NUMBER = DATA_FILE_VERSION_NUMBER_AEDAT4;
     /** The date/time/timezone format for filenames */
     static final String YYYY_M_MDD_TH_HMMSS_Z = "yyyy-MM-dd'T'HH-mm-ssZ";
     /** Format used for log file names */

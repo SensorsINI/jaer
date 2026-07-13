@@ -26,6 +26,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventio.TextFileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -484,12 +485,14 @@ public class AEChip extends Chip2D {
                 log.warning(ex.toString());
                 throw new IOException("Could not open " + file + ": got " + ex.toString(), ex);
             }
+        } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT4.substring(1))) {
+            aeInputStream = new Aedat4FileInputStream(file, this, progressMonitor);
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT2.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {
             aeInputStream = new AEFileInputStream(file, this);
         } else {
-            throw new FileNotFoundException("file " + file + " file type is not known; .dat, .aedat, .aedat2, or .bag files are currently supported");
+            throw new FileNotFoundException("file " + file + " file type is not known; .dat, .aedat, .aedat2, .aedat4, or .bag files are currently supported");
         }
         return aeInputStream;
     }
