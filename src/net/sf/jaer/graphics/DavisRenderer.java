@@ -28,7 +28,11 @@ import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.ImuPacket;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PolarityEvent;
+import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.event.orientation.OrientationEventInterface;
 import net.sf.jaer.util.filter.LowpassFilter2D;
 import net.sf.jaer.util.histogram.SimpleHistogram;
@@ -274,6 +278,99 @@ public class DavisRenderer extends AEChipRenderer {
             renderApsDvsEvents(pkt);
         } else {
             renderPureDvsEvents(pkt);
+        }
+    }
+
+    /**
+     * jAER 3.0: render typed packets. APS address-events are already assembled
+     * into {@link FramePacket}s by the extractor; blit those here and render
+     * polarity via the pure-DVS path. Legacy mixed {@link ApsDvsEventPacket}
+     * (e.g. color Davis fallback) still uses {@link #render(EventPacket)}.
+     */
+    @Override
+    public synchronized void render(final PacketBundle bundle) {
+        if (!addedPropertyChangeListener) {
+            if (chip != null && chip.getAeViewer() != null) {
+                chip.getAeViewer().getSupport().addPropertyChangeListener(this);
+                addedPropertyChangeListener = true;
+            }
+        }
+        if (bundle == null || bundle.isEmpty()) {
+            return;
+        }
+
+        // Legacy mixed packet (color Davis extractBundle fallback)
+        for (TypedDataPacket p : bundle) {
+            if (p instanceof ApsDvsEventPacket) {
+                render((EventPacket) p);
+                return;
+            }
+        }
+
+        renderedApsFrame = false;
+        if (isDisplayFrames()) {
+            for (TypedDataPacket p : bundle) {
+                if (p instanceof FramePacket) {
+                    applyFramePacket((FramePacket) p);
+                }
+            }
+        }
+
+        EventPacket polarity = bundle.getFirstPolarityPacket();
+        if (polarity != null && !polarity.isEmpty()) {
+            numEventTypes = polarity.getNumCellTypes();
+            renderPureDvsEvents(polarity);
+        }
+
+        if (chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
+            if (renderedApsFrame) {
+                framesRenderedSinceApsFrame = 0;
+            } else if (isDisplayFrames()) {
+                framesRenderedSinceApsFrame++;
+            }
+        }
+    }
+
+    /**
+     * Blit a completed CDS frame into the APS pixmap (replaces per-AE
+     * {@link #updateFrameBuffer} path).
+     */
+    protected void applyFramePacket(final FramePacket frame) {
+        if (frame == null || frame.isEmpty() || skipFrame()) {
+            return;
+        }
+        checkPixmapAllocation();
+        startFrame((int) frame.getTimestampStartUs());
+        final float[] buf = pixBuffer.array();
+        final int w = frame.getWidth();
+        final int h = frame.getHeight();
+        final short[] pix = frame.getPixels();
+        minValue = Float.MAX_VALUE;
+        maxValue = Float.MIN_VALUE;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                final int val = pix[y * w + x] & 0xffff;
+                if (val < minValue) {
+                    minValue = val;
+                }
+                if (val > maxValue) {
+                    maxValue = val;
+                }
+                final float fval = normalizeFramePixel(val);
+                final int index = getPixMapIndex(x, y);
+                if ((index < 0) || (index + 3 >= buf.length)) {
+                    continue;
+                }
+                buf[index] = fval;
+                buf[index + 1] = fval;
+                buf[index + 2] = fval;
+                buf[index + 3] = 1;
+            }
+        }
+        endFrame((int) frame.getTimestampEndUs());
+        renderedApsFrame = true;
+        if (chip instanceof DavisChip) {
+            ((DavisChip) chip).controlExposure();
         }
     }
 

@@ -21,6 +21,10 @@ import java.util.prefs.Preferences;
 
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.ImuPacket;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.util.ClassChooserDialog;
 
 /**
@@ -228,6 +232,35 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             in = out;
         }
         return in;
+    }
+
+    /**
+     * jAER 3.0: filter a {@link PacketBundle}. Each homogeneous packet is
+     * processed independently. {@link EventPacket}s go through
+     * {@link #filterPacket}; {@link FramePacket}/{@link ImuPacket} pass through
+     * unless individual filters later override typed hooks.
+     *
+     * @param in input bundle (may be modified / replaced packets)
+     * @return filtered bundle (same instance, packets updated in place in list)
+     */
+    public PacketBundle filterBundle(PacketBundle in) {
+        if (in == null || !filteringEnabled || size() == 0 || in.isEmpty()) {
+            return in;
+        }
+        PacketBundle out = new PacketBundle();
+        out.setRawPacket(in.getRawPacket());
+        for (TypedDataPacket p : in) {
+            if (p instanceof EventPacket) {
+                EventPacket ep = filterPacket((EventPacket) p);
+                if (ep != null) {
+                    out.addAllowEmpty(ep);
+                }
+            } else {
+                // Frame / IMU: pass through for now (filters can specialize later)
+                out.addAllowEmpty(p);
+            }
+        }
+        return out;
     }
 
     /**

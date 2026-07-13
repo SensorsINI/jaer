@@ -144,6 +144,8 @@ public class Chip extends Observable {
      * Chip2D
      */
     private Object lastData = null;
+    /** jAER 3.0: last typed packet bundle from ViewLoop (may be null on older paths). */
+    private net.sf.jaer.event.PacketBundle lastBundle = null;
 
     /**
      * Creates a new instance of Chip
@@ -320,6 +322,17 @@ public class Chip extends Observable {
      */
     public void setLastData(Object lastData) {
         this.lastData = lastData;
+    }
+
+    /**
+     * jAER 3.0: last {@link net.sf.jaer.event.PacketBundle} from the view loop.
+     */
+    public net.sf.jaer.event.PacketBundle getLastBundle() {
+        return lastBundle;
+    }
+
+    public void setLastBundle(net.sf.jaer.event.PacketBundle lastBundle) {
+        this.lastBundle = lastBundle;
     }
 
     /**

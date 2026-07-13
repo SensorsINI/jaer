@@ -110,6 +110,10 @@ import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.ImuPacket;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
@@ -1785,6 +1789,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             emptyCookedPacket = new EventPacket(chip.getEventClass());
             emptyRawPacket = new AEPacketRaw(0);
             EventPacket cookedPacket = new EventPacket(chip.getEventClass());
+            PacketBundle cookedBundle = new PacketBundle();
             AEPacketRaw rawPacket = new AEPacketRaw();
             while (!isVisible()) {
                 try {
@@ -1817,6 +1822,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 cookedPacket = new EventPacket(chip.getEventClass());
                             }
                             cookedPacket = filterChain.filterPacket(cookedPacket);
+                            cookedBundle.clear();
+                            cookedBundle.addAllowEmpty(cookedPacket);
                             rawPacket = getChip().getEventExtractor().reconstructRawPacket(cookedPacket); // so that we can log or stream to network
                             numEvents = cookedPacket.getSize();
                         } catch (Exception e) {
@@ -1861,15 +1868,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             paceViewLoopFrame();
                             continue;
                         }
-                        cookedPacket = extractPacket(rawPacket);
-                        if (cookedPacket == null) {
-                            log.warning("packet became null after extracting events from raw input packet");
+                        cookedBundle = extractBundle(rawPacket);
+                        if (cookedBundle == null || cookedBundle.isEmpty()) {
+                            log.warning("packet bundle empty or null after extracting events from raw input packet");
                             paceViewLoopFrame();
                             continue;
                         }
-                        numEvents = cookedPacket.getSize();
-
-                        cookedPacket = filterPacket(cookedPacket);
+                        cookedBundle = filterBundle(cookedBundle);
+                        cookedPacket = firstEventPacket(cookedBundle);
+                        if (cookedPacket == null) {
+                            // Frame/IMU-only slice: keep empty polarity packet for stats/compat
+                            cookedPacket = emptyCookedPacket;
+                            cookedPacket.clear();
+                        }
+                        numEvents = cookedBundle.getNumPolarityEvents();
                         if (fastForward) { // maybe a filter set this flag.
                             fastForward = false;
                             continue;
@@ -1877,6 +1889,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     }
                     chip.setLastData(cookedPacket);// set the rendered data for use by various methods
+                    chip.setLastBundle(cookedBundle);
 
                     // if we are logging data to disk do it here
                     if (isLoggingEnabled() & !isLoggingPaused()) {
@@ -1897,11 +1910,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     log.info("breaking out of view loop before rendering because stop=true");
                     break;
                 }
-                if ((cookedPacket != null)) {
+                if ((cookedBundle != null && !cookedBundle.isEmpty()) || (cookedPacket != null)) {
                     // we only got new events if we were NOT paused. but now we can apply filters, different rendering methods, etc in 'paused' condition
                     try {
                         if (!skipRendering) {
-                            renderPacket(cookedPacket);
+                            renderBundle(cookedBundle, cookedPacket);
                         }
                     } catch (RuntimeException e) {
                         String cause = " unknown cause";
@@ -1954,6 +1967,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         } // renderEvents
 
+        /**
+         * jAER 3.0: render a typed {@link PacketBundle}. DavisRenderer applies
+         * Frame/IMU packets; polarity still goes through EventPacket render.
+         */
+        private void renderBundle(PacketBundle bundle, EventPacket cookedPacket) {
+            if (aePlayer.isChoosingFile()) {
+                return;
+            }
+            if (bundle == null || bundle.isEmpty()) {
+                renderPacket(cookedPacket);
+                return;
+            }
+            if (!isRenderBlankFramesEnabled() && bundle.getNumPolarityEvents() == 0 && bundle.getFirstFramePacket() == null) {
+                return;
+            }
+            if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
+                AEChipRenderer ren = getRenderer();
+                if (ren instanceof DavisRenderer) {
+                    ((DavisRenderer) ren).render(bundle);
+                } else {
+                    ren.render(bundle);
+                }
+            }
+            if (isActiveRenderingEnabled()) {
+                chipCanvas.paintFrame();
+            } else {
+                chipCanvas.repaint();
+            }
+        }
+
         private EventPacket extractPacket(AEPacketRaw aeRaw) {
             boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
             if (isPaused()) {
@@ -1967,6 +2010,56 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 
             return packet;
+        }
+
+        private PacketBundle extractBundle(AEPacketRaw aeRaw) {
+            boolean subsamplingEnabled = getRenderer().isSubsamplingEnabled();
+            if (isPaused()) {
+                extractor.setSubsamplingEnabled(false);
+            }
+            AEViewer.this.extractor = AEViewer.this.chip.getEventExtractor();
+            PacketBundle bundle = extractor.extractBundle(aeRaw);
+            if (bundle != null) {
+                bundle.setRawPacket(aeRaw);
+            }
+            if (isPaused()) {
+                extractor.setSubsamplingEnabled(subsamplingEnabled);
+            }
+            return bundle;
+        }
+
+        private static EventPacket firstEventPacket(PacketBundle bundle) {
+            if (bundle == null) {
+                return null;
+            }
+            EventPacket polarity = bundle.getFirstPolarityPacket();
+            if (polarity != null) {
+                return polarity;
+            }
+            for (TypedDataPacket p : bundle) {
+                if (p instanceof EventPacket) {
+                    return (EventPacket) p;
+                }
+            }
+            return null;
+        }
+
+        private PacketBundle filterBundle(PacketBundle input) {
+            if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection() == AbstractAEPlayer.PlaybackDirection.Backward) {
+                return input;
+            }
+            if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
+                try {
+                    return filterChain.filterBundle(input);
+                } catch (Exception e) {
+                    log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
+                    log.log(Level.SEVERE, e.toString(), e);
+                    for (EventFilter f : filterChain) {
+                        f.setFilterEnabled(false);
+                    }
+                }
+            }
+            return input;
         }
 
         /**

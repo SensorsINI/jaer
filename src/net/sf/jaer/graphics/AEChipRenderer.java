@@ -36,6 +36,8 @@ import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.filter.LowpassFilter;
 import org.apache.commons.collections4.queue.CircularFifoQueue;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.TypedDataPacket;
 
 /**
  * Superclass for classes that render DVS and other sensor/chip AEs to a memory
@@ -251,6 +253,28 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             grayValue = colorMode.getBackgroundGrayLevel();
         }
         super.checkPixmapAllocation();
+    }
+
+    /**
+     * jAER 3.0: render a typed packet bundle. Default renders the first
+     * {@link EventPacket}; subclasses (e.g. DavisRenderer) also handle frames/IMU.
+     */
+    public synchronized void render(PacketBundle bundle) {
+        if (bundle == null || bundle.isEmpty()) {
+            return;
+        }
+        EventPacket polarity = bundle.getFirstPolarityPacket();
+        if (polarity == null) {
+            for (TypedDataPacket p : bundle) {
+                if (p instanceof EventPacket) {
+                    polarity = (EventPacket) p;
+                    break;
+                }
+            }
+        }
+        if (polarity != null) {
+            render(polarity);
+        }
     }
 
     /**
