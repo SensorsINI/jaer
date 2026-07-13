@@ -76,6 +76,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 import javax.swing.ToolTipManager;
 import java.util.logging.Handler;
 import java.util.logging.ConsoleHandler;
@@ -448,6 +450,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        setupUsbTuningMenus();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_MAIN)).getImage());
@@ -3044,12 +3047,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu = new javax.swing.JMenu();
         viewBiasesMenuItem = new javax.swing.JMenuItem();
         jSeparator26 = new javax.swing.JPopupMenu.Separator();
-        increaseBufferSizeMenuItem = new javax.swing.JMenuItem();
-        decreaseBufferSizeMenuItem = new javax.swing.JMenuItem();
-        increaseNumBuffersMenuItem = new javax.swing.JMenuItem();
-        decreaseNumBuffersMenuItem = new javax.swing.JMenuItem();
+        usbFifoSizeMenuItem = new ScrollWheelTunableMenuItem();
+        usbNumBuffersMenuItem = new ScrollWheelTunableMenuItem();
         jSeparator9 = new javax.swing.JSeparator();
-        changeAEBufferSizeMenuItem = new javax.swing.JMenuItem();
+        aeRenderBufferMenuItem = new ScrollWheelTunableMenuItem();
         jSeparator5 = new javax.swing.JSeparator();
         printUSBStatisticsCBMI = new javax.swing.JCheckBoxMenuItem();
         jSeparator24 = new javax.swing.JPopupMenu.Separator();
@@ -3823,7 +3824,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         controlMenu.setMnemonic('c');
         controlMenu.setText("USB");
-        controlMenu.setToolTipText("control CypresFX2 driver parameters");
+        controlMenu.setToolTipText("USB reader tuning — hover a ▲▼ row and scroll to adjust");
 
         viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         viewBiasesMenuItem.setMnemonic('b');
@@ -3837,52 +3838,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.add(viewBiasesMenuItem);
         controlMenu.add(jSeparator26);
 
-        increaseBufferSizeMenuItem.setText("Increase host side USB buffer size");
-        increaseBufferSizeMenuItem.setToolTipText("Increases the host USB fifo size. This buffer is used to buffer the data delivered by kernel-level USB host contoller. Decrease if you want lower latency servicing under high data rates from the device.");
-        increaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increaseBufferSizeMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(increaseBufferSizeMenuItem);
+        usbFifoSizeMenuItem.setToolTipText("Host USB FIFO bytes per async bulk transfer. Hover and scroll wheel to halve/double (4096–4 MiB).");
+        controlMenu.add(usbFifoSizeMenuItem);
 
-        decreaseBufferSizeMenuItem.setText("Decrease hardware buffer size");
-        decreaseBufferSizeMenuItem.setToolTipText("Decreases the host USB fifo size");
-        decreaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                decreaseBufferSizeMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(decreaseBufferSizeMenuItem);
-
-        increaseNumBuffersMenuItem.setText("Increase number of hardware buffers");
-        increaseNumBuffersMenuItem.setToolTipText("Increases the host number of host USB read buffers. Increase this value if your data is very bursty, with intervals of high data rate.");
-        increaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increaseNumBuffersMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(increaseNumBuffersMenuItem);
-
-        decreaseNumBuffersMenuItem.setText("Decrease num hardware buffers");
-        decreaseNumBuffersMenuItem.setToolTipText("Decreases the host number of USB read buffers");
-        decreaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                decreaseNumBuffersMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(decreaseNumBuffersMenuItem);
+        usbNumBuffersMenuItem.setToolTipText("Number of overlapped USB read buffers. Hover and scroll wheel to adjust ±1.");
+        controlMenu.add(usbNumBuffersMenuItem);
         controlMenu.add(jSeparator9);
 
-        changeAEBufferSizeMenuItem.setMnemonic('b');
-        changeAEBufferSizeMenuItem.setText("Set rendering AE buffer size");
-        changeAEBufferSizeMenuItem.setToolTipText("sets size of host raw event buffers used for render/capture data exchnage");
-        changeAEBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                changeAEBufferSizeMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(changeAEBufferSizeMenuItem);
+        aeRenderBufferMenuItem.setMnemonic('b');
+        aeRenderBufferMenuItem.setToolTipText("AEPacketRaw pool size in events (2 buffers). Hover and scroll to ×2 / ÷2 on a power-of-two ladder (64K–8M).");
+        controlMenu.add(aeRenderBufferMenuItem);
         controlMenu.add(jSeparator5);
 
         printUSBStatisticsCBMI.setMnemonic('t');
@@ -4561,95 +4526,161 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                int k = controlMenu.getMenuComponentCount();
-                if ((aemon == null) || (!(aemon instanceof ReaderBufferControl) && !aemon.isOpen())) {
-                    for (int i = 0; i < k; i++) {
+                final boolean deviceOpen = aemon != null && aemon.isOpen();
+                if (!deviceOpen) {
+                    usbFifoSizeMenuItem.setEnabled(false);
+                    usbNumBuffersMenuItem.setEnabled(false);
+                    aeRenderBufferMenuItem.setEnabled(false);
+                    for (int i = 0; i < controlMenu.getMenuComponentCount(); i++) {
                         if (controlMenu.getMenuComponent(i) instanceof JMenuItem) {
                             ((JMenuItem) controlMenu.getMenuComponent(i)).setEnabled(false);
                         }
                     }
-                } else if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                    ReaderBufferControl readerControl = (ReaderBufferControl) aemon;
-                    PropertyChangeSupport readerSupport = readerControl.getReaderSupport();
-                    // propertyChange method in this file deals with these events
-                    if (!readerSupport.hasListeners("readerStarted")) { // TODO change to public static String for events in AEReader
-                        readerSupport.addPropertyChangeListener("readerStarted", AEViewer.this); // when the reader starts running, we getString called back to fix device control menu
-                    }
+                    return;
+                }
 
-                    int n = readerControl.getNumBuffers();
-                    int f = readerControl.getFifoSize();
-                    decreaseNumBuffersMenuItem.setText("Decrease num buffers to " + (n - 1));
-                    increaseNumBuffersMenuItem.setText("Increase num buffers to " + (n + 1));
-                    decreaseBufferSizeMenuItem.setText("Decrease host USB FIFO size to " + (f / 2) + " bytes");
-                    increaseBufferSizeMenuItem.setText("Increase host USB FIFO size to " + (f * 2) + " bytes");
+                final boolean readerControl = aemon instanceof ReaderBufferControl;
+                usbFifoSizeMenuItem.setEnabled(readerControl);
+                usbNumBuffersMenuItem.setEnabled(readerControl);
+                aeRenderBufferMenuItem.setEnabled(true);
 
-                    for (int i = 0; i < k; i++) {
-                        if (controlMenu.getMenuComponent(i) instanceof JMenuItem) {
-                            ((JMenuItem) controlMenu.getMenuComponent(i)).setEnabled(true);
-                        }
+                if (readerControl) {
+                    ReaderBufferControl reader = (ReaderBufferControl) aemon;
+                    PropertyChangeSupport readerSupport = reader.getReaderSupport();
+                    if (!readerSupport.hasListeners("readerStarted")) {
+                        readerSupport.addPropertyChangeListener("readerStarted", AEViewer.this);
                     }
                 }
 
-//                cypressFX2EEPROMMenuItem.setEnabled(true); // always set the true to be able to launch utility even if the device is not a retina
-//
-//                setDefaultFirmwareMenuItem.setEnabled(true);
-//                if ((aemon != null) && (aemon instanceof HasUpdatableFirmware)) {
-//                    updateFirmwareMenuItem.setEnabled(true);
-//                } else {
-//                    updateFirmwareMenuItem.setEnabled(false);
-//                }
+                final int k = controlMenu.getMenuComponentCount();
+                for (int i = 0; i < k; i++) {
+                    final Component c = controlMenu.getMenuComponent(i);
+                    if (c instanceof JMenuItem && c != usbFifoSizeMenuItem
+                            && c != usbNumBuffersMenuItem && c != aeRenderBufferMenuItem) {
+                        ((JMenuItem) c).setEnabled(true);
+                    }
+                }
+
+                refreshUsbTuningMenuLabels();
             }
         });
-        //        log.info("fixing device control menu");
     }
 
-	private void decreaseNumBuffersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseNumBuffersMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = reader.getNumBuffers() - 1;
-                if (n < 1) {
-                    n = 1;
+    private void setupUsbTuningMenus() {
+        ScrollWheelTunableMenuItem.installPopupWheelHandler(controlMenu);
+
+        controlMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                refreshUsbTuningMenuLabels();
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
+
+        usbFifoSizeMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            @Override
+            public int get() {
+                return aemon instanceof ReaderBufferControl ? ((ReaderBufferControl) aemon).getFifoSize() : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                if (aemon instanceof ReaderBufferControl) {
+                    ((ReaderBufferControl) aemon).setFifoSize(value);
                 }
-
-                reader.setNumBuffers(n);
-                fixDeviceControlMenuItems();
-
             }
 
-	}//GEN-LAST:event_decreaseNumBuffersMenuItemActionPerformed
-
-	private void increaseNumBuffersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseNumBuffersMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = reader.getNumBuffers() + 1;
-                reader.setNumBuffers(n);
-                fixDeviceControlMenuItems();
-
+            @Override
+            public int stepUp(int current) {
+                final long next = (long) current * 2L;
+                return (int) Math.min(next, 1 << 22);
             }
-	}//GEN-LAST:event_increaseNumBuffersMenuItemActionPerformed
 
-	private void decreaseBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseBufferSizeMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = Math.max(4096, reader.getFifoSize() / 2);
-                reader.setFifoSize(n);
-                fixDeviceControlMenuItems();
-
+            @Override
+            public int stepDown(int current) {
+                return Math.max(4096, current / 2);
             }
-	}//GEN-LAST:event_decreaseBufferSizeMenuItemActionPerformed
 
-	private void increaseBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseBufferSizeMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                long n = (long) reader.getFifoSize() * 2L;
-                if (n > (1 << 22)) {
-                    n = 1 << 22;
+            @Override
+            public String formatLabel(int value) {
+                return String.format("USB FIFO: %,d bytes", value);
+            }
+        }, this::fixDeviceControlMenuItems);
+
+        usbNumBuffersMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            @Override
+            public int get() {
+                return aemon instanceof ReaderBufferControl ? ((ReaderBufferControl) aemon).getNumBuffers() : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                if (aemon instanceof ReaderBufferControl) {
+                    ((ReaderBufferControl) aemon).setNumBuffers(value);
                 }
-                reader.setFifoSize((int) n);
-                fixDeviceControlMenuItems();
-
             }
-	}//GEN-LAST:event_increaseBufferSizeMenuItemActionPerformed
+
+            @Override
+            public int stepUp(int current) {
+                return current + 1;
+            }
+
+            @Override
+            public int stepDown(int current) {
+                return Math.max(1, current - 1);
+            }
+
+            @Override
+            public String formatLabel(int value) {
+                return String.format("USB buffers: %,d", value);
+            }
+        }, this::fixDeviceControlMenuItems);
+
+        aeRenderBufferMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            private static final int MIN_EVENTS = 1 << 16;   // 65,536
+            private static final int MAX_EVENTS = 1 << 23;   // 8,388,608
+
+            @Override
+            public int get() {
+                return aemon != null ? aemon.getAEBufferSize() : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                if (aemon != null) {
+                    aemon.setAEBufferSize(value);
+                }
+            }
+
+            @Override
+            public int stepUp(int current) {
+                return ScrollWheelTunableMenuItem.stepPowerOfTwoUp(current, MIN_EVENTS, MAX_EVENTS);
+            }
+
+            @Override
+            public int stepDown(int current) {
+                return ScrollWheelTunableMenuItem.stepPowerOfTwoDown(current, MIN_EVENTS, MAX_EVENTS);
+            }
+
+            @Override
+            public String formatLabel(int value) {
+                return String.format("AE render buffer: %,d events", value);
+            }
+        }, this::refreshUsbTuningMenuLabels);
+    }
+
+    private void refreshUsbTuningMenuLabels() {
+        usbFifoSizeMenuItem.refreshLabel();
+        usbNumBuffersMenuItem.refreshLabel();
+        aeRenderBufferMenuItem.refreshLabel();
+    }
 
 	private void viewFiltersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewFiltersMenuItemActionPerformed
             showFilters(true);
@@ -5871,24 +5902,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
 
-	private void changeAEBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAEBufferSizeMenuItemActionPerformed
-            if (aemon == null) {
-                JOptionPane.showMessageDialog(this, "No hardware interface open, can't set size", "Can't set buffer size", JOptionPane.WARNING_MESSAGE);
-                return;
-
-            }
-
-            String ans = JOptionPane.showInputDialog(this, "Enter size of render/capture exchange buffer in events", aemon.getAEBufferSize());
-            try {
-                int n = Integer.parseInt(ans);
-                aemon.setAEBufferSize(n);
-                changeAEBufferSizeMenuItem.setText(String.format("Set AEPacketRaw buffer size (currently 2 buffers each %d events=%d bytes)", aemon.getAEBufferSize(), aemon.getAEBufferSize() * 16));
-            } catch (NumberFormatException e) {
-                Toolkit.getDefaultToolkit().beep();
-            }
-
-	}//GEN-LAST:event_changeAEBufferSizeMenuItemActionPerformed
-
 	private void monSeqOpMode0ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqOpMode0ActionPerformed
             if (aemon instanceof CypressFX2MonitorSequencer) {
                 CypressFX2MonitorSequencer fx = (CypressFX2MonitorSequencer) aemon;
@@ -7061,7 +7074,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JToggleButton biasesToggleButton;
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel buttonsPanel;
-    private javax.swing.JMenuItem changeAEBufferSizeMenuItem;
+    private ScrollWheelTunableMenuItem aeRenderBufferMenuItem;
     private javax.swing.JMenuItem checkForUpdatesMenuItem;
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem clearMarksMI;
@@ -7071,10 +7084,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem cycleDisplayMethodButton;
     private javax.swing.JMenuItem cycleNextColorRenderingMethodMenuItem;
     private javax.swing.JMenuItem cyclePreviousColorRenderingMethodMenuItem;
-    private javax.swing.JMenuItem decreaseBufferSizeMenuItem;
+    private ScrollWheelTunableMenuItem usbFifoSizeMenuItem;
+    private ScrollWheelTunableMenuItem usbNumBuffersMenuItem;
     private javax.swing.JMenuItem decreaseContrastMenuItem;
     private javax.swing.JMenuItem decreaseFrameRateMenuItem;
-    private javax.swing.JMenuItem decreaseNumBuffersMenuItem;
     private javax.swing.JMenuItem decreasePlaybackSpeedMenuItem;
     private javax.swing.JMenu deviceMenu;
     private javax.swing.JSeparator deviceMenuSpparator;
@@ -7093,10 +7106,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu helpMenu;
     private javax.swing.JPanel imagePanel;
     private javax.swing.JMenuItem importMarksMI;
-    private javax.swing.JMenuItem increaseBufferSizeMenuItem;
     private javax.swing.JMenuItem increaseContrastMenuItem;
     private javax.swing.JMenuItem increaseFrameRateMenuItem;
-    private javax.swing.JMenuItem increaseNumBuffersMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
     private javax.swing.JMenu interfaceMenu;
     private javax.swing.JMenuItem jMenuItem2;

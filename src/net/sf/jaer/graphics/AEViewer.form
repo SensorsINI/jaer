@@ -814,53 +814,24 @@
             </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator26">
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="increaseBufferSizeMenuItem">
+            <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableMenuItem" name="usbFifoSizeMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Increase host side USB buffer size"/>
-                <Property name="toolTipText" type="java.lang.String" value="Increases the host USB fifo size. This buffer is used to buffer the data delivered by kernel-level USB host contoller. Decrease if you want lower latency servicing under high data rates from the device."/>
+                <Property name="text" type="java.lang.String" value="USB FIFO: 131,072 bytes"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="increaseBufferSizeMenuItemActionPerformed"/>
-              </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="decreaseBufferSizeMenuItem">
+            <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableMenuItem" name="usbNumBuffersMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Decrease hardware buffer size"/>
-                <Property name="toolTipText" type="java.lang.String" value="Decreases the host USB fifo size"/>
+                <Property name="text" type="java.lang.String" value="USB buffers: 16"/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="decreaseBufferSizeMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="increaseNumBuffersMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Increase number of hardware buffers"/>
-                <Property name="toolTipText" type="java.lang.String" value="Increases the host number of host USB read buffers. Increase this value if your data is very bursty, with intervals of high data rate."/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="increaseNumBuffersMenuItemActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="decreaseNumBuffersMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Decrease num hardware buffers"/>
-                <Property name="toolTipText" type="java.lang.String" value="Decreases the host number of USB read buffers"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="decreaseNumBuffersMenuItemActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator9">
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="changeAEBufferSizeMenuItem">
+            <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableMenuItem" name="aeRenderBufferMenuItem">
               <Properties>
                 <Property name="mnemonic" type="int" value="98"/>
-                <Property name="text" type="java.lang.String" value="Set rendering AE buffer size"/>
-                <Property name="toolTipText" type="java.lang.String" value="sets size of host raw event buffers used for render/capture data exchnage"/>
+                <Property name="text" type="java.lang.String" value="AE render buffer: 500,000 events"/>
+                <Property name="toolTipText" type="java.lang.String" value="AEPacketRaw pool size in events (2 buffers). Scroll wheel to halve/double; click to type a value."/>
               </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="changeAEBufferSizeMenuItemActionPerformed"/>
-              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator5">
             </MenuItem>
