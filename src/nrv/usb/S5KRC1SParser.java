@@ -177,31 +177,42 @@ public class S5KRC1SParser {
      */
     public synchronized int parse(byte[] pkt, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
         int eventCount = eventOffset;
+        final long skipFrameStart = frameStartTimeMs;
+        final int skipPeriod = skipPeriodMs;
+        final boolean traceTiming = NRVTrace.TIMING_ENABLED;
         for (int i = 0; i + 3 < len; i += 4) {
-            final int header = pkt[i] & 0x7C;
-            final int sensorID = (pkt[i] & 0x02) >> 1;
+            final int b0 = pkt[i] & 0xFF;
+            final int header = b0 & 0x7C;
+            final int sensorID = (b0 & 0x02) >> 1;
 
-            if (isTimestampPacket(pkt[i])) {
+            if ((b0 & 0x80) == 0 && header == 0x08) {
                 if ((pkt[i + 1] & 0x80) != 0) {
                     final int subTs = ((pkt[i + 2] & 0x03) << 8) | (pkt[i + 3] & 0xFF);
                     applySubTimestamp(sensorID, subTs);
-                    timingStats.subPackets++;
-                    NRVTrace.logTimingRefSub(sensorID, true, refTimeStampMs[sensorID], subTs, fullTimeStampUs[sensorID]);
+                    if (traceTiming) {
+                        timingStats.subPackets++;
+                        NRVTrace.logTimingRefSub(sensorID, true, refTimeStampMs[sensorID], subTs, fullTimeStampUs[sensorID]);
+                    }
                 } else {
                     final long refMs = ((pkt[i + 1] & 0x3F) << 16) | ((pkt[i + 2] & 0xFF) << 8) | (pkt[i + 3] & 0xFF);
                     applyReferenceTimestamp(sensorID, refMs);
-                    timingStats.refPackets++;
-                    NRVTrace.logTimingRefSub(sensorID, false, refTimeStampMs[sensorID], 0, fullTimeStampUs[sensorID]);
+                    if (traceTiming) {
+                        timingStats.refPackets++;
+                        NRVTrace.logTimingRefSub(sensorID, false, refTimeStampMs[sensorID], 0, fullTimeStampUs[sensorID]);
+                    }
                 }
-            }
-
-            if (refTimeStampMs[sensorID] < frameStartTimeMs
-                    && refTimeStampMs[sensorID] >= frameStartTimeMs - skipPeriodMs) {
                 continue;
             }
 
-            if ((pkt[i] & 0x80) != 0) {
-                int grpAddr = ((pkt[i + 1] & 0xFC) >> 2) | ((pkt[i] & 0x01) << 6);
+            if (skipFrameStart != 0) {
+                final long refMs = refTimeStampMs[sensorID];
+                if (refMs < skipFrameStart && refMs >= skipFrameStart - skipPeriod) {
+                    continue;
+                }
+            }
+
+            if ((b0 & 0x80) != 0) {
+                int grpAddr = ((pkt[i + 1] & 0xFC) >> 2) | ((b0 & 0x01) << 6);
                 int posY0 = grpAddr << 3;
                 int pol = pkt[i + 1] & 0x01;
                 int mask = pkt[i + 3] & 0xFF;
@@ -211,7 +222,7 @@ public class S5KRC1SParser {
                         final int added = analyzeData(mask, posY0, pol, sensorID,
                                 addresses, timestamps, eventCount, maxEvents);
                         if (added < 0) {
-                            frameStartTimeMs = refTimeStampMs[sensorID] + skipPeriodMs;
+                            frameStartTimeMs = refTimeStampMs[sensorID] + skipPeriod;
                             return -1;
                         }
                         eventCount += added;
@@ -227,34 +238,36 @@ public class S5KRC1SParser {
                 continue;
             }
 
-            switch (header) {
-                case 0x0C:
+            if (header == 0x0C) {
+                if (traceTiming) {
                     timingStats.frameEndPackets++;
-                    break;
-                case 0x04:
-                    mirrorFlag = (pkt[i + 1] & 0x80) != 0;
-                    final int sFlag = pkt[i + 1] & 0x20;
-                    posX[sensorID] = ((pkt[i + 2] & 0x07) << 8) | (pkt[i + 3] & 0xFF);
-                    if (posX[sensorID] >= WIDTH) {
-                        posX[sensorID] = WIDTH - 1;
-                    }
+                }
+                continue;
+            }
+            if (header == 0x04) {
+                mirrorFlag = (pkt[i + 1] & 0x80) != 0;
+                final int sFlag = pkt[i + 1] & 0x20;
+                posX[sensorID] = ((pkt[i + 2] & 0x07) << 8) | (pkt[i + 3] & 0xFF);
+                if (posX[sensorID] >= WIDTH) {
+                    posX[sensorID] = WIDTH - 1;
+                }
+                if (traceTiming) {
                     timingStats.colPackets++;
-                    if (sFlag == 0) {
-                        applySubTimestamp(sensorID, decodeColumnSubTimestamp(pkt[i + 1], pkt[i + 2]));
-                    }
-                    if (sFlag != 0) {
-                        continue;
-                    }
-                    break;
-                default:
-                    break;
+                }
+                if (sFlag == 0) {
+                    applySubTimestamp(sensorID, decodeColumnSubTimestamp(pkt[i + 1], pkt[i + 2]));
+                } else {
+                    continue;
+                }
             }
         }
-        timingStats.refMs0 = refTimeStampMs[0];
-        timingStats.fullUs0 = fullTimeStampUs[0];
-        timingStats.lastOutUs = lastOutputAbsoluteUs;
-        timingStats.posX0 = posX[0];
-        NRVTrace.logTimingSummary(timingStats);
+        if (traceTiming) {
+            timingStats.refMs0 = refTimeStampMs[0];
+            timingStats.fullUs0 = fullTimeStampUs[0];
+            timingStats.lastOutUs = lastOutputAbsoluteUs;
+            timingStats.posX0 = posX[0];
+            NRVTrace.logTimingSummary(timingStats);
+        }
         return eventCount - eventOffset;
     }
 
@@ -368,7 +381,9 @@ public class S5KRC1SParser {
             addresses[eventCount + added] = packAddress(lastPosX, posY, pol);
             timestamps[eventCount + added] = outputTs;
             added++;
-            timingStats.eventCount++;
+            if (NRVTrace.TIMING_ENABLED) {
+                timingStats.eventCount++;
+            }
         }
         return added;
     }
