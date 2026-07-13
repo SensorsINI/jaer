@@ -3,8 +3,14 @@ package net.sf.jaer.chip;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PacketBundle;
 /**
  *The interface a 2D event extractor must implement. It is parameterized by the primitive int raw event address type.
+ *
+ * <p>jAER 3.0 adds {@link #extractBundle(AEPacketRaw)} for typed, homogeneous
+ * packets (polarity / frame / IMU). Default implementation wraps
+ * {@link #extractPacket(AEPacketRaw)} in a single-entry {@link PacketBundle}.
+ * Davis-class extractors override to demux and assemble frames.
  */
 
 public interface EventExtractor2D<E extends BasicEvent> {
@@ -24,6 +30,25 @@ public interface EventExtractor2D<E extends BasicEvent> {
      @param cooked events are written to this cooked event packet
      */
     public void extractPacket(AEPacketRaw raw, EventPacket<E> cooked);
+
+    /**
+     * jAER 3.0: extract a {@link PacketBundle} of homogeneous typed packets.
+     * Default wraps {@link #extractPacket(AEPacketRaw)} as a single polarity
+     * (or chip event-class) packet. Override for multi-type demux (Davis).
+     *
+     * @param events raw AER events
+     * @return reusable bundle; may contain polarity, frame, and/or IMU packets
+     */
+    default PacketBundle extractBundle(AEPacketRaw events) {
+        PacketBundle bundle = new PacketBundle();
+        EventPacket<E> cooked = extractPacket(events);
+        if (cooked != null) {
+            cooked.setRawPacket(events);
+            bundle.addAllowEmpty(cooked);
+            bundle.setRawPacket(events);
+        }
+        return bundle;
+    }
 
     /** reconstructs a raw packet suitable for logging to a data file,
      * from an EventPacket that could be the result of filtering operations.

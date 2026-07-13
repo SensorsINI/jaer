@@ -76,7 +76,7 @@ import net.sf.jaer.eventprocessing.TimeLimiter;
  * @see BasicEvent
  * @see BasicEvent#isFilteredOut()
  */
-public class EventPacket<E extends BasicEvent> implements /* EventPacketInterface<E>, */ Cloneable, Iterable<E> {
+public class EventPacket<E extends BasicEvent> implements /* EventPacketInterface<E>, */ Cloneable, Iterable<E>, TypedDataPacket {
 
     static final Logger log = Logger.getLogger(EventPacket.class.getName());
     /**
@@ -891,6 +891,41 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     final public Class<E> getEventClass() {
         return eventClass;
+    }
+
+    /**
+     * jAER 3.0: uniform packet kind for this EventPacket. Inferred from
+     * {@link #eventClass} (e.g. {@link PolarityEvent} → {@link PacketType#POLARITY}).
+     */
+    @Override
+    public PacketType getPacketType() {
+        if (eventClass == null) {
+            return PacketType.POLARITY;
+        }
+        if (PolarityEvent.class.isAssignableFrom(eventClass)) {
+            // ApsDvsEvent extends PolarityEvent — treat as polarity until Davis demux lands
+            return PacketType.POLARITY;
+        }
+        if (eventClass.getName().contains("Ear") || eventClass.getName().contains("Cochlea")) {
+            return PacketType.EAR;
+        }
+        return PacketType.POLARITY;
+    }
+
+    @Override
+    public long getFirstTimestampUs() {
+        if (size == 0) {
+            return 0;
+        }
+        return getFirstTimestamp();
+    }
+
+    @Override
+    public long getLastTimestampUs() {
+        if (size == 0) {
+            return 0;
+        }
+        return getLastTimestamp();
     }
 
     /**
