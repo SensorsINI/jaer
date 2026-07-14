@@ -28,6 +28,10 @@ java ^
   -Dsun.java2d.noddraw=true ^
   -Dsun.java2d.opengl=false ^
   -Xmx10g ^
+  rem OOM debug (uncomment as needed):
+  rem -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=oom.hprof ^
+  rem -XX:NativeMemoryTracking=summary ^
+  rem -Djaer.memory.trace.intervalMs=60000 ^
   -Xrs ^
   -splash:SplashScreen.png ^
   -cp "%JAER_CP%" ^

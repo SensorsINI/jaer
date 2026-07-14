@@ -31,6 +31,10 @@ public class LoggingThreadGroup extends ThreadGroup {
             Handler handler = LoggingWindowHandler.getInstance();
             logger.addHandler(handler);
         }
+        if (throwable instanceof OutOfMemoryError || throwable instanceof Error) {
+            MemoryDiagnostics.logOomContext(logger, "Uncaught " + throwable.getClass().getSimpleName()
+                    + (thread == null ? "" : " on " + thread) + ":", throwable);
+        }
         try {
             logger.log(Level.WARNING, thread == null ? "(null thread supplied)" : thread.toString(), throwable == null ? "(null exception)" : throwable);
         } catch (RuntimeException rte) {

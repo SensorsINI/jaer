@@ -492,7 +492,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         // checkGLError(gl, glu, "after " + getDisplayMethod() + ".display()");
         checkGLError(gl, glu, "after DisplayMethod.display()");
         showSpike(gl);
-        annotate(drawable);
+        try {
+            annotate(drawable);
+        } catch (OutOfMemoryError e) {
+            net.sf.jaer.util.MemoryDiagnostics.logOomContext(log, "OutOfMemoryError during FrameAnnotator annotations:", e);
+            throw e;
+        }
         checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");
         if ((getChip() instanceof AEChip) && (((AEChip) chip).getFilterChain() != null)
                 && (((AEChip) chip).getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
@@ -1905,6 +1910,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                 final int lineNumber = trace[2].getLineNumber();
                 log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg + " at "
                         + className + "." + methodName + " (line " + lineNumber + ")");
+                if (error == GL.GL_OUT_OF_MEMORY) {
+                    net.sf.jaer.util.MemoryDiagnostics.logSummaryRateLimited(log,
+                            "GL_OUT_OF_MEMORY (GPU/native) during rendering:");
+                }
             } else {
                 log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg);
             }

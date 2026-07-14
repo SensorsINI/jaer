@@ -1935,7 +1935,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             // Loop Cleanup
             log.info("AEViewer.run() ending: stop=" + stop + " isInterrupted=" + isInterrupted());
-            if (aemon != null) {
+            // Hardware close is done on the EDT via cleanup(); closing here during stop=true
+            // can deadlock with stopViewLoopForExit() (synchronized NRV close + USB join).
+            if (aemon != null && !stop) {
                 aemon.close();
             }
             if (unicastOutput != null) {
@@ -5652,6 +5654,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
     }
 
+    /** Stop USB/live reader before joining ViewLoop so shutdown does not fill AE buffers. */
+    private void stopLiveAcquisitionForExit() {
+        if (aemon == null || !aemon.isOpen()) {
+            return;
+        }
+        try {
+            if (aemon.isEventAcquisitionEnabled()) {
+                log.info("stopping live event acquisition before ViewLoop exit join");
+                aemon.setEventAcquisitionEnabled(false);
+            }
+        } catch (HardwareInterfaceException e) {
+            log.warning("error stopping live acquisition on exit: " + e.getMessage());
+        }
+    }
+
     /**
      * WIP experimental: stop ViewLoop and wait briefly so JVM shutdown is not
      * blocked by this non-daemon thread stuck in wait/sleep/USB/JOGL.
@@ -5661,6 +5678,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         viewLoop.stopThread();
+        stopLiveAcquisitionForExit();
         interruptViewloop();
         synchronized (viewLoop) {
             viewLoop.notifyAll();

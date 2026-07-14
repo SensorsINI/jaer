@@ -32,6 +32,7 @@ public class NRVAEReader implements ReaderBufferControl {
     private static final String PREF_FIFO_SIZE = "NRV.AEReader.fifoSize";
     private static final String PREF_NUM_BUFFERS = "NRV.AEReader.numBuffers";
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
+    private static final long STOP_JOIN_TIMEOUT_MS = 3000L;
 
     private final NRVHardwareInterface monitor;
     private final S5KRC1SParser parser = new S5KRC1SParser();
@@ -96,7 +97,10 @@ public class NRVAEReader implements ReaderBufferControl {
         log.info("Stopping NRV AEReader");
         usbTransfer.interrupt();
         try {
-            usbTransfer.join();
+            usbTransfer.join(STOP_JOIN_TIMEOUT_MS);
+            if (usbTransfer.isAlive()) {
+                log.warning("NRV AEReader thread did not stop within " + STOP_JOIN_TIMEOUT_MS + " ms");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
