@@ -351,8 +351,14 @@ public class LinearCorrelationDenoiser extends SpatioTemporalCorrelationFilter {
      */
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        // Same prep as AbstractNoiseFilter.filterPacket (LCD intentionally skips super to avoid double work)
         resetCountsAndNegativeEvents();
-        if (timestampImage == null) {
+        signalNoiseClassificationEnabled = (in instanceof SignalNoisePacket)
+                || (in != null && in.getEventPrototype() instanceof SignalNoiseEvent);
+        final int mapSx = sxm1 < 0 ? 1 : (sxm1 >> subsampleBy) + 1;
+        final int mapSy = sym1 < 0 ? 1 : (sym1 >> subsampleBy) + 1;
+        if (timestampImage == null || timestampImage.length != mapSx
+                || timestampImage[0].length != mapSy) {
             allocateMaps(chip);
         }
         tauUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
