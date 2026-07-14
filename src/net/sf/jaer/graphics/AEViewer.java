@@ -103,6 +103,7 @@ import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
 import net.sf.jaer.JaerUpdaterInstall4j;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.DroppedDataInfo;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aesequencer.AEMonitorSequencerInterface;
 import net.sf.jaer.aesequencer.AESequencerInterface;
@@ -246,7 +247,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private AEPacketRaw rawPacket; // the raw packet (just timestamps and addresses) recieved from hardware, network, or file input
 //    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
-    boolean overrunOccurred = false;
+    DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
     int tickUs = 1;
     public AEPlayer aePlayer;
     int noEventCounter = 0;
@@ -2032,7 +2033,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         return emptyRawPacket;
                     }
-                    overrunOccurred = aemon.overrunOccurred();
+                    droppedDataInfo = aemon.getDroppedDataInfo();
                     try {
                         aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
                         if (aemon == null) {
@@ -2062,7 +2063,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 case PLAYBACK:
                     getAePlayer().adjustTimesliceForRealtimePlayback();
-                    overrunOccurred = false;
+                    droppedDataInfo = DroppedDataInfo.none();
                     return getAePlayer().getNextPacket(aePlayer);
                 case REMOTE:
                     if (unicastInputEnabled) {
@@ -2458,12 +2459,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 int cs = getRenderer().getColorScale();
 
-                String ovstring;
-                if (overrunOccurred) {
-                    ovstring = "(overrun)";
-                } else {
-                    ovstring = "         ";
-                }
+                String ovstring = droppedDataInfo.getStatsLineToken();
 
                 //                if(numEvents==0) s=thisTimeString+ "s: No events";
                 //                else {
@@ -2529,10 +2525,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //                }
                 //                System.out.println(statLabel.length());
                 setStatisticsLabel(sb.toString());
-                if (overrunOccurred) {
+                if (droppedDataInfo.any()) {
                     statisticsLabel.setForeground(Color.RED);
+                    if (!droppedDataInfo.getDetail().isEmpty()) {
+                        statisticsLabel.setToolTipText(droppedDataInfo.getDetail());
+                    } else {
+                        statisticsLabel.setToolTipText(null);
+                    }
                 } else {
                     statisticsLabel.setForeground(Color.BLACK);
+                    statisticsLabel.setToolTipText(null);
                 }
         }
     }
