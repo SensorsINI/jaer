@@ -57,6 +57,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private AEChip chip;
     private volatile boolean closing;
     private PropheseeAEReader aeReader;
+    private int buffersize = loadAeBufferSizePref();
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
@@ -68,7 +69,6 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private boolean isOpened = false;
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
-    private int buffersize = loadAeBufferSizePref();
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private long lastPacketTimestampLogMs;

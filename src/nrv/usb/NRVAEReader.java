@@ -56,6 +56,9 @@ public class NRVAEReader implements ReaderBufferControl {
         if (usbTransfer != null) {
             return;
         }
+        synchronized (monitor.getAePacketRawPool()) {
+            monitor.getAePacketRawPool().allocateMemory();
+        }
         parser.reset();
         clearEndpointHalt(monitor.getDeviceHandle());
         log.info("Starting NRV AEReader on endpoint 0x81 (fifo=" + getFifoSize()
@@ -270,6 +273,7 @@ public class NRVAEReader implements ReaderBufferControl {
             if (chunk.parsed < 0) {
                 final int committed = Math.min(chunk.parseLimit, remaining);
                 if (committed > 0) {
+                    ensureWriteBufferCapacity(writeBuffer, maxEvents, startEvent, committed);
                     final long acStart = sample != null ? System.nanoTime() : 0;
                     System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, committed);
                     System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, committed);
@@ -287,6 +291,7 @@ public class NRVAEReader implements ReaderBufferControl {
 
             final int toCopy = Math.min(chunk.parsed, remaining);
             if (toCopy > 0) {
+                ensureWriteBufferCapacity(writeBuffer, maxEvents, startEvent, toCopy);
                 final long acStart = sample != null ? System.nanoTime() : 0;
                 System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
                 System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
@@ -301,6 +306,15 @@ public class NRVAEReader implements ReaderBufferControl {
         if (sample != null) {
             sample.commitLockNs = System.nanoTime() - commitStart;
             sample.arrayCopyNs = arrayCopyNs;
+        }
+    }
+
+    private static void ensureWriteBufferCapacity(AEPacketRaw writeBuffer, int maxEvents, int startEvent, int count) {
+        final int[] destAddr = writeBuffer.getAddresses();
+        final int[] destTs = writeBuffer.getTimestamps();
+        if (destAddr == null || destAddr.length < startEvent + count
+                || destTs == null || destTs.length < startEvent + count) {
+            writeBuffer.ensureCapacity(maxEvents);
         }
     }
 

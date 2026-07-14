@@ -55,6 +55,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private AEChip chip;
     private NRVI2CTransport i2cTransport;
     private NRVAEReader aeReader;
+    private int buffersize = loadAeBufferSizePref();
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
@@ -62,7 +63,6 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
     private boolean settingsApplied = false;
-    private int buffersize = loadAeBufferSizePref();
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private String[] stringDescriptors = new String[3];
@@ -75,6 +75,11 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private int loadAeBufferSizePref() {
         final int saved = prefs.getInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
         if (saved == 100_000) {
+            prefs.putInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
+            return AE_BUFFER_SIZE;
+        }
+        if (saved < 1000 || saved > MAX_AE_BUFFER_SIZE) {
+            log.warning("Invalid NRV.aeBufferSize " + saved + ", using " + AE_BUFFER_SIZE);
             prefs.putInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
             return AE_BUFFER_SIZE;
         }
