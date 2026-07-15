@@ -89,11 +89,6 @@ public class S5KRC1SParser {
     private long lastOutputAbsoluteUs = -1;
     /** Count of signed 32-bit output timestamp big-wraps since {@link #reset()}. */
     private int bigWrapCount;
-    /** Events emitted since the last USB frame-end (0x0C) packet. */
-    private int eventsSinceFrameEnd;
-    private long frameEndIndex;
-    private long lastFrameEndRefMs = -1;
-    private long lastFrameEndFullUs = -1;
 
     public S5KRC1SParser() {
         reset();
@@ -139,10 +134,6 @@ public class S5KRC1SParser {
         timestampOriginUs = -1;
         lastOutputAbsoluteUs = -1;
         bigWrapCount = 0;
-        eventsSinceFrameEnd = 0;
-        frameEndIndex = 0;
-        lastFrameEndRefMs = -1;
-        lastFrameEndFullUs = -1;
     }
 
     /** Signed 32-bit output wraps since the last {@link #reset()}. */
@@ -305,21 +296,6 @@ public class S5KRC1SParser {
                 if (traceTiming) {
                     timingStats.frameEndPackets++;
                 }
-                if (NRVParserTrace.isEnabled()) {
-                    NRVParserTrace.noteFrameEnd(sensorID, refTimeStampMs[sensorID],
-                            fullTimeStampUs[sensorID],
-                            peekOutputTimestamp(fullTimeStampUs[sensorID]),
-                            eventsSinceFrameEnd, lastFrameEndRefMs);
-                }
-                if (NRVFrameTrace.FRAMES_ENABLED) {
-                    NRVFrameTrace.logUsbFrameEnd(frameEndIndex++, refTimeStampMs[sensorID],
-                            fullTimeStampUs[sensorID], peekOutputTimestamp(fullTimeStampUs[sensorID]),
-                            eventsSinceFrameEnd, skipFrameStart != 0, posX[sensorID],
-                            lastFrameEndRefMs, lastFrameEndFullUs);
-                }
-                lastFrameEndRefMs = refTimeStampMs[sensorID];
-                lastFrameEndFullUs = fullTimeStampUs[sensorID];
-                eventsSinceFrameEnd = 0;
                 continue;
             }
             if (header == 0x04) {
@@ -343,9 +319,6 @@ public class S5KRC1SParser {
             timingStats.lastOutUs = lastOutputAbsoluteUs;
             timingStats.posX0 = posX[0];
             NRVTrace.logTimingSummary(timingStats);
-        }
-        if (NRVParserTrace.isEnabled()) {
-            NRVParserTrace.endParseChunk();
         }
         return new ParseResult(eventCount - eventOffset, overflowed);
     }
@@ -422,18 +395,6 @@ public class S5KRC1SParser {
         return (int) outUs;
     }
 
-    /** Relative output µs without updating monotonic tracking (trace only). */
-    private int peekOutputTimestamp(long absoluteUs) {
-        if (timestampOriginUs < 0) {
-            return 0;
-        }
-        long outUs = absoluteUs - timestampOriginUs;
-        while (outUs > Integer.MAX_VALUE) {
-            outUs -= OUTPUT_INT_US_SPAN;
-        }
-        return (int) outUs;
-    }
-
     private int analyzeData(int mask, int posY0, int pol, int sensorID,
             int[] addresses, int[] timestamps, int eventCount, int maxEvents) {
         final int lastPosX = posX[sensorID];
@@ -463,10 +424,6 @@ public class S5KRC1SParser {
             addresses[eventCount + added] = packAddress(lastPosX, posY, pol);
             timestamps[eventCount + added] = outputTs;
             added++;
-            eventsSinceFrameEnd++;
-        }
-        if (NRVParserTrace.isEnabled() && added > 0) {
-            NRVParserTrace.noteEvents(outputTs, added, sensorID);
         }
         if (NRVTrace.TIMING_ENABLED) {
             timingStats.eventCount += added;

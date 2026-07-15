@@ -44,9 +44,7 @@ Notes learned in practice:
 - jAER relative timestamps are signed 32-bit µs. After ~2147 s of session span they **big-wrap** through about −2147 s and continue (same convention as DAVIS/DVX). Press **`0`** to re-zero at the current device time (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV).
 - Timestamp cadence in the USB stream is set by I2C **`TSTAMP_SUB_UNIT_VAL`** (`0x32B1:32B2`, LSB exposed in UI as `0x32B2`) and **`TSTAMP_REF_UNIT_VAL`** (`0x32B3:32B4`). Factory presets scale SUB with nominal output rate (e.g. 100 fps → `0x0B`, 1000 fps → `0x7D`); **lower SUB → more frequent sub-timestamp packets**.
 
-Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). With timing trace, each USB chunk also logs `NRV chunk ts span: … spanUs=…`. Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).
-
-**Parser bucket / event-rate trace (live USB):** `-Djaer.nrv.trace.parser=true` logs per–output-timestamp ms buckets and per–frame-end event counts (throttled INFO every 2 s). Use `scripts/run-jaer-nrv-parser-trace.bat` or add `-Djaer.nrv.trace.parser.file=C:/temp/jaer-nrv-parser.csv`. **Do not** enable per-bucket INFO (`tinyLog`/`burstLog` at INFO stalls USB — they log at FINE only). Optional `-Djaer.nrv.trace.parser.sampleLog=true` prints a few tiny/burst examples per summary interval. Post-run: `python scripts/analyze-nrv-parser-csv.py`. Compare with `scripts/analyze-nrv-recording-events.py` on text exports: if **live** ms buckets are steady but **recording** shows tiny 3 ms slices → timestamp quantization in the file; if **live** ms buckets are also tiny/bursty → sensor/USB stream.
+Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).
 
 **Pipeline microbenchmarks** (compare NRV vs EVK4 under load):
 
@@ -62,55 +60,7 @@ If using `ant run`, include the full JVM argument set from `project.properties` 
 
 Logs every 2 s (INFO): chunks/s, MB/s, keps, and average µs for `parse`, `commitLock`, `limitLock`, `byteCopy`, `arrayCopy`. CSV rows are per USB chunk with thread name. NRV and EVK4 both use async `USBTransferThread` (threads `NRVAEReaderThread` / `PropheseeAEReader`); `usbReadNs` is only non-zero on legacy sync paths.
 
-### Frame / playback gap debugging
-
-When playback at ~1 ms slice interval shows **2–3 stale/blank display frames** between updates at 1 kHz scan rate, the gap can originate at several layers. Use CSV trace to localize it.
-
-**Launch (live recording + playback in one session):**
-
-```text
-scripts/run-jaer-nrv-frames-trace.bat
-```
-
-Or append to `run-jaer-fast.bat`:
-
-```text
--Djaer.nrv.trace.frames=true
--Djaer.nrv.trace.playback=true
--Djaer.nrv.trace.frames.file=C:/temp/jaer-nrv-frames.csv
-```
-
-**CSV `kind` rows:**
-
-| kind | Meaning |
-|------|---------|
-| `usb_frame_end` | Sensor frame-end packet (`0x0C`): `deltaRefMs`, events since last frame-end |
-| `usb_commit` | Events committed from one USB parse chunk to the AE buffer |
-| `viewer_packet` | Packet delivered to the ViewLoop after buffer swap |
-| `playback_slice` | One `readPacketByTime(sliceUs)` during file playback |
-| `playback_skip_render` | ViewLoop skipped render because slice had 0 events and “Render blank frames” is off |
-
-INFO summaries every 2 s report USB frame-end Hz, avg Δref ms, playback empty-slice %, max consecutive empty slices, and **eventsPerSlice** (avg/min/max plus sparse &lt;100 and tiny &lt;10 counts).
-
-**Suggested debug sequence (tomorrow):**
-
-1. **Live @ 1000 Hz scan, scene with steady activity** — confirm `usb_frame_end` `deltaRefMs` ≈ 1.0 and `avgEventsPerFrame` > 0. If Δref ms is ~2–3, the sensor/host is not delivering 1 kHz frames (scan-rate block or USB backlog).
-2. **Same session, log a .aedat** — compare `viewer_packet` event counts and timestamp span vs frame-end rate. Large viewer packets spanning many ms suggest host batching/coalescing before the logger sees events.
-3. **Playback with slice = 1001 µs** — inspect `playback_slice`: consecutive rows with `field10` (numEvents)=0 explain blank display (View > Render blank frames off keeps the previous image). Check whether empty slices align with timestamp gaps in the file (`maxTs` of slice N vs `minTs` of slice N+1).
-4. **Cross-check** — enable View > Render blank frames: if “gaps” become explicit black frames, the file/slicer is producing empty time windows; if gaps persist as frozen old frames, look at ARS or render skip (playback disables ARS by default).
-5. **Optional** — combine with `-Djaer.usb.trace.pipeline=true` to see if USB overload correlates with missing frame-ends or post-overrun skip windows (`skipWindowActive=1` on `usb_frame_end`).
-
-**Hypotheses to test:**
-
-| Observation in CSV | Likely cause |
-|--------------------|--------------|
-| `deltaRefMs` often 2–3 at 1 kHz setting | Scan-rate registers or true sensor rate below UI nominal |
-| Frame-ends OK but `playback_slice` empty | Timestamps in file do not cover every 1 ms window (logging batching or identical ts per frame) |
-| `playback_skip_render` matches visible gaps | Expected: fix slice alignment or enable blank-frame render for diagnosis |
-| `usb_frame_end` events=0 with skipWindowActive=1 | Post-overrun parser skip dropping group events |
-| `viewer_packet` spanUs >> sliceUs | ViewLoop/logging sees multi-frame batches |
-
-**Sub-timestamp decode (matches NRV SDK `PacketParser.cpp`):** dedicated ref/sub packets (`header==0x08`, `P=0`) update `fullTimeStampUs` using the 10-bit sub field as **microseconds within the ref ms** (`refMs×1000 + sub`). Column address packets (`0x04`) set `posX` only — the embedded 10-bit sub field is **not** applied (SDK behaviour). Many events in one column share the same output timestamp until the next ref/sub packet. Timing trace reports `maxChunkSpanUs` per interval.
+**Sub-timestamp decode (matches NRV SDK `PacketParser.cpp`):** dedicated ref/sub packets (`header==0x08`, `P=0`) update `fullTimeStampUs` using the 10-bit sub field as **microseconds within the ref ms** (`refMs×1000 + sub`). Column address packets (`0x04`) set `posX` only — the embedded 10-bit sub field is **not** applied (SDK behaviour). Many events in one column share the same output timestamp until the next ref/sub packet.
 
 ## Biasing and settings files
 

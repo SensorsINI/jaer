@@ -67,10 +67,6 @@ public class NRVAEReader implements ReaderBufferControl {
                 + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED
                 + ", timingTrace=" + NRVTrace.TIMING_ENABLED
                 + (NRVTrace.TIMING_ENABLED ? ", timingIntervalMs=" + NRVTrace.TIMING_INTERVAL_MS : "")
-                + ", parserTrace=" + NRVParserTrace.ENABLED
-                + (NRVParserTrace.ENABLED ? ", parserIntervalMs=" + NRVParserTrace.INTERVAL_MS : "")
-                + (NRVParserTrace.ENABLED && System.getProperty("jaer.nrv.trace.parser.file") != null
-                        ? ", parserFile=" + System.getProperty("jaer.nrv.trace.parser.file") : "")
                 + ", pipelineBench=" + UsbPipelineBench.ENABLED
                 + (UsbPipelineBench.ENABLED && System.getProperty("jaer.usb.trace.file") != null
                         ? ", traceFile=" + System.getProperty("jaer.usb.trace.file") : "")
@@ -109,7 +105,6 @@ public class NRVAEReader implements ReaderBufferControl {
             Thread.currentThread().interrupt();
         }
         usbTransfer = null;
-        NRVParserTrace.shutdown();
         monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
     }
 
@@ -302,15 +297,6 @@ public class NRVAEReader implements ReaderBufferControl {
             if (chunk.overflowed) {
                 writeBuffer.overrunOccuredFlag = true;
                 logOverrun(startEvent, maxEvents, toCopy);
-            }
-            if (NRVFrameTrace.FRAMES_ENABLED && toCopy > 0) {
-                int minTs = stagingTimestamps[0];
-                int maxTs = stagingTimestamps[0];
-                for (int i = 1; i < toCopy; i++) {
-                    minTs = Math.min(minTs, stagingTimestamps[i]);
-                    maxTs = Math.max(maxTs, stagingTimestamps[i]);
-                }
-                NRVFrameTrace.logUsbCommit(toCopy, minTs, maxTs, chunk.overflowed);
             }
         }
         if (sample != null) {

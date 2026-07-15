@@ -359,7 +359,6 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         } else if (lastEventsAcquired.overrunOccuredFlag) {
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         }
-        NRVFrameTrace.logViewerPacket(lastEventsAcquired);
         return lastEventsAcquired;
     }
 
