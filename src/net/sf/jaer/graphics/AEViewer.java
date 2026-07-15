@@ -5324,10 +5324,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     boolean doneSavingOrCancelling = false;
                     do {
-                        // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
-                        retValue = chooser.showSaveDialog(AEViewer.this);
+                        retValue = LoggingSaveDialogGuard.showSaveDialog(chooser, AEViewer.this, base);
                         if (retValue == JFileChooser.APPROVE_OPTION) {
                             File newFile = chooser.getSelectedFile();
+                            if (LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(newFile.getName())) {
+                                chooser.setSelectedFile(new File(base));
+                                chooser.setDialogTitle("Save logged data (restored default filename)");
+                                continue;
+                            }
                             // make sure filename ends with .aedat
                             if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
                                 newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
