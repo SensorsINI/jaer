@@ -117,6 +117,11 @@ public class NRVAEReader implements ReaderBufferControl {
         parser.resyncTimingState(regAddr, reason);
     }
 
+    /** Consumer swapped write buffers; resume full parsing on the fresh buffer. */
+    void onWriteBufferConsumed() {
+        parser.clearOverrunSkip();
+    }
+
     S5KRC1SParser getParser() {
         return parser;
     }
@@ -208,13 +213,10 @@ public class NRVAEReader implements ReaderBufferControl {
             if (sample != null) {
                 sample.limitLockNs = System.nanoTime() - limitLockStart;
             }
-            if (monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag) {
-                return ParsedChunk.EMPTY;
-            }
-            parseLimit = monitor.getAEBufferSize() - monitor.getEventCounter();
-            if (parseLimit <= 0) {
-                return ParsedChunk.OVERFLOW;
-            }
+            final boolean writeBufferOverrun = monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag;
+            // Keep scanning the USB chunk for timestamp/column state, but emit no events
+            // while the current write buffer is already in overrun.
+            parseLimit = writeBufferOverrun ? 0 : Math.max(0, monitor.getAEBufferSize() - monitor.getEventCounter());
         }
 
         final long copyStart = sample != null ? System.nanoTime() : 0;
@@ -228,26 +230,26 @@ public class NRVAEReader implements ReaderBufferControl {
         ensureStaging(parseLimit);
 
         final long parseStart = sample != null ? System.nanoTime() : 0;
-        final int parsed = parser.parse(parseScratch, bytesAvailable,
+        final S5KRC1SParser.ParseResult result = parser.parseWithResult(parseScratch, bytesAvailable,
                 stagingAddresses, stagingTimestamps, 0, parseLimit);
         if (sample != null) {
             sample.parseNs = System.nanoTime() - parseStart;
-            sample.eventsParsed = Math.max(0, parsed);
+            sample.eventsParsed = result.eventsWritten;
         }
 
-        if (parsed > 0) {
-            checkTimestampOrder(stagingTimestamps, 0, parsed);
+        if (result.eventsWritten > 0) {
+            checkTimestampOrder(stagingTimestamps, 0, result.eventsWritten);
             if (NRVTrace.TIMING_ENABLED) {
                 int minTs = stagingTimestamps[0];
                 int maxTs = stagingTimestamps[0];
-                for (int e = 1; e < parsed; e++) {
+                for (int e = 1; e < result.eventsWritten; e++) {
                     minTs = Math.min(minTs, stagingTimestamps[e]);
                     maxTs = Math.max(maxTs, stagingTimestamps[e]);
                 }
                 parser.noteChunkTimestampSpanUs(maxTs - minTs);
             }
         }
-        return new ParsedChunk(parsed, parseLimit);
+        return new ParsedChunk(result.eventsWritten, result.overflowed);
     }
 
     private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
@@ -260,6 +262,17 @@ public class NRVAEReader implements ReaderBufferControl {
             final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
             final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
             if (writeBuffer.overrunOccuredFlag) {
+                // Parser state was already advanced; skip commit until the viewer swaps buffers.
+                if (chunk.overflowed) {
+                    logOverrun(monitor.getEventCounter(), monitor.getAEBufferSize(), 0);
+                }
+                return;
+            }
+            if (chunk.parsed <= 0) {
+                if (chunk.overflowed) {
+                    writeBuffer.overrunOccuredFlag = true;
+                    logOverrun(monitor.getEventCounter(), monitor.getAEBufferSize(), 0);
+                }
                 return;
             }
 
@@ -267,31 +280,6 @@ public class NRVAEReader implements ReaderBufferControl {
             final int startEvent = monitor.getEventCounter();
             writeBuffer.lastCaptureIndex = startEvent;
             final int remaining = maxEvents - startEvent;
-
-            if (chunk == ParsedChunk.OVERFLOW || remaining <= 0) {
-                writeBuffer.overrunOccuredFlag = true;
-                logOverrun(startEvent, maxEvents, 0);
-                return;
-            }
-
-            if (chunk.parsed < 0) {
-                final int committed = Math.min(chunk.parseLimit, remaining);
-                if (committed > 0) {
-                    ensureWriteBufferCapacity(writeBuffer, maxEvents, startEvent, committed);
-                    final long acStart = sample != null ? System.nanoTime() : 0;
-                    System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, committed);
-                    System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, committed);
-                    if (sample != null) {
-                        arrayCopyNs += System.nanoTime() - acStart;
-                    }
-                    monitor.setEventCounter(startEvent + committed);
-                    writeBuffer.setNumEvents(monitor.getEventCounter());
-                    writeBuffer.lastCaptureLength = committed;
-                }
-                writeBuffer.overrunOccuredFlag = true;
-                logOverrun(startEvent, maxEvents, committed);
-                return;
-            }
 
             final int toCopy = Math.min(chunk.parsed, remaining);
             if (toCopy > 0) {
@@ -306,6 +294,10 @@ public class NRVAEReader implements ReaderBufferControl {
             monitor.setEventCounter(startEvent + toCopy);
             writeBuffer.setNumEvents(monitor.getEventCounter());
             writeBuffer.lastCaptureLength = toCopy;
+            if (chunk.overflowed) {
+                writeBuffer.overrunOccuredFlag = true;
+                logOverrun(startEvent, maxEvents, toCopy);
+            }
         }
         if (sample != null) {
             sample.commitLockNs = System.nanoTime() - commitStart;
@@ -323,15 +315,14 @@ public class NRVAEReader implements ReaderBufferControl {
     }
 
     private static final class ParsedChunk {
-        static final ParsedChunk EMPTY = new ParsedChunk(0, 0);
-        static final ParsedChunk OVERFLOW = new ParsedChunk(-1, 0);
+        static final ParsedChunk EMPTY = new ParsedChunk(0, false);
 
         final int parsed;
-        final int parseLimit;
+        final boolean overflowed;
 
-        ParsedChunk(int parsed, int parseLimit) {
+        ParsedChunk(int parsed, boolean overflowed) {
             this.parsed = parsed;
-            this.parseLimit = parseLimit;
+            this.overflowed = overflowed;
         }
     }
 

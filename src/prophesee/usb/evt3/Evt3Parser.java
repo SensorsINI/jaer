@@ -12,6 +12,8 @@ public class Evt3Parser {
 
     private static final int TYPEMASK = 1 << 22;
     private static final int TIME_HIGH_WRAP = 1 << 11;
+    /** Full span of signed {@code int} timestamps in microseconds (~4295 s). */
+    private static final long OUTPUT_INT_US_SPAN = (long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE + 1L;
 
     private int x;
     private int y;
@@ -19,6 +21,7 @@ public class Evt3Parser {
     private long tUs;
     private long timestampOriginUs = -1;
     private long lastOutputAbsoluteUs = -1;
+    private int bigWrapCount;
 
     private int previousMsbT;
     private int previousLsbT;
@@ -44,6 +47,7 @@ public class Evt3Parser {
         previousMsbT = 0;
         previousLsbT = 0;
         overflows = 0;
+        bigWrapCount = 0;
     }
 
     public void resetTimestampOrigin() {
@@ -279,8 +283,9 @@ public class Evt3Parser {
             timestampOriginUs = absoluteUs;
         }
         long outUs = absoluteUs - timestampOriginUs;
-        if (outUs > Integer.MAX_VALUE) {
-            outUs = Integer.MAX_VALUE;
+        while (outUs > Integer.MAX_VALUE) {
+            outUs -= OUTPUT_INT_US_SPAN;
+            bigWrapCount++;
         }
         return (int) outUs;
     }

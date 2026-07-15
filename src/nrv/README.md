@@ -41,7 +41,7 @@ NRV timestamps are **absolute on the device**, unlike DAVIS 15-bit relative time
 Notes learned in practice:
 
 - Reference ms wraps about every **70 minutes**; internal math must use `long` (`refMs * 1000` overflows `int` after ~35 minutes).
-- jAER relative timestamps wrap at signed 32-bit (~2147 s) unless the user re-zeros with **`0`** (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV).
+- jAER relative timestamps are signed 32-bit µs. After ~2147 s of session span they **big-wrap** through about −2147 s and continue (same convention as DAVIS/DVX). Press **`0`** to re-zero at the current device time (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV).
 - Timestamp cadence in the USB stream is set by I2C **`TSTAMP_SUB_UNIT_VAL`** (`0x32B1:32B2`, LSB exposed in UI as `0x32B2`) and **`TSTAMP_REF_UNIT_VAL`** (`0x32B3:32B4`). Factory presets scale SUB with nominal output rate (e.g. 100 fps → `0x0B`, 1000 fps → `0x7D`); **lower SUB → more frequent sub-timestamp packets**.
 
 Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). With timing trace, each USB chunk also logs `NRV chunk ts span: … spanUs=…`. Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).

@@ -334,8 +334,11 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             synchronized (aePacketRawPool) {
                 aePacketRawPool.swap();
                 eventCounter = 0;
-                return aePacketRawPool.readBuffer();
             }
+            if (aeReader != null) {
+                aeReader.onWriteBufferConsumed();
+            }
+            return aePacketRawPool.readBuffer();
         }
         if (!eventAcquisitionEnabled) {
             setEventAcquisitionEnabled(true);
@@ -345,6 +348,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             aePacketRawPool.swap();
             eventCounter = 0;
             lastEventsAcquired = aePacketRawPool.readBuffer();
+        }
+        if (aeReader != null) {
+            aeReader.onWriteBufferConsumed();
         }
         final int nEvents = lastEventsAcquired.getNumEvents();
         computeEstimatedEventRate(lastEventsAcquired);
