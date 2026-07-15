@@ -86,6 +86,7 @@ import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.retina.*;
 import nrv.chip.NRVS5KRC1S;
+import nrv.usb.NRVFrameTrace;
 import prophesee.chip.PropheseeIMX636HD;
 import com.google.common.collect.EvictingQueue;
 import eu.seebetter.ini.chips.davis.*;
@@ -1849,6 +1850,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                         numRawEvents = rawPacket.getNumEvents();
+                        if (NRVFrameTrace.isPlaybackEnabled()
+                                && getPlayMode() == PlayMode.PLAYBACK
+                                && chip instanceof NRVS5KRC1S) {
+                            NRVFrameTrace.logPlaybackSlice(getAePlayer().getTimesliceUs(), rawPacket);
+                        }
                         final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isLogFilteredEventsEnabled();
                         if (!isPaused() && getRenderer().isPacketLevelRenderSkipping()) {
                             skipRendering = getRenderer().advanceSkipRenderSlot();
@@ -1953,7 +1959,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } // viewLoop.run()
 
         private void renderPacket(EventPacket cookedPacket) {
-            if (aePlayer.isChoosingFile() || (cookedPacket == null) || (!isRenderBlankFramesEnabled() && (cookedPacket.getSize() == 0))) {
+            if (aePlayer.isChoosingFile() || (cookedPacket == null)) {
+                return;
+            }
+            if (!isRenderBlankFramesEnabled() && (cookedPacket.getSize() == 0)) {
+                if (NRVFrameTrace.isPlaybackEnabled()
+                        && getPlayMode() == PlayMode.PLAYBACK
+                        && chip instanceof NRVS5KRC1S) {
+                    NRVFrameTrace.logPlaybackSkipRender(getAePlayer().getTimesliceUs());
+                }
                 return;
             } // don't render while filechooser is active
             if (!(getRenderer().isAccumulateEnabled() && isPaused())) {

@@ -9,7 +9,10 @@ import java.util.logging.Logger;
  * <li>{@code -Djaer.nrv.trace.timestampOrder=true} — log first non-monotonic timestamp per USB chunk</li>
  * <li>{@code -Djaer.nrv.trace.timing=true} — throttled parser / timing-resync trace (development)</li>
  * <li>{@code -Djaer.nrv.trace.timing.intervalMs=2000} — throttle interval for timing trace (default 2000)</li>
+ * <li>{@code -Djaer.nrv.trace.parser=true} — per-ms bucket / per-frame parser stats ({@link NRVParserTrace})</li>
  * </ul>
+ * Frame / playback CSV trace: {@link NRVFrameTrace} ({@code jaer.nrv.trace.frames},
+ * {@code jaer.nrv.trace.playback}).
  *
  * @see https://nrv.kr/
  */

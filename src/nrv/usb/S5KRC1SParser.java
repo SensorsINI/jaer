@@ -89,6 +89,11 @@ public class S5KRC1SParser {
     private long lastOutputAbsoluteUs = -1;
     /** Count of signed 32-bit output timestamp big-wraps since {@link #reset()}. */
     private int bigWrapCount;
+    /** Events emitted since the last USB frame-end (0x0C) packet. */
+    private int eventsSinceFrameEnd;
+    private long frameEndIndex;
+    private long lastFrameEndRefMs = -1;
+    private long lastFrameEndFullUs = -1;
 
     public S5KRC1SParser() {
         reset();
@@ -134,6 +139,10 @@ public class S5KRC1SParser {
         timestampOriginUs = -1;
         lastOutputAbsoluteUs = -1;
         bigWrapCount = 0;
+        eventsSinceFrameEnd = 0;
+        frameEndIndex = 0;
+        lastFrameEndRefMs = -1;
+        lastFrameEndFullUs = -1;
     }
 
     /** Signed 32-bit output wraps since the last {@link #reset()}. */
@@ -161,15 +170,15 @@ public class S5KRC1SParser {
 
     /**
      * Updates sub-timestamp scaling from I2C {@code TSTAMP_REF_UNIT_VAL} / {@code TSTAMP_SUB_UNIT_VAL}.
-     * Sub fields on the wire are slot indices; true offset within the ref ms is
-     * {@code index × (refUnit + 1) / subUnit} µs.
+     * Reserved for future use; the USB parser matches NRV SDK {@code PacketParser.cpp} and treats
+     * 10-bit sub fields on dedicated ref/sub packets as microseconds within each ref ms.
      */
     public void setTimestampScale(int refUnitVal, int subUnitVal) {
         this.tstampRefUnitVal = Math.max(0, refUnitVal);
         this.tstampSubUnitVal = Math.max(0, subUnitVal);
     }
 
-    /** Column packet embeds a 10-bit sub field: {@code --ST TTTT | TTTT T-CC | CCCC CCCC}. */
+    /** Column packet embeds a 10-bit sub field (unused — SDK does not apply it to {@code mFullTimeStamp}). */
     static int decodeColumnSubTimestamp(byte pkt1, byte pkt2) {
         return ((pkt1 & 0x0F) << 6) | ((pkt2 & 0xFC) >> 2);
     }
@@ -296,6 +305,21 @@ public class S5KRC1SParser {
                 if (traceTiming) {
                     timingStats.frameEndPackets++;
                 }
+                if (NRVParserTrace.isEnabled()) {
+                    NRVParserTrace.noteFrameEnd(sensorID, refTimeStampMs[sensorID],
+                            fullTimeStampUs[sensorID],
+                            peekOutputTimestamp(fullTimeStampUs[sensorID]),
+                            eventsSinceFrameEnd, lastFrameEndRefMs);
+                }
+                if (NRVFrameTrace.FRAMES_ENABLED) {
+                    NRVFrameTrace.logUsbFrameEnd(frameEndIndex++, refTimeStampMs[sensorID],
+                            fullTimeStampUs[sensorID], peekOutputTimestamp(fullTimeStampUs[sensorID]),
+                            eventsSinceFrameEnd, skipFrameStart != 0, posX[sensorID],
+                            lastFrameEndRefMs, lastFrameEndFullUs);
+                }
+                lastFrameEndRefMs = refTimeStampMs[sensorID];
+                lastFrameEndFullUs = fullTimeStampUs[sensorID];
+                eventsSinceFrameEnd = 0;
                 continue;
             }
             if (header == 0x04) {
@@ -308,9 +332,7 @@ public class S5KRC1SParser {
                 if (traceTiming) {
                     timingStats.colPackets++;
                 }
-                if (sFlag == 0) {
-                    applySubTimestamp(sensorID, decodeColumnSubTimestamp(pkt[i + 1], pkt[i + 2]));
-                } else {
+                if (sFlag != 0) {
                     continue;
                 }
             }
@@ -321,6 +343,9 @@ public class S5KRC1SParser {
             timingStats.lastOutUs = lastOutputAbsoluteUs;
             timingStats.posX0 = posX[0];
             NRVTrace.logTimingSummary(timingStats);
+        }
+        if (NRVParserTrace.isEnabled()) {
+            NRVParserTrace.endParseChunk();
         }
         return new ParseResult(eventCount - eventOffset, overflowed);
     }
@@ -359,19 +384,9 @@ public class S5KRC1SParser {
         }
     }
 
-    private long subFieldToMicros(int subField) {
-        if (tstampSubUnitVal <= 0) {
-            return subField;
-        }
-        return (long) subField * (tstampRefUnitVal + 1L) / tstampSubUnitVal;
-    }
-
     private void applySubTimestamp(int sensorID, int subTs) {
-        long subUs = subFieldToMicros(subTs);
-        if (subUs > 999) {
-            subUs = 999;
-        }
-        long newTs = absoluteRefUs(sensorID) + subUs;
+        // Match NRV SDK PacketParser::S5KRC1SDataProcess: 10-bit sub field is µs within ref ms.
+        long newTs = absoluteRefUs(sensorID) + subTs;
         if (newTs <= fullTimeStampUs[sensorID]) {
             final long prevRefMs = fullTimeStampUs[sensorID] / 1000L;
             final long currentRefBucketMs = absoluteRefUs(sensorID) / 1000L;
@@ -381,7 +396,7 @@ public class S5KRC1SParser {
                     refTimeStampMs[sensorID] = 0;
                     refWrapUs[sensorID] += REF_WRAP_US;
                 }
-                newTs = absoluteRefUs(sensorID) + subUs;
+                newTs = absoluteRefUs(sensorID) + subTs;
             }
         }
         fullTimeStampUs[sensorID] = newTs;
@@ -403,6 +418,18 @@ public class S5KRC1SParser {
         while (outUs > Integer.MAX_VALUE) {
             outUs -= OUTPUT_INT_US_SPAN;
             bigWrapCount++;
+        }
+        return (int) outUs;
+    }
+
+    /** Relative output µs without updating monotonic tracking (trace only). */
+    private int peekOutputTimestamp(long absoluteUs) {
+        if (timestampOriginUs < 0) {
+            return 0;
+        }
+        long outUs = absoluteUs - timestampOriginUs;
+        while (outUs > Integer.MAX_VALUE) {
+            outUs -= OUTPUT_INT_US_SPAN;
         }
         return (int) outUs;
     }
@@ -436,9 +463,13 @@ public class S5KRC1SParser {
             addresses[eventCount + added] = packAddress(lastPosX, posY, pol);
             timestamps[eventCount + added] = outputTs;
             added++;
-            if (NRVTrace.TIMING_ENABLED) {
-                timingStats.eventCount++;
-            }
+            eventsSinceFrameEnd++;
+        }
+        if (NRVParserTrace.isEnabled() && added > 0) {
+            NRVParserTrace.noteEvents(outputTs, added, sensorID);
+        }
+        if (NRVTrace.TIMING_ENABLED) {
+            timingStats.eventCount += added;
         }
         return added;
     }
