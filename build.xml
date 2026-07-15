@@ -21,17 +21,45 @@
         <delete dir="${build.dir}" failonerror="false"/>
     </target>
     
-    <target name="remove-properties-datestamp">
-        <echo message="removing header datestamp from ${basedir}/nbproject/project.properties" />
-        <copy file="${basedir}/nbproject/project.properties" tofile="tmp.properties">
-            <filterchain>
-                <!--read all lines, but skip the automatic date stamp-->
-                <headfilter lines="-1" skip="1"/> 
-            </filterchain>
-        </copy>
-        <copy file="tmp.properties" tofile="${basedir}/nbproject/project.properties" />
-        <delete file="tmp.properties"/>
+    <!-- Ant propertyfile/download-deps refreshes the #Day, dd Mon yyyy ... header on line 1.
+         Snapshot before Ivy, then after compile/jar restore the snapshot when lines 2+ are unchanged.
+         Path must be set after init (build.dir is undefined at project parse time). -->
+    <target name="-snapshot-project-properties" depends="init">
+        <mkdir dir="${build.dir}"/>
+        <copy file="${basedir}/nbproject/project.properties"
+              tofile="${build.dir}/project.properties.ant-snapshot" overwrite="true"/>
+    </target>
 
+    <target name="-revert-project-properties-if-only-datestamp" depends="init">
+        <available file="${build.dir}/project.properties.ant-snapshot"
+                   property="project.properties.snapshot.exists"/>
+        <antcall target="-do-revert-project-properties-if-only-datestamp"/>
+    </target>
+
+    <target name="-do-revert-project-properties-if-only-datestamp" if="project.properties.snapshot.exists">
+        <loadfile property="project.properties.snapshot.body"
+                  srcFile="${build.dir}/project.properties.ant-snapshot" encoding="UTF-8">
+            <filterchain>
+                <headfilter lines="-1" skip="1"/>
+            </filterchain>
+        </loadfile>
+        <loadfile property="project.properties.current.body"
+                  srcFile="${basedir}/nbproject/project.properties" encoding="UTF-8">
+            <filterchain>
+                <headfilter lines="-1" skip="1"/>
+            </filterchain>
+        </loadfile>
+        <condition property="project.properties.only.datestamp.changed">
+            <equals arg1="${project.properties.snapshot.body}"
+                    arg2="${project.properties.current.body}"/>
+        </condition>
+        <antcall target="-restore-project-properties-snapshot"/>
+    </target>
+
+    <target name="-restore-project-properties-snapshot" if="project.properties.only.datestamp.changed">
+        <copy file="${build.dir}/project.properties.ant-snapshot"
+              tofile="${basedir}/nbproject/project.properties" overwrite="true"/>
+        <echo message="Reverted nbproject/project.properties (Ant datestamp-only change)"/>
     </target>
 
     <!--
@@ -71,16 +99,19 @@
     </target>
     
     <target name="-post-init">
-        <!--<antcall target="remove-properties-datestamp"/>-->
     </target>
 
     <target name="-post-compile">
-        <!--<antcall target="remove-properties-datestamp"/>-->
+        <antcall target="-revert-project-properties-if-only-datestamp"/>
+    </target>
+
+    <target name="-post-compile-single">
+        <antcall target="-revert-project-properties-if-only-datestamp"/>
     </target>
     <!-- Build jaer module -->
 
 
-    <target name="download-deps" depends="-load-ivy-tasks"
+    <target name="download-deps" depends="-load-ivy-tasks,-snapshot-project-properties"
             description="Download dependent libraries.">
 
         <!--<echo message="****** If you get dialog Artifactory Domain asking for user/pass hit Cancel button"/>-->
@@ -102,8 +133,8 @@
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
         </propertyfile>
-       
-        <!--<antcall target="remove-properties-datestamp"/>-->
+
+        <antcall target="-revert-project-properties-if-only-datestamp"/>
     </target>
 
     <target name="clean-deps" description="Clean downloaded libraries.">
@@ -297,8 +328,7 @@
  
 
     <!-- builds the windows executable .exe launcher files -->
-    <target name="-post-jar" depends="jaer-exe4j">
-        
+    <target name="-post-jar" depends="jaer-exe4j,-revert-project-properties-if-only-datestamp">
     </target>
 
 

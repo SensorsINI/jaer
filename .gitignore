@@ -1,6 +1,8 @@
 /Thumbs.db
 /bin
 /build
+/build/project.properties.ant-snapshot
+/${build.dir}/
 /lib
 /ivy
 /jars
