@@ -384,6 +384,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static boolean showedSkippedPacketsRenderingWarning = false;
     /** Live ARS max saved when entering file playback; restored when leaving PLAYBACK. */
     private int adaptiveRenderSkipMaxBeforePlayback = -1;
+    /** True when live USB acquisition was paused for file playback (resume on stopPlayback). */
+    private boolean eventAcquisitionPausedForPlayback;
     private boolean suppressAdaptiveRenderSkipMenuSync;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
@@ -4069,6 +4071,29 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         syncAdaptiveRenderSkipMenuFromRenderer();
     }
 
+    /**
+     * Stops live USB reader threads while playing back a file so NRV/Prophesee/DAVIS
+     * background transfers do not fill host buffers. Resume is handled by {@link AEPlayer#stopPlayback()}.
+     */
+    private void updateLiveAcquisitionForPlayMode(PlayMode oldMode, PlayMode newMode) {
+        if (newMode == PlayMode.PLAYBACK && oldMode != PlayMode.PLAYBACK) {
+            if (oldMode == PlayMode.SEQUENCING) {
+                stopSequencing();
+            }
+            if (aemon != null && aemon.isOpen() && aemon.isEventAcquisitionEnabled()) {
+                try {
+                    aemon.setEventAcquisitionEnabled(false);
+                    eventAcquisitionPausedForPlayback = true;
+                    log.info("paused live event acquisition for file playback");
+                } catch (HardwareInterfaceException e) {
+                    log.warning("failed to pause live acquisition for playback: " + e.getMessage());
+                }
+            }
+        } else if (oldMode == PlayMode.PLAYBACK && newMode != PlayMode.PLAYBACK) {
+            eventAcquisitionPausedForPlayback = false;
+        }
+    }
+
 	private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
             //        log.info("customizing chip classes");
             ClassChooserDialog dlg;
@@ -6886,6 +6911,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         updateAdaptiveRenderSkippingForPlayMode(oldMode, playMode);
+        updateLiveAcquisitionForPlayMode(oldMode, playMode);
         setTitleAccordingToState();
         fixLoggingControls();
         getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
