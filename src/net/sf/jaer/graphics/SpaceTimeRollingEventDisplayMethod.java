@@ -248,6 +248,94 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private EventPacket lastPacketDisplayed = null;
     private int previousLasttimestamp = 0;
+    private int previousTimeScale = -1;
+
+    /**
+     * Duration of rolling time window from playback frame duration and up/down
+     * arrow or mouse wheel scale (fadingOrSlidingFrames).
+     */
+    public static int computeTimeWindowUs(final AEChip chip, int timeScale) {
+        int frameDurationUs = 100000;
+        if (chip.getAeViewer() != null) {
+            if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
+                frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
+            } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                    && chip.getAeViewer().getAePlayer() != null) {
+                frameDurationUs = chip.getAeViewer().getAePlayer().getTimesliceUs();
+            }
+        }
+        int newTimeWindowUs = (int) (frameDurationUs * Math.pow(2, (timeScale - 1) / 4f));
+        if (newTimeWindowUs < 10000) {
+            newTimeWindowUs = 10000; // minimum 10ms
+        }
+        return newTimeWindowUs;
+    }
+
+    /**
+     * Transient overlay text for the current rolling time window.
+     */
+    public static String formatStatusOverlay(final AEChip chip, int timeScale) {
+        return formatTimeWindowDuration(chip, timeScale, true);
+    }
+
+    /**
+     * One-line log message for the current rolling time window.
+     */
+    public static String formatStatusLog(final AEChip chip, int timeScale) {
+        return formatTimeWindowDuration(chip, timeScale, false);
+    }
+
+    private static String formatTimeWindowDuration(final AEChip chip, int timeScale, boolean withHelp) {
+        EngineeringFormat engFmt = new EngineeringFormat();
+        int us = computeTimeWindowUs(chip, timeScale);
+        String t = engFmt.format(us * 1e-6f);
+        if (!t.isEmpty() && (t.charAt(0) == '+' || t.charAt(0) == '-')) {
+            t = t.substring(1);
+        }
+        if (withHelp) {
+            return String.format("Showing %ss\nArrow/Scroll to change", t);
+        }
+        return String.format("time window %ss (scale %d)", t, timeScale);
+    }
+
+    private int computeTimeWindowUs(int timeScale) {
+        return computeTimeWindowUs((AEChip) chip, timeScale);
+    }
+
+    private void showTimeWindowStatusOverlay() {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        Chip2DRenderer chipRenderer = aeChip.getRenderer();
+        if (!(chipRenderer instanceof AEChipRenderer)) {
+            return;
+        }
+        int timeScale = ((AEChipRenderer) chipRenderer).getFadingOrSlidingFrames();
+        showActionText(formatStatusOverlay(aeChip, timeScale));
+    }
+
+    @Override
+    public void showActionText(String text) {
+        super.showActionText(text);
+        if (getChipCanvas() != null) {
+            getChipCanvas().repaint();
+        }
+    }
+
+    /**
+     * 3D rendering leaves non-2D GL state; restore chip-pixel projection before HUD text.
+     */
+    @Override
+    protected void displayStatusChangeText(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_TRANSFORM_BIT | GL2.GL_CURRENT_BIT);
+        gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glDisable(GLLightingFunc.GL_LIGHTING);
+        getChipCanvas().getZoom().applyProjection(gl);
+        super.displayStatusChangeText(drawable);
+        gl.glPopAttrib();
+    }
 
     @Override
     public void display(final GLAutoDrawable drawable) {
@@ -280,39 +368,32 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (packet.isEmpty()) {
             return;
         }
-        boolean dirty = false;
-        if (packet.getLastTimestamp() != previousLasttimestamp) {
-            dirty = true;
+        final Chip2DRenderer chipRenderer = getRenderer();
+        if (!(chipRenderer instanceof AEChipRenderer)) {
+            log.warning("SpaceTimeRollingEventDisplayMethod requires AEChipRenderer, got " + chipRenderer);
+            return;
         }
+        final int timeScale = ((AEChipRenderer) chipRenderer).getFadingOrSlidingFrames();
+        final int newTimeWindowUs = computeTimeWindowUs(chip, timeScale);
+        final boolean newPacket = packet.getLastTimestamp() != previousLasttimestamp;
+        final boolean timeScaleChanged = timeScale != previousTimeScale;
+        final boolean timeWindowChanged = newTimeWindowUs != timeWindowUs;
         previousLasttimestamp = packet.getLastTimestamp();
-        if (dirty) {
+        previousTimeScale = timeScale;
+        if (newPacket || timeScaleChanged || timeWindowChanged) {
             final int n = packet.getSize();
-            if (n == 0) {
-                return;
-            }
-//            final int t0ThisPacket = packet.getFirstTimestamp();
+            if (n > 0) {
             final int t1 = packet.getLastTimestamp();
-//        final int dtThisPacket = t1 - t0ThisPacket + 1;
-            // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
-            int timeScale = ((AEChipRenderer) getRenderer()).getFadingOrSlidingFrames(); // use color scale to determine multiple, up and down arrows set it then
-            int newTimeWindowUs, frameDurationUs = 100000;
-            if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
-                frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
-            } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-                frameDurationUs = chip.getAeViewer().getAePlayer().getTimesliceUs();
-            }
-            newTimeWindowUs = (int) (frameDurationUs * Math.pow(2, (timeScale - 1) / 4f));
-            if (newTimeWindowUs < 10000) {
-                newTimeWindowUs = 10000; // tobi - don't let time get too short for window, minimum 10ms
-            }
-            if (newTimeWindowUs != timeWindowUs) {
+            if (timeWindowChanged) {
                 regenerateAxesDisplayList = true;
-                eventVertexBuffer.clear();
-                if (eventList != null) {
-                    eventList.clear();
+                if (newPacket) {
+                    eventVertexBuffer.clear();
+                    if (eventList != null) {
+                        eventList.clear();
+                    }
+                    apsFramesInTimeWindow.clear();
+                    dvsFramesInTimeWindow.clear();
                 }
-                apsFramesInTimeWindow.clear();
-                dvsFramesInTimeWindow.clear();
             }
             timeWindowUs = newTimeWindowUs;
             t0 = t1 - timeWindowUs;
@@ -323,21 +404,26 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             tfac = (float) (smax * getTimeAspectRatio()) / timeWindowUs;
 
             pruneOldEventsAndFrames(t0, t1);
-            checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
-            addEventsToEventList(packet);
-            checkEventVertexBufferAllocation(eventList.size());
+            if (newPacket) {
+                checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
+                addEventsToEventList(packet);
+            }
+            checkEventVertexBufferAllocation(eventList != null ? eventList.size() : packet.getSize());
             eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
-            for (BasicEvent ev : eventList) {
-                if ((ev.timestamp < t0) || (ev.timestamp > t1)) {
-                    continue; // don't render events outside of box, no matter how they get there
+            if (eventList != null) {
+                for (BasicEvent ev : eventList) {
+                    if ((ev.timestamp < t0) || (ev.timestamp > t1)) {
+                        continue; // don't render events outside of box, no matter how they get there
+                    }
+                    eventVertexBuffer.putFloat(ev.x);
+                    eventVertexBuffer.putFloat(ev.y);
+                    final float z = tfac * (ev.timestamp - t1);
+                    eventVertexBuffer.putFloat(z); // negative z
                 }
-                eventVertexBuffer.putFloat(ev.x);
-                eventVertexBuffer.putFloat(ev.y);
-                final float z = tfac * (ev.timestamp - t1);
-                eventVertexBuffer.putFloat(z); // negative z
             }
             eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
             checkGLError(gl, "set uniform t0 and t1");
+            }
         }
         if (displayDvsFrames) {
             DavisRenderer renderer = getDavisRenderer();
@@ -906,16 +992,20 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             apsFramesInTimeWindow.clear(); // recover memory
         }
         AEChip aeChip = (AEChip) chip;
-        if (displayMenu == null) {
-            return;
+        if (displayMenu != null) {
+            AEViewer viewer = aeChip.getAeViewer();
+            if (viewer != null) {
+                viewer.removeMenu(displayMenu);
+            }
+            displayMenu = null;
         }
-        AEViewer viewer = aeChip.getAeViewer();
-        viewer.removeMenu(displayMenu);
-        displayMenu = null;
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
         getChipCanvas().setZoom(oldZoom);
+        if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
+            renderer.refreshContrastActionLabels();
+        }
     }
 
     @Override
@@ -951,6 +1041,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         oldZoom = getChipCanvas().getZoom();
         getChipCanvas().setZoom(zoom);
+        if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
+            renderer.refreshContrastActionLabels();
+        }
+        showTimeWindowStatusOverlay();
 
     }
 

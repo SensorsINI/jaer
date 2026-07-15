@@ -795,11 +795,16 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      */
     public void showRenderingModeTextOnAeViewer() {
         if (chip.getAeViewer() != null) {
-            String s = String.format("Color Mode: %s", colorMode.toString());
-            if (fadingEnabled) {
-                s += "; " + getFadingDescription();
-            } else if (slidingWindowEnabled) {
-                s += "; " + getSlidingWindowDescription();
+            String s;
+            if (isSpaceTimeRollingDisplayActive()) {
+                s = SpaceTimeRollingEventDisplayMethod.formatStatusOverlay((AEChip) chip, getFadingOrSlidingFrames());
+            } else {
+                s = String.format("Color Mode: %s", colorMode.toString());
+                if (fadingEnabled) {
+                    s += "; " + getFadingDescription();
+                } else if (slidingWindowEnabled) {
+                    s += "; " + getSlidingWindowDescription();
+                }
             }
             chip.getAeViewer().showActionText(s);
         }
@@ -1017,9 +1022,28 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             fadingOrSlidingFrames = 64;
         }
         this.fadingOrSlidingFrames = fadingOrSlidingFrames;
-        log.info(String.format("Set fading or sliding frames to %d which multiples past frame by %.2f when fading, or renders %d past frames if slidingWindowEnabled", fadingOrSlidingFrames, computeFadingFactor(), fadingOrSlidingFrames));
+        if (isSpaceTimeRollingDisplayActive()) {
+            log.info("Space-time rolling: " + SpaceTimeRollingEventDisplayMethod.formatStatusLog((AEChip) chip, fadingOrSlidingFrames));
+        } else {
+            log.info(String.format("Set fading or sliding frames to %d which multiples past frame by %.2f when fading, or renders %d past frames if slidingWindowEnabled", fadingOrSlidingFrames, computeFadingFactor(), fadingOrSlidingFrames));
+        }
         prefs.putInt("fadingFrames", fadingOrSlidingFrames);
         slidingWindowPacketFifo = new SlidingWindowEventPacketFifo();
+    }
+
+    private boolean isSpaceTimeRollingDisplayActive() {
+        if (chip.getCanvas() == null) {
+            return false;
+        }
+        DisplayMethod displayMethod = chip.getCanvas().getDisplayMethod();
+        return displayMethod instanceof SpaceTimeRollingEventDisplayMethod;
+    }
+
+    /**
+     * Refreshes Up/Down contrast menu labels after display method changes.
+     */
+    public void refreshContrastActionLabels() {
+        updateContrastActions();
     }
 
     /**
@@ -1111,7 +1135,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     private void updateContrastActions() {
-        if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
+        if (isSpaceTimeRollingDisplayActive()) {
+            increaseContrastAction.setName("Lengthen time window");
+            decreaseContrastAction.setName("Shorten time window");
+        } else if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
             increaseContrastAction.setName("Increase event contrast");
             decreaseContrastAction.setName("Decrease event contrast");
         } else if (isFadingEnabled()) {
@@ -1279,7 +1306,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         @Override
         protected void showAction() {
-            if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
+            if (isSpaceTimeRollingDisplayActive()) {
+                showAction(SpaceTimeRollingEventDisplayMethod.formatStatusOverlay((AEChip) chip, getFadingOrSlidingFrames()));
+            } else if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
                 showAction(String.format("Increase DVS contrast to %d events full scale", getColorScale()));
             } else if (isFadingEnabled()) {
                 showAction(String.format("Lengthen fading to %s", getFadingDescription()));
@@ -1314,7 +1343,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
 
         @Override
         protected void showAction() {
-            if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
+            if (isSpaceTimeRollingDisplayActive()) {
+                showAction(SpaceTimeRollingEventDisplayMethod.formatStatusOverlay((AEChip) chip, getFadingOrSlidingFrames()));
+            } else if (!isFadingEnabled() && !isSlidingWindowEnabled()) {
                 showAction(String.format("Decrease DVS contrast to %d events full scale", getColorScale()));
             } else if (isFadingEnabled()) {
                 showAction(String.format("Shorten fading to %s", getFadingDescription()));

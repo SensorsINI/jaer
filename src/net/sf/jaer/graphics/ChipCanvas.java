@@ -1672,7 +1672,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             return String.format("Zoom: fact=%.2f, pan=%s, drag=%s, clipArea=%s", getZoomFactor(), panPx, dragPx, getClipArea());
         }
 
-        private void applyProjection(final GL2 gl) {
+        public void applyProjection(final GL2 gl) {
             if (getClipArea().isDirty()) {
                 getClipArea().computeBounds();
             }
