@@ -99,6 +99,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //    private int timeSlice = 0;
     private final FloatBuffer mv = FloatBuffer.allocate(16);
     private final FloatBuffer proj = FloatBuffer.allocate(16);
+    /** Separate from shader proj/mv; fit reads must not advance those buffer positions. */
+    private final FloatBuffer fitMv = FloatBuffer.allocate(16);
     private int idMv, idProj, idt0, idt1, idPointSize;
     private ArrayList<BasicEvent> eventList = null, eventListTmp = null;
     private ByteBuffer eventVertexBuffer;
@@ -132,6 +134,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private ChipCanvas.Zoom zoom = null;
     private ChipCanvas.Zoom oldZoom = null;
+
+    /** Custom frustum so the full cube is visible and centered after fit. */
+    private boolean volumeFitActive = false;
+    private volatile boolean requestVolumeFit = false;
+    private boolean showFitMessage = false;
+    private float volumeFitLeft, volumeFitRight, volumeFitBottom, volumeFitTop;
+    private float volumeFitAnglex, volumeFitAngley;
+    private float volumeFitOriginX, volumeFitOriginY;
+    private static final float VOLUME_FIT_MARGIN = 1.12f;
+    private static final float MODEL_SCALE = 0.5f;
 
     private TextRenderer textRenderer = null;
 
@@ -338,6 +350,169 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     }
 
     @Override
+    public void unzoomToFitVolume() {
+        requestVolumeFit = true;
+        showFitMessage = true;
+        if (getChipCanvas() != null) {
+            getChipCanvas().repaint();
+        }
+    }
+
+    /**
+     * Fit frustum from the cube's AABB on the near plane (eye space), matching
+     * the same view transforms as rendering. Centers and scales in one shot.
+     */
+    private boolean computeVolumeFitInRender(GL2 gl, float zmax, ChipCanvas.Zoom.ClipArea clip,
+            GLAutoDrawable drawable) {
+        if (smax <= 0) {
+            smax = chip.getMaxSize();
+        }
+        if (sx <= 0 || sy <= 0) {
+            sx = chip.getSizeX();
+            sy = chip.getSizeY();
+        }
+        if (sx <= 0 || sy <= 0 || zmax <= 0) {
+            return false;
+        }
+        final float anglexDeg = getChipCanvas().getAnglex();
+        final float angleyDeg = getChipCanvas().getAngley();
+        final float originX = getChipCanvas().getOrigin3dx();
+        final float originY = getChipCanvas().getOrigin3dy();
+        final float aspect = (float) drawable.getSurfaceWidth()
+                / Math.max(1, drawable.getSurfaceHeight());
+        final float near = zmax * 1.7f;
+
+        // Same transforms that follow glFrustum in render, then modelview scale/translate.
+        final float[] eyeMat = new float[16];
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        gl.glPushMatrix();
+        gl.glLoadIdentity();
+        gl.glTranslatef(0, 0, -zmax);
+        gl.glRotatef(-anglexDeg, 1, 0, 0);
+        gl.glRotatef(-angleyDeg, 0, 1, 0);
+        gl.glTranslatef(originX, originY, 0);
+        gl.glTranslatef(0, 0, zmax);
+        gl.glTranslatef(0, 0, -zmax);
+        gl.glScalef(MODEL_SCALE, MODEL_SCALE, MODEL_SCALE);
+        fitMv.clear();
+        gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, fitMv);
+        gl.glPopMatrix();
+        fitMv.rewind();
+        fitMv.get(eyeMat);
+        fitMv.rewind();
+
+        final NearPlaneBounds nearBounds = new NearPlaneBounds();
+        final float[] eye = new float[4];
+        final boolean ortho = isOrthoProjectionEnabled();
+        sampleCubePoints(sx, sy, zmax, (x, y, z) -> {
+            transformColumnMajor4x4(eyeMat, x, y, z, eye);
+            if (ortho) {
+                nearBounds.add(eye[0], eye[1]);
+                return;
+            }
+            // Standard GL frustum: clip.w = -eye.z; near hit = near * (eye.xy / -eye.z)
+            final float w = -eye[2];
+            if (Math.abs(w) < 1e-4f) {
+                return;
+            }
+            nearBounds.add(near * eye[0] / w, near * eye[1] / w);
+        });
+        if (nearBounds.count == 0) {
+            return false;
+        }
+        nearBounds.finish();
+
+        float halfW = Math.max(nearBounds.width * 0.5f, 1f) * VOLUME_FIT_MARGIN;
+        float halfH = Math.max(nearBounds.height * 0.5f, 1f) * VOLUME_FIT_MARGIN;
+        if (halfW / halfH > aspect) {
+            halfH = halfW / aspect;
+        } else {
+            halfW = halfH * aspect;
+        }
+        volumeFitLeft = nearBounds.centerX - halfW;
+        volumeFitRight = nearBounds.centerX + halfW;
+        volumeFitBottom = nearBounds.centerY - halfH;
+        volumeFitTop = nearBounds.centerY + halfH;
+        volumeFitAnglex = anglexDeg;
+        volumeFitAngley = angleyDeg;
+        volumeFitOriginX = originX;
+        volumeFitOriginY = originY;
+        return true;
+    }
+
+    private static void transformColumnMajor4x4(float[] m, float x, float y, float z, float[] out) {
+        out[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
+        out[1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+        out[2] = m[2] * x + m[6] * y + m[10] * z + m[14];
+        out[3] = m[3] * x + m[7] * y + m[11] * z + m[15];
+    }
+
+    private interface CubePointConsumer {
+        void accept(float x, float y, float z);
+    }
+
+    /** Cube corners and edge midpoints so slanted edges stay inside the frustum. */
+    private static void sampleCubePoints(float sx, float sy, float zmax, CubePointConsumer consumer) {
+        final float[][] points = {
+            {0f, 0f, 0f}, {sx, 0f, 0f}, {0f, sy, 0f}, {sx, sy, 0f},
+            {0f, 0f, -zmax}, {sx, 0f, -zmax}, {0f, sy, -zmax}, {sx, sy, -zmax},
+            {sx * 0.5f, 0f, 0f}, {sx * 0.5f, sy, 0f}, {sx * 0.5f, 0f, -zmax}, {sx * 0.5f, sy, -zmax},
+            {0f, sy * 0.5f, 0f}, {sx, sy * 0.5f, 0f}, {0f, sy * 0.5f, -zmax}, {sx, sy * 0.5f, -zmax},
+            {0f, 0f, -zmax * 0.5f}, {sx, 0f, -zmax * 0.5f}, {0f, sy, -zmax * 0.5f}, {sx, sy, -zmax * 0.5f},
+        };
+        for (float[] p : points) {
+            consumer.accept(p[0], p[1], p[2]);
+        }
+    }
+
+    private static final class NearPlaneBounds {
+        float minX = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
+        int count;
+        float centerX;
+        float centerY;
+        float width;
+        float height;
+
+        void add(float xn, float yn) {
+            minX = Math.min(minX, xn);
+            maxX = Math.max(maxX, xn);
+            minY = Math.min(minY, yn);
+            maxY = Math.max(maxY, yn);
+            count++;
+        }
+
+        void finish() {
+            centerX = (minX + maxX) * 0.5f;
+            centerY = (minY + maxY) * 0.5f;
+            width = maxX - minX;
+            height = maxY - minY;
+        }
+    }
+
+    private boolean useVolumeFitFrustum() {
+        if (!volumeFitActive || getChipCanvas().getZoom().isZoomed()) {
+            return false;
+        }
+        if (Math.abs(getChipCanvas().getAnglex() - volumeFitAnglex) > 0.05f
+                || Math.abs(getChipCanvas().getAngley() - volumeFitAngley) > 0.05f
+                || Math.abs(getChipCanvas().getOrigin3dx() - volumeFitOriginX) > 0.5f
+                || Math.abs(getChipCanvas().getOrigin3dy() - volumeFitOriginY) > 0.5f) {
+            volumeFitActive = false;
+            return false;
+        }
+        return true;
+    }
+
+    private void clearVolumeFit() {
+        volumeFitActive = false;
+        requestVolumeFit = false;
+        showFitMessage = false;
+    }
+
+    @Override
     public void display(final GLAutoDrawable drawable) {
         if (!(chip instanceof AEChip)) {
             throw new RuntimeException("Can only render AEChip outputs: chip=" + chip);
@@ -533,14 +708,41 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glLoadIdentity();
         gl.glPushMatrix();
         ChipCanvas.Zoom.ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
+        if (requestVolumeFit) {
+            if (computeVolumeFitInRender(gl, zmax, clip, drawable)) {
+                volumeFitActive = true;
+                if (showFitMessage) {
+                    showFitMessage = false;
+                    showActionText("Fit cube to view\nCtrl-0");
+                }
+            } else {
+                clearVolumeFit();
+            }
+            requestVolumeFit = false;
+        }
+        final float clipLeft;
+        final float clipRight;
+        final float clipBottom;
+        final float clipTop;
+        if (useVolumeFitFrustum()) {
+            clipLeft = volumeFitLeft;
+            clipRight = volumeFitRight;
+            clipBottom = volumeFitBottom;
+            clipTop = volumeFitTop;
+        } else {
+            clipLeft = clip.getLeft();
+            clipRight = clip.getRight();
+            clipBottom = clip.getBottom();
+            clipTop = clip.getTop();
+        }
 
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
         // determine the viewable area (that is not clipped to black).
         // this is not the view project!  This is the model projection. See later for viewport setting for where we look from.
         if (isOrthoProjectionEnabled()) {
-            gl.glOrtho(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), -zmax * .1, zmax * 1.7);
+            gl.glOrtho(clipLeft, clipRight, clipBottom, clipTop, -zmax * .1, zmax * 1.7);
         } else {
-            gl.glFrustumf(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
+            gl.glFrustumf(clipLeft, clipRight, clipBottom, clipTop, zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
         }
 
         // go to the end, -zmax
@@ -602,10 +804,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        pmvMatrix.glLoadIdentity();
 //        pmvMatrix.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, mv);
 //        checkGLError(gl, "using shader program");
+            proj.clear();
+            mv.clear();
             gl.glGetFloatv(GLMatrixFunc.GL_PROJECTION_MATRIX, proj);
-//        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-//        gl.glLoadIdentity();
             gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, mv);
+            proj.rewind();
+            mv.rewind();
             gl.glUniformMatrix4fv(idMv, 1, false, mv);
             gl.glUniformMatrix4fv(idProj, 1, false, proj);
 
@@ -1003,6 +1207,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
         getChipCanvas().setZoom(oldZoom);
+        clearVolumeFit();
         if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
             renderer.refreshContrastActionLabels();
         }
@@ -1041,6 +1246,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         oldZoom = getChipCanvas().getZoom();
         getChipCanvas().setZoom(zoom);
+        clearVolumeFit();
+        requestVolumeFit = true;
         if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
             renderer.refreshContrastActionLabels();
         }

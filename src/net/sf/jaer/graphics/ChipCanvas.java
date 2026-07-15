@@ -1097,6 +1097,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void unzoom() {
         getZoom().unzoom();
+        if (displayMethod instanceof DisplayMethod3D) {
+            ((DisplayMethod3D) displayMethod).unzoomToFitVolume();
+        }
         repaint(100);
     }
 
