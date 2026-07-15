@@ -24,6 +24,7 @@ import nrv.chip.NRVConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 
 /**
  * LibUsb driver for NRV DVS cameras (Cypress VID 0x04B4, PID 0x00F0 / 0x00F1).
@@ -39,6 +40,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final int AE_BUFFER_SIZE = 500_000;
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
+    private static final int DEFAULT_USB_FIFO_SIZE = 1 << 17;
+    private static final int DEFAULT_USB_NUM_BUFFERS = 16;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
             new PropertyChangeEvent(NRVHardwareInterface.class, "NewEvents", null, null);
 
@@ -46,6 +49,10 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     static {
         VendorPrefsMigration.migrateHardwarePrefs(VendorPrefsMigration.LEGACY_NRV_HW_PACKAGE, PREFS);
+        UsbReaderBufferSettings.migrateLegacyRootKey(
+                JaerConstants.PREFS_ROOT_HARDWARE, "NRV.AEReader.fifoSize", PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE);
+        UsbReaderBufferSettings.migrateLegacyRootKey(
+                JaerConstants.PREFS_ROOT_HARDWARE, "NRV.AEReader.numBuffers", PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS);
     }
 
     private final Preferences prefs = PREFS;
@@ -56,6 +63,10 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private NRVI2CTransport i2cTransport;
     private NRVAEReader aeReader;
     private int buffersize = loadAeBufferSizePref();
+    private int usbFifoSize = UsbReaderBufferSettings.loadFifoSize(
+            PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, DEFAULT_USB_FIFO_SIZE, log, "NRV");
+    private int usbNumBuffers = UsbReaderBufferSettings.loadNumBuffers(
+            PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, DEFAULT_USB_NUM_BUFFERS, usbFifoSize, log, "NRV");
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
@@ -551,26 +562,36 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     @Override
     public int getFifoSize() {
-        return ensureAeReader().getFifoSize();
+        return usbFifoSize;
     }
 
     @Override
     public void setFifoSize(int fifoSize) {
-        ensureAeReader().setFifoSize(fifoSize);
+        this.usbFifoSize = UsbReaderBufferSettings.applyFifoSize(
+                prefs, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, fifoSize, log, "NRV");
+        this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
+                prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, usbNumBuffers, this.usbFifoSize, log, "NRV");
+        if (aeReader != null) {
+            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+        }
     }
 
     @Override
     public int getNumBuffers() {
-        return ensureAeReader().getNumBuffers();
+        return usbNumBuffers;
     }
 
     @Override
     public void setNumBuffers(int numBuffers) {
-        ensureAeReader().setNumBuffers(numBuffers);
+        this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
+                prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, numBuffers, usbFifoSize, log, "NRV");
+        if (aeReader != null) {
+            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+        }
     }
 
     @Override
     public PropertyChangeSupport getReaderSupport() {
-        return ensureAeReader().getReaderSupport();
+        return support;
     }
 }

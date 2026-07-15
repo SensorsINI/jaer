@@ -142,6 +142,7 @@ import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -3849,10 +3850,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.add(viewBiasesMenuItem);
         controlMenu.add(jSeparator26);
 
-        usbFifoSizeMenuItem.setToolTipText("Host USB FIFO bytes per async bulk transfer. Hover and scroll wheel to halve/double (4096–4 MiB).");
+        usbFifoSizeMenuItem.setToolTipText("Host USB FIFO bytes per async bulk transfer. Hover and scroll wheel to halve/double (4 KiB–20 MiB).");
         controlMenu.add(usbFifoSizeMenuItem);
 
-        usbNumBuffersMenuItem.setToolTipText("Number of overlapped USB read buffers. Hover and scroll wheel to adjust ±1.");
+        usbNumBuffersMenuItem.setToolTipText("Number of overlapped USB read buffers (1–32). Hover and scroll wheel to adjust ±1.");
         controlMenu.add(usbNumBuffersMenuItem);
         controlMenu.add(jSeparator9);
 
@@ -4634,12 +4635,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             @Override
             public int stepUp(int current) {
                 final long next = (long) current * 2L;
-                return (int) Math.min(next, 1 << 22);
+                return (int) Math.min(next, UsbReaderBufferSettings.MAX_FIFO_SIZE);
             }
 
             @Override
             public int stepDown(int current) {
-                return Math.max(4096, current / 2);
+                return Math.max(UsbReaderBufferSettings.MIN_FIFO_SIZE, current / 2);
             }
 
             @Override
@@ -4663,12 +4664,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public int stepUp(int current) {
-                return current + 1;
+                return Math.min(current + 1, UsbReaderBufferSettings.MAX_NUM_BUFFERS);
             }
 
             @Override
             public int stepDown(int current) {
-                return Math.max(1, current - 1);
+                return Math.max(UsbReaderBufferSettings.MIN_NUM_BUFFERS, current - 1);
             }
 
             @Override

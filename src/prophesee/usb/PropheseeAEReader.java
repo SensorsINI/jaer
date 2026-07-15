@@ -3,20 +3,16 @@ package prophesee.usb;
 import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
-import java.util.prefs.Preferences;
 
 import org.usb4java.LibUsb;
 
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
-import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
-import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import net.sf.jaer.util.TimestampSpread;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Evk4BoardCommand;
@@ -27,42 +23,17 @@ import prophesee.usb.evk4.Evk4BoardCommand;
  *
  * @see https://www.prophesee.ai/
  */
-public class PropheseeAEReader implements ReaderBufferControl {
+public class PropheseeAEReader {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final byte ENDPOINT_IN = Evk4BoardCommand.EP_EVENTS_IN;
-    private static final int DEFAULT_FIFO_SIZE = 131072; // 128 KiB — tuned for low display latency
-    private static final int DEFAULT_NUM_BUFFERS = 16;
-    private static final String PREF_FIFO_SIZE = "Prophesee.AEReader.fifoSize";
-    private static final String PREF_NUM_BUFFERS = "Prophesee.AEReader.numBuffers";
-    /** Bump when default fifo/buffer tuning changes; migrates stored hardware prefs once. */
-    private static final int USB_READER_PREFS_VERSION = 1;
-
-    static {
-        migrateUsbReaderPrefs();
-    }
-
-    private static void migrateUsbReaderPrefs() {
-        final Preferences hw = JaerConstants.PREFS_ROOT_HARDWARE;
-        if (hw.getInt("Prophesee.AEReader.prefsVersion", 0) >= USB_READER_PREFS_VERSION) {
-            UsbReaderBufferSettings.loadFifoSize(hw, PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE, log, "Prophesee");
-            UsbReaderBufferSettings.loadNumBuffers(hw, PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS,
-                    hw.getInt(PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE), log, "Prophesee");
-            return;
-        }
-        hw.putInt(PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE);
-        hw.putInt(PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS);
-        hw.putInt("Prophesee.AEReader.prefsVersion", USB_READER_PREFS_VERSION);
-    }
 
     private final PropheseeHardwareInterface monitor;
     private final Evt3Parser parser = new Evt3Parser();
     private USBTransferThread usbTransfer;
     private volatile boolean readerActive;
-    private int fifoSize = UsbReaderBufferSettings.loadFifoSize(
-            JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE, log, "Prophesee");
-    private int numBuffers = UsbReaderBufferSettings.loadNumBuffers(
-            JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS, fifoSize, log, "Prophesee");
+    private int fifoSize;
+    private int numBuffers;
 
     private byte[] parseScratch;
     private int[] stagingAddresses;
@@ -77,6 +48,28 @@ public class PropheseeAEReader implements ReaderBufferControl {
 
     public PropheseeAEReader(PropheseeHardwareInterface monitor) {
         this.monitor = monitor;
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+    }
+
+    void syncUsbBufferSettings(int fifoSize, int numBuffers) {
+        this.fifoSize = fifoSize;
+        this.numBuffers = numBuffers;
+        if (usbTransfer != null) {
+            usbTransfer.setBufferSize(this.fifoSize);
+            usbTransfer.setBufferNumber(this.numBuffers);
+        }
+    }
+
+    PropertyChangeSupport getReaderSupport() {
+        return monitor.getReaderSupportInternal();
+    }
+
+    int getFifoSize() {
+        return fifoSize;
+    }
+
+    int getNumBuffers() {
+        return numBuffers;
     }
 
     public void startThread() throws HardwareInterfaceException {
@@ -86,6 +79,7 @@ public class PropheseeAEReader implements ReaderBufferControl {
         if (usbTransfer != null) {
             return;
         }
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
         parser.reset();
         usbTransferCount = 0;
         usbBytesTotal = 0;
@@ -296,47 +290,6 @@ public class PropheseeAEReader implements ReaderBufferControl {
 
     Evt3Parser getParser() {
         return parser;
-    }
-
-    @Override
-    public int getFifoSize() {
-        return fifoSize;
-    }
-
-    @Override
-    public void setFifoSize(int fifoSize) {
-        this.fifoSize = UsbReaderBufferSettings.sanitizeFifoSize(
-                JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, fifoSize, DEFAULT_FIFO_SIZE, log, "Prophesee");
-        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
-                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, this.fifoSize,
-                DEFAULT_NUM_BUFFERS, log, "Prophesee");
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_FIFO_SIZE, this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, numBuffers);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferSize(this.fifoSize);
-            usbTransfer.setBufferNumber(numBuffers);
-        }
-    }
-
-    @Override
-    public int getNumBuffers() {
-        return numBuffers;
-    }
-
-    @Override
-    public void setNumBuffers(int numBuffers) {
-        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
-                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, fifoSize,
-                DEFAULT_NUM_BUFFERS, log, "Prophesee");
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, this.numBuffers);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferNumber(this.numBuffers);
-        }
-    }
-
-    @Override
-    public PropertyChangeSupport getReaderSupport() {
-        return monitor.getReaderSupportInternal();
     }
 
     private void maybeLogTimestampTrace(int[] timestamps, int start, int count) {

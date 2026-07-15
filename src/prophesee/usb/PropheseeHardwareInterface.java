@@ -24,6 +24,7 @@ import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Imx636Init;
 
@@ -41,6 +42,10 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final int AE_BUFFER_SIZE = 500_000;
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
+    private static final int DEFAULT_USB_FIFO_SIZE = 131072;
+    private static final int DEFAULT_USB_NUM_BUFFERS = 16;
+    /** Bump when default fifo/buffer tuning changes; migrates stored hardware prefs once. */
+    private static final int USB_READER_PREFS_VERSION = 1;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
             new PropertyChangeEvent(PropheseeHardwareInterface.class, "NewEvents", null, null);
 
@@ -48,6 +53,27 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     static {
         VendorPrefsMigration.migrateHardwarePrefs(VendorPrefsMigration.LEGACY_PROPHESEE_HW_PACKAGE, PREFS);
+        UsbReaderBufferSettings.migrateLegacyRootKey(
+                JaerConstants.PREFS_ROOT_HARDWARE, "Prophesee.AEReader.fifoSize", PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE);
+        UsbReaderBufferSettings.migrateLegacyRootKey(
+                JaerConstants.PREFS_ROOT_HARDWARE, "Prophesee.AEReader.numBuffers", PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS);
+        UsbReaderBufferSettings.migrateLegacyRootKey(
+                JaerConstants.PREFS_ROOT_HARDWARE, "Prophesee.AEReader.prefsVersion", PREFS, "AEReader.prefsVersion");
+        migrateUsbReaderPrefs();
+    }
+
+    private static void migrateUsbReaderPrefs() {
+        if (PREFS.getInt("AEReader.prefsVersion", 0) >= USB_READER_PREFS_VERSION) {
+            UsbReaderBufferSettings.loadFifoSize(PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE,
+                    DEFAULT_USB_FIFO_SIZE, log, "Prophesee");
+            UsbReaderBufferSettings.loadNumBuffers(PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS,
+                    DEFAULT_USB_NUM_BUFFERS,
+                    PREFS.getInt(UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, DEFAULT_USB_FIFO_SIZE), log, "Prophesee");
+            return;
+        }
+        PREFS.putInt(UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, DEFAULT_USB_FIFO_SIZE);
+        PREFS.putInt(UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, DEFAULT_USB_NUM_BUFFERS);
+        PREFS.putInt("AEReader.prefsVersion", USB_READER_PREFS_VERSION);
     }
 
     private final Preferences prefs = PREFS;
@@ -58,6 +84,10 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private volatile boolean closing;
     private PropheseeAEReader aeReader;
     private int buffersize = loadAeBufferSizePref();
+    private int usbFifoSize = UsbReaderBufferSettings.loadFifoSize(
+            PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, DEFAULT_USB_FIFO_SIZE, log, "Prophesee");
+    private int usbNumBuffers = UsbReaderBufferSettings.loadNumBuffers(
+            PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, DEFAULT_USB_NUM_BUFFERS, usbFifoSize, log, "Prophesee");
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
@@ -523,27 +553,37 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     @Override
     public int getFifoSize() {
-        return ensureAeReader().getFifoSize();
+        return usbFifoSize;
     }
 
     @Override
     public void setFifoSize(int fifoSize) {
-        ensureAeReader().setFifoSize(fifoSize);
+        this.usbFifoSize = UsbReaderBufferSettings.applyFifoSize(
+                prefs, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, fifoSize, log, "Prophesee");
+        this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
+                prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, usbNumBuffers, this.usbFifoSize, log, "Prophesee");
+        if (aeReader != null) {
+            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+        }
     }
 
     @Override
     public int getNumBuffers() {
-        return ensureAeReader().getNumBuffers();
+        return usbNumBuffers;
     }
 
     @Override
     public void setNumBuffers(int numBuffers) {
-        ensureAeReader().setNumBuffers(numBuffers);
+        this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
+                prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, numBuffers, usbFifoSize, log, "Prophesee");
+        if (aeReader != null) {
+            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+        }
     }
 
     @Override
     public PropertyChangeSupport getReaderSupport() {
-        return ensureAeReader().getReaderSupport();
+        return support;
     }
 
     @Override

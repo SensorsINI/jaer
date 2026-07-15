@@ -10,37 +10,28 @@ import org.usb4java.LibUsb;
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
-import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
-import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 
 /**
  * USB bulk reader for NRV DVS devices (endpoint 0x81).
  *
  * @see https://nrv.kr/
  */
-public class NRVAEReader implements ReaderBufferControl {
+public class NRVAEReader {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final byte ENDPOINT_IN = (byte) 0x81;
-    private static final int DEFAULT_FIFO_SIZE = 1 << 17;
-    private static final int DEFAULT_NUM_BUFFERS = 16;
-    private static final String PREF_FIFO_SIZE = "NRV.AEReader.fifoSize";
-    private static final String PREF_NUM_BUFFERS = "NRV.AEReader.numBuffers";
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
     private static final long STOP_JOIN_TIMEOUT_MS = 3000L;
 
     private final NRVHardwareInterface monitor;
     private final S5KRC1SParser parser = new S5KRC1SParser();
     private USBTransferThread usbTransfer;
-    private int fifoSize = UsbReaderBufferSettings.loadFifoSize(
-            JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, DEFAULT_FIFO_SIZE, log, "NRV");
-    private int numBuffers = UsbReaderBufferSettings.loadNumBuffers(
-            JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, DEFAULT_NUM_BUFFERS, fifoSize, log, "NRV");
+    private int fifoSize;
+    private int numBuffers;
     private byte[] parseScratch;
     private int[] stagingAddresses;
     private int[] stagingTimestamps;
@@ -48,6 +39,28 @@ public class NRVAEReader implements ReaderBufferControl {
 
     public NRVAEReader(NRVHardwareInterface monitor) {
         this.monitor = monitor;
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+    }
+
+    void syncUsbBufferSettings(int fifoSize, int numBuffers) {
+        this.fifoSize = fifoSize;
+        this.numBuffers = numBuffers;
+        if (usbTransfer != null) {
+            usbTransfer.setBufferSize(this.fifoSize);
+            usbTransfer.setBufferNumber(this.numBuffers);
+        }
+    }
+
+    PropertyChangeSupport getReaderSupport() {
+        return monitor.getReaderSupportInternal();
+    }
+
+    int getFifoSize() {
+        return fifoSize;
+    }
+
+    int getNumBuffers() {
+        return numBuffers;
     }
 
     public void startThread() throws HardwareInterfaceException {
@@ -57,6 +70,7 @@ public class NRVAEReader implements ReaderBufferControl {
         if (usbTransfer != null) {
             return;
         }
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
         synchronized (monitor.getAePacketRawPool()) {
             monitor.getAePacketRawPool().allocateMemory();
         }
@@ -124,47 +138,6 @@ public class NRVAEReader implements ReaderBufferControl {
 
     S5KRC1SParser getParser() {
         return parser;
-    }
-
-    @Override
-    public int getFifoSize() {
-        return fifoSize;
-    }
-
-    @Override
-    public void setFifoSize(int fifoSize) {
-        this.fifoSize = UsbReaderBufferSettings.sanitizeFifoSize(
-                JaerConstants.PREFS_ROOT_HARDWARE, PREF_FIFO_SIZE, fifoSize, DEFAULT_FIFO_SIZE, log, "NRV");
-        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
-                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, this.fifoSize,
-                DEFAULT_NUM_BUFFERS, log, "NRV");
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_FIFO_SIZE, this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, numBuffers);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferSize(this.fifoSize);
-            usbTransfer.setBufferNumber(numBuffers);
-        }
-    }
-
-    @Override
-    public void setNumBuffers(int numBuffers) {
-        this.numBuffers = UsbReaderBufferSettings.sanitizeNumBuffers(
-                JaerConstants.PREFS_ROOT_HARDWARE, PREF_NUM_BUFFERS, numBuffers, fifoSize,
-                DEFAULT_NUM_BUFFERS, log, "NRV");
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt(PREF_NUM_BUFFERS, this.numBuffers);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferNumber(this.numBuffers);
-        }
-    }
-
-    @Override
-    public int getNumBuffers() {
-        return numBuffers;
-    }
-
-    @Override
-    public PropertyChangeSupport getReaderSupport() {
-        return monitor.getReaderSupportInternal();
     }
 
     private void checkTimestampOrder(int[] timestamps, int start, int count) {
