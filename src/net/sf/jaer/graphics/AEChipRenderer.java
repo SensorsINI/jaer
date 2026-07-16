@@ -13,6 +13,8 @@ import java.beans.PropertyChangeListener;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.logging.Logger;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -35,7 +37,6 @@ import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.filter.LowpassFilter;
-import org.apache.commons.collections4.queue.CircularFifoQueue;
 
 /**
  * Superclass for classes that render DVS and other sensor/chip AEs to a memory
@@ -296,17 +297,17 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (isSlidingWindowEnabled()) {
             slidingWindowPacketFifo.add(packet);
         }
-        Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(packet);
+        Iterable<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(packet);
+        preparePixmapForIncomingEvents(packet);
 
         try {
             for (EventPacket pkt : packets) {
+                if (pkt == null) {
+                    continue;
+                }
 
                 if (pkt.getNumCellTypes() > 2) {
                     checkTypeColors(pkt.getNumCellTypes());
-                    if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                        resetFrame(0);
-                        resetAccumulationFlag = false;
-                    }
                     for (Object obj : pkt) {
                         BasicEvent e = (BasicEvent) obj;
                         if (e.isSpecial()) {
@@ -338,10 +339,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                 } else {
                     switch (colorMode) {
                         case GrayLevel:
-                            if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                                resetFrame(getGrayValue()); // also sets grayValue
-                                resetAccumulationFlag = false;
-                            }
                             colorContrastAdditiveStep = 2f / (colorScale + 1);
                             // colorScale=1,2,3; colorContrastAdditiveStep = 1, 1/2, 1/3, 1/4, ;
                             // later type-grayValue gives -.5 or .5 for spike value, when
@@ -376,10 +373,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             }
                             break;
                         case RedGreen:
-                            if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                                resetFrame(getGrayValue());
-                                resetAccumulationFlag = false;
-                            }
                             colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
                             for (Object obj : pkt) {
                                 BasicEvent e = (BasicEvent) obj;
@@ -401,10 +394,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             }
                             break;
                         case ColorTime:
-                            if (resetAccumulationFlag || !accumulateEnabled && !externalRenderer) {
-                                resetFrame(getGrayValue());
-                                resetAccumulationFlag = false;
-                            }
                             if (numEvents == 0) {
                                 return;
                             }
@@ -449,7 +438,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                             setColorMode(ColorMode.GrayLevel);
                     }
                 }
-                fadeFrame();
             }
 
         } catch (ArrayIndexOutOfBoundsException e) {
@@ -931,12 +919,45 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
-     * fades frame data
-     *
-     * @param fr the frame rgb data pixmap
+     * True when the pixmap should be cleared before drawing the next packet(s).
+     * Sliding window always rebuilds from the FIFO; fading and accumulation keep
+     * prior values (fading attenuates them in {@link #preparePixmapForIncomingEvents}).
+     */
+    protected boolean shouldResetPixmapBeforeRender() {
+        if (externalRenderer) {
+            return false;
+        }
+        if (resetAccumulationFlag) {
+            return true;
+        }
+        if (isSlidingWindowEnabled()) {
+            return true;
+        }
+        return !accumulateEnabled && !isFadingEnabled();
+    }
+
+    /**
+     * Resets or fades the pixmap once per render call, before events are drawn.
+     * Matches {@link DavisRenderer} behavior for pure DVS chips.
+     */
+    protected void preparePixmapForIncomingEvents(EventPacket packet) {
+        if (shouldResetPixmapBeforeRender()) {
+            final float bg = packet.getNumCellTypes() > 2 ? 0f : getGrayValue();
+            resetFrame(bg);
+            resetAccumulationFlag = false;
+        } else if (isFadingEnabled() && !isSlidingWindowEnabled()) {
+            fadeFrame();
+        }
+    }
+
+    /**
+     * Fades frame data toward the background gray level.
      */
     protected void fadeFrame() {
-        if (!isFadingEnabled() || (chip.getAeViewer() != null && !chip.getAeViewer().isPaused())) {
+        if (!isFadingEnabled()) {
+            return;
+        }
+        if (chip.getAeViewer() != null && chip.getAeViewer().isPaused()) {
             return;
         }
         float fadeBy = computeFadingFactor();
@@ -944,7 +965,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         float[] fr = getPixmapArray();
         for (int i = 0; i < fr.length; i++) {
 
-            fr[i] = fadeToGray(fr[i], fadeBy, grayValue); //fadeBy * fr[i]);
+            fr[i] = fadeToGray(fr[i], fadeBy, grayValue);
         }
     }
 
@@ -1028,7 +1049,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             log.info(String.format("Set fading or sliding frames to %d which multiples past frame by %.2f when fading, or renders %d past frames if slidingWindowEnabled", fadingOrSlidingFrames, computeFadingFactor(), fadingOrSlidingFrames));
         }
         prefs.putInt("fadingFrames", fadingOrSlidingFrames);
-        slidingWindowPacketFifo = new SlidingWindowEventPacketFifo();
+        slidingWindowPacketFifo.setWindowSize(fadingOrSlidingFrames);
     }
 
     private boolean isSpaceTimeRollingDisplayActive() {
@@ -1356,52 +1377,144 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
-     * A fifo to hold copies of recent event packets
+     * Ring buffer of {@link EventPacket} references for sliding-window rendering.
+     * <p>
+     * Each slot permanently holds one reusable {@link EventPacket} buffer (with
+     * prefilled {@link BasicEvent} objects). On each frame the live packet from
+     * the extractor is <em>not</em> stored by reference: jAER reuses the same
+     * packet and the same event object instances every frame
+     * ({@link net.sf.jaer.chip.TypedEventExtractor#out}), so
+     * {@link EventPacket#appendCopyOfEventReferences} would alias mutable
+     * objects and corrupt history on the next extract. Instead, event
+     * <em>fields</em> are copied into the slot's owned prefilled events via
+     * {@link BasicEvent#copyFrom} — the standard jAER output-packet idiom with
+     * no per-event allocation.
      *
      * @param <E> the type of events the packets hold
      */
-    protected class SlidingWindowEventPacketFifo<E extends BasicEvent> extends CircularFifoQueue<EventPacket> {
+    protected class SlidingWindowEventPacketFifo<E extends BasicEvent> implements Iterable<EventPacket> {
 
-        /**
-         * Make a new FIFO, sizing it to the sliding window number of frames
-         */
+        private EventPacket[] slots;
+        /** Index of the next slot to overwrite (oldest entry when full). */
+        private int writeIndex;
+        /** Number of valid slots, at most {@link #slots}.length. */
+        private int count;
+
         public SlidingWindowEventPacketFifo() {
-            super(fadingOrSlidingFrames);
+            setWindowSize(fadingOrSlidingFrames);
         }
 
         /**
-         * Overrides super.add() make deep copies of all events to the evicted
-         * packet from this FIFO, then puts this packet at the tail of the FIFO,
-         * to be retrieved last when rendering.
-         * <p>
-         * If the FIFO already has enough packets that one is evicted, then it
-         * is used, otherwise a new EventPacket of the correct type (EventPacket
-         * or ApsDvsEventPacket) is constructed and allocated to hold at least
-         * the number of events in the incoming packet.
-         *
-         * @param element the packet to add
-         * @return true always
+         * Resizes the window while keeping existing slot buffers (and their
+         * capacities) when possible.
          */
-        @Override
+        public void setWindowSize(int windowSize) {
+            windowSize = Math.max(1, windowSize);
+            if (slots != null && windowSize == slots.length) {
+                return;
+            }
+            final EventPacket[] newSlots = new EventPacket[windowSize];
+            if (slots != null) {
+                System.arraycopy(slots, 0, newSlots, 0, Math.min(slots.length, windowSize));
+            }
+            slots = newSlots;
+            if (writeIndex >= windowSize) {
+                writeIndex = 0;
+            }
+            count = countPopulatedSlots();
+        }
+
+        public void clear() {
+            writeIndex = 0;
+            count = 0;
+        }
+
+        /**
+         * Retains this frame in the next ring slot. The slot {@link EventPacket}
+         * reference is reused; only event fields are transferred from the live
+         * input packet.
+         */
         public boolean add(EventPacket element) {
-            EventPacket packetCopy = null;
-            if (size() >= fadingOrSlidingFrames) {
-                packetCopy = remove();
-                packetCopy.clear();
-            } else {
-                if (element.getEventClass().isAssignableFrom(ApsDvsEvent.class)) {
-                    packetCopy = new ApsDvsEventPacket(ApsDvsEvent.class);
-                } else {
-                    packetCopy = new EventPacket(element.getEventClass());
+            EventPacket slot = slots[writeIndex];
+            if (slot == null || !usesSameEventClass(slot, element)) {
+                slot = createPacketForElement(element);
+                slots[writeIndex] = slot;
+            }
+            transferEventFields(slot, element);
+            writeIndex = (writeIndex + 1) % slots.length;
+            count = countPopulatedSlots();
+            return true;
+        }
+
+        /** Slots that have been allocated at least once. */
+        private int countPopulatedSlots() {
+            if (slots == null) {
+                return 0;
+            }
+            int n = 0;
+            for (EventPacket slot : slots) {
+                if (slot != null) {
+                    n++;
                 }
             }
-            packetCopy.allocate(element.getSize());
-            for (Object e : element) {
-                packetCopy.appendCopyOfEvent((E) e);
-            }
-            return super.add(packetCopy);
+            return n;
         }
 
+        /**
+         * Copies event fields from {@code source} into {@code slot}'s prefilled
+         * event objects. Does not allocate new event instances.
+         */
+        private void transferEventFields(EventPacket slot, EventPacket source) {
+            slot.clear();
+            final int n = source.getSize();
+            if (n == 0) {
+                return;
+            }
+            slot.allocate(n);
+            final BasicEvent[] src = source.getElementData();
+            final BasicEvent[] dst = slot.getElementData();
+            for (int i = 0; i < n; i++) {
+                dst[i].copyFrom(src[i]);
+            }
+            slot.setSize(n);
+        }
+
+        private EventPacket createPacketForElement(EventPacket element) {
+            if (ApsDvsEvent.class.isAssignableFrom(element.getEventClass())) {
+                return new ApsDvsEventPacket<>(ApsDvsEvent.class);
+            }
+            return new EventPacket<>(element.getEventClass());
+        }
+
+        private boolean usesSameEventClass(EventPacket slot, EventPacket element) {
+            return slot.getEventClass() == element.getEventClass();
+        }
+
+        @Override
+        public Iterator<EventPacket> iterator() {
+            return new Iterator<EventPacket>() {
+                private int remaining = count;
+                private int index = count < slots.length ? 0 : writeIndex;
+
+                @Override
+                public boolean hasNext() {
+                    return remaining > 0;
+                }
+
+                @Override
+                public EventPacket next() {
+                    while (remaining > 0) {
+                        final EventPacket packet = slots[index];
+                        index = (index + 1) % slots.length;
+                        remaining--;
+                        if (packet != null) {
+                            return packet;
+                        }
+                    }
+                    throw new NoSuchElementException();
+                }
+            };
+        }
     }
 
 //    protected void addSlidingWindowPacket(EventPacket pkt) {
