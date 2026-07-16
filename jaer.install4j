@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
-  <directoryPresets config="./images" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="2.8" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <directoryPresets config="./images/256h" />
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="2.8.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./installers/install4j-custom-resources.utf8" />
     </languages>
@@ -55,8 +55,10 @@
   </files>
   <launchers>
     <launcher name="jaer" id="25">
-      <executable name="jaer" iconSet="true" iconFile="./jaer.ico" executableMode="gui" />
-      <splashScreen show="true" bitmapFile="./images/SplashScreen.png" />
+      <executable name="jaer" iconSet="true" iconFile="./jaer.ico" executableMode="gui">
+        <versionInfo fileDescription="jAER event sensor application" />
+      </executable>
+      <splashScreen show="true" bitmapFile="./images/256h/SplashScreen.png" />
       <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED">
         <classPath>
           <scanDirectory location="dist" failOnError="false" />
@@ -66,7 +68,7 @@
       </java>
       <vmOptionsFile mode="none" />
       <iconImageFiles>
-        <file path="./images/SplashScreen.png" />
+        <file path="./images/256h/SplashScreen.png" />
       </iconImageFiles>
     </launcher>
   </launchers>
@@ -78,7 +80,7 @@
           <property name="customIconImageFiles">
             <add>
               <object class="com.install4j.api.beans.ExternalFile">
-                <string>./images/SplashScreen.png</string>
+                <string>./images/256h/SplashScreen.png</string>
               </object>
             </add>
           </property>
