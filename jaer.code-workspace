@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../../../Eric Ryu NRV software/DVS_Viewer-main"
+		},
+		{
+			"path": "../../neuromorphic-drivers"
 		}
 	],
 	"settings": {
