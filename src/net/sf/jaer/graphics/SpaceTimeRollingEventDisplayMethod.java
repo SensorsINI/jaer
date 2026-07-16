@@ -1206,7 +1206,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
-        getChipCanvas().setZoom(oldZoom);
+        ChipCanvas.Zoom restoreZoom = oldZoom;
+        if (restoreZoom == null) {
+            restoreZoom = getChipCanvas().createZoom();
+        }
+        getChipCanvas().setZoom(restoreZoom);
+        oldZoom = null;
         clearVolumeFit();
         if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
             renderer.refreshContrastActionLabels();
@@ -1219,6 +1224,18 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return;
         }
         AEChip aeChip = (AEChip) chip;
+        ChipCanvas.Zoom canvasZoom = getChipCanvas().getZoom();
+        if (canvasZoom == null) {
+            canvasZoom = getChipCanvas().createZoom();
+        }
+        oldZoom = canvasZoom;
+        getChipCanvas().setZoom(zoom);
+        clearVolumeFit();
+        requestVolumeFit = true;
+        if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
+            renderer.refreshContrastActionLabels();
+        }
+
         AEViewer viewer = aeChip.getAeViewer();
         if (viewer == null) {
             log.warning("cannot add menu item to control SpaceTimeRollingEventDisplayMethod, AEViewer is null");
@@ -1243,13 +1260,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-        }
-        oldZoom = getChipCanvas().getZoom();
-        getChipCanvas().setZoom(zoom);
-        clearVolumeFit();
-        requestVolumeFit = true;
-        if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
-            renderer.refreshContrastActionLabels();
         }
         showTimeWindowStatusOverlay();
 
