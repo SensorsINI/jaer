@@ -314,6 +314,15 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         return computeTimeWindowUs((AEChip) chip, timeScale);
     }
 
+    /** e.g. "Time (10ms)" for the axis label beside the rolling cube. */
+    private String formatTimeAxisLabel(float dtS) {
+        String t = engFmt.format(dtS);
+        if (!t.isEmpty() && (t.charAt(0) == '+' || t.charAt(0) == '-')) {
+            t = t.substring(1);
+        }
+        return "Time (" + t + "s)";
+    }
+
     private void showTimeWindowStatusOverlay() {
         if (!(chip instanceof AEChip)) {
             return;
@@ -555,7 +564,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         final boolean timeWindowChanged = newTimeWindowUs != timeWindowUs;
         previousLasttimestamp = packet.getLastTimestamp();
         previousTimeScale = timeScale;
-        if (newPacket || timeScaleChanged || timeWindowChanged) {
+        final boolean interactionPreview = getChipCanvas().isInteractionPreview3d();
+        if (!interactionPreview && (newPacket || timeScaleChanged || timeWindowChanged)) {
             final int n = packet.getSize();
             if (n > 0) {
             final int t1 = packet.getLastTimestamp();
@@ -600,7 +610,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkGLError(gl, "set uniform t0 and t1");
             }
         }
-        if (displayDvsFrames) {
+        if (!interactionPreview && displayDvsFrames) {
             DavisRenderer renderer = getDavisRenderer();
             if (renderer != null) {
                 dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), renderer.getPacket().getLastTimestamp());
@@ -699,8 +709,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         final float modelScale = 1f / 2; // everything is drawn at this scale
-        maybeRegenerateAxesDisplayList(gl, zmax, modelScale, dtS);
-        textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        maybeRegenerateAxesDisplayList(gl, zmax, modelScale);
+        final boolean interactionPreview = getChipCanvas().isInteractionPreview3d();
+        if (!interactionPreview) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        }
 
 //        gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
 //        gl.glPushMatrix();
@@ -788,6 +801,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glScalef(modelScale, modelScale, modelScale);
         gl.glCallList(axesDisplayListId);
 
+        if (interactionPreview) {
+            gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
+            gl.glPopMatrix();
+            gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+            return;
+        }
+
         if (displayDvsEvents) {
 //        getChipCanvas().applyProjection(gl, drawable);
             // draw points using shaders
@@ -840,7 +860,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkGLError(gl, "disable program");
 
             drawPlotLabel("Space", gl, .0f, .0f, -0.00f, zmax, 0);
-            drawPlotLabel("Time", gl, 1f, 0f, -0.00f, zmax, 90);
+            drawPlotLabel(formatTimeAxisLabel(dtS), gl, 1f, 0f, -0.00f, zmax, 90);
             String s = "DVS events";
             drawPlotLabel(s, gl, 1.05f, 0, .25f, zmax, 90);
         }
@@ -1032,7 +1052,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //            glut.glutBitmapString(font, s);
     }
 
-    protected void maybeRegenerateAxesDisplayList(GL2 gl, float zmax, final float modelScale, float dtS) {
+    protected void maybeRegenerateAxesDisplayList(GL2 gl, float zmax, final float modelScale) {
         if (regenerateAxesDisplayList) {
             regenerateAxesDisplayList = false;
             if (axesDisplayListId > 0) {
@@ -1109,11 +1129,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             w = glut.glutBitmapLength(font, "t=0");
             gl.glRasterPos3f(-6 * w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
-            gl.glColor3f(1f, 0, 0);
-            String tMaxString = "t=" + engFmt.format(-dtS) + "s";
-            w = glut.glutBitmapLength(font, tMaxString);
-            gl.glRasterPos3f(sx * 1.05f, 0, -zmax);
-            glut.glutBitmapString(font, tMaxString);
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
         }

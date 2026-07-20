@@ -160,10 +160,22 @@ public class AEChip extends Chip2D {
         getCanvas().addDisplayMethod(new SpaceTimeRollingEventDisplayMethod(getCanvas()));
 //        getCanvas().addDisplayMethod(new Histogram3dDisplayMethod(getCanvas())); // preesntly broken - tobi
 
-        //set default display method
-        DisplayMethod m = getPreferredDisplayMethod();
-        m.setChipCanvas(getCanvas());
-        getCanvas().setDisplayMethod(m);
+        // set default display method using the registered menu instance, not a duplicate
+        // from getPreferredDisplayMethod() (otherwise "3" cycle needs an extra press)
+        DisplayMethod preferred = getPreferredDisplayMethod();
+        DisplayMethod fromList = null;
+        for (DisplayMethod dm : getCanvas().getDisplayMethods()) {
+            if (dm.getClass().equals(preferred.getClass())) {
+                fromList = dm;
+                break;
+            }
+        }
+        if (fromList != null) {
+            getCanvas().setDisplayMethod(fromList);
+        } else {
+            preferred.setChipCanvas(getCanvas());
+            getCanvas().setDisplayMethod(preferred);
+        }
 
         // add default filters
         addDefaultEventFilter(XYTypeFilter.class);

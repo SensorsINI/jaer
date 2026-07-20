@@ -161,6 +161,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     private Point mdStPt = null; // start point of drag in screen coordinates
     private Vec drStPx = null; // start point of drag in px, arb origin
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
+    /** While true, 3D display methods may render axes only (no events) during drag. */
+    private boolean interactionPreview3d = false;
 
     /**
      * Flag to disable annotation for methods such as data file preview in file
@@ -375,19 +377,39 @@ public class ChipCanvas implements GLEventListener, Observer {
      * cycle to the next display method
      */
     public void cycleDisplayMethod() {
-        // find index of current display method
-        int idx = 0;
-        for (DisplayMethod m : getDisplayMethods()) {
-            if (m == getDisplayMethod()) {
-                break;
-            }
-            idx++;
+        if (getDisplayMethods().isEmpty()) {
+            return;
         }
-        idx++;
-        if (idx >= getDisplayMethods().size()) {
-            idx = 0;
-        }
+        int idx = indexOfCurrentDisplayMethod();
+        idx = (idx + 1) % getDisplayMethods().size();
         setDisplayMethod(idx);
+    }
+
+    /**
+     * Index of the active display method in {@link #getDisplayMethods()}.
+     * Matches by reference first, then by class (startup may use a duplicate
+     * instance from {@link net.sf.jaer.chip.Chip2D#getPreferredDisplayMethod()}).
+     */
+    private int indexOfCurrentDisplayMethod() {
+        final DisplayMethod current = getDisplayMethod();
+        if (current == null) {
+            return 0;
+        }
+        int i = 0;
+        for (DisplayMethod m : getDisplayMethods()) {
+            if (m == current) {
+                return i;
+            }
+            i++;
+        }
+        i = 0;
+        for (DisplayMethod m : getDisplayMethods()) {
+            if (m.getClass().equals(current.getClass())) {
+                return i;
+            }
+            i++;
+        }
+        return 0;
     }
 
     /**
@@ -787,6 +809,18 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     public boolean is3DEnabled() {
         return displayMethod instanceof DisplayMethod3D;
+    }
+
+    /**
+     * True while the user is dragging to rotate or pan a 3D view (mouse button
+     * held). Display methods can skip heavy geometry and draw axes only.
+     */
+    public boolean isInteractionPreview3d() {
+        return interactionPreview3d;
+    }
+
+    private void setInteractionPreview3d(boolean preview) {
+        interactionPreview3d = preview;
     }
 
     /**
@@ -2098,6 +2132,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         @Override
         public void mousePressed(final MouseEvent evt) {
             dragging = false;
+            if (is3DEnabled()) {
+                final int btn = evt.getButton();
+                if (btn == MouseEvent.BUTTON1 || btn == MouseEvent.BUTTON3) {
+                    setInteractionPreview3d(true);
+                }
+            }
             if (evt.getButton() == MouseEvent.BUTTON3) {
                 dragging = true;
                 origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
@@ -2118,6 +2158,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         @Override
         public void mouseReleased(final MouseEvent evt) {
             dragging=false;
+            setInteractionPreview3d(false);
             if (is3DEnabled()) {
                 log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
                         + getOrigin3dx() + " y=" + getOrigin3dy());
@@ -2137,6 +2178,10 @@ public class ChipCanvas implements GLEventListener, Observer {
             final int screenX = e.getX();
             final int screenY = e.getY();
             final int but1mask = InputEvent.BUTTON1_DOWN_MASK, but3mask = InputEvent.BUTTON3_DOWN_MASK;
+            if (is3DEnabled()
+                    && ((e.getModifiersEx() & but1mask) == but1mask || (e.getModifiersEx() & but3mask) == but3mask)) {
+                setInteractionPreview3d(true);
+            }
             if ((e.getModifiersEx() & but1mask) == but1mask) {
                 if (is3DEnabled()) {
                     final float maxAngle = 180f;
@@ -2152,6 +2197,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                     // chip coordinates (transformation applied). therefore here we set origin in pixel coordinates
                     // based on mouse
                     // position in window.
+                    if (mdStPt == null) {
+                        mdStPt = new Point(screenX, screenY);
+                        origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
+                    }
                     float dx = screenX - mdStPt.x;
                     float dy = screenY - mdStPt.y;
                     origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / glCanvas.getWidth());
