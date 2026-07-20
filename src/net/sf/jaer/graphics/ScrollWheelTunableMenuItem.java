@@ -2,6 +2,7 @@ package net.sf.jaer.graphics;
 
 import java.awt.Component;
 import java.awt.Point;
+import java.awt.event.KeyEvent;
 
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -9,6 +10,8 @@ import javax.swing.JPopupMenu;
 import javax.swing.MenuElement;
 import javax.swing.MenuSelectionManager;
 import javax.swing.SwingUtilities;
+import javax.swing.event.MenuKeyEvent;
+import javax.swing.event.MenuKeyListener;
 import javax.swing.event.MouseInputAdapter;
 
 /**
@@ -19,7 +22,11 @@ import javax.swing.event.MouseInputAdapter;
  * {@link JMenuItem}s, so use {@link #installPopupWheelHandler(JMenu)} on the
  * containing menu.
  */
-public class ScrollWheelTunableMenuItem extends JMenuItem {
+interface WheelAdjustableMenuItem {
+    boolean adjustForWheelRotation(int wheelRotation);
+}
+
+public class ScrollWheelTunableMenuItem extends JMenuItem implements WheelAdjustableMenuItem {
 
     /**
      * Reads/writes a tunable integer and defines wheel steps.
@@ -56,9 +63,32 @@ public class ScrollWheelTunableMenuItem extends JMenuItem {
         popup.putClientProperty(ScrollWheelTunableMenuItem.class, Boolean.TRUE);
 
         popup.addMouseWheelListener(e -> {
-            final ScrollWheelTunableMenuItem item = findTunableItem(e);
+            final WheelAdjustableMenuItem item = findTunableItem(e);
             if (item != null && item.adjustForWheelRotation(e.getWheelRotation())) {
                 e.consume();
+            }
+        });
+
+        popup.addMenuKeyListener(new MenuKeyListener() {
+            @Override
+            public void menuKeyTyped(MenuKeyEvent e) {
+            }
+
+            @Override
+            public void menuKeyPressed(MenuKeyEvent e) {
+                final int keyCode = e.getKeyCode();
+                if (keyCode != KeyEvent.VK_UP && keyCode != KeyEvent.VK_DOWN) {
+                    return;
+                }
+                final WheelAdjustableMenuItem item = findTunableItem(e.getPath());
+                final int rotation = keyCode == KeyEvent.VK_UP ? -1 : 1;
+                if (item != null && item.adjustForWheelRotation(rotation)) {
+                    e.consume();
+                }
+            }
+
+            @Override
+            public void menuKeyReleased(MenuKeyEvent e) {
             }
         });
 
@@ -85,18 +115,26 @@ public class ScrollWheelTunableMenuItem extends JMenuItem {
         }
     }
 
-    private static ScrollWheelTunableMenuItem findTunableItem(java.awt.event.MouseWheelEvent e) {
-        final MenuElement[] path = MenuSelectionManager.defaultManager().getSelectedPath();
+    private static WheelAdjustableMenuItem findTunableItem(MenuElement[] path) {
         for (int i = path.length - 1; i >= 0; i--) {
-            if (path[i] instanceof ScrollWheelTunableMenuItem item) {
+            if (path[i] instanceof WheelAdjustableMenuItem item) {
                 return item;
             }
+        }
+        return null;
+    }
+
+    private static WheelAdjustableMenuItem findTunableItem(java.awt.event.MouseWheelEvent e) {
+        final WheelAdjustableMenuItem selected = findTunableItem(
+                MenuSelectionManager.defaultManager().getSelectedPath());
+        if (selected != null) {
+            return selected;
         }
         if (e.getComponent() instanceof JPopupMenu popup) {
             final Point p = e.getPoint();
             Component c = SwingUtilities.getDeepestComponentAt(popup, p.x, p.y);
             while (c != null) {
-                if (c instanceof ScrollWheelTunableMenuItem item) {
+                if (c instanceof WheelAdjustableMenuItem item) {
                     return item;
                 }
                 c = c.getParent();

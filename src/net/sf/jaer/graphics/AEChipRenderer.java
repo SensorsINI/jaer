@@ -178,6 +178,10 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     
     // number of packets to skip over rendering, used to speed up real time processing
     private static final String PREF_SKIP_PACKETS_RENDERING_MAX = "AEViewer.skipPacketsRenderingNumberMax";
+    private static final String PREF_ADAPTIVE_RENDER_SKIPPING_ENABLED = "AEViewer.adaptiveRenderSkippingEnabled";
+    /** Default ARS maximum when enabled and no preference is stored yet. */
+    public static final int DEFAULT_SKIP_PACKETS_RENDERING_MAX = 10;
+    private int configuredSkipFrameRenderingNumberMax;
     private int skipFrameRenderingNumberMax, skipFrameRenderingNumberCurrent = 0;
     protected int skipFramesCounter = 0; // this is counter for skipping rendering cycles; set to zero to render first packet always
     private LowpassFilter skipFrameRenderingLPFilter = null;
@@ -203,7 +207,13 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             // System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
         }
         setColorScale(prefs.getInt("colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
-        skipFrameRenderingNumberMax = prefs.getInt(PREF_SKIP_PACKETS_RENDERING_MAX, prefs.getInt("skipPacketsRenderingNumberMax", 0));
+        final int legacyMax = prefs.getInt(PREF_SKIP_PACKETS_RENDERING_MAX,
+                prefs.getInt("skipPacketsRenderingNumberMax", 0));
+        configuredSkipFrameRenderingNumberMax = legacyMax > 0
+                ? legacyMax : DEFAULT_SKIP_PACKETS_RENDERING_MAX;
+        skipFrameRenderingNumberMax = prefs.getBoolean(
+                PREF_ADAPTIVE_RENDER_SKIPPING_ENABLED, legacyMax > 0)
+                ? configuredSkipFrameRenderingNumberMax : 0;
         slidingWindowPacketFifo = new SlidingWindowEventPacketFifo();
         updateContrastActions();
 
@@ -1644,6 +1654,37 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     /**
+     * Returns the persistent ARS maximum, including while ARS is disabled or
+     * temporarily disabled during playback.
+     */
+    public int getConfiguredSkipFrameRenderingNumberMax() {
+        return configuredSkipFrameRenderingNumberMax;
+    }
+
+    /**
+     * Changes and persists the ARS maximum without changing its enabled state.
+     */
+    public void setConfiguredSkipFrameRenderingNumberMax(int maximum) {
+        configuredSkipFrameRenderingNumberMax = Math.max(1, maximum);
+        prefs.putInt(PREF_SKIP_PACKETS_RENDERING_MAX, configuredSkipFrameRenderingNumberMax);
+        if (isAdaptiveRenderSkippingEnabled()) {
+            skipFrameRenderingNumberMax = configuredSkipFrameRenderingNumberMax;
+        }
+    }
+
+    /**
+     * Enables/disables ARS while retaining the configured maximum.
+     */
+    public void setAdaptiveRenderSkippingEnabled(boolean enabled) {
+        prefs.putBoolean(PREF_ADAPTIVE_RENDER_SKIPPING_ENABLED, enabled);
+        skipFrameRenderingNumberMax = enabled ? configuredSkipFrameRenderingNumberMax : 0;
+        if (!enabled) {
+            skipFrameRenderingNumberCurrent = 0;
+            skipFramesCounter = 0;
+        }
+    }
+
+    /**
      * @return the skipFramesCounter
      */
     public int getSkipPacketsRenderingCount() {
@@ -1676,10 +1717,14 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      * @param persist when false, only changes runtime state (e.g. temporary off during playback)
      */
     public void setSkipFrameRenderingNumberMax(int skipFrameRenderingNumberMax, boolean persist) {
-        this.skipFrameRenderingNumberMax = skipFrameRenderingNumberMax;
         if (persist) {
-            prefs.putInt(PREF_SKIP_PACKETS_RENDERING_MAX, skipFrameRenderingNumberMax);
+            if (skipFrameRenderingNumberMax > 0) {
+                configuredSkipFrameRenderingNumberMax = skipFrameRenderingNumberMax;
+                prefs.putInt(PREF_SKIP_PACKETS_RENDERING_MAX, configuredSkipFrameRenderingNumberMax);
+            }
+            prefs.putBoolean(PREF_ADAPTIVE_RENDER_SKIPPING_ENABLED, skipFrameRenderingNumberMax > 0);
         }
+        this.skipFrameRenderingNumberMax = Math.max(0, skipFrameRenderingNumberMax);
         if (skipFrameRenderingNumberMax == 0) {
             skipFrameRenderingNumberCurrent = 0;
             skipFramesCounter = 0;

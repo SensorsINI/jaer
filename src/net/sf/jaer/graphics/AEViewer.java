@@ -460,6 +460,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         initComponents();
         setupUsbTuningMenus();
+        setupAdaptiveRenderSkippingMenu();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_MAIN)).getImage());
@@ -3018,7 +3019,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         setFrameRateMenuItem = new javax.swing.JMenuItem();
-        skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        skipPacketsRenderingCheckBoxMenuItem = new ScrollWheelTunableCheckBoxMenuItem();
         setBorderSpaceMenuItem = new javax.swing.JMenuItem();
         jSeparator27 = new javax.swing.JPopupMenu.Separator();
         enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -3587,8 +3588,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         graphicsSubMenu.add(setFrameRateMenuItem);
 
-        skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Skip extract/render of some packets when overloaded to maintain frame rate.<br>Raw .aedat logging is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
+        skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable.<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat logging is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
@@ -4028,24 +4029,32 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
 
     void fixSkipPacketsRenderingMenuItems() {
-        if (getRenderer() == null) {
+        if (chip == null || chip.getRenderer() == null) {
             return;
         }
-        final int max = getRenderer().getSkipFrameRenderingNumberMax();
-        skipPacketsRenderingCheckBoxMenuItem.setText("<html>Enable adaptive render skipping<br>(currently skipping maximum of "
-                + max + " frames)...");
+        skipPacketsRenderingCheckBoxMenuItem.refreshLabel();
+    }
+
+    private void showAdaptiveRenderSkippingOverlay() {
+        if (chip == null || chip.getRenderer() == null) {
+            return;
+        }
+        final AEChipRenderer renderer = chip.getRenderer();
+        showActionText(String.format("Adaptive render skipping %s; maximum %d packets",
+                renderer.isAdaptiveRenderSkippingEnabled() ? "ON" : "OFF",
+                renderer.getConfiguredSkipFrameRenderingNumberMax()));
     }
 
     /**
      * Keeps the ARS menu checkbox aligned with renderer state (live or playback).
      */
     void syncAdaptiveRenderSkipMenuFromRenderer() {
-        if (getRenderer() == null) {
+        if (chip == null || chip.getRenderer() == null) {
             return;
         }
         suppressAdaptiveRenderSkipMenuSync = true;
         try {
-            skipPacketsRenderingCheckBoxMenuItem.setSelected(getRenderer().isAdaptiveRenderSkippingEnabled());
+            skipPacketsRenderingCheckBoxMenuItem.setSelected(chip.getRenderer().isAdaptiveRenderSkippingEnabled());
             fixSkipPacketsRenderingMenuItems();
         } finally {
             suppressAdaptiveRenderSkipMenuSync = false;
@@ -4709,6 +4718,67 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return String.format("AE render buffer: %,d events", value);
             }
         }, this::refreshUsbTuningMenuLabels);
+    }
+
+    private void setupAdaptiveRenderSkippingMenu() {
+        ScrollWheelTunableMenuItem.installPopupWheelHandler(graphicsSubMenu);
+        skipPacketsRenderingCheckBoxMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            private static final int MIN_SKIP = 1;
+            private static final int MAX_SKIP = 1000;
+
+            @Override
+            public int get() {
+                // Chip/renderer are not ready yet during AEViewer construction when bind() refreshes the label.
+                if (chip == null || chip.getRenderer() == null) {
+                    return AEChipRenderer.DEFAULT_SKIP_PACKETS_RENDERING_MAX;
+                }
+                return chip.getRenderer().getConfiguredSkipFrameRenderingNumberMax();
+            }
+
+            @Override
+            public void set(int value) {
+                if (chip == null || chip.getRenderer() == null) {
+                    return;
+                }
+                chip.getRenderer().setConfiguredSkipFrameRenderingNumberMax(value);
+                if (getPlayMode() == PlayMode.PLAYBACK && adaptiveRenderSkipMaxBeforePlayback > 0) {
+                    adaptiveRenderSkipMaxBeforePlayback = value;
+                }
+            }
+
+            @Override
+            public int stepUp(int current) {
+                return Math.min(current + 1, MAX_SKIP);
+            }
+
+            @Override
+            public int stepDown(int current) {
+                return Math.max(current - 1, MIN_SKIP);
+            }
+
+            @Override
+            public String formatLabel(int value) {
+                return String.format("Adaptive render skipping: max %d packets", value);
+            }
+        }, () -> {
+            syncAdaptiveRenderSkipMenuFromRenderer();
+            showAdaptiveRenderSkippingOverlay();
+        });
+
+        graphicsSubMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                syncAdaptiveRenderSkipMenuFromRenderer();
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
     }
 
     private void refreshUsbTuningMenuLabels() {
@@ -6428,32 +6498,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_setBorderSpaceMenuItemActionPerformed
 
     private void skipPacketsRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
-        // come here when user wants to skip rendering except every n packets
-        if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
-            getRenderer().setSkipFrameRenderingNumberMax(0);
-            syncAdaptiveRenderSkipMenuFromRenderer();
+        if (chip == null || chip.getRenderer() == null) {
             return;
         }
-        int currentMax = getRenderer().getSkipFrameRenderingNumberMax();
-        if (currentMax <= 0) {
-            currentMax = 10;
+        chip.getRenderer().setAdaptiveRenderSkippingEnabled(
+                skipPacketsRenderingCheckBoxMenuItem.isSelected());
+        if (getPlayMode() == PlayMode.PLAYBACK) {
+            // A user choice during playback supersedes the temporary saved state.
+            adaptiveRenderSkipMaxBeforePlayback = -1;
         }
-        String s = "Maximum number of packets to skip over between rendering (currently "
-                + getRenderer().getSkipFrameRenderingNumberMax() + ")";
-        boolean gotIt = false;
-        while (!gotIt) {
-            String retString = JOptionPane.showInputDialog(this, s, Integer.toString(currentMax));
-            if (retString == null) {
-                return;
-            } // cancelled
-            try {
-                getRenderer().setSkipFrameRenderingNumberMax(Integer.parseInt(retString));
-                gotIt = true;
-                syncAdaptiveRenderSkipMenuFromRenderer();
-            } catch (NumberFormatException e) {
-                log.warning(e.toString());
-            }
-        }
+        syncAdaptiveRenderSkipMenuFromRenderer();
+        showAdaptiveRenderSkippingOverlay();
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
 
     private void viewRenderBlankFramesCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
@@ -7245,7 +7300,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem setMarkOutMI;
     private javax.swing.JButton showConsoleOutputButton;
     private javax.swing.JMenuItem showRenderingModeMI;
-    private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
+    private ScrollWheelTunableCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem slidingMI;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JTextField statusTextField;
