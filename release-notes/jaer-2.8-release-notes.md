@@ -11,7 +11,8 @@ The next planned release (3.0) will be a major refactoring of jAER to follow the
 * **NRV DELTA01 (S5KRC1S) camera support** via LibUSB: pipelined async bulk readout, S5KRC1S packet parser, I2C biasing from NRV SDK `.txt` settings files, user-friendly bias panel (event threshold, ON/OFF balance, scan rate 100–2000 Hz), live slider updates, timestamp controls and diagnostics, and auto-apply settings on attach. See [src/nrv/README.md](https://github.com/SensorsINI/jaer/blob/master/src/nrv/README.md).
 * **Prophesee EVK4 HD (IMX636) camera support** via LibUSB: EVT3 decoder, ISSD bring-up, bias UI with undo/redo and Revert-to-saved, export/import bias XML, serial number in device name, and pipelined async bulk readout with tuned defaults. See [src/prophesee/README.md](https://github.com/SensorsINI/jaer/blob/master/src/prophesee/README.md).
 * **Playback markers** in _AEFileInputStream_: mark locations while reviewing a recording; export/import markers to CSV; marker _Actions_ with icons and accelerators in the _AEViewer Playback_ menu; mouse-wheel scrolling on the player slider; slider click jumps unconditionally to the clicked position (playback pauses).
-* **_SpaceTimeRollingEventDisplayMethod_ 3D view** improvements: optional orthographic projection for contrast-maximization demos; fit-to-view on **Ctrl-0**; scrollable time window with status overlay. See the [SpaceTimeRolling introduction video](https://youtu.be/DK75rB8UFkA) from jaer-2.6.0.
+* **_SpaceTimeRollingEventDisplayMethod_ 3D view** improvements: optional orthographic projection for contrast-maximization demos; fit-to-view on **Ctrl-0**; scrollable time window with duration on the _Time_ axis label and status overlay; axes-only preview while dragging for responsive rotation/pan; first press of **3** cycles between 2D and space-time rolling view. See the [SpaceTimeRolling introduction video](https://youtu.be/DK75rB8UFkA) from jaer-2.6.0.
+* **Adaptive render skipping (ARS)** in the _Control_ menu: scrollable checkbox toggles ARS on/off; scroll wheel or Up/Down adjusts the persisted max skip (enable state and maximum stored separately).
 * **Unified data-loss reporting** via _DroppedDataInfo_ in _AEViewer_ status (USB overrun, pool exhaustion, etc.).
 * **Per-packet timestamp statistics** in the _Info_ filter overlay for live debugging of NRV and Prophesee streams.
 * **Recording statistics** shown in the save confirmation dialog (event count, duration, start/end times).
@@ -29,7 +30,11 @@ The next planned release (3.0) will be a major refactoring of jAER to follow the
 * Fixed NRV/Prophesee event-only 2D DVS display and GrayLevel view background (mid-gray 0.5) on Windows.
 * Fixed Prophesee EVK4 HD live streaming stall, EVT3 timestamps, hot-plug UX, and Windows launcher reliability; moved EVK4 to async USB transfer.
 * Fixed pause/resume capture for NRV and EVK4 during file playback.
-* Fixed live status bar stuck on “waiting for events” under high load; adaptive render skipping disabled during file playback by default; improved pure-DVS adaptive skipping.
+* Fixed live status bar stuck on “waiting for events” under high load; adaptive render skipping disabled during file playback by default.
+* Fixed fading and sliding-window rendering for pure-DVS chips (NRV and other _RetinaRenderer_ paths): fade during live playback, reset once per frame for sliding window, ring-buffer field transfer instead of per-frame allocation; fixes window-resize NPE with Up/Down.
+* Fixed null _Zoom_ NPE when switching from 3D space-time view back to 2D.
+* Fixed display-method **3** accelerator needing an extra press on first cycle (duplicate preferred-method instance at startup).
+* Fixed 3D space-time right-drag pan NPE.
 * Fixed _AEViewer_ _ViewLoop_ NPE when `filterChain` is unset; graceful exit via `stopViewLoopForExit()` before cleanup on window close and _File → Exit_.
 * Fixed _Info_ packet sniffing; clear enclosed _XYTypeFilter_ ROI on init.
 * Fixed stray logging shortcut leaking into save-dialog filename; confirm-before-overwrite on save.

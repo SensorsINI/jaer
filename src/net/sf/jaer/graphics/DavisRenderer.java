@@ -11,6 +11,7 @@ package net.sf.jaer.graphics;
 import java.beans.PropertyChangeEvent;
 import java.nio.FloatBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
 
@@ -19,8 +20,6 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import eu.seebetter.ini.chips.davis.DavisConfig;
 import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
-import java.util.Collection;
-import java.util.Collections;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
@@ -326,7 +325,7 @@ public class DavisRenderer extends AEChipRenderer {
 
         final boolean displayFrames = isDisplayFrames();
 
-        Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
+        Iterable<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
         for (EventPacket p : packets) {
             if (!(p instanceof ApsDvsEventPacket)) {
                 setSlidingWindowEnabled(false);
@@ -440,7 +439,7 @@ public class DavisRenderer extends AEChipRenderer {
         final boolean displayEvents = isDisplayEvents();
         packet = pkt;
 
-        Collection<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
+        Iterable<EventPacket> packets = isSlidingWindowEnabled() ? slidingWindowPacketFifo : Collections.singletonList(pkt);
         for (EventPacket p : packets) {
             final Iterator itr = p.inputIterator();
             while (itr.hasNext()) {
