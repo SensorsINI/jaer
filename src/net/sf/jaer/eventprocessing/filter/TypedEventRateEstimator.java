@@ -10,24 +10,22 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.event.OutputEventIterator;
 import net.sf.jaer.event.TypedEvent;
 
 /**
- * Estimates event rates of TypedEvent in a packet. Expensive because it splits
- * up data to temporary packets to estimate rate.
+ * Estimates event rates of TypedEvent in a packet, optionally per cell type.
+ * Individual-type measurement counts events per type in a single pass without
+ * allocating temporary packets.
  *
  * @author tobi
  */
-@Description("Estimates event rates of TypedEvent in a packet. Expensive because it splits\n"
-        + " * up data to temporary packets to estimate rate.")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Description("Estimates event rates of TypedEvent in a packet, optionally per cell type")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class TypedEventRateEstimator extends EventRateEstimator {
 
     public static final String EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED = "measureIndividualTypesEnabled";
 
     private int numCellTypes = 0;
-    private EventPacket<? extends BasicEvent>[] typedEventPackets = null;
     protected EventRateEstimator[] eventRateEstimators = null;
     public boolean measureIndividualTypesEnabled = getBoolean("measureIndividualTypesEnabled", true);
 
@@ -37,6 +35,10 @@ public class TypedEventRateEstimator extends EventRateEstimator {
     }
 
     public int getNumCellTypes() {
+        // Prefer live estimators length so annotate cannot use a stale count before the first packet
+        if (measureIndividualTypesEnabled) {
+            return eventRateEstimators != null ? eventRateEstimators.length : 0;
+        }
         return numCellTypes;
     }
 
@@ -47,13 +49,13 @@ public class TypedEventRateEstimator extends EventRateEstimator {
             super.filterPacket(in); // measure overall event rate and send updates to observers that listen for these updates
             return in;
         }
-        checkOutputPacketEventType(in);
-        if (numCellTypes != in.getNumCellTypes()) {                     // build tmp packets to hold different types of events
+        if (in == null || in.getSize() == 0) {
+            return in;
+        }
+        if (numCellTypes != in.getNumCellTypes() || eventRateEstimators == null) {
             numCellTypes = in.getNumCellTypes();
-            typedEventPackets = new EventPacket[numCellTypes];
             eventRateEstimators = new EventRateEstimator[numCellTypes];
             for (int i = 0; i < numCellTypes; i++) {
-                typedEventPackets[i] = in.constructNewPacket();
                 eventRateEstimators[i] = new EventRateEstimator(chip);
                 eventRateEstimators[i].setEventRateTauMs(getEventRateTauMs());
                 eventRateEstimators[i].setMaxRate(getMaxRate());
@@ -63,18 +65,23 @@ public class TypedEventRateEstimator extends EventRateEstimator {
                 }
             }
         }
-        numCellTypes = in.getNumCellTypes(); // do it again in case option measureIndividualTypesEnabled was changed
-        OutputEventIterator[] outItrs = new OutputEventIterator[numCellTypes];
-        for (int i = 0; i < numCellTypes; i++) {                            // get the iterators to fill these packets
-            outItrs[i] = typedEventPackets[i].outputIterator(); // reset tmp packets
+        // Prepare each type estimator (reset packet counters / bias-change pause)
+        boolean[] prepared = new boolean[numCellTypes];
+        boolean anyActive = false;
+        for (int i = 0; i < numCellTypes; i++) {
+            prepared[i] = eventRateEstimators[i].prepareForPacket(in);
+            anyActive |= prepared[i];
         }
-
-        for (BasicEvent i : in) {                                       // fill the packets
+        if (!anyActive) {
+            return in;
+        }
+        // Single pass: route each event to its type's estimator (no packet copy)
+        for (BasicEvent i : in) {
             TypedEvent e = (TypedEvent) i;
-            outItrs[e.getType()].nextOutput().copyFrom(e); // split up events to packets
-        }
-        for (int i = 0; i < numCellTypes; i++) {                    // process each packet
-            eventRateEstimators[i].filterPacket(typedEventPackets[i]);
+            int type = e.getType();
+            if (type >= 0 && type < numCellTypes && prepared[type]) {
+                eventRateEstimators[type].addEvent(e, in);
+            }
         }
         return in;
     }
@@ -108,23 +115,22 @@ public class TypedEventRateEstimator extends EventRateEstimator {
         if (!measureIndividualTypesEnabled) {
             return super.getInstantaneousEventRate();
         }
-
-        if ((i < 0) || (i >= numCellTypes)) {
+        if (eventRateEstimators == null || (i < 0) || (i >= eventRateEstimators.length)) {
             return Float.NaN;
-        } else {
-            return eventRateEstimators[i].getInstantaneousEventRate();
         }
+        EventRateEstimator e = eventRateEstimators[i];
+        return e != null ? e.getInstantaneousEventRate() : Float.NaN;
     }
 
     public float getFilteredEventRate(int i) {
         if (!measureIndividualTypesEnabled) {
             return super.getFilteredEventRate();
         }
-        if ((i < 0) || (i >= numCellTypes)) {
+        if (eventRateEstimators == null || (i < 0) || (i >= eventRateEstimators.length)) {
             return Float.NaN;
-        } else {
-            return eventRateEstimators[i].getFilteredEventRate();
         }
+        EventRateEstimator e = eventRateEstimators[i];
+        return e != null ? e.getFilteredEventRate() : Float.NaN;
     }
 
     @Override
@@ -193,6 +199,11 @@ public class TypedEventRateEstimator extends EventRateEstimator {
         boolean old = this.measureIndividualTypesEnabled;
         this.measureIndividualTypesEnabled = measureIndividualTypesEnabled;
         putBoolean("measureIndividualTypesEnabled", measureIndividualTypesEnabled);
+        if (old != this.measureIndividualTypesEnabled) {
+            // Drop stale type count / estimators so annotate cannot NPE before next packet
+            numCellTypes = 0;
+            eventRateEstimators = null;
+        }
         getSupport().firePropertyChange(EVENT_MEASURE_INDIVIDUAL_TYPES_CHANGED, old, this.measureIndividualTypesEnabled);
     }
 
