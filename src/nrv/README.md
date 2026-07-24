@@ -171,6 +171,25 @@ Beyond the full register table (`NRVControlPanel`), the user panel maps sliders 
 | `0x32B1:32B2` | `TSTAMP_SUB_UNIT_VAL` MSB:LSB | Sub-timestamp + auto with scan rate | Lower LSB → denser sub-timestamp packets |
 | `0x32B3:32B4` | `TSTAMP_REF_UNIT_VAL` | *(from file)* | Sub-µs field span within each ref ms |
 
+**Pixel Biases tab** — experimental sliders for unlabeled registers in the contiguous `0x0160`–`0x016B` block from NRV’s partial sheet (`NRV Pixel bias registers.xlsx`). Factory presets only write `0x0166`–`0x0168`; the rest are seeded at sheet defaults and written live when you move a slider. Slider moves support **Undo/Redo** (Biases toolbar; one undo unit per drag). **Revert** reloads the last settings `.txt` and restores these registers to sheet defaults.
+
+| Register | Sheet default | Min–Max | Notes |
+|----------|---------------|---------|-------|
+| `0x0160` | `0x07` | `0x00`–`0x07` | unlabeled |
+| `0x0161` | `0x1F` | `0x00`–`0x1F` | more OFF events at low value |
+| `0x0162` | `0x0F` | `0x00`–`0x3F` | unlabeled |
+| `0x0163` | `0x0F` | `0x00`–`0x3F` | unlabeled |
+| `0x0164` | `0x07` | `0x00`–`0x3F` | unlabeled |
+| `0x0165` | `0x03` | `0x00`–`0x07` | unlabeled |
+| `0x0166` | `0x1F` (reset) | 6-bit | **known** `EVTH_REF_LSB` — User-Friendly / table |
+| `0x0167` | `0x3F` (reset) | 6-bit | **known** `EVTH_ON_LSB` — Event threshold / balance |
+| `0x0168` | `0x0F` (reset) | 6-bit | **known** `EVTH_OFF_LSB` — Event threshold / balance |
+| `0x0169` | `0x0F` | `0x00`–`0x3F` | unlabeled |
+| `0x016A` | `0x1D` | `0x00`–`0x3F` | more ON events at low value |
+| `0x016B` | `0x03` | `0x00`–`0x07` | unlabeled |
+
+Sheet defaults for `0x0166`–`0x0168` are silicon reset values; factory `.txt` presets typically use `0x0F` / `0x07` / `0x1F` instead.
+
 Slider tweaks use `PotTweaker` ratios (up to 8×) around LSB values captured when a settings file is loaded; LSB writes are clamped to `0x01`–`0x3F`. Direct register edits are available in the full table with undo support.
 
 **Implementation note:** `NRVConfig` computes K from current registers and displays Θ_ON/Θ_OFF. Sliders write only `0x0167`/`0x0168`; `K_REF` (`0x0166`) comes from the loaded settings file or full register table.

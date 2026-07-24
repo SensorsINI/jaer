@@ -85,10 +85,38 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     public static final String PROPERTY_FRAME_MARGIN = "nrvFrameMargin";
     public static final String PROPERTY_SCAN_RATE_HZ = "nrvScanRateHz";
     public static final String PROPERTY_REGISTER_UPDATED = "nrvRegisterUpdated";
+    public static final String PROPERTY_PIXEL_BIAS = "nrvPixelBias";
 
     private static final float TWEAK_MAX_RATIO = 8f;
     private static final int REG_VALUE_MIN = 1;
     private static final int REG_VALUE_MAX = 0x3F;
+
+    /**
+     * Contiguous pixel-bias / EVTH block {@code 0x0160}–{@code 0x016B} from NRV’s partial
+     * register sheet ({@code NRV Pixel bias registers.xlsx}). Known EVTH LSBs are listed for
+     * context; {@link #PIXEL_BIAS_EXPERIMENTAL} are the unlabeled ones exposed on the Pixel Biases tab.
+     */
+    public static final PixelBiasSpec[] PIXEL_BIAS_BLOCK = {
+            new PixelBiasSpec(0x0160, 0x07, 0x00, 0x07, null, null),
+            new PixelBiasSpec(0x0161, 0x1F, 0x00, 0x1F, null, "more OFF events at low value"),
+            new PixelBiasSpec(0x0162, 0x0F, 0x00, 0x3F, null, null),
+            new PixelBiasSpec(0x0163, 0x0F, 0x00, 0x3F, null, null),
+            new PixelBiasSpec(0x0164, 0x07, 0x00, 0x3F, null, null),
+            new PixelBiasSpec(0x0165, 0x03, 0x00, 0x07, null, null),
+            new PixelBiasSpec(0x0166, 0x1F, 0x00, 0x3F, "EVTH_REF_LSB / REG_DIV_BCM_BOT_UNIT_AMP", null),
+            new PixelBiasSpec(0x0167, 0x3F, 0x00, 0x3F, "EVTH_ON_LSB / REG_DIV_BCM_BOT_UNIT_ON", null),
+            new PixelBiasSpec(0x0168, 0x0F, 0x00, 0x3F, "EVTH_OFF_LSB / REG_DIV_BCM_BOT_UNIT_OFF", null),
+            new PixelBiasSpec(0x0169, 0x0F, 0x00, 0x3F, null, null),
+            new PixelBiasSpec(0x016A, 0x1D, 0x00, 0x3F, null, "more ON events at low value"),
+            new PixelBiasSpec(0x016B, 0x03, 0x00, 0x07, null, null),
+    };
+
+    /** Unlabeled registers from the sheet — for experimental slider exploration. */
+    public static final PixelBiasSpec[] PIXEL_BIAS_EXPERIMENTAL = {
+            PIXEL_BIAS_BLOCK[0], PIXEL_BIAS_BLOCK[1], PIXEL_BIAS_BLOCK[2], PIXEL_BIAS_BLOCK[3],
+            PIXEL_BIAS_BLOCK[4], PIXEL_BIAS_BLOCK[5], PIXEL_BIAS_BLOCK[9], PIXEL_BIAS_BLOCK[10],
+            PIXEL_BIAS_BLOCK[11],
+    };
 
     /** Scan-rate slider range (vendor presets claim ~100–2000 fps; NRV marketing cites up to 2 kHz). */
     public static final int SCAN_RATE_HZ_MIN = 100;
@@ -183,11 +211,32 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         support.firePropertyChange(PROPERTY_SCAN_RATE_HZ, null, scanRateHz);
     }
 
+    /**
+     * Revert / “load preferences”: re-apply the last NRV settings {@code .txt} (and re-seed
+     * experimental pixel-bias defaults). Used by the Biases frame Revert button.
+     */
+    @Override
+    public void loadPreferences() {
+        final File file = (loadedFile != null && loadedFile.isFile())
+                ? loadedFile
+                : resolveLastSettingsFile(null);
+        if (file != null && file.isFile()) {
+            try {
+                loadSettingsFile(file);
+                return;
+            } catch (IOException | HardwareInterfaceException e) {
+                log.warning("NRV revert/reload of " + file + " failed: " + e.getMessage());
+            }
+        }
+        super.loadPreferences();
+    }
+
     private void parseSettingsFile(File file) throws IOException {
         final NRVSettingsParser.ParseResult result = NRVSettingsParser.parseFile(file);
         loadedSettings = result.getSettings();
         settingsDescription = result.getDescription();
         loadedFile = file;
+        ensurePixelBiasRegistersInSettings();
         captureBaselinesFromSettings();
         thresholdTweak = 0f;
         onOffBalanceTweak = 0f;
@@ -195,6 +244,121 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         if (controlPanel != null) {
             controlPanel.updateSettings(loadedSettings, settingsDescription, loadedFile);
         }
+    }
+
+    /**
+     * Factory {@code .txt} presets only program {@code 0x0166}–{@code 0x0168}. Seed the rest of the
+     * {@code 0x0160}–{@code 0x016B} block from the NRV sheet defaults so sliders and the register
+     * table can read/write them (applied on the next settings push).
+     */
+    private void ensurePixelBiasRegistersInSettings() {
+        if (loadedSettings == null) {
+            return;
+        }
+        for (PixelBiasSpec spec : PIXEL_BIAS_EXPERIMENTAL) {
+            if (findRegisterSetting(spec.address) != null) {
+                continue;
+            }
+            final String comment = spec.uiLabel();
+            loadedSettings.add(new NRVRegisterSetting(I2C_SLAVE, spec.address, spec.defaultValue, comment));
+        }
+    }
+
+    /** Sheet metadata for one register in {@code 0x0160}–{@code 0x016B}. */
+    public static final class PixelBiasSpec {
+        public final int address;
+        public final int defaultValue;
+        public final int min;
+        public final int max;
+        /** Known silicon / SDK name, or null if unlabeled. */
+        public final String knownName;
+        /** Qualitative note from the sheet’s Difference column. */
+        public final String differenceNote;
+
+        public PixelBiasSpec(int address, int defaultValue, int min, int max,
+                String knownName, String differenceNote) {
+            this.address = address;
+            this.defaultValue = defaultValue;
+            this.min = min;
+            this.max = max;
+            this.knownName = knownName;
+            this.differenceNote = differenceNote;
+        }
+
+        public boolean isKnownEvth() {
+            return address == REG_BRIGHTNESS_THRESHOLD || address == REG_ON_UNIT || address == REG_OFF_UNIT;
+        }
+
+        public String uiLabel() {
+            final StringBuilder sb = new StringBuilder(String.format("0x%04X", address));
+            if (knownName != null) {
+                sb.append(" — ").append(knownName);
+            } else if (differenceNote != null) {
+                sb.append(" — ").append(differenceNote);
+            } else {
+                sb.append(" — unlabeled pixel bias");
+            }
+            return sb.toString();
+        }
+
+        public int clamp(int value) {
+            if (value < min) {
+                return min;
+            }
+            if (value > max) {
+                return max;
+            }
+            return value;
+        }
+    }
+
+    public static PixelBiasSpec findPixelBiasSpec(int regAddr) {
+        for (PixelBiasSpec spec : PIXEL_BIAS_BLOCK) {
+            if (spec.address == regAddr) {
+                return spec;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Current value for a pixel-bias register, or the sheet default if not yet in loaded settings.
+     */
+    public int getPixelBiasValue(int regAddr) {
+        final NRVRegisterSetting setting = findRegisterSetting(regAddr);
+        if (setting != null) {
+            return setting.getValue() & 0xff;
+        }
+        final PixelBiasSpec spec = findPixelBiasSpec(regAddr);
+        return spec == null ? 0 : spec.defaultValue;
+    }
+
+    /**
+     * Writes an experimental pixel-bias register (clamped to the sheet min/max). Creates a settings
+     * entry if the factory file omitted it.
+     */
+    public void setPixelBiasValue(int regAddr, int value) {
+        final PixelBiasSpec spec = findPixelBiasSpec(regAddr);
+        if (spec == null) {
+            log.warning("Not a known pixel-bias register: 0x" + Integer.toHexString(regAddr));
+            return;
+        }
+        if (spec.isKnownEvth()) {
+            log.warning("Use EVTH sliders / register table for 0x" + Integer.toHexString(regAddr));
+            return;
+        }
+        value = spec.clamp(value);
+        final int old = getPixelBiasValue(regAddr);
+        if (old == value) {
+            return;
+        }
+        try {
+            writeOrCreateRegister(regAddr, value, spec.uiLabel());
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV pixel bias 0x" + Integer.toHexString(regAddr) + " write failed: " + e.getMessage());
+            return;
+        }
+        support.firePropertyChange(PROPERTY_PIXEL_BIAS, Integer.valueOf(regAddr), Integer.valueOf(value));
     }
 
     private void applyLoadedSettingsToHardware() throws HardwareInterfaceException {
@@ -710,13 +874,17 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     private void writeOrCreateRegister(int regAddr, int value) throws HardwareInterfaceException {
+        writeOrCreateRegister(regAddr, value, "scan-rate");
+    }
+
+    private void writeOrCreateRegister(int regAddr, int value, String comment) throws HardwareInterfaceException {
         NRVRegisterSetting setting = findRegisterSetting(regAddr);
         if (setting == null) {
             if (loadedSettings == null) {
                 throw new HardwareInterfaceException("No settings loaded; cannot write 0x"
                         + Integer.toHexString(regAddr));
             }
-            setting = new NRVRegisterSetting(I2C_SLAVE, regAddr, value, "scan-rate");
+            setting = new NRVRegisterSetting(I2C_SLAVE, regAddr, value, comment == null ? "" : comment);
             loadedSettings.add(setting);
         }
         writeRegisterValue(setting, value);

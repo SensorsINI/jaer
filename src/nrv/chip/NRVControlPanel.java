@@ -45,6 +45,7 @@ public class NRVControlPanel extends JPanel {
 
     private final NRVConfig config;
     private final NRVUserControlPanel userPanel;
+    private final NRVPixelBiasPanel pixelBiasPanel;
     private final List<NRVRegisterSetting> rowSettings = new ArrayList<>();
     private final JLabel summaryLabel = new JLabel("No settings loaded");
     private final UndoableEditSupport editSupport = new UndoableEditSupport();
@@ -105,6 +106,7 @@ public class NRVControlPanel extends JPanel {
         super(new BorderLayout());
         this.config = config;
         this.userPanel = new NRVUserControlPanel(config);
+        this.pixelBiasPanel = new NRVPixelBiasPanel(config);
 
         table.setAutoCreateRowSorter(true);
 
@@ -114,6 +116,7 @@ public class NRVControlPanel extends JPanel {
 
         final JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("User-Friendly Controls", userPanel);
+        tabs.addTab("Pixel Biases", pixelBiasPanel);
         tabs.addTab("Register Table", registerPanel);
         add(tabs, BorderLayout.CENTER);
 
@@ -181,6 +184,7 @@ public class NRVControlPanel extends JPanel {
             summaryLabel.setForeground(Color.DARK_GRAY);
             summaryLabel.setText("No settings loaded");
             userPanel.syncFromConfig();
+            pixelBiasPanel.syncFromConfig();
             return;
         }
         rowSettings.addAll(settings);
@@ -194,6 +198,7 @@ public class NRVControlPanel extends JPanel {
                 fileName,
                 settings.size()));
         userPanel.syncFromConfig();
+        pixelBiasPanel.syncFromConfig();
     }
 
     private void addRegisterRow(NRVRegisterSetting setting) {
@@ -226,6 +231,7 @@ public class NRVControlPanel extends JPanel {
             updatingTableProgrammatically = false;
         }
         userPanel.updateValueLabels();
+        pixelBiasPanel.syncFromConfig();
     }
 
     private static final class RegisterValueEdit extends AbstractUndoableEdit {
