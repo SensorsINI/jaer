@@ -14,6 +14,7 @@
     "java.project.sourcePaths": [
         "src"
     ],
+    "java.project.outputPath": "build/classes",
     "java.project.referencedLibraries": [
         "lib/**/*.jar",
         "jars/**/*.jar",
@@ -21,5 +22,7 @@
     ],
     "java.import.gradle.enabled": false,
     "java.import.maven.enabled": false,
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.autobuild.enabled": false,
+    "java.debug.settings.forceBuildBeforeLaunch": false
 }
