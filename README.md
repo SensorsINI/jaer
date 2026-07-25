@@ -73,7 +73,25 @@ jAER was also used to develop many event camera algorithms:
 
 ## Developing with jAER
 
-To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing). 
+To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing).
+
+### Developing in an LLM AI client (Cursor, VS Code, …)
+
+jAER is an Ant + Ivy Java project (not Maven/Gradle). An AI coding client works well for navigation, edits, and agents if you treat **Ant as the source of truth for builds**.
+
+1. **Install a JDK 21+** (for example [Eclipse Temurin](https://adoptium.net/)) and [Apache Ant](https://ant.apache.org/), both on your `PATH`.
+2. **Install the Java extension in Cursor / VS Code.** Prefer Microsoft’s [Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) (or at least [Language Support for Java](https://marketplace.visualstudio.com/items?itemName=redhat.java)). Without it, Java navigation, launch configs, and agent context are much weaker.
+3. Open the repo root as the workspace. First-time build:
+
+   ```bash
+   ant compile
+   ```
+
+   Then run with `ant run`, or the fast scripts `scripts/run-jaer-fast.bat` (Windows) / `scripts/run-jaer-fast.sh` (Linux/macOS) after classes exist under `build/classes`.
+4. **Prefer Ant over the IDE compiler for packaging a runnable tree.** The Java language server can leave Eclipse-style stub `.class` files (`Unresolved compilation problem`) under `build/classes` if its output path overlaps Ant’s. This repo’s VS Code settings disable Java autobuild and point output at `build/classes`; if launch fails with that error, run `ant clean` then `ant compile`.
+5. Use the included `.vscode/launch.json` configs (**jAER**, **jAER (fast)**, **jAER (fast debug)**) once dependencies are in `lib/` (created by Ivy on `ant compile` / `ant run`).
+
+Ask the agent for Ant targets, chip/filter code under `src/`, and device USB notes rather than inventing a Maven layout.
 
 ## Support
 
