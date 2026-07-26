@@ -7,7 +7,6 @@
  * the Source Creation and Management node. Right-click the template and choose
  * Open. You can then make changes to the template in the Source Editor.
  */
-
 package net.sf.jaer.util;
 
 import java.awt.event.ActionListener;
@@ -42,7 +41,8 @@ public class RecentFiles {
     
     /** Creates a new instance of RecentFiles
      * @param prefs the Preferences node to store recent files in
-     * @param fileMenu the File mane to load with recent files. The menu is added just before the end, presumed to be Exit
+     * @param fileMenu the File menu to load with recent files. Items are inserted
+     * just above Preferences (if present) or Exit.
      * @param listener the MenuListener to call when one of the items is selected
      */
     public RecentFiles(Preferences prefs, JMenu fileMenu, ActionListener listener) {
@@ -51,13 +51,39 @@ public class RecentFiles {
         this.listener=listener;
         getPrefs();
         fileMenuList=new ArrayList<JMenuItem>(MAX_FILES);
-//        folderMenuList=new ArrayList<JMenuItem>(MAX_FOLDERS);
         
-        fileMenu.insertSeparator(fileMenu.getItemCount()-2);
-        fileMenu.insertSeparator(fileMenu.getItemCount()-2); // we put stuff after this
+        int insertAt = getRecentFilesInsertIndex();
+        fileMenu.insertSeparator(insertAt);
+        fileMenu.insertSeparator(insertAt); // we put stuff after this
         buildMenu();
     }
     JSeparator fileSep=new JSeparator(), folderSep=new JSeparator();
+
+    /**
+     * Index at which to insert recent-file items: immediately before Preferences
+     * (if present) or Exit. Keeps Exit as the last menu item.
+     */
+    private int getRecentFilesInsertIndex() {
+        int prefsIdx = findMenuItemIndexByText("Preferences...");
+        if (prefsIdx >= 0) {
+            return prefsIdx;
+        }
+        int exitIdx = findMenuItemIndexByText("Exit");
+        if (exitIdx >= 0) {
+            return exitIdx;
+        }
+        return fileMenu.getItemCount();
+    }
+
+    private int findMenuItemIndexByText(String text) {
+        for (int i = 0; i < fileMenu.getItemCount(); i++) {
+            JMenuItem item = fileMenu.getItem(i);
+            if (item != null && text.equals(item.getText())) {
+                return i;
+            }
+        }
+        return -1;
+    }
     
     /** inserts the file items in the File menu */
     void buildMenu(){
@@ -65,9 +91,6 @@ public class RecentFiles {
             fileMenu.remove(i);
         }
         fileMenuList.clear();
-//        folderMenuList.clear();
-        int filePos=fileMenu.getItemCount()-3; // right above sep/exit item
-        int folderPos=filePos+1;
         int fileIndex=0;
         int folderIndex=0;
         for(File f:fileList){
@@ -87,7 +110,8 @@ public class RecentFiles {
                 item.addActionListener(listener);
                 item.setMnemonic(item.getText().charAt(0));
                 fileMenuList.add(item);
-                fileMenu.insert(item, fileMenu.getItemCount()-3);
+                // Insert immediately before Preferences/Exit; each subsequent insert lands after prior items.
+                fileMenu.insert(item, getRecentFilesInsertIndex());
                 fileIndex++;
                 if(fileIndex>MAX_FILES) break;
             }else if(!f.isDirectory()){
@@ -107,7 +131,7 @@ public class RecentFiles {
                 item.setToolTipText(f.getPath());
                 item.addActionListener(listener);
                 fileMenuList.add(item);
-                fileMenu.insert(item, fileMenu.getItemCount()-2);
+                fileMenu.insert(item, getRecentFilesInsertIndex());
                 folderIndex++;
                 if(folderIndex>MAX_FOLDERS) break;
             }
@@ -142,9 +166,7 @@ public class RecentFiles {
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 fileList = (ArrayList<File>) in.readObject();
                 in.close();
-//                System.out.println("********* num recent files "+fileList.size());
             }else{
-//                System.out.println("no recent files");
                 fileList=new ArrayList<File>(MAX_FILES);
             }
         }catch(ClassCastException e){
@@ -167,7 +189,6 @@ public class RecentFiles {
             }
         }
         if(last!=null) {
-//            log.info("removing last file "+last);
             fileList.remove(last);
         }
     }
@@ -181,7 +202,6 @@ public class RecentFiles {
             }
         }
         if(last!=null) {
-//            log.info("removing last folder "+last);
             fileList.remove(last);
         }
     }
@@ -190,7 +210,6 @@ public class RecentFiles {
      @param f a file to add
      */
     public void addFile(File f){
-//        log.info("adding recent file "+f.getName());
         if(f==null){
             log.warning("RecentFiles.addFile(): tried to add null File");
             return;
@@ -198,16 +217,9 @@ public class RecentFiles {
         if(fileList.contains(f)) {
             fileList.remove(f);
             fileList.add(0,f); // put to head of list
-//            log.info("recentfiles moved "+f.getName()+" to head of list");
         }else{
             fileList.add(0, f);
-//            log.info("recent files added "+f.getName()+" to head of list");
             removeLastFile();
-//            if(fileList.size()>MAX_FILES+MAX_FOLDERS){
-//                log.info("removing file "+fileList.get(MAX_FILES-1));
-//                fileList.remove(MAX_FILES-1);
-////                System.out.println("recent files pruned list to max size of "+MAX_FILES);
-//            }
         }
         
         // add folder to list
@@ -218,16 +230,9 @@ public class RecentFiles {
             if(fileList.contains(parentFile)) {
                 fileList.remove(parentFile);
                 fileList.add(0,parentFile); // put to head of list
-//                System.out.println("recenffiles moved "+f.getName()+" to head of list");
             }else{
                 fileList.add(0, parentFile);
-//                System.out.println("recent files added "+f.getName()+" to head of list");
                 removeLastFolder();
-//                if(fileList.size()>MAX_FILES+MAX_FOLDERS){
-//                    log.info("removing folder "+fileList.get(MAX_FILES-1));
-//                    fileList.remove(fileList.size()-1);
-////                    System.out.println("recent files pruned list to max size of "+MAX_FILES);
-//                }
             }
         }
         pruneList();
@@ -238,7 +243,6 @@ public class RecentFiles {
     public void removeFile(File f){
         if(!fileList.contains(f)) return;
         fileList.remove(f);
-//        System.out.println("recent files removeFile("+f.getName()+")");
         putPrefs();
         buildMenu();
     }
@@ -252,13 +256,11 @@ public class RecentFiles {
                 nfiles++;
                 if(nfiles>MAX_FILES){
                     removeList.add(f);
-//                     log.info("removing "+nfiles+"'th file "+f+" because MAX_FILES="+MAX_FILES);
                }
             }else if(f.isDirectory()){
                 ndirs++;
                 if(ndirs>MAX_FOLDERS){
                     removeList.add(f);
-//                    log.info("removing "+ndirs+"'th folder "+f+" because MAX_FOLDERS="+MAX_FOLDERS);
                 }
             }else{
                 removeList.add(f);

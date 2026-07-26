@@ -263,6 +263,31 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         hideDiabledAction.setHideDisabled(hideDisabled);
     }
 
+    public boolean isSimpleMode() {
+        return simpleCB != null && simpleCB.isSelected();
+    }
+
+    /**
+     * Sets Simple mode (show only Preferred filter properties) and persists it.
+     */
+    public void setSimpleMode(boolean simpleMode) {
+        if (simpleCB != null) {
+            simpleCB.setSelected(simpleMode);
+        }
+        prefs.putBoolean("simpleMode", simpleMode);
+        updateHighlightedAndSimpleVisibilites();
+    }
+
+    /**
+     * Sets the global filter update interval and refreshes the toolbar field.
+     */
+    public void setUpdateIntervalMs(float updateIntervalMs) {
+        filterChain.setUpdateIntervalMs(updateIntervalMs);
+        if (updateIntervalField != null) {
+            updateIntervalField.setText(engFmt.format(updateIntervalMs));
+        }
+    }
+
     private class HideDisabledAction extends AbstractAction {
 
         private boolean hideDisabled = prefs.getBoolean("hideDisabled", false);
@@ -303,6 +328,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
                     setVisibleIfEnabledOrNotHideDisabled(f);
                 }
             }
+            putValue(SELECTED_KEY, this.hideDisabled);
             propertyChangeSupport.firePropertyChange(PROP_HIDEDISABLED, oldHideDisabled, hideDisabled);
             prefs.putBoolean("hideDisabled", isHideDisabled());
         }

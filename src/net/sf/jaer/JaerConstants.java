@@ -54,7 +54,11 @@ public class JaerConstants {
     public static final String HELP_USER_GUIDE_URL_FLASHY = "https://docs.inivation.com/hardware/hardware-advanced-usage/firmware-update.html"; //"https://gitlab.com/inivation/devices-bin";
     public static final String HELP_FLASHY_LINUX_DOWNLOAD="https://s3.eu-central-1.amazonaws.com/release.inivation.com/flashy/flashy-linux-1.7.1.zip";
     public static final String HELP_URL_USER_GUIDE = "https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing";
-    public static final String HELP_URL_HARDWARE_USER_GUIDE = "http://www.inivation.com/support/hardware/";
+    public static final String HELP_URL_INIVATION_CAMERAS = "https://docs.inivation.com/hardware/current-products/index.html";
+    public static final String HELP_URL_PROPHESEE_CAMERAS = "https://docs.prophesee.ai/stable/hw/sensors/index.html";
+    public static final String HELP_URL_NRV_CAMERAS = "https://nrvcorp.github.io/docs/";
+    /** @deprecated use {@link #HELP_URL_INIVATION_CAMERAS} */
+    public static final String HELP_URL_HARDWARE_USER_GUIDE = HELP_URL_INIVATION_CAMERAS;
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
     
     public static final String getBuildVersion(){

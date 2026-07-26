@@ -574,13 +574,6 @@ public class JAERViewer {
         public void actionPerformed(ActionEvent e) {
             log.info("JAERViewer.ToggleSyncEnabledAction.actionPerformed");
             setSyncEnabled(!isSyncEnabled());
-            for (AbstractButton b : syncEnableButtons) {
-                b.setSelected(isSyncEnabled());
-            }
-            for (AEViewer v : viewers) {
-                AbstractAEPlayer p = isSyncEnabled() ? syncPlayer : v.aePlayer;
-                v.getPlayerControls().setAePlayer(p);
-            }
         }
     }
     
@@ -616,6 +609,15 @@ public class JAERViewer {
     public void setSyncEnabled(boolean syncEnabled) {
         this.syncEnabled = syncEnabled;
         prefs.putBoolean("JAERViewer.syncEnabled", syncEnabled);
+        for (AbstractButton b : syncEnableButtons) {
+            b.setSelected(syncEnabled);
+        }
+        for (AEViewer v : viewers) {
+            AbstractAEPlayer p = syncEnabled ? syncPlayer : v.aePlayer;
+            if (v.getPlayerControls() != null) {
+                v.getPlayerControls().setAePlayer(p);
+            }
+        }
     }
 
     public void pause() {

@@ -582,7 +582,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
 //            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
             addHelpItem(new JSeparator());
-            addHelpURLItem(JaerConstants.HELP_URL_HARDWARE_USER_GUIDE, "Hardware user guides", "Guides for inivation hardware");
+            addHelpURLItem(JaerConstants.HELP_URL_INIVATION_CAMERAS, "Inivation Cameras", "iniVation hardware product guides (DVXplorer, DAVIS, sync, connectors)");
+            addHelpURLItem(JaerConstants.HELP_URL_PROPHESEE_CAMERAS, "Prophesee cameras", "Prophesee / Sony event sensor technical docs (IMX636, GenX320)");
+            addHelpURLItem(JaerConstants.HELP_URL_NRV_CAMERAS, "NRV cameras", "NRV DELTA / RC1S technical documentation (SDK, event format, products)");
             addHelpURLItem(JaerConstants.HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
             addHelpItem(new JSeparator());
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
@@ -2992,6 +2994,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         timestampResetBitmaskMenuItem = new javax.swing.JMenuItem();
         jSeparator16 = new javax.swing.JSeparator();
         exitSeperator = new javax.swing.JSeparator();
+        preferencesMenuItem = new javax.swing.JMenuItem();
         exitMenuItem = new javax.swing.JMenuItem();
         viewMenu = new javax.swing.JMenu();
         viewFiltersMenuItem = new javax.swing.JMenuItem();
@@ -3408,6 +3411,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu.add(timestampResetBitmaskMenuItem);
         fileMenu.add(jSeparator16);
         fileMenu.add(exitSeperator);
+
+        preferencesMenuItem.setMnemonic('p');
+        preferencesMenuItem.setText("Preferences...");
+        preferencesMenuItem.setToolTipText("Edit AEViewer preferences");
+        preferencesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                preferencesMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(preferencesMenuItem);
 
         exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, 0));
         exitMenuItem.setMnemonic('x');
@@ -4024,8 +4037,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_resizeLabelMouseDragged
 
 	private void enableFiltersOnStartupCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
-            enableFiltersOnStartup = enableFiltersOnStartupCheckBoxMenuItem.isSelected();
-            prefs.putBoolean("AEViewer.enableFiltersOnStartup", enableFiltersOnStartup);
+            setEnableFiltersOnStartup(enableFiltersOnStartupCheckBoxMenuItem.isSelected());
 	}//GEN-LAST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
 
     void fixSkipPacketsRenderingMenuItems() {
@@ -5944,6 +5956,72 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Sets the timestamp reset bitmask used when opening AE input streams and
+     * updates the File menu item label.
+     */
+    public void setAeFileInputStreamTimestampResetBitmask(int aeFileInputStreamTimestampResetBitmask) {
+        this.aeFileInputStreamTimestampResetBitmask = aeFileInputStreamTimestampResetBitmask;
+        prefs.putInt("AEViewer.aeFileInputStreamTimestampResetBitmask", aeFileInputStreamTimestampResetBitmask);
+        log.info("set aeFileInputStreamTimestampResetBitmask=" + HexString.toString(aeFileInputStreamTimestampResetBitmask));
+        if (timestampResetBitmaskMenuItem != null) {
+            timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
+        }
+    }
+
+    public boolean isCheckNonMonotonicTimeExceptionsEnabled() {
+        return checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem != null
+                && checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected();
+    }
+
+    /**
+     * Enables/disables non-monotonic timestamp checks and syncs the File menu
+     * checkbox and related input stream / hardware state.
+     */
+    public void setCheckNonMonotonicTimeExceptionsEnabled(boolean enabled) {
+        if (checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem != null) {
+            checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(enabled);
+        }
+        if (aePlayer != null) {
+            aePlayer.setNonMonotonicTimeExceptionsChecked(enabled);
+        }
+        prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", enabled);
+        if ((aemon != null) && (aemon instanceof StereoPairHardwareInterface)) {
+            ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(enabled);
+        }
+        getSupport().firePropertyChange(EVENT_CHECK_NONMONOTONIC_TIMESTAMPS, null, enabled);
+    }
+
+    public boolean isEnableFiltersOnStartup() {
+        return enableFiltersOnStartup;
+    }
+
+    public void setEnableFiltersOnStartup(boolean enableFiltersOnStartup) {
+        this.enableFiltersOnStartup = enableFiltersOnStartup;
+        prefs.putBoolean("AEViewer.enableFiltersOnStartup", enableFiltersOnStartup);
+        if (enableFiltersOnStartupCheckBoxMenuItem != null) {
+            enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
+        }
+    }
+
+    /**
+     * Updates the View menu border-space item label after the value changes.
+     */
+    public void updateBorderSpaceMenuItemText(int borderSpacePixels) {
+        if (setBorderSpaceMenuItem != null) {
+            setBorderSpaceMenuItem.setText(String.format("Set border space (currently %d)", borderSpacePixels));
+        }
+    }
+
+    /**
+     * Updates the Playback menu jog-count item label after the value changes.
+     */
+    public void updateJogPacketCountMenuItemText() {
+        if (setJogNCount != null && getAePlayer() != null) {
+            setJogNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getJogPacketCount() + ")");
+        }
+    }
+
+    /**
      * @return the checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem
      */
     public javax.swing.JCheckBoxMenuItem getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem() {
@@ -6103,16 +6181,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             System.exit(0);
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
-	private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
-            if (aePlayer != null) {
-                aePlayer.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
-                prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
-            }
+	private void preferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferencesMenuItemActionPerformed
+            new AEViewerPreferencesDialog(this).setVisible(true);
+	}//GEN-LAST:event_preferencesMenuItemActionPerformed
 
-            if ((aemon != null) && (aemon instanceof StereoPairHardwareInterface)) {
-                ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
-            }
-            getSupport().firePropertyChange(EVENT_CHECK_NONMONOTONIC_TIMESTAMPS, null, checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+	private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
+            setCheckNonMonotonicTimeExceptionsEnabled(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
 	}//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
 	private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
@@ -6404,10 +6478,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             try {
-                aeFileInputStreamTimestampResetBitmask = Integer.parseInt(ret, 16);
-                prefs.putInt("AEViewer.aeFileInputStreamTimestampResetBitmask", aeFileInputStreamTimestampResetBitmask);
-                log.info("set aeFileInputStreamTimestampResetBitmask=" + HexString.toString(aeFileInputStreamTimestampResetBitmask));
-                timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
+                setAeFileInputStreamTimestampResetBitmask(Integer.parseInt(ret, 16));
             } catch (Exception e) {
                 log.warning(e.toString());
             }
@@ -6741,6 +6812,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setActiveRenderingEnabled(boolean activeRenderingEnabled) {
         this.activeRenderingEnabled = activeRenderingEnabled;
         prefs.putBoolean("AEViewer.activeRenderingEnabled", activeRenderingEnabled);
+        if (viewActiveRenderingEnabledMenuItem != null) {
+            viewActiveRenderingEnabledMenuItem.setSelected(activeRenderingEnabled);
+        }
     }
 
     /**
@@ -6842,6 +6916,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setLoggingPlaybackImmediatelyEnabled(boolean loggingPlaybackImmediatelyEnabled) {
         this.loggingPlaybackImmediatelyEnabled = loggingPlaybackImmediatelyEnabled;
         prefs.putBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", loggingPlaybackImmediatelyEnabled);
+        if (loggingPlaybackImmediatelyCheckBoxMenuItem != null) {
+            loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(loggingPlaybackImmediatelyEnabled);
+        }
     }
 
     /**
@@ -6874,6 +6951,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setRenderBlankFramesEnabled(boolean renderBlankFramesEnabled) {
         this.renderBlankFramesEnabled = renderBlankFramesEnabled;
         prefs.putBoolean("AEViewer.renderBlankFramesEnabled", renderBlankFramesEnabled);
+        if (viewRenderBlankFramesCheckBoxMenuItem != null) {
+            viewRenderBlankFramesCheckBoxMenuItem.setSelected(renderBlankFramesEnabled);
+        }
     }
 
     public javax.swing.JMenu getFileMenu() {
@@ -7207,6 +7287,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem enableMissedEventsCheckBox;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JSeparator exitSeperator;
+    private javax.swing.JMenuItem preferencesMenuItem;
     private javax.swing.JMenuItem exportMarksMI;
     private javax.swing.JCheckBoxMenuItem fadingMI;
     private javax.swing.JMenu fileMenu;
