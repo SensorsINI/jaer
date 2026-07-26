@@ -5431,8 +5431,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 recentFiles.addFile(newFile);
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
                                 log.info("renamed logging file to " + newFile.getAbsolutePath());
-                                ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
-                                dialog3.setVisible(true);
+                                showLoggingSaveConfirmation(newFile, fileInfo);
                             } else {
                                 // if this fails, it does not only mean that a file already exists,
                                 // the failure reasons are platform dependent, for example on Linux
@@ -5452,8 +5451,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             // here with confirmed
                                             // overwrite of logging file
                                             loggingFile = newFile;
-                                            ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
-                                            dialog3.setVisible(true);
+                                            showLoggingSaveConfirmation(newFile, fileInfo);
                                         } else {
                                             log.warning("couldn't delete logging file " + newFile);
                                         }
@@ -5507,8 +5505,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                                         doneSavingOrCancelling = true;
                                         loggingFile = newFile;
-                                        ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
-                                        dialog3.setVisible(true);
+                                        showLoggingSaveConfirmation(newFile, fileInfo);
 
                                     } else {
                                         String s = String.format("Could not save %s: %s", newFinalFile, result.exception);
@@ -5557,6 +5554,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fixLoggingControls();
         return loggingFile;
     }    // doesn't actually reset the test in the dialog'
+
+    /**
+     * Shows the post-save confirmation dialog with Show folder / Playback / OK.
+     */
+    private void showLoggingSaveConfirmation(File savedFile, String fileInfo) {
+        final File toPlay = savedFile;
+        String msg = "<html>Done saving recording as<br> " + savedFile.getAbsolutePath() + "<br>" + fileInfo;
+        ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(this, savedFile, msg, () -> {
+            try {
+                getAePlayer().startPlayback(toPlay);
+            } catch (IOException e) {
+                log.log(Level.WARNING, "In trying play a file, caught: " + e.toString(), e);
+            } catch (InterruptedException ex) {
+                log.info("playback interrupted");
+            }
+        });
+        dialog.setVisible(true);
+    }
 
     /**
      * Returns true if currently logging (recording data to file)
