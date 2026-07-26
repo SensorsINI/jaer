@@ -123,6 +123,17 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     protected static final Color selectedPixelColor = Color.blue;
     protected GLUquadric selectedQuad;
+    /** Reference chip max dimension (Davis346 width) for selected-pixel marker scaling. */
+    private static final int SPIKE_MARKER_REF_MAX_SIZE = 346;
+    /** TextRenderer atlas size (screen glyph resolution); drawing scale sets chip-pixel size. */
+    private static final int SPIKE_MARKER_FONT_ATLAS = 24;
+    /** Target text height in chip pixels on Davis346 (matches annotation heuristics). */
+    private static final float SPIKE_MARKER_TEXT_CHIP_PX_REF = 8f;
+    /** Chip-size scale relative to Davis346; computed once when size is known. */
+    private float spikeMarkerScale = 1f;
+    /** draw3D scale so text height ≈ {@link #SPIKE_MARKER_TEXT_CHIP_PX_REF} * spikeMarkerScale. */
+    private float spikeMarkerTextDrawScale = SPIKE_MARKER_TEXT_CHIP_PX_REF / SPIKE_MARKER_FONT_ATLAS;
+    private TextRenderer spikeMarkerTextRenderer = null;
     public BufferStrategy strategy;
     /**
      * the translation of the actual chip drawing area in the glCanvas, in
@@ -182,6 +193,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
+        updateSpikeMarkerScale();
 
         // make the glCanvas
         try {
@@ -1055,32 +1067,65 @@ public class ChipCanvas implements GLEventListener, Observer {
      * number of spikes in this 'frame'
      */
     protected void showSpike(final GL2 gl, final int x, final int y, int size) {
-        // circle
-        gl.glPushMatrix();
-        gl.glColor4f(0, 0, 1f, 0f);
-        if (size > (chip.getMinSize() / 3)) {
-            size = chip.getMinSize() / 3;
+        // Color4f alpha=0 was invisible whenever GL_BLEND was left on (common after
+        // texture/TextRenderer paths used by event-only ChipRendererDisplayMethod).
+        final float scale = spikeMarkerScale;
+        gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_COLOR_BUFFER_BIT | GL2.GL_CURRENT_BIT | GL2.GL_TEXTURE_BIT);
+        try {
+            gl.glDisable(GL.GL_DEPTH_TEST);
+            gl.glDisable(GL.GL_BLEND);
+            gl.glDisable(GL2.GL_ALPHA_TEST);
+            gl.glDisable(GL.GL_TEXTURE_2D);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
+            gl.glColor3f(0, 0, 1f);
+
+            // Diameter grows with spike count: 0→1×, 1→2×, 2→3× base (was Math.max(size,2)
+            // which kept 0/1/2 identical). Base radius is spikeMarkerScale chip pixels.
+            float radius = (size + 1) * scale;
+            final float maxRadius = chip.getMinSize() / 3f;
+            if (radius > maxRadius) {
+                radius = maxRadius;
+            }
+
+            gl.glPushMatrix();
+            gl.glTranslatef(x + .5f, y + .5f, 0);
+            selectedQuad = glu.gluNewQuadric();
+            glu.gluQuadricDrawStyle(selectedQuad, GLU.GLU_FILL);
+            // Filled disk so diameter change is obvious (thin ring growth is hard to see)
+            glu.gluDisk(selectedQuad, 0, radius, 16, 1);
+            glu.gluDeleteQuadric(selectedQuad);
+            gl.glPopMatrix();
+
+            final float fs = Math.max(1f, scale); // text offset in chip pixels
+            if (spikeMarkerTextRenderer == null) {
+                spikeMarkerTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, SPIKE_MARKER_FONT_ATLAS), true, true);
+            }
+            final String label = x + "," + y;
+            spikeMarkerTextRenderer.begin3DRendering();
+            spikeMarkerTextRenderer.setColor(selectedPixelColor);
+            spikeMarkerTextRenderer.draw3D(label, x + fs, y + fs, 0, spikeMarkerTextDrawScale);
+            spikeMarkerTextRenderer.end3DRendering();
+        } finally {
+            gl.glPopAttrib();
         }
-        gl.glTranslatef(x + .5f, y + .5f, -1);
-        selectedQuad = glu.gluNewQuadric();
-        glu.gluQuadricDrawStyle(selectedQuad, GLU.GLU_FILL);
-        glu.gluDisk(selectedQuad, size, size + 1, 16, 1);
-        glu.gluDeleteQuadric(selectedQuad);
-        gl.glPopMatrix();
-
-        final int font = GLUT.BITMAP_HELVETICA_18;
-
-        gl.glPushMatrix();
-
-        final int FS = 1; // distance in pixels of text from selected pixel
-
-        gl.glRasterPos3f(x + FS, y + FS, 0);
-        glut.glutBitmapString(font, x + "," + y);
-
-        gl.glPopMatrix();
 
         checkGLError(gl, glu, "showSpike");
 
+    }
+
+    /**
+     * Sets selected-pixel marker scale from {@link Chip2D#getMaxSize()} relative to
+     * Davis346 (346). Called at construction and when chip size changes.
+     */
+    private void updateSpikeMarkerScale() {
+        int max = (chip != null) ? chip.getMaxSize() : SPIKE_MARKER_REF_MAX_SIZE;
+        if (max <= 0) {
+            max = SPIKE_MARKER_REF_MAX_SIZE;
+        }
+        spikeMarkerScale = max / (float) SPIKE_MARKER_REF_MAX_SIZE;
+        // TextRenderer font size is atlas pixels; draw3D scale yields chip-pixel height.
+        spikeMarkerTextDrawScale = (SPIKE_MARKER_TEXT_CHIP_PX_REF * spikeMarkerScale) / SPIKE_MARKER_FONT_ATLAS;
+        spikeMarkerTextRenderer = null; // recreate lazily (atlas size is fixed; reset anyway)
     }
 
     /**
@@ -1160,6 +1205,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if ((o == chip) && (arg instanceof String)) {
             if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
                 ZCLIP = chip.getMaxSize();
+                updateSpikeMarkerScale();
                 unzoom();
             }
         }
