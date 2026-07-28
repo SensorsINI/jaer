@@ -52,10 +52,15 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
+    /** Property fired with Boolean new value when recording starts (true) or finishes (false). */
+    public static final String EVENT_RECORDING_ACTIVE = "recordingActive";
+
     protected final int LOG_EVERY_THIS_MANY_FRAMES = 100; // for logging concole messages
 
     // writers, both express our VideoFrameWriterInterface for handling
     private VideoFrameWriterInterface videoOutputStream = null;
+    /** When false, close-on-rewind does not show its own JOptionPane (e.g. File/Export handles UI). */
+    protected boolean showCloseOnRewindDialog = true;
     @Preferred protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected File frameSequenceOutputFolder = null;
 
@@ -303,17 +308,59 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     return;
                 }
             }
-            setVideoOutputStream(openVideoOutputStream(selectedFile, additionalComments));
-            if (rewindBeforeRecording) {
-                ignoreRewinwdEventFlag = true;
-                chip.getAeViewer().getAePlayer().rewind();
+            if (!startRecording(selectedFile)) {
+                return;
             }
+            return; // startRecording already enabled writing / rewind
         }
         setWriteEnabled(true); // make sure write is enabled if user started a recording
         setFramesWritten(0);
     }
 
+    /**
+     * Opens the AVI (or current outputContainer) file and starts recording without a file chooser.
+     * Used by File/Export and by {@link #doStartRecordingAndSaveAs()} after the user picks a path.
+     *
+     * @param file output file (e.g. .avi); must not be null
+     * @return true if recording started
+     */
+    synchronized public boolean startRecording(File file) {
+        if (file == null) {
+            log.warning("startRecording: file is null");
+            return false;
+        }
+        if (getVideoOutputStream() != null) {
+            log.warning("video output stream is already opened");
+            return false;
+        }
+        if (outputContainer == OutputContainer.ImageSequence) {
+            log.warning("startRecording(File) does not support ImageSequence; use doStartRecordingAndSaveAs()");
+            return false;
+        }
+        if (outputContainer == OutputContainer.AVI && !file.getName().toLowerCase().endsWith(".avi")) {
+            file = new File(file.toString() + ".avi");
+        } else if (outputContainer == OutputContainer.AnimatedGIF && !file.getName().toLowerCase().endsWith(".gif")) {
+            file = new File(file.toString() + ".gif");
+        }
+        lastFileName = file.toString();
+        lastFile = file;
+        putString("lastFileName", lastFileName);
+        setVideoOutputStream(openVideoOutputStream(file, additionalComments));
+        if (getVideoOutputStream() == null) {
+            return false;
+        }
+        setWriteEnabled(true);
+        setFramesWritten(0);
+        getSupport().firePropertyChange(EVENT_RECORDING_ACTIVE, false, true);
+        if (rewindBeforeRecording && chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
+            ignoreRewinwdEventFlag = true;
+            chip.getAeViewer().getAePlayer().rewind();
+        }
+        return true;
+    }
+
     synchronized public void doFinishRecording() {
+        boolean wasRecording = getVideoOutputStream() != null || frameSequenceOutputFolder != null;
         if (getVideoOutputStream() != null) {
             try {
                 getVideoOutputStream().close();
@@ -335,7 +382,9 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             log.info("Finished recording frames to " + frameSequenceOutputFolder + " in format " + format + " with " + framesWritten + " frames");
             frameSequenceOutputFolder = null;
         }
-
+        if (wasRecording) {
+            getSupport().firePropertyChange(EVENT_RECORDING_ACTIVE, true, false);
+        }
     }
 
     /**
@@ -450,9 +499,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         putBoolean("rewindBeforeRecording", closeOnRewind);
     }
 
-    @Override
     public void annotate(GLAutoDrawable drawable) {
-
+        // empty; subclasses such as JaerAviWriter override to capture frames
     }
 
     /**
@@ -460,7 +508,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      *
      * @return true if active
      */
-    protected boolean isRecordingActive() {
+    public boolean isRecordingActive() {
         return getVideoOutputStream() != null || frameSequenceOutputFolder != null;
     }
 
@@ -642,10 +690,20 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             if (!ignoreRewinwdEventFlag && closeOnRewind && getVideoOutputStream() != null) {
                 doFinishRecording();
-                JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
+                if (showCloseOnRewindDialog && chip.getAeViewer() != null) {
+                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
+                }
             }
             ignoreRewinwdEventFlag = false;
         }
+    }
+
+    public boolean isShowCloseOnRewindDialog() {
+        return showCloseOnRewindDialog;
+    }
+
+    public void setShowCloseOnRewindDialog(boolean showCloseOnRewindDialog) {
+        this.showCloseOnRewindDialog = showCloseOnRewindDialog;
     }
 
     /**
@@ -677,7 +735,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * @return the File written
      */
     public File getFile() {
-        return lastFile;
+        if (lastFile != null) {
+            return lastFile;
+        }
+        return lastFileName != null ? new File(lastFileName) : null;
     }
 
     /**

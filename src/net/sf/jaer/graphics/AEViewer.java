@@ -161,6 +161,7 @@ import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import net.sf.jaer.util.avioutput.ExportVideoDialog;
 import net.sf.jaer.util.filter.LowpassFilter;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
@@ -2969,6 +2970,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         newViewerMenuItem = new javax.swing.JMenuItem();
         openMenuItem = new javax.swing.JMenuItem();
         closeMenuItem = new javax.swing.JMenuItem();
+        exportVideoMenuItem = new javax.swing.JMenuItem();
+        stopVideoExportMenuItem = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JSeparator();
         loggingMenuItem = new javax.swing.JMenuItem();
         loggingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -3250,6 +3253,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(closeMenuItem);
+
+        exportVideoMenuItem.setText("Export video...");
+        exportVideoMenuItem.setToolTipText("Export rendered AEViewer frames to AVI (optional MP4 via ffmpeg)");
+        exportVideoMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exportVideoMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(exportVideoMenuItem);
+
+        stopVideoExportMenuItem.setText("Stop video export");
+        stopVideoExportMenuItem.setToolTipText("Stops an active File/Export video recording");
+        stopVideoExportMenuItem.setEnabled(false);
+        stopVideoExportMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                stopVideoExportMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(stopVideoExportMenuItem);
+        fileMenu.addMenuListener(new javax.swing.event.MenuListener() {
+            public void menuSelected(javax.swing.event.MenuEvent evt) {
+                updateStopVideoExportMenuItemEnabled();
+            }
+            public void menuDeselected(javax.swing.event.MenuEvent evt) {
+            }
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            }
+        });
+
         fileMenu.add(jSeparator8);
 
         loggingMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
@@ -6503,6 +6535,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             stopMe();
 	}//GEN-LAST:event_closeMenuItemActionPerformed
 
+        private void exportVideoMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+            ExportVideoDialog.showDialog(this);
+        }
+
+        private void stopVideoExportMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+            ExportVideoDialog.stopActiveExport(this);
+            updateStopVideoExportMenuItemEnabled();
+        }
+
+        private void updateStopVideoExportMenuItemEnabled() {
+            stopVideoExportMenuItem.setEnabled(ExportVideoDialog.isExportRecordingActive(this));
+        }
+
 	private void openMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMenuItemActionPerformed
             try {
                 openAedatInputFile(null);
@@ -7285,6 +7330,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem clearMarksMI;
     private javax.swing.JMenuItem closeMenuItem;
+    private javax.swing.JMenuItem exportVideoMenuItem;
+    private javax.swing.JMenuItem stopVideoExportMenuItem;
     private javax.swing.JMenu controlMenu;
     private javax.swing.JMenuItem customizeDevicesMenuItem;
     private javax.swing.JMenuItem cycleDisplayMethodButton;
