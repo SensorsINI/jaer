@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -55,6 +56,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
     private final PotTweaker onOffBalanceTweaker = new PotTweaker();
     private final JSlider scanRateSlider = new JSlider(NRVConfig.SCAN_RATE_HZ_MIN, NRVConfig.SCAN_RATE_HZ_MAX, 300);
     private final JSlider timestampSubSlider = new JSlider(SUB_UNIT_MIN, SUB_UNIT_MAX, 0x21);
+    private final JCheckBox globalResetCheckBox = new JCheckBox("Enable global reset mode (0x320C[1])");
+    private final JCheckBox globalHoldCheckBox = new JCheckBox("Enable global hold mode (0x320C[0])");
     private final JLabel thresholdValueLabel = new JLabel();
     private final JLabel onOffValueLabel = new JLabel();
     private final JLabel thresholdReadoutLabel = new JLabel();
@@ -97,6 +100,9 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         timestampSubSlider.setToolTipText("<html>Register 0x32B2 — sub-timestamp USB packet rate within each ref ms.<br>"
                 + "Auto-updated with scan rate; fine-tune here. Factory: 100→0x0B … 1000→0x7D.");
 
+        globalResetCheckBox.setToolTipText("Enables global reset mode via register 0x320C bit 1.");
+        globalHoldCheckBox.setToolTipText("Enables global hold mode via register 0x320C bit 0.");
+
         scanRateSlider.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
@@ -109,6 +115,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
                 onTimestampSubChanged();
             }
         });
+        globalResetCheckBox.addActionListener(e -> onGlobalResetChanged());
+        globalHoldCheckBox.addActionListener(e -> onGlobalHoldChanged());
         thresholdTweaker.addChangeListener(e -> onThresholdChanged());
         onOffBalanceTweaker.addChangeListener(e -> onOnOffBalanceChanged());
 
@@ -121,6 +129,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         contentPanel.add(buildBiasSection());
         contentPanel.add(Box.createVerticalStrut(8));
         contentPanel.add(buildTimingSection());
+        contentPanel.add(Box.createVerticalStrut(8));
+        contentPanel.add(buildGlobalSettingSection());
 
         scrollPane = new JScrollPane(new TopAlignedScrollView(contentPanel));
         scrollPane.setBorder(null);
@@ -211,6 +221,17 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         section.add(wrapRegisterSlider("Sub-timestamp (0x32B2)", timestampSubSlider, timestampSubValueLabel));
         section.add(Box.createVerticalStrut(2));
         section.add(wrapDetailLabel(subTimestampTimingLabel));
+        stretchChildren(section);
+        return section;
+    }
+
+    private JPanel buildGlobalSettingSection() {
+        final JPanel section = new JPanel();
+        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
+        section.setBorder(BorderFactory.createTitledBorder("Global setting"));
+
+        section.add(globalResetCheckBox);
+        section.add(globalHoldCheckBox);
         stretchChildren(section);
         return section;
     }
@@ -309,11 +330,24 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         updateValueLabels();
     }
 
+    private void onGlobalResetChanged() {
+        if (!updatingFromConfig) {
+            config.setGlobalResetModeEnabled(globalResetCheckBox.isSelected());
+        }
+    }
+
+    private void onGlobalHoldChanged() {
+        if (!updatingFromConfig) {
+            config.setGlobalHoldModeEnabled(globalHoldCheckBox.isSelected());
+        }
+    }
+
     void syncFromConfig() {
         updatingFromConfig = true;
         thresholdTweaker.setValue(config.getThresholdTweak());
         onOffBalanceTweaker.setValue(config.getOnOffBalanceTweak());
         syncTimingSliders();
+        syncGlobalModeCheckBoxes();
         updatingFromConfig = false;
         updateValueLabels();
     }
@@ -323,6 +357,11 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
                 NRVConfig.SCAN_RATE_HZ_MIN, NRVConfig.SCAN_RATE_HZ_MAX, 300));
         final int sub = clamp(config.getTimestampSubUnit(), SUB_UNIT_MIN, SUB_UNIT_MAX, config.getBaselineTimestampSub());
         timestampSubSlider.setValue(sub);
+    }
+
+    private void syncGlobalModeCheckBoxes() {
+        globalResetCheckBox.setSelected(config.isGlobalResetModeEnabled());
+        globalHoldCheckBox.setSelected(config.isGlobalHoldModeEnabled());
     }
 
     private static int clamp(int value, int min, int max, int fallback) {
@@ -434,6 +473,7 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
                         || addr == NRVConfig.REG_DTAG_MODE) {
                     updatingFromConfig = true;
                     syncTimingSliders();
+                    syncGlobalModeCheckBoxes();
                     updatingFromConfig = false;
                 }
             }

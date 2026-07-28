@@ -54,8 +54,10 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
      */
     public static final int REG_DTAG_FRM_MARGIN_MSB = 0x321D;
     public static final int REG_DTAG_FRM_MARGIN_LSB = 0x321E;
-    /** Other Scan Rate Setting registers (from settings .txt; editable in full table). */
+    /** DTAG mode register; bit 1 enables global reset mode and bit 0 global hold mode. */
     public static final int REG_DTAG_MODE = 0x320C;
+    public static final int DTAG_GLOBAL_RESET_MODE_ENABLE_MASK = 0x02;
+    public static final int DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK = 0x01;
     public static final int REG_DTAG_SELX = 0x3216;
     public static final int REG_DTAG_SENSE = 0x3217;
     public static final int REG_DTAG_AY = 0x3218;
@@ -758,7 +760,14 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             if (values[i] < 0) {
                 continue;
             }
-            writeOrCreateRegister(SCAN_RATE_REGS[i], values[i] & 0xFF);
+            int value = values[i] & 0xFF;
+            if (SCAN_RATE_REGS[i] == REG_DTAG_MODE) {
+                // These mode bits are controlled independently by the user-friendly controls.
+                value = (value & ~(DTAG_GLOBAL_RESET_MODE_ENABLE_MASK | DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK))
+                        | (getRegisterValue(REG_DTAG_MODE)
+                                & (DTAG_GLOBAL_RESET_MODE_ENABLE_MASK | DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK));
+            }
+            writeOrCreateRegister(SCAN_RATE_REGS[i], value);
         }
     }
 
@@ -897,6 +906,39 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
      */
     public void setTimestampSubUnit(int value) {
         applyDirectRegisterValue(REG_TSTAMP_SUB_UNIT_LSB, clampTimestampSub(value), PROPERTY_TIMESTAMP_SUB);
+    }
+
+    /** Returns whether global reset mode is enabled by {@code 0x320C[1]}. */
+    public boolean isGlobalResetModeEnabled() {
+        return (getRegisterValue(REG_DTAG_MODE) & DTAG_GLOBAL_RESET_MODE_ENABLE_MASK) != 0;
+    }
+
+    /** Enables or disables global reset mode through {@code 0x320C[1]}. */
+    public void setGlobalResetModeEnabled(boolean enabled) {
+        setDtagModeBit(DTAG_GLOBAL_RESET_MODE_ENABLE_MASK, enabled, "global reset mode");
+    }
+
+    /** Returns whether global hold mode is enabled by {@code 0x320C[0]}. */
+    public boolean isGlobalHoldModeEnabled() {
+        return (getRegisterValue(REG_DTAG_MODE) & DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK) != 0;
+    }
+
+    /** Enables or disables global hold mode through {@code 0x320C[0]}. */
+    public void setGlobalHoldModeEnabled(boolean enabled) {
+        setDtagModeBit(DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK, enabled, "global hold mode");
+    }
+
+    private void setDtagModeBit(int mask, boolean enabled, String comment) {
+        final int current = getRegisterValue(REG_DTAG_MODE);
+        final int updated = enabled ? current | mask : current & ~mask;
+        if (current == updated) {
+            return;
+        }
+        try {
+            writeOrCreateRegister(REG_DTAG_MODE, updated, comment);
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV " + comment + " write failed: " + e.getMessage());
+        }
     }
 
     /**
