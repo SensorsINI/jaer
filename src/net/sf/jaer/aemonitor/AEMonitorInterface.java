@@ -56,6 +56,14 @@ public interface AEMonitorInterface extends HardwareInterface{
      * @return true if there was an overrun.
      */
     public boolean overrunOccurred();
+
+    /**
+     * Data-loss state for the last {@link #acquireAvailableEventsFromDriver()} call.
+     * Default maps {@link #overrunOccurred()} to {@link DroppedDataInfo#hostBufferOverrun()}.
+     */
+    default DroppedDataInfo getDroppedDataInfo() {
+        return overrunOccurred() ? DroppedDataInfo.hostBufferOverrun() : DroppedDataInfo.none();
+    }
     
     /** Returns the size of the host buffer.
      * @return the size of the buffer in events */

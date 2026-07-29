@@ -409,19 +409,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         viewer.getChip().getRenderer().resetFrame(0);
                     } catch (Exception e) {
                         log.warning("tried to reset renderer but caught " + e.toString());
-                    } 
-                    // TODO we grab the monitor for the viewLoop here, any other thread which may change playmode should also grab it
-                    if ((viewer.aemon != null) && viewer.aemon.isOpen()) {
-                        try {
-                            viewer.getPlayMode();
-                            if (viewer.getPlayMode().equals(PlayMode.SEQUENCING)) {
-                                viewer.stopSequencing();
-                            } else if (viewer.getPlayMode().equals(PlayMode.LIVE)) {
-                                viewer.aemon.setEventAcquisitionEnabled(false);
-                            }
-                        } catch (HardwareInterfaceException e) {
-                            e.printStackTrace();
-                        }
                     }
                     // update player and slider marks
                     if (!aeInputStream.isMarkInSet() && !aeInputStream.isMarkOutSet()) {

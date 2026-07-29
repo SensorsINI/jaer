@@ -187,6 +187,10 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
         gl.glVertex2f(0f, height);
         gl.glEnd();
         gl.glDisable(GL.GL_TEXTURE_2D);
+        gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
+        // Leave fixed-function state clean for ChipCanvas.showSpike / annotators
+        gl.glDisable(GL.GL_BLEND);
+        gl.glDisable(GL2.GL_ALPHA_TEST);
     }
 
     private static byte floatToByte(float v) {

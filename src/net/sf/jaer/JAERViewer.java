@@ -574,13 +574,6 @@ public class JAERViewer {
         public void actionPerformed(ActionEvent e) {
             log.info("JAERViewer.ToggleSyncEnabledAction.actionPerformed");
             setSyncEnabled(!isSyncEnabled());
-            for (AbstractButton b : syncEnableButtons) {
-                b.setSelected(isSyncEnabled());
-            }
-            for (AEViewer v : viewers) {
-                AbstractAEPlayer p = isSyncEnabled() ? syncPlayer : v.aePlayer;
-                v.getPlayerControls().setAePlayer(p);
-            }
         }
     }
     
@@ -616,6 +609,15 @@ public class JAERViewer {
     public void setSyncEnabled(boolean syncEnabled) {
         this.syncEnabled = syncEnabled;
         prefs.putBoolean("JAERViewer.syncEnabled", syncEnabled);
+        for (AbstractButton b : syncEnableButtons) {
+            b.setSelected(syncEnabled);
+        }
+        for (AEViewer v : viewers) {
+            AbstractAEPlayer p = syncEnabled ? syncPlayer : v.aePlayer;
+            if (v.getPlayerControls() != null) {
+                v.getPlayerControls().setAePlayer(p);
+            }
+        }
     }
 
     public void pause() {
@@ -671,6 +673,7 @@ public class JAERViewer {
 
         log.info("jAERViewer starting up");
         log.info("java.version=" + System.getProperty("java.version") + "  java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
+        net.sf.jaer.util.MemoryDiagnostics.maybeStartPeriodicLogging(log);
         log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."
                 + " \nThe current value of java.util.logging.config.file is " + System.getProperty("java.util.logging.config.file")
                 + "\nEdit this file to configure logging." + "\nThe value of java.io.tmpdir is " + System.getProperty("java.io.tmpdir"));

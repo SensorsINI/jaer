@@ -99,6 +99,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //    private int timeSlice = 0;
     private final FloatBuffer mv = FloatBuffer.allocate(16);
     private final FloatBuffer proj = FloatBuffer.allocate(16);
+    /** Separate from shader proj/mv; fit reads must not advance those buffer positions. */
+    private final FloatBuffer fitMv = FloatBuffer.allocate(16);
     private int idMv, idProj, idt0, idt1, idPointSize;
     private ArrayList<BasicEvent> eventList = null, eventListTmp = null;
     private ByteBuffer eventVertexBuffer;
@@ -132,6 +134,16 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private ChipCanvas.Zoom zoom = null;
     private ChipCanvas.Zoom oldZoom = null;
+
+    /** Custom frustum so the full cube is visible and centered after fit. */
+    private boolean volumeFitActive = false;
+    private volatile boolean requestVolumeFit = false;
+    private boolean showFitMessage = false;
+    private float volumeFitLeft, volumeFitRight, volumeFitBottom, volumeFitTop;
+    private float volumeFitAnglex, volumeFitAngley;
+    private float volumeFitOriginX, volumeFitOriginY;
+    private static final float VOLUME_FIT_MARGIN = 1.12f;
+    private static final float MODEL_SCALE = 0.5f;
 
     private TextRenderer textRenderer = null;
 
@@ -248,6 +260,266 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 
     private EventPacket lastPacketDisplayed = null;
     private int previousLasttimestamp = 0;
+    private int previousTimeScale = -1;
+
+    /**
+     * Duration of rolling time window from playback frame duration and up/down
+     * arrow or mouse wheel scale (fadingOrSlidingFrames).
+     */
+    public static int computeTimeWindowUs(final AEChip chip, int timeScale) {
+        int frameDurationUs = 100000;
+        if (chip.getAeViewer() != null) {
+            if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
+                frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
+            } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK
+                    && chip.getAeViewer().getAePlayer() != null) {
+                frameDurationUs = chip.getAeViewer().getAePlayer().getTimesliceUs();
+            }
+        }
+        int newTimeWindowUs = (int) (frameDurationUs * Math.pow(2, (timeScale - 1) / 4f));
+        if (newTimeWindowUs < 10000) {
+            newTimeWindowUs = 10000; // minimum 10ms
+        }
+        return newTimeWindowUs;
+    }
+
+    /**
+     * Transient overlay text for the current rolling time window.
+     */
+    public static String formatStatusOverlay(final AEChip chip, int timeScale) {
+        return formatTimeWindowDuration(chip, timeScale, true);
+    }
+
+    /**
+     * One-line log message for the current rolling time window.
+     */
+    public static String formatStatusLog(final AEChip chip, int timeScale) {
+        return formatTimeWindowDuration(chip, timeScale, false);
+    }
+
+    private static String formatTimeWindowDuration(final AEChip chip, int timeScale, boolean withHelp) {
+        EngineeringFormat engFmt = new EngineeringFormat();
+        int us = computeTimeWindowUs(chip, timeScale);
+        String t = engFmt.format(us * 1e-6f);
+        if (!t.isEmpty() && (t.charAt(0) == '+' || t.charAt(0) == '-')) {
+            t = t.substring(1);
+        }
+        if (withHelp) {
+            return String.format("Showing %ss\nArrow/Scroll to change", t);
+        }
+        return String.format("time window %ss (scale %d)", t, timeScale);
+    }
+
+    private int computeTimeWindowUs(int timeScale) {
+        return computeTimeWindowUs((AEChip) chip, timeScale);
+    }
+
+    /** e.g. "Time (10ms)" for the axis label beside the rolling cube. */
+    private String formatTimeAxisLabel(float dtS) {
+        String t = engFmt.format(dtS);
+        if (!t.isEmpty() && (t.charAt(0) == '+' || t.charAt(0) == '-')) {
+            t = t.substring(1);
+        }
+        return "Time (" + t + "s)";
+    }
+
+    private void showTimeWindowStatusOverlay() {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        Chip2DRenderer chipRenderer = aeChip.getRenderer();
+        if (!(chipRenderer instanceof AEChipRenderer)) {
+            return;
+        }
+        int timeScale = ((AEChipRenderer) chipRenderer).getFadingOrSlidingFrames();
+        showActionText(formatStatusOverlay(aeChip, timeScale));
+    }
+
+    @Override
+    public void showActionText(String text) {
+        super.showActionText(text);
+        if (getChipCanvas() != null) {
+            getChipCanvas().repaint();
+        }
+    }
+
+    /**
+     * 3D rendering leaves non-2D GL state; restore chip-pixel projection before HUD text.
+     */
+    @Override
+    protected void displayStatusChangeText(GLAutoDrawable drawable) {
+        GL2 gl = drawable.getGL().getGL2();
+        gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_TRANSFORM_BIT | GL2.GL_CURRENT_BIT);
+        gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glDisable(GLLightingFunc.GL_LIGHTING);
+        getChipCanvas().getZoom().applyProjection(gl);
+        super.displayStatusChangeText(drawable);
+        gl.glPopAttrib();
+    }
+
+    @Override
+    public void unzoomToFitVolume() {
+        requestVolumeFit = true;
+        showFitMessage = true;
+        if (getChipCanvas() != null) {
+            getChipCanvas().repaint();
+        }
+    }
+
+    /**
+     * Fit frustum from the cube's AABB on the near plane (eye space), matching
+     * the same view transforms as rendering. Centers and scales in one shot.
+     */
+    private boolean computeVolumeFitInRender(GL2 gl, float zmax, ChipCanvas.Zoom.ClipArea clip,
+            GLAutoDrawable drawable) {
+        if (smax <= 0) {
+            smax = chip.getMaxSize();
+        }
+        if (sx <= 0 || sy <= 0) {
+            sx = chip.getSizeX();
+            sy = chip.getSizeY();
+        }
+        if (sx <= 0 || sy <= 0 || zmax <= 0) {
+            return false;
+        }
+        final float anglexDeg = getChipCanvas().getAnglex();
+        final float angleyDeg = getChipCanvas().getAngley();
+        final float originX = getChipCanvas().getOrigin3dx();
+        final float originY = getChipCanvas().getOrigin3dy();
+        final float aspect = (float) drawable.getSurfaceWidth()
+                / Math.max(1, drawable.getSurfaceHeight());
+        final float near = zmax * 1.7f;
+
+        // Same transforms that follow glFrustum in render, then modelview scale/translate.
+        final float[] eyeMat = new float[16];
+        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+        gl.glPushMatrix();
+        gl.glLoadIdentity();
+        gl.glTranslatef(0, 0, -zmax);
+        gl.glRotatef(-anglexDeg, 1, 0, 0);
+        gl.glRotatef(-angleyDeg, 0, 1, 0);
+        gl.glTranslatef(originX, originY, 0);
+        gl.glTranslatef(0, 0, zmax);
+        gl.glTranslatef(0, 0, -zmax);
+        gl.glScalef(MODEL_SCALE, MODEL_SCALE, MODEL_SCALE);
+        fitMv.clear();
+        gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, fitMv);
+        gl.glPopMatrix();
+        fitMv.rewind();
+        fitMv.get(eyeMat);
+        fitMv.rewind();
+
+        final NearPlaneBounds nearBounds = new NearPlaneBounds();
+        final float[] eye = new float[4];
+        final boolean ortho = isOrthoProjectionEnabled();
+        sampleCubePoints(sx, sy, zmax, (x, y, z) -> {
+            transformColumnMajor4x4(eyeMat, x, y, z, eye);
+            if (ortho) {
+                nearBounds.add(eye[0], eye[1]);
+                return;
+            }
+            // Standard GL frustum: clip.w = -eye.z; near hit = near * (eye.xy / -eye.z)
+            final float w = -eye[2];
+            if (Math.abs(w) < 1e-4f) {
+                return;
+            }
+            nearBounds.add(near * eye[0] / w, near * eye[1] / w);
+        });
+        if (nearBounds.count == 0) {
+            return false;
+        }
+        nearBounds.finish();
+
+        float halfW = Math.max(nearBounds.width * 0.5f, 1f) * VOLUME_FIT_MARGIN;
+        float halfH = Math.max(nearBounds.height * 0.5f, 1f) * VOLUME_FIT_MARGIN;
+        if (halfW / halfH > aspect) {
+            halfH = halfW / aspect;
+        } else {
+            halfW = halfH * aspect;
+        }
+        volumeFitLeft = nearBounds.centerX - halfW;
+        volumeFitRight = nearBounds.centerX + halfW;
+        volumeFitBottom = nearBounds.centerY - halfH;
+        volumeFitTop = nearBounds.centerY + halfH;
+        volumeFitAnglex = anglexDeg;
+        volumeFitAngley = angleyDeg;
+        volumeFitOriginX = originX;
+        volumeFitOriginY = originY;
+        return true;
+    }
+
+    private static void transformColumnMajor4x4(float[] m, float x, float y, float z, float[] out) {
+        out[0] = m[0] * x + m[4] * y + m[8] * z + m[12];
+        out[1] = m[1] * x + m[5] * y + m[9] * z + m[13];
+        out[2] = m[2] * x + m[6] * y + m[10] * z + m[14];
+        out[3] = m[3] * x + m[7] * y + m[11] * z + m[15];
+    }
+
+    private interface CubePointConsumer {
+        void accept(float x, float y, float z);
+    }
+
+    /** Cube corners and edge midpoints so slanted edges stay inside the frustum. */
+    private static void sampleCubePoints(float sx, float sy, float zmax, CubePointConsumer consumer) {
+        final float[][] points = {
+            {0f, 0f, 0f}, {sx, 0f, 0f}, {0f, sy, 0f}, {sx, sy, 0f},
+            {0f, 0f, -zmax}, {sx, 0f, -zmax}, {0f, sy, -zmax}, {sx, sy, -zmax},
+            {sx * 0.5f, 0f, 0f}, {sx * 0.5f, sy, 0f}, {sx * 0.5f, 0f, -zmax}, {sx * 0.5f, sy, -zmax},
+            {0f, sy * 0.5f, 0f}, {sx, sy * 0.5f, 0f}, {0f, sy * 0.5f, -zmax}, {sx, sy * 0.5f, -zmax},
+            {0f, 0f, -zmax * 0.5f}, {sx, 0f, -zmax * 0.5f}, {0f, sy, -zmax * 0.5f}, {sx, sy, -zmax * 0.5f},
+        };
+        for (float[] p : points) {
+            consumer.accept(p[0], p[1], p[2]);
+        }
+    }
+
+    private static final class NearPlaneBounds {
+        float minX = Float.MAX_VALUE;
+        float maxX = -Float.MAX_VALUE;
+        float minY = Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
+        int count;
+        float centerX;
+        float centerY;
+        float width;
+        float height;
+
+        void add(float xn, float yn) {
+            minX = Math.min(minX, xn);
+            maxX = Math.max(maxX, xn);
+            minY = Math.min(minY, yn);
+            maxY = Math.max(maxY, yn);
+            count++;
+        }
+
+        void finish() {
+            centerX = (minX + maxX) * 0.5f;
+            centerY = (minY + maxY) * 0.5f;
+            width = maxX - minX;
+            height = maxY - minY;
+        }
+    }
+
+    private boolean useVolumeFitFrustum() {
+        if (!volumeFitActive || getChipCanvas().getZoom().isZoomed()) {
+            return false;
+        }
+        if (Math.abs(getChipCanvas().getAnglex() - volumeFitAnglex) > 0.05f
+                || Math.abs(getChipCanvas().getAngley() - volumeFitAngley) > 0.05f
+                || Math.abs(getChipCanvas().getOrigin3dx() - volumeFitOriginX) > 0.5f
+                || Math.abs(getChipCanvas().getOrigin3dy() - volumeFitOriginY) > 0.5f) {
+            volumeFitActive = false;
+            return false;
+        }
+        return true;
+    }
+
+    private void clearVolumeFit() {
+        volumeFitActive = false;
+        requestVolumeFit = false;
+        showFitMessage = false;
+    }
 
     @Override
     public void display(final GLAutoDrawable drawable) {
@@ -280,39 +552,33 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (packet.isEmpty()) {
             return;
         }
-        boolean dirty = false;
-        if (packet.getLastTimestamp() != previousLasttimestamp) {
-            dirty = true;
+        final Chip2DRenderer chipRenderer = getRenderer();
+        if (!(chipRenderer instanceof AEChipRenderer)) {
+            log.warning("SpaceTimeRollingEventDisplayMethod requires AEChipRenderer, got " + chipRenderer);
+            return;
         }
+        final int timeScale = ((AEChipRenderer) chipRenderer).getFadingOrSlidingFrames();
+        final int newTimeWindowUs = computeTimeWindowUs(chip, timeScale);
+        final boolean newPacket = packet.getLastTimestamp() != previousLasttimestamp;
+        final boolean timeScaleChanged = timeScale != previousTimeScale;
+        final boolean timeWindowChanged = newTimeWindowUs != timeWindowUs;
         previousLasttimestamp = packet.getLastTimestamp();
-        if (dirty) {
+        previousTimeScale = timeScale;
+        final boolean interactionPreview = getChipCanvas().isInteractionPreview3d();
+        if (!interactionPreview && (newPacket || timeScaleChanged || timeWindowChanged)) {
             final int n = packet.getSize();
-            if (n == 0) {
-                return;
-            }
-//            final int t0ThisPacket = packet.getFirstTimestamp();
+            if (n > 0) {
             final int t1 = packet.getLastTimestamp();
-//        final int dtThisPacket = t1 - t0ThisPacket + 1;
-            // the time that is displayed in rolling window is some multiple of either current frame duration (for live playback) or timeslice (for recorded playback)
-            int timeScale = ((AEChipRenderer) getRenderer()).getFadingOrSlidingFrames(); // use color scale to determine multiple, up and down arrows set it then
-            int newTimeWindowUs, frameDurationUs = 100000;
-            if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.LIVE) {
-                frameDurationUs = (int) (1e6f / chip.getAeViewer().getFrameRater().getDesiredFPS());
-            } else if (chip.getAeViewer().getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
-                frameDurationUs = chip.getAeViewer().getAePlayer().getTimesliceUs();
-            }
-            newTimeWindowUs = (int) (frameDurationUs * Math.pow(2, (timeScale - 1) / 4f));
-            if (newTimeWindowUs < 10000) {
-                newTimeWindowUs = 10000; // tobi - don't let time get too short for window, minimum 10ms
-            }
-            if (newTimeWindowUs != timeWindowUs) {
+            if (timeWindowChanged) {
                 regenerateAxesDisplayList = true;
-                eventVertexBuffer.clear();
-                if (eventList != null) {
-                    eventList.clear();
+                if (newPacket) {
+                    eventVertexBuffer.clear();
+                    if (eventList != null) {
+                        eventList.clear();
+                    }
+                    apsFramesInTimeWindow.clear();
+                    dvsFramesInTimeWindow.clear();
                 }
-                apsFramesInTimeWindow.clear();
-                dvsFramesInTimeWindow.clear();
             }
             timeWindowUs = newTimeWindowUs;
             t0 = t1 - timeWindowUs;
@@ -323,23 +589,28 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             tfac = (float) (smax * getTimeAspectRatio()) / timeWindowUs;
 
             pruneOldEventsAndFrames(t0, t1);
-            checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
-            addEventsToEventList(packet);
-            checkEventVertexBufferAllocation(eventList.size());
+            if (newPacket) {
+                checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
+                addEventsToEventList(packet);
+            }
+            checkEventVertexBufferAllocation(eventList != null ? eventList.size() : packet.getSize());
             eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
-            for (BasicEvent ev : eventList) {
-                if ((ev.timestamp < t0) || (ev.timestamp > t1)) {
-                    continue; // don't render events outside of box, no matter how they get there
+            if (eventList != null) {
+                for (BasicEvent ev : eventList) {
+                    if ((ev.timestamp < t0) || (ev.timestamp > t1)) {
+                        continue; // don't render events outside of box, no matter how they get there
+                    }
+                    eventVertexBuffer.putFloat(ev.x);
+                    eventVertexBuffer.putFloat(ev.y);
+                    final float z = tfac * (ev.timestamp - t1);
+                    eventVertexBuffer.putFloat(z); // negative z
                 }
-                eventVertexBuffer.putFloat(ev.x);
-                eventVertexBuffer.putFloat(ev.y);
-                final float z = tfac * (ev.timestamp - t1);
-                eventVertexBuffer.putFloat(z); // negative z
             }
             eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
             checkGLError(gl, "set uniform t0 and t1");
+            }
         }
-        if (displayDvsFrames) {
+        if (!interactionPreview && displayDvsFrames) {
             DavisRenderer renderer = getDavisRenderer();
             if (renderer != null) {
                 dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), renderer.getPacket().getLastTimestamp());
@@ -438,8 +709,11 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         }
 
         final float modelScale = 1f / 2; // everything is drawn at this scale
-        maybeRegenerateAxesDisplayList(gl, zmax, modelScale, dtS);
-        textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        maybeRegenerateAxesDisplayList(gl, zmax, modelScale);
+        final boolean interactionPreview = getChipCanvas().isInteractionPreview3d();
+        if (!interactionPreview) {
+            textRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, 24), true, true);
+        }
 
 //        gl.glMatrixMode(GLMatrixFunc.GL_TEXTURE_MATRIX);
 //        gl.glPushMatrix();
@@ -447,14 +721,41 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glLoadIdentity();
         gl.glPushMatrix();
         ChipCanvas.Zoom.ClipArea clip = getChipCanvas().getClipArea(); // get the clip computed by fancy algorithm in chipcanvas that properly makes ortho clips to maintain pixel aspect ratio and put blank space or left/right or top/bottom depending on chip aspect ratio and window aspect ratio
+        if (requestVolumeFit) {
+            if (computeVolumeFitInRender(gl, zmax, clip, drawable)) {
+                volumeFitActive = true;
+                if (showFitMessage) {
+                    showFitMessage = false;
+                    showActionText("Fit cube to view\nCtrl-0");
+                }
+            } else {
+                clearVolumeFit();
+            }
+            requestVolumeFit = false;
+        }
+        final float clipLeft;
+        final float clipRight;
+        final float clipBottom;
+        final float clipTop;
+        if (useVolumeFitFrustum()) {
+            clipLeft = volumeFitLeft;
+            clipRight = volumeFitRight;
+            clipBottom = volumeFitBottom;
+            clipTop = volumeFitTop;
+        } else {
+            clipLeft = clip.getLeft();
+            clipRight = clip.getRight();
+            clipBottom = clip.getBottom();
+            clipTop = clip.getTop();
+        }
 
 //        gl.glRotatef(15, 1, 1, 0); // rotate viewpoint by angle deg around the y axis
         // determine the viewable area (that is not clipped to black).
         // this is not the view project!  This is the model projection. See later for viewport setting for where we look from.
         if (isOrthoProjectionEnabled()) {
-            gl.glOrtho(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), -zmax * .1, zmax * 1.7);
+            gl.glOrtho(clipLeft, clipRight, clipBottom, clipTop, -zmax * .1, zmax * 1.7);
         } else {
-            gl.glFrustumf(clip.getLeft(), clip.getRight(), clip.getBottom(), clip.getTop(), zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
+            gl.glFrustumf(clipLeft, clipRight, clipBottom, clipTop, zmax * 1.7f, zmax * .1f); // the z params are the far and near clips
         }
 
         // go to the end, -zmax
@@ -500,6 +801,13 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         gl.glScalef(modelScale, modelScale, modelScale);
         gl.glCallList(axesDisplayListId);
 
+        if (interactionPreview) {
+            gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
+            gl.glPopMatrix();
+            gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
+            return;
+        }
+
         if (displayDvsEvents) {
 //        getChipCanvas().applyProjection(gl, drawable);
             // draw points using shaders
@@ -516,10 +824,12 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //        pmvMatrix.glLoadIdentity();
 //        pmvMatrix.glGetFloatv(GL2.GL_MODELVIEW_MATRIX, mv);
 //        checkGLError(gl, "using shader program");
+            proj.clear();
+            mv.clear();
             gl.glGetFloatv(GLMatrixFunc.GL_PROJECTION_MATRIX, proj);
-//        gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
-//        gl.glLoadIdentity();
             gl.glGetFloatv(GLMatrixFunc.GL_MODELVIEW_MATRIX, mv);
+            proj.rewind();
+            mv.rewind();
             gl.glUniformMatrix4fv(idMv, 1, false, mv);
             gl.glUniformMatrix4fv(idProj, 1, false, proj);
 
@@ -550,7 +860,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             checkGLError(gl, "disable program");
 
             drawPlotLabel("Space", gl, .0f, .0f, -0.00f, zmax, 0);
-            drawPlotLabel("Time", gl, 1f, 0f, -0.00f, zmax, 90);
+            drawPlotLabel(formatTimeAxisLabel(dtS), gl, 1f, 0f, -0.00f, zmax, 90);
             String s = "DVS events";
             drawPlotLabel(s, gl, 1.05f, 0, .25f, zmax, 90);
         }
@@ -742,7 +1052,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
 //            glut.glutBitmapString(font, s);
     }
 
-    protected void maybeRegenerateAxesDisplayList(GL2 gl, float zmax, final float modelScale, float dtS) {
+    protected void maybeRegenerateAxesDisplayList(GL2 gl, float zmax, final float modelScale) {
         if (regenerateAxesDisplayList) {
             regenerateAxesDisplayList = false;
             if (axesDisplayListId > 0) {
@@ -819,11 +1129,6 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             w = glut.glutBitmapLength(font, "t=0");
             gl.glRasterPos3f(-6 * w * modelScale, 0, 0);
             glut.glutBitmapString(font, "t=0");
-            gl.glColor3f(1f, 0, 0);
-            String tMaxString = "t=" + engFmt.format(-dtS) + "s";
-            w = glut.glutBitmapLength(font, tMaxString);
-            gl.glRasterPos3f(sx * 1.05f, 0, -zmax);
-            glut.glutBitmapString(font, tMaxString);
             checkGLError(gl, "drawing axes labels");
             gl.glEndList();
         }
@@ -906,16 +1211,26 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             apsFramesInTimeWindow.clear(); // recover memory
         }
         AEChip aeChip = (AEChip) chip;
-        if (displayMenu == null) {
-            return;
+        if (displayMenu != null) {
+            AEViewer viewer = aeChip.getAeViewer();
+            if (viewer != null) {
+                viewer.removeMenu(displayMenu);
+            }
+            displayMenu = null;
         }
-        AEViewer viewer = aeChip.getAeViewer();
-        viewer.removeMenu(displayMenu);
-        displayMenu = null;
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().removePropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
-        getChipCanvas().setZoom(oldZoom);
+        ChipCanvas.Zoom restoreZoom = oldZoom;
+        if (restoreZoom == null) {
+            restoreZoom = getChipCanvas().createZoom();
+        }
+        getChipCanvas().setZoom(restoreZoom);
+        oldZoom = null;
+        clearVolumeFit();
+        if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
+            renderer.refreshContrastActionLabels();
+        }
     }
 
     @Override
@@ -924,6 +1239,18 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             return;
         }
         AEChip aeChip = (AEChip) chip;
+        ChipCanvas.Zoom canvasZoom = getChipCanvas().getZoom();
+        if (canvasZoom == null) {
+            canvasZoom = getChipCanvas().createZoom();
+        }
+        oldZoom = canvasZoom;
+        getChipCanvas().setZoom(zoom);
+        clearVolumeFit();
+        requestVolumeFit = true;
+        if (aeChip.getRenderer() instanceof AEChipRenderer renderer) {
+            renderer.refreshContrastActionLabels();
+        }
+
         AEViewer viewer = aeChip.getAeViewer();
         if (viewer == null) {
             log.warning("cannot add menu item to control SpaceTimeRollingEventDisplayMethod, AEViewer is null");
@@ -949,8 +1276,7 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
         if (aeChip.getAeViewer() != null && aeChip.getAeViewer().getAePlayer() != null) {
             aeChip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
         }
-        oldZoom = getChipCanvas().getZoom();
-        getChipCanvas().setZoom(zoom);
+        showTimeWindowStatusOverlay();
 
     }
 

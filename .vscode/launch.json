@@ -13,7 +13,61 @@
             ],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "linux": {
+                "runtimeExecutable": "bash",
+                "runtimeArgs": [
+                    "scripts/run-jaer.sh"
+                ]
+            },
+            "osx": {
+                "runtimeExecutable": "bash",
+                "runtimeArgs": [
+                    "scripts/run-jaer.sh"
+                ]
+            }
+        },
+        {
+            "name": "jAER (fast debug)",
+            "type": "java",
+            "request": "launch",
+            "mainClass": "net.sf.jaer.JAERViewer",
+            "cwd": "${workspaceFolder}",
+            "classPaths": [
+                "${workspaceFolder}/build/classes",
+                "${workspaceFolder}/lib/*",
+                "${workspaceFolder}/jars/*"
+            ],
+            "vmArgs": "--add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties -Djogl.disable.openglcore -Djogl.disable.opengles=false -Dsun.java2d.dpiaware=true -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -Xmx10g -Xrs -splash:SplashScreen.png",
+            "shortenCommandLine": "argfile",
+            "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "jAER (fast)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "${env:ComSpec}",
+            "runtimeArgs": [
+                "/d",
+                "/c",
+                "scripts\\run-jaer-fast.bat"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "linux": {
+                "runtimeExecutable": "bash",
+                "runtimeArgs": [
+                    "scripts/run-jaer-fast.sh"
+                ]
+            },
+            "osx": {
+                "runtimeExecutable": "bash",
+                "runtimeArgs": [
+                    "scripts/run-jaer-fast.sh"
+                ]
+            }
         }
     ]
 }

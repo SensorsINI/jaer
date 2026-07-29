@@ -65,11 +65,13 @@ public final class TimestampSpread {
     }
 
     /**
-     * Compute spread over non-filtered-out events in a displayed packet.
+     * Sniff spread over displayed (DVS) events in a packet.
+     * Uses the default {@link EventPacket#iterator()}, which skips filtered-out
+     * events and, for {@code ApsDvsEventPacket}, yields only DVS events.
+     * Does not write an output packet or mark events filtered-out.
      */
     public static TimestampSpread computeDisplayedEvents(EventPacket<? extends BasicEvent> packet) {
-        final int packetSize = packet.getSize();
-        if (packetSize <= 0) {
+        if (packet == null || packet.isEmpty()) {
             return EMPTY;
         }
         int count = 0;
@@ -80,11 +82,7 @@ public final class TimestampSpread {
         int lastTs = 0;
         int prevTs = 0;
         boolean first = true;
-        for (int i = 0; i < packetSize; i++) {
-            final BasicEvent e = packet.elementData[i];
-            if (e.isFilteredOut()) {
-                continue;
-            }
+        for (BasicEvent e : packet) {
             final int ts = e.timestamp;
             count++;
             if (first) {

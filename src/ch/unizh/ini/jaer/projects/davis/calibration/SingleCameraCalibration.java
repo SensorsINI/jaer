@@ -64,6 +64,8 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.TextRendererScale;
 import net.sf.jaer.util.YamlMatFileStorage;
+import net.sf.jaer.util.OpenCVNativeLoader;
+
 import static org.opencv.core.Core.countNonZero;
 
 /**
@@ -76,19 +78,7 @@ import static org.opencv.core.Core.countNonZero;
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater /* observes this to get informed about our size */ {
 
     static {
-        String jvmVersion = System.getProperty("sun.arch.data.model");
-
-        try {
-            log.info("Loading openpnp OpenCV native libraries");
-            nu.pattern.OpenCV.loadShared(); // see https://github.com/openpnp/opencv?tab=readme-ov-file
-
-//            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-//            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
-            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will append it automatically.
-        } catch (UnsatisfiedLinkError e) {
-            log.warning("Native OpenCV library failed to load.\n" + e + "\n See https://github.com/openpnp/opencv?tab=readme-ov-file to debug");
-            // System.exit(1);
-        }
+        OpenCVNativeLoader.load();
     }
 
     private int sx; // set to chip.getSizeX()

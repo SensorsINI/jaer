@@ -10,38 +10,28 @@ import org.usb4java.LibUsb;
 import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
-import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
 
 /**
  * USB bulk reader for NRV DVS devices (endpoint 0x81).
  *
  * @see https://nrv.kr/
  */
-public class NRVAEReader implements ReaderBufferControl {
+public class NRVAEReader {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final byte ENDPOINT_IN = (byte) 0x81;
-    private static final int DEFAULT_FIFO_SIZE = 1 << 17;
-    private static final int MIN_FIFO_SIZE = 4096;
-    /** Cap avoids OOM from Control-menu FIFO doubling or corrupted prefs. */
-    private static final int MAX_FIFO_SIZE = 1 << 22;
-    private static final int DEFAULT_NUM_BUFFERS = 16;
-    private static final int MAX_NUM_BUFFERS = 32;
-    private static final long MAX_TOTAL_USB_BUFFER_BYTES = 64L * 1024L * 1024L;
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
+    private static final long STOP_JOIN_TIMEOUT_MS = 3000L;
 
     private final NRVHardwareInterface monitor;
     private final S5KRC1SParser parser = new S5KRC1SParser();
     private USBTransferThread usbTransfer;
-    private int fifoSize = sanitizeFifoSize(
-            JaerConstants.PREFS_ROOT_HARDWARE.getInt("NRV.AEReader.fifoSize", DEFAULT_FIFO_SIZE));
-    private int numBuffers = sanitizeNumBuffers(
-            JaerConstants.PREFS_ROOT_HARDWARE.getInt("NRV.AEReader.numBuffers", DEFAULT_NUM_BUFFERS),
-            fifoSize);
+    private int fifoSize;
+    private int numBuffers;
     private byte[] parseScratch;
     private int[] stagingAddresses;
     private int[] stagingTimestamps;
@@ -49,6 +39,28 @@ public class NRVAEReader implements ReaderBufferControl {
 
     public NRVAEReader(NRVHardwareInterface monitor) {
         this.monitor = monitor;
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+    }
+
+    void syncUsbBufferSettings(int fifoSize, int numBuffers) {
+        this.fifoSize = fifoSize;
+        this.numBuffers = numBuffers;
+        if (usbTransfer != null) {
+            usbTransfer.setBufferSize(this.fifoSize);
+            usbTransfer.setBufferNumber(this.numBuffers);
+        }
+    }
+
+    PropertyChangeSupport getReaderSupport() {
+        return monitor.getReaderSupportInternal();
+    }
+
+    int getFifoSize() {
+        return fifoSize;
+    }
+
+    int getNumBuffers() {
+        return numBuffers;
     }
 
     public void startThread() throws HardwareInterfaceException {
@@ -58,6 +70,10 @@ public class NRVAEReader implements ReaderBufferControl {
         if (usbTransfer != null) {
             return;
         }
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+        synchronized (monitor.getAePacketRawPool()) {
+            monitor.getAePacketRawPool().allocateMemory();
+        }
         parser.reset();
         clearEndpointHalt(monitor.getDeviceHandle());
         log.info("Starting NRV AEReader on endpoint 0x81 (fifo=" + getFifoSize()
@@ -65,6 +81,9 @@ public class NRVAEReader implements ReaderBufferControl {
                 + ", timestampOrderTrace=" + NRVTrace.TIMESTAMP_ORDER_ENABLED
                 + ", timingTrace=" + NRVTrace.TIMING_ENABLED
                 + (NRVTrace.TIMING_ENABLED ? ", timingIntervalMs=" + NRVTrace.TIMING_INTERVAL_MS : "")
+                + ", pipelineBench=" + UsbPipelineBench.ENABLED
+                + (UsbPipelineBench.ENABLED && System.getProperty("jaer.usb.trace.file") != null
+                        ? ", traceFile=" + System.getProperty("jaer.usb.trace.file") : "")
                 + ")");
         usbTransfer = new USBTransferThread(
                 monitor.getDeviceHandle(),
@@ -92,7 +111,10 @@ public class NRVAEReader implements ReaderBufferControl {
         log.info("Stopping NRV AEReader");
         usbTransfer.interrupt();
         try {
-            usbTransfer.join();
+            usbTransfer.join(STOP_JOIN_TIMEOUT_MS);
+            if (usbTransfer.isAlive()) {
+                log.warning("NRV AEReader thread did not stop within " + STOP_JOIN_TIMEOUT_MS + " ms");
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -109,80 +131,13 @@ public class NRVAEReader implements ReaderBufferControl {
         parser.resyncTimingState(regAddr, reason);
     }
 
+    /** Consumer swapped write buffers; resume full parsing on the fresh buffer. */
+    void onWriteBufferConsumed() {
+        parser.clearOverrunSkip();
+    }
+
     S5KRC1SParser getParser() {
         return parser;
-    }
-
-    @Override
-    public int getFifoSize() {
-        return fifoSize;
-    }
-
-    @Override
-    public void setFifoSize(int fifoSize) {
-        this.fifoSize = sanitizeFifoSize(fifoSize);
-        this.numBuffers = sanitizeNumBuffers(numBuffers, this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.fifoSize", this.fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.numBuffers", numBuffers);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferSize(this.fifoSize);
-            usbTransfer.setBufferNumber(numBuffers);
-        }
-    }
-
-    @Override
-    public void setNumBuffers(int numBuffers) {
-        this.numBuffers = sanitizeNumBuffers(numBuffers, fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.numBuffers", this.numBuffers);
-        if (usbTransfer != null) {
-            usbTransfer.setBufferNumber(this.numBuffers);
-        }
-    }
-
-    private static int sanitizeFifoSize(int fifoSize) {
-        if (fifoSize >= MIN_FIFO_SIZE && fifoSize <= MAX_FIFO_SIZE) {
-            return fifoSize;
-        }
-        log.warning(String.format(
-                "Invalid NRV USB FIFO size %d bytes; resetting to %d (valid range %d..%d). "
-                        + "This can happen after repeatedly increasing FIFO size in Control menu.",
-                fifoSize, DEFAULT_FIFO_SIZE, MIN_FIFO_SIZE, MAX_FIFO_SIZE));
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("NRV.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
-        return DEFAULT_FIFO_SIZE;
-    }
-
-    private static int sanitizeNumBuffers(int numBuffers, int fifoSize) {
-        int n = numBuffers;
-        if (n < 1) {
-            n = 1;
-        }
-        if (n > MAX_NUM_BUFFERS) {
-            n = MAX_NUM_BUFFERS;
-        }
-        final int safeFifo = Math.max(MIN_FIFO_SIZE, Math.min(fifoSize, MAX_FIFO_SIZE));
-        if (safeFifo > 0) {
-            final long total = (long) safeFifo * n;
-            if (total > MAX_TOTAL_USB_BUFFER_BYTES) {
-                n = (int) (MAX_TOTAL_USB_BUFFER_BYTES / safeFifo);
-                if (n < 1) {
-                    n = 1;
-                }
-                log.warning(String.format(
-                        "NRV USB buffer count reduced to %d so fifo (%d) x buffers stays under %d MB",
-                        n, safeFifo, MAX_TOTAL_USB_BUFFER_BYTES / (1024 * 1024)));
-            }
-        }
-        return n;
-    }
-
-    @Override
-    public int getNumBuffers() {
-        return numBuffers;
-    }
-
-    @Override
-    public PropertyChangeSupport getReaderSupport() {
-        return monitor.getReaderSupportInternal();
     }
 
     private void checkTimestampOrder(int[] timestamps, int start, int count) {
@@ -213,7 +168,7 @@ public class NRVAEReader implements ReaderBufferControl {
      * Copies USB bytes and parses into thread-local staging (outside {@link AEPacketRawPool} lock).
      * {@link S5KRC1SParser} state is only touched on the USB transfer thread.
      */
-    private ParsedChunk parseUsbChunk(ByteBuffer buffer) {
+    private ParsedChunk parseUsbChunk(ByteBuffer buffer, UsbPipelineBench.Sample sample) {
         final int bytesAvailable = buffer.remaining();
         if (bytesAvailable == 0) {
             return ParsedChunk.EMPTY;
@@ -221,50 +176,76 @@ public class NRVAEReader implements ReaderBufferControl {
         if ((bytesAvailable % 4) != 0) {
             log.warning("NRV packet size " + bytesAvailable + " is not a multiple of 4");
         }
-
-        final int parseLimit;
-        synchronized (monitor.getAePacketRawPool()) {
-            if (monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag) {
-                return ParsedChunk.EMPTY;
-            }
-            parseLimit = monitor.getAEBufferSize() - monitor.getEventCounter();
-            if (parseLimit <= 0) {
-                return ParsedChunk.OVERFLOW;
-            }
+        if (sample != null) {
+            sample.usbBytes = bytesAvailable;
         }
 
+        final int parseLimit;
+        final long limitLockStart = sample != null ? System.nanoTime() : 0;
+        synchronized (monitor.getAePacketRawPool()) {
+            if (sample != null) {
+                sample.limitLockNs = System.nanoTime() - limitLockStart;
+            }
+            final boolean writeBufferOverrun = monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag;
+            // Keep scanning the USB chunk for timestamp/column state, but emit no events
+            // while the current write buffer is already in overrun.
+            parseLimit = writeBufferOverrun ? 0 : Math.max(0, monitor.getAEBufferSize() - monitor.getEventCounter());
+        }
+
+        final long copyStart = sample != null ? System.nanoTime() : 0;
         if (parseScratch == null || parseScratch.length < bytesAvailable) {
             parseScratch = new byte[bytesAvailable];
         }
-        buffer.duplicate().get(parseScratch, 0, bytesAvailable);
+        buffer.get(parseScratch, 0, bytesAvailable);
+        if (sample != null) {
+            sample.byteCopyNs = System.nanoTime() - copyStart;
+        }
         ensureStaging(parseLimit);
 
-        final int parsed = parser.parse(parseScratch, bytesAvailable,
+        final long parseStart = sample != null ? System.nanoTime() : 0;
+        final S5KRC1SParser.ParseResult result = parser.parseWithResult(parseScratch, bytesAvailable,
                 stagingAddresses, stagingTimestamps, 0, parseLimit);
+        if (sample != null) {
+            sample.parseNs = System.nanoTime() - parseStart;
+            sample.eventsParsed = result.eventsWritten;
+        }
 
-        if (parsed > 0) {
-            checkTimestampOrder(stagingTimestamps, 0, parsed);
+        if (result.eventsWritten > 0) {
+            checkTimestampOrder(stagingTimestamps, 0, result.eventsWritten);
             if (NRVTrace.TIMING_ENABLED) {
                 int minTs = stagingTimestamps[0];
                 int maxTs = stagingTimestamps[0];
-                for (int e = 1; e < parsed; e++) {
+                for (int e = 1; e < result.eventsWritten; e++) {
                     minTs = Math.min(minTs, stagingTimestamps[e]);
                     maxTs = Math.max(maxTs, stagingTimestamps[e]);
                 }
                 parser.noteChunkTimestampSpanUs(maxTs - minTs);
             }
         }
-        return new ParsedChunk(parsed, parseLimit);
+        return new ParsedChunk(result.eventsWritten, result.overflowed);
     }
 
-    private void commitParsedChunk(ParsedChunk chunk) {
+    private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
         if (chunk == ParsedChunk.EMPTY) {
             return;
         }
+        final long commitStart = sample != null ? System.nanoTime() : 0;
+        long arrayCopyNs = 0;
         synchronized (monitor.getAePacketRawPool()) {
             final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
             final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
             if (writeBuffer.overrunOccuredFlag) {
+                // Parser state was already advanced; skip commit until the viewer swaps buffers.
+                if (chunk.overflowed) {
+                    logOverrun(monitor.getEventCounter(), monitor.getAEBufferSize(), 0);
+                }
+                return;
+            }
+            if (chunk.parsed <= 0) {
+                if (chunk.overflowed) {
+                    writeBuffer.overrunOccuredFlag = true;
+                    logOverrun(monitor.getEventCounter(), monitor.getAEBufferSize(), 0);
+                }
                 return;
             }
 
@@ -273,47 +254,48 @@ public class NRVAEReader implements ReaderBufferControl {
             writeBuffer.lastCaptureIndex = startEvent;
             final int remaining = maxEvents - startEvent;
 
-            if (chunk == ParsedChunk.OVERFLOW || remaining <= 0) {
-                writeBuffer.overrunOccuredFlag = true;
-                logOverrun(startEvent, maxEvents, 0);
-                return;
-            }
-
-            if (chunk.parsed < 0) {
-                final int committed = Math.min(chunk.parseLimit, remaining);
-                if (committed > 0) {
-                    System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, committed);
-                    System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, committed);
-                    monitor.setEventCounter(startEvent + committed);
-                    writeBuffer.setNumEvents(monitor.getEventCounter());
-                    writeBuffer.lastCaptureLength = committed;
-                }
-                writeBuffer.overrunOccuredFlag = true;
-                logOverrun(startEvent, maxEvents, committed);
-                return;
-            }
-
             final int toCopy = Math.min(chunk.parsed, remaining);
             if (toCopy > 0) {
+                ensureWriteBufferCapacity(writeBuffer, maxEvents, startEvent, toCopy);
+                final long acStart = sample != null ? System.nanoTime() : 0;
                 System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
                 System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
+                if (sample != null) {
+                    arrayCopyNs += System.nanoTime() - acStart;
+                }
             }
             monitor.setEventCounter(startEvent + toCopy);
             writeBuffer.setNumEvents(monitor.getEventCounter());
             writeBuffer.lastCaptureLength = toCopy;
+            if (chunk.overflowed) {
+                writeBuffer.overrunOccuredFlag = true;
+                logOverrun(startEvent, maxEvents, toCopy);
+            }
+        }
+        if (sample != null) {
+            sample.commitLockNs = System.nanoTime() - commitStart;
+            sample.arrayCopyNs = arrayCopyNs;
+        }
+    }
+
+    private static void ensureWriteBufferCapacity(AEPacketRaw writeBuffer, int maxEvents, int startEvent, int count) {
+        final int[] destAddr = writeBuffer.getAddresses();
+        final int[] destTs = writeBuffer.getTimestamps();
+        if (destAddr == null || destAddr.length < startEvent + count
+                || destTs == null || destTs.length < startEvent + count) {
+            writeBuffer.ensureCapacity(maxEvents);
         }
     }
 
     private static final class ParsedChunk {
-        static final ParsedChunk EMPTY = new ParsedChunk(0, 0);
-        static final ParsedChunk OVERFLOW = new ParsedChunk(-1, 0);
+        static final ParsedChunk EMPTY = new ParsedChunk(0, false);
 
         final int parsed;
-        final int parseLimit;
+        final boolean overflowed;
 
-        ParsedChunk(int parsed, int parseLimit) {
+        ParsedChunk(int parsed, boolean overflowed) {
             this.parsed = parsed;
-            this.parseLimit = parseLimit;
+            this.overflowed = overflowed;
         }
     }
 
@@ -343,7 +325,14 @@ public class NRVAEReader implements ReaderBufferControl {
                 return;
             }
             if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
-                commitParsedChunk(parseUsbChunk(transfer.buffer()));
+                final UsbPipelineBench.Sample sample = UsbPipelineBench.newSample("NRV");
+                final long totalStart = sample != null ? System.nanoTime() : 0;
+                final ParsedChunk chunk = parseUsbChunk(transfer.buffer(), sample);
+                commitParsedChunk(chunk, sample);
+                if (sample != null) {
+                    sample.totalNs = System.nanoTime() - totalStart;
+                    UsbPipelineBench.record(sample);
+                }
             } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
                 active = false;
                 monitor.markUsbDisconnected(transfer.status());

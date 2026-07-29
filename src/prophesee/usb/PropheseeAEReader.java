@@ -4,102 +4,128 @@ import java.beans.PropertyChangeSupport;
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
-import org.usb4java.BufferUtils;
 import org.usb4java.LibUsb;
 
-import net.sf.jaer.JaerConstants;
+import li.longi.USBTransferThread.RestrictedTransfer;
+import li.longi.USBTransferThread.RestrictedTransferCallback;
+import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
-import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
 import net.sf.jaer.util.TimestampSpread;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Evk4BoardCommand;
 
 /**
  * USB bulk reader for Prophesee EVK4 (endpoint 0x81, EVT3).
- * Uses synchronous bulk reads (same path as neuromorphic-drivers flush/poll).
+ * Uses pipelined async bulk transfer ({@link USBTransferThread}) like NRV.
  *
  * @see https://www.prophesee.ai/
  */
-public class PropheseeAEReader implements ReaderBufferControl {
+public class PropheseeAEReader {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int DEFAULT_FIFO_SIZE = 1 << 17;
-    private static final int MIN_FIFO_SIZE = 4096;
-    /** Cap avoids int overflow when doubling FIFO size from the Control menu. */
-    private static final int MAX_FIFO_SIZE = 1 << 22;
-    private static final int DEFAULT_NUM_BUFFERS = 32;
-    private static final long READ_TIMEOUT_MS = 1000L;
+    private static final byte ENDPOINT_IN = Evk4BoardCommand.EP_EVENTS_IN;
 
     private final PropheseeHardwareInterface monitor;
     private final Evt3Parser parser = new Evt3Parser();
-    private Thread readerThread;
+    private USBTransferThread usbTransfer;
     private volatile boolean readerActive;
-    private int fifoSize = sanitizeFifoSize(
-            JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE));
-    private int numBuffers = JaerConstants.PREFS_ROOT_HARDWARE.getInt("Prophesee.AEReader.numBuffers", DEFAULT_NUM_BUFFERS);
+    private int fifoSize;
+    private int numBuffers;
+
+    private byte[] parseScratch;
+    private int[] stagingAddresses;
+    private int[] stagingTimestamps;
 
     private long usbTransferCount;
     private long usbBytesTotal;
     private long usbEventsParsed;
-    private long readTimeouts;
     private long lastTraceLogMs;
-    private long lastTimeoutLogMs;
     private long lastOverrunLogMs;
     private long lastTimestampTraceLogMs;
 
     public PropheseeAEReader(PropheseeHardwareInterface monitor) {
         this.monitor = monitor;
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+    }
+
+    void syncUsbBufferSettings(int fifoSize, int numBuffers) {
+        this.fifoSize = fifoSize;
+        this.numBuffers = numBuffers;
+        if (usbTransfer != null) {
+            usbTransfer.setBufferSize(this.fifoSize);
+            usbTransfer.setBufferNumber(this.numBuffers);
+        }
+    }
+
+    PropertyChangeSupport getReaderSupport() {
+        return monitor.getReaderSupportInternal();
+    }
+
+    int getFifoSize() {
+        return fifoSize;
+    }
+
+    int getNumBuffers() {
+        return numBuffers;
     }
 
     public void startThread() throws HardwareInterfaceException {
         if (!monitor.isOpen()) {
             monitor.open();
         }
-        if (readerThread != null) {
+        if (usbTransfer != null) {
             return;
         }
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
         parser.reset();
         usbTransferCount = 0;
         usbBytesTotal = 0;
         usbEventsParsed = 0;
-        readTimeouts = 0;
         Evk4BoardCommand.clearEventEndpointHalt(monitor.getDeviceHandle());
-        log.info("Starting Prophesee AEReader on endpoint 0x81 (EVT3, sync bulk)");
-        log.fine("Prophesee AEReader: fifoSize=" + getFifoSize() + " readTimeoutMs=" + READ_TIMEOUT_MS);
+        log.info("Starting Prophesee AEReader on endpoint 0x81 (EVT3, async bulk, fifo="
+                + getFifoSize() + " buffers=" + getNumBuffers()
+                + ", pipelineBench=" + UsbPipelineBench.ENABLED + ")");
         readerActive = true;
-        readerThread = new Thread(this::readLoop, "PropheseeAEReader");
-        readerThread.setDaemon(true);
-        readerThread.start();
+        usbTransfer = new USBTransferThread(
+                monitor.getDeviceHandle(),
+                ENDPOINT_IN,
+                LibUsb.TRANSFER_TYPE_BULK,
+                new ProcessAEData(),
+                getNumBuffers(),
+                getFifoSize());
+        usbTransfer.setName("PropheseeAEReader");
+        usbTransfer.start();
         monitor.getReaderSupportInternal().firePropertyChange("readerStarted", false, true);
     }
 
     void prepareForStop() {
         readerActive = false;
-        if (readerThread != null) {
-            readerThread.interrupt();
+        if (usbTransfer != null) {
+            usbTransfer.interrupt();
         }
     }
 
     void finishStop() {
-        if (readerThread == null) {
+        if (usbTransfer == null) {
             return;
         }
         try {
-            readerThread.join(3000L);
-            if (readerThread.isAlive()) {
+            usbTransfer.join(3000L);
+            if (usbTransfer.isAlive()) {
                 log.warning("Prophesee AEReader thread did not stop within 3s");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        readerThread = null;
+        usbTransfer = null;
         monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
     }
 
     public void stopThread() {
-        if (readerThread == null) {
+        if (usbTransfer == null) {
             return;
         }
         log.info("Stopping Prophesee AEReader");
@@ -107,61 +133,154 @@ public class PropheseeAEReader implements ReaderBufferControl {
         finishStop();
     }
 
-    private void readLoop() {
-        final ByteBuffer buffer = BufferUtils.allocateByteBuffer(getFifoSize());
-        while (readerActive && monitor.isOpen() && !monitor.isUsbTransferFailed()) {
-            buffer.clear();
-            final int bytesRead;
-            try {
-                bytesRead = Evk4BoardCommand.readEventBulk(
-                        monitor.getDeviceHandle(), buffer, READ_TIMEOUT_MS);
-            } catch (HardwareInterfaceException e) {
-                if (readerActive) {
-                    log.warning("Prophesee event bulk read failed: " + e.getMessage());
-                }
-                break;
-            }
-            if (bytesRead == LibUsb.ERROR_TIMEOUT) {
-                readTimeouts++;
-                maybeLogReadTimeouts();
-                continue;
-            }
-            if (bytesRead == 0) {
-                continue;
-            }
-            if (bytesRead < 0) {
-                if (readerActive) {
-                    log.warning("Prophesee event bulk read: " + LibUsb.errorName(bytesRead));
-                    monitor.markUsbDisconnected(bytesRead);
-                }
-                break;
-            }
-            buffer.limit(bytesRead);
-            synchronized (monitor.getAePacketRawPool()) {
-                if (!readerActive) {
-                    return;
-                }
-                translateEvents(buffer);
-            }
+    private void ensureStaging(int eventCapacity) {
+        if (eventCapacity <= 0) {
+            return;
         }
-        if (readerActive) {
-            log.fine("Prophesee AEReader read loop exited: transfers=" + usbTransferCount
-                    + " timeouts=" + readTimeouts);
+        if (stagingAddresses == null || stagingAddresses.length < eventCapacity) {
+            stagingAddresses = new int[eventCapacity];
+            stagingTimestamps = new int[eventCapacity];
         }
     }
 
-    private void maybeLogReadTimeouts() {
-        final long now = System.currentTimeMillis();
-        if (now - lastTimeoutLogMs < 5000L) {
+    /**
+     * Copies USB bytes and parses into thread-local staging (outside {@link AEPacketRawPool} lock).
+     * {@link Evt3Parser} state is only touched on the USB transfer thread.
+     */
+    private ParsedChunk parseUsbChunk(ByteBuffer buffer, UsbPipelineBench.Sample sample) {
+        final int bytesAvailable = buffer.remaining();
+        if (bytesAvailable == 0) {
+            return ParsedChunk.EMPTY;
+        }
+        if ((bytesAvailable % 2) != 0) {
+            log.warning("Prophesee packet size " + bytesAvailable + " is not a multiple of 2");
+        }
+        if (sample != null) {
+            sample.usbBytes = bytesAvailable;
+        }
+
+        final int parseLimit;
+        final long limitLockStart = sample != null ? System.nanoTime() : 0;
+        synchronized (monitor.getAePacketRawPool()) {
+            if (sample != null) {
+                sample.limitLockNs = System.nanoTime() - limitLockStart;
+            }
+            if (monitor.getAePacketRawPool().writeBuffer().overrunOccuredFlag) {
+                return ParsedChunk.EMPTY;
+            }
+            parseLimit = monitor.getAEBufferSize() - monitor.getEventCounter();
+            if (parseLimit <= 0) {
+                return ParsedChunk.OVERFLOW;
+            }
+        }
+
+        final long copyStart = sample != null ? System.nanoTime() : 0;
+        if (parseScratch == null || parseScratch.length < bytesAvailable) {
+            parseScratch = new byte[bytesAvailable];
+        }
+        buffer.get(parseScratch, 0, bytesAvailable);
+        if (sample != null) {
+            sample.byteCopyNs = System.nanoTime() - copyStart;
+        }
+        ensureStaging(parseLimit);
+
+        final long parseStart = sample != null ? System.nanoTime() : 0;
+        final int parsed = parser.parse(parseScratch, bytesAvailable,
+                stagingAddresses, stagingTimestamps, 0, parseLimit);
+        if (sample != null) {
+            sample.parseNs = System.nanoTime() - parseStart;
+            sample.eventsParsed = Math.max(0, parsed);
+        }
+
+        if (usbTransferCount == 0 && parsed >= 0) {
+            log.info(String.format(
+                    "Prophesee first USB event packet: %d bytes, %d events parsed",
+                    bytesAvailable, Math.max(0, parsed)));
+            if (bytesAvailable > 0 && parsed == 0) {
+                log.warning("Prophesee EVT3: received bytes but parsed 0 events (possible stream desync)");
+            }
+        }
+        if (parsed >= 0) {
+            usbTransferCount++;
+            usbBytesTotal += bytesAvailable;
+            usbEventsParsed += parsed;
+            maybeLogTraceStats(parsed, bytesAvailable);
+            maybeLogTimestampTrace(stagingTimestamps, 0, parsed);
+        }
+        return new ParsedChunk(parsed, parseLimit);
+    }
+
+    private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
+        if (chunk == ParsedChunk.EMPTY) {
             return;
         }
-        lastTimeoutLogMs = now;
-        if (usbTransferCount == 0) {
-            log.fine("Prophesee AEReader: no USB bytes yet (readTimeouts=" + readTimeouts + ")");
-            if (readTimeouts >= 30) {
-                log.warning("Prophesee AEReader: still no USB bytes after " + readTimeouts
-                        + "s on endpoint 0x81; try Interface > Reset USB interface");
+        final long commitStart = sample != null ? System.nanoTime() : 0;
+        long arrayCopyNs = 0;
+        synchronized (monitor.getAePacketRawPool()) {
+            final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
+            final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
+            if (writeBuffer.overrunOccuredFlag) {
+                return;
             }
+
+            final int maxEvents = monitor.getAEBufferSize();
+            final int startEvent = monitor.getEventCounter();
+            writeBuffer.lastCaptureIndex = startEvent;
+            final int remaining = maxEvents - startEvent;
+
+            if (chunk == ParsedChunk.OVERFLOW || remaining <= 0) {
+                writeBuffer.overrunOccuredFlag = true;
+                logOverrun(startEvent, maxEvents, 0);
+                return;
+            }
+
+            if (chunk.parsed < 0) {
+                final int committed = Math.min(chunk.parseLimit, remaining);
+                if (committed > 0) {
+                    final long acStart = sample != null ? System.nanoTime() : 0;
+                    System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, committed);
+                    System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, committed);
+                    if (sample != null) {
+                        arrayCopyNs += System.nanoTime() - acStart;
+                    }
+                    monitor.setEventCounter(startEvent + committed);
+                    writeBuffer.setNumEvents(monitor.getEventCounter());
+                    writeBuffer.lastCaptureLength = committed;
+                }
+                writeBuffer.overrunOccuredFlag = true;
+                logOverrun(startEvent, maxEvents, committed);
+                return;
+            }
+
+            final int toCopy = Math.min(chunk.parsed, remaining);
+            if (toCopy > 0) {
+                final long acStart = sample != null ? System.nanoTime() : 0;
+                System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
+                System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
+                if (sample != null) {
+                    arrayCopyNs += System.nanoTime() - acStart;
+                }
+            }
+            monitor.setEventCounter(startEvent + toCopy);
+            writeBuffer.setNumEvents(monitor.getEventCounter());
+            writeBuffer.lastCaptureLength = toCopy;
+        }
+        if (sample != null) {
+            sample.commitLockNs = System.nanoTime() - commitStart;
+            sample.arrayCopyNs = arrayCopyNs;
+        }
+    }
+
+    private static final class ParsedChunk {
+        static final ParsedChunk EMPTY = new ParsedChunk(0, 0);
+        static final ParsedChunk OVERFLOW = new ParsedChunk(-1, 0);
+
+        final int parsed;
+        final int parseLimit;
+
+        ParsedChunk(int parsed, int parseLimit) {
+            this.parsed = parsed;
+            this.parseLimit = parseLimit;
         }
     }
 
@@ -171,102 +290,6 @@ public class PropheseeAEReader implements ReaderBufferControl {
 
     Evt3Parser getParser() {
         return parser;
-    }
-
-    @Override
-    public int getFifoSize() {
-        return fifoSize;
-    }
-
-    @Override
-    public void setFifoSize(int fifoSize) {
-        this.fifoSize = sanitizeFifoSize(fifoSize);
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", this.fifoSize);
-    }
-
-    private static int sanitizeFifoSize(int fifoSize) {
-        if (fifoSize >= MIN_FIFO_SIZE && fifoSize <= MAX_FIFO_SIZE) {
-            return fifoSize;
-        }
-        log.warning(String.format(
-                "Invalid Prophesee USB FIFO size %d bytes; resetting to %d (valid range %d..%d). "
-                        + "This can happen after repeatedly increasing FIFO size in Control menu.",
-                fifoSize, DEFAULT_FIFO_SIZE, MIN_FIFO_SIZE, MAX_FIFO_SIZE));
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.fifoSize", DEFAULT_FIFO_SIZE);
-        return DEFAULT_FIFO_SIZE;
-    }
-
-    @Override
-    public int getNumBuffers() {
-        return numBuffers;
-    }
-
-    @Override
-    public void setNumBuffers(int numBuffers) {
-        this.numBuffers = numBuffers;
-        JaerConstants.PREFS_ROOT_HARDWARE.putInt("Prophesee.AEReader.numBuffers", numBuffers);
-    }
-
-    @Override
-    public PropertyChangeSupport getReaderSupport() {
-        return monitor.getReaderSupportInternal();
-    }
-
-    private void translateEvents(ByteBuffer buffer) {
-        final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
-        final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
-        if (writeBuffer.overrunOccuredFlag) {
-            return;
-        }
-
-        final int bytesAvailable = buffer.remaining();
-        if (bytesAvailable == 0) {
-            return;
-        }
-        if ((bytesAvailable % 2) != 0) {
-            log.warning("Prophesee packet size " + bytesAvailable + " is not a multiple of 2");
-        }
-
-        final byte[] raw = new byte[bytesAvailable];
-        buffer.duplicate().get(raw);
-
-        final int[] addresses = writeBuffer.getAddresses();
-        final int[] timestamps = writeBuffer.getTimestamps();
-        final int startEvent = monitor.getEventCounter();
-        writeBuffer.lastCaptureIndex = startEvent;
-
-        final int maxEvents = monitor.getAEBufferSize();
-        final int parsed = parser.parse(raw, raw.length, addresses, timestamps, startEvent, maxEvents);
-
-        if (parsed < 0) {
-            final int committed = maxEvents - startEvent;
-            if (committed > 0) {
-                monitor.setEventCounter(maxEvents);
-                writeBuffer.setNumEvents(maxEvents);
-                writeBuffer.lastCaptureLength = committed;
-            }
-            writeBuffer.overrunOccuredFlag = true;
-            logOverrun(startEvent, maxEvents, committed);
-            return;
-        }
-
-        monitor.setEventCounter(startEvent + parsed);
-        writeBuffer.setNumEvents(monitor.getEventCounter());
-        writeBuffer.lastCaptureLength = parsed;
-
-        if (usbTransferCount == 0) {
-            log.info(String.format(
-                    "Prophesee first USB event packet: %d bytes, %d events parsed",
-                    bytesAvailable, Math.max(0, parsed)));
-            if (bytesAvailable > 0 && parsed == 0) {
-                log.warning("Prophesee EVT3: received bytes but parsed 0 events (possible stream desync)");
-            }
-        }
-        usbTransferCount++;
-        usbBytesTotal += bytesAvailable;
-        usbEventsParsed += Math.max(0, parsed);
-        maybeLogTraceStats(parsed, bytesAvailable);
-        maybeLogTimestampTrace(timestamps, startEvent, parsed);
     }
 
     private void maybeLogTimestampTrace(int[] timestamps, int start, int count) {
@@ -316,5 +339,34 @@ public class PropheseeAEReader implements ReaderBufferControl {
                 "Prophesee USB: transfers={0} bytes={1} parsedEvents={2} lastTransfer bytes={3} events={4} poolEvents={5}",
                 usbTransferCount, usbBytesTotal, usbEventsParsed, bytesAvailable, parsed,
                 monitor.getEventCounter());
+    }
+
+    private class ProcessAEData implements RestrictedTransferCallback {
+
+        private volatile boolean active = true;
+
+        @Override
+        public void prepareTransfer(RestrictedTransfer transfer) {
+        }
+
+        @Override
+        public void processTransfer(RestrictedTransfer transfer) {
+            if (!active || !readerActive || monitor.isUsbTransferFailed()) {
+                return;
+            }
+            if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                final UsbPipelineBench.Sample sample = UsbPipelineBench.newSample("EVK4");
+                final long totalStart = sample != null ? System.nanoTime() : 0;
+                final ParsedChunk chunk = parseUsbChunk(transfer.buffer(), sample);
+                commitParsedChunk(chunk, sample);
+                if (sample != null) {
+                    sample.totalNs = System.nanoTime() - totalStart;
+                    UsbPipelineBench.record(sample);
+                }
+            } else if (transfer.status() != LibUsb.TRANSFER_CANCELLED) {
+                active = false;
+                monitor.markUsbDisconnected(transfer.status());
+            }
+        }
     }
 }

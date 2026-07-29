@@ -3,9 +3,18 @@
         "path": "cmd.exe",
         "args": ["/d", "/c"]
     },
+    "java.jdt.ls.java.home": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.6.7-hotspot",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.6.7-hotspot",
+            "default": true
+        }
+    ],
     "java.project.sourcePaths": [
         "src"
     ],
+    "java.project.outputPath": "build/classes",
     "java.project.referencedLibraries": [
         "lib/**/*.jar",
         "jars/**/*.jar",
@@ -13,5 +22,7 @@
     ],
     "java.import.gradle.enabled": false,
     "java.import.maven.enabled": false,
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.autobuild.enabled": false,
+    "java.debug.settings.forceBuildBeforeLaunch": false
 }

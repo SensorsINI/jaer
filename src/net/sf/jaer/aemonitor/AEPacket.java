@@ -23,10 +23,10 @@ import net.sf.jaer.aemonitor.EventRaw.EventType;
 public abstract class AEPacket {
 
     /**
-     * Can optionally be used to limit maximum packet size. This limit must be
-     * enforced at the user level.
+     * Soft limit for logging unusually large single-packet allocations. Not a
+     * hard cap — hardware AE buffers and file slices may exceed this.
      */
-    public static final int MAX_PACKET_SIZE_EVENTS = 100000;
+    public static final int MAX_PACKET_SIZE_EVENTS = 2_097_152;
 
     static Logger log = Logger.getLogger("net.sf.jaer");
 

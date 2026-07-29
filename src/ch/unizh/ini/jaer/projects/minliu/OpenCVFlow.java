@@ -54,7 +54,7 @@ import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.util.TobiLogger;
 import org.apache.commons.lang3.ArrayUtils;
 import java.util.Random;
-import nu.pattern.OpenCV;
+import net.sf.jaer.util.OpenCVNativeLoader;
 //import org.bytedeco.javacpp.opencv_core.TermCriteria;
 import org.opencv.calib3d.Calib3d;
 import org.opencv.core.Core;
@@ -82,16 +82,7 @@ public class OpenCVFlow extends AbstractMotionFlow
         implements PropertyChangeListener {
 
     static {
-        String jvmVersion = System.getProperty("sun.arch.data.model");
-
-        try {
-            OpenCV.loadShared();   // search opencv native library with nu.pattern package.
-            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-            // System.loadLibrary("opencv_ffmpeg320_" + jvmVersion);   // Notice, cannot put the file type extension (.dll) here, it will append it automatically. 
-        } catch (UnsatisfiedLinkError e) {
-            System.err.println("Native code library failed to load.\n" + e);
-            // System.exit(1);
-        }
+        OpenCVNativeLoader.load();
     }
 
     private final ImageDisplay OFResultDisplay;

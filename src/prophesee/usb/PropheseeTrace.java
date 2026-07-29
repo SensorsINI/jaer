@@ -8,6 +8,7 @@ import java.util.logging.Logger;
  * <ul>
  * <li>{@code -Djaer.prophesee.trace=true} — USB transfer FINER logs</li>
  * <li>{@code -Djaer.prophesee.trace.timestamps=true} — EVT3 timestamp FINE logs (2s throttle)</li>
+ * <li>{@code -Djaer.prophesee.trace.pipeline=true} — alias for {@code -Djaer.usb.trace.pipeline=true}</li>
  * </ul>
  * TODO(remove): delete this class once EVK4 live capture is verified stable.
  *

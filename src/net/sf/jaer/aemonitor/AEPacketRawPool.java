@@ -17,14 +17,23 @@ public class AEPacketRawPool {
     public AEPacketRawPool(AEMonitorInterface outer) {
         super();
         this.outer = outer;
-        allocateMemory();
-        reset();
+        // Lazy allocation: defer until first use so outer.getAEBufferSize() is valid
+        // (field init order in hardware interfaces may not have set buffersize yet).
+    }
+
+    /** Ensures backing buffers exist, sized from {@link AEMonitorInterface#getAEBufferSize()}. */
+    private synchronized void ensureAllocated() {
+        if (buffers == null) {
+            allocateMemory();
+            reset();
+        }
     }
 
     /** Swaps the read and write buffers so that the buffer that was getting written is now the one that is read from, and the one that was read from is
      * now the one written to. Thread safe. This method is called by the consumer.
      */
     public final synchronized void swap() {
+        ensureAllocated();
 //        lastBufferReference = buffers[readBuffer];
         if (readBuffer == 0) {
             readBuffer = 1;
@@ -39,16 +48,19 @@ public class AEPacketRawPool {
 
     /** @return buffer that consumer reads from. */
     public final synchronized AEPacketRaw readBuffer() {
+        ensureAllocated();
         return buffers[readBuffer];
     }
 
     /** @return buffer that acquisition thread writes to. */
     public final synchronized AEPacketRaw writeBuffer() {
+        ensureAllocated();
         return buffers[writeBuffer];
     }
 
     /** Set the current buffer to be the first one and clear the write buffer */
     public final synchronized void reset() {
+        ensureAllocated();
         readBuffer = 0;
         writeBuffer = 1;
         buffers[writeBuffer].clear();
@@ -56,12 +68,13 @@ public class AEPacketRawPool {
         buffers[readBuffer].clear();
     }
 
-    /** allocates AEPacketRaw buffers each with capacity of  */
-    public final void allocateMemory() {
+    /** allocates AEPacketRaw buffers each with capacity of outer.getAEBufferSize() */
+    public final synchronized void allocateMemory() {
         buffers = new AEPacketRaw[2];
+        final int capacity = outer.getAEBufferSize();
         for (int i = 0; i < buffers.length; i++) {
             buffers[i] = new AEPacketRaw();
-            buffers[i].ensureCapacity(outer.getAEBufferSize());
+            buffers[i].ensureCapacity(capacity);
         }
     }
 }

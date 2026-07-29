@@ -71,18 +71,23 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
-        if (timestampImage == null) {
+        final int mapSx = ssxSize();
+        final int mapSy = ssySize();
+        if (timestampImage == null || timestampImage.length != mapSx
+                || timestampImage[0].length != mapSy) {
             allocateMaps(chip);
         }
-        int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
+        final int dt = (int) Math.round(getCorrelationTimeS() * 1e6f);
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;
         // for each event only keep it if it is within dt of the last time
         // an event happened in the direct neighborhood
         final boolean fhp = filterHotPixels;
         final NnbRange nnbRange = new NnbRange();
+        final boolean checkPolarity = polaritiesMustMatch && (in.getEventPrototype() instanceof PolarityEvent);
+        final int kNeed = numMustBeCorrelated;
+        final boolean shotNoiseEnabled = filterAlternativePolarityShotNoiseEnabled;
 
-        final boolean hasPolarites = in.getEventPrototype() instanceof PolarityEvent;
         for (BasicEvent e : in) {
             if (e == null) {
                 continue;
@@ -91,7 +96,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 //                    continue;
 //                }
             totalEventCount++;
-            int ts = e.timestamp;
+            final int ts = e.timestamp;
             final int x = (e.x >> subsampleBy), y = (e.y >> subsampleBy); // subsampling address
             if ((x < 0) || (x > ssx) || (y < 0) || (y > ssy)) { // out of bounds, discard (maybe bad USB or something)
                 filterOut(e);
@@ -101,51 +106,42 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
                 storeTimestampPolarity(x, y, e);
                 if (letFirstEventThrough) {
                     filterIn(e);
-                    continue;
                 } else {
                     filterOut(e);
-                    continue;
                 }
+                continue;
             }
 
             // finally the real denoising starts here
             int ncorrelated = 0;
             nnbRange.compute(x, y, ssx, ssy);
+            // Hoist polarity out of the NNb loop (was casting PolarityEvent per neighbor)
+            final byte eventPol = checkPolarity ? (byte) ((PolarityEvent) e).getPolaritySignum() : 0;
             outerloop:
             for (int xx = nnbRange.x0; xx <= nnbRange.x1; xx++) {
                 final int[] col = timestampImage[xx];
-                final byte[] polCol = polImage[xx];
+                final byte[] polCol = checkPolarity ? polImage[xx] : null;
                 for (int yy = nnbRange.y0; yy <= nnbRange.y1; yy++) {
                     if (fhp && xx == x && yy == y) {
-                        continue; // like BAF, don't correlate with ourself. Makes no difference if polaritiesMustMatch because shot noise events almost never follow each other with same polarity
+                        continue; // like BAF, don't correlate with ourself
                     }
                     final int lastT = col[yy];
-                    final int deltaT = (ts - lastT); // note deltaT will be very negative for DEFAULT_TIMESTAMP because of overflow
-
-                    if (deltaT < dt && lastT != DEFAULT_TIMESTAMP) { // ignore correlations for DEFAULT_TIMESTAMP that are neighbors which never got event so far
-                        if (!polaritiesMustMatch || !hasPolarites) {
-                            ncorrelated++;
-                        } else {
-                            PolarityEvent pe = (PolarityEvent) e;
-                            if (pe.getPolaritySignum() == polCol[yy]) {
-                                ncorrelated++;
+                    // note: (ts - lastT) is very negative for DEFAULT_TIMESTAMP because of overflow
+                    if (lastT != DEFAULT_TIMESTAMP && (ts - lastT) < dt) {
+                        if (!checkPolarity || eventPol == polCol[yy]) {
+                            if (++ncorrelated >= kNeed) {
+                                break outerloop;
                             }
                         }
-                        if (ncorrelated >= numMustBeCorrelated) {
-                            break outerloop; // csn stop checking now
-                        }
                     }
-
                 }
             }
-            if (ncorrelated < numMustBeCorrelated) {
+            if (ncorrelated < kNeed) {
+                filterOut(e);
+            } else if (shotNoiseEnabled && testIsShotNoiseOppositePolarity(x, y, e)) {
                 filterOut(e);
             } else {
-                if (testIsShotNoiseOppositePolarity(x, y, e)) {
-                    filterOut(e);
-                } else {
-                    filterIn(e);
-                }
+                filterIn(e);
             }
 
             storeTimestampPolarity(x, y, e);
@@ -194,10 +190,31 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         resetFilter();
     }
 
+    /** Subsampled map width (number of columns), matching indices 0..ssx inclusive. */
+    private int ssxSize() {
+        return sxm1 < 0 ? 1 : (sxm1 >> subsampleBy) + 1;
+    }
+
+    /** Subsampled map height (number of rows), matching indices 0..ssy inclusive. */
+    private int ssySize() {
+        return sym1 < 0 ? 1 : (sym1 >> subsampleBy) + 1;
+    }
+
     protected void allocateMaps(AEChip chip) {
-        if ((chip != null) && (chip.getNumCells() > 0) && (timestampImage == null || timestampImage.length != chip.getSizeX() >> subsampleBy)) {
-            timestampImage = new int[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
-            polImage = new byte[chip.getSizeX()][chip.getSizeY()]; // TODO handle subsampling to save memory (but check in filterPacket for range check optomization)
+        if (chip == null || chip.getNumCells() <= 0) {
+            return;
+        }
+        // Size maps to subsampled address space used in filterPacket (x>>subsampleBy).
+        // Previously allocated full chip size while checking length against subsampled
+        // width, which reallocated on every init when subsampleBy>0 and hurt cache locality.
+        sxm1 = chip.getSizeX() - 1;
+        sym1 = chip.getSizeY() - 1;
+        final int mapSx = ssxSize();
+        final int mapSy = ssySize();
+        if (timestampImage == null || timestampImage.length != mapSx
+                || timestampImage[0].length != mapSy) {
+            timestampImage = new int[mapSx][mapSy];
+            polImage = new byte[mapSx][mapSy];
         }
     }
 
@@ -313,6 +330,7 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
      * @return true if noise event, false if signal
      */
     protected boolean testIsShotNoiseOppositePolarity(int x, int y, BasicEvent e) {
+        // Caller normally gates on filterAlternativePolarityShotNoiseEnabled; keep check for subclasses
         if (!filterAlternativePolarityShotNoiseEnabled) {
             return false;
         }
@@ -328,8 +346,8 @@ public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
         if (prevT == DEFAULT_TIMESTAMP) {
             return false; // if there is no previous event, treat as signal event
         }
-        float dt = 1e-6f * (e.timestamp - timestampImage[x][y]);
-        if (dt > shotNoiseCorrelationTimeS) {
+        // Compare in microseconds to avoid float multiply per candidate event
+        if ((e.timestamp - prevT) > (int) (shotNoiseCorrelationTimeS * 1e6f)) {
             return false; // if the previous event was too far in past, treat as signal event
         }
         numAlternatingPolarityShotNoiseEventsFilteredOut++;

@@ -59,6 +59,13 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     protected int totalEventCount = 0;
     protected int filteredOutEventCount = 0;
     /**
+     * True when the current packet carries {@link SignalNoiseEvent}s that need
+     * TP/TN/FP/FN classification. Set once per packet in {@link #filterPacket}
+     * so the hot path avoids a per-event {@code instanceof} during normal
+     * (non-NoiseTesterFilter) denoising.
+     */
+    protected boolean signalNoiseClassificationEnabled = false;
+    /**
      * list of filtered out events
      */
     private ArrayList<BasicEvent> filteredOutEvents = new ArrayList(), filteredInEvents = new ArrayList();
@@ -157,29 +164,29 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     }
 
     /**
-     * Use to filter out events, updates the list of such events when
-     * recordFilteredOutEvents is true
+     * Use to filter out events. Also classifies {@link SignalNoiseEvent}s as
+     * noise when {@link #signalNoiseClassificationEnabled} (NoiseTesterFilter).
      *
      * @param e
      */
     final protected void filterOut(BasicEvent e) {
         e.setFilteredOut(true);
         filteredOutEventCount++;
-        if (e instanceof SignalNoiseEvent sne) {
-            sne.classifyNoise();
+        if (signalNoiseClassificationEnabled) {
+            ((SignalNoiseEvent) e).classifyNoise();
         }
     }
 
     /**
-     * Use to filter in events, updates the list of such events when
-     * recordFilteredOutEvents is true
+     * Use to filter in events. Also classifies {@link SignalNoiseEvent}s as
+     * signal when {@link #signalNoiseClassificationEnabled} (NoiseTesterFilter).
      *
      * @param e
      */
     final protected void filterIn(BasicEvent e) {
         e.setFilteredOut(false);
-        if (e instanceof SignalNoiseEvent sne) {
-            sne.classifySignal();
+        if (signalNoiseClassificationEnabled) {
+            ((SignalNoiseEvent) e).classifySignal();
         }
     }
 
@@ -193,12 +200,23 @@ public abstract class AbstractNoiseFilter extends EventFilter2D implements Frame
     @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         resetCountsAndNegativeEvents();
+        // Enable TP/TN classification only for SignalNoisePacket / SignalNoiseEvent streams
+        // (NoiseTesterFilter). Keeps normal DVS denoising free of per-event instanceof.
+        signalNoiseClassificationEnabled = (in instanceof SignalNoisePacket)
+                || (in != null && in.getEventPrototype() instanceof SignalNoiseEvent);
         in = getEnclosedFilterChain().filterPacket(in);  // TODO sublasses might not do adaptive denoising if super.filterPacket() is not called in them
         return in;
     }
 
     protected void resetCountsAndNegativeEvents() {
-        getNegativeEvents().clear();
+        // Lists are legacy API (getNegativeEvents/getPositiveEvents); they are no longer
+        // populated in filterIn/filterOut. Avoid clear() work unless non-empty.
+        if (!filteredOutEvents.isEmpty()) {
+            filteredOutEvents.clear();
+        }
+        if (!filteredInEvents.isEmpty()) {
+            filteredInEvents.clear();
+        }
         filteredOutEventCount = 0;
         totalEventCount = 0;
     }

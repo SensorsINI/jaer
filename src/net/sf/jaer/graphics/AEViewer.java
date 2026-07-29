@@ -76,6 +76,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 import javax.swing.ToolTipManager;
 import java.util.logging.Handler;
 import java.util.logging.ConsoleHandler;
@@ -101,6 +103,7 @@ import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
 import net.sf.jaer.JaerUpdaterInstall4j;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
+import net.sf.jaer.aemonitor.DroppedDataInfo;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aesequencer.AEMonitorSequencerInterface;
 import net.sf.jaer.aesequencer.AESequencerInterface;
@@ -144,6 +147,7 @@ import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2MonitorSequencer;
@@ -160,7 +164,9 @@ import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
+import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
+import net.sf.jaer.util.avioutput.ExportVideoDialog;
 import net.sf.jaer.util.filter.LowpassFilter;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
@@ -248,7 +254,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //    private AEPacketRaw rawPacket; // the raw packet (just timestamps and addresses) recieved from hardware, network, or file input
 //    private EventPacket packet; // the cooked packet (with BasicEvent or subclass objects) of data
     boolean skipRender = false;
-    boolean overrunOccurred = false;
+    DroppedDataInfo droppedDataInfo = DroppedDataInfo.none();
     int tickUs = 1;
     public AEPlayer aePlayer;
     int noEventCounter = 0;
@@ -386,6 +392,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private static boolean showedSkippedPacketsRenderingWarning = false;
     /** Live ARS max saved when entering file playback; restored when leaving PLAYBACK. */
     private int adaptiveRenderSkipMaxBeforePlayback = -1;
+    /** True when live USB acquisition was paused for file playback (resume on stopPlayback). */
+    private boolean eventAcquisitionPausedForPlayback;
     private boolean suppressAdaptiveRenderSkipMenuSync;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
@@ -422,9 +430,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // unfortunately this returns null always, seems no way to find out
 //        log.info(String.format("Preferences storage is located at %s",System.getProperty("java.util.prefs.userRoot")));
         if (chipClassName == null) {
-            aeChipClassName = prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS);
+            aeChipClassName = VendorPrefsMigration.migrateChipClassName(
+                    prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS));
         } else {
-            aeChipClassName = chipClassName;
+            aeChipClassName = VendorPrefsMigration.migrateChipClassName(chipClassName);
+        }
+        if (!aeChipClassName.equals(prefs.get("AEViewer.aeChipClassName", DEFAULT_CHIP_CLASS))) {
+            prefs.put("AEViewer.aeChipClassName", aeChipClassName);
         }
         log.info("AEChip class name is " + aeChipClassName);
         try {
@@ -454,6 +466,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        setupUsbTuningMenus();
+        setupAdaptiveRenderSkippingMenu();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
 
         setIconImage(new javax.swing.ImageIcon(getClass().getResource(JaerConstants.ICON_IMAGE_MAIN)).getImage());
@@ -575,7 +589,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
 //            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
             addHelpItem(new JSeparator());
-            addHelpURLItem(JaerConstants.HELP_URL_HARDWARE_USER_GUIDE, "Hardware user guides", "Guides for inivation hardware");
+            addHelpURLItem(JaerConstants.HELP_URL_INIVATION_CAMERAS, "Inivation Cameras", "iniVation hardware product guides (DVXplorer, DAVIS, sync, connectors)");
+            addHelpURLItem(JaerConstants.HELP_URL_PROPHESEE_CAMERAS, "Prophesee cameras", "Prophesee / Sony event sensor technical docs (IMX636, GenX320)");
+            addHelpURLItem(JaerConstants.HELP_URL_NRV_CAMERAS, "NRV cameras", "NRV DELTA / RC1S technical documentation (SDK, event format, products)");
             addHelpURLItem(JaerConstants.HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
             addHelpItem(new JSeparator());
 //            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
@@ -1942,7 +1958,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             // Loop Cleanup
             log.info("AEViewer.run() ending: stop=" + stop + " isInterrupted=" + isInterrupted());
-            if (aemon != null) {
+            // Hardware close is done on the EDT via cleanup(); closing here during stop=true
+            // can deadlock with stopViewLoopForExit() (synchronized NRV close + USB join).
+            if (aemon != null && !stop) {
                 aemon.close();
             }
             if (unicastOutput != null) {
@@ -2117,7 +2135,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         return emptyRawPacket;
                     }
-                    overrunOccurred = aemon.overrunOccurred();
+                    droppedDataInfo = aemon.getDroppedDataInfo();
                     try {
                         aemon = (AEMonitorInterface) chip.getHardwareInterface(); // TODOkeep setting aemon to be chip's interface, this is kludge
                         if (aemon == null) {
@@ -2147,7 +2165,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                 case PLAYBACK:
                     getAePlayer().adjustTimesliceForRealtimePlayback();
-                    overrunOccurred = false;
+                    droppedDataInfo = DroppedDataInfo.none();
                     return getAePlayer().getNextPacket(aePlayer);
                 case REMOTE:
                     if (unicastInputEnabled) {
@@ -2256,17 +2274,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (playerControls.isSliderBeingAdjusted() || getAePlayer().getPlaybackDirection() == AbstractAEPlayer.PlaybackDirection.Backward) {
                 return inputPacket; // don't run filters if user is manipulating position or playing backwards
             }
+            FilterChain chain = filterChain;
+            if (chain == null && chip != null) {
+                chain = chip.getFilterChain();
+                filterChain = chain;
+            }
+            if (chain == null) {
+                return inputPacket;
+            }
             // filter events, do processing on them in rendering loop here
-            if ((filterChain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
+            if ((chain.getProcessingMode() == FilterChain.ProcessingMode.RENDERING) || (getPlayMode() != PlayMode.LIVE)) {
                 try {
-                    EventPacket p = filterChain.filterPacket(inputPacket);
+                    EventPacket p = chain.filterPacket(inputPacket);
                     return p;
                 } catch (Exception e) {
                     log.warning("Caught " + e + ", disabling all filters. See following stack trace.");
                     log.log(Level.SEVERE, e.toString(), e);
 
                     log.log(Level.WARNING, "Filter exception", e);
-                    for (EventFilter f : filterChain) {
+                    for (EventFilter f : chain) {
                         f.setFilterEnabled(false);
                     }
                 }
@@ -2542,12 +2568,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                 int cs = getRenderer().getColorScale();
 
-                String ovstring;
-                if (overrunOccurred) {
-                    ovstring = "(overrun)";
-                } else {
-                    ovstring = "         ";
-                }
+                String ovstring = droppedDataInfo.getStatsLineToken();
 
                 //                if(numEvents==0) s=thisTimeString+ "s: No events";
                 //                else {
@@ -2613,10 +2634,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 //                }
                 //                System.out.println(statLabel.length());
                 setStatisticsLabel(sb.toString());
-                if (overrunOccurred) {
+                if (droppedDataInfo.any()) {
                     statisticsLabel.setForeground(Color.RED);
+                    if (!droppedDataInfo.getDetail().isEmpty()) {
+                        statisticsLabel.setToolTipText(droppedDataInfo.getDetail());
+                    } else {
+                        statisticsLabel.setToolTipText(null);
+                    }
                 } else {
                     statisticsLabel.setForeground(Color.BLACK);
+                    statisticsLabel.setToolTipText(null);
                 }
         }
     }
@@ -3045,6 +3072,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         newViewerMenuItem = new javax.swing.JMenuItem();
         openMenuItem = new javax.swing.JMenuItem();
         closeMenuItem = new javax.swing.JMenuItem();
+        exportVideoMenuItem = new javax.swing.JMenuItem();
+        stopVideoExportMenuItem = new javax.swing.JMenuItem();
         jSeparator8 = new javax.swing.JSeparator();
         loggingMenuItem = new javax.swing.JMenuItem();
         loggingPlaybackImmediatelyCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -3070,6 +3099,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         timestampResetBitmaskMenuItem = new javax.swing.JMenuItem();
         jSeparator16 = new javax.swing.JSeparator();
         exitSeperator = new javax.swing.JSeparator();
+        preferencesMenuItem = new javax.swing.JMenuItem();
         exitMenuItem = new javax.swing.JMenuItem();
         viewMenu = new javax.swing.JMenu();
         viewFiltersMenuItem = new javax.swing.JMenuItem();
@@ -3097,7 +3127,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewRenderBlankFramesCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator2 = new javax.swing.JSeparator();
         setFrameRateMenuItem = new javax.swing.JMenuItem();
-        skipPacketsRenderingCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
+        skipPacketsRenderingCheckBoxMenuItem = new ScrollWheelTunableCheckBoxMenuItem();
         setBorderSpaceMenuItem = new javax.swing.JMenuItem();
         jSeparator27 = new javax.swing.JPopupMenu.Separator();
         enableFiltersOnStartupCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
@@ -3138,12 +3168,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu = new javax.swing.JMenu();
         viewBiasesMenuItem = new javax.swing.JMenuItem();
         jSeparator26 = new javax.swing.JPopupMenu.Separator();
-        increaseBufferSizeMenuItem = new javax.swing.JMenuItem();
-        decreaseBufferSizeMenuItem = new javax.swing.JMenuItem();
-        increaseNumBuffersMenuItem = new javax.swing.JMenuItem();
-        decreaseNumBuffersMenuItem = new javax.swing.JMenuItem();
+        usbFifoSizeMenuItem = new ScrollWheelTunableMenuItem();
+        usbNumBuffersMenuItem = new ScrollWheelTunableMenuItem();
         jSeparator9 = new javax.swing.JSeparator();
-        changeAEBufferSizeMenuItem = new javax.swing.JMenuItem();
+        aeRenderBufferMenuItem = new ScrollWheelTunableMenuItem();
         jSeparator5 = new javax.swing.JSeparator();
         printUSBStatisticsCBMI = new javax.swing.JCheckBoxMenuItem();
         jSeparator24 = new javax.swing.JPopupMenu.Separator();
@@ -3327,6 +3355,35 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(closeMenuItem);
+
+        exportVideoMenuItem.setText("Export video...");
+        exportVideoMenuItem.setToolTipText("Export rendered AEViewer frames to AVI (optional MP4 via ffmpeg)");
+        exportVideoMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                exportVideoMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(exportVideoMenuItem);
+
+        stopVideoExportMenuItem.setText("Stop video export");
+        stopVideoExportMenuItem.setToolTipText("Stops an active File/Export video recording");
+        stopVideoExportMenuItem.setEnabled(false);
+        stopVideoExportMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                stopVideoExportMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(stopVideoExportMenuItem);
+        fileMenu.addMenuListener(new javax.swing.event.MenuListener() {
+            public void menuSelected(javax.swing.event.MenuEvent evt) {
+                updateStopVideoExportMenuItemEnabled();
+            }
+            public void menuDeselected(javax.swing.event.MenuEvent evt) {
+            }
+            public void menuCanceled(javax.swing.event.MenuEvent evt) {
+            }
+        });
+
         fileMenu.add(jSeparator8);
 
         loggingMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_L, 0));
@@ -3488,6 +3545,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu.add(timestampResetBitmaskMenuItem);
         fileMenu.add(jSeparator16);
         fileMenu.add(exitSeperator);
+
+        preferencesMenuItem.setMnemonic('p');
+        preferencesMenuItem.setText("Preferences...");
+        preferencesMenuItem.setToolTipText("Edit AEViewer preferences");
+        preferencesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                preferencesMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(preferencesMenuItem);
 
         exitMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, 0));
         exitMenuItem.setMnemonic('x');
@@ -3668,8 +3735,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         graphicsSubMenu.add(setFrameRateMenuItem);
 
-        skipPacketsRenderingCheckBoxMenuItem.setText("Enable adaptive render skipping");
-        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Skip extract/render of some packets when overloaded to maintain frame rate.<br>Raw .aedat logging is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
+        skipPacketsRenderingCheckBoxMenuItem.setText("Adaptive render skipping");
+        skipPacketsRenderingCheckBoxMenuItem.setToolTipText("<html>Click the checkbox to enable/disable.<br>Hover and use the mouse wheel or Up/Down keys to change the maximum skipped packets.<br>Raw .aedat logging is unaffected.<br>Status bar shows ARS current/max and loop load (ld).");
         skipPacketsRenderingCheckBoxMenuItem.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 skipPacketsRenderingCheckBoxMenuItemStateChanged(evt);
@@ -3917,7 +3984,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         controlMenu.setMnemonic('c');
         controlMenu.setText("USB");
-        controlMenu.setToolTipText("control CypresFX2 driver parameters");
+        controlMenu.setToolTipText("USB reader tuning — hover a ▲▼ row and scroll to adjust");
 
         viewBiasesMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_B, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         viewBiasesMenuItem.setMnemonic('b');
@@ -3931,52 +3998,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         controlMenu.add(viewBiasesMenuItem);
         controlMenu.add(jSeparator26);
 
-        increaseBufferSizeMenuItem.setText("Increase host side USB buffer size");
-        increaseBufferSizeMenuItem.setToolTipText("Increases the host USB fifo size. This buffer is used to buffer the data delivered by kernel-level USB host contoller. Decrease if you want lower latency servicing under high data rates from the device.");
-        increaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increaseBufferSizeMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(increaseBufferSizeMenuItem);
+        usbFifoSizeMenuItem.setToolTipText("Host USB FIFO bytes per async bulk transfer. Hover and scroll wheel to halve/double (4 KiB–20 MiB).");
+        controlMenu.add(usbFifoSizeMenuItem);
 
-        decreaseBufferSizeMenuItem.setText("Decrease hardware buffer size");
-        decreaseBufferSizeMenuItem.setToolTipText("Decreases the host USB fifo size");
-        decreaseBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                decreaseBufferSizeMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(decreaseBufferSizeMenuItem);
-
-        increaseNumBuffersMenuItem.setText("Increase number of hardware buffers");
-        increaseNumBuffersMenuItem.setToolTipText("Increases the host number of host USB read buffers. Increase this value if your data is very bursty, with intervals of high data rate.");
-        increaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                increaseNumBuffersMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(increaseNumBuffersMenuItem);
-
-        decreaseNumBuffersMenuItem.setText("Decrease num hardware buffers");
-        decreaseNumBuffersMenuItem.setToolTipText("Decreases the host number of USB read buffers");
-        decreaseNumBuffersMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                decreaseNumBuffersMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(decreaseNumBuffersMenuItem);
+        usbNumBuffersMenuItem.setToolTipText("Number of overlapped USB read buffers (1–32). Hover and scroll wheel to adjust ±1.");
+        controlMenu.add(usbNumBuffersMenuItem);
         controlMenu.add(jSeparator9);
 
-        changeAEBufferSizeMenuItem.setMnemonic('b');
-        changeAEBufferSizeMenuItem.setText("Set rendering AE buffer size");
-        changeAEBufferSizeMenuItem.setToolTipText("sets size of host raw event buffers used for render/capture data exchnage");
-        changeAEBufferSizeMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                changeAEBufferSizeMenuItemActionPerformed(evt);
-            }
-        });
-        controlMenu.add(changeAEBufferSizeMenuItem);
+        aeRenderBufferMenuItem.setMnemonic('b');
+        aeRenderBufferMenuItem.setToolTipText("AEPacketRaw pool size in events (2 buffers). Hover and scroll to ×2 / ÷2 on a power-of-two ladder (64K–8M).");
+        controlMenu.add(aeRenderBufferMenuItem);
         controlMenu.add(jSeparator5);
 
         printUSBStatisticsCBMI.setMnemonic('t');
@@ -4140,29 +4171,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_resizeLabelMouseDragged
 
 	private void enableFiltersOnStartupCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
-            enableFiltersOnStartup = enableFiltersOnStartupCheckBoxMenuItem.isSelected();
-            prefs.putBoolean("AEViewer.enableFiltersOnStartup", enableFiltersOnStartup);
+            setEnableFiltersOnStartup(enableFiltersOnStartupCheckBoxMenuItem.isSelected());
 	}//GEN-LAST:event_enableFiltersOnStartupCheckBoxMenuItemActionPerformed
 
     void fixSkipPacketsRenderingMenuItems() {
-        if (getRenderer() == null) {
+        if (chip == null || chip.getRenderer() == null) {
             return;
         }
-        final int max = getRenderer().getSkipFrameRenderingNumberMax();
-        skipPacketsRenderingCheckBoxMenuItem.setText("<html>Enable adaptive render skipping<br>(currently skipping maximum of "
-                + max + " frames)...");
+        skipPacketsRenderingCheckBoxMenuItem.refreshLabel();
+    }
+
+    private void showAdaptiveRenderSkippingOverlay() {
+        if (chip == null || chip.getRenderer() == null) {
+            return;
+        }
+        final AEChipRenderer renderer = chip.getRenderer();
+        showActionText(String.format("Adaptive render skipping %s; maximum %d packets",
+                renderer.isAdaptiveRenderSkippingEnabled() ? "ON" : "OFF",
+                renderer.getConfiguredSkipFrameRenderingNumberMax()));
     }
 
     /**
      * Keeps the ARS menu checkbox aligned with renderer state (live or playback).
      */
     void syncAdaptiveRenderSkipMenuFromRenderer() {
-        if (getRenderer() == null) {
+        if (chip == null || chip.getRenderer() == null) {
             return;
         }
         suppressAdaptiveRenderSkipMenuSync = true;
         try {
-            skipPacketsRenderingCheckBoxMenuItem.setSelected(getRenderer().isAdaptiveRenderSkippingEnabled());
+            skipPacketsRenderingCheckBoxMenuItem.setSelected(chip.getRenderer().isAdaptiveRenderSkippingEnabled());
             fixSkipPacketsRenderingMenuItems();
         } finally {
             suppressAdaptiveRenderSkipMenuSync = false;
@@ -4187,6 +4225,29 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         syncAdaptiveRenderSkipMenuFromRenderer();
+    }
+
+    /**
+     * Stops live USB reader threads while playing back a file so NRV/Prophesee/DAVIS
+     * background transfers do not fill host buffers. Resume is handled by {@link AEPlayer#stopPlayback()}.
+     */
+    private void updateLiveAcquisitionForPlayMode(PlayMode oldMode, PlayMode newMode) {
+        if (newMode == PlayMode.PLAYBACK && oldMode != PlayMode.PLAYBACK) {
+            if (oldMode == PlayMode.SEQUENCING) {
+                stopSequencing();
+            }
+            if (aemon != null && aemon.isOpen() && aemon.isEventAcquisitionEnabled()) {
+                try {
+                    aemon.setEventAcquisitionEnabled(false);
+                    eventAcquisitionPausedForPlayback = true;
+                    log.info("paused live event acquisition for file playback");
+                } catch (HardwareInterfaceException e) {
+                    log.warning("failed to pause live acquisition for playback: " + e.getMessage());
+                }
+            }
+        } else if (oldMode == PlayMode.PLAYBACK && newMode != PlayMode.PLAYBACK) {
+            eventAcquisitionPausedForPlayback = false;
+        }
     }
 
 	private void customizeDevicesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_customizeDevicesMenuItemActionPerformed
@@ -4655,95 +4716,222 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                int k = controlMenu.getMenuComponentCount();
-                if ((aemon == null) || (!(aemon instanceof ReaderBufferControl) && !aemon.isOpen())) {
-                    for (int i = 0; i < k; i++) {
+                final boolean deviceOpen = aemon != null && aemon.isOpen();
+                if (!deviceOpen) {
+                    usbFifoSizeMenuItem.setEnabled(false);
+                    usbNumBuffersMenuItem.setEnabled(false);
+                    aeRenderBufferMenuItem.setEnabled(false);
+                    for (int i = 0; i < controlMenu.getMenuComponentCount(); i++) {
                         if (controlMenu.getMenuComponent(i) instanceof JMenuItem) {
                             ((JMenuItem) controlMenu.getMenuComponent(i)).setEnabled(false);
                         }
                     }
-                } else if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                    ReaderBufferControl readerControl = (ReaderBufferControl) aemon;
-                    PropertyChangeSupport readerSupport = readerControl.getReaderSupport();
-                    // propertyChange method in this file deals with these events
-                    if (!readerSupport.hasListeners("readerStarted")) { // TODO change to public static String for events in AEReader
-                        readerSupport.addPropertyChangeListener("readerStarted", AEViewer.this); // when the reader starts running, we getString called back to fix device control menu
-                    }
+                    return;
+                }
 
-                    int n = readerControl.getNumBuffers();
-                    int f = readerControl.getFifoSize();
-                    decreaseNumBuffersMenuItem.setText("Decrease num buffers to " + (n - 1));
-                    increaseNumBuffersMenuItem.setText("Increase num buffers to " + (n + 1));
-                    decreaseBufferSizeMenuItem.setText("Decrease host USB FIFO size to " + (f / 2) + " bytes");
-                    increaseBufferSizeMenuItem.setText("Increase host USB FIFO size to " + (f * 2) + " bytes");
+                final boolean readerControl = aemon instanceof ReaderBufferControl;
+                usbFifoSizeMenuItem.setEnabled(readerControl);
+                usbNumBuffersMenuItem.setEnabled(readerControl);
+                aeRenderBufferMenuItem.setEnabled(true);
 
-                    for (int i = 0; i < k; i++) {
-                        if (controlMenu.getMenuComponent(i) instanceof JMenuItem) {
-                            ((JMenuItem) controlMenu.getMenuComponent(i)).setEnabled(true);
-                        }
+                if (readerControl) {
+                    ReaderBufferControl reader = (ReaderBufferControl) aemon;
+                    PropertyChangeSupport readerSupport = reader.getReaderSupport();
+                    if (!readerSupport.hasListeners("readerStarted")) {
+                        readerSupport.addPropertyChangeListener("readerStarted", AEViewer.this);
                     }
                 }
 
-//                cypressFX2EEPROMMenuItem.setEnabled(true); // always set the true to be able to launch utility even if the device is not a retina
-//
-//                setDefaultFirmwareMenuItem.setEnabled(true);
-//                if ((aemon != null) && (aemon instanceof HasUpdatableFirmware)) {
-//                    updateFirmwareMenuItem.setEnabled(true);
-//                } else {
-//                    updateFirmwareMenuItem.setEnabled(false);
-//                }
+                final int k = controlMenu.getMenuComponentCount();
+                for (int i = 0; i < k; i++) {
+                    final Component c = controlMenu.getMenuComponent(i);
+                    if (c instanceof JMenuItem && c != usbFifoSizeMenuItem
+                            && c != usbNumBuffersMenuItem && c != aeRenderBufferMenuItem) {
+                        ((JMenuItem) c).setEnabled(true);
+                    }
+                }
+
+                refreshUsbTuningMenuLabels();
             }
         });
-        //        log.info("fixing device control menu");
     }
 
-	private void decreaseNumBuffersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseNumBuffersMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = reader.getNumBuffers() - 1;
-                if (n < 1) {
-                    n = 1;
+    private void setupUsbTuningMenus() {
+        ScrollWheelTunableMenuItem.installPopupWheelHandler(controlMenu);
+
+        controlMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                refreshUsbTuningMenuLabels();
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
+
+        usbFifoSizeMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            @Override
+            public int get() {
+                return aemon instanceof ReaderBufferControl ? ((ReaderBufferControl) aemon).getFifoSize() : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                if (aemon instanceof ReaderBufferControl) {
+                    ((ReaderBufferControl) aemon).setFifoSize(value);
                 }
-
-                reader.setNumBuffers(n);
-                fixDeviceControlMenuItems();
-
             }
 
-	}//GEN-LAST:event_decreaseNumBuffersMenuItemActionPerformed
-
-	private void increaseNumBuffersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseNumBuffersMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = reader.getNumBuffers() + 1;
-                reader.setNumBuffers(n);
-                fixDeviceControlMenuItems();
-
+            @Override
+            public int stepUp(int current) {
+                final long next = (long) current * 2L;
+                return (int) Math.min(next, UsbReaderBufferSettings.MAX_FIFO_SIZE);
             }
-	}//GEN-LAST:event_increaseNumBuffersMenuItemActionPerformed
 
-	private void decreaseBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_decreaseBufferSizeMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                int n = Math.max(4096, reader.getFifoSize() / 2);
-                reader.setFifoSize(n);
-                fixDeviceControlMenuItems();
-
+            @Override
+            public int stepDown(int current) {
+                return Math.max(UsbReaderBufferSettings.MIN_FIFO_SIZE, current / 2);
             }
-	}//GEN-LAST:event_decreaseBufferSizeMenuItemActionPerformed
 
-	private void increaseBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_increaseBufferSizeMenuItemActionPerformed
-            if ((aemon != null) && (aemon instanceof ReaderBufferControl) && aemon.isOpen()) {
-                ReaderBufferControl reader = (ReaderBufferControl) aemon;
-                long n = (long) reader.getFifoSize() * 2L;
-                if (n > (1 << 22)) {
-                    n = 1 << 22;
+            @Override
+            public String formatLabel(int value) {
+                return String.format("USB FIFO: %,d bytes", value);
+            }
+        }, this::fixDeviceControlMenuItems);
+
+        usbNumBuffersMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            @Override
+            public int get() {
+                return aemon instanceof ReaderBufferControl ? ((ReaderBufferControl) aemon).getNumBuffers() : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                if (aemon instanceof ReaderBufferControl) {
+                    ((ReaderBufferControl) aemon).setNumBuffers(value);
                 }
-                reader.setFifoSize((int) n);
-                fixDeviceControlMenuItems();
-
             }
-	}//GEN-LAST:event_increaseBufferSizeMenuItemActionPerformed
+
+            @Override
+            public int stepUp(int current) {
+                return Math.min(current + 1, UsbReaderBufferSettings.MAX_NUM_BUFFERS);
+            }
+
+            @Override
+            public int stepDown(int current) {
+                return Math.max(UsbReaderBufferSettings.MIN_NUM_BUFFERS, current - 1);
+            }
+
+            @Override
+            public String formatLabel(int value) {
+                return String.format("USB buffers: %,d", value);
+            }
+        }, this::fixDeviceControlMenuItems);
+
+        aeRenderBufferMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            private static final int MIN_EVENTS = 1 << 16;   // 65,536
+            private static final int MAX_EVENTS = 1 << 23;   // 8,388,608
+
+            @Override
+            public int get() {
+                return aemon != null ? aemon.getAEBufferSize() : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                if (aemon != null) {
+                    aemon.setAEBufferSize(value);
+                }
+            }
+
+            @Override
+            public int stepUp(int current) {
+                return ScrollWheelTunableMenuItem.stepPowerOfTwoUp(current, MIN_EVENTS, MAX_EVENTS);
+            }
+
+            @Override
+            public int stepDown(int current) {
+                return ScrollWheelTunableMenuItem.stepPowerOfTwoDown(current, MIN_EVENTS, MAX_EVENTS);
+            }
+
+            @Override
+            public String formatLabel(int value) {
+                return String.format("AE render buffer: %,d events", value);
+            }
+        }, this::refreshUsbTuningMenuLabels);
+    }
+
+    private void setupAdaptiveRenderSkippingMenu() {
+        ScrollWheelTunableMenuItem.installPopupWheelHandler(graphicsSubMenu);
+        skipPacketsRenderingCheckBoxMenuItem.bind(new ScrollWheelTunableMenuItem.IntParameter() {
+            private static final int MIN_SKIP = 1;
+            private static final int MAX_SKIP = 1000;
+
+            @Override
+            public int get() {
+                // Chip/renderer are not ready yet during AEViewer construction when bind() refreshes the label.
+                if (chip == null || chip.getRenderer() == null) {
+                    return AEChipRenderer.DEFAULT_SKIP_PACKETS_RENDERING_MAX;
+                }
+                return chip.getRenderer().getConfiguredSkipFrameRenderingNumberMax();
+            }
+
+            @Override
+            public void set(int value) {
+                if (chip == null || chip.getRenderer() == null) {
+                    return;
+                }
+                chip.getRenderer().setConfiguredSkipFrameRenderingNumberMax(value);
+                if (getPlayMode() == PlayMode.PLAYBACK && adaptiveRenderSkipMaxBeforePlayback > 0) {
+                    adaptiveRenderSkipMaxBeforePlayback = value;
+                }
+            }
+
+            @Override
+            public int stepUp(int current) {
+                return Math.min(current + 1, MAX_SKIP);
+            }
+
+            @Override
+            public int stepDown(int current) {
+                return Math.max(current - 1, MIN_SKIP);
+            }
+
+            @Override
+            public String formatLabel(int value) {
+                return String.format("Adaptive render skipping: max %d packets", value);
+            }
+        }, () -> {
+            syncAdaptiveRenderSkipMenuFromRenderer();
+            showAdaptiveRenderSkippingOverlay();
+        });
+
+        graphicsSubMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                syncAdaptiveRenderSkipMenuFromRenderer();
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
+    }
+
+    private void refreshUsbTuningMenuLabels() {
+        usbFifoSizeMenuItem.refreshLabel();
+        usbNumBuffersMenuItem.refreshLabel();
+        aeRenderBufferMenuItem.refreshLabel();
+    }
 
 	private void viewFiltersMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewFiltersMenuItemActionPerformed
             showFilters(true);
@@ -5370,10 +5558,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     boolean doneSavingOrCancelling = false;
                     do {
-                        // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
-                        retValue = chooser.showSaveDialog(AEViewer.this);
+                        retValue = LoggingSaveDialogGuard.showSaveDialog(chooser, AEViewer.this, base);
                         if (retValue == JFileChooser.APPROVE_OPTION) {
                             File newFile = chooser.getSelectedFile();
+                            if (LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(newFile.getName())) {
+                                chooser.setSelectedFile(new File(base));
+                                chooser.setDialogTitle("Save logged data (restored default filename)");
+                                continue;
+                            }
                             // make sure filename ends with .aedat
                             if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
                                 newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
@@ -5390,8 +5582,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 recentFiles.addFile(newFile);
                                 loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
                                 log.info("renamed logging file to " + newFile.getAbsolutePath());
-                                ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
-                                dialog3.setVisible(true);
+                                showLoggingSaveConfirmation(newFile, fileInfo);
                             } else {
                                 // if this fails, it does not only mean that a file already exists,
                                 // the failure reasons are platform dependent, for example on Linux
@@ -5411,8 +5602,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                             // here with confirmed
                                             // overwrite of logging file
                                             loggingFile = newFile;
-                                            ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
-                                            dialog3.setVisible(true);
+                                            showLoggingSaveConfirmation(newFile, fileInfo);
                                         } else {
                                             log.warning("couldn't delete logging file " + newFile);
                                         }
@@ -5466,8 +5656,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                                         doneSavingOrCancelling = true;
                                         loggingFile = newFile;
-                                        ShowFolderSaveConfirmation dialog3 = new ShowFolderSaveConfirmation(this, newFile, "<html>Done saving recording as<br> " + newFile.getAbsolutePath() + "<br>" + fileInfo);
-                                        dialog3.setVisible(true);
+                                        showLoggingSaveConfirmation(newFile, fileInfo);
 
                                     } else {
                                         String s = String.format("Could not save %s: %s", newFinalFile, result.exception);
@@ -5516,6 +5705,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fixLoggingControls();
         return loggingFile;
     }    // doesn't actually reset the test in the dialog'
+
+    /**
+     * Shows the post-save confirmation dialog with Show folder / Playback / OK.
+     */
+    private void showLoggingSaveConfirmation(File savedFile, String fileInfo) {
+        final File toPlay = savedFile;
+        String msg = "<html>Done saving recording as<br> " + savedFile.getAbsolutePath() + "<br>" + fileInfo;
+        ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(this, savedFile, msg, () -> {
+            try {
+                getAePlayer().startPlayback(toPlay);
+            } catch (IOException e) {
+                log.log(Level.WARNING, "In trying play a file, caught: " + e.toString(), e);
+            } catch (InterruptedException ex) {
+                log.info("playback interrupted");
+            }
+        });
+        dialog.setVisible(true);
+    }
 
     /**
      * Returns true if currently logging (recording data to file)
@@ -5727,6 +5934,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
     }
 
+    /** Stop USB/live reader before joining ViewLoop so shutdown does not fill AE buffers. */
+    private void stopLiveAcquisitionForExit() {
+        if (aemon == null || !aemon.isOpen()) {
+            return;
+        }
+        try {
+            if (aemon.isEventAcquisitionEnabled()) {
+                log.info("stopping live event acquisition before ViewLoop exit join");
+                aemon.setEventAcquisitionEnabled(false);
+            }
+        } catch (HardwareInterfaceException e) {
+            log.warning("error stopping live acquisition on exit: " + e.getMessage());
+        }
+    }
+
     /**
      * WIP experimental: stop ViewLoop and wait briefly so JVM shutdown is not
      * blocked by this non-daemon thread stuck in wait/sleep/USB/JOGL.
@@ -5736,6 +5958,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         viewLoop.stopThread();
+        stopLiveAcquisitionForExit();
         interruptViewloop();
         synchronized (viewLoop) {
             viewLoop.notifyAll();
@@ -5899,6 +6122,72 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Sets the timestamp reset bitmask used when opening AE input streams and
+     * updates the File menu item label.
+     */
+    public void setAeFileInputStreamTimestampResetBitmask(int aeFileInputStreamTimestampResetBitmask) {
+        this.aeFileInputStreamTimestampResetBitmask = aeFileInputStreamTimestampResetBitmask;
+        prefs.putInt("AEViewer.aeFileInputStreamTimestampResetBitmask", aeFileInputStreamTimestampResetBitmask);
+        log.info("set aeFileInputStreamTimestampResetBitmask=" + HexString.toString(aeFileInputStreamTimestampResetBitmask));
+        if (timestampResetBitmaskMenuItem != null) {
+            timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
+        }
+    }
+
+    public boolean isCheckNonMonotonicTimeExceptionsEnabled() {
+        return checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem != null
+                && checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected();
+    }
+
+    /**
+     * Enables/disables non-monotonic timestamp checks and syncs the File menu
+     * checkbox and related input stream / hardware state.
+     */
+    public void setCheckNonMonotonicTimeExceptionsEnabled(boolean enabled) {
+        if (checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem != null) {
+            checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(enabled);
+        }
+        if (aePlayer != null) {
+            aePlayer.setNonMonotonicTimeExceptionsChecked(enabled);
+        }
+        prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", enabled);
+        if ((aemon != null) && (aemon instanceof StereoPairHardwareInterface)) {
+            ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(enabled);
+        }
+        getSupport().firePropertyChange(EVENT_CHECK_NONMONOTONIC_TIMESTAMPS, null, enabled);
+    }
+
+    public boolean isEnableFiltersOnStartup() {
+        return enableFiltersOnStartup;
+    }
+
+    public void setEnableFiltersOnStartup(boolean enableFiltersOnStartup) {
+        this.enableFiltersOnStartup = enableFiltersOnStartup;
+        prefs.putBoolean("AEViewer.enableFiltersOnStartup", enableFiltersOnStartup);
+        if (enableFiltersOnStartupCheckBoxMenuItem != null) {
+            enableFiltersOnStartupCheckBoxMenuItem.setSelected(enableFiltersOnStartup);
+        }
+    }
+
+    /**
+     * Updates the View menu border-space item label after the value changes.
+     */
+    public void updateBorderSpaceMenuItemText(int borderSpacePixels) {
+        if (setBorderSpaceMenuItem != null) {
+            setBorderSpaceMenuItem.setText(String.format("Set border space (currently %d)", borderSpacePixels));
+        }
+    }
+
+    /**
+     * Updates the Playback menu jog-count item label after the value changes.
+     */
+    public void updateJogPacketCountMenuItemText() {
+        if (setJogNCount != null && getAePlayer() != null) {
+            setJogNCount.setText("Set forward/rewind N... (currently " + getAePlayer().getJogPacketCount() + ")");
+        }
+    }
+
+    /**
      * @return the checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem
      */
     public javax.swing.JCheckBoxMenuItem getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem() {
@@ -5982,24 +6271,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
 
-	private void changeAEBufferSizeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changeAEBufferSizeMenuItemActionPerformed
-            if (aemon == null) {
-                JOptionPane.showMessageDialog(this, "No hardware interface open, can't set size", "Can't set buffer size", JOptionPane.WARNING_MESSAGE);
-                return;
-
-            }
-
-            String ans = JOptionPane.showInputDialog(this, "Enter size of render/capture exchange buffer in events", aemon.getAEBufferSize());
-            try {
-                int n = Integer.parseInt(ans);
-                aemon.setAEBufferSize(n);
-                changeAEBufferSizeMenuItem.setText(String.format("Set AEPacketRaw buffer size (currently 2 buffers each %d events=%d bytes)", aemon.getAEBufferSize(), aemon.getAEBufferSize() * 16));
-            } catch (NumberFormatException e) {
-                Toolkit.getDefaultToolkit().beep();
-            }
-
-	}//GEN-LAST:event_changeAEBufferSizeMenuItemActionPerformed
-
 	private void monSeqOpMode0ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_monSeqOpMode0ActionPerformed
             if (aemon instanceof CypressFX2MonitorSequencer) {
                 CypressFX2MonitorSequencer fx = (CypressFX2MonitorSequencer) aemon;
@@ -6076,16 +6347,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             System.exit(0);
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
-	private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
-            if (aePlayer != null) {
-                aePlayer.setNonMonotonicTimeExceptionsChecked(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
-                prefs.putBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
-            }
+	private void preferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferencesMenuItemActionPerformed
+            new AEViewerPreferencesDialog(this).setVisible(true);
+	}//GEN-LAST:event_preferencesMenuItemActionPerformed
 
-            if ((aemon != null) && (aemon instanceof StereoPairHardwareInterface)) {
-                ((StereoPairHardwareInterface) aemon).setIgnoreTimestampNonmonotonicity(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
-            }
-            getSupport().firePropertyChange(EVENT_CHECK_NONMONOTONIC_TIMESTAMPS, null, checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
+	private void checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
+            setCheckNonMonotonicTimeExceptionsEnabled(checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.isSelected());
 	}//GEN-LAST:event_checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItemActionPerformed
 
 	private void syncEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_syncEnabledCheckBoxMenuItemActionPerformed
@@ -6377,10 +6644,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
             try {
-                aeFileInputStreamTimestampResetBitmask = Integer.parseInt(ret, 16);
-                prefs.putInt("AEViewer.aeFileInputStreamTimestampResetBitmask", aeFileInputStreamTimestampResetBitmask);
-                log.info("set aeFileInputStreamTimestampResetBitmask=" + HexString.toString(aeFileInputStreamTimestampResetBitmask));
-                timestampResetBitmaskMenuItem.setText("Set timestamp reset bitmask... (currently 0x" + Integer.toHexString(aeFileInputStreamTimestampResetBitmask) + ")");
+                setAeFileInputStreamTimestampResetBitmask(Integer.parseInt(ret, 16));
             } catch (Exception e) {
                 log.warning(e.toString());
             }
@@ -6389,6 +6653,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	private void closeMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeMenuItemActionPerformed
             stopMe();
 	}//GEN-LAST:event_closeMenuItemActionPerformed
+
+        private void exportVideoMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+            ExportVideoDialog.showDialog(this);
+        }
+
+        private void stopVideoExportMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+            ExportVideoDialog.stopActiveExport(this);
+            updateStopVideoExportMenuItemEnabled();
+        }
+
+        private void updateStopVideoExportMenuItemEnabled() {
+            stopVideoExportMenuItem.setEnabled(ExportVideoDialog.isExportRecordingActive(this));
+        }
 
 	private void openMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMenuItemActionPerformed
             try {
@@ -6471,32 +6748,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_setBorderSpaceMenuItemActionPerformed
 
     private void skipPacketsRenderingCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
-        // come here when user wants to skip rendering except every n packets
-        if (!skipPacketsRenderingCheckBoxMenuItem.isSelected()) {
-            getRenderer().setSkipFrameRenderingNumberMax(0);
-            syncAdaptiveRenderSkipMenuFromRenderer();
+        if (chip == null || chip.getRenderer() == null) {
             return;
         }
-        int currentMax = getRenderer().getSkipFrameRenderingNumberMax();
-        if (currentMax <= 0) {
-            currentMax = 10;
+        chip.getRenderer().setAdaptiveRenderSkippingEnabled(
+                skipPacketsRenderingCheckBoxMenuItem.isSelected());
+        if (getPlayMode() == PlayMode.PLAYBACK) {
+            // A user choice during playback supersedes the temporary saved state.
+            adaptiveRenderSkipMaxBeforePlayback = -1;
         }
-        String s = "Maximum number of packets to skip over between rendering (currently "
-                + getRenderer().getSkipFrameRenderingNumberMax() + ")";
-        boolean gotIt = false;
-        while (!gotIt) {
-            String retString = JOptionPane.showInputDialog(this, s, Integer.toString(currentMax));
-            if (retString == null) {
-                return;
-            } // cancelled
-            try {
-                getRenderer().setSkipFrameRenderingNumberMax(Integer.parseInt(retString));
-                gotIt = true;
-                syncAdaptiveRenderSkipMenuFromRenderer();
-            } catch (NumberFormatException e) {
-                log.warning(e.toString());
-            }
-        }
+        syncAdaptiveRenderSkipMenuFromRenderer();
+        showAdaptiveRenderSkippingOverlay();
     }//GEN-LAST:event_skipPacketsRenderingCheckBoxMenuItemActionPerformed
 
     private void viewRenderBlankFramesCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewRenderBlankFramesCheckBoxMenuItemActionPerformed
@@ -6729,6 +6991,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setActiveRenderingEnabled(boolean activeRenderingEnabled) {
         this.activeRenderingEnabled = activeRenderingEnabled;
         prefs.putBoolean("AEViewer.activeRenderingEnabled", activeRenderingEnabled);
+        if (viewActiveRenderingEnabledMenuItem != null) {
+            viewActiveRenderingEnabledMenuItem.setSelected(activeRenderingEnabled);
+        }
     }
 
     /**
@@ -6830,6 +7095,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setLoggingPlaybackImmediatelyEnabled(boolean loggingPlaybackImmediatelyEnabled) {
         this.loggingPlaybackImmediatelyEnabled = loggingPlaybackImmediatelyEnabled;
         prefs.putBoolean("AEViewer.loggingPlaybackImmediatelyEnabled", loggingPlaybackImmediatelyEnabled);
+        if (loggingPlaybackImmediatelyCheckBoxMenuItem != null) {
+            loggingPlaybackImmediatelyCheckBoxMenuItem.setSelected(loggingPlaybackImmediatelyEnabled);
+        }
     }
 
     /**
@@ -6846,6 +7114,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             getChip().setAeViewer(this);  // set this now so that chip has AEViewer for building BiasgenFrame etc properly
             extractor = chip.getEventExtractor();
             renderer = chip.getRenderer();
+            filterChain = chip.getFilterChain();
 
             extractor.setSubsampleThresholdEventCount(getRenderer().getSubsampleThresholdEventCount()); // awkward connection between components here - ideally chip should contrain info about subsample limit
             if (chip.getFilterChain() != null) {
@@ -6861,6 +7130,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void setRenderBlankFramesEnabled(boolean renderBlankFramesEnabled) {
         this.renderBlankFramesEnabled = renderBlankFramesEnabled;
         prefs.putBoolean("AEViewer.renderBlankFramesEnabled", renderBlankFramesEnabled);
+        if (viewRenderBlankFramesCheckBoxMenuItem != null) {
+            viewRenderBlankFramesCheckBoxMenuItem.setSelected(renderBlankFramesEnabled);
+        }
     }
 
     public javax.swing.JMenu getFileMenu() {
@@ -6958,6 +7230,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
         updateAdaptiveRenderSkippingForPlayMode(oldMode, playMode);
+        updateLiveAcquisitionForPlayMode(oldMode, playMode);
         setTitleAccordingToState();
         fixLoggingControls();
         getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
@@ -7171,20 +7444,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JToggleButton biasesToggleButton;
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel buttonsPanel;
-    private javax.swing.JMenuItem changeAEBufferSizeMenuItem;
+    private ScrollWheelTunableMenuItem aeRenderBufferMenuItem;
     private javax.swing.JMenuItem checkForUpdatesMenuItem;
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem clearMarksMI;
     private javax.swing.JMenuItem closeMenuItem;
+    private javax.swing.JMenuItem exportVideoMenuItem;
+    private javax.swing.JMenuItem stopVideoExportMenuItem;
     private javax.swing.JMenu controlMenu;
     private javax.swing.JMenuItem customizeDevicesMenuItem;
     private javax.swing.JMenuItem cycleDisplayMethodButton;
     private javax.swing.JMenuItem cycleNextColorRenderingMethodMenuItem;
     private javax.swing.JMenuItem cyclePreviousColorRenderingMethodMenuItem;
-    private javax.swing.JMenuItem decreaseBufferSizeMenuItem;
+    private ScrollWheelTunableMenuItem usbFifoSizeMenuItem;
+    private ScrollWheelTunableMenuItem usbNumBuffersMenuItem;
     private javax.swing.JMenuItem decreaseContrastMenuItem;
     private javax.swing.JMenuItem decreaseFrameRateMenuItem;
-    private javax.swing.JMenuItem decreaseNumBuffersMenuItem;
     private javax.swing.JMenuItem decreasePlaybackSpeedMenuItem;
     private javax.swing.JMenu deviceMenu;
     private javax.swing.JSeparator deviceMenuSpparator;
@@ -7193,6 +7468,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem enableMissedEventsCheckBox;
     private javax.swing.JMenuItem exitMenuItem;
     private javax.swing.JSeparator exitSeperator;
+    private javax.swing.JMenuItem preferencesMenuItem;
     private javax.swing.JMenuItem exportMarksMI;
     private javax.swing.JCheckBoxMenuItem fadingMI;
     private javax.swing.JMenu fileMenu;
@@ -7203,10 +7479,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu helpMenu;
     private javax.swing.JPanel imagePanel;
     private javax.swing.JMenuItem importMarksMI;
-    private javax.swing.JMenuItem increaseBufferSizeMenuItem;
     private javax.swing.JMenuItem increaseContrastMenuItem;
     private javax.swing.JMenuItem increaseFrameRateMenuItem;
-    private javax.swing.JMenuItem increaseNumBuffersMenuItem;
     private javax.swing.JMenuItem increasePlaybackSpeedMenuItem;
     private javax.swing.JMenu interfaceMenu;
     private javax.swing.JMenuItem jMenuItem2;
@@ -7288,7 +7562,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenuItem setMarkOutMI;
     private javax.swing.JButton showConsoleOutputButton;
     private javax.swing.JMenuItem showRenderingModeMI;
-    private javax.swing.JCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
+    private ScrollWheelTunableCheckBoxMenuItem skipPacketsRenderingCheckBoxMenuItem;
     private javax.swing.JCheckBoxMenuItem slidingMI;
     private javax.swing.JPanel statisticsPanel;
     private javax.swing.JTextField statusTextField;

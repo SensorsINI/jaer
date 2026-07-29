@@ -41,10 +41,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import net.sf.jaer.Preferred;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
@@ -294,7 +291,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
         private LinkedList<RateSamples> rateSamples = new LinkedList();
         private long lastTimeAdded = Long.MIN_VALUE;
-        // make following global to cover all histories for common scale for plots
+        // Per-history window limits; Info.computeRateHistoriesLimits() combines these for common plot scale
         private long startTimeMs = Long.MAX_VALUE, endTimeMs = Long.MIN_VALUE;
         private float minRate = Float.MAX_VALUE, maxRate = Float.MIN_VALUE;
 
@@ -317,23 +314,32 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 //            log.info(String.format("added new sample with dt=%d ms and rate=%.1f Hz",dt,rate));
             lastTimeAdded = time;
             if (rateSamples.size() >= getMaxSamples()) {
-                RateSamples s = rateSamples.get(2);
-                startTimeMs = s.time;
                 rateSamples.removeFirst();
-                return;
             }
             rateSamples.add(new RateSamples(time, rate));
-            if (time < startTimeMs) {
-                startTimeMs = time;
-            }
-            if (time > endTimeMs) {
-                endTimeMs = time;
-            }
-            if (rate < minRate) {
-                minRate = rate;
-            }
-            if (rate > maxRate) {
-                maxRate = rate;
+            // Recompute from the retained window so Y scale tracks current history, not all-time peak
+            recomputeLimits();
+        }
+
+        /** Update start/end time and min/max rate from samples currently in the history window. */
+        private void recomputeLimits() {
+            startTimeMs = Long.MAX_VALUE;
+            endTimeMs = Long.MIN_VALUE;
+            minRate = Float.MAX_VALUE;
+            maxRate = Float.MIN_VALUE;
+            for (RateSamples s : rateSamples) {
+                if (s.time < startTimeMs) {
+                    startTimeMs = s.time;
+                }
+                if (s.time > endTimeMs) {
+                    endTimeMs = s.time;
+                }
+                if (s.rate < minRate) {
+                    minRate = s.rate;
+                }
+                if (s.rate > maxRate) {
+                    maxRate = s.rate;
+                }
             }
         }
 
@@ -371,11 +377,13 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
             gl.glVertex2f(x0, yorig + ysize);
             gl.glEnd();
 
+            // Common Y scale across all traces: max rate in the current history window (not all-time)
+            final float yMax = rateHistoriesMaxRate > 0 ? rateHistoriesMaxRate : 1f;
             gl.glPushMatrix();
 //            gl.glColor3f(1, 1, .8f);
             gl.glLineWidth(1.5f);
             gl.glTranslatef(0.5f, yorig, 0);
-            gl.glScalef((float) (sx - 1) / (deltaTimeUs), (ysize) / (maxRate), 1);
+            gl.glScalef((float) (sx - 1) / (deltaTimeUs), (ysize) / yMax, 1);
             gl.glBegin(GL.GL_LINE_STRIP);
             for (RateSamples s : rateSamples) {
                 gl.glVertex2f(s.time - rateHistoriesStartTimeMs, s.rate * sign);
@@ -384,7 +392,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
 
             gl.glPopMatrix();
             gl.glPushMatrix();
-            maxRateString = String.format("max %s eps", engFmt.format(rateHistoriesMaxRate));
+            maxRateString = String.format("max %s eps", engFmt.format(yMax));
             maxTimeString = String.format("%s s", engFmt.format((deltaTimeUs) * .001f));
 
             DrawGL.drawString(fontSize, 0, yorig + ysize * sign, 0, Color.white, maxRateString);
@@ -588,28 +596,8 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 Arrays.fill(b, false);
             }
         }
-        if (in instanceof ApsDvsEventPacket) {
-            ApsDvsEventPacket apsPkt = (ApsDvsEventPacket) in;
-            Iterator<ApsDvsEvent> i = apsPkt.fullIterator();
-            while (i.hasNext()) {
-                ApsDvsEvent e = i.next();
-                if (e.isImuSample()) {
-                    accumulatedIMUSampleCount++;
-                } else if (e.isApsData()) {
-                    accumulatedAPSSampleCount++;
-                } else if (e.isDVSEvent()) {
-                    accumulatedDVSEventCount++;
-                    if (e.getPolarity() == Polarity.On) {
-                        accumulatedDVSOnEventCount++;
-                    } else if (e.getPolarity() == Polarity.Off) {
-                        accumulatedDVSOffEventCount++;
-                    }
-                    if (measureSparsity) {
-                        sparsityMap[e.x][e.y] = true;
-                    }
-                }
-            }
-        } else if (in.getEventPrototype() instanceof PolarityEvent) {
+        // Default iterator(): DVS events only (skips filteredOut; for ApsDvsEventPacket skips APS/IMU)
+        if (in.getEventPrototype() instanceof PolarityEvent) {
             for (BasicEvent be : in) {
                 PolarityEvent e = (PolarityEvent) be;
                 accumulatedDVSEventCount++;
@@ -676,6 +664,9 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
     @Override
     public void initFilter() {
         sparsityMap = new boolean[chip.getSizeX()][chip.getSizeY()];
+        // Clear enclosed ROI so a prior XYTypeFilter selection cannot restrict Info's view.
+        // Runs before enclosed initFilters(); doEraseSelections also drops persisted multi-ROI.
+        xyTypeFilter.doEraseSelections();
     }
     GLU glu = null;
     GLUquadric wheelQuad;

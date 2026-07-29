@@ -13,7 +13,8 @@ import java.util.logging.Logger;
  * above ~35 minutes and the 22-bit reference rolls over about every 70 minutes.
  *
  * <p>jAER output timestamps are {@code int} microseconds relative to {@link #timestampOriginUs},
- * starting at 0 and advancing until signed 32-bit wrap (~2147 s session span).
+ * starting at 0. When relative time exceeds {@link Integer#MAX_VALUE} (~2147 s), output wraps
+ * through {@link Integer#MIN_VALUE} and continues (DAVIS/DVX big-wrap convention).
  *
  * <p>Reference/sub timestamp packets are normal packets (P=0). Group event packets
  * (P=1) can also have {@code pkt[0] & 0x7C == 0x08} when the group-2 row offset is 2;
@@ -35,6 +36,8 @@ public class S5KRC1SParser {
     private static final long REF_MS_MASK = 0x3FFFFFL;
     /** Microseconds added when the 22-bit reference millisecond counter wraps. */
     private static final long REF_WRAP_US = (REF_MS_MASK + 1L) * 1000L;
+    /** Full span of signed {@code int} timestamps in microseconds (~4295 s). */
+    private static final long OUTPUT_INT_US_SPAN = (long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE + 1L;
     private static final int SENSOR_COUNT = 2;
 
     /** Per-interval USB packet counters (development trace). */
@@ -84,6 +87,8 @@ public class S5KRC1SParser {
     private long timestampOriginUs = -1;
     /** Last emitted absolute timestamp (µs), for monotonic output. */
     private long lastOutputAbsoluteUs = -1;
+    /** Count of signed 32-bit output timestamp big-wraps since {@link #reset()}. */
+    private int bigWrapCount;
 
     public S5KRC1SParser() {
         reset();
@@ -128,6 +133,12 @@ public class S5KRC1SParser {
         droppedEventsBeforeColumnAddress = false;
         timestampOriginUs = -1;
         lastOutputAbsoluteUs = -1;
+        bigWrapCount = 0;
+    }
+
+    /** Signed 32-bit output wraps since the last {@link #reset()}. */
+    public int getBigWrapCount() {
+        return bigWrapCount;
     }
 
     /**
@@ -150,15 +161,15 @@ public class S5KRC1SParser {
 
     /**
      * Updates sub-timestamp scaling from I2C {@code TSTAMP_REF_UNIT_VAL} / {@code TSTAMP_SUB_UNIT_VAL}.
-     * Sub fields on the wire are slot indices; true offset within the ref ms is
-     * {@code index × (refUnit + 1) / subUnit} µs.
+     * Reserved for future use; the USB parser matches NRV SDK {@code PacketParser.cpp} and treats
+     * 10-bit sub fields on dedicated ref/sub packets as microseconds within each ref ms.
      */
     public void setTimestampScale(int refUnitVal, int subUnitVal) {
         this.tstampRefUnitVal = Math.max(0, refUnitVal);
         this.tstampSubUnitVal = Math.max(0, subUnitVal);
     }
 
-    /** Column packet embeds a 10-bit sub field: {@code --ST TTTT | TTTT T-CC | CCCC CCCC}. */
+    /** Column packet embeds a 10-bit sub field (unused — SDK does not apply it to {@code mFullTimeStamp}). */
     static int decodeColumnSubTimestamp(byte pkt1, byte pkt2) {
         return ((pkt1 & 0x0F) << 6) | ((pkt2 & 0xFC) >> 2);
     }
@@ -167,41 +178,86 @@ public class S5KRC1SParser {
         return skipPeriodMs;
     }
 
+    /**
+     * Clears the post-overrun ref-ms skip window. Called when the consumer swaps
+     * AE raw buffers so group/column parsing resumes on the fresh write buffer.
+     */
+    public synchronized void clearOverrunSkip() {
+        frameStartTimeMs = 0;
+    }
+
     /** Normal-packet reference/sub timestamp (P=0 and header 0x08). */
     static boolean isTimestampPacket(byte pkt0) {
         return (pkt0 & 0x80) == 0 && (pkt0 & 0x7C) == 0x08;
     }
 
     /**
+     * Result of parsing one USB transfer.
+     */
+    static final class ParseResult {
+        final int eventsWritten;
+        final boolean overflowed;
+
+        ParseResult(int eventsWritten, boolean overflowed) {
+            this.eventsWritten = eventsWritten;
+            this.overflowed = overflowed;
+        }
+    }
+
+    /**
      * @return number of events written to addresses/timestamps
      */
-    public synchronized int parse(byte[] pkt, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
-        int eventCount = eventOffset;
-        for (int i = 0; i + 3 < len; i += 4) {
-            final int header = pkt[i] & 0x7C;
-            final int sensorID = (pkt[i] & 0x02) >> 1;
+    public int parse(byte[] pkt, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
+        final ParseResult result = parseWithResult(pkt, len, addresses, timestamps, eventOffset, maxEvents);
+        return result.overflowed ? -1 : result.eventsWritten;
+    }
 
-            if (isTimestampPacket(pkt[i])) {
+    /**
+     * Parses the complete USB transfer, even after the output arrays become full.
+     * Continuing the scan is essential because timestamp and column packets update
+     * parser state needed by later transfers. A {@code maxEvents} value of zero
+     * therefore provides state-only parsing while dropping decoded events.
+     */
+    synchronized ParseResult parseWithResult(byte[] pkt, int len, int[] addresses, int[] timestamps,
+            int eventOffset, int maxEvents) {
+        int eventCount = eventOffset;
+        boolean overflowed = false;
+        final long skipFrameStart = frameStartTimeMs;
+        final int skipPeriod = skipPeriodMs;
+        final boolean traceTiming = NRVTrace.TIMING_ENABLED;
+        for (int i = 0; i + 3 < len; i += 4) {
+            final int b0 = pkt[i] & 0xFF;
+            final int header = b0 & 0x7C;
+            final int sensorID = (b0 & 0x02) >> 1;
+
+            if ((b0 & 0x80) == 0 && header == 0x08) {
                 if ((pkt[i + 1] & 0x80) != 0) {
                     final int subTs = ((pkt[i + 2] & 0x03) << 8) | (pkt[i + 3] & 0xFF);
                     applySubTimestamp(sensorID, subTs);
-                    timingStats.subPackets++;
-                    NRVTrace.logTimingRefSub(sensorID, true, refTimeStampMs[sensorID], subTs, fullTimeStampUs[sensorID]);
+                    if (traceTiming) {
+                        timingStats.subPackets++;
+                        NRVTrace.logTimingRefSub(sensorID, true, refTimeStampMs[sensorID], subTs, fullTimeStampUs[sensorID]);
+                    }
                 } else {
                     final long refMs = ((pkt[i + 1] & 0x3F) << 16) | ((pkt[i + 2] & 0xFF) << 8) | (pkt[i + 3] & 0xFF);
                     applyReferenceTimestamp(sensorID, refMs);
-                    timingStats.refPackets++;
-                    NRVTrace.logTimingRefSub(sensorID, false, refTimeStampMs[sensorID], 0, fullTimeStampUs[sensorID]);
+                    if (traceTiming) {
+                        timingStats.refPackets++;
+                        NRVTrace.logTimingRefSub(sensorID, false, refTimeStampMs[sensorID], 0, fullTimeStampUs[sensorID]);
+                    }
                 }
-            }
-
-            if (refTimeStampMs[sensorID] < frameStartTimeMs
-                    && refTimeStampMs[sensorID] >= frameStartTimeMs - skipPeriodMs) {
                 continue;
             }
 
-            if ((pkt[i] & 0x80) != 0) {
-                int grpAddr = ((pkt[i + 1] & 0xFC) >> 2) | ((pkt[i] & 0x01) << 6);
+            if (skipFrameStart != 0) {
+                final long refMs = refTimeStampMs[sensorID];
+                if (refMs < skipFrameStart && refMs >= skipFrameStart - skipPeriod) {
+                    continue;
+                }
+            }
+
+            if ((b0 & 0x80) != 0) {
+                int grpAddr = ((pkt[i + 1] & 0xFC) >> 2) | ((b0 & 0x01) << 6);
                 int posY0 = grpAddr << 3;
                 int pol = pkt[i + 1] & 0x01;
                 int mask = pkt[i + 3] & 0xFF;
@@ -211,10 +267,19 @@ public class S5KRC1SParser {
                         final int added = analyzeData(mask, posY0, pol, sensorID,
                                 addresses, timestamps, eventCount, maxEvents);
                         if (added < 0) {
-                            frameStartTimeMs = refTimeStampMs[sensorID] + skipPeriodMs;
-                            return -1;
+                            eventCount += ~added;
+                            if (!overflowed) {
+                                // Start the short overload skip only for the transfer
+                                // that actually filled an output buffer. State-only
+                                // parsing of later transfers must not keep extending it.
+                                if (maxEvents > 0) {
+                                    frameStartTimeMs = refTimeStampMs[sensorID] + skipPeriod;
+                                }
+                                overflowed = true;
+                            }
+                        } else {
+                            eventCount += added;
                         }
-                        eventCount += added;
                     }
                     if (groupCount == 2) {
                         grpAddr = mirrorFlag ? grpAddr - (header >> 2) : grpAddr + (header >> 2);
@@ -227,35 +292,35 @@ public class S5KRC1SParser {
                 continue;
             }
 
-            switch (header) {
-                case 0x0C:
+            if (header == 0x0C) {
+                if (traceTiming) {
                     timingStats.frameEndPackets++;
-                    break;
-                case 0x04:
-                    mirrorFlag = (pkt[i + 1] & 0x80) != 0;
-                    final int sFlag = pkt[i + 1] & 0x20;
-                    posX[sensorID] = ((pkt[i + 2] & 0x07) << 8) | (pkt[i + 3] & 0xFF);
-                    if (posX[sensorID] >= WIDTH) {
-                        posX[sensorID] = WIDTH - 1;
-                    }
+                }
+                continue;
+            }
+            if (header == 0x04) {
+                mirrorFlag = (pkt[i + 1] & 0x80) != 0;
+                final int sFlag = pkt[i + 1] & 0x20;
+                posX[sensorID] = ((pkt[i + 2] & 0x07) << 8) | (pkt[i + 3] & 0xFF);
+                if (posX[sensorID] >= WIDTH) {
+                    posX[sensorID] = WIDTH - 1;
+                }
+                if (traceTiming) {
                     timingStats.colPackets++;
-                    if (sFlag == 0) {
-                        applySubTimestamp(sensorID, decodeColumnSubTimestamp(pkt[i + 1], pkt[i + 2]));
-                    }
-                    if (sFlag != 0) {
-                        continue;
-                    }
-                    break;
-                default:
-                    break;
+                }
+                if (sFlag != 0) {
+                    continue;
+                }
             }
         }
-        timingStats.refMs0 = refTimeStampMs[0];
-        timingStats.fullUs0 = fullTimeStampUs[0];
-        timingStats.lastOutUs = lastOutputAbsoluteUs;
-        timingStats.posX0 = posX[0];
-        NRVTrace.logTimingSummary(timingStats);
-        return eventCount - eventOffset;
+        if (traceTiming) {
+            timingStats.refMs0 = refTimeStampMs[0];
+            timingStats.fullUs0 = fullTimeStampUs[0];
+            timingStats.lastOutUs = lastOutputAbsoluteUs;
+            timingStats.posX0 = posX[0];
+            NRVTrace.logTimingSummary(timingStats);
+        }
+        return new ParseResult(eventCount - eventOffset, overflowed);
     }
 
     private long absoluteRefUs(int sensorID) {
@@ -292,19 +357,9 @@ public class S5KRC1SParser {
         }
     }
 
-    private long subFieldToMicros(int subField) {
-        if (tstampSubUnitVal <= 0) {
-            return subField;
-        }
-        return (long) subField * (tstampRefUnitVal + 1L) / tstampSubUnitVal;
-    }
-
     private void applySubTimestamp(int sensorID, int subTs) {
-        long subUs = subFieldToMicros(subTs);
-        if (subUs > 999) {
-            subUs = 999;
-        }
-        long newTs = absoluteRefUs(sensorID) + subUs;
+        // Match NRV SDK PacketParser::S5KRC1SDataProcess: 10-bit sub field is µs within ref ms.
+        long newTs = absoluteRefUs(sensorID) + subTs;
         if (newTs <= fullTimeStampUs[sensorID]) {
             final long prevRefMs = fullTimeStampUs[sensorID] / 1000L;
             final long currentRefBucketMs = absoluteRefUs(sensorID) / 1000L;
@@ -314,7 +369,7 @@ public class S5KRC1SParser {
                     refTimeStampMs[sensorID] = 0;
                     refWrapUs[sensorID] += REF_WRAP_US;
                 }
-                newTs = absoluteRefUs(sensorID) + subUs;
+                newTs = absoluteRefUs(sensorID) + subTs;
             }
         }
         fullTimeStampUs[sensorID] = newTs;
@@ -333,8 +388,9 @@ public class S5KRC1SParser {
             timestampOriginUs = absoluteUs;
         }
         long outUs = absoluteUs - timestampOriginUs;
-        if (outUs > Integer.MAX_VALUE) {
-            outUs = Integer.MAX_VALUE;
+        while (outUs > Integer.MAX_VALUE) {
+            outUs -= OUTPUT_INT_US_SPAN;
+            bigWrapCount++;
         }
         return (int) outUs;
     }
@@ -363,12 +419,14 @@ public class S5KRC1SParser {
             workingMask &= (workingMask - 1);
             final int posY = posY0 + index;
             if (eventCount + added >= maxEvents) {
-                return -1;
+                return ~added;
             }
             addresses[eventCount + added] = packAddress(lastPosX, posY, pol);
             timestamps[eventCount + added] = outputTs;
             added++;
-            timingStats.eventCount++;
+        }
+        if (NRVTrace.TIMING_ENABLED) {
+            timingStats.eventCount += added;
         }
         return added;
     }

@@ -31,6 +31,19 @@ public class ShowFolderSaveConfirmation extends JDialog {
      * @param msg the message
      */
     public ShowFolderSaveConfirmation(Window owner, File file, String msg) {
+        this(owner, file, msg, null);
+    }
+
+    /**
+     * Constructs a new dialog that shows a message, optional folder button, and
+     * optional immediate playback button.
+     *
+     * @param owner the owner of the dialog, or null
+     * @param file the File
+     * @param msg the message
+     * @param playAction if non-null, adds a Playback button that runs this action
+     */
+    public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction) {
         super(owner);
         this.file = file;
         this.msg = msg;
@@ -62,6 +75,15 @@ public class ShowFolderSaveConfirmation extends JDialog {
             });
             buts.add(showFileLocationButton);
 
+        }
+        if (playAction != null) {
+            JButton playB = new JButton("Playback");
+            playB.setToolTipText("Play back this recording immediately");
+            playB.addActionListener((ActionEvent e) -> {
+                dispose();
+                playAction.run();
+            });
+            buts.add(playB);
         }
         JButton okB = new JButton("OK");
         okB.addActionListener((ActionEvent e) -> {

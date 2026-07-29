@@ -60,24 +60,38 @@ public class EventRateEstimator extends EventFilter2D {
 
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        if (!prepareForPacket(in)) {
+            return in; // empty packet, or measurement paused after bias change
+        }
+        for (BasicEvent e : in) {
+            addEvent(e, in);
+        }
+        return in;
+    }
+
+    /**
+     * Call before routing events into this estimator via {@link #addEvent} for a
+     * new packet (used by TypedEventRateEstimator to avoid copying events into
+     * temporary per-type packets).
+     *
+     * @param in the incoming packet (for timestamps / empty check)
+     * @return false if the packet should be skipped (null/empty or bias-change pause)
+     */
+    protected boolean prepareForPacket(EventPacket<? extends BasicEvent> in) {
         if (in == null || in.getSize() == 0) {
-            return in; // if there are no events, don't touch values since we don't have a new update time
+            return false; // if there are no events, don't touch values since we don't have a new update time
         }
         if (biasChanged && this.biasChangePauseS > 0) {
             final long timeSinceBiasChangeMs = System.currentTimeMillis() - biasChangedTimeMs;
             if (timeSinceBiasChangeMs < 1000 * this.biasChangePauseS) {
                 lastComputeTimestamp = in.getLastTimestamp();
-//                System.out.println(String.format("timeSinceBiasChangeMs=%d < %.0f",timeSinceBiasChangeMs,1000*this.biasChangePauseS));
-                return in;
+                return false;
             } else {
                 biasChanged = false;
             }
         }
         numEventsInLastPacket = 0;
-        for (BasicEvent e : in) {
-            addEvent(e, in);
-        }
-        return in;
+        return true;
     }
 
     /**

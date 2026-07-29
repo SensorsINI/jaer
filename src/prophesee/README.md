@@ -17,7 +17,7 @@ jAER driver for [Prophesee](https://www.prophesee.ai/) EVK4 HD (Sony IMX636, 128
 
 ## USB readout
 
-Prophesee uses **synchronous** `LibUsb.bulkTransfer()` in a dedicated reader thread (same approach as neuromorphic-drivers flush/poll). This differs from NRV, which pipelines multiple async USB buffers.
+Prophesee uses **pipelined async bulk transfer** (`USBTransferThread`) on endpoint `0x81`, same approach as NRV. Parsing runs on the transfer callback outside the `AEPacketRawPool` lock; only a brief lock is taken to commit parsed events. Sync `LibUsb.bulkTransfer()` remains in `Evk4BoardCommand` for flush/poll and control traffic.
 
 `Evt3Parser` decodes the EVT3 stream (port of Metavision / openeb `evt3_decoder.h`):
 
@@ -37,6 +37,8 @@ Optional diagnostics:
 
 - `-Djaer.prophesee.trace=true` — USB transfer FINER logs
 - `-Djaer.prophesee.trace.timestamps=true` — EVT3 timestamp FINE logs (2 s throttle)
+
+**Pipeline microbenchmarks** (compare EVK4 vs NRV under load): same flags as NRV (`-Djaer.usb.trace.pipeline=true`, `-Djaer.usb.trace.file=...`, `-Djaer.usb.trace.intervalMs=2000`). CSV rows use `driver=EVK4`; `usbReadNs` is ~0 on the async path (USB overlap is hidden behind parse). **Launch (Windows):** `scripts/run-jaer-usb-trace.bat evk4` writes `C:/temp/jaer-usb-pipeline-evk4.csv`; run `scripts/run-jaer-usb-trace.bat nrv` separately for the NRV file, then compare.
 
 ## Biasing (IMX636)
 
@@ -83,6 +85,8 @@ Init uses `EdfReserved7004 = 0x0000C5FF` (external trigger enabled in default co
 | `/jaer/hardware/Prophesee` | AE buffer size |
 | `/jaer/hardware` keys `Prophesee.AEReader.*` | FIFO size, buffer count |
 
+Default USB reader tuning (Control menu): **128 KiB FIFO** (`131072` bytes), **16 buffers**, async bulk on `0x81`. Stored prefs migrate once to these values when `Prophesee.AEReader.prefsVersion` is bumped.
+
 Legacy paths under `ch/unizh/ini/jaer/chip/prophesee` and the old hardware package node are migrated automatically.
 
 ## Comparison with NRV (same jAER tree)
@@ -91,7 +95,7 @@ Legacy paths under `ch/unizh/ini/jaer/chip/prophesee` and the old hardware packa
 |---|-------------|-------------------|
 | Resolution | 960×720 | 1280×720 |
 | Wire format | 4-byte S5KRC1S packets | 2-byte EVT3 |
-| USB read | Async multi-buffer | Sync bulk loop |
+| USB read | Async multi-buffer | Async multi-buffer |
 | Biasing | SDK `.txt` register scripts | idac_ctl bytes over EVK4 |
 | Timestamp wire | Ref ms + sub-µs packets | EVT3 TIME_HIGH/LOW tokens |
 

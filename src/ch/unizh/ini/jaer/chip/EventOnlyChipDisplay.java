@@ -38,7 +38,8 @@ public final class EventOnlyChipDisplay {
             canvas.addDisplayMethod(eventMethod);
         }
         final DisplayMethod active = canvas.getDisplayMethod();
-        if (active instanceof ChipRendererDisplayMethodRGBA || active != eventMethod) {
+        // Only replace RGBA or unset methods — leave 3D display methods (SpaceTime*, etc.) alone.
+        if (active == null || active instanceof ChipRendererDisplayMethodRGBA) {
             canvas.setDisplayMethod(eventMethod);
         }
         log.fine("Event-only display for " + chip.getName() + ": "

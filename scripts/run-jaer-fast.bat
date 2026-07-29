@@ -16,6 +16,11 @@ if errorlevel 1 (
 rem Dev launch: build\classes + lib/*.jar + jars/*.jar (skips ant ivy/compile on every start)
 set "JAER_CP=build\classes;lib\*;jars\*"
 
+rem OOM debug (uncomment as needed):
+rem -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=oom.hprof
+rem -XX:NativeMemoryTracking=summary
+rem -Djaer.memory.trace.intervalMs=60000
+
 java ^
   --add-exports java.base/java.lang=ALL-UNNAMED ^
   --add-exports java.desktop/sun.awt=ALL-UNNAMED ^

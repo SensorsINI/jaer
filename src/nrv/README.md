@@ -41,12 +41,26 @@ NRV timestamps are **absolute on the device**, unlike DAVIS 15-bit relative time
 Notes learned in practice:
 
 - Reference ms wraps about every **70 minutes**; internal math must use `long` (`refMs * 1000` overflows `int` after ~35 minutes).
-- jAER relative timestamps wrap at signed 32-bit (~2147 s) unless the user re-zeros with **`0`** (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV).
+- jAER relative timestamps are signed 32-bit µs. After ~2147 s of session span they **big-wrap** through about −2147 s and continue (same convention as DAVIS/DVX). Press **`0`** to re-zero at the current device time (`resetTimestampOrigin()` — software only; no DAVIS-style hardware reset on NRV).
 - Timestamp cadence in the USB stream is set by I2C **`TSTAMP_SUB_UNIT_VAL`** (`0x32B1:32B2`, LSB exposed in UI as `0x32B2`) and **`TSTAMP_REF_UNIT_VAL`** (`0x32B3:32B4`). Factory presets scale SUB with nominal output rate (e.g. 100 fps → `0x0B`, 1000 fps → `0x7D`); **lower SUB → more frequent sub-timestamp packets**.
 
-Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). With timing trace, each USB chunk also logs `NRV chunk ts span: … spanUs=…`. Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).
+Optional diagnostics: `-Djaer.nrv.trace.timestampOrder=true` logs the first non-monotonic timestamp per USB chunk. For timing-register experiments use `-Djaer.nrv.trace.timing=true` (throttled summary every 2 s by default; `-Djaer.nrv.trace.timing.intervalMs=1000` to change). Live timing I2C writes trigger parser ref/full resync (column position and jAER time origin preserved).
 
-**Sub-timestamp scaling:** 10-bit sub fields (ref/sub packets and column `0x04` embed) are scaled as `index × (TSTAMP_REF+1) / TSTAMP_SUB` µs within each ref ms (not raw µs when SUB is low). Column packets update `fullTimeStampUs` at each column address. Timing trace reports `maxChunkSpanUs` per interval.
+**Pipeline microbenchmarks** (compare NRV vs EVK4 under load):
+
+```text
+-Djaer.usb.trace.pipeline=true
+-Djaer.usb.trace.file=C:/temp/jaer-usb-pipeline-nrv.csv
+-Djaer.usb.trace.intervalMs=2000
+```
+
+**Launch with trace (Windows):** use `scripts/run-jaer-usb-trace.bat nrv` (NRV) or `scripts/run-jaer-usb-trace.bat evk4` (Prophesee EVK4). Each camera writes a separate CSV under `C:/temp/` for later comparison. Or use `scripts/run-jaer-fast.bat` and append `-Djaer.usb.trace.pipeline=true` etc. **Do not** pass only trace flags via `ant -Drun.jvmargs=...` — that **replaces** the default `run.jvmargs` from `nbproject/project.properties` and drops required flags such as `-Djogl.disable.openglcore`, `-Djava.library.path=jars`, and `-Xmx10g`. Missing JOGL flags often shows `GLProfile[GL4bc]` and `makeCanvas` / `Unable to determine GraphicsConfiguration` on Windows.
+
+If using `ant run`, include the full JVM argument set from `project.properties` **plus** trace flags in one `-Drun.jvmargs="..."` string.
+
+Logs every 2 s (INFO): chunks/s, MB/s, keps, and average µs for `parse`, `commitLock`, `limitLock`, `byteCopy`, `arrayCopy`. CSV rows are per USB chunk with thread name. NRV and EVK4 both use async `USBTransferThread` (threads `NRVAEReaderThread` / `PropheseeAEReader`); `usbReadNs` is only non-zero on legacy sync paths.
+
+**Sub-timestamp decode (matches NRV SDK `PacketParser.cpp`):** dedicated ref/sub packets (`header==0x08`, `P=0`) update `fullTimeStampUs` using the 10-bit sub field as **microseconds within the ref ms** (`refMs×1000 + sub`). Column address packets (`0x04`) set `posX` only — the embedded 10-bit sub field is **not** applied (SDK behaviour). Many events in one column share the same output timestamp until the next ref/sub packet.
 
 ## Biasing and settings files
 
@@ -156,6 +170,25 @@ Beyond the full register table (`NRVControlPanel`), the user panel maps sliders 
 | `0x321D:321E` | `DTAG_FRM_MARGIN_r` MSB:LSB | *(part of scan-rate block)* | Padding term (×2^12×clk); not full period alone |
 | `0x32B1:32B2` | `TSTAMP_SUB_UNIT_VAL` MSB:LSB | Sub-timestamp + auto with scan rate | Lower LSB → denser sub-timestamp packets |
 | `0x32B3:32B4` | `TSTAMP_REF_UNIT_VAL` | *(from file)* | Sub-µs field span within each ref ms |
+
+**Pixel Biases tab** — experimental sliders for unlabeled registers in the contiguous `0x0160`–`0x016B` block from NRV’s partial sheet (`NRV Pixel bias registers.xlsx`). Factory presets only write `0x0166`–`0x0168`; the rest are seeded at sheet defaults and written live when you move a slider. Slider moves support **Undo/Redo** (Biases toolbar; one undo unit per drag). **Revert** reloads the last settings `.txt` and restores these registers to sheet defaults.
+
+| Register | Sheet default | Min–Max | Notes |
+|----------|---------------|---------|-------|
+| `0x0160` | `0x07` | `0x00`–`0x07` | unlabeled |
+| `0x0161` | `0x1F` | `0x00`–`0x1F` | more OFF events at low value |
+| `0x0162` | `0x0F` | `0x00`–`0x3F` | unlabeled |
+| `0x0163` | `0x0F` | `0x00`–`0x3F` | unlabeled |
+| `0x0164` | `0x07` | `0x00`–`0x3F` | unlabeled |
+| `0x0165` | `0x03` | `0x00`–`0x07` | unlabeled |
+| `0x0166` | `0x1F` (reset) | 6-bit | **known** `EVTH_REF_LSB` — User-Friendly / table |
+| `0x0167` | `0x3F` (reset) | 6-bit | **known** `EVTH_ON_LSB` — Event threshold / balance |
+| `0x0168` | `0x0F` (reset) | 6-bit | **known** `EVTH_OFF_LSB` — Event threshold / balance |
+| `0x0169` | `0x0F` | `0x00`–`0x3F` | unlabeled |
+| `0x016A` | `0x1D` | `0x00`–`0x3F` | more ON events at low value |
+| `0x016B` | `0x03` | `0x00`–`0x07` | unlabeled |
+
+Sheet defaults for `0x0166`–`0x0168` are silicon reset values; factory `.txt` presets typically use `0x0F` / `0x07` / `0x1F` instead.
 
 Slider tweaks use `PotTweaker` ratios (up to 8×) around LSB values captured when a settings file is loaded; LSB writes are clamped to `0x01`–`0x3F`. Direct register edits are available in the full table with undo support.
 

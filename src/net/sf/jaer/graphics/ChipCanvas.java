@@ -123,6 +123,17 @@ public class ChipCanvas implements GLEventListener, Observer {
 
     protected static final Color selectedPixelColor = Color.blue;
     protected GLUquadric selectedQuad;
+    /** Reference chip max dimension (Davis346 width) for selected-pixel marker scaling. */
+    private static final int SPIKE_MARKER_REF_MAX_SIZE = 346;
+    /** TextRenderer atlas size (screen glyph resolution); drawing scale sets chip-pixel size. */
+    private static final int SPIKE_MARKER_FONT_ATLAS = 24;
+    /** Target text height in chip pixels on Davis346 (matches annotation heuristics). */
+    private static final float SPIKE_MARKER_TEXT_CHIP_PX_REF = 8f;
+    /** Chip-size scale relative to Davis346; computed once when size is known. */
+    private float spikeMarkerScale = 1f;
+    /** draw3D scale so text height ≈ {@link #SPIKE_MARKER_TEXT_CHIP_PX_REF} * spikeMarkerScale. */
+    private float spikeMarkerTextDrawScale = SPIKE_MARKER_TEXT_CHIP_PX_REF / SPIKE_MARKER_FONT_ATLAS;
+    private TextRenderer spikeMarkerTextRenderer = null;
     public BufferStrategy strategy;
     /**
      * the translation of the actual chip drawing area in the glCanvas, in
@@ -161,6 +172,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     private Point mdStPt = null; // start point of drag in screen coordinates
     private Vec drStPx = null; // start point of drag in px, arb origin
     private Point origin3dMouseDragStartPoint = new Point(0, 0);
+    /** While true, 3D display methods may render axes only (no events) during drag. */
+    private boolean interactionPreview3d = false;
 
     /**
      * Flag to disable annotation for methods such as data file preview in file
@@ -180,6 +193,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         origin3dx = prefs.getInt("ChipCanvas.origin3dx", 0);
         origin3dy = prefs.getInt("ChipCanvas.origin3dy", 0);
         pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
+        updateSpikeMarkerScale();
 
         // make the glCanvas
         try {
@@ -375,19 +389,39 @@ public class ChipCanvas implements GLEventListener, Observer {
      * cycle to the next display method
      */
     public void cycleDisplayMethod() {
-        // find index of current display method
-        int idx = 0;
-        for (DisplayMethod m : getDisplayMethods()) {
-            if (m == getDisplayMethod()) {
-                break;
-            }
-            idx++;
+        if (getDisplayMethods().isEmpty()) {
+            return;
         }
-        idx++;
-        if (idx >= getDisplayMethods().size()) {
-            idx = 0;
-        }
+        int idx = indexOfCurrentDisplayMethod();
+        idx = (idx + 1) % getDisplayMethods().size();
         setDisplayMethod(idx);
+    }
+
+    /**
+     * Index of the active display method in {@link #getDisplayMethods()}.
+     * Matches by reference first, then by class (startup may use a duplicate
+     * instance from {@link net.sf.jaer.chip.Chip2D#getPreferredDisplayMethod()}).
+     */
+    private int indexOfCurrentDisplayMethod() {
+        final DisplayMethod current = getDisplayMethod();
+        if (current == null) {
+            return 0;
+        }
+        int i = 0;
+        for (DisplayMethod m : getDisplayMethods()) {
+            if (m == current) {
+                return i;
+            }
+            i++;
+        }
+        i = 0;
+        for (DisplayMethod m : getDisplayMethods()) {
+            if (m.getClass().equals(current.getClass())) {
+                return i;
+            }
+            i++;
+        }
+        return 0;
     }
 
     /**
@@ -492,7 +526,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         // checkGLError(gl, glu, "after " + getDisplayMethod() + ".display()");
         checkGLError(gl, glu, "after DisplayMethod.display()");
         showSpike(gl);
-        annotate(drawable);
+        try {
+            annotate(drawable);
+        } catch (OutOfMemoryError e) {
+            net.sf.jaer.util.MemoryDiagnostics.logOomContext(log, "OutOfMemoryError during FrameAnnotator annotations:", e);
+            throw e;
+        }
         checkGLError(gl, glu, "after FrameAnnotator (EventFilter) annotations");
         if ((getChip() instanceof AEChip) && (((AEChip) chip).getFilterChain() != null)
                 && (((AEChip) chip).getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
@@ -785,6 +824,18 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     /**
+     * True while the user is dragging to rotate or pan a 3D view (mouse button
+     * held). Display methods can skip heavy geometry and draw axes only.
+     */
+    public boolean isInteractionPreview3d() {
+        return interactionPreview3d;
+    }
+
+    private void setInteractionPreview3d(boolean preview) {
+        interactionPreview3d = preview;
+    }
+
+    /**
      * Used for active rendering. You call this when you want to actively render
      * the frame. Internally, this calls the display() method of the drawable,
      * which by callback to display(GLAutoDrawable). If openGL is disabled, then
@@ -1016,32 +1067,65 @@ public class ChipCanvas implements GLEventListener, Observer {
      * number of spikes in this 'frame'
      */
     protected void showSpike(final GL2 gl, final int x, final int y, int size) {
-        // circle
-        gl.glPushMatrix();
-        gl.glColor4f(0, 0, 1f, 0f);
-        if (size > (chip.getMinSize() / 3)) {
-            size = chip.getMinSize() / 3;
+        // Color4f alpha=0 was invisible whenever GL_BLEND was left on (common after
+        // texture/TextRenderer paths used by event-only ChipRendererDisplayMethod).
+        final float scale = spikeMarkerScale;
+        gl.glPushAttrib(GL2.GL_ENABLE_BIT | GL2.GL_COLOR_BUFFER_BIT | GL2.GL_CURRENT_BIT | GL2.GL_TEXTURE_BIT);
+        try {
+            gl.glDisable(GL.GL_DEPTH_TEST);
+            gl.glDisable(GL.GL_BLEND);
+            gl.glDisable(GL2.GL_ALPHA_TEST);
+            gl.glDisable(GL.GL_TEXTURE_2D);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
+            gl.glColor3f(0, 0, 1f);
+
+            // Diameter grows with spike count: 0→1×, 1→2×, 2→3× base (was Math.max(size,2)
+            // which kept 0/1/2 identical). Base radius is spikeMarkerScale chip pixels.
+            float radius = (size + 1) * scale;
+            final float maxRadius = chip.getMinSize() / 3f;
+            if (radius > maxRadius) {
+                radius = maxRadius;
+            }
+
+            gl.glPushMatrix();
+            gl.glTranslatef(x + .5f, y + .5f, 0);
+            selectedQuad = glu.gluNewQuadric();
+            glu.gluQuadricDrawStyle(selectedQuad, GLU.GLU_FILL);
+            // Filled disk so diameter change is obvious (thin ring growth is hard to see)
+            glu.gluDisk(selectedQuad, 0, radius, 16, 1);
+            glu.gluDeleteQuadric(selectedQuad);
+            gl.glPopMatrix();
+
+            final float fs = Math.max(1f, scale); // text offset in chip pixels
+            if (spikeMarkerTextRenderer == null) {
+                spikeMarkerTextRenderer = new TextRenderer(new Font("SansSerif", Font.PLAIN, SPIKE_MARKER_FONT_ATLAS), true, true);
+            }
+            final String label = x + "," + y;
+            spikeMarkerTextRenderer.begin3DRendering();
+            spikeMarkerTextRenderer.setColor(selectedPixelColor);
+            spikeMarkerTextRenderer.draw3D(label, x + fs, y + fs, 0, spikeMarkerTextDrawScale);
+            spikeMarkerTextRenderer.end3DRendering();
+        } finally {
+            gl.glPopAttrib();
         }
-        gl.glTranslatef(x + .5f, y + .5f, -1);
-        selectedQuad = glu.gluNewQuadric();
-        glu.gluQuadricDrawStyle(selectedQuad, GLU.GLU_FILL);
-        glu.gluDisk(selectedQuad, size, size + 1, 16, 1);
-        glu.gluDeleteQuadric(selectedQuad);
-        gl.glPopMatrix();
-
-        final int font = GLUT.BITMAP_HELVETICA_18;
-
-        gl.glPushMatrix();
-
-        final int FS = 1; // distance in pixels of text from selected pixel
-
-        gl.glRasterPos3f(x + FS, y + FS, 0);
-        glut.glutBitmapString(font, x + "," + y);
-
-        gl.glPopMatrix();
 
         checkGLError(gl, glu, "showSpike");
 
+    }
+
+    /**
+     * Sets selected-pixel marker scale from {@link Chip2D#getMaxSize()} relative to
+     * Davis346 (346). Called at construction and when chip size changes.
+     */
+    private void updateSpikeMarkerScale() {
+        int max = (chip != null) ? chip.getMaxSize() : SPIKE_MARKER_REF_MAX_SIZE;
+        if (max <= 0) {
+            max = SPIKE_MARKER_REF_MAX_SIZE;
+        }
+        spikeMarkerScale = max / (float) SPIKE_MARKER_REF_MAX_SIZE;
+        // TextRenderer font size is atlas pixels; draw3D scale yields chip-pixel height.
+        spikeMarkerTextDrawScale = (SPIKE_MARKER_TEXT_CHIP_PX_REF * spikeMarkerScale) / SPIKE_MARKER_FONT_ATLAS;
+        spikeMarkerTextRenderer = null; // recreate lazily (atlas size is fixed; reset anyway)
     }
 
     /**
@@ -1092,6 +1176,9 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public void unzoom() {
         getZoom().unzoom();
+        if (displayMethod instanceof DisplayMethod3D) {
+            ((DisplayMethod3D) displayMethod).unzoomToFitVolume();
+        }
         repaint(100);
     }
 
@@ -1118,6 +1205,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         if ((o == chip) && (arg instanceof String)) {
             if (arg.equals(Chip2D.EVENT_SIZEX) || arg.equals(Chip2D.EVENT_SIZEY)) {
                 ZCLIP = chip.getMaxSize();
+                updateSpikeMarkerScale();
                 unzoom();
             }
         }
@@ -1667,7 +1755,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             return String.format("Zoom: fact=%.2f, pan=%s, drag=%s, clipArea=%s", getZoomFactor(), panPx, dragPx, getClipArea());
         }
 
-        private void applyProjection(final GL2 gl) {
+        public void applyProjection(final GL2 gl) {
             if (getClipArea().isDirty()) {
                 getClipArea().computeBounds();
             }
@@ -1905,6 +1993,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                 final int lineNumber = trace[2].getLineNumber();
                 log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg + " at "
                         + className + "." + methodName + " (line " + lineNumber + ")");
+                if (error == GL.GL_OUT_OF_MEMORY) {
+                    net.sf.jaer.util.MemoryDiagnostics.logSummaryRateLimited(log,
+                            "GL_OUT_OF_MEMORY (GPU/native) during rendering:");
+                }
             } else {
                 log.warning("GL error number " + error + " " + glu.gluErrorString(error) + " : " + msg);
             }
@@ -2086,6 +2178,12 @@ public class ChipCanvas implements GLEventListener, Observer {
         @Override
         public void mousePressed(final MouseEvent evt) {
             dragging = false;
+            if (is3DEnabled()) {
+                final int btn = evt.getButton();
+                if (btn == MouseEvent.BUTTON1 || btn == MouseEvent.BUTTON3) {
+                    setInteractionPreview3d(true);
+                }
+            }
             if (evt.getButton() == MouseEvent.BUTTON3) {
                 dragging = true;
                 origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
@@ -2106,6 +2204,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         @Override
         public void mouseReleased(final MouseEvent evt) {
             dragging=false;
+            setInteractionPreview3d(false);
             if (is3DEnabled()) {
                 log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
                         + getOrigin3dx() + " y=" + getOrigin3dy());
@@ -2125,6 +2224,10 @@ public class ChipCanvas implements GLEventListener, Observer {
             final int screenX = e.getX();
             final int screenY = e.getY();
             final int but1mask = InputEvent.BUTTON1_DOWN_MASK, but3mask = InputEvent.BUTTON3_DOWN_MASK;
+            if (is3DEnabled()
+                    && ((e.getModifiersEx() & but1mask) == but1mask || (e.getModifiersEx() & but3mask) == but3mask)) {
+                setInteractionPreview3d(true);
+            }
             if ((e.getModifiersEx() & but1mask) == but1mask) {
                 if (is3DEnabled()) {
                     final float maxAngle = 180f;
@@ -2140,6 +2243,10 @@ public class ChipCanvas implements GLEventListener, Observer {
                     // chip coordinates (transformation applied). therefore here we set origin in pixel coordinates
                     // based on mouse
                     // position in window.
+                    if (mdStPt == null) {
+                        mdStPt = new Point(screenX, screenY);
+                        origin3dMouseDragStartPoint.setLocation(origin3dx, origin3dy);
+                    }
                     float dx = screenX - mdStPt.x;
                     float dy = screenY - mdStPt.y;
                     origin3dx = origin3dMouseDragStartPoint.x + Math.round((getChip().getMaxSize() * ((float) dx)) / glCanvas.getWidth());

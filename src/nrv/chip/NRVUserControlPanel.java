@@ -297,24 +297,12 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         if (updatingFromConfig) {
             return;
         }
-        final int hz = scanRateSlider.getValue();
-        if (scanRateSlider.getValueIsAdjusting()) {
-            scanRateValueLabel.setText(hz + " Hz (preview)");
-            updateScanRateDetailPreview(hz);
-            return;
-        }
-        config.setScanRateHz(hz);
+        config.setScanRateHz(scanRateSlider.getValue());
         updateValueLabels();
     }
 
     private void onTimestampSubChanged() {
         if (updatingFromConfig) {
-            return;
-        }
-        if (timestampSubSlider.getValueIsAdjusting()) {
-            timestampSubValueLabel.setText(String.format("<html>0x32B2 = 0x%02X<br>(file: 0x%02X)",
-                    timestampSubSlider.getValue(), config.getBaselineTimestampSub()));
-            updateSubTimestampTimingLabel(timestampSubSlider.getValue());
             return;
         }
         config.setTimestampSubUnit(timestampSubSlider.getValue());
@@ -363,12 +351,6 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
                 config.getTimestampSubUnitCombined(),
                 config.getBaselineTimestampSub()));
         updateSubTimestampTimingLabel(config.getTimestampSubUnit());
-    }
-
-    private void updateScanRateDetailPreview(int hz) {
-        scanRateDetailLabel.setText(String.format(
-                "<html>Preview ~%d Hz; TSTAMP_SUB→0x%02X.",
-                hz, NRVConfig.timestampSubForScanRateHz(hz)));
     }
 
     private void updateScanRateDetailLabel() {

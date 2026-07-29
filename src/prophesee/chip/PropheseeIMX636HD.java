@@ -61,16 +61,13 @@ public class PropheseeIMX636HD extends AETemporalConstastRetina implements Seria
     @Override
     public DisplayMethod getPreferredDisplayMethod() {
         EventOnlyChipDisplay.clearRgbaPreference(this);
-        return new ChipRendererDisplayMethod(getCanvas());
+        return super.getPreferredDisplayMethod();
     }
 
     @Override
     public void setPreferredDisplayMethod(Class<? extends DisplayMethod> clazz) {
         if (clazz == null || ChipRendererDisplayMethodRGBA.class.isAssignableFrom(clazz)) {
             EventOnlyChipDisplay.clearRgbaPreference(this);
-            return;
-        }
-        if (!ChipRendererDisplayMethod.class.isAssignableFrom(clazz)) {
             return;
         }
         super.setPreferredDisplayMethod(clazz);
