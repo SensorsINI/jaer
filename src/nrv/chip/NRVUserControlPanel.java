@@ -397,12 +397,11 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         final float padUs = config.getFrmMarginPaddingUsForMargin(margin);
         final String pad = Float.isNaN(padUs) ? "—" : String.format("%.2f ms", padUs / 1000f);
         scanRateDetailLabel.setText(String.format(
-                "<html>FRM_MARGIN 0x%04X (pad %s)<br>SELX 0x%02X, SENSE 0x%02X, COL 0x%02X, MODE 0x%02X",
+                "<html>FRM_MARGIN 0x%04X (pad %s)<br>SELX 0x%02X, SENSE 0x%02X, COL 0x%02X",
                 margin, pad,
                 config.getRegisterValue(NRVConfig.REG_DTAG_SELX),
                 config.getRegisterValue(NRVConfig.REG_DTAG_SENSE),
-                config.getRegisterValue(NRVConfig.REG_DTAG_COL_MARGIN),
-                config.getRegisterValue(NRVConfig.REG_DTAG_MODE)));
+                config.getRegisterValue(NRVConfig.REG_DTAG_COL_MARGIN)));
     }
 
     private void updateThresholdReadoutLabels() {

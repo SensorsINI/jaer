@@ -129,7 +129,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
      * {@code DTAG_FRM_MARGIN} alone cannot reach 1–2 kHz under the ×2^12 padding formula.
      */
     private static final int[] SCAN_RATE_REGS = {
-            0x320C, 0x3210, 0x3211, 0x3212, 0x3213, 0x3214, 0x3215,
+            0x3210, 0x3211, 0x3212, 0x3213, 0x3214, 0x3215,
             REG_DTAG_SELX, REG_DTAG_SENSE, REG_DTAG_AY, REG_DTAG_AY_RST_GAP, REG_DTAG_APS_RST,
             REG_DTAG_COL_MARGIN, REG_DTAG_FRM_MARGIN_MSB, REG_DTAG_FRM_MARGIN_LSB
     };
@@ -158,11 +158,11 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     private static final int[] SCAN_ANCHOR_HZ = {100, 1000, 2000};
     private static final int[][] SCAN_ANCHOR_REGS = {
             // 100 (CX3 slow block; also used by 300/600 scan section)
-            {0x1D, 0x1E, 0x00, 0x07, 0x1D, 0x00, 0x00, 0x04, 0x1C, 0x0C, 0x05, 0x07, 0x02, 0x00, 0x0F},
+            {0x1E, 0x00, 0x07, 0x1D, 0x00, 0x00, 0x04, 0x1C, 0x0C, 0x05, 0x07, 0x02, 0x00, 0x0F},
             // 1000 CX3
-            {0x1D, 0x19, 0x00, 0x00, 0x04, 0x00, 0x00, 0x1A, 0x1B, 0x0C, 0x14, 0x1C, 0x02, 0x00, 0x02},
+            {0x19, 0x00, 0x00, 0x04, 0x00, 0x00, 0x1A, 0x1B, 0x0C, 0x14, 0x1C, 0x02, 0x00, 0x02},
             // 2000 FX10
-            {0x7D, -1, -1, -1, -1, -1, -1, 0x04, 0x02, 0x0C, 0x05, 0x07, 0x04, 0x00, 0x01}
+            {-1, -1, -1, -1, -1, -1, 0x04, 0x02, 0x0C, 0x05, 0x07, 0x04, 0x00, 0x01}
     };
 
     private NRVControlPanel controlPanel;
@@ -760,14 +760,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
             if (values[i] < 0) {
                 continue;
             }
-            int value = values[i] & 0xFF;
-            if (SCAN_RATE_REGS[i] == REG_DTAG_MODE) {
-                // These mode bits are controlled independently by the user-friendly controls.
-                value = (value & ~(DTAG_GLOBAL_RESET_MODE_ENABLE_MASK | DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK))
-                        | (getRegisterValue(REG_DTAG_MODE)
-                                & (DTAG_GLOBAL_RESET_MODE_ENABLE_MASK | DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK));
-            }
-            writeOrCreateRegister(SCAN_RATE_REGS[i], value);
+            writeOrCreateRegister(SCAN_RATE_REGS[i], values[i] & 0xFF);
         }
     }
 
