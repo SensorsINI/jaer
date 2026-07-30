@@ -661,15 +661,15 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         } // extractPacket
 
         /**
-         * Default: wrap legacy {@link #extractPacket} in a {@link PacketBundle}
-         * (same as color Davis). Typed APS→{@link FramePacket} demux was
-         * producing empty mid-frame bundles and APS desync warnings, so live
-         * frames/events looked dead. Enable typed path with
-         * {@code -Djaer.typedExtractBundle=true}.
+         * jAER 3.0 hard break: demux raw AE into typed {@link PacketBundle}
+         * (DVS → {@link PolarityEvent}, APS → {@link FramePacket}, IMU →
+         * {@link ImuPacket}). Does not emit mixed {@link ApsDvsEventPacket}.
+         * Legacy {@link #extractPacket} remains for tools that still need it.
+         * Opt out with {@code -Djaer.legacyExtractBundle=true}.
          */
         @Override
         synchronized public PacketBundle extractBundle(final AEPacketRaw in) {
-            if (!Boolean.getBoolean("jaer.typedExtractBundle")) {
+            if (Boolean.getBoolean("jaer.legacyExtractBundle")) {
                 if (reusedBundle == null) {
                     reusedBundle = new PacketBundle();
                 } else {
@@ -687,8 +687,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         }
 
         /**
-         * jAER 3.0 typed demux: APS → {@link FramePacket}, DVS →
-         * {@link PolarityEvent}, IMU → {@link ImuPacket}. Experimental.
+         * Typed demux implementation (default {@link #extractBundle} path).
          */
         synchronized public PacketBundle extractBundleTyped(final AEPacketRaw in) {
             if (reusedBundle == null) {
@@ -732,10 +731,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                             i += IMUSample.SIZE_EVENTS - 1;
                             incompleteIMUSampleException = null;
                             imuSample = possibleSample;
-                            if (active == ActiveKind.POLARITY) {
-                                flushPolarity(reusedBundle, bundlePolarityOut);
-                                polItr = bundlePolarityOut.outputIterator();
-                            }
+                            // Do not flush or reset polarity here: outputIterator() resets size to 0,
+                            // and flushing per-IMU left only the first DVS chunk for render/stats.
                             active = ActiveKind.IMU;
                             bundleImuOut.appendCopy(possibleSample);
                             continue;
@@ -754,14 +751,6 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         }
                     }
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
-                    if (active == ActiveKind.IMU) {
-                        flushImu(reusedBundle, bundleImuOut);
-                        // New polarity working buffer after IMU flush
-                        if (bundlePolarityOut == null) {
-                            bundlePolarityOut = new EventPacket<>(PolarityEvent.class);
-                        }
-                        polItr = bundlePolarityOut.outputIterator();
-                    }
                     active = ActiveKind.POLARITY;
                     final PolarityEvent e = polItr.nextOutput();
                     e.reset();
@@ -776,15 +765,10 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
                     autoshotEventsSinceLastShot++;
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_APS) {
-                    // Do NOT flush polarity on every APS sample. DVS/APS are finely interleaved in the
-                    // raw USB stream; flushing allocated a new EventPacket per transition and OOMed
-                    // (see flushPolarity → EventPacket.<init>). Keep one polarity buffer for the
-                    // whole extractBundle; frames are added as they complete.
-                    if (active == ActiveKind.IMU) {
-                        flushImu(reusedBundle, bundleImuOut);
-                    }
-                    if (active == ActiveKind.POLARITY) {
-                        active = ActiveKind.NONE; // polarity events retained in bundlePolarityOut
+                    // Do NOT flush polarity on APS (interleaved with DVS). Keep one polarity buffer
+                    // for the whole extractBundle; frames are added as they complete.
+                    if (active == ActiveKind.POLARITY || active == ActiveKind.IMU) {
+                        active = ActiveKind.NONE;
                     }
 
                     final int timestamp = timestamps[i];
@@ -829,19 +813,22 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                         } else {
                             exposureDurationUs = (int) (davisConfig.getExposureDelayMs() * 1000);
                         }
-                        increaseFrameCount(1);
                     }
 
                     final FramePacket frame = frameAssembler.process(data & DavisChip.ADC_DATA_MASK, timestamp, x, y,
                             readoutType, pixFirst, pixLast, rollingShutter);
                     if (frame != null) {
                         reusedBundle.add(frame);
+                        increaseFrameCount(1);
+                        if (frame.getExposureUs() > 0) {
+                            exposureDurationUs = frame.getExposureUs();
+                        }
                     }
                 }
             }
 
-            // Flush remaining typed packets once at end
-            if (active == ActiveKind.IMU) {
+            // Flush remaining typed packets once at end (single polarity packet for the whole slice)
+            if (bundleImuOut != null && !bundleImuOut.isEmpty()) {
                 flushImu(reusedBundle, bundleImuOut);
             }
             if (bundlePolarityOut != null && !bundlePolarityOut.isEmpty()) {

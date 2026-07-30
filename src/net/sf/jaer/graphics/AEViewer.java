@@ -2024,7 +2024,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 renderPacket(cookedPacket);
                 return;
             }
-            if (!isRenderBlankFramesEnabled() && bundle.getNumPolarityEvents() == 0 && bundle.getFirstFramePacket() == null) {
+            if (!isRenderBlankFramesEnabled() && bundle.getNumPolarityEvents() == 0
+                    && bundle.getFirstFramePacket() == null && bundle.getFirstImuPacket() == null) {
                 return;
             }
             if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
@@ -5190,9 +5191,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * Starts logging AE data to a file.
      *
      * @param filename the filename to log to, including all path information.
-     * Filenames without path are logged to the startup folder. The default
-     * extension of AEDataFile.DATA_FILE_EXTENSION is appended if there is no
-     * extension.
+     * Filenames without path are logged to the startup folder. If there is no
+     * extension, appends {@code .aedat4} for AEDAT-4 or {@code .aedat2} for
+     * AEDAT-2 (legacy {@code .aedat}/{@code .dat} still accepted if supplied).
      *
      * @param dataFileVersionNum the version number string, e.g. "2.0", "3.0",
      * or "3.1". ("2.0" is standard AEDAT file format for pre-caer records and
@@ -5212,12 +5213,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)
                 || filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4);
-        if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION)
-                && !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
-                && !filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)
-                && !filename.toLowerCase().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)) {
-            // allow both extensions for  backward compatibility
-            String extension = aedat4 ? AEDataFile.DATA_FILE_EXTENSION_AEDAT4 : AEDataFile.DATA_FILE_EXTENSION;
+        if (!AEDataFile.hasDataFileExtension(filename)) {
+            String extension = AEDataFile.extensionForVersion(aedat4
+                    ? AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4
+                    : AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
             filename = filename + extension;
             log.info("Appended extension " + extension + " to make filename=" + filename);
         }
@@ -5532,6 +5531,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingMenuItem.setText("Start logging data");
             try {
                 log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()) + " to file " + loggingFile);
+                final boolean wasAedat4 = aedat4LoggingOutputStream != null;
+                final String preferredSaveExt = wasAedat4
+                        ? AEDataFile.DATA_FILE_EXTENSION_AEDAT4
+                        : AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
                 Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream : loggingOutputStream;
                 synchronized (streamLock) {
                     setLoggingEnabled(false);
@@ -5555,14 +5558,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     String fn
                             = loggingFile.getName();
-                    //                System.out.println("fn="+fn);
-                    // strip off .aedat to make it easier to appendOfEventReferences comment to filename
-                    int extInd = fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION);
+                    // strip known data extension so user can append a comment in the basename
                     String base = fn;
-                    if (extInd > 0) {
-                        base = fn.substring(0, extInd); // maybe trying to save old .dat extension
-                    }//                System.out.println("base="+base);
-                    // we'll appendOfEventReferences the extension back later
+                    String fnLower = fn.toLowerCase();
+                    for (String ext : new String[]{
+                        AEDataFile.DATA_FILE_EXTENSION_AEDAT4,
+                        AEDataFile.DATA_FILE_EXTENSION_AEDAT2,
+                        AEDataFile.DATA_FILE_EXTENSION,
+                        AEDataFile.OLD_DATA_FILE_EXTENSION}) {
+                        if (fnLower.endsWith(ext)) {
+                            base = fn.substring(0, fn.length() - ext.length());
+                            break;
+                        }
+                    }
+                    // we'll append the preferred extension back later
                     chooser.setSelectedFile(new File(base));
                     //                chooser.setAccessory(new ResetFileButton(base,chooser));
                     chooser.setDialogType(JFileChooser.SAVE_DIALOG);
@@ -5591,9 +5600,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 chooser.setDialogTitle("Save logged data (restored default filename)");
                                 continue;
                             }
-                            // make sure filename ends with .aedat
-                            if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
-                                newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
+                            // ensure preferred extension for this recording format
+                            if (!AEDataFile.hasDataFileExtension(newFile.getName())) {
+                                newFile = new File(newFile.getCanonicalPath() + preferredSaveExt);
                             }
                             // we'll rename the logged data file to the selection
                             lastLoggingFolder = chooser.getCurrentDirectory();
@@ -7039,6 +7048,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 for (File f : files) {
                     if (f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)
                             || f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT2)
+                            || f.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)
                             || f.getName().endsWith(AEDataFile.INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)
                             || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)

@@ -338,6 +338,9 @@ public class DavisRenderer extends AEChipRenderer {
         if (frame == null || frame.isEmpty() || skipFrame()) {
             return;
         }
+        if (getChip() instanceof DavisBaseCamera) {
+            computeHistograms = ((DavisBaseCamera) chip).isShowImageHistogram() || ((DavisChip) chip).isAutoExposureEnabled();
+        }
         checkPixmapAllocation();
         startFrame((int) frame.getTimestampStartUs());
         final float[] buf = pixBuffer.array();
@@ -346,6 +349,9 @@ public class DavisRenderer extends AEChipRenderer {
         final short[] pix = frame.getPixels();
         minValue = Float.MAX_VALUE;
         maxValue = Float.MIN_VALUE;
+        if (computeHistograms) {
+            nextHist.reset();
+        }
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 final int val = pix[y * w + x] & 0xffff;
@@ -354,6 +360,17 @@ public class DavisRenderer extends AEChipRenderer {
                 }
                 if (val > maxValue) {
                     maxValue = val;
+                }
+                if (computeHistograms) {
+                    if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
+                        nextHist.add(val);
+                    } else {
+                        float d = (1 - Math.abs(((float) x - (sizeX / 2)) / sizeX)) + Math.abs(((float) y - (sizeY / 2)) / sizeY);
+                        d *= d;
+                        if (random.nextFloat() > d) {
+                            nextHist.add(val);
+                        }
+                    }
                 }
                 final float fval = normalizeFramePixel(val);
                 final int index = getPixMapIndex(x, y);
@@ -367,6 +384,12 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
         endFrame((int) frame.getTimestampEndUs());
+        if (computeHistograms) {
+            final SimpleHistogram tmp = currentHist;
+            currentHist = nextHist;
+            nextHist = tmp;
+            nextHist.reset();
+        }
         renderedApsFrame = true;
         if (chip instanceof DavisChip) {
             ((DavisChip) chip).controlExposure();

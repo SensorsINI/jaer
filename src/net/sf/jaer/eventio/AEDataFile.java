@@ -24,8 +24,19 @@ public interface AEDataFile {
     public enum Type {DataFile, IndexFile};  // TODO not used yet, should include permissible extensions, data file headers, FileFilters, etc
 
 
-    /** file extension for data files, including ".", e.g. ".aedat" */
-    public static final String DATA_FILE_EXTENSION = ".aedat", DATA_FILE_EXTENSION_AEDAT2=".aedat2", DATA_FILE_EXTENSION_AEDAT4=".aedat4";  // changed from .dat Apr 2010
+    /**
+     * Legacy AEDAT-2 extension ({@code .aedat}), still accepted on open.
+     * Prefer {@link #DATA_FILE_EXTENSION_AEDAT2} when writing AEDAT-2 so files are
+     * distinguishable from AEDAT-4 on disk.
+     */
+    public static final String DATA_FILE_EXTENSION = ".aedat";
+    /** Preferred extension when writing AEDAT-2.0 files. */
+    public static final String DATA_FILE_EXTENSION_AEDAT2 = ".aedat2";
+    /**
+     * Extension when writing AEDAT-4.0 files. AEDAT-4 also starts with the magic
+     * header line {@code #!AER-DAT4.0\r\n} (iniVation AEDAT 4.0 spec).
+     */
+    public static final String DATA_FILE_EXTENSION_AEDAT4 = ".aedat4";
     public static final String OLD_DATA_FILE_EXTENSION=".dat";
     /** file extension for index files that contain information about a set of related data files, ".adidx", including '.'. */
     public static final String INDEX_FILE_EXTENSION = ".aeidx"; // changed from .dat Apr 2010
@@ -47,6 +58,29 @@ public interface AEDataFile {
     public static final String DATA_FILE_VERSION_NUMBER_AEDAT4 = "4.0";
     /** The default format version number string */
     public static final String DATA_FILE_VERSION_NUMBER = DATA_FILE_VERSION_NUMBER_AEDAT4;
+
+    /**
+     * Preferred filename extension for a new recording of the given AEDAT version
+     * string (e.g. {@code "2.0"} → {@code .aedat2}, {@code "4.0"} → {@code .aedat4}).
+     */
+    public static String extensionForVersion(String dataFileVersionNum) {
+        if (DATA_FILE_VERSION_NUMBER_AEDAT4.equals(dataFileVersionNum)) {
+            return DATA_FILE_EXTENSION_AEDAT4;
+        }
+        return DATA_FILE_EXTENSION_AEDAT2;
+    }
+
+    /** True if {@code name} ends with a known AEDAT data-file extension (case-insensitive). */
+    public static boolean hasDataFileExtension(String name) {
+        if (name == null) {
+            return false;
+        }
+        String lower = name.toLowerCase();
+        return lower.endsWith(DATA_FILE_EXTENSION_AEDAT4)
+                || lower.endsWith(DATA_FILE_EXTENSION_AEDAT2)
+                || lower.endsWith(DATA_FILE_EXTENSION)
+                || lower.endsWith(OLD_DATA_FILE_EXTENSION);
+    }
     /** The date/time/timezone format for filenames */
     static final String YYYY_M_MDD_TH_HMMSS_Z = "yyyy-MM-dd'T'HH-mm-ssZ";
     /** Format used for log file names */

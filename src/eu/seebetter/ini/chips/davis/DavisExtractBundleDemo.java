@@ -1,9 +1,8 @@
 /*
  * DavisExtractBundleDemo.java
  *
- * Smoke check for DavisFrameAssembler (jAER 3.0 Phase 2). Avoids constructing a
- * full Davis AEChip (OpenGL/biasgen). extractBundle itself is compile-checked
- * and exercised when ViewLoop switches in Phase 3.
+ * Smoke check for DavisFrameAssembler (jAER 3.0). Avoids constructing a full
+ * Davis AEChip (OpenGL/biasgen).
  */
 package eu.seebetter.ini.chips.davis;
 
@@ -13,7 +12,7 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketType;
 
 /**
- * Standalone smoke demo for APS → {@link FramePacket} assembly.
+ * Standalone smoke demo for APS → {@link FramePacket} assembly (count-based EOF).
  */
 public final class DavisExtractBundleDemo {
 
@@ -45,6 +44,27 @@ public final class DavisExtractBundleDemo {
                 done = f;
                 bundle.add(f);
             }
+        }
+
+        // Early geometric "last" must not finish before W*H signal samples:
+        // feed a 2x2 where pixLast is true on the first signal sample.
+        DavisFrameAssembler asm2 = new DavisFrameAssembler(w, h, 1000);
+        for (short[] xy : order) {
+            asm2.process(200, t++, xy[0], xy[1], ApsDvsEvent.ReadoutType.ResetRead,
+                    xy[0] == 0 && xy[1] == 0, xy[0] == 1 && xy[1] == 1, false);
+        }
+        FramePacket early = asm2.process(50, t++, (short) 0, (short) 0, ApsDvsEvent.ReadoutType.SignalRead, true, true, false);
+        if (early != null) {
+            System.out.println("FAIL: finished on early pixLast before W*H samples");
+            System.exit(1);
+        }
+        for (int i = 1; i < 4; i++) {
+            short[] xy = order[i];
+            early = asm2.process(50, t++, xy[0], xy[1], ApsDvsEvent.ReadoutType.SignalRead, false, i == 3, false);
+        }
+        if (early == null) {
+            System.out.println("FAIL: expected frame after W*H signal samples");
+            System.exit(1);
         }
 
         System.out.println(bundle);

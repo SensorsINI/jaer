@@ -16,6 +16,11 @@ import net.sf.jaer.event.FramePacket;
  * emits completed {@link FramePacket}s (CDS = reset − signal). Used by
  * {@link DavisBaseCamera.DavisEventExtractor#extractBundle} so APS AE never
  * enter the cooked polarity pipeline.
+ * <p>
+ * Completion is <b>count-based</b> ({@code width*height} signal samples), not
+ * {@code pixLast}. On Davis346blue the geometric last address is the first
+ * sample of the last column after Y flip, so finishing on {@code pixLast}
+ * truncated frames and caused {@code SignalRead without active frame} spam.
  *
  * @author tobi
  */
@@ -30,6 +35,8 @@ public class DavisFrameAssembler {
     private short[] resetBuf;
     private FramePacket building;
     private boolean inFrame;
+    private int resetCount;
+    private int signalCount;
     private long timestampSofUs;
     private long timestampSoeUs;
     private long timestampEoeUs;
@@ -61,6 +68,10 @@ public class DavisFrameAssembler {
         return chip != null ? chip.getSizeY() : fixedHeight;
     }
 
+    private int nPixels() {
+        return width() * height();
+    }
+
     private int exposureFallbackUs() {
         if (chip != null && chip.getDavisConfig() != null) {
             return (int) (chip.getDavisConfig().getExposureDelayMs() * 1000);
@@ -71,13 +82,19 @@ public class DavisFrameAssembler {
     public void reset() {
         inFrame = false;
         building = null;
+        resetCount = 0;
+        signalCount = 0;
         timestampSofUs = timestampSoeUs = timestampEoeUs = timestampEofUs = 0;
+    }
+
+    public boolean isInFrame() {
+        return inFrame;
     }
 
     /**
      * Process one APS pixel readout. Returns a completed {@link FramePacket}
-     * when the last signal-read pixel arrives; otherwise null. Returned packet
-     * owns its pixel buffer (safe to keep in a {@link net.sf.jaer.event.PacketBundle}).
+     * when enough signal samples have arrived (or a new frame SOF closes the
+     * previous one). Returned packet owns its pixel buffer.
      */
     public FramePacket process(final int adcSample, final int timestamp, final short x, final short y,
             final ApsDvsEvent.ReadoutType readoutType, final boolean pixFirst, final boolean pixLast,
@@ -88,23 +105,27 @@ public class DavisFrameAssembler {
         ensureBuffers(w, h);
 
         if (readoutType == ApsDvsEvent.ReadoutType.ResetRead) {
-            if (pixFirst) {
+            FramePacket completed = null;
+            // New SOF while previous frame still open (missed exact end): emit what we have
+            if (inFrame && pixFirst && signalCount > 0) {
+                timestampEofUs = timestamp;
+                completed = finishFrame();
+            }
+            if (pixFirst || !inFrame) {
                 startFrame(w, h, timestamp);
                 if (rollingShutter) {
                     timestampSoeUs = timestamp;
                 }
             }
-            if (!inFrame) {
-                startFrame(w, h, timestamp);
-            }
             final int idx = index(x, y, w, h);
             if (idx >= 0) {
                 resetBuf[idx] = (short) adcSample;
+                resetCount++;
             }
             if (pixLast && !rollingShutter) {
                 timestampSoeUs = timestamp;
             }
-            return null;
+            return completed;
         }
 
         if (readoutType == ApsDvsEvent.ReadoutType.SignalRead) {
@@ -114,7 +135,7 @@ public class DavisFrameAssembler {
                 }
                 return null;
             }
-            if (pixFirst) {
+            if (pixFirst || signalCount == 0) {
                 timestampEoeUs = timestamp;
             }
             final int idx = index(x, y, w, h);
@@ -127,9 +148,15 @@ public class DavisFrameAssembler {
                     cds = 65535;
                 }
                 building.getPixels()[idx] = (short) cds;
+                signalCount++;
             }
             if (pixLast) {
                 timestampEofUs = timestamp;
+            }
+            if (signalCount >= nPixels()) {
+                if (timestampEofUs == 0) {
+                    timestampEofUs = timestamp;
+                }
                 return finishFrame();
             }
             return null;
@@ -140,6 +167,8 @@ public class DavisFrameAssembler {
 
     private void startFrame(int w, int h, int timestamp) {
         inFrame = true;
+        resetCount = 0;
+        signalCount = 0;
         timestampSofUs = timestamp;
         timestampSoeUs = 0;
         timestampEoeUs = 0;
@@ -172,6 +201,8 @@ public class DavisFrameAssembler {
         out.setTimestampEndUs(building.getTimestampEndUs());
         out.setExposureUs(building.getExposureUs());
         out.setSource(building.getSource());
+        resetCount = 0;
+        signalCount = 0;
         return out;
     }
 

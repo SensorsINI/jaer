@@ -126,7 +126,8 @@ public class DataLogger extends EventFilter2D {
     /** Starts logging AE data to a file.
      *
      * @param filename the filename to log to, including all path information. Filenames without path
-     * are logged to the startup folder. The default extension of AEDataFile.DATA_FILE_EXTENSION is appended if there is no extension.
+     * are logged to the startup folder. Appends {@link AEDataFile#DATA_FILE_EXTENSION_AEDAT2}
+     * if there is no known data-file extension.
      *
      * @return the file that is logged to.
      */
@@ -135,8 +136,8 @@ public class DataLogger extends EventFilter2D {
             log.warning("tried to log to null filename, aborting");
             return null;
         }
-        if (!filename.toLowerCase().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
-            filename = filename + AEDataFile.DATA_FILE_EXTENSION;
+        if (!AEDataFile.hasDataFileExtension(filename)) {
+            filename = filename + AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
             log.info("Appended extension to make filename=" + filename);
         }
         try {
@@ -186,7 +187,7 @@ public class DataLogger extends EventFilter2D {
             suffix = "";
         }
         do {
-            filename = loggingFolder + File.separator + base + "-" + dateString + "-" + suffix + AEDataFile.DATA_FILE_EXTENSION;
+            filename = loggingFolder + File.separator + base + "-" + dateString + "-" + suffix + AEDataFile.DATA_FILE_EXTENSION_AEDAT2;
             File lf = new File(filename);
             if (rotateFilesEnabled) {
                 succeeded = true; // if rotation, always use next file
@@ -234,10 +235,18 @@ public class DataLogger extends EventFilter2D {
 
                 String fn =
                         loggingFile.getName();
-//                System.out.println("fn="+fn);
-                // strip off .aedat to make it easier to append comment to filename
-                String base =
-                        fn.substring(0, fn.lastIndexOf(AEDataFile.DATA_FILE_EXTENSION));
+                String base = fn;
+                String fnLower = fn.toLowerCase();
+                for (String ext : new String[]{
+                    AEDataFile.DATA_FILE_EXTENSION_AEDAT4,
+                    AEDataFile.DATA_FILE_EXTENSION_AEDAT2,
+                    AEDataFile.DATA_FILE_EXTENSION,
+                    AEDataFile.OLD_DATA_FILE_EXTENSION}) {
+                    if (fnLower.endsWith(ext)) {
+                        base = fn.substring(0, fn.length() - ext.length());
+                        break;
+                    }
+                }
                 chooser.setSelectedFile(new File(base));
                 chooser.setDialogType(JFileChooser.SAVE_DIALOG);
                 chooser.setMultiSelectionEnabled(false);
@@ -247,9 +256,8 @@ public class DataLogger extends EventFilter2D {
                     retValue = chooser.showSaveDialog(chip.getAeViewer());
                     if (retValue == JFileChooser.APPROVE_OPTION) {
                         File newFile = chooser.getSelectedFile();
-                        // make sure filename ends with .aedat
-                        if (!newFile.getName().endsWith(AEDataFile.DATA_FILE_EXTENSION)) {
-                            newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION);
+                        if (!AEDataFile.hasDataFileExtension(newFile.getName())) {
+                            newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION_AEDAT2);
                         }
 // we'll rename the logged data file to the selection
 

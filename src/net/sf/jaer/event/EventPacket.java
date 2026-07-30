@@ -631,7 +631,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
                 throw new ArrayIndexOutOfBoundsException(
                         "EventPacket capacity capped at " + MAX_CAPACITY + " (would grow from " + capacity + ")");
             }
-            EventPacket.log.info("enlarging capacity of " + this);
+            EventPacket.log.fine("enlarging capacity of " + this);
             final int ncapacity = (int) Math.min((long) capacity * 2, MAX_CAPACITY);
             if (ncapacity <= capacity) {
                 throw new ArrayIndexOutOfBoundsException(
@@ -668,7 +668,7 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
             allocate(MAX_CAPACITY);
             return;
         }
-        EventPacket.log.info("enlarging capacity of " + this + " to " + n + " events");
+        EventPacket.log.fine("enlarging capacity of " + this + " to " + n + " events");
         final int ncapacity = n; // (capacity*3)/2+1;
         Object oldData[] = elementData;
         elementData = (E[]) Array.newInstance(eventClass, ncapacity);
