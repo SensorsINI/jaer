@@ -1855,14 +1855,36 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
 
                     } else {
-                        rawPacket = grabInput();
-                        if (rawPacket == null) {
-                            log.fine("null rawPacket, probably at OUT marker or end of file");
-                            paceViewLoopFrame();
-                            continue;
+                        // jAER 3.0: prefer USB-level typed PacketBundle when the HW interface supplies it
+                        PacketBundle hwBundle = null;
+                        if ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING)) {
+                            try {
+                                openAEMonitor();
+                                if ((aemon != null) && aemon.isOpen()) {
+                                    hwBundle = aemon.acquireAvailablePacketBundle();
+                                }
+                            } catch (Exception ex) {
+                                log.log(Level.WARNING, "acquireAvailablePacketBundle failed, falling back to raw extract", ex);
+                                hwBundle = null;
+                            }
+                        }
+                        if (hwBundle != null) {
+                            rawPacket = hwBundle.getRawPacket();
+                            cookedBundle = hwBundle;
+                            if (cookedBundle.isEmpty()) {
+                                paceViewLoopFrame();
+                                continue;
+                            }
+                        } else {
+                            rawPacket = grabInput();
+                            if (rawPacket == null) {
+                                log.fine("null rawPacket, probably at OUT marker or end of file");
+                                paceViewLoopFrame();
+                                continue;
+                            }
                         }
 
-                        numRawEvents = rawPacket.getNumEvents();
+                        numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
                         final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isLogFilteredEventsEnabled();
                         if (!isPaused() && getRenderer().isPacketLevelRenderSkipping()) {
                             skipRendering = getRenderer().advanceSkipRenderSlot();
@@ -1886,9 +1908,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             paceViewLoopFrame();
                             continue;
                         }
-                        cookedBundle = extractBundle(rawPacket);
+                        if (hwBundle == null) {
+                            cookedBundle = extractBundle(rawPacket);
+                        }
                         if (cookedBundle == null || cookedBundle.isEmpty()) {
-                            log.warning("packet bundle empty or null after extracting events from raw input packet");
+                            // Mid-USB APS-only slices can yield empty typed bundles; do not spam SEVERE.
+                            log.fine("packet bundle empty after extract (raw may be mid-frame APS only)");
                             paceViewLoopFrame();
                             continue;
                         }

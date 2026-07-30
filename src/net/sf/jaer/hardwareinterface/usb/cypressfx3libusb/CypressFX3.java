@@ -39,6 +39,8 @@ import net.sf.jaer.aemonitor.AEListener;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
 import net.sf.jaer.event.EventPacket;
@@ -207,6 +209,18 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * The pool of raw AE packets, used for data transfer
      */
     protected AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
+    /**
+     * jAER 3.0: typed PacketBundle pool filled by USB demux (DAVIS). Swapped with
+     * {@link #aePacketRawPool} on acquire.
+     */
+    protected PacketBundlePool packetBundlePool = new PacketBundlePool();
+    /** Last typed bundle from {@link #acquireAvailableEventsFromDriver()}. */
+    protected PacketBundle lastPacketBundle = new PacketBundle();
+    /**
+     * When true, {@link #acquireAvailablePacketBundle()} returns the USB-demuxed
+     * bundle (DAViSFX3). When false, returns null so ViewLoop uses extractBundle.
+     */
+    protected volatile boolean usbTypedDemuxActive = false;
     private String stringDescription = "CypressFX3"; // default which is
     private USBPacketStatistics usbPacketStatistics = new USBPacketStatistics();
 
@@ -464,7 +478,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         // same time
         synchronized (aePacketRawPool) {
             aePacketRawPool.swap();
+            packetBundlePool.swap();
             lastEventsAcquired = aePacketRawPool.readBuffer();
+            lastPacketBundle = packetBundlePool.readBuffer();
             eventCounter = 0;
             realTimeEventCounterStart = 0;
         }
@@ -476,6 +492,27 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             // listeners
         }
         return lastEventsAcquired;
+    }
+
+    /**
+     * jAER 3.0: returns USB-demuxed {@link PacketBundle} when
+     * {@link #usbTypedDemuxActive} (DAVIS). Performs the same buffer swap as
+     * {@link #acquireAvailableEventsFromDriver()}.
+     */
+    @Override
+    public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
+        if (!usbTypedDemuxActive) {
+            return null;
+        }
+        acquireAvailableEventsFromDriver();
+        return lastPacketBundle;
+    }
+
+    /**
+     * @return last typed bundle from acquire (may be empty); never null after first acquire
+     */
+    public PacketBundle getLastPacketBundle() {
+        return lastPacketBundle;
     }
 
     /**
@@ -1280,6 +1317,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
     protected void allocateAEBuffers() {
         synchronized (aePacketRawPool) {
             aePacketRawPool.allocateMemory();
+            packetBundlePool.reset();
         }
     }
 

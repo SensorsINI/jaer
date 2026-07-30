@@ -16,8 +16,10 @@ import org.usb4java.Device;
 
 import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.DavisConfig;
+import eu.seebetter.ini.chips.davis.DavisUsbPacketBundleBuilder;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -34,6 +36,9 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
     protected DAViSFX3HardwareInterface(final Device device) {
         super(device);
+        // Typed USB→PacketBundle demux is WIP (APS frame sync / pixFirst-Last issues on Davis346blue).
+        // Keep false so ViewLoop uses AEPacketRaw + extractBundle until demux is validated.
+        usbTypedDemuxActive = false;
     }
 
     @Override
@@ -172,6 +177,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         private int imuCount;
         private byte imuTmpData;
 
+        /** jAER 3.0 typed demux into PacketBundle (alongside AEPacketRaw for DVS). */
+        private final DavisUsbPacketBundleBuilder typedBuilder = new DavisUsbPacketBundleBuilder();
+        private boolean rollingShutterFrame;
+
         public RetinaAEReader(final CypressFX3 cypress) throws HardwareInterfaceException {
             super(cypress);
 
@@ -246,6 +255,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
         protected void translateEvents(final ByteBuffer b) {
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                final PacketBundle typedOut = usbTypedDemuxActive ? packetBundlePool.writeBuffer() : null;
+                if (typedOut != null) {
+                    typedBuilder.attach(typedOut, apsSizeX, apsSizeY);
+                }
 
                 // Truncate off any extra partial event.
                 if ((b.limit() & 0x01) != 0) {
@@ -297,9 +310,10 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                     case 4: // External input (pulse)
                                         CypressFX3.log.finer("External input event received.");
 
-                                        // Check that the buffer has space for this event. Enlarge if needed.
+                                        if (typedOut != null) {
+                                            typedBuilder.addExternal(data, currentTimestamp);
+                                        }
                                         if (ensureCapacity(buffer, eventCounter + 1)) {
-                                            // tobi added data to pass thru rising falling and pulse events
                                             buffer.getAddresses()[eventCounter] = DavisChip.EXTERNAL_INPUT_EVENT_ADDR + data;
                                             buffer.getTimestamps()[eventCounter++] = currentTimestamp;
                                         }
@@ -317,9 +331,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                         CypressFX3.log.finest("IMU End event received.");
 
                                         if (imuCount == (2 * RetinaAEReader.IMU_DATA_LENGTH)) {
+                                            final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
+                                            if (typedOut != null) {
+                                                typedBuilder.addImu(imuSample);
+                                            }
                                             if (ensureCapacity(buffer, eventCounter + IMUSample.SIZE_EVENTS)) {
-                                                // Check for buffer space is also done inside writeToPacket().
-                                                final IMUSample imuSample = new IMUSample(currentTimestamp, imuEvents);
                                                 eventCounter += imuSample.writeToPacket(buffer, eventCounter);
                                             }
                                         } else {
@@ -333,16 +349,20 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
 
                                     case 8: // APS Global Shutter Frame Start
                                         CypressFX3.log.finest("APS GS Frame Start event received.");
-
+                                        rollingShutterFrame = false;
+                                        if (typedOut != null) {
+                                            typedBuilder.onFrameStart(false);
+                                        }
                                         initFrame();
-
                                         break;
 
                                     case 9: // APS Rolling Shutter Frame Start
                                         CypressFX3.log.finest("APS RS Frame Start event received.");
-
+                                        rollingShutterFrame = true;
+                                        if (typedOut != null) {
+                                            typedBuilder.onFrameStart(true);
+                                        }
                                         initFrame();
-
                                         break;
 
                                     case 10: // APS Frame End
@@ -436,38 +456,32 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                     break; // Skip invalid event.
                                 }
 
-                                // Check that the buffer has space for this event. Enlarge if needed.
-                                if (ensureCapacity(buffer, eventCounter + 1)) {
-                                    // The X address comes out of the new logic such that the (0, 0) address
-                                    // is, as expected by most, in the lower left corner. Since the DAVIS240
-                                    // chip class data format assumes that this is still flipped, as in the
-                                    // old logic, we have to flip it here, so that the chip class extractor
-                                    // can flip it back. Backwards compatibility with recordings is the main
-                                    // motivation to do this hack.
-                                    // NOTE 09.2017: logic now uses upper left (CG format) as output.
-
-                                    // Invert polarity for PixelParade high gain pixels (DavisSense), because of
-                                    // negative gain from pre-amplifier.
-                                    // tobi commented out because it seems that array is now flipped horizontally (oct 2018)
-//                                                                       final byte polarity =code;
-//									final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data < 192))
-//										? ((byte) (~code))
-//										: (code);
+                                {
                                     final byte polarity = ((chipID == DAViSFX3HardwareInterface.CHIP_DAVIS208) && (data <= 16))
                                             ? ((byte) (~code))
                                             : (code);
+                                    final boolean on = (polarity & 0x01) != 0;
+                                    final int packedAddr;
                                     if (dvsInvertXY) {
-                                        buffer
-                                                .getAddresses()[eventCounter] = (((dvsSizeX - 1 - data) << DavisChip.YSHIFT) & DavisChip.YMASK)
+                                        packedAddr = (((dvsSizeX - 1 - data) << DavisChip.YSHIFT) & DavisChip.YMASK)
                                                 | (((dvsSizeY - 1 - dvsLastY) << DavisChip.XSHIFT) & DavisChip.XMASK)
                                                 | (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
                                     } else {
-                                        buffer.getAddresses()[eventCounter] = (((dvsSizeY - 1 - dvsLastY) << DavisChip.YSHIFT)
-                                                & DavisChip.YMASK) | (((dvsSizeX - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
+                                        packedAddr = (((dvsSizeY - 1 - dvsLastY) << DavisChip.YSHIFT) & DavisChip.YMASK)
+                                                | (((dvsSizeX - 1 - data) << DavisChip.XSHIFT) & DavisChip.XMASK)
                                                 | (((polarity & 0x01) << DavisChip.POLSHIFT) & DavisChip.POLMASK);
                                     }
+                                    // Same chip coords as DavisEventExtractor.extractBundle
+                                    final int addrX = (dvsSizeX - 1) - ((packedAddr & DavisChip.XMASK) >>> DavisChip.XSHIFT);
+                                    final int addrY = (packedAddr & DavisChip.YMASK) >>> DavisChip.YSHIFT;
+                                    if (typedOut != null) {
+                                        typedBuilder.addPolarity(addrX, addrY, on, currentTimestamp);
+                                    }
 
-                                    buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+                                    if (ensureCapacity(buffer, eventCounter + 1)) {
+                                        buffer.getAddresses()[eventCounter] = packedAddr;
+                                        buffer.getTimestamps()[eventCounter++] = currentTimestamp;
+                                    }
                                 }
 
                                 break;
@@ -527,7 +541,18 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                                     apsRGBPixelOffset -= 3;
                                 }
 
-                                // Check that the buffer has space for this event. Enlarge if needed.
+                                if (typedOut != null) {
+                                    final boolean pixFirst = (apsCountX[apsCurrentReadoutType] == 0)
+                                            && (apsCountY[apsCurrentReadoutType] == 1);
+                                    final boolean pixLast = (apsCountX[apsCurrentReadoutType] == (apsSizeX - 1))
+                                            && (apsCountY[apsCurrentReadoutType] == apsSizeY);
+                                    final boolean resetRead = apsCurrentReadoutType == RetinaAEReader.APS_READOUT_RESET;
+                                    typedBuilder.setRollingShutter(rollingShutterFrame);
+                                    typedBuilder.addApsSample(data & DavisChip.ADC_DATA_MASK, currentTimestamp, xPos, yPos,
+                                            resetRead, pixFirst, pixLast);
+                                }
+
+                                // Always write APS AE into raw so extractBundle / legacy path works
                                 if (ensureCapacity(buffer, eventCounter + 1)) {
                                     buffer.getAddresses()[eventCounter] = DavisChip.ADDRESS_TYPE_APS
                                             | ((yPos << DavisChip.YSHIFT) & DavisChip.YMASK) | ((xPos << DavisChip.XSHIFT) & DavisChip.XMASK)
@@ -704,6 +729,11 @@ public class DAViSFX3HardwareInterface extends CypressFX3Biasgen {
                         }
                     }
                 } // end loop over usb data buffer
+
+                if (typedOut != null) {
+                    typedBuilder.flushAll();
+                    typedOut.setRawPacket(buffer);
+                }
 
                 buffer.setNumEvents(eventCounter);
                 // write capture size

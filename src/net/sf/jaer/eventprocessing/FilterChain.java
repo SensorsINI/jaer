@@ -24,6 +24,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.TypedDataPacket;
 import net.sf.jaer.util.ClassChooserDialog;
 
@@ -235,13 +236,9 @@ public class FilterChain extends LinkedList<EventFilter2D> {
     }
 
     /**
-     * jAER 3.0: filter a {@link PacketBundle}. Each homogeneous packet is
-     * processed independently. {@link EventPacket}s go through
-     * {@link #filterPacket}; {@link FramePacket}/{@link ImuPacket} pass through
-     * unless individual filters later override typed hooks.
-     *
-     * @param in input bundle (may be modified / replaced packets)
-     * @return filtered bundle (same instance, packets updated in place in list)
+     * jAER 3.0: filter a {@link PacketBundle} with per-filter type dispatch.
+     * Filters that do not {@link EventFilter2D#accepts(PacketType)} a packet
+     * leave it unchanged (e.g. polarity denoisers never see frames/IMU).
      */
     public PacketBundle filterBundle(PacketBundle in) {
         if (in == null || !filteringEnabled || size() == 0 || in.isEmpty()) {
@@ -250,14 +247,23 @@ public class FilterChain extends LinkedList<EventFilter2D> {
         PacketBundle out = new PacketBundle();
         out.setRawPacket(in.getRawPacket());
         for (TypedDataPacket p : in) {
-            if (p instanceof EventPacket) {
-                EventPacket ep = filterPacket((EventPacket) p);
-                if (ep != null) {
-                    out.addAllowEmpty(ep);
+            TypedDataPacket cur = p;
+            for (EventFilter2D f : this) {
+                if (!f.isFilterEnabled()) {
+                    continue;
                 }
-            } else {
-                // Frame / IMU: pass through for now (filters can specialize later)
-                out.addAllowEmpty(p);
+                try {
+                    cur = f.processTyped(cur);
+                    if (cur == null) {
+                        break;
+                    }
+                } catch (Exception e) {
+                    log.log(Level.WARNING, "Filter " + f + " threw in processTyped", e);
+                    f.setFilterEnabled(false);
+                }
+            }
+            if (cur != null) {
+                out.addAllowEmpty(cur);
             }
         }
         return out;

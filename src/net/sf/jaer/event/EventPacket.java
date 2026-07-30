@@ -612,13 +612,31 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
+     * Hard cap on packet capacity to avoid OutOfMemoryError when a runaway
+     * extractor/filter tries to materialize an entire APS frame as events.
+     * ~2e6 events × fat event objects is already multi‑GB.
+     */
+    public static final int MAX_CAPACITY = 2_000_000;
+
+    /**
      * Enlarges capacity by some factor, then copies all event references to the
      * new packet
      */
     private void enlargeCapacity() {
         try {
+            if (capacity >= MAX_CAPACITY) {
+                EventPacket.log.severe(String.format(
+                        "Refusing to enlarge %s beyond MAX_CAPACITY=%d (size=%d); check for APS-as-events leak",
+                        this, MAX_CAPACITY, size));
+                throw new ArrayIndexOutOfBoundsException(
+                        "EventPacket capacity capped at " + MAX_CAPACITY + " (would grow from " + capacity + ")");
+            }
             EventPacket.log.info("enlarging capacity of " + this);
-            final int ncapacity = capacity * 2; // (capacity*3)/2+1;
+            final int ncapacity = (int) Math.min((long) capacity * 2, MAX_CAPACITY);
+            if (ncapacity <= capacity) {
+                throw new ArrayIndexOutOfBoundsException(
+                        "EventPacket capacity capped at " + MAX_CAPACITY + " (at " + capacity + ")");
+            }
             Object oldData[] = elementData;
             elementData = (E[]) Array.newInstance(eventClass, ncapacity);
             System.arraycopy(oldData, 0, elementData, 0, size);
@@ -642,6 +660,12 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public void allocate(final int n) {
         if (n <= capacity) {
+            return;
+        }
+        if (n > MAX_CAPACITY) {
+            EventPacket.log.severe(String.format(
+                    "allocate(%d) exceeds MAX_CAPACITY=%d for %s; clamping", n, MAX_CAPACITY, this));
+            allocate(MAX_CAPACITY);
             return;
         }
         EventPacket.log.info("enlarging capacity of " + this + " to " + n + " events");
@@ -902,8 +926,11 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         if (eventClass == null) {
             return PacketType.POLARITY;
         }
+        if (ExternalEvent.class.isAssignableFrom(eventClass)) {
+            return PacketType.SPECIAL;
+        }
         if (PolarityEvent.class.isAssignableFrom(eventClass)) {
-            // ApsDvsEvent extends PolarityEvent — treat as polarity until Davis demux lands
+            // ApsDvsEvent extends PolarityEvent — treat as polarity until purged
             return PacketType.POLARITY;
         }
         if (eventClass.getName().contains("Ear") || eventClass.getName().contains("Cochlea")) {

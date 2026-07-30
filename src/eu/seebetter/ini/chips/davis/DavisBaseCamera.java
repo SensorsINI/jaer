@@ -661,13 +661,36 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         } // extractPacket
 
         /**
-         * jAER 3.0: demux raw AE into homogeneous typed packets. APS address-events
-         * are assembled into {@link FramePacket}s and discarded; DVS →
-         * {@link PolarityEvent} packet; IMU → {@link ImuPacket}. Does not change
-         * {@link #extractPacket} (legacy ViewLoop path).
+         * Default: wrap legacy {@link #extractPacket} in a {@link PacketBundle}
+         * (same as color Davis). Typed APS→{@link FramePacket} demux was
+         * producing empty mid-frame bundles and APS desync warnings, so live
+         * frames/events looked dead. Enable typed path with
+         * {@code -Djaer.typedExtractBundle=true}.
          */
         @Override
         synchronized public PacketBundle extractBundle(final AEPacketRaw in) {
+            if (!Boolean.getBoolean("jaer.typedExtractBundle")) {
+                if (reusedBundle == null) {
+                    reusedBundle = new PacketBundle();
+                } else {
+                    reusedBundle.clear();
+                }
+                EventPacket cooked = extractPacket(in);
+                if (cooked != null) {
+                    cooked.setRawPacket(in);
+                    reusedBundle.addAllowEmpty(cooked);
+                }
+                reusedBundle.setRawPacket(in);
+                return reusedBundle;
+            }
+            return extractBundleTyped(in);
+        }
+
+        /**
+         * jAER 3.0 typed demux: APS → {@link FramePacket}, DVS →
+         * {@link PolarityEvent}, IMU → {@link ImuPacket}. Experimental.
+         */
+        synchronized public PacketBundle extractBundleTyped(final AEPacketRaw in) {
             if (reusedBundle == null) {
                 reusedBundle = new PacketBundle();
             } else {
@@ -733,6 +756,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
                     if (active == ActiveKind.IMU) {
                         flushImu(reusedBundle, bundleImuOut);
+                        // New polarity working buffer after IMU flush
+                        if (bundlePolarityOut == null) {
+                            bundlePolarityOut = new EventPacket<>(PolarityEvent.class);
+                        }
+                        polItr = bundlePolarityOut.outputIterator();
                     }
                     active = ActiveKind.POLARITY;
                     final PolarityEvent e = polItr.nextOutput();
@@ -748,17 +776,20 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                     e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
                     autoshotEventsSinceLastShot++;
                 } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_APS) {
-                    if (active == ActiveKind.POLARITY) {
-                        flushPolarity(reusedBundle, bundlePolarityOut);
-                        polItr = bundlePolarityOut.outputIterator();
-                    } else if (active == ActiveKind.IMU) {
+                    // Do NOT flush polarity on every APS sample. DVS/APS are finely interleaved in the
+                    // raw USB stream; flushing allocated a new EventPacket per transition and OOMed
+                    // (see flushPolarity → EventPacket.<init>). Keep one polarity buffer for the
+                    // whole extractBundle; frames are added as they complete.
+                    if (active == ActiveKind.IMU) {
                         flushImu(reusedBundle, bundleImuOut);
                     }
-                    active = ActiveKind.NONE;
+                    if (active == ActiveKind.POLARITY) {
+                        active = ActiveKind.NONE; // polarity events retained in bundlePolarityOut
+                    }
 
                     final int timestamp = timestamps[i];
                     final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
-                    final short y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+                    final short y = (short) (((data & DavisChip.YMASK) >>> DavisChip.YSHIFT));
                     final boolean pixFirst = firstFrameAddress(x, y);
                     final boolean pixLast = lastFrameAddress(x, y);
                     ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
@@ -809,10 +840,12 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 }
             }
 
-            if (active == ActiveKind.POLARITY) {
-                flushPolarity(reusedBundle, bundlePolarityOut);
-            } else if (active == ActiveKind.IMU) {
+            // Flush remaining typed packets once at end
+            if (active == ActiveKind.IMU) {
                 flushImu(reusedBundle, bundleImuOut);
+            }
+            if (bundlePolarityOut != null && !bundlePolarityOut.isEmpty()) {
+                flushPolarity(reusedBundle, bundlePolarityOut);
             }
 
             if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot > getAutoshotThresholdEvents())) {
@@ -824,18 +857,18 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             return reusedBundle;
         }
 
+        /**
+         * Moves polarity events into the bundle without allocating a full copy
+         * EventPacket when possible (ownership transfer of the working buffer).
+         */
         private void flushPolarity(PacketBundle bundle, EventPacket<PolarityEvent> src) {
             if (src == null || src.isEmpty()) {
                 return;
             }
-            EventPacket<PolarityEvent> copy = new EventPacket<>(PolarityEvent.class);
-            OutputEventIterator<PolarityEvent> outItr = copy.outputIterator();
-            for (PolarityEvent e : src) {
-                PolarityEvent d = outItr.nextOutput();
-                d.copyFrom(e);
-            }
-            bundle.add(copy);
-            src.clear();
+            // Ownership transfer: add the working packet, then replace it so further
+            // extractBundle calls do not mutate the packet already in the bundle.
+            bundle.add(src);
+            bundlePolarityOut = new EventPacket<>(PolarityEvent.class);
         }
 
         private void flushImu(PacketBundle bundle, ImuPacket src) {

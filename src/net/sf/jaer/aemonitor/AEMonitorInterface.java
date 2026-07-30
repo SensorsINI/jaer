@@ -25,6 +25,18 @@ public interface AEMonitorInterface extends HardwareInterface{
      * .
      */
     public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException ;
+
+    /**
+     * jAER 3.0: acquire a typed {@link net.sf.jaer.event.PacketBundle} demuxed at the
+     * USB / hardware interface (Polarity / Frame / IMU / External). Default returns
+     * {@code null} so callers fall back to {@link #acquireAvailableEventsFromDriver()}
+     * plus chip {@code extractBundle}.
+     *
+     * @return typed bundle, or {@code null} if this interface does not supply USB-level demux
+     */
+    default net.sf.jaer.event.PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
+        return null;
+    }
     
 //    /** Gets available events from driver. {@link HardwareInterfaceException} is thrown if there is an error.
 //     *{@link #overrunOccurred} will be true if these was an overrun of the host driver buffers.
