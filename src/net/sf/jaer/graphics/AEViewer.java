@@ -132,6 +132,7 @@ import net.sf.jaer.eventio.AEUnicastDialog;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventio.TextFileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -1910,6 +1911,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                         if (hwBundle == null) {
                             cookedBundle = extractBundle(rawPacket);
+                        }
+                        // AEDAT-4: inject FRME/IMUS decoded for this time slice
+                        if (getAePlayer() != null
+                                && getAePlayer().getAEInputStream() instanceof Aedat4FileInputStream) {
+                            if (cookedBundle == null) {
+                                cookedBundle = new PacketBundle();
+                            }
+                            ((Aedat4FileInputStream) getAePlayer().getAEInputStream()).appendTypedPackets(cookedBundle);
                         }
                         if (cookedBundle == null || cookedBundle.isEmpty()) {
                             // Mid-USB APS-only slices can yield empty typed bundles; do not spam SEVERE.
@@ -5596,7 +5605,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if (retValue == JFileChooser.APPROVE_OPTION) {
                             File newFile = chooser.getSelectedFile();
                             if (LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(newFile.getName())) {
-                                chooser.setSelectedFile(new File(base));
+                                LoggingSaveDialogGuard.restoreSelectedFilename(chooser, base);
                                 chooser.setDialogTitle("Save logged data (restored default filename)");
                                 continue;
                             }

@@ -34,9 +34,46 @@ public class Aedat4RoundtripDemo {
 
         int decoded = decodeFirstEventPacketLength(file);
         boolean pass = decoded == 4;
+        // Verify struct layout: x/y/polarity must survive write (regresses the pad(1) bug).
+        net.sf.jaer.eventio.aedat4.dv.EventPacket packet = firstEventPacket(file);
+        for (int i = 0; i < 4; i++) {
+            net.sf.jaer.eventio.aedat4.dv.Event e = packet.elements(i);
+            short expectX = (short) (10 + i);
+            short expectY = (short) (20 + i);
+            boolean expectOn = (i & 1) == 0;
+            if (e.x() != expectX || e.y() != expectY || e.polarity() != expectOn) {
+                pass = false;
+                System.out.println("FAIL field mismatch i=" + i
+                        + " got x=" + e.x() + " y=" + e.y() + " pol=" + e.polarity()
+                        + " expect x=" + expectX + " y=" + expectY + " pol=" + expectOn);
+            }
+        }
         System.out.println((pass ? "PASS" : "FAIL") + " AEDAT-4 roundtrip events=" + decoded + " file=" + file.getAbsolutePath());
         if (!pass) {
             System.exit(1);
+        }
+    }
+
+    private static net.sf.jaer.eventio.aedat4.dv.EventPacket firstEventPacket(File file) throws Exception {
+        try (FileInputStream input = new FileInputStream(file); FileChannel channel = input.getChannel()) {
+            channel.position(Aedat4FileOutputStream.VERSION_LINE.length);
+            ByteBuffer header = readSizePrefixed(channel);
+            net.sf.jaer.eventio.aedat4.dv.IOHeader.getSizePrefixedRootAsIOHeader(header);
+            ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+            while (channel.position() + 8 <= channel.size()) {
+                packetHeader.clear();
+                readFully(channel, packetHeader);
+                packetHeader.flip();
+                int streamId = packetHeader.getInt();
+                int size = packetHeader.getInt();
+                ByteBuffer payload = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+                readFully(channel, payload);
+                payload.flip();
+                if (streamId == Aedat4FileOutputStream.STREAM_EVENTS) {
+                    return net.sf.jaer.eventio.aedat4.dv.EventPacket.getSizePrefixedRootAsEventPacket(payload);
+                }
+            }
+            throw new IllegalStateException("No EVTS packet found");
         }
     }
 

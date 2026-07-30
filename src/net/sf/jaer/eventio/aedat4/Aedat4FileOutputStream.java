@@ -28,6 +28,7 @@ import net.sf.jaer.eventio.aedat4.dv.FrameSource;
 import net.sf.jaer.eventio.aedat4.dv.IMU;
 import net.sf.jaer.eventio.aedat4.dv.IMUPacket;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
+import net.sf.jaer.util.EngineeringFormat;
 
 /** Writes uncompressed AEDAT-4 files with DV-compatible FlatBuffers packets. */
 public class Aedat4FileOutputStream implements Closeable {
@@ -210,7 +211,24 @@ public class Aedat4FileOutputStream implements Closeable {
 
     @Override
     public String toString() {
-        return String.format("AEDAT-4 output stream, packets=%d, baseUnixUs=%d", dataDefinitions.size(), baseUs);
+        long events = 0;
+        long frames = 0;
+        long imuSamples = 0;
+        for (DataDefinition d : dataDefinitions) {
+            if (d.streamId == STREAM_EVENTS) {
+                events += d.numElements;
+            } else if (d.streamId == STREAM_FRAMES) {
+                frames += d.numElements;
+            } else if (d.streamId == STREAM_IMU) {
+                imuSamples += d.numElements;
+            }
+        }
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(3);
+        return String.format("AEDAT-4: %s events, %s frames, %s IMU samples",
+                eng.format((double) events).trim(),
+                eng.format((double) frames).trim(),
+                eng.format((double) imuSamples).trim());
     }
 
     private static final class DataDefinition {

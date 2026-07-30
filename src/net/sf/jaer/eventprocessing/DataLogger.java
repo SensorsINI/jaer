@@ -19,6 +19,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileOutputStream;
+import net.sf.jaer.graphics.LoggingSaveDialogGuard;
 import net.sf.jaer.util.DATFileFilter;
 
 /**
@@ -252,10 +253,14 @@ public class DataLogger extends EventFilter2D {
                 chooser.setMultiSelectionEnabled(false);
                 boolean savedIt = false;
                 do {
-                    // clear the text input buffer to prevent multiply typed characters from destroying proposed datetimestamped filename
-                    retValue = chooser.showSaveDialog(chip.getAeViewer());
+                    retValue = LoggingSaveDialogGuard.showSaveDialog(chooser, chip.getAeViewer(), base);
                     if (retValue == JFileChooser.APPROVE_OPTION) {
                         File newFile = chooser.getSelectedFile();
+                        if (LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(newFile.getName())) {
+                            LoggingSaveDialogGuard.restoreSelectedFilename(chooser, base);
+                            chooser.setDialogTitle("Save logged data (restored default filename)");
+                            continue;
+                        }
                         if (!AEDataFile.hasDataFileExtension(newFile.getName())) {
                             newFile = new File(newFile.getCanonicalPath() + AEDataFile.DATA_FILE_EXTENSION_AEDAT2);
                         }

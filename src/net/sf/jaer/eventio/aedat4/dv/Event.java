@@ -32,11 +32,14 @@ public final class Event extends Struct {
         return bb.get(bb_pos + 12) != 0;
     }
 
+    /**
+     * Layout (16 bytes, align 8): timestamp@0, x@8, y@10, polarity@12, pad@13-15.
+     * Must not insert padding between y and polarity — that shifts every field.
+     */
     public static int createEvent(FlatBufferBuilder builder, long timestamp, short x, short y, boolean polarity) {
         builder.prep(8, 16);
         builder.pad(3);
         builder.putBoolean(polarity);
-        builder.pad(1);
         builder.putShort(y);
         builder.putShort(x);
         builder.putLong(timestamp);

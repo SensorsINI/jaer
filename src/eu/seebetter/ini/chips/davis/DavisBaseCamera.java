@@ -342,6 +342,11 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         return imuSample;
     }
 
+    /** Sets the latest IMU sample (e.g. from AEDAT-4 typed playback). */
+    public void setImuSample(IMUSample imuSample) {
+        this.imuSample = imuSample;
+    }
+
     @Override
     public int getMaxADC() {
         return DavisChip.MAX_ADC;
