@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
@@ -51,7 +52,7 @@ import net.sf.jaer.util.EngineeringFormat;
 public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int INDEX_CACHE_VERSION = 3;
+    private static final int INDEX_CACHE_VERSION = 4;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
 
     private final AEChip chip;
@@ -273,13 +274,28 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private void decodeEventPacket(ByteBuffer payload, ArrayList<Integer> addressList, ArrayList<Long> unixTimestampList) {
         EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(payload);
+        EventExtractor2D extractor = chip != null ? chip.getEventExtractor() : null;
+        final boolean useDavisPacking = chip instanceof DavisChip;
         int sx1 = chip == null ? 0 : chip.getSizeX() - 1;
         for (int i = 0; i < packet.elementsLength(); i++) {
             Event event = packet.elements(i);
-            int address = DavisChip.ADDRESS_TYPE_DVS
-                    | ((sx1 - event.x()) << DavisChip.XSHIFT)
-                    | (event.y() << DavisChip.YSHIFT)
-                    | ((event.polarity() ? 1 : 0) << DavisChip.POLSHIFT);
+            int x = event.x() & 0xffff;
+            int y = event.y() & 0xffff;
+            int type = event.polarity() ? 1 : 0; // On=1 / Off=0 (RetinaExtractor / PolarityEvent)
+            int address;
+            if (useDavisPacking) {
+                // Davis extract hard-codes sx1-x and DavisChip bitfields; extractor
+                // getAddressFromCell is not reliable (truncated masks, no flipx).
+                address = DavisChip.ADDRESS_TYPE_DVS
+                        | ((sx1 - x) << DavisChip.XSHIFT)
+                        | (y << DavisChip.YSHIFT)
+                        | (type << DavisChip.POLSHIFT);
+            } else if (extractor != null) {
+                // NRV and other RetinaExtractor chips: use chip x/y/type shifts & flips.
+                address = extractor.getAddressFromCell(x, y, type);
+            } else {
+                address = (x & 0xffff) | ((y & 0xffff) << 16) | (type << 31);
+            }
             addressList.add(address);
             unixTimestampList.add(event.timestamp());
         }
