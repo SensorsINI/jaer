@@ -27,17 +27,16 @@ import java.io.PrintWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.ImuPacket;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEInputStream;
@@ -95,63 +94,78 @@ public class DavisTextOutputWriter extends AbstractDavisTextIo implements Proper
     }
 
     /**
-     * Processes packet to write output
+     * Processes packet to write output (legacy / polarity-only path).
      *
      * @param in input packet
      * @return input packet
      */
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-//        if (!chipPropertyChangeListenerAdded) {
-//            if (chip.getAeViewer() != null) {
-//                chip.getAeViewer().getSupport().addPropertyChangeListener(AEInputStream.EVENT_REWOUND, this);
-//                chipPropertyChangeListenerAdded = true;
-//            }
-//        }
-        if (!isWriteEnabled() || (!dvsEvents && !imuSamples /*&& !apsFrames*/)) {
+        return processPolarity(in);
+    }
+
+    @Override
+    public boolean accepts(PacketType type) {
+        return type == PacketType.POLARITY || (type != null && type.isImu());
+    }
+
+    @Override
+    synchronized public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
+        if (!isWriteEnabled() || !dvsEvents || dvsWriter == null) {
             return in;
         }
-        boolean davis = false;
-//        try {
-        Iterator itr = null;
-        if (in instanceof ApsDvsEventPacket) {
-            itr = ((ApsDvsEventPacket) in).fullIterator();
-            davis = true;
-        } else {
-            itr = in.inputIterator();
-            davis = false;
-        }
-        while (itr.hasNext()) { // skips events that have been filtered out
-            BasicEvent be = (BasicEvent) itr.next();
-            // we get all events, including IMU, DVS, and APS samples
-
-            if (!davis) { // pure DVS
-                PolarityEvent ae = (PolarityEvent) be;
-                if (dvsEvents && dvsWriter != null) {
-                    writeDvsEvent(ae);
-                }
-            } else { // davis type
-                ApsDvsEvent ae = (ApsDvsEvent) be;
-                if (dvsEvents && dvsWriter != null && ae.isDVSEvent()) {
-                    writeDvsEvent(ae);
-                } else if (imuSamples && imuWriter != null && ae.isImuSample()) {
-                    IMUSample i = ae.getImuSample();
-                    imuWriter.println(String.format("%d %f %f %f %f %f %f", ae.timestamp,
-                            i.getAccelX(), i.getAccelY(), i.getAccelZ(),
-                            i.getGyroTiltX(), i.getGyroYawY(), i.getGyroRollZ()));
-                    incrementCountAndMaybeCloseOutput(be);
-                }
+        for (BasicEvent be : in) {
+            if (be == null || be.isFilteredOut() || !(be instanceof PolarityEvent)) {
+                continue;
             }
-
+            writeDvsEvent((PolarityEvent) be);
         }
+        checkWritersForError();
+        return in;
+    }
+
+    @Override
+    synchronized public ImuPacket processImu(ImuPacket in) {
+        if (!isWriteEnabled() || !imuSamples || imuWriter == null || in == null) {
+            return in;
+        }
+        for (int i = 0; i < in.getSize(); i++) {
+            IMUSample sample = in.get(i);
+            if (sample == null) {
+                continue;
+            }
+            if (rewindPending) {
+                continue;
+            }
+            imuWriter.println(String.format("%d %f %f %f %f %f %f", sample.getTimestampUs(),
+                    sample.getAccelX(), sample.getAccelY(), sample.getAccelZ(),
+                    sample.getGyroTiltX(), sample.getGyroYawY(), sample.getGyroRollZ()));
+            // reuse timestamp check via a synthetic BasicEvent-like call
+            if (sample.getTimestampUs() < lastTimestampWritten) {
+                log.warning(String.format("nonmontonic IMU timestamp written (previous %d, this %d)",
+                        lastTimestampWritten, sample.getTimestampUs()));
+            }
+            lastTimestampWritten = sample.getTimestampUs();
+            setEventsProcessed(getEventsProcessed() + 1);
+            if (maxEvents > 0 && eventsProcessed >= maxEvents && isFilesOpen()) {
+                log.info("wrote maxEvents=" + maxEvents + " events; closing files");
+                doCloseFiles();
+                break;
+            }
+        }
+        checkWritersForError();
+        return in;
+    }
+
+    private void checkWritersForError() {
         for (PrintWriter p : writers) {
             if (p.checkError()) {
                 log.warning("Eror occured writing to file, closing all files");
                 showWarningDialogInSwingThread("Eror occured writing to file, closing all files", "Error writing");
                 doCloseFiles();
+                break;
             }
         }
-        return in;
     }
 
     private int polValue(Polarity p) {

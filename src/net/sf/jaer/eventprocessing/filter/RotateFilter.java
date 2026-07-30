@@ -3,24 +3,20 @@
  *
  * Created on July 7, 2006, 6:59 AM
  *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- *
- *
  *Copyright July 7, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 package net.sf.jaer.eventprocessing.filter;
 
 import eu.seebetter.ini.chips.davis.DavisBaseCamera;
 import java.awt.Point;
-import java.util.Iterator;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 
 /**
@@ -28,6 +24,10 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * becomes y and y becomes x. This filter acts on events in-place in the packet
  * so it should be rather fast because it doesn't need to copy events, only
  * modify them.
+ * <p>
+ * jAER 3.0: also remaps {@link FramePacket} pixels with the same geometry.
+ * APS first/last readout corners are still swapped when invertX&amp;invertY so
+ * legacy extractPacket SOF/EOF stay consistent.
  *
  * @author tobi
  */
@@ -60,57 +60,104 @@ public class RotateFilter extends EventFilter2D {
         }
     }
 
+    @Override
+    public boolean accepts(PacketType type) {
+        return type == PacketType.POLARITY || type == PacketType.FRAME;
+    }
+
+    @Override
     public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
-        short tmp;
+        checkDavisApsHack();
         final int sx = chip.getSizeX();
         final int sy = chip.getSizeY();
-        final int sx2 = sx / 2, sy2 = sy / 2;
-        Iterator itr;
-        boolean davisCamera;
-        checkDavisApsHack();
-        if (in instanceof ApsDvsEventPacket) {
-            itr = ((ApsDvsEventPacket) in).fullIterator();
-            davisCamera = true;
-        } else {
-            itr = in.iterator();
-            davisCamera = false;
-        }
-        while (itr.hasNext()) {
-            Object o = itr.next();
-            BasicEvent e = (BasicEvent) o;
-            if (e.isSpecial() || (davisCamera && (e.x == -1 && e.y == -1))) {
-                continue;  // TODO hack to avoid transforming "flag events"; see DavisBaseCamera line 617 createApsFlagEvent()
+        for (BasicEvent e : in) {
+            if (e == null || e.isSpecial()) {
+                continue;
             }
-            if (swapXY) {
-                tmp = e.x;
-                e.x = e.y;
-                e.y = tmp;
-            }
-            if (rotate90deg) {
-                tmp = e.x;
-                e.x = (short) (sy - e.y - 1);
-                e.y = tmp;
-            }
-            if (invertY) {
-                e.y = (short) (sy - e.y - 1);
-
-            }
-            if (invertX) {
-                e.x = (short) (sx - e.x - 1);
-            }
-
-            if (angleDeg != 0) {
-                int x2 = e.x - sx2, y2 = e.y - sy2;
-                int x3 = (int) Math.round(+cosAng * (x2) - sinAng * (y2));
-                int y3 = (int) Math.round(+sinAng * (x2) + cosAng * (y2));
-                e.x = (short) (x3 + sx2);
-                e.y = (short) (y3 + sy2);
-            }
-            if (e.x < 0 || e.x >= sx || e.y < 0 || e.y >= sy) {
+            if (!transformAddress(e, sx, sy)) {
                 e.setFilteredOut(true);
             }
         }
         return in;
+    }
+
+    @Override
+    public FramePacket processFrame(FramePacket in) {
+        checkDavisApsHack();
+        if (in == null || in.isEmpty() || !anyTransformEnabled()) {
+            return in;
+        }
+        final int w = in.getWidth();
+        final int h = in.getHeight();
+        final short[] src = in.getPixels();
+        final short[] dst = new short[src.length];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int nx = x, ny = y;
+                short tmp;
+                if (swapXY) {
+                    tmp = (short) nx;
+                    nx = ny;
+                    ny = tmp;
+                }
+                if (rotate90deg) {
+                    tmp = (short) nx;
+                    nx = h - ny - 1;
+                    ny = tmp;
+                }
+                if (invertY) {
+                    ny = h - ny - 1;
+                }
+                if (invertX) {
+                    nx = w - nx - 1;
+                }
+                if (angleDeg != 0) {
+                    final int sx2 = w / 2, sy2 = h / 2;
+                    int x2 = nx - sx2, y2 = ny - sy2;
+                    nx = (int) Math.round(+cosAng * x2 - sinAng * y2) + sx2;
+                    ny = (int) Math.round(+sinAng * x2 + cosAng * y2) + sy2;
+                }
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                    dst[ny * w + nx] = src[y * w + x];
+                }
+            }
+        }
+        System.arraycopy(dst, 0, src, 0, src.length);
+        return in;
+    }
+
+    /** @return false if result is out of chip bounds */
+    private boolean transformAddress(BasicEvent e, final int sx, final int sy) {
+        short tmp;
+        final int sx2 = sx / 2, sy2 = sy / 2;
+        if (swapXY) {
+            tmp = e.x;
+            e.x = e.y;
+            e.y = tmp;
+        }
+        if (rotate90deg) {
+            tmp = e.x;
+            e.x = (short) (sy - e.y - 1);
+            e.y = tmp;
+        }
+        if (invertY) {
+            e.y = (short) (sy - e.y - 1);
+        }
+        if (invertX) {
+            e.x = (short) (sx - e.x - 1);
+        }
+        if (angleDeg != 0) {
+            int x2 = e.x - sx2, y2 = e.y - sy2;
+            int x3 = (int) Math.round(+cosAng * x2 - sinAng * y2);
+            int y3 = (int) Math.round(+sinAng * x2 + cosAng * y2);
+            e.x = (short) (x3 + sx2);
+            e.y = (short) (y3 + sy2);
+        }
+        return e.x >= 0 && e.x < sx && e.y >= 0 && e.y < sy;
+    }
+
+    private boolean anyTransformEnabled() {
+        return swapXY || rotate90deg || invertX || invertY || angleDeg != 0;
     }
 
     public Object getFilterState() {
@@ -170,9 +217,6 @@ public class RotateFilter extends EventFilter2D {
      * @param angleDeg the angleDeg to set
      */
     public void setAngleDeg(float angleDeg) {
-        // round to nearest 5 deg
-//        if(angleDeg==0) this.angleDeg=0; else if(angleDeg>this.angleDeg) this.angleDeg+=1; else if(angleDeg<this.angleDeg)this.angleDeg-=1;
-//        this.angleDeg = (int)Math.round(this.angleDeg);
         this.angleDeg = angleDeg;
         putFloat("angleDeg", angleDeg);
         cosAng = (float) Math.cos(angleDeg * Math.PI / 180);
@@ -180,7 +224,7 @@ public class RotateFilter extends EventFilter2D {
     }
 
     private void checkDavisApsHack() {
-        if (!davisCamera || !isFilterEnabled()) { // try to prevent swapping corners when this filter is not actually filtering! (tobi)
+        if (!davisCamera || !isFilterEnabled()) {
             return;
         }
         DavisBaseCamera d = (DavisBaseCamera) chip;
