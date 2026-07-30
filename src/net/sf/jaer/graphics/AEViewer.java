@@ -3578,8 +3578,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         fileMenu.add(timestampResetBitmaskMenuItem);
-        fileMenu.add(jSeparator16);
-        fileMenu.add(exitSeperator);
+        // RecentFiles inserts: [sep] recent files [sep] folders [sep] before Preferences
 
         preferencesMenuItem.setMnemonic('p');
         preferencesMenuItem.setText("Preferences...");
