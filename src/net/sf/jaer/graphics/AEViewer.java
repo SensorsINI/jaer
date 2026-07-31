@@ -724,13 +724,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void cleanup() {
         log.fine("cleanup()");
         stopLogging(true); // in case logging, make sure we give chance to save file
+        // Stop playback before closing HW so stopPlayback can resume LIVE only when still open.
+        // Do not reopen USB from stopPlayback (that hung the EDT on NRV exit).
+        if (aePlayer != null) {
+            aePlayer.stopPlayback();
+        }
         if ((aemon != null) && aemon.isOpen()) {
             log.fine("closing device " + aemon);
             aemon.close();
-        }
-
-        if (aePlayer != null) {
-            aePlayer.stopPlayback();
         }
 
         if (aeServerSocket != null) {

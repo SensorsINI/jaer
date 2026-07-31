@@ -591,25 +591,25 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
 
-        if (viewer.aemon != null) {
+        // Resume live only if hardware is already open. Never call aemon.open() here:
+        // cleanup() used to close the device then call stopPlayback(), and open() can hang
+        // the EDT in native USB (NRV LibUsb.getStringDescriptorAscii while the reader thread
+        // is stuck in deallocateTransfers/handleEventsTimeout).
+        if (viewer.aemon != null && viewer.aemon.isOpen()) {
             try {
-                if (!viewer.aemon.isOpen()) {
-                    viewer.aemon.open();
-                }
-
                 viewer.aemon.setEventAcquisitionEnabled(true);
                 if (viewer.aemon.getChip().getBiasgen() != null) {
                     viewer.aemon.getChip().getBiasgen().sendConfiguration(viewer.aemon.getChip().getBiasgen());
                 }
+                viewer.setPlayMode(AEViewer.PlayMode.LIVE);
             } catch (HardwareInterfaceException e) {
                 viewer.setPlayMode(AEViewer.PlayMode.WAITING);
                 log.warning(e.toString());
                 e.printStackTrace();
             } catch (IllegalStateException ise) {
+                viewer.setPlayMode(AEViewer.PlayMode.WAITING);
                 log.warning(ise.toString());
             }
-
-            viewer.setPlayMode(AEViewer.PlayMode.LIVE);
         } else {
             viewer.setPlayMode(AEViewer.PlayMode.WAITING);
         }

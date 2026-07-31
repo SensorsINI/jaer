@@ -93,6 +93,8 @@ public class NRVAEReader {
                 getNumBuffers(),
                 getFifoSize());
         usbTransfer.setName("NRVAEReaderThread");
+        // Daemon so a stuck deallocateTransfers/handleEventsTimeout cannot keep the JVM alive on exit.
+        usbTransfer.setDaemon(true);
         usbTransfer.start();
         monitor.getReaderSupportInternal().firePropertyChange("readerStarted", false, true);
     }
