@@ -9,11 +9,17 @@
         <map/>
         <node name="Davis346blue">
           <map>
+            <entry key="colorScale" value="6"/>
+            <entry key="borderSpacePixels" value="10"/>
+            <entry key="ChipCanvas.origin3dx" value="0"/>
+            <entry key="ChipCanvas.origin3dy" value="0"/>
+            <entry key="ConfigurableIPot.bitViewEnabled" value="true"/>
+            <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
             <entry key="APS.ADCTestMode" value="false"/>
             <entry key="APS.ColumnSettle" value="30"/>
-            <entry key="APS.Exposure" value="2793"/>
+            <entry key="APS.Exposure" value="7245"/>
             <entry key="APS.FrameDelay" value="1000"/>
-            <entry key="APS.FrameInterval" value="50000"/>
+            <entry key="APS.FrameInterval" value="70711"/>
             <entry key="APS.GlobalShutter" value="true"/>
             <entry key="APS.NullSettle" value="3"/>
             <entry key="APS.RampReset" value="10"/>
@@ -152,8 +158,7 @@
             <entry key="AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.biasBuffer.Sex" value="N"/>
             <entry key="AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
-            <entry key="BiasgenFrame.lastFile" value="/home/tobi/Dropbox/GitHub/SensorsINI/jaer/biasgenSettings/Davis346b/DAVIS346blue.xml"/>
-            <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
+            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\biasgenSettings\Davis346b\DAVIS346blue.xml"/>
             <entry key="Chip.AERnArow" value="false"/>
             <entry key="Chip.AnalogMux0" value="0"/>
             <entry key="Chip.AnalogMux1" value="0"/>
@@ -169,10 +174,7 @@
             <entry key="Chip.TestADC" value="false"/>
             <entry key="Chip.TypeNCalibNeuron" value="false"/>
             <entry key="Chip.UseAOut" value="false"/>
-            <entry key="ChipCanvas.origin3dx" value="0"/>
-            <entry key="ChipCanvas.origin3dy" value="0"/>
-            <entry key="ChipRenderer.colorMode" value="GrayLevel"/>
-            <entry key="ConfigurableIPot.bitViewEnabled" value="true"/>
+            <entry key="ChipRenderer.colorMode" value="RedGreen"/>
             <entry key="DVS.AckDelayColumn" value="0"/>
             <entry key="DVS.AckDelayRow" value="4"/>
             <entry key="DVS.AckExtensionColumn" value="0"/>
@@ -210,7 +212,7 @@
             <entry key="ExtInput.RunDetector" value="false"/>
             <entry key="ExtInput.RunGenerator" value="false"/>
             <entry key="FilterFrame.lastFile" value="/home/tobi/Dropbox/GitHub/SensorsINI/jaer/filterSettings/drone-tracking adaptive mixing factor.xml"/>
-            <entry key="FilterFrame.lastFilterSelected" value="class net.sf.jaer.eventprocessing.filter.SpatioTemporalCorrelationFilter"/>
+            <entry key="FilterFrame.lastFilterSelected" value="class net.sf.jaer.eventprocessing.filter.RotateFilter"/>
             <entry key="FilterFrame.restoreFilterEnabledStateEnabled" value="true"/>
             <entry key="IMU.AccelFullScale" value="0"/>
             <entry key="IMU.AccelScale" value="ImuAccelScaleG2"/>
@@ -262,14 +264,14 @@
             <entry key="VideoControl.monochrome" value="true"/>
             <entry key="VideoControl.separateAPSByColor" value="false"/>
             <entry key="autoWhiteBalance" value="true"/>
-            <entry key="borderSpacePixels" value="10"/>
             <entry key="colorCorrection" value="true"/>
-            <entry key="colorScale" value="1"/>
             <entry key="displayEvents" value="true"/>
             <entry key="displayFrames" value="true"/>
             <entry key="monochrome" value="true"/>
-            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAEdwQAAAAEc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABDL2hvbWUvdG9iaS9Ecm9wYm94L0dpdEh1Yi9TZW5zb3JzSU5JL2phZXIvYmlhc2dlblNldHRpbmdzL0RhdmlzMzQ2YncCAC94c3EAfgACdABUL2hvbWUvdG9iaS9Ecm9wYm94L0dpdEh1Yi9TZW5zb3JzSU5JL2phZXIvYmlhc2dlblNldHRpbmdzL0RhdmlzMzQ2Yi9EQVZJUzM0NmJsdWUueG1sdwIAL3hzcQB+AAJ0ADgvaG9tZS90b2JpL0Ryb3Bib3gvR2l0SHViL1NlbnNvcnNJTkkvamFlci9maWx0ZXJTZXR0aW5nc3cCAC94c3EAfgACdABiL2hvbWUvdG9iaS9Ecm9wYm94L0dpdEh1Yi9TZW5zb3JzSU5JL2phZXIvZmlsdGVyU2V0dGluZ3MvZHJvbmUtdHJhY2tpbmcgYWRhcHRpdmUgbWl4aW5nIGZhY3Rvci54bWx3AgAveHg="/>
+            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAACdwQAAAACc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABHQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGJpYXNnZW5TZXR0aW5nc1xEYXZpczM0NmJ3AgBceHNxAH4AAnQAWEM6XFVzZXJzXHRvYmlkXERyb3Bib3hcR2l0SHViXFNlbnNvcnNJTklcamFlclxiaWFzZ2VuU2V0dGluZ3NcRGF2aXMzNDZiXERBVklTMzQ2Ymx1ZS54bWx3AgBceHg="/>
             <entry key="separateAPSByColor" value="false"/>
+            <entry key="AEViewer.adaptiveRenderSkippingEnabled" value="false"/>
+            <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAJdwQAAAAJdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0ACxuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlN0ZWFkaWNhbXQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVydAAobmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuSmFlckF2aVdyaXRlcng="/>
           </map>
         </node>
       </node>
