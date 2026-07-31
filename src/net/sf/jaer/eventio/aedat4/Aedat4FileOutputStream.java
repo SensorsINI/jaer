@@ -11,6 +11,7 @@ import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.FramePacket;
@@ -33,6 +34,8 @@ import net.sf.jaer.util.EngineeringFormat;
 /** Writes AEDAT-4 files with DV-compatible FlatBuffers packets and optional LZ4/ZSTD compression. */
 public class Aedat4FileOutputStream implements Closeable {
 
+    private static final Logger log = Logger.getLogger("net.sf.jaer");
+
     public static final byte[] VERSION_LINE = new byte[]{'#', '!', 'A', 'E', 'R', '-', 'D', 'A', 'T', '4', '.', '0', '\r', '\n'};
     public static final int STREAM_EVENTS = 0;
     public static final int STREAM_FRAMES = 1;
@@ -47,6 +50,10 @@ public class Aedat4FileOutputStream implements Closeable {
     private final long headerPosition;
     private byte[] headerBytes;
     private boolean closed;
+    /** Uncompressed FlatBuffer packet payload bytes (before LZ4/ZSTD). */
+    private long uncompressedPayloadBytes;
+    /** Compressed packet payload bytes written to the file (same as uncompressed if NONE). */
+    private long compressedPayloadBytes;
 
     public Aedat4FileOutputStream(File file, AEChip chip) throws IOException {
         this(new FileOutputStream(file), chip, CompressionType.LZ4);
@@ -175,6 +182,8 @@ public class Aedat4FileOutputStream implements Closeable {
 
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {
         byte[] toWrite = Aedat4Compression.compress(payload, compression);
+        uncompressedPayloadBytes += payload.length;
+        compressedPayloadBytes += toWrite.length;
         long byteOffset = channel.position();
         ByteBuffer header = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         header.putInt(streamId);
@@ -231,6 +240,35 @@ public class Aedat4FileOutputStream implements Closeable {
         headerBytes = patchedHeader;
         closed = true;
         outputStream.close();
+        log.info(formatCompressionSummary());
+    }
+
+    /**
+     * Estimated packet-payload compression vs uncompressed FlatBuffers
+     * (headers/FileDataTable excluded). Relative measure of LZ4/ZSTD gain.
+     */
+    public String formatCompressionSummary() {
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(3);
+        if (uncompressedPayloadBytes <= 0) {
+            return String.format("AEDAT-4 %s: no packet payloads written",
+                    Aedat4Compression.nameOf(compression));
+        }
+        double pct = 100.0 * compressedPayloadBytes / (double) uncompressedPayloadBytes;
+        return String.format(
+                "AEDAT-4 %s: compressed to %.0f%% of raw (payload %sB -> %sB)",
+                Aedat4Compression.nameOf(compression),
+                pct,
+                eng.format((double) uncompressedPayloadBytes).trim(),
+                eng.format((double) compressedPayloadBytes).trim());
+    }
+
+    /** {@code compressed / uncompressed} payload ratio, or 1 if nothing written. */
+    public double getPayloadCompressionRatio() {
+        if (uncompressedPayloadBytes <= 0) {
+            return 1.0;
+        }
+        return compressedPayloadBytes / (double) uncompressedPayloadBytes;
     }
 
     @Override
@@ -249,11 +287,20 @@ public class Aedat4FileOutputStream implements Closeable {
         }
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
-        return String.format("AEDAT-4 %s: %s events, %s frames, %s IMU samples",
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("AEDAT-4 %s: %s events, %s frames, %s IMU samples",
                 Aedat4Compression.nameOf(compression),
                 eng.format((double) events).trim(),
                 eng.format((double) frames).trim(),
-                eng.format((double) imuSamples).trim());
+                eng.format((double) imuSamples).trim()));
+        if (uncompressedPayloadBytes > 0) {
+            double pct = 100.0 * compressedPayloadBytes / (double) uncompressedPayloadBytes;
+            sb.append(String.format("; compressed to %.0f%% of raw (%sB -> %sB)",
+                    pct,
+                    eng.format((double) uncompressedPayloadBytes).trim(),
+                    eng.format((double) compressedPayloadBytes).trim()));
+        }
+        return sb.toString();
     }
 
     private static final class DataDefinition {
