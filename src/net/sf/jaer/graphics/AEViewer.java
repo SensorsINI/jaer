@@ -131,6 +131,7 @@ import net.sf.jaer.eventio.AESocketDialog;
 import net.sf.jaer.eventio.AEUnicastDialog;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
+import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
@@ -998,6 +999,59 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         return aeChipClass;
     }
+
+    /**
+     * Loaded AEChip FQCNs shown in the AEChip / device menu (user-selected subset).
+     */
+    public java.util.List<String> getChipClassNames() {
+        return chipClassNames;
+    }
+
+    /**
+     * If the recording's chip (from filename, then header) differs from the
+     * current {@link AEChip}, ask to switch before opening. Returns false if the
+     * user cancels open.
+     */
+    public boolean ensureChipCompatibleWithRecording(File file) {
+        if (file == null || !file.isFile()) {
+            return true;
+        }
+        Class<? extends AEChip> suggested = RecordingChipDetector.detect(file, chipClassNames);
+        if (suggested == null) {
+            return true;
+        }
+        Class current = getAeChipClass();
+        if (current != null && (current.equals(suggested)
+                || current.getSimpleName().equalsIgnoreCase(suggested.getSimpleName()))) {
+            return true;
+        }
+        String currentName = current == null ? "(none)" : current.getSimpleName();
+        String msg = String.format(
+                "<html>This recording appears to use chip <b>%s</b>,<br>"
+                + "but the viewer is set to <b>%s</b>.<br><br>"
+                + "Switch to <b>%s</b> before opening?</html>",
+                suggested.getSimpleName(), currentName, suggested.getSimpleName());
+        int choice = JOptionPane.showConfirmDialog(
+                this,
+                msg,
+                "AEChip mismatch",
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
+            log.info("Playback open canceled (AEChip mismatch dialog)");
+            return false;
+        }
+        if (choice == JOptionPane.YES_OPTION) {
+            log.info("Switching AEChip from " + currentName + " to " + suggested.getSimpleName()
+                    + " for recording " + file.getName());
+            setAeChipClass(suggested);
+        } else {
+            log.info("Keeping AEChip " + currentName + " despite recording hint "
+                    + suggested.getSimpleName());
+        }
+        return true;
+    }
+
     private long lastTimeTitleSet = 0;
     PlayMode lastTitlePlayMode = null;
 

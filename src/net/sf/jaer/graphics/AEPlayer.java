@@ -333,6 +333,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if ((file == null) || !file.isFile()) {
             throw new FileNotFoundException("file not found: " + file);
         }
+        // Filename / header chip check before open (may switch AEChip or cancel).
+        if (!viewer.ensureChipCompatibleWithRecording(file)) {
+            return;
+        }
         // Stop ViewLoop from opening USB / flipping to LIVE while we index the file.
         // Known race: ViewLoop openAEMonitor() can set LIVE and ignore playback.
         viewer.beginFilePlaybackOpen();
