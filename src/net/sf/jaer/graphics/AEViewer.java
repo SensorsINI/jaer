@@ -297,6 +297,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
     private ViewLoop viewLoop = new ViewLoop();
+    /**
+     * Dedicated lock for ViewLoop pause wait/notify. Do not use {@link #viewLoop}
+     * itself as a mutex for playMode — ViewLoop holds that monitor in
+     * {@link #openAEMonitor()} during USB open, which deadlocks EDT file open.
+     */
+    private final Object viewLoopPauseLock = new Object();
     /** WIP experimental: max wait for ViewLoop exit before {@link System#exit(int)}. */
     private static final long VIEWLOOP_EXIT_JOIN_TIMEOUT_MS = 3000;
     FilterChain filterChain = null;
@@ -327,6 +333,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean enableFiltersOnStartup = prefs.getBoolean("AEViewer.enableFiltersOnStartup", false);
     private long loggingTimeLimit = 0, loggingStartTime = System.currentTimeMillis();
     private boolean logFilteredEventsEnabled = prefs.getBoolean("AEViewer.logFilteredEventsEnabled", false);
+    /** Logging format version string, e.g. {@code "4.0"} or {@code "2.0"}. */
+    private String loggingDataFileVersion = prefs.get("AEViewer.loggingDataFileVersion",
+            AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4);
+    /** AEDAT-4 {@link net.sf.jaer.eventio.aedat4.dv.CompressionType} (default LZ4). */
+    private int aedat4Compression = prefs.getInt("AEViewer.aedat4Compression",
+            net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4);
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     private JaerUpdaterFrame jaerUpdaterFrame = null;
@@ -395,6 +407,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private int adaptiveRenderSkipMaxBeforePlayback = -1;
     /** True when live USB acquisition was paused for file playback (resume on stopPlayback). */
     private boolean eventAcquisitionPausedForPlayback;
+    /**
+     * Set while a data file is being opened so ViewLoop must not call
+     * {@link #openAEMonitor()} (USB open can block for a long time and miss PLAYBACK).
+     */
+    private volatile boolean suppressHardwareOpen;
     private boolean suppressAdaptiveRenderSkipMenuSync;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
@@ -1650,20 +1667,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      *
      */
     private void openAEMonitor() {
-        synchronized (viewLoop) { // TODO grabs lock on viewLoop so that other methods, e.g. startPlayback, which also grab this lock, will not race to set playMode. touchy design.
-            if (getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) { // don't open hardware if playing a file
-                return;
+        // Intentionally not synchronized on viewLoop: holding that monitor during USB
+        // open/aemon.open() blocked EDT setPlayMode(PLAYBACK) indefinitely.
+        boolean wantLive = false;
+        boolean wantWaiting = false;
+        if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+            // don't open hardware if playing a file or a file open is in progress
+            return;
+        }
+        if ((aemon != null) && aemon.isOpen()) {
+            if (getPlayMode() != PlayMode.SEQUENCING) {
+                wantLive = true;
             }
-            if ((aemon != null) && aemon.isOpen()) {
-                if (getPlayMode() != PlayMode.SEQUENCING) {
-                    //log.info("Play mode: Live");
-                    setPlayMode(PlayMode.LIVE);
-                }
-                // playMode=PlayMode.LIVE; // in case (like StereoPairHardwareInterface) where device can be open but not by AEViewer
-                return;
-            }
+        } else {
             try {
                 openHardwareIfNonambiguous();
+                if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+                    return;
+                }
                 // openHardwareIfNonambiguous will set chip's hardware interface, here we store local reference
                 // if it's an aemon, then its an event monitor
                 if ((chip.getHardwareInterface() != null) && (chip.getHardwareInterface() instanceof AEMonitorInterface)) {
@@ -1677,6 +1698,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     aemon.setChip(chip);
                     aemon.open(); // will throw BlankDeviceException if device is blank.
+                    if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+                        // File open won the race while USB open blocked; leave device but do not go LIVE.
+                        log.info("openAEMonitor: playMode became PLAYBACK during aemon.open(); skipping LIVE");
+                        return;
+                    }
                     if (aemon instanceof USBInterface) {
                         USBInterface usb = (USBInterface) aemon;
                         if ((usb.getStringDescriptors() != null) && (usb.getStringDescriptors().length == 3) && (usb.getStringDescriptors()[2] != null)) {
@@ -1702,7 +1728,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         enableMonSeqMenu(true);
                     }
                     if (getPlayMode() != PlayMode.SEQUENCING) {
-                        setPlayMode(PlayMode.LIVE);
+                        wantLive = true;
                     }
                     // TODO interface should do this check nonmonotonic timestamps automatically
                     if ((aemon != null) && (aemon instanceof StereoPairHardwareInterface)) {
@@ -1746,9 +1772,58 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 fixDeviceControlMenuItems();
                 fixLoggingControls();
                 fixBiasgenControls();
-                setPlayMode(PlayMode.WAITING);
+                wantWaiting = true;
             }
-            fixDeviceControlMenuItems();
+        }
+        fixDeviceControlMenuItems();
+        if (wantWaiting) {
+            setPlayMode(PlayMode.WAITING);
+        } else if (wantLive && getPlayMode() == PlayMode.WAITING && !suppressHardwareOpen) {
+            // Only WAITING→LIVE; never overwrite PLAYBACK/REMOTE/FILTER_INPUT (file-open race).
+            setPlayMode(PlayMode.LIVE);
+        }
+    }
+
+    /**
+     * Call at the start of file open so ViewLoop stops touching USB and switches
+     * to PLAYBACK (paused until the stream is ready).
+     */
+    public void beginFilePlaybackOpen() {
+        suppressHardwareOpen = true;
+        log.fine("beginFilePlaybackOpen: suppressHardwareOpen=true playMode=" + getPlayMode());
+        if (aemon != null && aemon.isOpen() && aemon.isEventAcquisitionEnabled()) {
+            try {
+                aemon.setEventAcquisitionEnabled(false);
+                eventAcquisitionPausedForPlayback = true;
+                log.info("paused live event acquisition for file open");
+            } catch (HardwareInterfaceException e) {
+                log.warning("failed to pause live acquisition for file open: " + e.getMessage());
+            }
+        }
+        // Force PLAYBACK even if already there so ViewLoop leaves LIVE/WAITING USB paths.
+        if (getPlayMode() != PlayMode.PLAYBACK) {
+            setPlayMode(PlayMode.PLAYBACK);
+        } else {
+            wakeViewLoopForPlayback();
+        }
+    }
+
+    /**
+     * Call when file open finishes (success or cancel) so LIVE can resume later.
+     */
+    public void endFilePlaybackOpen() {
+        suppressHardwareOpen = false;
+        log.fine("endFilePlaybackOpen: suppressHardwareOpen=false");
+        wakeViewLoopForPlayback();
+    }
+
+    /** Wake ViewLoop from pause wait so PLAYBACK can proceed.
+     * Do <b>not</b> {@link #interruptViewloop()}: {@code Thread.interrupt} closes
+     * {@link java.nio.channels.FileChannel} ({@code ClosedByInterruptException}),
+     * which permanently breaks AEDAT-4/AEDAT-2 playback. See AEPlayer comment. */
+    private void wakeViewLoopForPlayback() {
+        synchronized (viewLoopPauseLock) {
+            viewLoopPauseLock.notifyAll();
         }
     }
 
@@ -1794,6 +1869,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         volatile boolean stop = false;
         private AEPacketRaw emptyRawPacket;
         private EventPacket emptyCookedPacket;
+        private long lastViewLoopHeartbeatMs;
 
         public ViewLoop() {
             super();
@@ -1825,6 +1901,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (stop) {
                     log.info("breaking out of view loop after pauseIdleWaitIfNeeded() because stop=true");
                     break;
+                }
+                // Heartbeat when FINE: proves ViewLoop is alive vs stuck in USB/JOGL.
+                if (log.isLoggable(Level.FINE)) {
+                    long now = System.currentTimeMillis();
+                    if (now - lastViewLoopHeartbeatMs > 2000) {
+                        lastViewLoopHeartbeatMs = now;
+                        log.fine("ViewLoop heartbeat playMode=" + getPlayMode()
+                                + " paused=" + isPaused()
+                                + " interrupted=" + isInterrupted()
+                                + " suppressHW=" + suppressHardwareOpen
+                                + " stream=" + (getAePlayer() != null && getAePlayer().getAEInputStream() != null));
+                    }
                 }
                 // unless fastForward is set, in which case there is no delay
                 if (!isPaused() || (isSingleStep() && !isInterrupted())) { // we check interrupted to make sure we are not getting data after being interrupted
@@ -1861,7 +1949,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING)) {
                             try {
                                 openAEMonitor();
-                                if ((aemon != null) && aemon.isOpen()) {
+                                if (suppressHardwareOpen || getPlayMode() == PlayMode.PLAYBACK || getPlayMode() == PlayMode.FILTER_INPUT) {
+                                    // File open flipped mode while we were opening USB — fall through to grabInput.
+                                    hwBundle = null;
+                                } else if ((aemon != null) && aemon.isOpen()) {
                                     hwBundle = aemon.acquireAvailablePacketBundle();
                                 }
                             } catch (Exception ex) {
@@ -2199,9 +2290,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         return emptyRawPacket;
                     }
                 case PLAYBACK:
+                    // Clear stale interrupt before NIO reads — interrupt closes FileChannel.
+                    if (interrupted()) {
+                        log.fine("ViewLoop.grabInput PLAYBACK: cleared interrupt flag before FileChannel read");
+                    }
+                    log.fine("ViewLoop.grabInput PLAYBACK paused=" + isPaused()
+                            + " aePlayer=" + (getAePlayer() != null)
+                            + " stream=" + (getAePlayer() != null && getAePlayer().getAEInputStream() != null));
                     getAePlayer().adjustTimesliceForRealtimePlayback();
                     droppedDataInfo = DroppedDataInfo.none();
-                    return getAePlayer().getNextPacket(aePlayer);
+                    AEPacketRaw pb = getAePlayer().getNextPacket(aePlayer);
+                    log.fine("ViewLoop.grabInput PLAYBACK packet n="
+                            + (pb == null ? -1 : pb.getNumEvents()));
+                    return pb;
                 case REMOTE:
                     if (unicastInputEnabled) {
                         if (unicastInput == null) {
@@ -2274,6 +2375,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (unicastInputEnabled || multicastInputEnabled || socketInputEnabled) {
                         // if were were playing back a recording and a remote interface is active, then we go back to it here.
                         setPlayMode(PlayMode.REMOTE);
+                        return emptyRawPacket;
+                    }
+                    if (suppressHardwareOpen) {
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException e) {
+                            log.fine("WAITING suppressHardwareOpen sleep interrupted");
+                        }
                         return emptyRawPacket;
                     }
                     openAEMonitor();
@@ -2492,9 +2601,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         /** Idle wait while paused (no acquisition). */
         void pauseIdleWaitIfNeeded() {
             if (isPaused() && !interrupted()) {
-                synchronized (this) { // reason for grabbing monitor is because if we are sliding the slider, we need to make sure we have control of the view loop
+                synchronized (viewLoopPauseLock) {
                     try {
-                        wait(1000);
+                        viewLoopPauseLock.wait(1000);
                     } catch (java.lang.InterruptedException e) {
 //						log.log(Level.INFO, "viewLoop idle wait() was interrupted: {0}", e.toString());
                     }
@@ -4267,14 +4376,20 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void updateLiveAcquisitionForPlayMode(PlayMode oldMode, PlayMode newMode) {
         if (newMode == PlayMode.PLAYBACK && oldMode != PlayMode.PLAYBACK) {
+            log.fine("updateLiveAcquisition: entering PLAYBACK from " + oldMode
+                    + " aemon=" + aemon
+                    + " open=" + (aemon != null && aemon.isOpen())
+                    + " acqEnabled=" + (aemon != null && aemon.isOpen() && aemon.isEventAcquisitionEnabled()));
             if (oldMode == PlayMode.SEQUENCING) {
                 stopSequencing();
             }
             if (aemon != null && aemon.isOpen() && aemon.isEventAcquisitionEnabled()) {
                 try {
+                    log.fine("updateLiveAcquisition: setEventAcquisitionEnabled(false) begin");
                     aemon.setEventAcquisitionEnabled(false);
                     eventAcquisitionPausedForPlayback = true;
                     log.info("paused live event acquisition for file playback");
+                    log.fine("updateLiveAcquisition: setEventAcquisitionEnabled(false) done");
                 } catch (HardwareInterfaceException e) {
                     log.warning("failed to pause live acquisition for playback: " + e.getMessage());
                 }
@@ -5232,7 +5347,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             loggingFile = new File(filename);
             if (aedat4) {
                 loggingOutputStream = null;
-                aedat4LoggingOutputStream = new Aedat4FileOutputStream(new FileOutputStream(loggingFile), chip);
+                aedat4LoggingOutputStream = new Aedat4FileOutputStream(new FileOutputStream(loggingFile), chip, getAedat4Compression());
+                log.info(String.format("AEDAT-4 logging compression=%s",
+                        net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression())));
             } else {
                 aedat4LoggingOutputStream = null;
                 loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
@@ -5301,7 +5418,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //        if(dataFileVersionNum == null) {
 //            return null;
 //        }
-        dataFileVersionNum = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+        dataFileVersionNum = getLoggingDataFileVersion();
 
         String dateString
                 = AEDataFile.DATE_FORMAT.format(new Date()); // uses local time zone on this computer (must be set correctly to be able to find true local time of recording later)
@@ -6002,8 +6119,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         viewLoop.stopThread();
         stopLiveAcquisitionForExit();
         interruptViewloop();
-        synchronized (viewLoop) {
-            viewLoop.notifyAll();
+        synchronized (viewLoopPauseLock) {
+            viewLoopPauseLock.notifyAll();
         }
         if (!viewLoop.isAlive()) {
             log.info("AEViewer.ViewLoop already exited before shutdown");
@@ -6074,7 +6191,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 }
                 String filename = line.substring(REMOTE_START_LOGGING.length() + 1);
                 // TODO: ask user to choose the data format they want to use.
-                File f = startLogging(filename, AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4);
+                File f = startLogging(filename, getLoggingDataFileVersion());
                 if (f == null) {
                     return "Couldn't start logging to filename=" + filename + ", startlogging returned " + f + "\n";
                 } else {
@@ -7144,6 +7261,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Preferred logging file format version ({@code "4.0"} or {@code "2.0"}).
+     * Used by Start logging / {@code l} key; change via File/Preferences.
+     */
+    public String getLoggingDataFileVersion() {
+        if (loggingDataFileVersion == null || loggingDataFileVersion.isEmpty()) {
+            return AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+        }
+        return loggingDataFileVersion;
+    }
+
+    public void setLoggingDataFileVersion(String loggingDataFileVersion) {
+        if (AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2.equals(loggingDataFileVersion)
+                || AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(loggingDataFileVersion)) {
+            this.loggingDataFileVersion = loggingDataFileVersion;
+        } else {
+            this.loggingDataFileVersion = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4;
+        }
+        prefs.put("AEViewer.loggingDataFileVersion", this.loggingDataFileVersion);
+    }
+
+    /**
+     * AEDAT-4 packet compression ({@link net.sf.jaer.eventio.aedat4.dv.CompressionType}).
+     * Takes effect on the next Start logging.
+     */
+    public int getAedat4Compression() {
+        return net.sf.jaer.eventio.aedat4.Aedat4Compression.clamp(aedat4Compression);
+    }
+
+    public void setAedat4Compression(int aedat4Compression) {
+        this.aedat4Compression = net.sf.jaer.eventio.aedat4.Aedat4Compression.clamp(aedat4Compression);
+        prefs.putInt("AEViewer.aedat4Compression", this.aedat4Compression);
+    }
+
+    /**
      * @return the chip we are displaying
      */
     public AEChip getChip() {
@@ -7258,25 +7409,54 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         // TODO there can be a race condition where user tries to open file, this sets
         // playMode to PLAYBACK but run() method in ViewLoop sets it back to WAITING or LIVE
         if (getPlayMode().equals(playMode)) {
+            log.fine("setPlayMode(" + playMode + ") no-op (already)");
+            // Re-open while already PLAYBACK must still wake ViewLoop and stop USB.
+            if (playMode == PlayMode.PLAYBACK) {
+                wakeViewLoopForPlayback();
+                updateLiveAcquisitionForPlayMode(PlayMode.LIVE, PlayMode.PLAYBACK);
+            }
             return;
         }
         final PlayMode oldMode = this.playMode;
         log.info("Changing PlayMode from " + this.playMode + " to " + playMode);
+        log.fine("setPlayMode " + oldMode + " -> " + playMode
+                + " thread=" + Thread.currentThread().getName()
+                + " EDT=" + javax.swing.SwingUtilities.isEventDispatchThread()
+                + " paused=" + isPaused());
 
         if (playMode == PlayMode.FILTER_INPUT) {
             setPlaybackControlsEnabledState(true); // tobi added to enable faster/slower for DavisTextInputReader
         }
-        synchronized (viewLoop) {
-            this.playMode = playMode;
-            if (isPaused()) {
+        // playMode is volatile — do not synchronize on viewLoop here. ViewLoop may hold
+        // viewLoop for a long time in openAEMonitor (USB), which deadlocked EDT file open.
+        log.fine("setPlayMode: assigning playMode (no viewLoop lock)");
+        this.playMode = playMode;
+        if (isPaused()) {
+            // Prefer notify over interrupt for PLAYBACK — interrupt closes FileChannel.
+            if (playMode == PlayMode.PLAYBACK) {
+                log.fine("setPlayMode: notify pause wait (PLAYBACK, no interrupt)");
+                synchronized (viewLoopPauseLock) {
+                    viewLoopPauseLock.notifyAll();
+                }
+            } else {
+                log.fine("setPlayMode: interruptViewloop (paused)");
                 interruptViewloop();
+                synchronized (viewLoopPauseLock) {
+                    viewLoopPauseLock.notifyAll();
+                }
             }
         }
+        log.fine("setPlayMode: updateAdaptiveRenderSkipping");
         updateAdaptiveRenderSkippingForPlayMode(oldMode, playMode);
+        log.fine("setPlayMode: updateLiveAcquisition");
         updateLiveAcquisitionForPlayMode(oldMode, playMode);
+        log.fine("setPlayMode: setTitleAccordingToState");
         setTitleAccordingToState();
+        log.fine("setPlayMode: fixLoggingControls");
         fixLoggingControls();
+        log.fine("setPlayMode: fire EVENT_PLAYMODE");
         getSupport().firePropertyChange(EVENT_PLAYMODE, oldMode.toString(), playMode.toString());
+        log.fine("setPlayMode complete");
     }
 
     public boolean isLogFilteredEventsEnabled() {

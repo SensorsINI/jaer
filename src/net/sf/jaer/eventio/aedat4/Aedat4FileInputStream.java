@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -52,8 +53,10 @@ import net.sf.jaer.util.EngineeringFormat;
 public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int INDEX_CACHE_VERSION = 4;
+    private static final int INDEX_CACHE_VERSION = 7; // v7: chip class name (addresses are chip-packed)
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
+    /** Sanity cap for cached polarity events (guards corrupt headers / OOM). */
+    private static final int INDEX_CACHE_MAX_EVENTS = 50_000_000;
 
     private final AEChip chip;
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -61,6 +64,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private File file;
     private RandomAccessFile randomAccessFile;
     private FileChannel channel;
+    private int compression = CompressionType.NONE;
 
     private int[] addresses = new int[0];
     private int[] timestamps = new int[0];
@@ -96,21 +100,55 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         this.chip = chip;
         this.randomAccessFile = new RandomAccessFile(file, "r");
         this.channel = randomAccessFile.getChannel();
-        if (!maybeLoadCachedIndex(progressMonitor)) {
-            indexFile(progressMonitor);
-            cacheIndex();
+        try {
+            log.fine("Aedat4FileInputStream open begin: " + file);
+            readCompressionFromHeader();
+            log.fine("header compression=" + Aedat4Compression.nameOf(compression));
+            if (!maybeLoadCachedIndex(progressMonitor)) {
+                log.fine("no usable cache; indexing " + file.getName());
+                indexFile(progressMonitor);
+                log.fine("index complete; writing cache");
+                cacheIndex(progressMonitor);
+                log.fine("cache write complete");
+            } else {
+                log.fine("loaded index from cache");
+            }
+            throwIfCanceled(progressMonitor, "AEDAT-4 open");
+            if (progressMonitor != null) {
+                progressMonitor.setNote("Finishing open " + file.getName());
+                // Do not set 100 here — ProgressMonitor closes at max before EDT playback setup.
+                progressMonitor.setProgress(99);
+            }
+            log.fine("clearMarks / EVENT_INIT");
+        } catch (IOException e) {
+            log.fine("open failed: " + e);
+            try {
+                close();
+            } catch (IOException ignore) {
+                // already failing open
+            }
+            throw e;
         }
         clearMarks();
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         log.info(String.format(
-                "Opened AEDAT-4 %s: %s events, %s frames, %s IMU samples, duration=%ss",
+                "Opened AEDAT-4 %s (%s): %s events, %s frames, %s IMU samples, duration=%ss",
                 file.getName(),
+                Aedat4Compression.nameOf(compression),
                 eng.format((double) eventCount).trim(),
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
                 eng.format(getDurationUs() * 1e-6).trim()));
         support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
+        log.fine("Aedat4FileInputStream constructor returning");
+    }
+
+    private static void throwIfCanceled(ProgressMonitor progressMonitor, String what) throws IOException {
+        if (Thread.currentThread().isInterrupted()
+                || (progressMonitor != null && progressMonitor.isCanceled())) {
+            throw new IOException(what + " canceled");
+        }
     }
 
     /**
@@ -135,9 +173,23 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         pendingImu.clear();
     }
 
+    /** Reads only the IOHeader compression field (also used when loading a disk index cache). */
+    private void readCompressionFromHeader() throws IOException {
+        channel.position(0);
+        ByteBuffer version = ByteBuffer.allocate(Aedat4FileOutputStream.VERSION_LINE.length);
+        readFully(channel, version);
+        if (!Arrays.equals(version.array(), Aedat4FileOutputStream.VERSION_LINE)) {
+            throw new IOException(file + " is not an AEDAT-4 file");
+        }
+        ByteBuffer headerBytes = readSizePrefixed(channel);
+        IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(headerBytes);
+        compression = Aedat4Compression.clamp(header.compression());
+    }
+
     private void indexFile(ProgressMonitor progressMonitor) throws IOException {
-        ArrayList<Integer> addressList = new ArrayList<>();
-        ArrayList<Long> unixTimestampList = new ArrayList<>();
+        // Primitive growable buffers avoid boxing ~millions of Integer/Long (GC hangs on large files).
+        IntGrow addressList = new IntGrow();
+        LongGrow unixTimestampList = new LongGrow();
         ArrayList<PacketRef> frames = new ArrayList<>();
         ArrayList<PacketRef> imus = new ArrayList<>();
         long t0 = System.currentTimeMillis();
@@ -151,14 +203,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
         ByteBuffer headerBytes = readSizePrefixed(channel);
         IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(headerBytes);
-        if (header.compression() != CompressionType.NONE) {
-            throw new IOException("AEDAT-4 compression is not supported yet: " + header.compression());
-        }
+        compression = Aedat4Compression.clamp(header.compression());
         long dataTablePosition = header.dataTablePosition();
         long fileSize = channel.size();
         ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         long scannedPackets = 0;
+        if (progressMonitor != null) {
+            progressMonitor.setNote("Indexing AEDAT-4 packets");
+        }
         while (channel.position() + 8 <= fileSize) {
+            throwIfCanceled(progressMonitor, "AEDAT-4 indexing");
             if (dataTablePosition >= 0 && channel.position() >= dataTablePosition) {
                 break;
             }
@@ -172,20 +226,40 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (payloadSize < 0 || payloadSize > remaining) {
                 break;
             }
+            // dataTablePosition may be unset (-1) or pending (-2) on older/broken writes; stop before FTAB.
+            if (dataTablePosition < 0
+                    && streamId != Aedat4FileOutputStream.STREAM_EVENTS
+                    && streamId != Aedat4FileOutputStream.STREAM_FRAMES
+                    && streamId != Aedat4FileOutputStream.STREAM_IMU) {
+                log.info(String.format(
+                        "Stopping AEDAT-4 index at offset %d (streamId=%d); FileDataTable follows and IOHeader dataTablePosition=%d",
+                        packetOffset, streamId, dataTablePosition));
+                break;
+            }
             long payloadOffset = channel.position();
             ByteBuffer payload = ByteBuffer.allocate(payloadSize).order(ByteOrder.LITTLE_ENDIAN);
             readFully(channel, payload);
             payload.flip();
             scannedPackets++;
+            ByteBuffer flat;
+            try {
+                flat = maybeDecompress(payload);
+            } catch (IOException ex) {
+                if (dataTablePosition < 0 && looksLikeFileDataTable(payload)) {
+                    log.info("Stopping AEDAT-4 index before FileDataTable (dataTablePosition unset)");
+                    break;
+                }
+                throw ex;
+            }
             if (streamId == Aedat4FileOutputStream.STREAM_EVENTS) {
-                decodeEventPacket(payload, addressList, unixTimestampList);
+                decodeEventPacket(flat, addressList, unixTimestampList);
             } else if (streamId == Aedat4FileOutputStream.STREAM_FRAMES) {
-                Frame frame = Frame.getSizePrefixedRootAsFrame(payload);
+                Frame frame = Frame.getSizePrefixedRootAsFrame(flat);
                 long start = frame.timestampStartOfFrame() != 0 ? frame.timestampStartOfFrame() : frame.timestamp();
                 long end = frame.timestampEndOfFrame() != 0 ? frame.timestampEndOfFrame() : start;
                 frames.add(new PacketRef(payloadOffset, payloadSize, start, end, 1));
             } else if (streamId == Aedat4FileOutputStream.STREAM_IMU) {
-                IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(payload);
+                IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(flat);
                 int n = packet.elementsLength();
                 long start = 0;
                 long end = 0;
@@ -197,22 +271,21 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 imuSampleCount += n;
             }
             if (progressMonitor != null && fileSize > 0) {
-                progressMonitor.setProgress((int) Math.min(100, (packetOffset * 100) / fileSize));
-                if (progressMonitor.isCanceled()) {
-                    throw new IOException("AEDAT-4 indexing canceled");
-                }
+                // Leave headroom for cache write (90–99).
+                long denom = dataTablePosition > 0 ? dataTablePosition : fileSize;
+                progressMonitor.setProgress((int) Math.min(89, (packetOffset * 89) / Math.max(1, denom)));
             }
         }
 
         frameCount = frames.size();
-        eventCount = addressList.size();
+        eventCount = addressList.size;
         if (imuSampleCount == 0) {
             for (PacketRef r : imus) {
                 imuSampleCount += r.numElements;
             }
         }
 
-        if (!unixTimestampList.isEmpty()) {
+        if (unixTimestampList.size > 0) {
             baseUnixUs = unixTimestampList.get(0);
         } else if (!frames.isEmpty()) {
             baseUnixUs = frames.get(0).unixStart;
@@ -220,10 +293,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             baseUnixUs = imus.get(0).unixStart;
         }
 
-        addresses = new int[addressList.size()];
-        timestamps = new int[unixTimestampList.size()];
-        for (int i = 0; i < addresses.length; i++) {
-            addresses[i] = addressList.get(i);
+        addresses = addressList.toArray();
+        timestamps = new int[unixTimestampList.size];
+        for (int i = 0; i < timestamps.length; i++) {
             timestamps[i] = (int) (unixTimestampList.get(i) - baseUnixUs);
         }
         // Frames-only / IMU-only: clock from typed streams; polarity arrays stay empty.
@@ -234,8 +306,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         imuRefs = toRelativeRefs(imus);
         markOut = Math.max(0, Math.max(addresses.length, timestamps.length));
         log.info(String.format(
-                "Indexed AEDAT-4 %s in %d ms (%d packets scanned): %,d events, %,d frames, %,d IMU samples",
-                file.getName(), System.currentTimeMillis() - t0, scannedPackets,
+                "Indexed AEDAT-4 %s (%s) in %d ms (%d packets scanned): %,d events, %,d frames, %,d IMU samples",
+                file.getName(), Aedat4Compression.nameOf(compression), System.currentTimeMillis() - t0, scannedPackets,
                 eventCount, frameCount, imuSampleCount));
     }
 
@@ -272,7 +344,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return out;
     }
 
-    private void decodeEventPacket(ByteBuffer payload, ArrayList<Integer> addressList, ArrayList<Long> unixTimestampList) {
+    private void decodeEventPacket(ByteBuffer payload, IntGrow addressList, LongGrow unixTimestampList) {
         EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(payload);
         EventExtractor2D extractor = chip != null ? chip.getEventExtractor() : null;
         final boolean useDavisPacking = chip instanceof DavisChip;
@@ -286,10 +358,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (useDavisPacking) {
                 // Davis extract hard-codes sx1-x and DavisChip bitfields; extractor
                 // getAddressFromCell is not reliable (truncated masks, no flipx).
+                if (x > sx1 || y >= (chip == null ? 0 : chip.getSizeY())) {
+                    continue; // skip corrupt / out-of-range FB events
+                }
                 address = DavisChip.ADDRESS_TYPE_DVS
-                        | ((sx1 - x) << DavisChip.XSHIFT)
-                        | (y << DavisChip.YSHIFT)
-                        | (type << DavisChip.POLSHIFT);
+                        | (((sx1 - x) & 0x3ff) << DavisChip.XSHIFT)
+                        | ((y & 0x1ff) << DavisChip.YSHIFT)
+                        | ((type & 1) << DavisChip.POLSHIFT);
             } else if (extractor != null) {
                 // NRV and other RetinaExtractor chips: use chip x/y/type shifts & flips.
                 address = extractor.getAddressFromCell(x, y, type);
@@ -378,12 +453,74 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return out;
     }
 
+    private ByteBuffer maybeDecompress(ByteBuffer payload) throws IOException {
+        if (compression == CompressionType.NONE) {
+            return payload;
+        }
+        byte[] raw = new byte[payload.remaining()];
+        int pos = payload.position();
+        payload.get(raw);
+        payload.position(pos);
+        byte[] flat = Aedat4Compression.decompress(raw, compression);
+        return ByteBuffer.wrap(flat).order(ByteOrder.LITTLE_ENDIAN);
+    }
+
+    /** True if buffer looks like a size-prefixed or bare FileDataTable ("FTAB") FlatBuffer. */
+    private static boolean looksLikeFileDataTable(ByteBuffer payload) {
+        int p = payload.position();
+        int n = payload.remaining();
+        if (n >= 4) {
+            // Mis-framed FTAB payload often starts at the file_identifier.
+            if (payload.get(p) == 'F' && payload.get(p + 1) == 'T'
+                    && payload.get(p + 2) == 'A' && payload.get(p + 3) == 'B') {
+                return true;
+            }
+        }
+        if (n >= 12) {
+            // Size-prefixed FlatBuffer: identifier at offset 8 after size+soffset.
+            if (payload.get(p + 8) == 'F' && payload.get(p + 9) == 'T'
+                    && payload.get(p + 10) == 'A' && payload.get(p + 11) == 'B') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private ByteBuffer readPayload(PacketRef ref) throws IOException {
+        ensureChannelOpen();
         ByteBuffer payload = ByteBuffer.allocate(ref.payloadSize).order(ByteOrder.LITTLE_ENDIAN);
-        channel.position(ref.payloadOffset);
-        readFully(channel, payload);
+        try {
+            channel.position(ref.payloadOffset);
+            readFully(channel, payload);
+        } catch (ClosedChannelException e) {
+            ensureChannelOpen();
+            channel.position(ref.payloadOffset);
+            readFully(channel, payload);
+        }
         payload.flip();
-        return payload;
+        return maybeDecompress(payload);
+    }
+
+    /**
+     * Reopen FileChannel if a ViewLoop interrupt closed it
+     * ({@link ClosedByInterruptException}). Index arrays remain valid.
+     */
+    private synchronized void ensureChannelOpen() throws IOException {
+        if (channel != null && channel.isOpen()) {
+            return;
+        }
+        if (file == null) {
+            throw new IOException("AEDAT-4 channel closed and file is null");
+        }
+        log.info("Reopening AEDAT-4 FileChannel after close/interrupt: " + file.getName());
+        if (randomAccessFile != null) {
+            try {
+                randomAccessFile.close();
+            } catch (IOException ignore) {
+            }
+        }
+        randomAccessFile = new RandomAccessFile(file, "r");
+        channel = randomAccessFile.getChannel();
     }
 
     private static ByteBuffer readSizePrefixed(FileChannel channel) throws IOException {
@@ -409,25 +546,37 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
     }
 
+    private String chipClassName() {
+        return chip == null ? "null" : chip.getClass().getName();
+    }
+
     private File indexCacheFile() {
         String name = String.format("%s.%d.%d.aedat4idx",
                 file.getName(), file.length(), file.lastModified());
         return new File(System.getProperty("java.io.tmpdir"), name);
     }
 
-    private boolean maybeLoadCachedIndex(ProgressMonitor progressMonitor) {
+    private boolean maybeLoadCachedIndex(ProgressMonitor progressMonitor) throws IOException {
         File cache = indexCacheFile();
         if (!cache.isFile() || !cache.canRead() || cache.length() == 0) {
             return false;
         }
         long t0 = System.currentTimeMillis();
-        try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(cache)))) {
+        try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(cache), 1 << 20))) {
             if (!INDEX_CACHE_MAGIC.equals(in.readUTF()) || in.readInt() != INDEX_CACHE_VERSION) {
                 log.info("AEDAT-4 index cache version mismatch, rebuilding: " + cache);
                 return false;
             }
             if (in.readLong() != file.length() || in.readLong() != file.lastModified()) {
                 log.info("AEDAT-4 index cache stale, rebuilding: " + cache);
+                return false;
+            }
+            String cachedChip = in.readUTF();
+            String currentChip = chipClassName();
+            if (!cachedChip.equals(currentChip)) {
+                log.info(String.format(
+                        "AEDAT-4 index cache chip mismatch (cache=%s, viewer=%s), rebuilding: %s",
+                        cachedChip, currentChip, cache.getName()));
                 return false;
             }
             if (progressMonitor != null) {
@@ -438,14 +587,45 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             frameCount = in.readLong();
             imuSampleCount = in.readLong();
             int nEvents = in.readInt();
+            if (nEvents < 0 || nEvents > INDEX_CACHE_MAX_EVENTS) {
+                log.warning("AEDAT-4 index cache has absurd nEvents=" + nEvents + ", rebuilding");
+                return false;
+            }
+            long remainingHint = cache.length(); // rough; exact remaining harder mid-stream
+            // Each event is 4 bytes address; timestamps same count typically.
+            if (nEvents > 0 && remainingHint > 0 && (nEvents * 4L) > remainingHint) {
+                log.warning(String.format(
+                        "AEDAT-4 index cache truncated/corrupt (nEvents=%d needs >%d bytes, file=%d), rebuilding",
+                        nEvents, nEvents * 4L, remainingHint));
+                return false;
+            }
+            if (progressMonitor != null) {
+                progressMonitor.setNote(String.format("Reading cached index (%,d events)", nEvents));
+                progressMonitor.setProgress(1);
+            }
+            log.info(String.format("Reading AEDAT-4 index cache %s (%,d events, %.1f MB)",
+                    cache.getName(), nEvents, cache.length() / (1024.0 * 1024.0)));
             addresses = new int[nEvents];
             for (int i = 0; i < nEvents; i++) {
                 addresses[i] = in.readInt();
+                if ((i & 0xfffff) == 0) { // every ~1M
+                    throwIfCanceled(progressMonitor, "AEDAT-4 cache load");
+                    if (progressMonitor != null && nEvents > 0) {
+                        progressMonitor.setProgress(Math.min(95, 1 + (i * 94) / nEvents));
+                    }
+                }
             }
             int nTimes = in.readInt();
+            if (nTimes < 0 || nTimes > INDEX_CACHE_MAX_EVENTS) {
+                log.warning("AEDAT-4 index cache has absurd nTimes=" + nTimes + ", rebuilding");
+                return false;
+            }
             timestamps = new int[nTimes];
             for (int i = 0; i < nTimes; i++) {
                 timestamps[i] = in.readInt();
+                if ((i & 0xfffff) == 0) {
+                    throwIfCanceled(progressMonitor, "AEDAT-4 cache load");
+                }
             }
             frameRefs = readRefs(in);
             imuRefs = readRefs(in);
@@ -455,37 +635,100 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     cache.getName(), System.currentTimeMillis() - t0,
                     eventCount, frameCount, imuSampleCount));
             return true;
+        } catch (IOException e) {
+            if (e.getMessage() != null && e.getMessage().contains("canceled")) {
+                throw e;
+            }
+            log.warning("Could not load AEDAT-4 index cache, rebuilding: " + e);
+            return false;
         } catch (Exception e) {
             log.warning("Could not load AEDAT-4 index cache, rebuilding: " + e);
             return false;
         }
     }
 
-    private void cacheIndex() {
+    private void cacheIndex(ProgressMonitor progressMonitor) throws IOException {
         File cache = indexCacheFile();
-        try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(cache)))) {
+        if (progressMonitor != null) {
+            progressMonitor.setNote("Writing AEDAT-4 index cache");
+            progressMonitor.setProgress(90);
+        }
+        try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(cache), 1 << 20))) {
             out.writeUTF(INDEX_CACHE_MAGIC);
             out.writeInt(INDEX_CACHE_VERSION);
             out.writeLong(file.length());
             out.writeLong(file.lastModified());
+            out.writeUTF(chipClassName());
             out.writeLong(baseUnixUs);
             out.writeLong(eventCount);
             out.writeLong(frameCount);
             out.writeLong(imuSampleCount);
             out.writeInt(addresses.length);
-            for (int address : addresses) {
-                out.writeInt(address);
+            for (int i = 0; i < addresses.length; i++) {
+                out.writeInt(addresses[i]);
+                if ((i & 0xfffff) == 0) {
+                    throwIfCanceled(progressMonitor, "AEDAT-4 cache write");
+                    if (progressMonitor != null && addresses.length > 0) {
+                        progressMonitor.setProgress(90 + Math.min(9, (i * 9) / addresses.length));
+                    }
+                }
             }
             out.writeInt(timestamps.length);
-            for (int timestamp : timestamps) {
-                out.writeInt(timestamp);
+            for (int i = 0; i < timestamps.length; i++) {
+                out.writeInt(timestamps[i]);
+                if ((i & 0xfffff) == 0) {
+                    throwIfCanceled(progressMonitor, "AEDAT-4 cache write");
+                }
             }
             writeRefs(out, frameRefs);
             writeRefs(out, imuRefs);
             out.flush();
             log.info(String.format("Cached AEDAT-4 index (%s) to %s", file.getName(), cache.getAbsolutePath()));
+        } catch (IOException e) {
+            if (e.getMessage() != null && e.getMessage().contains("canceled")) {
+                // Remove partial cache so next open rebuilds cleanly.
+                if (!cache.delete() && cache.exists()) {
+                    log.warning("Could not delete partial AEDAT-4 index cache " + cache);
+                }
+                throw e;
+            }
+            log.warning("Could not cache AEDAT-4 index: " + e);
         } catch (Exception e) {
             log.warning("Could not cache AEDAT-4 index: " + e);
+        }
+    }
+
+    /** Growable int buffer used while indexing (avoids boxing). */
+    private static final class IntGrow {
+        int[] a = new int[4096];
+        int size;
+
+        void add(int v) {
+            if (size == a.length) {
+                a = Arrays.copyOf(a, a.length * 2);
+            }
+            a[size++] = v;
+        }
+
+        int[] toArray() {
+            return size == a.length ? a : Arrays.copyOf(a, size);
+        }
+    }
+
+    /** Growable long buffer used while indexing (avoids boxing). */
+    private static final class LongGrow {
+        long[] a = new long[4096];
+        int size;
+
+        void add(long v) {
+            if (size == a.length) {
+                a = Arrays.copyOf(a, a.length * 2);
+            }
+            a[size++] = v;
+        }
+
+        long get(int i) {
+            return a[i];
         }
     }
 
@@ -512,6 +755,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public synchronized AEPacketRaw readPacketByNumber(int n) throws IOException {
         ensureReadableOrThrow();
+        ensureChannelOpen();
         int start = (int) position;
         int end = (int) Math.min(effectiveMarkOut(), position + Math.max(1, n));
         position = end;
@@ -524,6 +768,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public synchronized AEPacketRaw readPacketByTime(int dt) throws IOException {
         ensureReadableOrThrow();
+        ensureChannelOpen();
         int start = (int) position;
         int target = timestamps[start] + dt;
         int end = start + 1;

@@ -30,7 +30,7 @@ import net.sf.jaer.eventio.aedat4.dv.IMUPacket;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 import net.sf.jaer.util.EngineeringFormat;
 
-/** Writes uncompressed AEDAT-4 files with DV-compatible FlatBuffers packets. */
+/** Writes AEDAT-4 files with DV-compatible FlatBuffers packets and optional LZ4/ZSTD compression. */
 public class Aedat4FileOutputStream implements Closeable {
 
     public static final byte[] VERSION_LINE = new byte[]{'#', '!', 'A', 'E', 'R', '-', 'D', 'A', 'T', '4', '.', '0', '\r', '\n'};
@@ -41,6 +41,7 @@ public class Aedat4FileOutputStream implements Closeable {
     private final FileOutputStream outputStream;
     private final FileChannel channel;
     private final AEChip chip;
+    private final int compression;
     private final long baseUs;
     private final List<DataDefinition> dataDefinitions = new ArrayList<>();
     private final long headerPosition;
@@ -48,18 +49,37 @@ public class Aedat4FileOutputStream implements Closeable {
     private boolean closed;
 
     public Aedat4FileOutputStream(File file, AEChip chip) throws IOException {
-        this(new FileOutputStream(file), chip);
+        this(new FileOutputStream(file), chip, CompressionType.LZ4);
+    }
+
+    public Aedat4FileOutputStream(File file, AEChip chip, int compression) throws IOException {
+        this(new FileOutputStream(file), chip, compression);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip) throws IOException {
+        this(outputStream, chip, CompressionType.LZ4);
+    }
+
+    public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression) throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
+        this.compression = Aedat4Compression.clamp(compression);
         this.baseUs = System.currentTimeMillis() * 1000L;
         channel.write(ByteBuffer.wrap(VERSION_LINE));
         headerPosition = channel.position();
-        headerBytes = buildIOHeader(-1);
+        // FlatBuffers omits dataTablePosition when it equals the default (-1). Use a
+        // non-default sentinel so the field is always present and close() can patch
+        // the same-sized IOHeader with the real FileDataTable offset.
+        headerBytes = buildIOHeader(DATA_TABLE_POSITION_PENDING);
         channel.write(ByteBuffer.wrap(headerBytes));
+    }
+
+    /** Sentinel written at open; replaced on {@link #close()} with the real table offset. */
+    private static final long DATA_TABLE_POSITION_PENDING = -2L;
+
+    public int getCompression() {
+        return compression;
     }
 
     public synchronized void writeBundle(PacketBundle bundle) throws IOException {
@@ -154,14 +174,15 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {
+        byte[] toWrite = Aedat4Compression.compress(payload, compression);
         long byteOffset = channel.position();
         ByteBuffer header = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         header.putInt(streamId);
-        header.putInt(payload.length);
+        header.putInt(toWrite.length);
         header.flip();
         channel.write(header);
-        channel.write(ByteBuffer.wrap(payload));
-        dataDefinitions.add(new DataDefinition(byteOffset, streamId, payload.length, numElements, timestampStart, timestampEnd));
+        channel.write(ByteBuffer.wrap(toWrite));
+        dataDefinitions.add(new DataDefinition(byteOffset, streamId, toWrite.length, numElements, timestampStart, timestampEnd));
     }
 
     private long toUnixUs(long relativeUs) {
@@ -171,7 +192,7 @@ public class Aedat4FileOutputStream implements Closeable {
     private byte[] buildIOHeader(long dataTablePosition) {
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
         int info = builder.createString(Aedat4InfoNode.build(chip));
-        int root = IOHeader.createIOHeader(builder, CompressionType.NONE, dataTablePosition, info);
+        int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, info);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();
     }
@@ -198,13 +219,16 @@ public class Aedat4FileOutputStream implements Closeable {
         long tablePosition = channel.position();
         channel.write(ByteBuffer.wrap(buildFileDataTable()));
         byte[] patchedHeader = buildIOHeader(tablePosition);
-        if (patchedHeader.length == headerBytes.length) {
-            long end = channel.position();
-            channel.position(headerPosition);
-            channel.write(ByteBuffer.wrap(patchedHeader));
-            channel.position(end);
-            headerBytes = patchedHeader;
+        if (patchedHeader.length != headerBytes.length) {
+            throw new IOException(String.format(
+                    "AEDAT-4 IOHeader size changed on close (%d -> %d); cannot patch dataTablePosition=%d",
+                    headerBytes.length, patchedHeader.length, tablePosition));
         }
+        long end = channel.position();
+        channel.position(headerPosition);
+        channel.write(ByteBuffer.wrap(patchedHeader));
+        channel.position(end);
+        headerBytes = patchedHeader;
         closed = true;
         outputStream.close();
     }
@@ -225,7 +249,8 @@ public class Aedat4FileOutputStream implements Closeable {
         }
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
-        return String.format("AEDAT-4: %s events, %s frames, %s IMU samples",
+        return String.format("AEDAT-4 %s: %s events, %s frames, %s IMU samples",
+                Aedat4Compression.nameOf(compression),
                 eng.format((double) events).trim(),
                 eng.format((double) frames).trim(),
                 eng.format((double) imuSamples).trim());

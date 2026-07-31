@@ -52,7 +52,7 @@ import net.sf.jaer.util.chart.Axis;
 import net.sf.jaer.util.chart.Category;
 import net.sf.jaer.util.chart.Series;
 import net.sf.jaer.util.chart.XYChart;
-import scala.actors.threadpool.Arrays;
+import java.util.Arrays;
 
 /**
  * Implementation of IIR bandpass filter for DVS event streams. Produces output
