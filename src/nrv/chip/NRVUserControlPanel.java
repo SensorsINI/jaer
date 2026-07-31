@@ -48,6 +48,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
     private static final String TIMING_SECTION_TOOLTIP = "<html>Scan rate morphs DTAG registers (0x321D:321E and block).<br>"
             + "Sub-timestamp (0x32B2) is USB packet cadence within each ms.";
 
+    private static final String GLOBAL_SETTING_TOOLTIP = "<html>Global settings for the NRV sensor(0x320C register).";
+
     private static final int SUB_UNIT_MIN = 1;
     private static final int SUB_UNIT_MAX = 0x7F;
 
@@ -229,6 +231,7 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         final JPanel section = new JPanel();
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
         section.setBorder(BorderFactory.createTitledBorder("Global setting"));
+        section.setToolTipText(GLOBAL_SETTING_TOOLTIP);
 
         section.add(globalResetCheckBox);
         section.add(globalHoldCheckBox);
