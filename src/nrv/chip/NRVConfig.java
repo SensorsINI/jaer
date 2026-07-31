@@ -1188,7 +1188,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
             hw.writeRegister(setting.getSlaveAddr(), setting.getRegAddr(), newValue);
             setting.setApplied(true);
-            log.info(String.format("Wrote NRV register %02x:%04x=%02x", setting.getSlaveAddr(),
+            log.fine(String.format("Wrote NRV register %02x:%04x=%02x", setting.getSlaveAddr(),
                     setting.getRegAddr(), newValue & 0xff));
         } else {
             setting.setApplied(false);

@@ -8,7 +8,6 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -36,8 +35,6 @@ import nrv.usb.NRVRegisterSetting;
  * @see https://nrv.kr/
  */
 public class NRVUserControlPanel extends JPanel implements PropertyChangeListener {
-
-    private static final Logger log = Logger.getLogger(NRVUserControlPanel.class.getName());
 
     private static final String BIAS_SECTION_TOOLTIP = "<html>Sliders tweak loaded settings around file values.<br>"
             + "<b>Undo/Redo</b> in the Biases toolbar; <b>File→Revert</b> restores the .txt.<br>"
@@ -132,10 +129,7 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         addAncestorListener(new javax.swing.event.AncestorListener() {
             @Override
             public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
-                SwingUtilities.invokeLater(() -> {
-                    relayoutContent();
-                    logViewportSize("shown");
-                });
+                SwingUtilities.invokeLater(() -> relayoutContent());
             }
 
             @Override
@@ -144,12 +138,6 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
 
             @Override
             public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
-            }
-        });
-        scrollPane.getViewport().addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override
-            public void componentResized(java.awt.event.ComponentEvent e) {
-                logViewportSize("resized");
             }
         });
 
@@ -165,13 +153,6 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         contentPanel.repaint();
         scrollPane.getViewport().getView().revalidate();
         scrollPane.revalidate();
-    }
-
-    private void logViewportSize(String reason) {
-        final Dimension vp = scrollPane.getViewport().getSize();
-        final Dimension pref = scrollPane.getViewport().getView().getPreferredSize();
-        log.info(String.format("NRVUserControlPanel %s: viewport=%dx%d contentPref=%dx%d panel=%dx%d",
-                reason, vp.width, vp.height, pref.width, pref.height, getWidth(), getHeight()));
     }
 
     private static void configurePotTweaker(PotTweaker tweaker) {

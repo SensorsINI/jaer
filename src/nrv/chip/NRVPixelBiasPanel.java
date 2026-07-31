@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
@@ -22,6 +23,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeListener;
@@ -67,8 +69,7 @@ public class NRVPixelBiasPanel extends JPanel implements PropertyChangeListener 
         super(new BorderLayout());
         this.config = config;
 
-        final JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        final ScrollablePanel content = new ScrollablePanel();
         content.setBorder(new EmptyBorder(8, 10, 8, 10));
 
         final JLabel intro = new JLabel("<html><b>Pixel biases (experimental)</b> — unlabeled "
@@ -137,6 +138,10 @@ public class NRVPixelBiasPanel extends JPanel implements PropertyChangeListener 
         final JSlider slider = new JSlider(spec.min, spec.max, spec.defaultValue);
         slider.setMajorTickSpacing(Math.max(1, (spec.max - spec.min) / 4));
         slider.setPaintTicks(true);
+        // Allow narrow windows: default JSlider min/preferred width is large with ticks.
+        final int sliderH = Math.max(slider.getPreferredSize().height, 36);
+        slider.setPreferredSize(new Dimension(120, sliderH));
+        slider.setMinimumSize(new Dimension(0, sliderH));
         slider.setToolTipText(buildTooltip(spec));
         sliders.put(spec.address, slider);
 
@@ -213,6 +218,41 @@ public class NRVPixelBiasPanel extends JPanel implements PropertyChangeListener 
     private static void stretchHorizontal(javax.swing.JComponent c) {
         c.setAlignmentX(Component.LEFT_ALIGNMENT);
         c.setMaximumSize(new Dimension(Integer.MAX_VALUE, Short.MAX_VALUE));
+        c.setMinimumSize(new Dimension(0, c.getPreferredSize().height));
+    }
+
+    /** Vertical scroll when short; width tracks the viewport (no horizontal clip). */
+    private static final class ScrollablePanel extends JPanel implements Scrollable {
+
+        ScrollablePanel() {
+            super();
+            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(visibleRect.height - 16, 16);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
     }
 
     void syncFromConfig() {
