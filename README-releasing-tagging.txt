@@ -1,55 +1,92 @@
-To generate a new github release
+To generate a new GitHub release
 
-See which is the latest release on https://github.com/SensorsINI/jaer/releases .
-Decide the next release version number, e.g. 1.8.1.
+## Version (VERSION.txt)
 
-You can also see the tags at https://github.com/SensorsINI/jaer/tags . Releases are made from a particular tag.
+VERSION.txt at the repo root is the single source of truth for the release version
+(e.g. 3.0.0). It drives:
+
+- install4j application version (synced into jaer.install4j; also passed as install4jc --release=...)
+- splash overlay text (major.minor, e.g. 3.0.0 -> "3.0")
+- About / BUILDVERSION.txt first line on jar build
+
+See latest releases at https://github.com/SensorsINI/jaer/releases and tags at
+https://github.com/SensorsINI/jaer/tags . Decide the next version, edit VERSION.txt, then build.
+
+## Install4j release (preferred: ant release)
+
+Prerequisites:
+1. Install install4j and put install4jc on PATH
+   https://www.ej-technologies.com/resources/install4j/v/13.0/help/doc/cli/compiler.html
+2. Install your license (tobi has his own by donation to jaer project)
+3. Edit VERSION.txt to the release version (e.g. 3.0.0)
+4. Ensure images/SplashScreen.png is the text-free 1024x1024 base art
+   (edit images/SplashScreen.pdf in Illustrator/Photoshop when the background art changes, then export PNG)
+
+Build media:
+
+    ant release
+
+You will be prompted to confirm the VERSION.txt value. On "y" / "yes", ant release:
+
+- regenerates splash PNGs (ant generate-splash)
+  - images/1024w/SplashScreen.png (1024x1024, jar / JVM splash)
+  - images/256h/SplashScreen.png (256x256, install4j launcher splash and Windows installer icons)
+- syncs jaer.install4j application version from VERSION.txt
+- runs clean + jar (clean build of classes and dist jar)
+- runs: install4jc --release=<VERSION.txt> jaer.install4j
+
+Then:
+5. Installers land under installers/<version>/ (Dropbox installers folder path as configured in the project)
+6. Copy updates.xml to the repo root and push so install4j auto-update can see the new build
+7. Push a git tag matching VERSION.txt and create/edit the GitHub release (see Tagging below)
+
+Note: In jaer.install4j, launcher and installer custom icon paths must use the 256h file;
+install4j rejects larger PNGs for the Windows installer icon step.
+
+Splash only (no installer build): ant generate-splash
+
+## Fallback: install4j GUI (config changes / dry run)
+
+Use the install4j IDE when you change installer options other than version
+(screens, file sets, JRE bundles, code signing, media types, etc.):
+
+1. Open jaer.install4j in the install4j GUI
+2. Confirm General Settings -> Application Info version matches VERSION.txt
+   (ant release keeps this in sync; after manual GUI edits, re-check VERSION.txt)
+3. Dry-run / test build from the GUI Build step (or CLI test mode) before a full media build:
+       install4jc --test jaer.install4j
+   --test does not write media files; use it to validate project config.
+   For a faster platform-only smoke test you can also use the IDE "Build" selection
+   or: install4jc --build-selected jaer.install4j
+4. When config looks good, prefer ant release again so VERSION.txt, splash, clean jar,
+   and install4jc --release stay consistent
 
 ## Tagging for release
-In git terminal, from root of jaer
 
-$ git tag <tag, e.g. 1.8.1>
-$ git push origin <tag>
+From the repo root, after installers are built and updates.xml is ready:
 
-Output will be
+    git tag <VERSION.txt value, e.g. 3.0.0>
+    git push origin <tag>
+
+Example output:
 Total 0 (delta 0), reused 0 (delta 0)
 To https://github.com/SensorsINI/jaer.git
- * [new tag]             1.8.1 -> 1.8.1
+ * [new tag]             3.0.0 -> 3.0.0
 
-After some minutes, the new release will appear on https://github.com/SensorsINI/jaer/releases 
-The release notes can then be edited on github web page, if you are logged in and have commit rights.
+Name the GitHub release e.g. jaer-3.0.0 and edit release notes on the GitHub web UI.
 
-The release name should then be jaer-1.8.1, for example.
+### Deleting a tag
 
-### Deleting tag
+Local only:
 
-If tag is just local, run 
+    git tag -d tag-name
 
-`git tag -d tag-name`
+Already pushed:
 
-If tag is already pushed to origin:
+    git push --delete origin 3.0.0
 
-`git push --delete origin 2.1.0`  
+## CI notes
 
-View the build results at https://travis-ci.com/github/SensorsINI/jaer .
-To add the OAuth secret github token for building, go to https://travis-ci.com/github/SensorsINI/jaer/settings. You need to login with github OAuth.
-To make a new token, if needed, login to https://github.com/settings/tokens ,
-
-## Install4j release
-
-1. Install install4j
-2. Install your license (tobi has his own by donation to jaer project)
-3. Open install4j project (jaer.install4j)
-4. Update version number there and save install4j project
-5. Do a complete clean and build to make sure classes are clean and all in jaer.jar
-6. Maybe update splash screen image and push new pngs from illustrator PDF at images/SplashScreen.pdf.
-    Export to images/1024w/SplashScreen.png (1024x1024, for jar / macOS) and images/256h/SplashScreen.png (256x256, for install4j launcher splash and Windows installer customIconImageFiles).
-    In jaer.install4j, launcher and installer custom icon paths must use the 256h file; install4j rejects larger PNGs for the Windows installer icon step.
-7. Generate the installers from install4j
-8. Put the installers and checksums in new dropbox installers folder (the install4j build will do this automatically)
-9. Copy updates.xml to root folder and push it so install4j can check if there is an update available
-
-10. Push a tag (see above) and generate the github release on github release 
-
-
-
+View builds at https://travis-ci.com/github/SensorsINI/jaer .
+OAuth token for GitHub: https://travis-ci.com/github/SensorsINI/jaer/settings
+Create tokens at https://github.com/settings/tokens
