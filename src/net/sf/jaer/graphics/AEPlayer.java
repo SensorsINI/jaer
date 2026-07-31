@@ -657,21 +657,22 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         }
         AEPacketRaw aeRaw = null;
 
-//        log.info(this+" viewer.getAePlayer().getTimesliceUs()="+viewer.getAePlayer().getTimesliceUs());
         try {
+            boolean flex = viewer.aePlayer.isFlexTimeEnabled();
+            int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
             if (!jogOccuring || (jogOccuring && jogPacketsLeft == 0)) {
-                if (!viewer.aePlayer.isFlexTimeEnabled()) {
-                    aeRaw = aeInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
+                if (!flex) {
+                    aeRaw = aeInputStream.readPacketByTime(slice);
                 } else {
-                    aeRaw = aeInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+                    aeRaw = aeInputStream.readPacketByNumber(slice);
                 }
             } else {
                 while (jogPacketsLeft != 0) {
                     setDirectionForwards(jogPacketsLeft >= 0);
-                    if (!viewer.aePlayer.isFlexTimeEnabled()) {
-                        aeRaw = aeInputStream.readPacketByTime(viewer.getAePlayer().getTimesliceUs());
+                    if (!flex) {
+                        aeRaw = aeInputStream.readPacketByTime(slice);
                     } else {
-                        aeRaw = aeInputStream.readPacketByNumber(viewer.getAePlayer().getPacketSizeEvents());
+                        aeRaw = aeInputStream.readPacketByNumber(slice);
                     }
                     if (jogPacketsLeft < 0) {
                         jogPacketsLeft++;
@@ -684,9 +685,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 jogOccuring = false;
                 setDirectionForwards(true);
             }
+            // log.fine(... AEPlayer.getNextPacket ...);
             return aeRaw;
         } catch (EOFException e) {
-//            e.printStackTrace();
             log.fine(String.format("%s: %s", player.getAEInputStream().getFile(), e.toString()));
             cancelJog();
             setDirectionForwards(true);
@@ -694,8 +695,6 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                 Thread.sleep(200);
             } catch (InterruptedException ignore) {
             }
-            // when we get to end, we now just wraps in either direction, to make it easier to explore the ends
-//                System.out.println("***********"+this+" reached EOF, calling rewind");
             if (repeat) {
                 viewer.getAePlayer().rewind();
             }
@@ -731,10 +730,14 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             return;
         }
         float fps = viewer.getFrameRater().getAverageFPS();
+        if (fps < 1f) {
+            return; // avoid timeslice → ∞ when first frames are slow (sparse AEDAT-4 decode)
+        }
         float samplePeriodS = getTimesliceUs() * 1.0E-6F;
         float factor = fps * samplePeriodS;
-//            System.out.println("fps=" + fps + " samplePeriodS=" + samplePeriodS + " factor=" + factor);
-//            if ( factor < 1.2 || factor > 0.8f ){
+        if (factor < 1e-3f || !Float.isFinite(factor)) {
+            return;
+        }
         setTimesliceUs((int) (getTimesliceUs() / factor));
     }
 

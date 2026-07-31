@@ -45,18 +45,25 @@ import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 import net.sf.jaer.util.EngineeringFormat;
 
 /**
- * AEDAT-4 reader: indexes polarity for raw AE playback, and indexes FRME/IMUS
- * packet offsets for typed {@link FramePacket}/{@link ImuPacket} injection.
- * Polarity (+ stream indexes) can be cached under {@code java.io.tmpdir} like
- * {@link net.sf.jaer.eventio.ros.RosbagFileInputStream}.
+ * AEDAT-4 reader with a <b>sparse packet index</b>: file offsets, time bounds, and
+ * event counts per EVTS/FRME/IMUS packet. Polarity address/timestamp arrays are
+ * decoded on demand for the current playback window (not stored for the whole file).
+ * <p>
+ * Index cache under {@code java.io.tmpdir} is therefore kilobytes, not gigabytes.
  */
 public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int INDEX_CACHE_VERSION = 7; // v7: chip class name (addresses are chip-packed)
+    /** v8: packet-level sparse index (no per-event address/timestamp dump). */
+    private static final int INDEX_CACHE_VERSION = 8;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
-    /** Sanity cap for cached polarity events (guards corrupt headers / OOM). */
-    private static final int INDEX_CACHE_MAX_EVENTS = 50_000_000;
+    private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
+    private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
+    /**
+     * Max polarity events returned from one {@code readPacketBy*}. Prevents OOM / multi-second
+     * hangs when on-demand decode would otherwise walk millions of FlatBuffer events.
+     */
+    private static final int MAX_EVENTS_PER_READ = 100_000;
 
     private final AEChip chip;
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
@@ -66,14 +73,20 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private FileChannel channel;
     private int compression = CompressionType.NONE;
 
-    private int[] addresses = new int[0];
-    private int[] timestamps = new int[0];
+    /** Polarity stream packets (sparse seek table). */
+    private PacketRef[] eventRefs = new PacketRef[0];
     private PacketRef[] frameRefs = new PacketRef[0];
     private PacketRef[] imuRefs = new PacketRef[0];
     private long baseUnixUs;
     private long eventCount;
     private long frameCount;
     private long imuSampleCount;
+
+    /**
+     * Synthetic clock when the file has frames/IMU but no polarity events.
+     * Unused when {@link #eventRefs} is non-empty.
+     */
+    private int[] timelineTimestamps = new int[0];
 
     private long position;
     private long markIn;
@@ -90,6 +103,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private int lastReadT1;
     private int frameCursor;
     private int imuCursor;
+
+    /** Last decompressed polarity packet (sequential playback reuse). */
+    private int cachedEventPacketIndex = -1;
+    private ByteBuffer cachedEventFlat;
 
     public Aedat4FileInputStream(File file, AEChip chip) throws IOException {
         this(file, chip, null);
@@ -133,13 +150,14 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         log.info(String.format(
-                "Opened AEDAT-4 %s (%s): %s events, %s frames, %s IMU samples, duration=%ss",
+                "Opened AEDAT-4 %s (%s): %s events, %s frames, %s IMU samples, duration=%ss (%d EVTS packets indexed)",
                 file.getName(),
                 Aedat4Compression.nameOf(compression),
                 eng.format((double) eventCount).trim(),
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
-                eng.format(getDurationUs() * 1e-6).trim()));
+                eng.format(getDurationUs() * 1e-6).trim(),
+                eventRefs.length));
         support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
         log.fine("Aedat4FileInputStream constructor returning");
     }
@@ -187,12 +205,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private void indexFile(ProgressMonitor progressMonitor) throws IOException {
-        // Primitive growable buffers avoid boxing ~millions of Integer/Long (GC hangs on large files).
-        IntGrow addressList = new IntGrow();
-        LongGrow unixTimestampList = new LongGrow();
+        ArrayList<PacketRef> events = new ArrayList<>();
         ArrayList<PacketRef> frames = new ArrayList<>();
         ArrayList<PacketRef> imus = new ArrayList<>();
         long t0 = System.currentTimeMillis();
+        long cumEvents = 0;
 
         channel.position(0);
         ByteBuffer version = ByteBuffer.allocate(Aedat4FileOutputStream.VERSION_LINE.length);
@@ -252,12 +269,21 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 throw ex;
             }
             if (streamId == Aedat4FileOutputStream.STREAM_EVENTS) {
-                decodeEventPacket(flat, addressList, unixTimestampList);
+                EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(flat);
+                int n = packet.elementsLength();
+                long start = 0;
+                long end = 0;
+                if (n > 0) {
+                    start = packet.elements(0).timestamp();
+                    end = packet.elements(n - 1).timestamp();
+                }
+                events.add(new PacketRef(payloadOffset, payloadSize, start, end, n, cumEvents));
+                cumEvents += n;
             } else if (streamId == Aedat4FileOutputStream.STREAM_FRAMES) {
                 Frame frame = Frame.getSizePrefixedRootAsFrame(flat);
                 long start = frame.timestampStartOfFrame() != 0 ? frame.timestampStartOfFrame() : frame.timestamp();
                 long end = frame.timestampEndOfFrame() != 0 ? frame.timestampEndOfFrame() : start;
-                frames.add(new PacketRef(payloadOffset, payloadSize, start, end, 1));
+                frames.add(new PacketRef(payloadOffset, payloadSize, start, end, 1, 0));
             } else if (streamId == Aedat4FileOutputStream.STREAM_IMU) {
                 IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(flat);
                 int n = packet.elementsLength();
@@ -267,7 +293,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     start = packet.elements(0).timestamp();
                     end = packet.elements(n - 1).timestamp();
                 }
-                imus.add(new PacketRef(payloadOffset, payloadSize, start, end, n));
+                imus.add(new PacketRef(payloadOffset, payloadSize, start, end, n, 0));
                 imuSampleCount += n;
             }
             if (progressMonitor != null && fileSize > 0) {
@@ -278,37 +304,35 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
 
         frameCount = frames.size();
-        eventCount = addressList.size;
+        eventCount = cumEvents;
         if (imuSampleCount == 0) {
             for (PacketRef r : imus) {
                 imuSampleCount += r.numElements;
             }
         }
 
-        if (unixTimestampList.size > 0) {
-            baseUnixUs = unixTimestampList.get(0);
+        if (!events.isEmpty()) {
+            baseUnixUs = events.get(0).unixStart;
         } else if (!frames.isEmpty()) {
             baseUnixUs = frames.get(0).unixStart;
         } else if (!imus.isEmpty()) {
             baseUnixUs = imus.get(0).unixStart;
         }
 
-        addresses = addressList.toArray();
-        timestamps = new int[unixTimestampList.size];
-        for (int i = 0; i < timestamps.length; i++) {
-            timestamps[i] = (int) (unixTimestampList.get(i) - baseUnixUs);
-        }
-        // Frames-only / IMU-only: clock from typed streams; polarity arrays stay empty.
-        if (addresses.length == 0 && (!frames.isEmpty() || !imus.isEmpty())) {
-            synthesizeTimelineFromTypedStreams(frames, imus);
-        }
+        eventRefs = toRelativeRefs(events);
         frameRefs = toRelativeRefs(frames);
         imuRefs = toRelativeRefs(imus);
-        markOut = Math.max(0, Math.max(addresses.length, timestamps.length));
+        timelineTimestamps = new int[0];
+        if (eventRefs.length == 0 && (!frames.isEmpty() || !imus.isEmpty())) {
+            synthesizeTimelineFromTypedStreams(frames, imus);
+        }
+        markOut = playableSize();
+        cachedEventPacketIndex = -1;
+        cachedEventFlat = null;
         log.info(String.format(
-                "Indexed AEDAT-4 %s (%s) in %d ms (%d packets scanned): %,d events, %,d frames, %,d IMU samples",
+                "Indexed AEDAT-4 %s (%s) in %d ms (%d packets scanned): %,d events in %d EVTS packets, %,d frames, %,d IMU samples",
                 file.getName(), Aedat4Compression.nameOf(compression), System.currentTimeMillis() - t0, scannedPackets,
-                eventCount, frameCount, imuSampleCount));
+                eventCount, eventRefs.length, frameCount, imuSampleCount));
     }
 
     private void synthesizeTimelineFromTypedStreams(List<PacketRef> frames, List<PacketRef> imus) {
@@ -326,11 +350,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (baseUnixUs == 0) {
             baseUnixUs = marks.get(0);
         }
-        // Empty addresses → readPacket returns AEPacketRaw(0); timestamps drive the clock.
-        addresses = new int[0];
-        timestamps = new int[marks.size()];
+        timelineTimestamps = new int[marks.size()];
         for (int i = 0; i < marks.size(); i++) {
-            timestamps[i] = (int) (marks.get(i) - baseUnixUs);
+            timelineTimestamps[i] = (int) (marks.get(i) - baseUnixUs);
         }
     }
 
@@ -339,41 +361,179 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         for (int i = 0; i < src.size(); i++) {
             PacketRef s = src.get(i);
             out[i] = new PacketRef(s.payloadOffset, s.payloadSize,
-                    s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements);
+                    s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements, s.firstEventIndex);
         }
         return out;
     }
 
-    private void decodeEventPacket(ByteBuffer payload, IntGrow addressList, LongGrow unixTimestampList) {
-        EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(payload);
+    private long playableSize() {
+        if (eventRefs.length > 0) {
+            return eventCount;
+        }
+        return timelineTimestamps.length;
+    }
+
+    private boolean hasPolarity() {
+        return eventRefs.length > 0;
+    }
+
+    /**
+     * Relative timestamp at an event index using only the sparse packet table
+     * (linear interpolation within the packet). <b>No file I/O / decompress</b> —
+     * safe for slider seeks and UI while ViewLoop holds the stream lock.
+     */
+    private int timestampApprox(long eventIndex) {
+        if (!hasPolarity()) {
+            int i = (int) Math.max(0, Math.min(eventIndex, timelineTimestamps.length - 1));
+            return timelineTimestamps.length == 0 ? 0 : timelineTimestamps[i];
+        }
+        if (eventCount == 0 || eventRefs.length == 0) {
+            return 0;
+        }
+        long idx = Math.max(0, Math.min(eventIndex, eventCount - 1));
+        PacketRef ref = eventRefs[findEventPacket(idx)];
+        if (ref.numElements <= 1 || ref.unixEnd <= ref.unixStart) {
+            return (int) ref.unixStart;
+        }
+        double frac = (idx - ref.firstEventIndex) / (double) (ref.numElements - 1);
+        if (frac < 0) {
+            frac = 0;
+        } else if (frac > 1) {
+            frac = 1;
+        }
+        return (int) Math.round(ref.unixStart + frac * (ref.unixEnd - ref.unixStart));
+    }
+
+    /** Exact timestamp via FlatBuffer (decompresses the containing EVTS packet). */
+    private int timestampAt(long eventIndex) throws IOException {
+        if (!hasPolarity()) {
+            return timestampApprox(eventIndex);
+        }
+        if (eventCount == 0) {
+            return 0;
+        }
+        long idx = Math.max(0, Math.min(eventIndex, eventCount - 1));
+        int pi = findEventPacket(idx);
+        PacketRef ref = eventRefs[pi];
+        EventPacket packet = eventPacketAt(pi);
+        int local = (int) (idx - ref.firstEventIndex);
+        if (local < 0 || local >= packet.elementsLength()) {
+            log.warning(String.format(
+                    "AEDAT-4 timestampAt local=%d out of elementsLength=%d for EVTS[%d]; using approx",
+                    local, packet.elementsLength(), pi));
+            return timestampApprox(idx);
+        }
+        return (int) (packet.elements(local).timestamp() - baseUnixUs);
+    }
+
+    /** Binary search packet containing global event index. */
+    private int findEventPacket(long eventIndex) {
+        int lo = 0;
+        int hi = eventRefs.length - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) >>> 1;
+            PacketRef r = eventRefs[mid];
+            long start = r.firstEventIndex;
+            long end = start + r.numElements;
+            if (eventIndex < start) {
+                hi = mid - 1;
+            } else if (eventIndex >= end) {
+                lo = mid + 1;
+            } else {
+                return mid;
+            }
+        }
+        return Math.max(0, Math.min(eventRefs.length - 1, lo));
+    }
+
+    private EventPacket eventPacketAt(int packetIndex) throws IOException {
+        if (packetIndex != cachedEventPacketIndex || cachedEventFlat == null) {
+            cachedEventFlat = readPayload(eventRefs[packetIndex]);
+            cachedEventPacketIndex = packetIndex;
+            // Verbose playback trace (re-enable for decode hangs):
+            // log.fine(String.format("AEDAT-4 decompress EVTS[%d] payload=%d B", packetIndex, eventRefs[packetIndex].payloadSize));
+        }
+        ByteBuffer view = cachedEventFlat.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+        view.rewind();
+        return EventPacket.getSizePrefixedRootAsEventPacket(view);
+    }
+
+    private AEPacketRaw extractPolarity(long startIdx, long endIdx) throws IOException {
+        if (!hasPolarity() || startIdx >= endIdx) {
+            return new AEPacketRaw(0);
+        }
+        endIdx = Math.min(endIdx, eventCount);
+        startIdx = Math.max(0, startIdx);
+        if (startIdx >= endIdx) {
+            return new AEPacketRaw(0);
+        }
+        IntGrow addresses = new IntGrow((int) Math.min(Integer.MAX_VALUE, endIdx - startIdx));
+        IntGrow timestamps = new IntGrow(addresses.a.length);
+        // log.fine(String.format("AEDAT-4 extractPolarity ENTER [%,d,%,d)", startIdx, endIdx));
+        int skipped = 0;
+        long i = startIdx;
+        while (i < endIdx) {
+            int pi = findEventPacket(i);
+            PacketRef ref = eventRefs[pi];
+            EventPacket packet = eventPacketAt(pi);
+            int local = (int) (i - ref.firstEventIndex);
+            int localEnd = (int) Math.min(ref.numElements, endIdx - ref.firstEventIndex);
+            int packetElements = packet.elementsLength();
+            if (localEnd > packetElements) {
+                log.warning(String.format(
+                        "AEDAT-4 extract: localEnd=%d > elementsLength=%d on EVTS[%d] (index says n=%d); clamping",
+                        localEnd, packetElements, pi, ref.numElements));
+                localEnd = packetElements;
+            }
+            for (int j = local; j < localEnd; j++) {
+                Event event = packet.elements(j);
+                if (event == null) {
+                    skipped++;
+                    continue;
+                }
+                int address = packAddress(event);
+                if (address < 0) {
+                    skipped++;
+                    continue; // Davis out-of-range
+                }
+                addresses.add(address);
+                timestamps.add((int) (event.timestamp() - baseUnixUs));
+            }
+            i = ref.firstEventIndex + Math.max(localEnd, local + 1);
+            if (localEnd <= local) {
+                // Avoid infinite loop if packet metadata disagrees with FlatBuffer length.
+                log.warning("AEDAT-4 extract: no progress in EVTS[" + pi + "], advancing past packet");
+                i = ref.firstEventIndex + ref.numElements;
+            }
+        }
+        if (skipped > 0) {
+            log.warning(String.format(
+                    "AEDAT-4 extractPolarity [%,d,%,d) skipped %d events (null/out-of-range)",
+                    startIdx, endIdx, skipped));
+        }
+        return new AEPacketRaw(addresses.toArray(), timestamps.toArray());
+    }
+
+    private int packAddress(Event event) {
+        int x = event.x() & 0xffff;
+        int y = event.y() & 0xffff;
+        int type = event.polarity() ? 1 : 0; // On=1 / Off=0
         EventExtractor2D extractor = chip != null ? chip.getEventExtractor() : null;
         final boolean useDavisPacking = chip instanceof DavisChip;
         int sx1 = chip == null ? 0 : chip.getSizeX() - 1;
-        for (int i = 0; i < packet.elementsLength(); i++) {
-            Event event = packet.elements(i);
-            int x = event.x() & 0xffff;
-            int y = event.y() & 0xffff;
-            int type = event.polarity() ? 1 : 0; // On=1 / Off=0 (RetinaExtractor / PolarityEvent)
-            int address;
-            if (useDavisPacking) {
-                // Davis extract hard-codes sx1-x and DavisChip bitfields; extractor
-                // getAddressFromCell is not reliable (truncated masks, no flipx).
-                if (x > sx1 || y >= (chip == null ? 0 : chip.getSizeY())) {
-                    continue; // skip corrupt / out-of-range FB events
-                }
-                address = DavisChip.ADDRESS_TYPE_DVS
-                        | (((sx1 - x) & 0x3ff) << DavisChip.XSHIFT)
-                        | ((y & 0x1ff) << DavisChip.YSHIFT)
-                        | ((type & 1) << DavisChip.POLSHIFT);
-            } else if (extractor != null) {
-                // NRV and other RetinaExtractor chips: use chip x/y/type shifts & flips.
-                address = extractor.getAddressFromCell(x, y, type);
-            } else {
-                address = (x & 0xffff) | ((y & 0xffff) << 16) | (type << 31);
+        if (useDavisPacking) {
+            if (x > sx1 || y >= (chip == null ? 0 : chip.getSizeY())) {
+                return -1;
             }
-            addressList.add(address);
-            unixTimestampList.add(event.timestamp());
+            return DavisChip.ADDRESS_TYPE_DVS
+                    | (((sx1 - x) & 0x3ff) << DavisChip.XSHIFT)
+                    | ((y & 0x1ff) << DavisChip.YSHIFT)
+                    | ((type & 1) << DavisChip.POLSHIFT);
         }
+        if (extractor != null) {
+            return extractor.getAddressFromCell(x, y, type);
+        }
+        return (x & 0xffff) | ((y & 0xffff) << 16) | (type << 31);
     }
 
     private void collectTypedForWindow(int t0, int t1) throws IOException {
@@ -470,14 +630,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         int p = payload.position();
         int n = payload.remaining();
         if (n >= 4) {
-            // Mis-framed FTAB payload often starts at the file_identifier.
             if (payload.get(p) == 'F' && payload.get(p + 1) == 'T'
                     && payload.get(p + 2) == 'A' && payload.get(p + 3) == 'B') {
                 return true;
             }
         }
         if (n >= 12) {
-            // Size-prefixed FlatBuffer: identifier at offset 8 after size+soffset.
             if (payload.get(p + 8) == 'F' && payload.get(p + 9) == 'T'
                     && payload.get(p + 10) == 'A' && payload.get(p + 11) == 'B') {
                 return true;
@@ -503,7 +661,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     /**
      * Reopen FileChannel if a ViewLoop interrupt closed it
-     * ({@link ClosedByInterruptException}). Index arrays remain valid.
+     * ({@link java.nio.channels.ClosedByInterruptException}). Index remains valid.
      */
     private synchronized void ensureChannelOpen() throws IOException {
         if (channel != null && channel.isOpen()) {
@@ -521,6 +679,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         randomAccessFile = new RandomAccessFile(file, "r");
         channel = randomAccessFile.getChannel();
+        cachedEventPacketIndex = -1;
+        cachedEventFlat = null;
     }
 
     private static ByteBuffer readSizePrefixed(FileChannel channel) throws IOException {
@@ -581,59 +741,31 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             if (progressMonitor != null) {
                 progressMonitor.setNote("Reading cached AEDAT-4 index");
+                progressMonitor.setProgress(1);
             }
             baseUnixUs = in.readLong();
             eventCount = in.readLong();
             frameCount = in.readLong();
             imuSampleCount = in.readLong();
-            int nEvents = in.readInt();
-            if (nEvents < 0 || nEvents > INDEX_CACHE_MAX_EVENTS) {
-                log.warning("AEDAT-4 index cache has absurd nEvents=" + nEvents + ", rebuilding");
+            int nTimeline = in.readInt();
+            if (nTimeline < 0 || nTimeline > INDEX_CACHE_MAX_TIMELINE) {
+                log.warning("AEDAT-4 index cache bad timeline length=" + nTimeline + ", rebuilding");
                 return false;
             }
-            long remainingHint = cache.length(); // rough; exact remaining harder mid-stream
-            // Each event is 4 bytes address; timestamps same count typically.
-            if (nEvents > 0 && remainingHint > 0 && (nEvents * 4L) > remainingHint) {
-                log.warning(String.format(
-                        "AEDAT-4 index cache truncated/corrupt (nEvents=%d needs >%d bytes, file=%d), rebuilding",
-                        nEvents, nEvents * 4L, remainingHint));
-                return false;
+            timelineTimestamps = new int[nTimeline];
+            for (int i = 0; i < nTimeline; i++) {
+                timelineTimestamps[i] = in.readInt();
             }
-            if (progressMonitor != null) {
-                progressMonitor.setNote(String.format("Reading cached index (%,d events)", nEvents));
-                progressMonitor.setProgress(1);
-            }
-            log.info(String.format("Reading AEDAT-4 index cache %s (%,d events, %.1f MB)",
-                    cache.getName(), nEvents, cache.length() / (1024.0 * 1024.0)));
-            addresses = new int[nEvents];
-            for (int i = 0; i < nEvents; i++) {
-                addresses[i] = in.readInt();
-                if ((i & 0xfffff) == 0) { // every ~1M
-                    throwIfCanceled(progressMonitor, "AEDAT-4 cache load");
-                    if (progressMonitor != null && nEvents > 0) {
-                        progressMonitor.setProgress(Math.min(95, 1 + (i * 94) / nEvents));
-                    }
-                }
-            }
-            int nTimes = in.readInt();
-            if (nTimes < 0 || nTimes > INDEX_CACHE_MAX_EVENTS) {
-                log.warning("AEDAT-4 index cache has absurd nTimes=" + nTimes + ", rebuilding");
-                return false;
-            }
-            timestamps = new int[nTimes];
-            for (int i = 0; i < nTimes; i++) {
-                timestamps[i] = in.readInt();
-                if ((i & 0xfffff) == 0) {
-                    throwIfCanceled(progressMonitor, "AEDAT-4 cache load");
-                }
-            }
+            eventRefs = readEventRefs(in);
             frameRefs = readRefs(in);
             imuRefs = readRefs(in);
-            markOut = Math.max(0, timestamps.length);
+            markOut = playableSize();
+            cachedEventPacketIndex = -1;
+            cachedEventFlat = null;
             log.info(String.format(
-                    "Loaded cached AEDAT-4 index from %s in %d ms (%,d events, %,d frames, %,d IMU samples)",
+                    "Loaded sparse AEDAT-4 index from %s in %d ms (%,d events in %d packets, %,d frames, %,d IMU, %.1f KB)",
                     cache.getName(), System.currentTimeMillis() - t0,
-                    eventCount, frameCount, imuSampleCount));
+                    eventCount, eventRefs.length, frameCount, imuSampleCount, cache.length() / 1024.0));
             return true;
         } catch (IOException e) {
             if (e.getMessage() != null && e.getMessage().contains("canceled")) {
@@ -663,30 +795,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeLong(eventCount);
             out.writeLong(frameCount);
             out.writeLong(imuSampleCount);
-            out.writeInt(addresses.length);
-            for (int i = 0; i < addresses.length; i++) {
-                out.writeInt(addresses[i]);
-                if ((i & 0xfffff) == 0) {
-                    throwIfCanceled(progressMonitor, "AEDAT-4 cache write");
-                    if (progressMonitor != null && addresses.length > 0) {
-                        progressMonitor.setProgress(90 + Math.min(9, (i * 9) / addresses.length));
-                    }
-                }
+            out.writeInt(timelineTimestamps.length);
+            for (int t : timelineTimestamps) {
+                out.writeInt(t);
             }
-            out.writeInt(timestamps.length);
-            for (int i = 0; i < timestamps.length; i++) {
-                out.writeInt(timestamps[i]);
-                if ((i & 0xfffff) == 0) {
-                    throwIfCanceled(progressMonitor, "AEDAT-4 cache write");
-                }
-            }
+            writeEventRefs(out, eventRefs);
             writeRefs(out, frameRefs);
             writeRefs(out, imuRefs);
             out.flush();
-            log.info(String.format("Cached AEDAT-4 index (%s) to %s", file.getName(), cache.getAbsolutePath()));
+            log.info(String.format("Cached sparse AEDAT-4 index (%s) to %s (%.1f KB)",
+                    file.getName(), cache.getAbsolutePath(), cache.length() / 1024.0));
         } catch (IOException e) {
             if (e.getMessage() != null && e.getMessage().contains("canceled")) {
-                // Remove partial cache so next open rebuilds cleanly.
                 if (!cache.delete() && cache.exists()) {
                     log.warning("Could not delete partial AEDAT-4 index cache " + cache);
                 }
@@ -698,45 +818,40 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
     }
 
-    /** Growable int buffer used while indexing (avoids boxing). */
-    private static final class IntGrow {
-        int[] a = new int[4096];
-        int size;
-
-        void add(int v) {
-            if (size == a.length) {
-                a = Arrays.copyOf(a, a.length * 2);
-            }
-            a[size++] = v;
+    private static PacketRef[] readEventRefs(DataInputStream in) throws IOException {
+        int n = in.readInt();
+        if (n < 0 || n > INDEX_CACHE_MAX_PACKETS) {
+            throw new IOException("bad event packet count " + n);
         }
-
-        int[] toArray() {
-            return size == a.length ? a : Arrays.copyOf(a, size);
+        PacketRef[] refs = new PacketRef[n];
+        for (int i = 0; i < n; i++) {
+            refs[i] = new PacketRef(in.readLong(), in.readInt(), in.readLong(), in.readLong(),
+                    in.readInt() & 0xffffffffL, in.readLong());
         }
+        return refs;
     }
 
-    /** Growable long buffer used while indexing (avoids boxing). */
-    private static final class LongGrow {
-        long[] a = new long[4096];
-        int size;
-
-        void add(long v) {
-            if (size == a.length) {
-                a = Arrays.copyOf(a, a.length * 2);
-            }
-            a[size++] = v;
-        }
-
-        long get(int i) {
-            return a[i];
+    private static void writeEventRefs(DataOutputStream out, PacketRef[] refs) throws IOException {
+        out.writeInt(refs.length);
+        for (PacketRef r : refs) {
+            out.writeLong(r.payloadOffset);
+            out.writeInt(r.payloadSize);
+            out.writeLong(r.unixStart);
+            out.writeLong(r.unixEnd);
+            out.writeInt((int) Math.min(Integer.MAX_VALUE, r.numElements));
+            out.writeLong(r.firstEventIndex);
         }
     }
 
     private static PacketRef[] readRefs(DataInputStream in) throws IOException {
         int n = in.readInt();
+        if (n < 0 || n > INDEX_CACHE_MAX_PACKETS) {
+            throw new IOException("bad packet ref count " + n);
+        }
         PacketRef[] refs = new PacketRef[n];
         for (int i = 0; i < n; i++) {
-            refs[i] = new PacketRef(in.readLong(), in.readInt(), in.readLong(), in.readLong(), in.readInt());
+            refs[i] = new PacketRef(in.readLong(), in.readInt(), in.readLong(), in.readLong(),
+                    in.readInt() & 0xffffffffL, 0);
         }
         return refs;
     }
@@ -756,43 +871,93 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public synchronized AEPacketRaw readPacketByNumber(int n) throws IOException {
         ensureReadableOrThrow();
         ensureChannelOpen();
-        int start = (int) position;
-        int end = (int) Math.min(effectiveMarkOut(), position + Math.max(1, n));
+        long start = position;
+        int cappedN = Math.min(Math.max(1, n), MAX_EVENTS_PER_READ);
+        long end = Math.min(effectiveMarkOut(), position + cappedN);
+        // log.fine(String.format("AEDAT-4 readPacketByNumber ENTER n=%d [%d,%d)", n, start, end));
         position = end;
-        currentStartTimestamp = timestamps[start];
-        collectTypedForWindow(timestamps[start], timestamps[end - 1]);
+        currentStartTimestamp = timestampApprox(start);
+        int tEnd = timestampApprox(Math.max(start, end - 1));
+        collectTypedForWindow(currentStartTimestamp, tEnd);
         firePosition();
-        return polaritySlice(start, end);
+        return extractPolarity(start, end);
     }
 
     @Override
     public synchronized AEPacketRaw readPacketByTime(int dt) throws IOException {
         ensureReadableOrThrow();
         ensureChannelOpen();
-        int start = (int) position;
-        int target = timestamps[start] + dt;
-        int end = start + 1;
-        while (end < effectiveMarkOut() && timestamps[end - 1] <= target) {
-            end++;
+        long start = position;
+        long limit = effectiveMarkOut();
+        // Approx timestamps from packet table only — do not decompress here (slider/UI race).
+        int tStart = timestampApprox(start);
+        int target = tStart + Math.max(0, dt);
+        // log.fine(String.format("AEDAT-4 readPacketByTime ENTER dt=%d pos=%d tStart=%d", dt, start, tStart));
+        long end;
+        if (hasPolarity()) {
+            end = findEndIndexByTime(start, target, limit);
+        } else {
+            end = start + 1;
+            while (end < limit && timelineTimestamps[(int) (end - 1)] <= target) {
+                end++;
+            }
+        }
+        if (end - start > MAX_EVENTS_PER_READ) {
+            end = start + MAX_EVENTS_PER_READ;
         }
         position = end;
-        currentStartTimestamp = timestamps[start];
-        collectTypedForWindow(timestamps[start], timestamps[end - 1]);
+        currentStartTimestamp = tStart;
+        int tEnd = timestampApprox(Math.max(start, end - 1));
+        collectTypedForWindow(currentStartTimestamp, tEnd);
         firePosition();
-        return polaritySlice(start, end);
+        return extractPolarity(start, end);
     }
 
-    private AEPacketRaw polaritySlice(int start, int end) {
-        if (addresses.length == 0) {
-            return new AEPacketRaw(0);
+    /**
+     * Exclusive end index for events with relative timestamp &lt;= {@code target},
+     * at least {@code start + 1}, capped by {@code limit}.
+     * <p>
+     * Uses <b>only</b> the sparse packet table (no decompress / FlatBuffer access).
+     * Within a packet, end is linearly interpolated from unixStart/unixEnd.
+     */
+    private long findEndIndexByTime(long start, int target, long limit) {
+        if (start >= limit) {
+            return start;
         }
-        int aEnd = Math.min(end, addresses.length);
-        int aStart = Math.min(start, aEnd);
-        return new AEPacketRaw(Arrays.copyOfRange(addresses, aStart, aEnd), Arrays.copyOfRange(timestamps, aStart, aEnd));
+        long end = start + 1; // at least one event
+        int pi = findEventPacket(start);
+        while (pi < eventRefs.length && end < limit) {
+            PacketRef ref = eventRefs[pi];
+            long pktEnd = Math.min(limit, ref.firstEventIndex + ref.numElements);
+            if (pktEnd <= start) {
+                pi++;
+                continue;
+            }
+            if (ref.unixEnd <= target) {
+                end = pktEnd;
+                pi++;
+                continue;
+            }
+            // Target inside this packet — interpolate (no I/O).
+            if (ref.unixEnd <= ref.unixStart || ref.numElements <= 0) {
+                return Math.min(limit, Math.max(end, start + 1));
+            }
+            double frac = (target - (double) ref.unixStart) / (double) (ref.unixEnd - ref.unixStart);
+            if (frac < 0) {
+                frac = 0;
+            } else if (frac > 1) {
+                frac = 1;
+            }
+            long estExclusive = ref.firstEventIndex + 1
+                    + (long) Math.round(frac * Math.max(0, ref.numElements - 1));
+            estExclusive = Math.max(start + 1, Math.min(pktEnd, estExclusive));
+            return estExclusive;
+        }
+        return Math.min(limit, end);
     }
 
     private void ensureReadableOrThrow() throws EOFException {
-        if (timestamps.length == 0) {
+        if (playableSize() == 0) {
             throw new EOFException("AEDAT-4 file has no playable timeline (no events/frames/IMU)");
         }
         if (position < effectiveMarkOut()) {
@@ -813,7 +978,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private long effectiveMarkOut() {
-        return Math.min(markOut, timestamps.length);
+        return Math.min(markOut, playableSize());
     }
 
     private void firePosition() {
@@ -836,7 +1001,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public int getDurationUs() { return getLastTimestamp() - getFirstTimestamp(); }
 
     @Override
-    public int getFirstTimestamp() { return timestamps.length == 0 ? 0 : timestamps[0]; }
+    public int getFirstTimestamp() {
+        if (hasPolarity()) {
+            return eventRefs.length == 0 ? 0 : (int) eventRefs[0].unixStart;
+        }
+        return timelineTimestamps.length == 0 ? 0 : timelineTimestamps[0];
+    }
 
     @Override
     public PropertyChangeSupport getSupport() { return support; }
@@ -851,12 +1021,20 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public File getFile() { return file; }
 
     @Override
-    public int getLastTimestamp() { return timestamps.length == 0 ? 0 : timestamps[timestamps.length - 1]; }
+    public int getLastTimestamp() {
+        if (hasPolarity()) {
+            return eventRefs.length == 0 ? 0 : (int) eventRefs[eventRefs.length - 1].unixEnd;
+        }
+        return timelineTimestamps.length == 0 ? 0 : timelineTimestamps[timelineTimestamps.length - 1];
+    }
 
     @Override
     public int getMostRecentTimestamp() {
-        int index = (int) Math.max(0, Math.min(position - 1, timestamps.length - 1));
-        return timestamps.length == 0 ? 0 : timestamps[index];
+        if (playableSize() == 0) {
+            return 0;
+        }
+        long index = Math.max(0, Math.min(position - 1, playableSize() - 1));
+        return timestampApprox(index);
     }
 
     @Override
@@ -870,6 +1048,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public void close() throws IOException {
+        cachedEventPacketIndex = -1;
+        cachedEventFlat = null;
         if (channel != null) {
             channel.close();
         }
@@ -916,7 +1096,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     @Override
-    public float getFractionalPosition() { return timestamps.length == 0 ? 0 : (float) position / timestamps.length; }
+    public float getFractionalPosition() {
+        long n = playableSize();
+        return n == 0 ? 0 : (float) position / n;
+    }
 
     @Override
     public long position() { return position; }
@@ -925,7 +1108,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public void position(long n) {
         long old = position;
         position = Math.max(markIn, Math.min(n, effectiveMarkOut()));
-        int t = timestamps.length == 0 ? 0 : timestamps[(int) Math.min(Math.max(0, position), timestamps.length - 1)];
+        // Packet-table approx only — never decompress on slider seek (that hung ViewLoop).
+        int t = playableSize() == 0 ? 0
+                : timestampApprox(Math.min(Math.max(0, position), playableSize() - 1));
+        // log.fine(String.format("AEDAT-4 position %d->%d approxTs=%d", old, position, t));
         frameCursor = 0;
         imuCursor = 0;
         while (frameCursor < frameRefs.length && frameRefs[frameCursor].unixEnd < t) {
@@ -947,16 +1133,18 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     @Override
-    public void setFractionalPosition(float frac) { position((long) (Math.max(0, Math.min(1, frac)) * timestamps.length)); }
+    public void setFractionalPosition(float frac) {
+        position((long) (Math.max(0, Math.min(1, frac)) * playableSize()));
+    }
 
     @Override
-    public long size() { return timestamps.length; }
+    public long size() { return playableSize(); }
 
     @Override
     public void clearMarks() {
         long[] oldMarks = new long[]{markIn, markOut};
         markIn = 0;
-        markOut = timestamps.length;
+        markOut = playableSize();
         markers.clear();
         support.firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, oldMarks, new long[]{markIn, markOut});
     }
@@ -991,7 +1179,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public boolean isMarkInSet() { return markIn != 0; }
 
     @Override
-    public boolean isMarkOutSet() { return markOut != timestamps.length; }
+    public boolean isMarkOutSet() { return markOut != playableSize(); }
 
     @Override
     public void setRepeat(boolean repeat) { this.repeat = repeat; }
@@ -999,20 +1187,47 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     @Override
     public boolean isRepeat() { return repeat; }
 
-    /** Packet payload location; unixStart/End are relative µs after indexing. */
+    /** Growable int buffer used while extracting a playback slice. */
+    private static final class IntGrow {
+        int[] a;
+        int size;
+
+        IntGrow(int capacityHint) {
+            a = new int[Math.max(16, capacityHint)];
+        }
+
+        void add(int v) {
+            if (size == a.length) {
+                a = Arrays.copyOf(a, a.length * 2);
+            }
+            a[size++] = v;
+        }
+
+        int[] toArray() {
+            return size == a.length ? a : Arrays.copyOf(a, size);
+        }
+    }
+
+    /**
+     * Packet payload location. For polarity packets, {@link #unixStart}/{@link #unixEnd}
+     * are relative µs after indexing; {@link #firstEventIndex} is the global event offset.
+     */
     private static final class PacketRef {
         final long payloadOffset;
         final int payloadSize;
         final long unixStart;
         final long unixEnd;
         final long numElements;
+        final long firstEventIndex;
 
-        PacketRef(long payloadOffset, int payloadSize, long unixStart, long unixEnd, long numElements) {
+        PacketRef(long payloadOffset, int payloadSize, long unixStart, long unixEnd,
+                long numElements, long firstEventIndex) {
             this.payloadOffset = payloadOffset;
             this.payloadSize = payloadSize;
             this.unixStart = unixStart;
             this.unixEnd = unixEnd;
             this.numElements = numElements;
+            this.firstEventIndex = firstEventIndex;
         }
     }
 }

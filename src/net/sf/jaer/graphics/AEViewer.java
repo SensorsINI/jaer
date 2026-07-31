@@ -2347,16 +2347,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 case PLAYBACK:
                     // Clear stale interrupt before NIO reads — interrupt closes FileChannel.
                     if (interrupted()) {
-                        log.fine("ViewLoop.grabInput PLAYBACK: cleared interrupt flag before FileChannel read");
+                        // log.fine("ViewLoop.grabInput PLAYBACK: cleared interrupt flag before FileChannel read");
                     }
-                    log.fine("ViewLoop.grabInput PLAYBACK paused=" + isPaused()
-                            + " aePlayer=" + (getAePlayer() != null)
-                            + " stream=" + (getAePlayer() != null && getAePlayer().getAEInputStream() != null));
+                    // log.fine("ViewLoop.grabInput PLAYBACK paused=" + isPaused() + ...);
                     getAePlayer().adjustTimesliceForRealtimePlayback();
                     droppedDataInfo = DroppedDataInfo.none();
                     AEPacketRaw pb = getAePlayer().getNextPacket(aePlayer);
-                    log.fine("ViewLoop.grabInput PLAYBACK packet n="
-                            + (pb == null ? -1 : pb.getNumEvents()));
+                    // log.fine("ViewLoop.grabInput PLAYBACK packet n=" + (pb == null ? -1 : pb.getNumEvents()));
                     return pb;
                 case REMOTE:
                     if (unicastInputEnabled) {
