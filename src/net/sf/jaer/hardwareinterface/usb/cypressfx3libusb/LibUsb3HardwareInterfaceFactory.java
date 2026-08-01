@@ -63,6 +63,7 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
         // HardwareInterfaces.
         addDeviceToMap(CypressFX3.VID, DVXplorerFX3HardwareInterface.PID_FX3, DVXplorerFX3HardwareInterface.class);
 
+        // Includes SciDVS boards that share these PIDs (GAER SciDVSHardwareInterface is not registered).
         addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX3, DAViSFX3HardwareInterface.class);
 
         addDeviceToMap(CypressFX3.VID, DAViSFX3HardwareInterface.PID_FX2, DAViSFX3HardwareInterface.class);
