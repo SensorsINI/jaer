@@ -169,6 +169,7 @@ import net.sf.jaer.util.TriangleSquareWindowsCornerIcon;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 import net.sf.jaer.util.avioutput.ExportVideoDialog;
+import net.sf.jaer.util.avioutput.JaerAviWriter;
 import net.sf.jaer.util.filter.LowpassFilter;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
@@ -2033,7 +2034,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                         numRawEvents = rawPacket != null ? rawPacket.getNumEvents() : cookedBundle.getNumPolarityEvents();
                         final boolean filtersNeeded = chip.getFilterChain().isAnyFilterEnabled() || isLogFilteredEventsEnabled();
-                        if (!isPaused() && getRenderer().isPacketLevelRenderSkipping()) {
+                        // Never skip rendering while writing synchronized AVI frames — every packet must paint.
+                        if (!isPaused() && !isJaerAviRecordingActive() && getRenderer().isPacketLevelRenderSkipping()) {
                             skipRendering = getRenderer().advanceSkipRenderSlot();
                         }
                         if (skipRendering && !filtersNeeded) {
@@ -2153,18 +2155,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         } // viewLoop.run()
 
         private void renderPacket(EventPacket cookedPacket) {
-            if (aePlayer.isChoosingFile() || (cookedPacket == null) || (!isRenderBlankFramesEnabled() && (cookedPacket.getSize() == 0))) {
+            final JaerAviWriter aviWriter = getActiveJaerAviWriter();
+            final boolean forceRenderForVideo = aviWriter != null;
+            if (aePlayer.isChoosingFile() || (cookedPacket == null)
+                    || (!forceRenderForVideo && !isRenderBlankFramesEnabled() && (cookedPacket.getSize() == 0))) {
+                if (aviWriter != null) {
+                    aviWriter.cancelPendingFrameCapture();
+                }
                 return;
             } // don't render while filechooser is active
             if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
                 getRenderer().render(cookedPacket);
             }
-            if (isActiveRenderingEnabled()) {
-                chipCanvas.paintFrame(); // actively paint frame now, either with OpenGL or Java2D, depending on switch
-            } else {
-                chipCanvas.repaint();
-            }
-
+            paintFrameAndAwaitVideoCapture(aviWriter);
         } // renderEvents
 
         /**
@@ -2172,15 +2175,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * Frame/IMU packets; polarity still goes through EventPacket render.
          */
         private void renderBundle(PacketBundle bundle, EventPacket cookedPacket) {
+            final JaerAviWriter aviWriter = getActiveJaerAviWriter();
+            final boolean forceRenderForVideo = aviWriter != null;
             if (aePlayer.isChoosingFile()) {
+                if (aviWriter != null) {
+                    aviWriter.cancelPendingFrameCapture();
+                }
                 return;
             }
             if (bundle == null || bundle.isEmpty()) {
                 renderPacket(cookedPacket);
                 return;
             }
-            if (!isRenderBlankFramesEnabled() && bundle.getNumPolarityEvents() == 0
+            if (!forceRenderForVideo && !isRenderBlankFramesEnabled() && bundle.getNumPolarityEvents() == 0
                     && bundle.getFirstFramePacket() == null && bundle.getFirstImuPacket() == null) {
+                if (aviWriter != null) {
+                    aviWriter.cancelPendingFrameCapture();
+                }
                 return;
             }
             if (!(getRenderer().isAccumulateEnabled() && isPaused())) {
@@ -2191,10 +2202,42 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     ren.render(bundle);
                 }
             }
-            if (isActiveRenderingEnabled()) {
-                chipCanvas.paintFrame();
-            } else {
+            paintFrameAndAwaitVideoCapture(aviWriter);
+        }
+
+        /**
+         * Active-renders the canvas and, when AVI export is active, captures that
+         * frame inside {@code paintFrame()} (via {@link JaerAviWriter#annotate})
+         * before the view loop advances. Encoding therefore paces the loop
+         * (export may run slower than real time) and yields one AVI frame per
+         * rendered view at the AEViewer target rate.
+         */
+        private void paintFrameAndAwaitVideoCapture(JaerAviWriter aviWriter) {
+            if (aviWriter != null && !isActiveRenderingEnabled()) {
+                // Passive repaint is not synchronized with the view loop.
+                setActiveRenderingEnabled(true);
+            }
+            if (!isActiveRenderingEnabled()) {
                 chipCanvas.repaint();
+                return;
+            }
+            if (aviWriter != null) {
+                aviWriter.requestFrameCapture();
+            }
+            try {
+                // JaerAviWriter.annotate reads the back buffer and writeFrame() runs
+                // before display() returns, so the loop waits for encode to finish.
+                chipCanvas.paintFrame();
+            } catch (RuntimeException e) {
+                if (aviWriter != null) {
+                    aviWriter.cancelPendingFrameCapture();
+                }
+                throw e;
+            }
+            if (aviWriter != null && aviWriter.isFrameCapturePending()) {
+                // annotate did not run (e.g. annotation disabled, reverse playback)
+                aviWriter.cancelPendingFrameCapture();
+                log.fine("AVI frame capture skipped this cycle (annotate did not capture)");
             }
         }
 
@@ -6877,6 +6920,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private void updateStopVideoExportMenuItemEnabled() {
             stopVideoExportMenuItem.setEnabled(ExportVideoDialog.isExportRecordingActive(this));
         }
+
+    /**
+     * Returns the enabled {@link JaerAviWriter} currently writing a video file,
+     * or null if none. Used by the view loop for synchronized frame capture.
+     */
+    public JaerAviWriter getActiveJaerAviWriter() {
+        if (chip == null || chip.getFilterChain() == null) {
+            return null;
+        }
+        JaerAviWriter w = (JaerAviWriter) chip.getFilterChain().findFilter(JaerAviWriter.class);
+        if (w != null && w.isFilterEnabled() && w.isRecordingActive()) {
+            return w;
+        }
+        return null;
+    }
+
+    /** True when synchronized OpenGL→AVI recording is in progress. */
+    public boolean isJaerAviRecordingActive() {
+        return getActiveJaerAviWriter() != null;
+    }
 
 	private void openMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMenuItemActionPerformed
             try {

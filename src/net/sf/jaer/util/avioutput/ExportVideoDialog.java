@@ -51,6 +51,7 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
                 AVIOutputStream.VideoFormat.RAW
             });
     private final JSpinner frameRateSpinner = new JSpinner(new SpinnerNumberModel(30, 1, 240, 1));
+    private final JCheckBox matchViewerRateCb = new JCheckBox("Match AEViewer target rendering rate", true);
     private final JCheckBox writeTimecodeCb = new JCheckBox("Write timecode file", true);
     private final JCheckBox rewindBeforeCb = new JCheckBox("Rewind before recording", true);
     private final JCheckBox closeOnRewindCb = new JCheckBox("Close on rewind (one play-through)", true);
@@ -144,6 +145,7 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         form.add(new JLabel("Playback frame rate:"), c);
         c.gridx = 1;
         c.gridwidth = 2;
+        frameRateSpinner.setToolTipText("AVI/MP4 playback FPS; with Match AEViewer rate, uses View target FPS (arrow keys)");
         form.add(frameRateSpinner, c);
         c.gridwidth = 1;
 
@@ -151,6 +153,13 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         c.gridx = 0;
         c.gridy = row;
         c.gridwidth = 3;
+        matchViewerRateCb.setToolTipText("<html>Sets AVI playback FPS from AEViewer target rendering rate at Start.<br>"
+                + "Recording waits for each rendered frame (may be slower than real time) so playback is smooth at that rate.");
+        matchViewerRateCb.addActionListener(e -> syncFrameRateSpinnerEnabled());
+        form.add(matchViewerRateCb, c);
+
+        row++;
+        c.gridy = row;
         form.add(writeTimecodeCb, c);
 
         row++;
@@ -192,7 +201,8 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
 
         row++;
         c.gridy = row;
-        form.add(new JLabel("<html><i>Captures the rendered AEViewer view (same as JaerAviWriter).</i>"), c);
+        form.add(new JLabel("<html><i>Synchronized capture: one AVI frame per rendered view; loop waits for encode.<br>"
+                + "Playback FPS matches AEViewer target rate (may export slower than real time).</i>"), c);
 
         row++;
         c.gridy = row;
@@ -223,17 +233,32 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         } catch (Exception e) {
             formatCombo.setSelectedItem(AVIOutputStream.VideoFormat.JPG);
         }
-        frameRateSpinner.setValue(prefs.getInt("frameRate", 30));
+        matchViewerRateCb.setSelected(prefs.getBoolean("matchViewerFrameRate", true));
+        int defaultFps = viewer != null ? Math.max(1, viewer.getDesiredFrameRate()) : 30;
+        frameRateSpinner.setValue(prefs.getInt("frameRate", defaultFps));
+        if (matchViewerRateCb.isSelected() && viewer != null) {
+            frameRateSpinner.setValue(Math.max(1, viewer.getDesiredFrameRate()));
+        }
         writeTimecodeCb.setSelected(prefs.getBoolean("writeTimecode", true));
         convertMp4Cb.setSelected(prefs.getBoolean("convertMp4", true));
         deleteAviCb.setSelected(prefs.getBoolean("deleteAvi", false));
         ffmpegPathField.setText(FfmpegMp4Converter.getConfiguredFfmpegPath());
+        syncFrameRateSpinnerEnabled();
+    }
+
+    private void syncFrameRateSpinnerEnabled() {
+        boolean match = matchViewerRateCb.isSelected();
+        frameRateSpinner.setEnabled(!match && startButton.isEnabled());
+        if (match && viewer != null) {
+            frameRateSpinner.setValue(Math.max(1, viewer.getDesiredFrameRate()));
+        }
     }
 
     private void savePrefs() {
         prefs.put("lastExportPath", pathField.getText().trim());
         prefs.put("format", formatCombo.getSelectedItem().toString());
         prefs.putInt("frameRate", (Integer) frameRateSpinner.getValue());
+        prefs.putBoolean("matchViewerFrameRate", matchViewerRateCb.isSelected());
         prefs.putBoolean("writeTimecode", writeTimecodeCb.isSelected());
         prefs.putBoolean("convertMp4", convertMp4Cb.isSelected());
         prefs.putBoolean("deleteAvi", deleteAviCb.isSelected());
@@ -412,9 +437,17 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         pendingMp4Convert = false;
 
         writer.setFilterEnabled(true);
+        writer.setAnnotationEnabled(true);
         writer.setOutputContainer(AbstractAviWriter.OutputContainer.AVI);
         writer.setFormat((AVIOutputStream.VideoFormat) formatCombo.getSelectedItem());
-        writer.setFrameRate((Integer) frameRateSpinner.getValue());
+        writer.setMatchViewerFrameRate(matchViewerRateCb.isSelected());
+        if (matchViewerRateCb.isSelected() && viewer != null) {
+            int fps = Math.max(1, viewer.getDesiredFrameRate());
+            frameRateSpinner.setValue(fps);
+            writer.setFrameRate(fps);
+        } else {
+            writer.setFrameRate((Integer) frameRateSpinner.getValue());
+        }
         writer.setWriteTimecodeFile(writeTimecodeCb.isSelected());
         writer.setRewindBeforeRecording(rewindBeforeCb.isSelected());
         writer.setCloseOnRewind(closeOnRewindCb.isSelected());
@@ -433,7 +466,8 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
             return;
         }
         updateRecordingUi(true);
-        statusLabel.setText("Recording to " + aviFile.getName() + " …");
+        statusLabel.setText(String.format("Recording %s at %d fps (synchronized)…",
+                aviFile.getName(), writer.getFrameRate()));
     }
 
     private void stopRecording(ActionEvent e) {
@@ -467,7 +501,11 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         stopButton.setEnabled(recording);
         pathField.setEnabled(!recording);
         formatCombo.setEnabled(!recording);
-        frameRateSpinner.setEnabled(!recording);
+        matchViewerRateCb.setEnabled(!recording);
+        syncFrameRateSpinnerEnabled();
+        if (recording) {
+            frameRateSpinner.setEnabled(false);
+        }
         convertNowButton.setEnabled(!recording && aviFile != null && aviFile.isFile()
                 && FfmpegMp4Converter.isFfmpegAvailable() && (pendingMp4Convert || convertMp4Cb.isSelected()));
     }
