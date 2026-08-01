@@ -574,18 +574,36 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         return stringDescriptors.clone();
     }
 
+    /**
+     * Populate device descriptor from libusb without claiming the interface.
+     */
+    public void ensureUsbDeviceDescriptor() {
+        if (deviceDescriptor != null || device == null) {
+            return;
+        }
+        deviceDescriptor = new DeviceDescriptor();
+        int status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+        if (status != LibUsb.SUCCESS) {
+            log.warning("Could not read NRV USB device descriptor: " + LibUsb.errorName(status));
+            deviceDescriptor = null;
+        }
+    }
+
     @Override
     public short getVID_THESYCON_FX2_CPLD() {
+        ensureUsbDeviceDescriptor();
         return deviceDescriptor == null ? VID : deviceDescriptor.idVendor();
     }
 
     @Override
     public short getPID() {
+        ensureUsbDeviceDescriptor();
         return deviceDescriptor == null ? 0 : deviceDescriptor.idProduct();
     }
 
     @Override
     public short getDID() {
+        ensureUsbDeviceDescriptor();
         return deviceDescriptor == null ? 0 : deviceDescriptor.bcdDevice();
     }
 

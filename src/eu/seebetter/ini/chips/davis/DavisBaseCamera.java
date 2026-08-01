@@ -44,6 +44,8 @@ import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.ArrayList;
 import javax.swing.JCheckBoxMenuItem;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.UsbDevice;
+import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -70,6 +72,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -82,6 +85,10 @@ import net.sf.jaer.util.histogram.AbstractHistogram;
  *
  * @author tobi
  */
+@UsbDevices({
+    @UsbDevice(vid = CypressFX3.VID, pid = DAViSFX3HardwareInterface.PID_FX3),
+    @UsbDevice(vid = CypressFX3.VID, pid = DAViSFX3HardwareInterface.PID_FX2)
+})
 abstract public class DavisBaseCamera extends DavisChip implements RemoteControlled {
 
 //    public static final String HELP_URL_HW_USERGUIDES = "http://inilabs.com/support/hardware/";

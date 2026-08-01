@@ -29,6 +29,8 @@ import javax.swing.text.html.HTML;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.UsbDevice;
+import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.ChipControlPanel;
@@ -45,7 +47,9 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
+import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl.LEDState;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
@@ -72,6 +76,10 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  */
 @Description("DVS128 Dynamic Vision Sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@UsbDevices({
+    @UsbDevice(vid = USBInterface.VID_THESYCON, pid = CypressFX2.PID_DVS128_REV0),
+    @UsbDevice(vid = CypressFX2.VID_DVS128_ORIG_FX2_ONLY, pid = CypressFX2.PID_TMPDIFF128_RETINA)
+})
 public class DVS128 extends AETemporalConstastRetina implements Serializable, Observer, RemoteControlled {
 
     protected JMenu dvs128Menu = null;

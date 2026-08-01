@@ -20,6 +20,7 @@ import org.usb4java.LibUsbException;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 
 /**
  * Enumerates Prophesee EVK4 HD cameras (Cypress 0x04B4:0x00F5).
@@ -61,6 +62,7 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
 
     private void addDeviceToMap(final short vid, final short pid, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(vid, pid), cls);
+        UsbHardwareRegistry.instance().register(vid, pid, cls);
         if (LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
             HotplugCallback callback = (Context cntxt, Device device, int event, Object userData) -> {
                 DeviceDescriptor descriptor = new DeviceDescriptor();

@@ -17,6 +17,7 @@ import org.usb4java.LibUsb;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 import org.usb4java.Context;
 import org.usb4java.HotplugCallback;
 import org.usb4java.LibUsbException;
@@ -76,6 +77,7 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
 
     private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
+        UsbHardwareRegistry.instance().register(VID, PID, cls);
         if (LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
             HotplugCallback callback = (Context cntxt, Device device, int event, Object userData) -> {
                 DeviceDescriptor descriptor = new DeviceDescriptor();

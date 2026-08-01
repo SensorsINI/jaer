@@ -1688,10 +1688,27 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         return s;
     }
 
+    /**
+     * Populate {@link #deviceDescriptor} from libusb without claiming the
+     * interface for AE streaming. Safe to call before {@link #open()}.
+     */
+    public void ensureUsbDeviceDescriptor() {
+        if (deviceDescriptor != null || device == null) {
+            return;
+        }
+        deviceDescriptor = new DeviceDescriptor();
+        int status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+        if (status != LibUsb.SUCCESS) {
+            CypressFX2.log.warning("Could not read USB device descriptor: " + LibUsb.errorName(status));
+            deviceDescriptor = null;
+        }
+    }
+
     @Override
     public short getVID_THESYCON_FX2_CPLD() {
+        ensureUsbDeviceDescriptor();
         if (deviceDescriptor == null) {
-            CypressFX2.log.warning("USBAEMonitor: getVID called but device has not been opened");
+            CypressFX2.log.warning("USBAEMonitor: getVID called but device descriptor unavailable");
             return 0;
         }
         // int[] n=new int[2]; n is never used
@@ -1700,8 +1717,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     @Override
     public short getPID() {
+        ensureUsbDeviceDescriptor();
         if (deviceDescriptor == null) {
-            CypressFX2.log.warning("USBAEMonitor: getPID called but device has not been opened");
+            CypressFX2.log.warning("USBAEMonitor: getPID called but device descriptor unavailable");
             return 0;
         }
         return deviceDescriptor.idProduct();
@@ -1713,8 +1731,9 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
     @Override
     public short getDID() { // this is not part of USB spec in device
         // descriptor.
+        ensureUsbDeviceDescriptor();
         if (deviceDescriptor == null) {
-            CypressFX2.log.warning("USBAEMonitor: getDID called but device has not been opened");
+            CypressFX2.log.warning("USBAEMonitor: getDID called but device descriptor unavailable");
             return 0;
         }
         return deviceDescriptor.bcdDevice();

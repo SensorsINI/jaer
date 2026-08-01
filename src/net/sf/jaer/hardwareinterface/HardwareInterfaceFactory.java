@@ -15,9 +15,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.logging.Logger;
 
+import net.sf.jaer.UsbDevices;
+import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.serial.SpiNNaker.SpiNNaker_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.udp.UDPInterfaceFactory;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.LibUsb3HardwareInterfaceFactory;
@@ -160,17 +165,52 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	// HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
 	// }
 
-	// public HardwareInterface getFirstAvailableInterfaceForChip(Chip chip) {
-	// throw new UnsupportedOperationException("Not supported yet.");
-	// }
-	// TODO maybe use the following mechanism for factories to add themselves
-	// /** Adds a factory to the list of factory classes. Subclasse can use this to add themselves.
-	//
-	// @param factoryClass the Class of the factory
-	// */
-	// public static void addFactory(Class<HardwareInterfaceFactory> factoryClass){
-	// factoryHashSet.add(factoryClass);
-	// }
+	/**
+	 * Peek USB VID/PID from an enumerated interface without requiring a full open.
+	 *
+	 * @return VID/PID pair; {@link UsbIds.Pair#isKnown()} is false if unavailable
+	 */
+	public static UsbIds.Pair getUsbVidPid(HardwareInterface hw) {
+		return UsbIds.peek(hw);
+	}
+
+	/**
+	 * First available interface whose VID/PID is declared on the chip class via
+	 * {@link UsbDevices}, or {@link #getFirstAvailableInterface()} if the chip
+	 * has no USB annotation or no match is found.
+	 */
+	public HardwareInterface getFirstAvailableInterfaceForChip(Chip chip) {
+		if (chip == null) {
+			return getFirstAvailableInterface();
+		}
+		Class<?> chipClass = chip.getClass();
+		UsbDevices devices = chipClass.getAnnotation(UsbDevices.class);
+		if (devices == null || devices.value().length == 0) {
+			return getFirstAvailableInterface();
+		}
+		int n = getNumInterfacesAvailable();
+		for (int i = 0; i < n; i++) {
+			HardwareInterface hw = getInterface(i);
+			if (hw == null || !(hw instanceof USBInterface)) {
+				continue;
+			}
+			UsbIds.Pair ids = UsbIds.peek(hw);
+			if (!ids.isKnown()) {
+				continue;
+			}
+			for (net.sf.jaer.UsbDevice d : devices.value()) {
+				if (d.vid() == ids.vid && d.pid() == ids.pid) {
+					return hw;
+				}
+			}
+		}
+		return getFirstAvailableInterface();
+	}
+
+	/** @see UsbHardwareRegistry#interfaceClassFor(short, short) */
+	public static Class<? extends HardwareInterface> interfaceClassForUsb(short vid, short pid) {
+		return UsbHardwareRegistry.instance().interfaceClassFor(vid, pid);
+	}
 	@Override
 	public String getGUID() {
 		return null;

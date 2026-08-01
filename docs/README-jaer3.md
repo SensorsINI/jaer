@@ -297,12 +297,47 @@ ViewLoop does not fight the open dialog (`beginFilePlaybackOpen` /
 
 ---
 
+## USB VID/PID and AEChip auto-offer
+
+Libusb factories register `(VID, PID) → HardwareInterface` classes in
+[`UsbHardwareRegistry`](../src/net/sf/jaer/hardwareinterface/usb/UsbHardwareRegistry.java).
+AEChip classes may optionally declare the same IDs with `@UsbDevices` /
+`@UsbDevice` (inherited), for example on `DavisBaseCamera` or a unique camera
+class such as `NRVS5KRC1S`.
+
+When a single USB device is available and the viewer has no open interface,
+[`LiveDeviceChipDetector`](../src/net/sf/jaer/hardwareinterface/usb/LiveDeviceChipDetector.java)
+matches that device against the AEChip menu. AEViewer then:
+
+- binds without prompting if the current chip already matches;
+- offers a Yes/No switch when exactly one menu chip matches;
+- offers a list when several chips share the PID (typical for Davis FX3);
+- prompts at most once per `{vid:pid[#serial]}` per session (optional
+  “Don't ask again” preference).
+
+To support a new camera chip, register its VID/PID in the appropriate
+hardware-interface factory (which also updates the registry) and annotate the
+AEChip:
+
+```java
+@UsbDevices({
+    @UsbDevice(vid = MyHardwareInterface.VID, pid = MyHardwareInterface.PID)
+})
+public class MyCamera extends AETemporalConstastRetina { ... }
+```
+
+Generic playback-only chips (e.g. `DVS640`) omit `@UsbDevices` and are ignored
+by live matching.
+
+---
+
 ## Key classes (quick index)
 
 | Area | Classes |
 |------|---------|
 | Loop | `AEViewer.ViewLoop`, `AEPlayer` |
 | USB | `CypressFX3`, `DAViSFX3HardwareInterface`, `NRVHardwareInterface`, `NRVAEReader`, `USBTransferThread` |
+| USB match | `UsbHardwareRegistry`, `LiveDeviceChipDetector`, `@UsbDevices` |
 | Buffers | `AEPacketRawPool`, `PacketBundlePool`, `AEPacketRaw` |
 | Typed data | `PacketBundle`, `PacketType`, `FramePacket`, `ImuPacket`, `EventPacket` |
 | Extract | `EventExtractor2D.extractBundle`, `DavisUsbPacketBundleBuilder` |

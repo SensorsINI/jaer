@@ -149,7 +149,9 @@ import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LiveAcquisitionBench;
+import net.sf.jaer.hardwareinterface.usb.LiveDeviceChipDetector;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2EEPROM;
@@ -348,6 +350,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", false);
     private String rememberLastInterfaceDeviceID = null;
+    /** Session keys for live USB chip-offer dialogs already shown this run. */
+    private final java.util.HashSet<String> liveChipOfferPromptedKeys = new java.util.HashSet<>();
 
     private AEChip chip;
     /**
@@ -615,10 +619,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             addHelpURLItem(JaerConstants.HELP_URL_NRV_CAMERAS, "NRV cameras", "NRV DELTA / RC1S technical documentation (SDK, event format, products)");
             addHelpURLItem(JaerConstants.HELP_USER_GUIDE_URL_FLASHY, "Flashy reflashing utility help", "Guide for reflashing firmware");
             addHelpItem(new JSeparator());
-//            addHelpURLItem(pathToURL(HELP_USER_GUIDE_USB2_MINI), "USBAERmini2 board", "User guide for USB2AERmini2 AER monitor/sequencer interface board");
-//            addHelpURLItem(pathToURL(HELP_USER_GUIDE_AER_CABLING), "AER protocol and cabling guide", "Guide to AER pin assignment and cabling for the Rome and CAVIAR standards");
-//            addHelpURLItem(pathToURL("/devices/pcbs/ServoUSBPCB/ServoUSB.pdf"), "USB Servo board", "Layout and schematics for the USB servo controller board");
-//            addHelpItem(new JSeparator());
+            addHelpURLItem(JaerConstants.HELP_URL_EVENT_BASED_VISION_RESOURCES, "Event-Based Vision Resources",
+                    "Community list of papers, workshops, datasets, code, and videos for event-based vision");
+            addHelpURLItem(JaerConstants.HELP_URL_DAVIS346_SAMPLE_DATA, "DAVIS346 sample data (AEDAT-2)",
+                    "DAVIS24 sample DAVIS346 recordings (mostly AEDAT-2.0) for exploring data and algorithm development");
+            addHelpURLItem(JaerConstants.HELP_URL_AEDAT4_SAMPLE_DATA, "AEDAT-4 / DV sample data",
+                    "Open MIT-licensed DAVIS346 AEDAT-4 recordings with direct per-file downloads (soccer ball scenes)");
+            addHelpItem(new JSeparator());
         } catch (Exception e) {
             log.warning("could register help item: " + e.toString());
         }
@@ -856,8 +863,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     chip.setHardwareInterface(hw);
                 }
             } else if (!NetworkChip.class.isInstance(chip)) {
-                log.info("setting hardware interface for unambiguous device to " + hw.toString());
-                chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
+                ensureChipCompatibleWithLiveDevice(hw);
+                // Chip switch closes HW; re-fetch sole interface if needed.
+                if (chip.getHardwareInterface() == null && hw != null) {
+                    if (ninterfaces == 1) {
+                        hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+                    }
+                    log.info("setting hardware interface for unambiguous device to " + hw);
+                    chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
+                }
             }
         }
     }
@@ -1008,6 +1022,131 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public java.util.List<String> getChipClassNames() {
         return chipClassNames;
+    }
+
+    /**
+     * When a single live USB device is about to be bound, offer matching
+     * {@link AEChip} class(es) declared via {@link net.sf.jaer.UsbDevices}.
+     * Prompts at most once per device key per session (and skips if prefs
+     * disable prompts for that key). Safe to call from ViewLoop (uses EDT).
+     */
+    public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw) {
+        if (hw == null || chipClassNames == null || chipClassNames.isEmpty()) {
+            return;
+        }
+        if (UDPInterface.class.isInstance(hw) || NetworkChip.class.isInstance(chip)) {
+            return;
+        }
+        UsbIds.Pair ids = UsbIds.peek(hw);
+        if (!ids.isKnown()) {
+            return;
+        }
+        String deviceKey = liveDevicePromptKey(hw, ids);
+        if (liveChipOfferPromptedKeys.contains(deviceKey)) {
+            return;
+        }
+        if (prefs.getBoolean("AEViewer.liveChipOffer.skip." + deviceKey, false)) {
+            liveChipOfferPromptedKeys.add(deviceKey);
+            return;
+        }
+        if (LiveDeviceChipDetector.currentChipMatches(getAeChipClass(), hw)) {
+            liveChipOfferPromptedKeys.add(deviceKey);
+            return;
+        }
+        java.util.List<Class<? extends AEChip>> matches
+                = LiveDeviceChipDetector.findMatches(hw, chipClassNames);
+        if (matches.isEmpty()) {
+            liveChipOfferPromptedKeys.add(deviceKey);
+            return;
+        }
+        liveChipOfferPromptedKeys.add(deviceKey);
+        final Class<? extends AEChip>[] chosenHolder = new Class[1];
+        final boolean[] dontAskHolder = new boolean[1];
+        Runnable dialog = () -> {
+            Class current = getAeChipClass();
+            String currentName = current == null ? "(none)" : current.getSimpleName();
+            String idLabel = ids.key();
+            if (matches.size() == 1) {
+                Class<? extends AEChip> suggested = matches.get(0);
+                String msg = String.format(
+                        "<html>USB device <b>%s</b> matches AEChip <b>%s</b>,<br>"
+                        + "but the viewer is set to <b>%s</b>.<br><br>"
+                        + "Switch to <b>%s</b> before opening?</html>",
+                        idLabel, suggested.getSimpleName(), currentName, suggested.getSimpleName());
+                Object[] options = {"Yes", "No", "Don't ask again"};
+                int choice = JOptionPane.showOptionDialog(
+                        this, msg, "AEChip for USB device",
+                        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
+                        null, options, options[0]);
+                if (choice == 0) {
+                    chosenHolder[0] = suggested;
+                } else if (choice == 2) {
+                    dontAskHolder[0] = true;
+                }
+            } else {
+                String[] names = new String[matches.size() + 1];
+                names[0] = "Keep " + currentName;
+                for (int i = 0; i < matches.size(); i++) {
+                    names[i + 1] = matches.get(i).getSimpleName();
+                }
+                Object sel = JOptionPane.showInputDialog(
+                        this,
+                        String.format(
+                                "<html>USB device <b>%s</b> matches several AEChips in the menu.<br>"
+                                + "Choose which AEChip to use:</html>", idLabel),
+                        "AEChip for USB device",
+                        JOptionPane.QUESTION_MESSAGE, null, names, names[0]);
+                if (sel != null && !sel.equals(names[0])) {
+                    for (Class<? extends AEChip> c : matches) {
+                        if (c.getSimpleName().equals(sel)) {
+                            chosenHolder[0] = c;
+                            break;
+                        }
+                    }
+                }
+            }
+        };
+        try {
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                dialog.run();
+            } else {
+                javax.swing.SwingUtilities.invokeAndWait(dialog);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warning("Interrupted during live AEChip offer dialog");
+            return;
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            log.warning("Live AEChip offer dialog failed: " + e.getCause());
+            return;
+        }
+        if (dontAskHolder[0]) {
+            prefs.putBoolean("AEViewer.liveChipOffer.skip." + deviceKey, true);
+            log.info("Will not offer AEChip switch again for " + deviceKey);
+        }
+        if (chosenHolder[0] != null) {
+            log.info("Switching AEChip to " + chosenHolder[0].getSimpleName()
+                    + " for USB device " + deviceKey);
+            setAeChipClass(chosenHolder[0]);
+        }
+    }
+
+    private String liveDevicePromptKey(HardwareInterface hw, UsbIds.Pair ids) {
+        String serial = "";
+        if (hw instanceof USBInterface) {
+            try {
+                String[] desc = ((USBInterface) hw).getStringDescriptors();
+                if (desc != null && desc.length >= 3 && desc[2] != null && !desc[2].isBlank()) {
+                    serial = desc[2].trim();
+                }
+            } catch (Throwable t) {
+                // serial optional
+            }
+        }
+        if (serial.isEmpty()) {
+            return ids.key();
+        }
+        return ids.key() + "#" + serial;
     }
 
     /**

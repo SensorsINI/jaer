@@ -4,6 +4,8 @@ import java.io.Serializable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.UsbDevice;
+import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.RetinaExtractor;
@@ -14,6 +16,7 @@ import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.util.VendorPrefsMigration;
+import nrv.usb.NRVHardwareInterface;
 import nrv.usb.S5KRC1SParser;
 import ch.unizh.ini.jaer.chip.EventOnlyChipDisplay;
 import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
@@ -25,6 +28,10 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
  */
 @Description("NRV S5KRC1S 960x720 DVS camera")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@UsbDevices({
+    @UsbDevice(vid = NRVHardwareInterface.VID, pid = NRVHardwareInterface.PID_FX20),
+    @UsbDevice(vid = NRVHardwareInterface.VID, pid = NRVHardwareInterface.PID_CX3)
+})
 public class NRVS5KRC1S extends AETemporalConstastRetina implements Serializable {
 
     @Override
