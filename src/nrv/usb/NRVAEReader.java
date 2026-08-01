@@ -12,8 +12,11 @@ import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
+import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 
 /**
  * USB bulk reader for NRV DVS devices (endpoint 0x81).
@@ -27,8 +30,13 @@ public class NRVAEReader {
     private static final long OVERRUN_LOG_INTERVAL_MS = 2000L;
     private static final long STOP_JOIN_TIMEOUT_MS = 3000L;
 
+    private static final int XMASK = 0x3FF;
+    private static final int YMASK = 0x3FF << 10;
+    private static final int TYPEMASK = 1 << 20;
+
     private final NRVHardwareInterface monitor;
     private final S5KRC1SParser parser = new S5KRC1SParser();
+    private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
     private USBTransferThread usbTransfer;
     private int fifoSize;
     private int numBuffers;
@@ -36,6 +44,8 @@ public class NRVAEReader {
     private int[] stagingAddresses;
     private int[] stagingTimestamps;
     private long lastOverrunLogMs;
+    /** Reused parse result to avoid per-USB-transfer allocation. */
+    private final ParsedChunk parseScratchChunk = new ParsedChunk(0, false);
 
     public NRVAEReader(NRVHardwareInterface monitor) {
         this.monitor = monitor;
@@ -224,7 +234,9 @@ public class NRVAEReader {
                 parser.noteChunkTimestampSpanUs(maxTs - minTs);
             }
         }
-        return new ParsedChunk(result.eventsWritten, result.overflowed);
+        parseScratchChunk.parsed = result.eventsWritten;
+        parseScratchChunk.overflowed = result.overflowed;
+        return parseScratchChunk;
     }
 
     private void commitParsedChunk(ParsedChunk chunk, UsbPipelineBench.Sample sample) {
@@ -233,6 +245,7 @@ public class NRVAEReader {
         }
         final long commitStart = sample != null ? System.nanoTime() : 0;
         long arrayCopyNs = 0;
+        final boolean demux = monitor.isUsbTypedDemuxActive();
         synchronized (monitor.getAePacketRawPool()) {
             final AEPacketRawPool aePacketRawPool = monitor.getAePacketRawPool();
             final AEPacketRaw writeBuffer = aePacketRawPool.writeBuffer();
@@ -258,18 +271,35 @@ public class NRVAEReader {
 
             final int toCopy = Math.min(chunk.parsed, remaining);
             if (toCopy > 0) {
-                ensureWriteBufferCapacity(writeBuffer, maxEvents, startEvent, toCopy);
-                final long acStart = sample != null ? System.nanoTime() : 0;
-                System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
-                System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
-                if (sample != null) {
-                    arrayCopyNs += System.nanoTime() - acStart;
+                if (demux) {
+                    // Typed path only: skip AEPacketRaw dual-write (halves USB-thread copies / GC).
+                    final PacketBundle typedOut = monitor.getPacketBundlePool().writeBuffer();
+                    polarityBuilder.attach(typedOut);
+                    final AEChip chip = monitor.getChip();
+                    final int sizeX = chip != null ? chip.getSizeX() : S5KRC1SParser.WIDTH;
+                    final int sizeY = chip != null ? chip.getSizeY() : S5KRC1SParser.HEIGHT;
+                    // Match NRVS5KRC1S.Extractor: flipy=true, fliptype=false
+                    polarityBuilder.addPacked(stagingAddresses, stagingTimestamps, 0, toCopy,
+                            XMASK, 0, YMASK, 10, TYPEMASK, 20,
+                            false, true, false, sizeX, sizeY);
+                    polarityBuilder.flushAll();
+                    typedOut.setRawPacket(null);
+                    writeBuffer.setNumEvents(0);
+                    writeBuffer.lastCaptureLength = toCopy;
+                } else {
+                    ensureWriteBufferCapacity(writeBuffer, maxEvents, startEvent, toCopy);
+                    final long acStart = sample != null ? System.nanoTime() : 0;
+                    System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
+                    System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
+                    if (sample != null) {
+                        arrayCopyNs += System.nanoTime() - acStart;
+                    }
+                    writeBuffer.setNumEvents(startEvent + toCopy);
+                    writeBuffer.lastCaptureLength = toCopy;
                 }
             }
             monitor.setEventCounter(startEvent + toCopy);
-            writeBuffer.setNumEvents(monitor.getEventCounter());
-            writeBuffer.lastCaptureLength = toCopy;
-            if (chunk.overflowed) {
+            if (chunk.overflowed || toCopy < chunk.parsed) {
                 writeBuffer.overrunOccuredFlag = true;
                 logOverrun(startEvent, maxEvents, toCopy);
             }
@@ -292,8 +322,8 @@ public class NRVAEReader {
     private static final class ParsedChunk {
         static final ParsedChunk EMPTY = new ParsedChunk(0, false);
 
-        final int parsed;
-        final boolean overflowed;
+        int parsed;
+        boolean overflowed;
 
         ParsedChunk(int parsed, boolean overflowed) {
             this.parsed = parsed;

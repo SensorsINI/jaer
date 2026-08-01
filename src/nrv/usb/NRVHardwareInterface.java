@@ -19,6 +19,9 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.util.VendorPrefsMigration;
 import nrv.chip.NRVConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -46,6 +49,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             new PropertyChangeEvent(NRVHardwareInterface.class, "NewEvents", null, null);
 
     private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("NRV");
+    /** Pref kill-switch for USB→PacketBundle polarity demux. */
+    public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
 
     static {
         VendorPrefsMigration.migrateHardwarePrefs(VendorPrefsMigration.LEGACY_NRV_HW_PACKAGE, PREFS);
@@ -68,6 +73,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     private int usbNumBuffers = UsbReaderBufferSettings.loadNumBuffers(
             PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, DEFAULT_USB_NUM_BUFFERS, usbFifoSize, log, "NRV");
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
+    private final PacketBundlePool packetBundlePool = new PacketBundlePool();
+    private PacketBundle lastPacketBundle = new PacketBundle();
+    private volatile boolean usbTypedDemuxActive = PREFS.getBoolean(PREF_USB_TYPED_DEMUX, true);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     private boolean isOpened = false;
@@ -81,6 +89,15 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     public NRVHardwareInterface(Device device) {
         this.device = device;
+        log.info("NRV USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
+    }
+
+    boolean isUsbTypedDemuxActive() {
+        return usbTypedDemuxActive;
+    }
+
+    PacketBundlePool getPacketBundlePool() {
+        return packetBundlePool;
     }
 
     private int loadAeBufferSizePref() {
@@ -344,6 +361,8 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         if (!settingsApplied) {
             synchronized (aePacketRawPool) {
                 aePacketRawPool.swap();
+                packetBundlePool.swap();
+                lastPacketBundle = packetBundlePool.readBuffer();
                 eventCounter = 0;
             }
             if (aeReader != null) {
@@ -357,20 +376,35 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         final AEPacketRaw lastEventsAcquired;
         synchronized (aePacketRawPool) {
             aePacketRawPool.swap();
+            packetBundlePool.swap();
+            lastPacketBundle = packetBundlePool.readBuffer();
             eventCounter = 0;
             lastEventsAcquired = aePacketRawPool.readBuffer();
         }
         if (aeReader != null) {
             aeReader.onWriteBufferConsumed();
         }
-        final int nEvents = lastEventsAcquired.getNumEvents();
-        computeEstimatedEventRate(lastEventsAcquired);
-        if (nEvents != 0) {
-            support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
-        } else if (lastEventsAcquired.overrunOccuredFlag) {
+        final int nEvents = usbTypedDemuxActive
+                ? lastPacketBundle.getNumPolarityEvents()
+                : lastEventsAcquired.getNumEvents();
+        if (usbTypedDemuxActive) {
+            computeEstimatedEventRate(lastPacketBundle);
+        } else {
+            computeEstimatedEventRate(lastEventsAcquired);
+        }
+        if (nEvents != 0 || lastEventsAcquired.overrunOccuredFlag) {
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         }
         return lastEventsAcquired;
+    }
+
+    @Override
+    public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
+        if (!usbTypedDemuxActive) {
+            return null;
+        }
+        acquireAvailableEventsFromDriver();
+        return lastPacketBundle;
     }
 
     private void ensureSettingsBeforeAcquisition() throws HardwareInterfaceException {
@@ -397,6 +431,27 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         final int[] ts = events.getTimestamps();
         final int n = events.getNumEvents();
         final int dt = ts[n - 1] - ts[0];
+        if (dt <= 0) {
+            estimatedEventRate = 0;
+        } else {
+            estimatedEventRate = (int) ((1e6f * n) / dt);
+        }
+    }
+
+    private void computeEstimatedEventRate(PacketBundle bundle) {
+        if (bundle == null) {
+            estimatedEventRate = 0;
+            return;
+        }
+        final EventPacket<?> polarity = bundle.getFirstPolarityPacket();
+        if (polarity == null || polarity.getSize() < 2) {
+            estimatedEventRate = 0;
+            return;
+        }
+        final int n = polarity.getSize();
+        final int t0 = polarity.getEvent(0).timestamp;
+        final int t1 = polarity.getEvent(n - 1).timestamp;
+        final int dt = t1 - t0;
         if (dt <= 0) {
             estimatedEventRate = 0;
         } else {
