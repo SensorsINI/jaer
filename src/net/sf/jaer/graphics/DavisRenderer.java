@@ -315,6 +315,18 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
 
+        // USB demux / extractBundle: keep chip.imuSample current for overlay / Steadicam
+        if (chip instanceof DavisBaseCamera) {
+            for (TypedDataPacket p : bundle) {
+                if (p instanceof ImuPacket) {
+                    final ImuPacket ip = (ImuPacket) p;
+                    if (!ip.isEmpty()) {
+                        ((DavisBaseCamera) chip).setImuSample(ip.get(ip.getSize() - 1));
+                    }
+                }
+            }
+        }
+
         EventPacket polarity = bundle.getFirstPolarityPacket();
         if (polarity != null && !polarity.isEmpty()) {
             numEventTypes = polarity.getNumCellTypes();

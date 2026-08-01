@@ -6,6 +6,7 @@
 package eu.seebetter.ini.chips.davis;
 
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
+import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.ExternalEvent;
@@ -17,69 +18,149 @@ import net.sf.jaer.event.PolarityEvent;
 
 /**
  * Stateful helper used by {@code DAViSFX3HardwareInterface.RetinaAEReader} to
- * emit homogeneous typed packets directly from USB decode (no mixed
- * {@code ApsDvsEvent} path).
+ * emit homogeneous typed packets directly from USB decode.
  * <p>
- * Accumulates into a consumer-supplied {@link PacketBundle} (the USB write
- * buffer). Polarity / IMU / external working packets are flushed into the
- * bundle on type change or {@link #flushAll()}.
- *
- * @author tobi
+ * Matches {@code DavisEventExtractor#extractBundleTyped}: one polarity packet
+ * per write-buffer slice; do not flush polarity on interleaved APS; frames
+ * added as they complete.
  */
 public class DavisUsbPacketBundleBuilder {
 
     private PacketBundle out;
+    private PacketBundle slot0;
+    private PacketBundle slot1;
+    private DavisBaseCamera chip;
 
+    private EventPacket<PolarityEvent> polarity0;
+    private EventPacket<PolarityEvent> polarity1;
     private EventPacket<PolarityEvent> polarity;
     private OutputEventIterator<PolarityEvent> polarityOut;
+    private boolean polarityInBundle;
+
+    private ImuPacket imu0;
+    private ImuPacket imu1;
     private ImuPacket imu;
+    private boolean imuInBundle;
+
+    private EventPacket<ExternalEvent> external0;
+    private EventPacket<ExternalEvent> external1;
     private EventPacket<ExternalEvent> external;
     private OutputEventIterator<ExternalEvent> externalOut;
+    private boolean externalInBundle;
+
     private DavisFrameAssembler frameAssembler;
-
-    private enum Active {
-        NONE, POLARITY, IMU, EXTERNAL
-    }
-
-    private Active active = Active.NONE;
     private boolean rollingShutter;
     private int apsWidth;
     private int apsHeight;
 
-    public void attach(PacketBundle writeBundle, int apsWidth, int apsHeight) {
-        this.out = writeBundle;
+    public void attach(PacketBundle writeBundle, AEChip aeChip, int apsWidth, int apsHeight) {
+        if (aeChip instanceof DavisBaseCamera) {
+            this.chip = (DavisBaseCamera) aeChip;
+        }
+        if (writeBundle != this.out) {
+            // Different pool slot after swap — reuse grown packets for this slot.
+            this.out = writeBundle;
+            bindSlot(writeBundle);
+            polarityOut = polarity.outputIterator();
+            polarityInBundle = false;
+            if (imu != null) {
+                imu.clear();
+            }
+            imuInBundle = false;
+            if (external != null) {
+                externalOut = external.outputIterator();
+            } else {
+                externalOut = null;
+            }
+            externalInBundle = false;
+        }
+        ensureAssembler(apsWidth, apsHeight);
+    }
+
+    private void bindSlot(PacketBundle writeBundle) {
+        if (slot0 == null || writeBundle == slot0) {
+            slot0 = writeBundle;
+            if (polarity0 == null) {
+                polarity0 = new EventPacket<>(PolarityEvent.class);
+            }
+            if (imu0 == null) {
+                imu0 = new ImuPacket();
+            }
+            if (external0 == null) {
+                external0 = new EventPacket<>(ExternalEvent.class);
+            }
+            polarity = polarity0;
+            imu = imu0;
+            external = external0;
+            return;
+        }
+        if (slot1 == null || writeBundle == slot1) {
+            slot1 = writeBundle;
+            if (polarity1 == null) {
+                polarity1 = new EventPacket<>(PolarityEvent.class);
+            }
+            if (imu1 == null) {
+                imu1 = new ImuPacket();
+            }
+            if (external1 == null) {
+                external1 = new EventPacket<>(ExternalEvent.class);
+            }
+            polarity = polarity1;
+            imu = imu1;
+            external = external1;
+            return;
+        }
+        slot0 = writeBundle;
+        if (polarity0 == null) {
+            polarity0 = new EventPacket<>(PolarityEvent.class);
+        }
+        if (imu0 == null) {
+            imu0 = new ImuPacket();
+        }
+        if (external0 == null) {
+            external0 = new EventPacket<>(ExternalEvent.class);
+        }
+        polarity = polarity0;
+        imu = imu0;
+        external = external0;
+    }
+
+    private void ensureAssembler(int apsWidth, int apsHeight) {
         this.apsWidth = apsWidth;
         this.apsHeight = apsHeight;
-        if (polarity == null) {
-            polarity = new EventPacket<>(PolarityEvent.class);
+        if (frameAssembler == null) {
+            if (chip != null) {
+                // Chip sizes + exposure fallback match extractBundleTyped
+                frameAssembler = new DavisFrameAssembler(chip);
+            } else {
+                frameAssembler = new DavisFrameAssembler(apsWidth, apsHeight, 0);
+            }
         }
-        if (imu == null) {
-            imu = new ImuPacket();
-        }
-        if (external == null) {
-            external = new EventPacket<>(ExternalEvent.class);
-        }
-        if (frameAssembler == null || this.apsWidth != apsWidth || this.apsHeight != apsHeight) {
-            frameAssembler = new DavisFrameAssembler(apsWidth, apsHeight, 0);
-        }
-        // Do not clear out — USB buffers accumulate until pool swap.
-        polarityOut = null;
-        externalOut = null;
     }
 
     public void setRollingShutter(boolean rollingShutter) {
         this.rollingShutter = rollingShutter;
     }
 
-    public void onFrameStart(boolean rolling) {
+    /**
+     * APS Frame-Start special from USB. Opens the assembler if idle; does not
+     * {@link DavisFrameAssembler#reset()} (that caused SignalRead-without-frame
+     * when Reset column samples were sparse or reordered).
+     */
+    public void onFrameStart(boolean rolling, int timestamp) {
         setRollingShutter(rolling);
-        frameAssembler.reset();
+        ensureAssembler(apsWidth, apsHeight);
+        frameAssembler.ensureFrameOpen(timestamp);
     }
 
     public void addPolarity(final int x, final int y, final boolean on, final int timestamp) {
-        ensurePolarityActive();
-        if (polarityOut == null) {
+        if (polarity == null) {
+            polarity = new EventPacket<>(PolarityEvent.class);
             polarityOut = polarity.outputIterator();
+            polarityInBundle = false;
+        }
+        if (polarityOut == null) {
+            polarityOut = polarity.isEmpty() ? polarity.outputIterator() : polarity.getOutputIterator();
         }
         PolarityEvent e = polarityOut.nextOutput();
         e.reset();
@@ -92,15 +173,12 @@ public class DavisUsbPacketBundleBuilder {
     }
 
     public void addExternal(final int code, final int timestamp) {
-        if (active == Active.POLARITY) {
-            flushPolarity();
-        } else if (active == Active.IMU) {
-            flushImu();
+        if (external == null) {
+            external = new EventPacket<>(ExternalEvent.class);
+            externalInBundle = false;
         }
-        active = Active.EXTERNAL;
         if (externalOut == null) {
-            external.clear();
-            externalOut = external.outputIterator();
+            externalOut = external.isEmpty() ? external.outputIterator() : external.getOutputIterator();
         }
         ExternalEvent e = externalOut.nextOutput();
         e.reset();
@@ -124,109 +202,47 @@ public class DavisUsbPacketBundleBuilder {
     }
 
     public void addImu(final IMUSample sample) {
-        if (active == Active.POLARITY) {
-            flushPolarity();
-        } else if (active == Active.EXTERNAL) {
-            flushExternal();
+        if (imu == null) {
+            imu = new ImuPacket();
+            imuInBundle = false;
         }
-        active = Active.IMU;
         imu.appendCopy(sample);
+        // Overlay / Steadicam still read DavisBaseCamera.getImuSample()
+        if (chip != null) {
+            chip.setImuSample(sample);
+        }
     }
 
-    /**
-     * Feed one APS ADC sample into the frame assembler. Returns a completed
-     * frame if this sample finished the frame.
-     */
     public FramePacket addApsSample(final int adcSample, final int timestamp, final int x, final int y,
             final boolean resetRead, final boolean pixFirst, final boolean pixLast) {
-        if (active == Active.POLARITY) {
-            flushPolarity();
-        } else if (active == Active.IMU) {
-            flushImu();
-        } else if (active == Active.EXTERNAL) {
-            flushExternal();
-        }
-        active = Active.NONE;
+        ensureAssembler(apsWidth, apsHeight);
         ApsDvsEvent.ReadoutType type = resetRead ? ApsDvsEvent.ReadoutType.ResetRead : ApsDvsEvent.ReadoutType.SignalRead;
         FramePacket frame = frameAssembler.process(adcSample, timestamp, (short) x, (short) y, type, pixFirst, pixLast,
                 rollingShutter);
         if (frame != null && out != null) {
             out.add(frame);
+            if (chip != null) {
+                chip.noteUsbAssembledFrame(frame);
+            }
         }
         return frame;
     }
 
     public void flushAll() {
-        if (active == Active.POLARITY) {
-            flushPolarity();
-        } else if (active == Active.IMU) {
-            flushImu();
-        } else if (active == Active.EXTERNAL) {
-            flushExternal();
-        }
-        active = Active.NONE;
-    }
-
-    private void ensurePolarityActive() {
-        if (active == Active.IMU) {
-            flushImu();
-        } else if (active == Active.EXTERNAL) {
-            flushExternal();
-        }
-        if (active != Active.POLARITY) {
-            polarity.clear();
-            polarityOut = polarity.outputIterator();
-            active = Active.POLARITY;
-        }
-    }
-
-    private void flushPolarity() {
-        if (out == null || polarity == null || polarity.isEmpty()) {
-            active = Active.NONE;
-            polarityOut = null;
+        if (out == null) {
             return;
         }
-        EventPacket<PolarityEvent> copy = new EventPacket<>(PolarityEvent.class);
-        OutputEventIterator<PolarityEvent> itr = copy.outputIterator();
-        for (PolarityEvent e : polarity) {
-            PolarityEvent d = itr.nextOutput();
-            d.copyFrom(e);
+        if (imu != null && !imu.isEmpty() && !imuInBundle) {
+            out.add(imu);
+            imuInBundle = true;
         }
-        out.add(copy);
-        polarity.clear();
-        polarityOut = null;
-        active = Active.NONE;
-    }
-
-    private void flushImu() {
-        if (out == null || imu == null || imu.isEmpty()) {
-            active = Active.NONE;
-            return;
+        if (external != null && !external.isEmpty() && !externalInBundle) {
+            out.add(external);
+            externalInBundle = true;
         }
-        ImuPacket copy = new ImuPacket(Math.max(ImuPacket.DEFAULT_CAPACITY, imu.getSize()));
-        for (int i = 0; i < imu.getSize(); i++) {
-            copy.appendCopy(imu.get(i));
+        if (polarity != null && !polarity.isEmpty() && !polarityInBundle) {
+            out.add(polarity);
+            polarityInBundle = true;
         }
-        out.add(copy);
-        imu.clear();
-        active = Active.NONE;
-    }
-
-    private void flushExternal() {
-        if (out == null || external == null || external.isEmpty()) {
-            active = Active.NONE;
-            externalOut = null;
-            return;
-        }
-        EventPacket<ExternalEvent> copy = new EventPacket<>(ExternalEvent.class);
-        OutputEventIterator<ExternalEvent> itr = copy.outputIterator();
-        for (ExternalEvent e : external) {
-            ExternalEvent d = itr.nextOutput();
-            d.copyFrom(e);
-        }
-        out.add(copy);
-        external.clear();
-        externalOut = null;
-        active = Active.NONE;
     }
 }

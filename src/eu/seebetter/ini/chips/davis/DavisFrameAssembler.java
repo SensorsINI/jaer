@@ -91,6 +91,28 @@ public class DavisFrameAssembler {
         return inFrame;
     }
 
+    public int getSignalCount() {
+        return signalCount;
+    }
+
+    /**
+     * USB Frame-Start special: open a frame if none is active so subsequent
+     * Reset/Signal ADC samples are accepted. Does <b>not</b> wipe an in-progress
+     * frame (unlike {@link #reset()}).
+     */
+    public void ensureFrameOpen(int timestamp) {
+        if (inFrame) {
+            return;
+        }
+        final int w = width();
+        final int h = height();
+        if (w <= 0 || h <= 0) {
+            return; // chip / APS size not ready yet
+        }
+        ensureBuffers(w, h);
+        startFrame(w, h, timestamp);
+    }
+
     /**
      * Process one APS pixel readout. Returns a completed {@link FramePacket}
      * when enough signal samples have arrived (or a new frame SOF closes the
@@ -166,6 +188,7 @@ public class DavisFrameAssembler {
     }
 
     private void startFrame(int w, int h, int timestamp) {
+        ensureBuffers(w, h);
         inFrame = true;
         resetCount = 0;
         signalCount = 0;

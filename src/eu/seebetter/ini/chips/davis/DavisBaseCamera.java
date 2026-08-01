@@ -347,6 +347,37 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         this.imuSample = imuSample;
     }
 
+    /**
+     * Called when USB typed demux completes an APS {@link FramePacket} so the
+     * DAVIS overlay (frame count / exposure / frame rate) stays in sync without
+     * extractBundle.
+     */
+    public void noteUsbAssembledFrame(FramePacket frame) {
+        frameCount++;
+        if (frame == null) {
+            return;
+        }
+        if (frame.getExposureUs() > 0) {
+            exposureDurationUs = frame.getExposureUs();
+            setMeasuredExposureMs(exposureDurationUs / 1000f);
+        }
+        // Same bookkeeping extractBundle uses for the overlay "Frame rate: X Hz"
+        final int sof = (int) frame.getTimestampStartUs();
+        if (sof != 0) {
+            if (frameExposureStartTimestampUs != 0) {
+                final int dt = sof - frameExposureStartTimestampUs;
+                if (dt > 0) {
+                    frameIntervalUs = dt;
+                    setFrameRateHz(1e6f / dt);
+                }
+            }
+            frameExposureStartTimestampUs = sof;
+        }
+        if (frame.getTimestampEndUs() != 0) {
+            frameExposureEndTimestampUs = (int) frame.getTimestampEndUs();
+        }
+    }
+
     @Override
     public int getMaxADC() {
         return DavisChip.MAX_ADC;
