@@ -105,9 +105,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
     private ArrayList<BasicEvent> eventList = null, eventListTmp = null;
     private ByteBuffer eventVertexBuffer;
     /**
-     * total time in 3d window in us
+     * total time in 3d window in us; t0..t1 is the rolling window used for event
+     * and frame z placement (t1 = newest / front, t0 = oldest / back).
      */
-    private int timeWindowUs = 100000, t0;
+    private int timeWindowUs = 100000, t0, t1;
     private static final int EVENT_SIZE_BYTES = (Float.SIZE / 8) * 3;// size of event in shader ByteBuffer
     private int axesDisplayListId = -1;
     private volatile boolean regenerateAxesDisplayList = true;
@@ -581,40 +582,42 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
                 }
             }
             timeWindowUs = newTimeWindowUs;
-            t0 = t1 - timeWindowUs;
+            this.t1 = t1;
+            this.t0 = t1 - timeWindowUs;
 
             sx = chip.getSizeX();
             sy = chip.getSizeY();
             smax = chip.getMaxSize();
             tfac = (float) (smax * getTimeAspectRatio()) / timeWindowUs;
 
-            pruneOldEventsAndFrames(t0, t1);
+            pruneOldEventsAndFrames(this.t0, this.t1);
             if (newPacket) {
                 checkEventListAllocation((eventList != null ? eventList.size() : 0) + packet.getSize());
                 addEventsToEventList(packet);
+                if (displayDvsFrames) {
+                    DavisRenderer renderer = getDavisRenderer();
+                    if (renderer != null && renderer.getPacket() != null) {
+                        // One DVS texture per new packet — not on every display()/repaint
+                        dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), this.t1);
+                        log.log(Level.FINE, "New DVS frame with timestamp {0}", this.t1);
+                    }
+                }
             }
             checkEventVertexBufferAllocation(eventList != null ? eventList.size() : packet.getSize());
             eventVertexBuffer.clear(); // sets pos=0 and limit=capacity // TODO should not really clear, rather should erase old events
             if (eventList != null) {
                 for (BasicEvent ev : eventList) {
-                    if ((ev.timestamp < t0) || (ev.timestamp > t1)) {
+                    if ((ev.timestamp < this.t0) || (ev.timestamp > this.t1)) {
                         continue; // don't render events outside of box, no matter how they get there
                     }
                     eventVertexBuffer.putFloat(ev.x);
                     eventVertexBuffer.putFloat(ev.y);
-                    final float z = tfac * (ev.timestamp - t1);
+                    final float z = tfac * (ev.timestamp - this.t1);
                     eventVertexBuffer.putFloat(z); // negative z
                 }
             }
             eventVertexBuffer.flip(); // get ready for reading by setting limit=pos and then pos=0
             checkGLError(gl, "set uniform t0 and t1");
-            }
-        }
-        if (!interactionPreview && displayDvsFrames) {
-            DavisRenderer renderer = getDavisRenderer();
-            if (renderer != null) {
-                dvsFramesInTimeWindow.add(renderer.getDvsEventsMap(), renderer.getPacket().getLastTimestamp());
-                log.log(Level.FINE, "New DVS frame with timestamp {0}", renderer.getPacket().getLastTimestamp());
             }
         }
         renderEventsAndFrames(gl, drawable, eventVertexBuffer, eventVertexBuffer.limit(), 1e-6f * timeWindowUs, smax * getTimeAspectRatio());
@@ -643,28 +646,50 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
      */
     private void pruneOldEventsAndFrames(final int t0, final int t1) {
 //        log.finer(String.format("Pruning events and frames outside window t0=%,d, t1=%,d (t1-t0=%,d)", t0, t1, (t1 - t0)));
-        if (eventList == null) {
-            return;
-        }
-        if (eventListTmp == null) {
-            eventListTmp = new ArrayList(eventList.size());
-        } else {
-            eventListTmp.clear();
-        }
-
-        for (BasicEvent ev : eventList) {
-            if ((ev.timestamp >= t0) || (ev.timestamp < t1)) {
-                eventListTmp.add(ev);
+        if (eventList != null) {
+            if (eventListTmp == null) {
+                eventListTmp = new ArrayList(eventList.size());
+            } else {
+                eventListTmp.clear();
             }
-        }
-        eventList.clear();
-        ArrayList<BasicEvent> tmp = eventList;
-        eventList = eventListTmp;
-        eventListTmp = tmp;
 
+            for (BasicEvent ev : eventList) {
+                // Keep events inside [t0, t1]. (Was || which retained almost every event.)
+                if ((ev.timestamp >= t0) && (ev.timestamp <= t1)) {
+                    eventListTmp.add(ev);
+                }
+            }
+            eventList.clear();
+            ArrayList<BasicEvent> tmp = eventList;
+            eventList = eventListTmp;
+            eventListTmp = tmp;
+        }
+
+        // Drop frames that have scrolled off the back; frames slightly ahead of t1
+        // (typical for APS end-of-exposure vs polarity lastTimestamp) are kept and
+        // clamped to z=0 when drawn.
         apsFramesInTimeWindow.removeFramesOlderThan(t0);
         dvsFramesInTimeWindow.removeFramesOlderThan(t0);
+    }
 
+    /**
+     * Maps a frame timestamp into the rolling cube z axis. APS frame-end times
+     * often sit slightly ahead of the polarity packet's lastTimestamp; those
+     * are clamped to the front (z=0). Frames older than the window are clamped
+     * to the back (-zmax) — they should already have been pruned.
+     */
+    private float frameZFromTimestamp(int timestampUs, float zmax) {
+        if (tfac == 0 || timeWindowUs <= 0) {
+            return 0;
+        }
+        float z = tfac * (timestampUs - t1);
+        if (z > 0) {
+            return 0;
+        }
+        if (z < -zmax) {
+            return -zmax;
+        }
+        return z;
     }
 
     /**
@@ -875,33 +900,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             int nFrames = 0;
 //            gl.glShadeModel(GL2.GL_FLAT);
-            final EventPacket packet = (EventPacket) renderer.getPacket();
-            int lastTimestamp = packet.getLastTimestamp();
             for (FrameWithTime frame : apsFramesInTimeWindow) {
-                final int frameDt = frame.timestampUs - lastTimestamp;
-                final float z = tfac * (frameDt);
-//                log.finer(String.format("Frame %d has frameDt=%,dus (frame.timestampUs=%,d, lastTimestamp=%,d)", nFrames, frameDt, frame.timestampUs, lastTimestamp));
-                if (z < -zmax || z > 0) {
-                    log.warning(String.format("Frame has z=%f outside of range [0,%f]", z, -zmax));
-                }
-//                final int nx = chip.getSizeX(), ny = chip.getSizeY();
-//                float[] pb = frame.pixBuffer.array();
-//                for (int x = 0; x < nx; x++) {
-//                    for (int y = 0; y < ny; y++) {
-//                        final int idx = renderer.getPixMapIndex(x, y);
-//                        float gr = pb[idx];
-//                        gl.glColor4f(gr, gr, gr, framesAlpha);
-//                        gl.glBegin(GL.GL_TRIANGLES);
-//                        gl.glVertex3f(x, y, z);
-//                        gl.glVertex3f(x, y + 1, z);
-//                        gl.glVertex3f(x + 1, y + 1, z);
-//                        gl.glVertex3f(x + 1, y + 1, z);
-//                        gl.glVertex3f(x + 1, y, z);
-//                        gl.glVertex3f(x, y, z);
-//                        gl.glEnd();
-//                    }
-//                }
-//                checkGLError(gl, "after rendering frame");
+                final float z = frameZFromTimestamp(frame.timestampUs, zmax);
                 gl.glBindTexture(GL.GL_TEXTURE_2D, 0); // use texture number 0 for all textures, otherwise causes problems in JOGL on MacOS
                 gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
                 gl.glEnable(GL.GL_TEXTURE_2D);
@@ -954,15 +954,8 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
             int nFrames = 0;
 //            gl.glShadeModel(GL2.GL_FLAT);
-            final EventPacket packet = (EventPacket) renderer.getPacket();
-            int lastTimestamp = packet.getLastTimestamp();
             for (FrameWithTime frame : dvsFramesInTimeWindow) {
-                final int frameDt = frame.timestampUs - lastTimestamp;
-                final float z = tfac * (frameDt);
-//                log.finer(String.format("Frame %d has frameDt=%,dus (frame.timestampUs=%,d, lastTimestamp=%,d)", nFrames, frameDt, frame.timestampUs, lastTimestamp));
-                if (z < -zmax || z > 0) {
-                    log.warning(String.format("Frame has z=%f outside of range [0,%f]", z, -zmax));
-                }
+                final float z = frameZFromTimestamp(frame.timestampUs, zmax);
 
                 gl.glBindTexture(GL.GL_TEXTURE_2D, 0); // use texture number 0 for all textures, otherwise causes problems in JOGL on MacOS
                 gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
@@ -1292,7 +1285,10 @@ public class SpaceTimeRollingEventDisplayMethod extends DisplayMethod implements
             }
         } else if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             apsFramesInTimeWindow.clear();
-            eventList.clear();
+            dvsFramesInTimeWindow.clear();
+            if (eventList != null) {
+                eventList.clear();
+            }
         }
     }
 
