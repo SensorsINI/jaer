@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0.."
 
 if not exist "build\classes\net\sf\jaer\JAERViewer.class" (
@@ -16,10 +16,35 @@ if errorlevel 1 (
 rem Dev launch: build\classes + lib/*.jar + jars/*.jar (skips ant ivy/compile on every start)
 set "JAER_CP=build\classes;lib\*;jars\*"
 
-rem OOM debug (uncomment as needed):
-rem -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=oom.hprof
-rem -XX:NativeMemoryTracking=summary
-rem -Djaer.memory.trace.intervalMs=60000
+rem ---------------------------------------------------------------------------
+rem JVM -D / -X flags from PowerShell: unquoted -Dname=value is mangled.
+rem Prefer one of:
+rem   .\scripts\run-jaer-fast.bat --% -Djaer.live.bench=true -Djaer.live.bench.file=logs/live-bench.csv
+rem   .\scripts\run-jaer-fast.bat "-Djaer.live.bench=true" "-Djaer.live.bench.file=logs/live-bench.csv"
+rem   $env:JAER_JVM_ARGS='-Djaer.live.bench=true -Djaer.live.bench.file=logs/live-bench.csv'
+rem   .\scripts\run-jaer-fast.bat
+rem From cmd.exe, unquoted -D flags work as usual.
+rem ---------------------------------------------------------------------------
+set "JVM_EXTRA=%JAER_JVM_ARGS%"
+set "APP_ARGS="
+
+:argloop
+if "%~1"=="" goto argdone
+set "A=%~1"
+if /I "!A:~0,2!"=="-D" (
+    set "JVM_EXTRA=!JVM_EXTRA! "%~1""
+) else if /I "!A:~0,2!"=="-X" (
+    set "JVM_EXTRA=!JVM_EXTRA! "%~1""
+) else if /I "!A:~0,2!"=="--" (
+    set "JVM_EXTRA=!JVM_EXTRA! "%~1""
+) else (
+    set "APP_ARGS=!APP_ARGS! "%~1""
+)
+shift
+goto argloop
+:argdone
+
+if not "!JVM_EXTRA!"=="" echo run-jaer-fast: JVM extras:!JVM_EXTRA!
 
 java ^
   --add-exports java.base/java.lang=ALL-UNNAMED ^
@@ -35,7 +60,8 @@ java ^
   -Xmx10g ^
   -Xrs ^
   -splash:SplashScreen.png ^
+  !JVM_EXTRA! ^
   -cp "%JAER_CP%" ^
-  net.sf.jaer.JAERViewer %*
+  net.sf.jaer.JAERViewer !APP_ARGS!
 
 exit /b %ERRORLEVEL%

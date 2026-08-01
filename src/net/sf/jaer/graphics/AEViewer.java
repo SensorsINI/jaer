@@ -148,6 +148,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
+import net.sf.jaer.hardwareinterface.usb.LiveAcquisitionBench;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
@@ -1926,6 +1927,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         private AEPacketRaw emptyRawPacket;
         private EventPacket emptyCookedPacket;
         private long lastViewLoopHeartbeatMs;
+        /** True when this iteration used HW USB typed PacketBundle (no extractBundle). */
+        private boolean viewLoopUsedHwTypedBundle;
 
         public ViewLoop() {
             super();
@@ -1952,6 +1955,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             while (stop == false/*&& !isInterrupslsted()*/) { // the only way to break out of the run loop is either setting stop true or by some uncaught exception.
                 getRenderer().clearPacketRenderSkipDecision();
                 boolean skipRendering = false;
+                viewLoopUsedHwTypedBundle = false;
                 setTitleAccordingToState();
                 pauseIdleWaitIfNeeded();
                 if (stop) {
@@ -2002,6 +2006,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     } else {
                         // jAER 3.0: prefer USB-level typed PacketBundle when the HW interface supplies it
                         PacketBundle hwBundle = null;
+                        viewLoopUsedHwTypedBundle = false;
                         if ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING)) {
                             try {
                                 openAEMonitor();
@@ -2017,9 +2022,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             }
                         }
                         if (hwBundle != null) {
+                            viewLoopUsedHwTypedBundle = true;
                             rawPacket = hwBundle.getRawPacket();
                             cookedBundle = hwBundle;
                             if (cookedBundle.isEmpty()) {
+                                // Still finish FrameRater sample so close/pacing stay responsive
+                                getFrameRater().takeAfter();
                                 paceViewLoopFrame();
                                 continue;
                             }
@@ -2093,6 +2101,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     // if we are logging data to disk do it here
                     if (isLoggingEnabled() & !isLoggingPaused()) {
+                        // AEDAT-2 needs raw AE; when USB demux drops APS dual-write, reconstruct polarity
+                        if (rawPacket == null && cookedPacket != null && aedat4LoggingOutputStream == null) {
+                            rawPacket = extractor.reconstructRawPacket(cookedPacket);
+                        }
                         logPacket(rawPacket, cookedPacket);
                     }
 
@@ -2133,6 +2145,24 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     makeStatisticsLabel(cookedPacket);
                 }
                 getFrameRater().takeAfter();
+                if (LiveAcquisitionBench.isEnabled() && ((getPlayMode() == PlayMode.LIVE) || (getPlayMode() == PlayMode.SEQUENCING))) {
+                    final int polCount = cookedBundle != null ? cookedBundle.getNumPolarityEvents()
+                            : (cookedPacket != null ? cookedPacket.getSize() : 0);
+                    final int rawCount = rawPacket != null ? rawPacket.getNumEvents() : 0;
+                    final boolean overrun = rawPacket != null && rawPacket.overrunOccuredFlag;
+                    final String chipName = chip != null ? chip.getClass().getSimpleName() : "";
+                    String driverName = "";
+                    if (aemon != null) {
+                        try {
+                            driverName = aemon.getTypeName();
+                        } catch (Exception ignored) {
+                            driverName = aemon.getClass().getSimpleName();
+                        }
+                    }
+                    final long loopNs = Math.max(0L, getFrameRater().getLastDtNs());
+                    LiveAcquisitionBench.record(chipName, driverName, viewLoopUsedHwTypedBundle,
+                            polCount, rawCount, overrun, loopNs);
+                }
                 getRenderer().adaptRenderSkipping();
                 renderCount++;
                 paceViewLoopFrame();
