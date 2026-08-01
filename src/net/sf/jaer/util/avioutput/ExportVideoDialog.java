@@ -73,6 +73,11 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
     private boolean listeningToWriter;
     /** True after AVI finished with MP4 requested but ffmpeg was missing. */
     private boolean pendingMp4Convert;
+    /** Prior JaerAviWriter enabled/selected state restored when export ends. */
+    private boolean writerStateSaved;
+    private boolean writerWasFilterEnabled;
+    private boolean writerWasSelected;
+    private boolean writerWasAnnotationEnabled;
 
     public ExportVideoDialog(AEViewer viewer) {
         super(viewer, "Export video", false);
@@ -436,6 +441,7 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         FfmpegMp4Converter.setConfiguredFfmpegPath(ffmpegPathField.getText().trim());
         pendingMp4Convert = false;
 
+        rememberWriterState(writer);
         writer.setFilterEnabled(true);
         writer.setAnnotationEnabled(true);
         writer.setOutputContainer(AbstractAviWriter.OutputContainer.AVI);
@@ -462,12 +468,46 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         attachWriterListener();
         if (!writer.startRecording(aviFile)) {
             detachWriterListener();
+            restoreWriterState();
             JOptionPane.showMessageDialog(this, "Could not start recording to " + aviFile, "Export video", JOptionPane.WARNING_MESSAGE);
             return;
         }
         updateRecordingUi(true);
         statusLabel.setText(String.format("Recording %s at %d fps (synchronized)…",
                 aviFile.getName(), writer.getFrameRate()));
+    }
+
+    private void rememberWriterState(AbstractAviWriter w) {
+        if (w == null) {
+            writerStateSaved = false;
+            return;
+        }
+        writerWasFilterEnabled = w.isFilterEnabled();
+        writerWasSelected = w.isSelected();
+        writerWasAnnotationEnabled = w.isAnnotationEnabled();
+        writerStateSaved = true;
+    }
+
+    /**
+     * Restores JaerAviWriter enabled/selected state from before export started.
+     * Safe after finish: the AVI stream is already closed.
+     */
+    private void restoreWriterState() {
+        if (!writerStateSaved || writer == null) {
+            return;
+        }
+        writerStateSaved = false;
+        writer.setWriteEnabled(false);
+        writer.setFilterEnabled(writerWasFilterEnabled);
+        writer.setAnnotationEnabled(writerWasAnnotationEnabled);
+        writer.setSelected(writerWasSelected);
+        if (!writerWasSelected && writer.getFilterPanel() != null) {
+            // Collapse controls if export had expanded/selected the panel indirectly
+            try {
+                writer.setControlsVisible(false);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private void stopRecording(ActionEvent e) {
@@ -528,6 +568,7 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
     private void onRecordingFinished() {
         updateRecordingUi(false);
         detachWriterListener();
+        restoreWriterState();
         final File avi = aviFile != null ? aviFile : (writer != null ? writer.getFile() : null);
         if (avi != null) {
             aviFile = avi;
