@@ -197,30 +197,13 @@ public class FilterChain extends LinkedList<EventFilter2D> {
 //        } else {
 //            in.setTimeLimitEnabled(false);
 //        }
-        if (resetPerformanceMeasurementStatistics) {
-            for (EventFilter2D f : this) {
-                if (f.perf != null && f.isFilterEnabled()) { // check to reset performance meter
-                    f.perf.resetStatistics();
-                }
-            }
-            log.info("compute performance statistics reset");
-            resetPerformanceMeasurementStatistics = false;
-        }
+        maybeResetPerformanceStatistics();
         for (EventFilter2D f : this) {
             if (!f.isFilterEnabled()) {
                 continue;
             }
             if (measurePerformanceEnabled) {
-                if (f.perf == null) {
-                    EventProcessingPerformanceView view = new EventProcessingPerformanceView(f.getChip().getFilterFrame());
-                    f.perf = new EventProcessingPerformanceMeter(f, view);
-                    view.setModel(f.perf);
-                }
-                if (f.perf.getView() != null && !f.perf.getView().isVisible()) {
-                    f.perf.getView().setFocusableWindowState(false);
-                    f.perf.getView().setVisible(true);  // only set visible if not visible
-                    f.perf.getView().setFocusableWindowState(true);
-                }
+                ensureAndShowPerformanceMeter(f);
                 f.perf.start(in);
             }
             out = f.filterPacket(in);
@@ -239,10 +222,21 @@ public class FilterChain extends LinkedList<EventFilter2D> {
      * jAER 3.0: filter a {@link PacketBundle} with per-filter type dispatch.
      * Filters that do not {@link EventFilter2D#accepts(PacketType)} a packet
      * leave it unchanged (e.g. polarity denoisers never see frames/IMU).
+     * <p>
+     * When {@link #isMeasurePerformanceEnabled()}, creates and shows the same
+     * per-filter performance windows used by {@link #filterPacket}.
      */
     public PacketBundle filterBundle(PacketBundle in) {
         if (in == null || !filteringEnabled || size() == 0 || in.isEmpty()) {
             return in;
+        }
+        maybeResetPerformanceStatistics();
+        if (measurePerformanceEnabled) {
+            for (EventFilter2D f : this) {
+                if (f.isFilterEnabled()) {
+                    ensureAndShowPerformanceMeter(f);
+                }
+            }
         }
         PacketBundle out = new PacketBundle();
         out.setRawPacket(in.getRawPacket());
@@ -253,7 +247,18 @@ public class FilterChain extends LinkedList<EventFilter2D> {
                     continue;
                 }
                 try {
+                    // Only time packets this filter actually processes; pass-through
+                    // of frames/IMU on polarity filters would dilute ns/event stats.
+                    final boolean measure = measurePerformanceEnabled && cur != null
+                            && f.accepts(cur.getPacketType()) && f.perf != null;
+                    if (measure) {
+                        f.perf.start(cur.getSize());
+                    }
                     cur = f.processTyped(cur);
+                    if (measure) {
+                        f.perf.stop();
+                        f.perf.updateView();
+                    }
                     if (cur == null) {
                         break;
                     }
@@ -267,6 +272,38 @@ public class FilterChain extends LinkedList<EventFilter2D> {
             }
         }
         return out;
+    }
+
+    /** Reset per-filter performance meters when requested from the FilterFrame menu. */
+    private void maybeResetPerformanceStatistics() {
+        if (!resetPerformanceMeasurementStatistics) {
+            return;
+        }
+        for (EventFilter2D f : this) {
+            if (f.perf != null && f.isFilterEnabled()) {
+                f.perf.resetStatistics();
+            }
+        }
+        log.info("compute performance statistics reset");
+        resetPerformanceMeasurementStatistics = false;
+    }
+
+    /**
+     * Creates the performance meter/view for an enabled filter if needed and
+     * makes the window visible (used by both {@link #filterPacket} and
+     * {@link #filterBundle}).
+     */
+    private void ensureAndShowPerformanceMeter(EventFilter2D f) {
+        if (f.perf == null) {
+            EventProcessingPerformanceView view = new EventProcessingPerformanceView(f.getChip().getFilterFrame());
+            f.perf = new EventProcessingPerformanceMeter(f, view);
+            view.setModel(f.perf);
+        }
+        if (f.perf.getView() != null && !f.perf.getView().isVisible()) {
+            f.perf.getView().setFocusableWindowState(false);
+            f.perf.getView().setVisible(true);  // only set visible if not visible
+            f.perf.getView().setFocusableWindowState(true);
+        }
     }
 
     /**
