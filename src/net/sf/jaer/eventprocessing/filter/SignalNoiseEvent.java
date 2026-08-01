@@ -71,7 +71,8 @@ public class SignalNoiseEvent extends ApsDvsEvent {
             this.setClassifyAsSignal(e.isClassifiedAsSignal());
             this.setClassifyAsNoise(e.isClassifiedAsNoise());
         } else {
-            labelAsSignal(true);
+            // special bit = labeled noise (v2e / textio); otherwise signal
+            labelAsSignal(!src.isSpecial());
             unclassify();
         }
     }

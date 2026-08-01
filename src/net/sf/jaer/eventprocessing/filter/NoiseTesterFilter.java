@@ -82,8 +82,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.TypedEventExtractor;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.PolarityEvent.Polarity;
 import net.sf.jaer.eventio.AEFileInputStream;
@@ -104,7 +104,7 @@ import org.jdesktop.el.MethodNotFoundException;
  *
  * @author Tobi Delbruck, Shasha Guo, Oct-Jan 2020-2025
  */
-@Description("Tests background BA denoising filters by injecting known noise and measuring how much signal and noise is filtered")
+@Description("Tests background BA denoising filters by injecting known noise and measuring how much signal and noise is filtered. jAER 3.0: processPolarity (DVS) only.")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnotater, RemoteControlled {
 
@@ -684,7 +684,24 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
     }
 
     @Override
+    public boolean accepts(PacketType type) {
+        return type == PacketType.POLARITY;
+    }
+
+    /**
+     * Legacy / mixed-packet path; delegates to {@link #processPolarity}.
+     */
+    @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
+        return processPolarity(in);
+    }
+
+    /**
+     * jAER 3.0 typed polarity path: inject labeled noise, run enclosed denoisers,
+     * and score TP/TN/FP/FN using {@link SignalNoiseEvent} labels.
+     */
+    @Override
+    synchronized public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
 
         totalEventCount = 0; // from super, to measure filtering
         filteredOutEventCount = 0;
@@ -746,7 +763,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         // add noise into signalList to get the outputPacketWithNoiseAdded, track noise in noiseList
         signalPacket.copySignalEventsFrom(in);
         signalPacket.countClassifications(false);
-        inSignalRateHz = (signalNoisePacket.signalCount) / deltaTimeS;
+        inSignalRateHz = (signalPacket.signalCount) / deltaTimeS;
         if (!isDisableAddingNoise()) {
             addNoise(signalPacket, signalNoisePacket, noiseList, shotNoiseRateHz, leakNoiseRateHz);
         } else {
@@ -754,7 +771,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         signalNoisePacket.countClassifications(false);
         inNoiseRateHz = (signalNoisePacket.noiseCount) / deltaTimeS;
-        inSNR = (float) signalNoisePacket.signalCount / signalNoisePacket.noiseCount;
+        inSNR = signalNoisePacket.noiseCount == 0 ? Float.POSITIVE_INFINITY
+                : (float) signalNoisePacket.signalCount / signalNoisePacket.noiseCount;
 
 //        signalNoisePacket.countClassifications(false);  // debug
         if (outputTrainingData && csvWriter != null) {
@@ -842,7 +860,8 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             FP = signalNoisePacket.fpCount;
             FN = signalNoisePacket.fnCount;
 
-            assert (TN + FP == noiseList.size()) : String.format("TN (%d) + FP (%d) = %d != noiseList (%d)", TN, FP, TN + FP, noiseList.size());
+            // Use packet noiseCount (includes v2e/special-labeled noise), not only injected noiseList
+            assert (TN + FP == signalNoisePacket.noiseCount) : String.format("TN (%d) + FP (%d) = %d != noiseCount (%d)", TN, FP, TN + FP, signalNoisePacket.noiseCount);
             totalEventCount = signalNoisePacket.getSize();
             int outputEventCount = signalNoisePacket.tpCount + signalNoisePacket.fpCount;
             filteredOutEventCount = totalEventCount - outputEventCount;
@@ -864,7 +883,7 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         }
         outSignalRateHz = ((TP)) / deltaTimeS;
         outNoiseRateHz = ((FP)) / deltaTimeS;
-        outSNR = (float) TP / FP;
+        outSNR = FP == 0 ? Float.POSITIVE_INFINITY : (float) TP / FP;
 
         if (!isDebug) {
             boolean ranStopper = stopperTask.cancel();
@@ -940,7 +959,17 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
         OutputEventIterator<SignalNoiseEvent> outItr = (OutputEventIterator) signalNoisePacket.outputIterator();
         if (prerecordedNoise == null && leakNoiseRateHz == 0 && shotNoiseRateHz == 0) {
             signalNoisePacket.copySignalEventsFrom(signalPacket);
-            return; // no noise, just return which returns the copy from filterPacket
+            // Collect pre-labeled noise (e.g. v2e special events mapped to labeledAsSignal=false)
+            for (int k = 0; k < signalNoisePacket.getSize(); k++) {
+                SignalNoiseEvent e = signalNoisePacket.getEvent(k);
+                if (e.isDVSEvent() && !e.isLabeledAsSignal()) {
+                    generatedNoise.add(e);
+                }
+            }
+            if (isDisableSignal()) {
+                signalNoisePacket.removeSignalEvents();
+            }
+            return;
         }
 
         int firstTsThisPacket = signalPacket.getFirstTimestamp();
@@ -960,16 +989,12 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
                     eng.format(1e-6f * (lastPacketTs - firstTsThisPacket))));
         }
 
-        // insert noise between events of this packet after the first event, record their timestamp
-        // if there are no DVS events, then the iteration will not work. 
-        // In this case, we assume there are only IMU or APS events and insert noise events between them, because devices 
-        // typically do not include some special "clock" event to pass time.
+        // Insert noise between DVS events of this packet. Polarity packets are DVS-only
+        // (jAER 3.0 typed path); APS/IMU are separate packets and never reach here.
         int preEts = 0;
 
-        int dvsEventCounter = 0;
         int lastEventTs = signalPacket.getFirstTimestamp();
         for (SignalNoiseEvent ie : signalPacket) {
-            dvsEventCounter++;
             // if it is the first event or any with first event timestamp then just copy them
             if (ie.timestamp == firstTsThisPacket) {
                 outItr.nextOutput().copyFrom(ie);
@@ -980,22 +1005,6 @@ public class NoiseTesterFilter extends AbstractNoiseFilter implements FrameAnnot
             lastEventTs = ie.timestamp;
             insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
             outItr.nextOutput().copyFrom(ie);
-        }
-        if (dvsEventCounter == 0 && (signalPacket instanceof ApsDvsEventPacket)) {
-            Iterator itr = ((ApsDvsEventPacket) signalPacket).fullIterator();
-            while (itr.hasNext()) {
-                PolarityEvent ie = (PolarityEvent) (itr.next());
-                // if it is the first event or any with first event timestamp then just copy them
-                if (ie.timestamp == firstTsThisPacket) {
-                    outItr.nextOutput().copyFrom(ie);
-                    continue;
-                }
-                // save the previous timestamp and get the next one, and then inject noise between them
-                preEts = lastEventTs;
-                lastEventTs = ie.timestamp;
-                insertNoiseEvents(preEts, lastEventTs, outItr, generatedNoise);
-                outItr.nextOutput().copyFrom(ie);
-            }
         }
 
 //        signalNoisePacket.countClassifications(false); // TODO debug

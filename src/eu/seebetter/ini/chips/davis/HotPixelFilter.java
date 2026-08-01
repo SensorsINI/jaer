@@ -223,11 +223,18 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
     synchronized public EventPacket<? extends BasicEvent> processPolarity(final EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
         for (final BasicEvent e : in) {
-            if ((e == null) || e.isSpecial() || e.isFilteredOut() || (e.x >= chip.getSizeX()) || (e.y >= chip.getSizeY())) {
-                continue; // don't learn special events
+            // Process special events too when classifying under NoiseTesterFilter
+            // (v2e labels noise as special). Skip only null/filteredOut/OOB.
+            if ((e == null) || e.isFilteredOut() || (e.x >= chip.getSizeX()) || (e.y >= chip.getSizeY())) {
+                continue;
+            }
+            // Skip special/external events in normal use. Under NTF, special = labeled noise
+            // and must be processed for filterIn/Out (still not used for hot-pixel learning).
+            if (e.isSpecial() && !signalNoiseClassificationEnabled) {
+                continue;
             }
             totalEventCount++;
-            if (learnHotPixels) {
+            if (learnHotPixels && !e.isSpecial()) {
                 if (learningStarted) {
                     // initialize collection of addresses to be filled during learning
                     learningStarted = false;

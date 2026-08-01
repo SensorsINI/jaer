@@ -69,6 +69,8 @@ public class AgePolarityDenoiser extends SpatioTemporalCorrelationFilter {
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         resetCountsAndNegativeEvents();
+        signalNoiseClassificationEnabled = (in instanceof SignalNoisePacket)
+                || (in != null && in.getEventPrototype() instanceof SignalNoiseEvent);
         if (timestampImage == null) {
             allocateMaps(chip);
         }
