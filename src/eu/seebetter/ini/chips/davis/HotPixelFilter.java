@@ -25,6 +25,7 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.eventprocessing.filter.AbstractNoiseFilter;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.util.DrawGL;
@@ -34,6 +35,8 @@ import net.sf.jaer.util.DrawGL;
  * continuously fire a sustained stream of events. These events are learned on
  * command, e.g. while sensor is stationary, and then the list of hot pixels is
  * filtered from the subsequent output.
+ * <p>
+ * jAER 3.0 typed path: {@link #processPolarity} only (DVS polarity events).
  *
  * @author tobi
  */
@@ -201,7 +204,23 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
     }
 
     @Override
+    public boolean accepts(PacketType type) {
+        return type == PacketType.POLARITY;
+    }
+
+    /**
+     * Legacy / mixed-packet path; delegates to {@link #processPolarity}.
+     */
+    @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(final EventPacket<? extends BasicEvent> in) {
+        return processPolarity(in);
+    }
+
+    /**
+     * jAER 3.0 typed polarity path: learn and suppress hot DVS pixels.
+     */
+    @Override
+    synchronized public EventPacket<? extends BasicEvent> processPolarity(final EventPacket<? extends BasicEvent> in) {
         super.filterPacket(in);
         for (final BasicEvent e : in) {
             if ((e == null) || e.isSpecial() || e.isFilteredOut() || (e.x >= chip.getSizeX()) || (e.y >= chip.getSizeY())) {
@@ -267,22 +286,8 @@ public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotate
             } else {
                 filterIn(e);
             }
-            // if (e.special || !hotPixelSet.contains(e) ) {
-            // if(e.special){
-            // // it might be IMUSample, and we need to copy out the fields which won't happen if we treat it as
-            // ApsDvsEvent
-            // if(e instanceof IMUSample){
-            // IMUSample i=(IMUSample)e;
-            // outItr.writeToNextOutput(i);
-            // }
-            // } else {
-            // ApsDvsEvent a = (ApsDvsEvent) outItr.nextOutput();
-            // a.copyFrom(e);
-            // }
-            // }
         }
         return in;
-        // return getOutputPacket();
     }
 
     @Override
