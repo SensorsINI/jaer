@@ -11,8 +11,11 @@ import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
+import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 import net.sf.jaer.util.TimestampSpread;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Evk4BoardCommand;
@@ -28,8 +31,13 @@ public class PropheseeAEReader {
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final byte ENDPOINT_IN = Evk4BoardCommand.EP_EVENTS_IN;
 
+    private static final int XMASK = 0x7FF;
+    private static final int YMASK = 0x7FF << 11;
+    private static final int TYPEMASK = 1 << 22;
+
     private final PropheseeHardwareInterface monitor;
     private final Evt3Parser parser = new Evt3Parser();
+    private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
     private USBTransferThread usbTransfer;
     private volatile boolean readerActive;
     private int fifoSize;
@@ -234,17 +242,12 @@ public class PropheseeAEReader {
                 return;
             }
 
+            final boolean demux = monitor.isUsbTypedDemuxActive();
             if (chunk.parsed < 0) {
                 final int committed = Math.min(chunk.parseLimit, remaining);
                 if (committed > 0) {
-                    final long acStart = sample != null ? System.nanoTime() : 0;
-                    System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, committed);
-                    System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, committed);
-                    if (sample != null) {
-                        arrayCopyNs += System.nanoTime() - acStart;
-                    }
+                    arrayCopyNs += commitEvents(writeBuffer, startEvent, committed, demux);
                     monitor.setEventCounter(startEvent + committed);
-                    writeBuffer.setNumEvents(monitor.getEventCounter());
                     writeBuffer.lastCaptureLength = committed;
                 }
                 writeBuffer.overrunOccuredFlag = true;
@@ -254,21 +257,39 @@ public class PropheseeAEReader {
 
             final int toCopy = Math.min(chunk.parsed, remaining);
             if (toCopy > 0) {
-                final long acStart = sample != null ? System.nanoTime() : 0;
-                System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, toCopy);
-                System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, toCopy);
-                if (sample != null) {
-                    arrayCopyNs += System.nanoTime() - acStart;
-                }
+                arrayCopyNs += commitEvents(writeBuffer, startEvent, toCopy, demux);
             }
             monitor.setEventCounter(startEvent + toCopy);
-            writeBuffer.setNumEvents(monitor.getEventCounter());
             writeBuffer.lastCaptureLength = toCopy;
         }
         if (sample != null) {
             sample.commitLockNs = System.nanoTime() - commitStart;
             sample.arrayCopyNs = arrayCopyNs;
         }
+    }
+
+    /** @return nanoseconds spent in AEPacketRaw arraycopy (0 when demux-only). */
+    private long commitEvents(AEPacketRaw writeBuffer, int startEvent, int count, boolean demux) {
+        if (demux) {
+            final PacketBundle typedOut = monitor.getPacketBundlePool().writeBuffer();
+            polarityBuilder.attach(typedOut);
+            final AEChip chip = monitor.getChip();
+            final int sizeX = chip != null ? chip.getSizeX() : Evt3Parser.WIDTH;
+            final int sizeY = chip != null ? chip.getSizeY() : Evt3Parser.HEIGHT;
+            // Match PropheseeIMX636HD.Extractor: flipy=true, fliptype=false
+            polarityBuilder.addPacked(stagingAddresses, stagingTimestamps, 0, count,
+                    XMASK, 0, YMASK, 11, TYPEMASK, 22,
+                    false, true, false, sizeX, sizeY);
+            polarityBuilder.flushAll();
+            typedOut.setRawPacket(null);
+            writeBuffer.setNumEvents(0);
+            return 0L;
+        }
+        final long acStart = System.nanoTime();
+        System.arraycopy(stagingAddresses, 0, writeBuffer.getAddresses(), startEvent, count);
+        System.arraycopy(stagingTimestamps, 0, writeBuffer.getTimestamps(), startEvent, count);
+        writeBuffer.setNumEvents(startEvent + count);
+        return System.nanoTime() - acStart;
     }
 
     private static final class ParsedChunk {
