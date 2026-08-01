@@ -25,6 +25,13 @@ import net.sf.jaer.eventio.NonMonotonicTimeException;
  * <p>
  * These AEPacketRaw are used only for device events (raw events). For processed
  * events, see the net.sf.jaer.event package.
+ * <p>
+ * <b>jAER 3 live path:</b> migrated USB interfaces demux into typed
+ * {@link net.sf.jaer.event.PacketBundle} on the capture thread. {@code AEPacketRaw}
+ * remains the <em>legacy</em> interchange for AEDAT-2 I/O, network AE, sequencers,
+ * unmigrated chips, and {@code reconstructRawPacket} for filtered AEDAT-2 log.
+ * Prefer {@link net.sf.jaer.aemonitor.AEMonitorInterface#acquireAvailablePacketBundle()}
+ * for live ViewLoop when the hardware supplies a bundle.
  *
  * @author tobi
  */

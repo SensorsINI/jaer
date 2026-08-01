@@ -11,6 +11,10 @@ import net.sf.jaer.event.PacketBundle;
  * packets (polarity / frame / IMU). Default implementation wraps
  * {@link #extractPacket(AEPacketRaw)} in a single-entry {@link PacketBundle}.
  * Davis-class extractors override to demux and assemble frames.
+ * <p><b>Live path:</b> preferred source is hardware
+ * {@code acquireAvailablePacketBundle()} (USB already cooked).
+ * {@code extractPacket}/{@code extractBundle} from {@code AEPacketRaw} are the
+ * <em>legacy</em> path for AEDAT-2, network AE, playback, and chips without USB demux.
  */
 
 public interface EventExtractor2D<E extends BasicEvent> {

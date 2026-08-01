@@ -22,20 +22,22 @@ flowchart LR
 
   subgraph Capture["AEReader / USBTransferThread"]
     XFER[Overlapped USB transfers]
-    PARSE[Translate / demux events]
-    WBUF[Write buffer of AEPacketRawPool]
+    PARSE[Translate / demux to PacketBundle]
+    WBUF[PacketBundlePool write buffer]
   end
 
   subgraph View["AEViewer.ViewLoop"]
-    ACQ[acquireAvailablePacketBundle / grabInput]
-    EXT[extractBundle if needed]
+    ACQ[acquireAvailablePacketBundle]
+    EXT[extractBundle legacy fallback]
     FILT[FilterChain.filterBundle]
     LOG[logPacket to AEDAT-4 / AEDAT-2]
     REN[Renderer + ChipCanvas OpenGL]
   end
 
   EP --> XFER --> PARSE --> WBUF
-  WBUF -.swap.-> ACQ --> EXT --> FILT --> LOG
+  WBUF -.swap.-> ACQ --> FILT
+  ACQ -.-> EXT -.-> FILT
+  FILT --> LOG
   FILT --> REN
 ```
 
@@ -52,38 +54,48 @@ flowchart LR
 
 ## Overlapped USB I/O and double buffering
 
-Capture and display run concurrently. The hand-off is an
-[`AEPacketRawPool`](../src/net/sf/jaer/aemonitor/AEPacketRawPool.java): two
-`AEPacketRaw` buffers. The USB thread always fills the **write** buffer; ViewLoop
-calls `swap()` then reads the former write buffer.
+**Target live path** (migrated chips): USB decode fills a typed
+[`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java) via
+[`PacketBundlePool`](../src/net/sf/jaer/event/PacketBundlePool.java);
+ViewLoop calls `acquireAvailablePacketBundle()` and **skips**
+`extractBundle`. Prefs kill-switches restore raw+extract for validation
+(see [usb-live-acquisition-bench.md](usb-live-acquisition-bench.md)).
+
+**Legacy live / file / network path:**
+[`AEPacketRawPool`](../src/net/sf/jaer/aemonitor/AEPacketRawPool.java) still
+holds packed address+timestamp AEs. [`AEPacketRaw`](../src/net/sf/jaer/aemonitor/AEPacketRaw.java)
+and chip `extractPacket` / `extractBundle` remain for AEDAT-2, network AE,
+sequencers, playback of AEDAT-2, and unmigrated chips — not deleted.
 
 ```mermaid
 sequenceDiagram
   participant USB as USBTransferThread
-  participant Pool as AEPacketRawPool
+  participant Pool as PacketBundlePool / AEPacketRawPool
   participant VL as AEViewer.ViewLoop
 
   Note over USB,Pool: Multiple libusb transfers in flight
   loop Overlapped bulk IN
     USB->>USB: transfer complete callback
-    USB->>Pool: writeBuffer().append events
+    USB->>Pool: writeBuffer demux typed PacketBundle and/or raw AE
   end
 
   VL->>Pool: synchronized swap()
   Note over Pool: swap read and write buffers, clear new write buffer
-  VL->>Pool: readBuffer returns AEPacketRaw / PacketBundle
-  VL->>VL: extract / filter / log / render
+  VL->>Pool: acquireAvailablePacketBundle or AEPacketRaw
+  VL->>VL: filter / log / render (extractBundle only if no HW bundle)
   Note over USB: Continues filling the other buffer
 ```
 
-For **DAVIS FX3**, jAER 3 can demux on the USB path into a typed
-`PacketBundle` (`DavisUsbPacketBundleBuilder` / `acquireAvailablePacketBundle()`).
-When that path is active, ViewLoop skips a second `extractBundle` and uses the
-hardware bundle directly.
+| Family | USB typed demux | Pref (under `hardware/`) |
+|--------|-----------------|--------------------------|
+| Davis FX3 / SciDVS (same PID) | Polarity + Frame + IMU | `DAViSFX3/usbTypedDemux` (RGB color stays legacy) |
+| NRV | Polarity | `NRV/usbTypedDemux` |
+| Prophesee EVK4 | Polarity | `Prophesee/usbTypedDemux` |
+| DVS128 libusb FX2 | Polarity + sync special | `CypressFX2DVS128.usbTypedDemux` |
 
-For **NRV** and other interfaces that only expose raw AE, ViewLoop calls
-`grabInput()` → `acquireAvailableEventsFromDriver()`, then
-`extractor.extractBundle(rawPacket)`.
+When demux is active on Davis, APS/IMU synthetic AEs are **not** dual-written
+into `AEPacketRaw` by default (`DAViSFX3/dualWriteApsImuAe=false`) — the largest
+live memory win under APS+DVS.
 
 **Overrun:** if the USB thread fills the write buffer before ViewLoop swaps, the
 pool sets `overrunOccuredFlag` (lost events). Increase AE buffer size (Control →
