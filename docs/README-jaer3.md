@@ -1,0 +1,305 @@
+# jAER 3 — Event processing pipeline
+
+This document summarizes how live sensor data and recorded files move through
+**jAER 3** (`jaer3` / `master` after the PacketBundle refactor): from USB
+capture, through typed packets and `EventFilter`s, to OpenGL display and optional
+AEDAT-4 logging.
+
+The central idea in jAER 3 is that one **timeslice** is a
+[`PacketBundle`](../src/net/sf/jaer/event/PacketBundle.java): an ordered list of
+homogeneous typed packets (polarity, APS frames, IMU, …) rather than one mixed
+`ApsDvsEventPacket`.
+
+---
+
+## High-level data flow
+
+```mermaid
+flowchart LR
+  subgraph USB["USB device (FX3 / NRV / …)"]
+    EP[Bulk IN endpoint]
+  end
+
+  subgraph Capture["AEReader / USBTransferThread"]
+    XFER[Overlapped USB transfers]
+    PARSE[Translate / demux events]
+    WBUF[Write buffer of AEPacketRawPool]
+  end
+
+  subgraph View["AEViewer.ViewLoop"]
+    ACQ[acquireAvailablePacketBundle / grabInput]
+    EXT[extractBundle if needed]
+    FILT[FilterChain.filterBundle]
+    LOG[logPacket → AEDAT-4 / AEDAT-2]
+    REN[Renderer + ChipCanvas OpenGL]
+  end
+
+  EP --> XFER --> PARSE --> WBUF
+  WBUF -.swap.-> ACQ --> EXT --> FILT --> LOG
+  FILT --> REN
+```
+
+**Primary threads**
+
+| Thread | Role |
+|--------|------|
+| `USBTransferThread` / `AEReader` | Submits multiple bulk IN transfers; callback parses bytes into the **write** side of a double buffer |
+| `AEViewer.ViewLoop` | Game loop: acquire → extract/filter → log → render → pace FPS |
+| AWT Event Dispatch (EDT) | UI, menus, bias controls (must not block on USB open/close) |
+| JOGL / display | ChipCanvas paints; often driven by `paintFrame` / `repaint` from ViewLoop |
+
+---
+
+## Overlapped USB I/O and double buffering
+
+Capture and display run concurrently. The hand-off is an
+[`AEPacketRawPool`](../src/net/sf/jaer/aemonitor/AEPacketRawPool.java): two
+`AEPacketRaw` buffers. The USB thread always fills the **write** buffer; ViewLoop
+calls `swap()` then reads the former write buffer.
+
+```mermaid
+sequenceDiagram
+  participant USB as USBTransferThread
+  participant Pool as AEPacketRawPool
+  participant VL as AEViewer.ViewLoop
+
+  Note over USB,Pool: Multiple libusb transfers in flight
+  loop Overlapped bulk IN
+    USB->>USB: transfer complete callback
+    USB->>Pool: writeBuffer().append events
+  end
+
+  VL->>Pool: synchronized swap()
+  Note over Pool: read ↔ write roles flip;<br/>new write buffer cleared
+  VL->>Pool: readBuffer() → AEPacketRaw / PacketBundle
+  VL->>VL: extract / filter / log / render
+  Note over USB: Continues filling the other buffer
+```
+
+For **DAVIS FX3**, jAER 3 can demux on the USB path into a typed
+`PacketBundle` (`DavisUsbPacketBundleBuilder` / `acquireAvailablePacketBundle()`).
+When that path is active, ViewLoop skips a second `extractBundle` and uses the
+hardware bundle directly.
+
+For **NRV** and other interfaces that only expose raw AE, ViewLoop calls
+`grabInput()` → `acquireAvailableEventsFromDriver()`, then
+`extractor.extractBundle(rawPacket)`.
+
+**Overrun:** if the USB thread fills the write buffer before ViewLoop swaps, the
+pool sets `overrunOccuredFlag` (lost events). Increase AE buffer size (Control →
+rendering AE buffer size) for high-rate sensors such as NRV.
+
+---
+
+## ViewLoop processing (one frame)
+
+```mermaid
+flowchart TD
+  START([ViewLoop iteration]) --> MODE{PlayMode?}
+
+  MODE -->|LIVE / SEQUENCING| HW{HW PacketBundle?}
+  HW -->|yes| BUNDLE[cookedBundle = hwBundle]
+  HW -->|no / null| RAW[grabInput → AEPacketRaw]
+  RAW --> EXT[extractBundle]
+
+  MODE -->|PLAYBACK| PLAY[AEPlayer.getNextPacket]
+  PLAY --> EXT2[extractBundle]
+  EXT2 --> AEDAT4{AEDAT-4 stream?}
+  AEDAT4 -->|yes| APPEND[appendTypedPackets FRME/IMUS]
+  AEDAT4 -->|no| FILT
+  APPEND --> FILT
+
+  EXT --> FILT
+  BUNDLE --> FILT
+
+  FILT[FilterChain.filterBundle] --> STORE[chip.setLastBundle / setLastData]
+  STORE --> LOG{Logging?}
+  LOG -->|AEDAT-4| W4[Aedat4FileOutputStream.writeBundle]
+  LOG -->|AEDAT-2| W2[AEFileOutputStream.writePacket]
+  LOG -->|off| REN
+  W4 --> REN
+  W2 --> REN
+  REN[renderBundle → DavisRenderer / ChipCanvas] --> PACE[FrameRater / sleep]
+  PACE --> START
+```
+
+Relevant code: `AEViewer.ViewLoop.run()` in
+[`AEViewer.java`](../src/net/sf/jaer/graphics/AEViewer.java).
+
+---
+
+## Typed packets and PacketBundle
+
+```mermaid
+classDiagram
+  class PacketBundle {
+    +List~TypedDataPacket~ packets
+    +AEPacketRaw rawPacket
+    +getNumPolarityEvents()
+    +getFirstFramePacket()
+  }
+  class TypedDataPacket {
+    <<interface>>
+    +getPacketType()
+    +getSize()
+  }
+  class EventPacket {
+    POLARITY / EAR / …
+  }
+  class FramePacket {
+    FRAME
+  }
+  class ImuPacket {
+    IMU
+  }
+  PacketBundle --> TypedDataPacket
+  TypedDataPacket <|.. EventPacket
+  TypedDataPacket <|.. FramePacket
+  TypedDataPacket <|.. ImuPacket
+```
+
+One ViewLoop timeslice may contain several packets in time order, e.g.
+`POLARITY` → `IMU` → `POLARITY` → `FRAME`. Filters and renderers consume the
+bundle as a unit.
+
+---
+
+## EventFilters (`FilterChain`)
+
+[`FilterChain.filterBundle`](../src/net/sf/jaer/eventprocessing/FilterChain.java)
+walks each typed packet through every **enabled** filter. Each
+[`EventFilter2D`](../src/net/sf/jaer/eventprocessing/EventFilter2D.java) declares
+`accepts(PacketType)`:
+
+- Polarity denoisers typically accept `POLARITY` only — frames and IMU pass
+  through unchanged.
+- Filters that want IMU or frames opt in via `accepts`.
+
+```mermaid
+flowchart LR
+  IN[PacketBundle in] --> P1[Typed packet 1]
+  IN --> P2[Typed packet 2]
+  IN --> Pn[…]
+
+  subgraph Chain["FilterChain (enabled filters in order)"]
+    F1[Filter A processTyped]
+    F2[Filter B processTyped]
+    F3[Filter C processTyped]
+  end
+
+  P1 --> F1 --> F2 --> F3 --> OUT1[out packet 1]
+  P2 --> F1 --> F2 --> F3 --> OUT2[out packet 2]
+
+  OUT1 --> OUT[PacketBundle out]
+  OUT2 --> OUT
+```
+
+Legacy path: `filterPacket(EventPacket)` still exists for older call sites and
+`FILTER_INPUT` mode; live ViewLoop prefers `filterBundle`.
+
+---
+
+## Rendering / OpenGL
+
+After filtering:
+
+1. `chip.setLastBundle(cookedBundle)` / `setLastData(polarity packet)`.
+2. `renderBundle` → chip renderer (`DavisRenderer`, etc.) updates event maps /
+   frame textures from typed packets.
+3. `ChipCanvas.paintFrame()` or `repaint()` draws via JOGL.
+
+Rendering can be **skipped** adaptively under load (`packetLevelRenderSkipping`)
+when no filters need every packet and AVI sync recording is not active; logging
+of raw data can still occur on the skip path.
+
+---
+
+## Saving to AEDAT-4
+
+When logging is enabled in LIVE (or playback with logging), ViewLoop calls
+`logPacket` each slice:
+
+```mermaid
+flowchart TD
+  B[chip.getLastBundle] --> W[Aedat4FileOutputStream.writeBundle]
+  W --> POL{PacketType?}
+  POL -->|POLARITY| EVTS[FlatBuffers EVTS packet]
+  POL -->|FRAME| FRME[FlatBuffers FRME packet]
+  POL -->|IMU| IMUS[FlatBuffers IMUS packet]
+  EVTS --> COMP[LZ4 / ZSTD / NONE per prefs]
+  FRME --> COMP
+  IMUS --> COMP
+  COMP --> FILE[.aedat4 file + FileDataTable on close]
+```
+
+- Default logging format can be AEDAT-4; compression is chosen in preferences
+  (`Aedat4Compression`).
+- On close, the writer logs an estimate such as
+  `compressed to XX% of raw (payload … → …)` comparing uncompressed FlatBuffer
+  payloads to compressed sizes.
+- AEDAT-2 path still writes reconstructed or raw `AEPacketRaw` via
+  `AEFileOutputStream`.
+
+**Playback** of AEDAT-4 uses a **sparse packet index** (file offsets + time
+bounds + event counts), not a full per-event RAM dump. Polarity is decoded
+on demand for the current timeslice; FRME/IMUS are injected via
+`appendTypedPackets`.
+
+---
+
+## Sources of input (PlayMode)
+
+| Mode | Input path |
+|------|------------|
+| `LIVE` | USB `acquireAvailablePacketBundle` or raw acquire + extract |
+| `PLAYBACK` | `AEPlayer` → `AEFileInputStream` / `Aedat4FileInputStream` |
+| `FILTER_INPUT` | Feedback from filters generating events |
+| `REMOTE` / sockets | Network AE streams |
+| `SEQUENCING` | Hardware sequencer |
+
+File open pauses live acquisition and suppresses USB reopen on the EDT so
+ViewLoop does not fight the open dialog (`beginFilePlaybackOpen` /
+`suppressHardwareOpen`).
+
+---
+
+## Mental model (ASCII)
+
+```
+  Sensor ──USB bulk──► [XFER][XFER][XFER]  (USBTransferThread)
+                              │
+                              ▼
+                     AEPacketRawPool write[]
+                              │  swap()
+                     AEPacketRawPool read[]  ◄── ViewLoop
+                              │
+                     PacketBundle (typed)
+                              │
+                     FilterChain.filterBundle
+                              │
+              ┌───────────────┼───────────────┐
+              ▼               ▼               ▼
+           Renderer      AEDAT-4 log      Network/AVI/…
+           OpenGL
+```
+
+---
+
+## Key classes (quick index)
+
+| Area | Classes |
+|------|---------|
+| Loop | `AEViewer.ViewLoop`, `AEPlayer` |
+| USB | `CypressFX3`, `DAViSFX3HardwareInterface`, `NRVHardwareInterface`, `NRVAEReader`, `USBTransferThread` |
+| Buffers | `AEPacketRawPool`, `PacketBundlePool`, `AEPacketRaw` |
+| Typed data | `PacketBundle`, `PacketType`, `FramePacket`, `ImuPacket`, `EventPacket` |
+| Extract | `EventExtractor2D.extractBundle`, `DavisUsbPacketBundleBuilder` |
+| Filters | `FilterChain`, `EventFilter2D` |
+| Render | `AEChipRenderer`, `DavisRenderer`, `ChipCanvas` |
+| Files | `Aedat4FileOutputStream`, `Aedat4FileInputStream`, `AEFileOutputStream` |
+
+---
+
+## Related docs
+
+- [CDAVIS_GPU_DEMOSAIC.md](CDAVIS_GPU_DEMOSAIC.md) — GPU demosaic / color display path (orthogonal to PacketBundle).
