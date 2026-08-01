@@ -178,4 +178,11 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
 
     public boolean jumpToPrevMarker();
 
+    /**
+     * Loads cached IN/OUT/other marks for this file from preferences (if any)
+     * and applies them to the stream and player slider. Default: no-op.
+     */
+    default void marksInitialize() {
+    }
+
 }

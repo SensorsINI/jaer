@@ -32,6 +32,8 @@ import net.sf.jaer.chip.EventExtractor2D;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
@@ -1048,6 +1050,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public void close() throws IOException {
+        try {
+            persistMarks();
+        } catch (Exception e) {
+            log.warning("Could not persist AEDAT-4 marks: " + e);
+        }
         cachedEventPacketIndex = -1;
         cachedEventFlat = null;
         if (channel != null) {
@@ -1056,6 +1063,85 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (randomAccessFile != null) {
             randomAccessFile.close();
         }
+    }
+
+    /**
+     * Restores IN/OUT/other marks from the shared preferences cache (same map
+     * as AEDAT-2 {@link AEFileInputStream}). Positions are event indices for
+     * AEDAT-4. Applies marks to the player slider when available.
+     */
+    @Override
+    public void marksInitialize() {
+        Marks saved = AEFileInputStream.marksGetForFile(file);
+        if (saved == null) {
+            clearMarks();
+            return;
+        }
+        long n = playableSize();
+        if (n <= 0) {
+            clearMarks();
+            return;
+        }
+        markIn = clampMark(saved.markIn, 0, n);
+        long out = saved.markOut;
+        if (out == Long.MAX_VALUE || out < 0) {
+            out = n;
+        }
+        markOut = clampMark(out, markIn, n);
+        // Legacy / cleared: treat end-of-file OUT as unset
+        if (markOut >= n) {
+            markOut = n;
+        }
+        markers.clear();
+        if (saved.otherMarks != null) {
+            for (Long m : saved.otherMarks) {
+                if (m != null && m >= 0 && m < n) {
+                    markers.add(m);
+                }
+            }
+        }
+        position = markIn;
+        final Marks applied = snapshotMarks();
+        support.firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, applied);
+        // Do not call setMarks here: AEPlayer has not assigned aeInputStream yet.
+        // AEPlayer.done() applies marks on the EDT after the stream is live.
+        log.info(String.format("Restored AEDAT-4 marks for %s: %s", file.getName(), applied));
+    }
+
+    /** Current IN/OUT/other marks (for player UI after open). */
+    public Marks getPlaybackMarks() {
+        return snapshotMarks();
+    }
+
+    /** Writes current marks into the shared preferences cache (or clears entry). */
+    private void persistMarks() {
+        if (file == null) {
+            return;
+        }
+        if (isMarkInSet() || isMarkOutSet() || !markers.isEmpty()) {
+            AEFileInputStream.marksPutForFile(file, snapshotMarks());
+            log.fine("Persisted AEDAT-4 marks for " + file.getAbsolutePath());
+        } else {
+            AEFileInputStream.marksPutForFile(file, null);
+        }
+    }
+
+    private Marks snapshotMarks() {
+        Marks m = new Marks();
+        m.markIn = markIn;
+        m.markOut = markOut;
+        m.otherMarks.addAll(markers);
+        return m;
+    }
+
+    private static long clampMark(long v, long min, long max) {
+        if (v < min) {
+            return min;
+        }
+        if (v > max) {
+            return max;
+        }
+        return v;
     }
 
     @Override

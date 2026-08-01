@@ -149,9 +149,19 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     private int numHeaderLines = 0;
     private boolean rewindFlag = false;
 
+    /**
+     * Serializable IN/OUT/other marks cached in preferences by absolute path.
+     * Shared with {@link net.sf.jaer.eventio.aedat4.Aedat4FileInputStream}.
+     * Positions are stream-specific (AEDAT-2: byte offsets; AEDAT-4: event indices).
+     */
     public static class Marks implements Serializable {
 
+        private static final long serialVersionUID = 1L;
+
         transient AEFileInputStream aeFileInputStream;
+
+        public Marks() {
+        }
 
         public Marks(AEFileInputStream aeFileInputStream) {
             this.aeFileInputStream = aeFileInputStream;
@@ -372,6 +382,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * called *after* the AEFileInputStream is constructed completely; otherwise
      * the callees will not have neccessary information like size of file.
      */
+    @Override
     public void marksInitialize() {
         marksLoadMapFromPreferences();
         Marks savedMarks = marksFilesMap.get(getFile().getAbsolutePath());
@@ -386,11 +397,13 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         marks.markOut = savedMarks.markOut;
         marks.otherMarks.addAll(savedMarks.otherMarks);
         getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_LOADED, null, marks); // so that AEPlayerAdvanceControlPanel computes the slider markers
-        // mark loading occurs during construction, before listeners have been added.
-        // directly call the AEPlayer controls to load marks to slider
-        if (chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
-            chip.getAeViewer().getPlayerControls().setMarks(marks);
-        }
+        // Do not call setMarks here: AEPlayer may not have assigned aeInputStream yet.
+        // AEPlayer.done() applies marks on the EDT after the stream is live.
+    }
+
+    /** Current IN/OUT/other marks (for player UI after open). */
+    public Marks getMarks() {
+        return marks;
     }
 
     /**
@@ -1863,7 +1876,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     /**
      * Stores the map of previous marks
      */
-    static void marksSaveToPreferences() {
+    public static void marksSaveToPreferences() {
         try {
             PrefObj.putObject(prefs, "marks", marksFilesMap);
             log.fine(String.format("Saved marksMap %s to %s", marksFilesMap, prefs.absolutePath()));
@@ -1876,7 +1889,7 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
      * Load the map of previous marks
      *
      */
-    static void marksLoadMapFromPreferences() {
+    public static void marksLoadMapFromPreferences() {
         try {
             Object o = PrefObj.getObject(prefs, "marks");
             if (o == null) {
@@ -1890,6 +1903,30 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
             log.warning(String.format("could not load existing marks: %s", ex.toString()));
             marksFilesMap = new HashMap<>();
         }
+    }
+
+    /**
+     * Returns cached marks for {@code file}, or null if none / cleared.
+     * Used by AEDAT-4 and other {@link AEFileInputStreamInterface} implementations.
+     */
+    public static Marks marksGetForFile(File file) {
+        if (file == null) {
+            return null;
+        }
+        marksLoadMapFromPreferences();
+        return marksFilesMap.get(file.getAbsolutePath());
+    }
+
+    /**
+     * Stores (or clears with null) marks for {@code file} and persists preferences.
+     */
+    public static void marksPutForFile(File file, Marks marks) {
+        if (file == null) {
+            return;
+        }
+        marksLoadMapFromPreferences();
+        marksFilesMap.put(file.getAbsolutePath(), marks);
+        marksSaveToPreferences();
     }
 
     /**

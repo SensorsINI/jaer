@@ -26,8 +26,10 @@ import java.time.ZoneId;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
+import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
@@ -418,10 +420,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     // Configure stream only on this worker thread; UI updates run in done() on EDT.
                     log.fine("configuring stream on worker thread");
                     stream.setFile(file);
-                    if (stream instanceof AEFileInputStream s) {
-                        s.marksInitialize();
-                        log.fine("marksInitialize done");
-                    }
+                    stream.marksInitialize();
+                    log.fine("marksInitialize done (" + stream.getClass().getSimpleName() + ")");
                     stream.setRepeat(isRepeat());
                     stream.setNonMonotonicTimeExceptionsChecked(viewer.getCheckNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem().isSelected());
                     stream.setTimestampResetBitmask(viewer.getAeFileInputStreamTimestampResetBitmask());
@@ -513,17 +513,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     } catch (Exception e) {
                         log.warning("tried to reset renderer but caught " + e);
                     }
-                    log.fine("done(): firing mark property changes");
-                    if (!aeInputStream.isMarkInSet() && !aeInputStream.isMarkOutSet()) {
-                        getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, false, true);
-                    } else {
-                        if (aeInputStream.isMarkInSet()) {
-                            getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, aeInputStream.getMarkInPosition());
-                        }
-                        if (aeInputStream.isMarkOutSet()) {
-                            getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, aeInputStream.getMarkOutPosition());
-                        }
-                    }
+                    log.fine("done(): applying restored marks to player controls");
+                    applyRestoredMarksToPlayerControls(aeInputStream);
                     if (viewer.getChip().getRenderer() != null && (viewer.getChip().getRenderer() instanceof AEChipRenderer)) {
                         log.fine("done(): showRenderingModeTextOnAeViewer");
                         AEChipRenderer renderer = (AEChipRenderer) viewer.getChip().getRenderer();
@@ -577,6 +568,40 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         });
 
         worker.execute();
+    }
+
+    /**
+     * After open, push restored IN/OUT/other marks onto the slider on the EDT.
+     * {@link AEFileInputStreamInterface#marksInitialize()} may have loaded them
+     * on a worker thread before property listeners were attached.
+     */
+    private void applyRestoredMarksToPlayerControls(AEFileInputStreamInterface stream) {
+        if (stream == null || viewer.getPlayerControls() == null) {
+            return;
+        }
+        Marks restored = null;
+        if (stream instanceof AEFileInputStream a2) {
+            restored = a2.getMarks();
+        } else if (stream instanceof Aedat4FileInputStream a4) {
+            restored = a4.getPlaybackMarks();
+        }
+        boolean hasOther = restored != null && restored.otherMarks != null && !restored.otherMarks.isEmpty();
+        if (stream.isMarkInSet() || stream.isMarkOutSet() || hasOther) {
+            if (restored == null) {
+                restored = new Marks();
+                restored.markIn = stream.getMarkInPosition();
+                restored.markOut = stream.getMarkOutPosition();
+            }
+            viewer.getPlayerControls().setMarks(restored);
+            if (stream.isMarkInSet()) {
+                getSupport().firePropertyChange(AEInputStream.EVENT_MARK_IN_SET, null, stream.getMarkInPosition());
+            }
+            if (stream.isMarkOutSet()) {
+                getSupport().firePropertyChange(AEInputStream.EVENT_MARK_OUT_SET, null, stream.getMarkOutPosition());
+            }
+        } else {
+            getSupport().firePropertyChange(AEInputStream.EVENT_MARKS_CLEARED, false, true);
+        }
     }
 
     /**
