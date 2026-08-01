@@ -30,7 +30,7 @@ flowchart LR
     ACQ[acquireAvailablePacketBundle / grabInput]
     EXT[extractBundle if needed]
     FILT[FilterChain.filterBundle]
-    LOG[logPacket → AEDAT-4 / AEDAT-2]
+    LOG[logPacket to AEDAT-4 / AEDAT-2]
     REN[Renderer + ChipCanvas OpenGL]
   end
 
@@ -70,8 +70,8 @@ sequenceDiagram
   end
 
   VL->>Pool: synchronized swap()
-  Note over Pool: read ↔ write roles flip;<br/>new write buffer cleared
-  VL->>Pool: readBuffer() → AEPacketRaw / PacketBundle
+  Note over Pool: swap read and write buffers, clear new write buffer
+  VL->>Pool: readBuffer returns AEPacketRaw / PacketBundle
   VL->>VL: extract / filter / log / render
   Note over USB: Continues filling the other buffer
 ```
@@ -99,7 +99,7 @@ flowchart TD
 
   MODE -->|LIVE / SEQUENCING| HW{HW PacketBundle?}
   HW -->|yes| BUNDLE[cookedBundle = hwBundle]
-  HW -->|no / null| RAW[grabInput → AEPacketRaw]
+  HW -->|no / null| RAW[grabInput to AEPacketRaw]
   RAW --> EXT[extractBundle]
 
   MODE -->|PLAYBACK| PLAY[AEPlayer.getNextPacket]
@@ -119,7 +119,7 @@ flowchart TD
   LOG -->|off| REN
   W4 --> REN
   W2 --> REN
-  REN[renderBundle → DavisRenderer / ChipCanvas] --> PACE[FrameRater / sleep]
+  REN[renderBundle DavisRenderer / ChipCanvas] --> PACE[FrameRater / sleep]
   PACE --> START
 ```
 
@@ -144,7 +144,7 @@ classDiagram
     +getSize()
   }
   class EventPacket {
-    POLARITY / EAR / …
+    POLARITY / EAR / etc
   }
   class FramePacket {
     FRAME
@@ -179,7 +179,7 @@ walks each typed packet through every **enabled** filter. Each
 flowchart LR
   IN[PacketBundle in] --> P1[Typed packet 1]
   IN --> P2[Typed packet 2]
-  IN --> Pn[…]
+  IN --> Pn[more packets]
 
   subgraph Chain["FilterChain (enabled filters in order)"]
     F1[Filter A processTyped]
