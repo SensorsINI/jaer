@@ -9,7 +9,7 @@
         <map/>
         <node name="Davis346blue">
           <map>
-            <entry key="colorScale" value="6"/>
+            <entry key="colorScale" value="5"/>
             <entry key="borderSpacePixels" value="10"/>
             <entry key="ChipCanvas.origin3dx" value="0"/>
             <entry key="ChipCanvas.origin3dy" value="0"/>
@@ -104,14 +104,14 @@
             <entry key="AddressedIPotCF.LocalBufBn.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.LocalBufBn.Sex" value="N"/>
             <entry key="AddressedIPotCF.LocalBufBn.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.OffBn.BitValueCoarse" value="4"/>
-            <entry key="AddressedIPotCF.OffBn.BitValueFine" value="49"/>
+            <entry key="AddressedIPotCF.OffBn.BitValueCoarse" value="5"/>
+            <entry key="AddressedIPotCF.OffBn.BitValueFine" value="225"/>
             <entry key="AddressedIPotCF.OffBn.Enabled" value="true"/>
             <entry key="AddressedIPotCF.OffBn.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.OffBn.Sex" value="N"/>
             <entry key="AddressedIPotCF.OffBn.Type" value="NORMAL"/>
-            <entry key="AddressedIPotCF.OnBn.BitValueCoarse" value="2"/>
-            <entry key="AddressedIPotCF.OnBn.BitValueFine" value="208"/>
+            <entry key="AddressedIPotCF.OnBn.BitValueCoarse" value="1"/>
+            <entry key="AddressedIPotCF.OnBn.BitValueFine" value="45"/>
             <entry key="AddressedIPotCF.OnBn.Enabled" value="true"/>
             <entry key="AddressedIPotCF.OnBn.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.OnBn.Sex" value="N"/>
@@ -212,7 +212,7 @@
             <entry key="ExtInput.RunDetector" value="false"/>
             <entry key="ExtInput.RunGenerator" value="false"/>
             <entry key="FilterFrame.lastFile" value="/home/tobi/Dropbox/GitHub/SensorsINI/jaer/filterSettings/drone-tracking adaptive mixing factor.xml"/>
-            <entry key="FilterFrame.lastFilterSelected" value="class net.sf.jaer.eventprocessing.filter.RotateFilter"/>
+            <entry key="FilterFrame.lastFilterSelected" value=""/>
             <entry key="FilterFrame.restoreFilterEnabledStateEnabled" value="true"/>
             <entry key="IMU.AccelFullScale" value="0"/>
             <entry key="IMU.AccelScale" value="ImuAccelScaleG2"/>
@@ -272,6 +272,10 @@
             <entry key="separateAPSByColor" value="false"/>
             <entry key="AEViewer.adaptiveRenderSkippingEnabled" value="false"/>
             <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAJdwQAAAAJdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0ACxuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlN0ZWFkaWNhbXQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVydAAobmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuSmFlckF2aVdyaXRlcng="/>
+            <entry key="Davis346blue.preferredDisplayMethod" value="net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod"/>
+            <entry key="ChipCanvas.angley" value="19.778225"/>
+            <entry key="ChipCanvas.anglex" value="-11.428572"/>
+            <entry key="fadingFrames" value="26"/>
           </map>
         </node>
       </node>
