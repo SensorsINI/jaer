@@ -291,44 +291,10 @@
         <copy file="images/1024w/SplashScreen.png" todir="build/classes"/>
     </target>
 
-    <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen.
-            http://www.ej-technologies.com/products/exe4j/overview.html
-    -->
-    <target name="jaer-exe4j">
-        <echo message="Building Windows .exe. launchers using exe4j (https://www.ej-technologies.com/download/exe4j/files). ${line.separator} Note that depending on 32- or 64-bit installed JDKs, ${line.separator} you may not be able to build one or the other of these launchers. ${line.separator} Don't worry about this."/>
-        <!--        <subant failonerror="false" target="jaer-exe4jx86">
-            <fileset dir="." includes="build.xml"/>
-        </subant>-->
-        <subant failonerror="false" target="jaer-exe4j9">
-            <fileset dir="." includes="build.xml"/>
-        </subant>
-    </target>
-    
-    <!--    
-    Your license key for exe4j 4.x is:
-    L-TOBI_DELBRUCK#50022033010001-1evjjgm42c2fj#2311
-    -->
-    
-    <target name="jaer-exe4j9" depends="checkos" if="isWindows">
-        <echo message="Building exe4j jAERViewer.exe 64-bit Windows launcher for 64-bit Java Virtual Machines - embedding icon and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
-        <property environment="env"/>
-        <property name="env.EXE4J_JAVA_HOME" value="${java.home}"/>
-        <echo message="java.home=${java.home} env.EXE4J_JAVA_HOME=${env.EXE4J_JAVA_HOME}" />
-        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="exe4j-launcher/exe4j9/bin/ant.jar" onerror="report"/>
-        <exe4j projectfile="jaer_win_jre_x64.exe4j" requirelicense="true"/>
-    </target>
+    <!-- Windows/macOS/Linux launchers come from install4j (ant release / jaer.install4j).
+         The old exe4j jAERViewer_win64.exe path was removed. -->
 
-    <!--    <taskdef name="install4j"
-             classname="com.install4j.Install4JTask"
-             classpath="C:\Program Files\install4j10\bin\ant.jar"/>
-
-    <target name="media">
-        <install4j projectFile="jaer.install4j"/>
-    </target>-->
- 
-
-    <!-- builds the windows executable .exe launcher files -->
-    <target name="-post-jar" depends="jaer-exe4j,-revert-project-properties-if-only-datestamp">
+    <target name="-post-jar" depends="-revert-project-properties-if-only-datestamp">
     </target>
 
 
