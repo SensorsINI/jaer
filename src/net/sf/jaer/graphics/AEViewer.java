@@ -2713,7 +2713,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             synchronized (streamLock) {
                 try {
                     if (aedat4LoggingOutputStream != null) {
-                        aedat4LoggingOutputStream.writeBundle(chip.getLastBundle());
+                        aedat4LoggingOutputStream.writeBundle(chip.getLastBundle(), isLogFilteredEventsEnabled());
                     } else if (!isLogFilteredEventsEnabled()) {
                         loggingOutputStream.writePacket(rawPacket); // log all events
                     } else {

@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
@@ -89,7 +90,18 @@ public class Aedat4FileOutputStream implements Closeable {
         return compression;
     }
 
+    /** Writes all packets; includes polarity events marked filteredOut. */
     public synchronized void writeBundle(PacketBundle bundle) throws IOException {
+        writeBundle(bundle, false);
+    }
+
+    /**
+     * @param skipFilteredOut if true, omit events with {@link BasicEvent#isFilteredOut()}
+     *                        (for "filtering of logged events"). Index walk is required:
+     *                        {@link EventPacket#iterator()} skips those events while
+     *                        {@link EventPacket#getSize()} still counts them.
+     */
+    public synchronized void writeBundle(PacketBundle bundle, boolean skipFilteredOut) throws IOException {
         if (bundle == null || bundle.isEmpty()) {
             return;
         }
@@ -98,7 +110,7 @@ public class Aedat4FileOutputStream implements Closeable {
                 continue;
             }
             if (packet.getPacketType() == PacketType.POLARITY && packet instanceof net.sf.jaer.event.EventPacket) {
-                writeEventPacket((net.sf.jaer.event.EventPacket<?>) packet);
+                writeEventPacket((net.sf.jaer.event.EventPacket<?>) packet, skipFilteredOut);
             } else if (packet instanceof FramePacket) {
                 writeFramePacket((FramePacket) packet);
             } else if (packet instanceof ImuPacket) {
@@ -107,30 +119,47 @@ public class Aedat4FileOutputStream implements Closeable {
         }
     }
 
-    private void writeEventPacket(net.sf.jaer.event.EventPacket<?> packet) throws IOException {
-        int n = packet.getSize();
-        long[] timestamps = new long[n];
-        short[] xs = new short[n];
-        short[] ys = new short[n];
-        boolean[] polarities = new boolean[n];
-        int i = 0;
-        for (Object object : packet) {
-            BasicEvent event = (BasicEvent) object;
-            timestamps[i] = toUnixUs(event.timestamp);
-            xs[i] = event.x;
-            ys[i] = event.y;
-            polarities[i] = !(event instanceof PolarityEvent) || ((PolarityEvent) event).polarity == PolarityEvent.Polarity.On;
-            i++;
-            if (i == n) {
-                break;
+    private void writeEventPacket(net.sf.jaer.event.EventPacket<?> packet, boolean skipFilteredOut)
+            throws IOException {
+        final int size = packet.getSize();
+        if (size == 0) {
+            return;
+        }
+        long[] timestamps = new long[size];
+        short[] xs = new short[size];
+        short[] ys = new short[size];
+        boolean[] polarities = new boolean[size];
+        int n = 0;
+        for (int k = 0; k < size; k++) {
+            BasicEvent event = packet.getEvent(k);
+            if (event == null) {
+                continue;
             }
+            if (skipFilteredOut && event.isFilteredOut()) {
+                continue;
+            }
+            timestamps[n] = toUnixUs(event.timestamp);
+            xs[n] = event.x;
+            ys[n] = event.y;
+            polarities[n] = !(event instanceof PolarityEvent)
+                    || ((PolarityEvent) event).polarity == PolarityEvent.Polarity.On;
+            n++;
+        }
+        if (n == 0) {
+            return;
+        }
+        if (n < size) {
+            timestamps = Arrays.copyOf(timestamps, n);
+            xs = Arrays.copyOf(xs, n);
+            ys = Arrays.copyOf(ys, n);
+            polarities = Arrays.copyOf(polarities, n);
         }
         FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, n * 16 + 64));
         int vector = net.sf.jaer.eventio.aedat4.dv.EventPacket.createElementsVector(builder, timestamps, xs, ys, polarities);
         int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(builder, vector);
         builder.finishSizePrefixed(root, "EVTS");
         byte[] payload = builder.sizedByteArray();
-        writePacket(STREAM_EVENTS, payload, n, n == 0 ? 0 : timestamps[0], n == 0 ? 0 : timestamps[n - 1]);
+        writePacket(STREAM_EVENTS, payload, n, timestamps[0], timestamps[n - 1]);
     }
 
     private void writeFramePacket(FramePacket packet) throws IOException {
