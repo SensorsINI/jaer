@@ -264,6 +264,22 @@ if (lib.isDirectory()) {
         }
     }
 }
+File jars = new File(context.getInstallationDirectory(), "jars");
+if (jars.isDirectory()) {
+    File[] djiJunk = jars.listFiles((dir, n) -&gt; n.startsWith("DJI RS4 Gimbal Controller"));
+    if (djiJunk != null) {
+        for (File f : djiJunk) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
+}
+File nativeDir = new File(context.getInstallationDirectory(), "native");
+File javacan = new File(nativeDir, "libjavacan-core.so");
+if (javacan.isFile() &amp;&amp; javacan.delete()) {
+    com.install4j.api.Util.logInfo(context, "Removed leftover " + javacan.getAbsolutePath());
+}
 return true;
 </property>
                     </object>

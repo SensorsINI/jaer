@@ -2,7 +2,7 @@ Go to [install4j jAER installers on Dropbox](https://www.dropbox.com/scl/fo/ibqm
 
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
-**jAER 3.0.1** builds on the 3.0 typed `PacketBundle` / AEDAT-4 foundation with **much smaller installers** (~3× smaller vs 3.0.0 on all platforms), **on-demand TensorFlow** for MLPNoiseFilter, **automatic AEChip matching** when a USB camera is plugged in, and live USB demux into typed PacketBundles for Davis FX3, NRV, Prophesee, DVS128, and SciDVS. NRV controls and several AEDAT-4 / export / 3D-view fixes land here as well.
+**jAER 3.0.1** builds on the 3.0 typed `PacketBundle` / AEDAT-4 foundation with **much smaller installers** (~3× smaller vs 3.0.0 on all platforms), **on-demand TensorFlow** for MLPNoiseFilter, **automatic AEChip matching** when a USB camera is plugged in, and live USB demux into typed PacketBundles for Davis FX3, NRV, Prophesee, DVS128, and SciDVS. Includes the NRV control-panel update from [#55](https://github.com/SensorsINI/jaer/pull/55) (external trigger + global reset/hold) and several AEDAT-4 / export / 3D-view fixes.
 
 ### Highlights
 
@@ -27,7 +27,11 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * **USB / cameras**
   * Offer matching **AEChip** from USB VID/PID (`LiveDeviceChipDetector` / AEViewer prompt).
   * Live PacketBundle demux for Davis FX3, SciDVS, NRV, Prophesee, DVS128.
-  * **NRV**: external trigger configuration panel; global reset / hold-mode checkbox; scan-rate slider / tooltip fixes; clearer LibUsb open errors (prefer WinUSB via Zadig); Interface menu lists NRV even when a probe `open` returns ACCESS.
+  * **NRV control panel ([#55](https://github.com/SensorsINI/jaer/pull/55))** — thanks [@alster1028](https://github.com/alster1028):
+    * **External Trigger** panel: enable external trigger-in; modes Single / Burst / Burst Single (register 0x3A02).
+    * **Global reset / hold** checkboxes for 0x320C, separated from the scan-rate slider (some scan-rate values stopped capture when those bits were tied to it).
+    * Tooltips for global settings and timing controls.
+  * NRV LibUsb: clearer open/claim errors (prefer WinUSB via Zadig); Interface menu still lists NRV when a probe `open` returns ACCESS.
   * Live USB acquisition bench / launcher `-D` handling for developer measurements.
 
 * **AEDAT-4 / playback / export**
@@ -46,8 +50,8 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 ### Bug fixes and minor improvements
 
+* Fixed NRV user-panel scanrate slider incorrectly writing register **0x320C** (global reset/hold); that register is now controlled only by the dedicated checkboxes ([#55](https://github.com/SensorsINI/jaer/pull/55)).
 * Fixed spurious NRV “uninitialized config” warning.
-* Fixed NRV user-panel scanrate slider writing the wrong register (0x320C).
 * Fixed MLPNoiseFilter so TensorFlow linkage Errors are caught (no EDT crash) when natives/javacpp are missing or wrong.
 * Silenced javac options lint when building on JDK 25+ with `-source`/`-target` 21.
 * install4j leftover-cleanup **Run script** action corrected for install4j 13 (`actions.control.RunScriptAction`).
