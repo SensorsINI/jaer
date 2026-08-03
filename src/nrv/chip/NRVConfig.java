@@ -54,8 +54,10 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
      */
     public static final int REG_DTAG_FRM_MARGIN_MSB = 0x321D;
     public static final int REG_DTAG_FRM_MARGIN_LSB = 0x321E;
-    /** Other Scan Rate Setting registers (from settings .txt; editable in full table). */
+    /** DTAG mode register; bit 1 enables global reset mode and bit 0 global hold mode. */
     public static final int REG_DTAG_MODE = 0x320C;
+    public static final int DTAG_GLOBAL_RESET_MODE_ENABLE_MASK = 0x02;
+    public static final int DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK = 0x01;
     public static final int REG_DTAG_SELX = 0x3216;
     public static final int REG_DTAG_SENSE = 0x3217;
     public static final int REG_DTAG_AY = 0x3218;
@@ -67,6 +69,14 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     /** TSTAMP_REF_UNIT_VAL_r MSB/LSB — sub-µs field spans 0..ref within each ref ms. */
     public static final int REG_TSTAMP_REF_MSB = 0x32B3;
     public static final int REG_TSTAMP_REF_LSB = 0x32B4;
+    /** External-trigger input enable, mode, and supporting control registers. */
+    public static final int REG_EXTERNAL_TRIGGER_IN = 0x3A00;
+    public static final int REG_EXTERNAL_TRIGGER_MODE = 0x3A02;
+    public static final int REG_EXTERNAL_TRIGGER_GATE = 0x3283;
+    public static final int REG_EXTERNAL_TRIGGER_CONTROL = 0x303B;
+    public static final int EXTERNAL_TRIGGER_MODE_SINGLE = 0x00;
+    public static final int EXTERNAL_TRIGGER_MODE_BURST = 0x01;
+    public static final int EXTERNAL_TRIGGER_MODE_BURST_SINGLE = 0x11;
 
     /**
      * Gain on ln(K ratio) terms — analogous to DVS {@code κ_n C_2 / (κ_p² C_1)} (≈ 0.05–0.1),
@@ -127,7 +137,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
      * {@code DTAG_FRM_MARGIN} alone cannot reach 1–2 kHz under the ×2^12 padding formula.
      */
     private static final int[] SCAN_RATE_REGS = {
-            0x320C, 0x3210, 0x3211, 0x3212, 0x3213, 0x3214, 0x3215,
+            0x3210, 0x3211, 0x3212, 0x3213, 0x3214, 0x3215,
             REG_DTAG_SELX, REG_DTAG_SENSE, REG_DTAG_AY, REG_DTAG_AY_RST_GAP, REG_DTAG_APS_RST,
             REG_DTAG_COL_MARGIN, REG_DTAG_FRM_MARGIN_MSB, REG_DTAG_FRM_MARGIN_LSB
     };
@@ -156,11 +166,11 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     private static final int[] SCAN_ANCHOR_HZ = {100, 1000, 2000};
     private static final int[][] SCAN_ANCHOR_REGS = {
             // 100 (CX3 slow block; also used by 300/600 scan section)
-            {0x1D, 0x1E, 0x00, 0x07, 0x1D, 0x00, 0x00, 0x04, 0x1C, 0x0C, 0x05, 0x07, 0x02, 0x00, 0x0F},
+            {0x1E, 0x00, 0x07, 0x1D, 0x00, 0x00, 0x04, 0x1C, 0x0C, 0x05, 0x07, 0x02, 0x00, 0x0F},
             // 1000 CX3
-            {0x1D, 0x19, 0x00, 0x00, 0x04, 0x00, 0x00, 0x1A, 0x1B, 0x0C, 0x14, 0x1C, 0x02, 0x00, 0x02},
+            {0x19, 0x00, 0x00, 0x04, 0x00, 0x00, 0x1A, 0x1B, 0x0C, 0x14, 0x1C, 0x02, 0x00, 0x02},
             // 2000 FX10
-            {0x7D, -1, -1, -1, -1, -1, -1, 0x04, 0x02, 0x0C, 0x05, 0x07, 0x04, 0x00, 0x01}
+            {-1, -1, -1, -1, -1, -1, 0x04, 0x02, 0x0C, 0x05, 0x07, 0x04, 0x00, 0x01}
     };
 
     private NRVControlPanel controlPanel;
@@ -909,6 +919,75 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
      */
     public void setTimestampSubUnit(int value) {
         applyDirectRegisterValue(REG_TSTAMP_SUB_UNIT_LSB, clampTimestampSub(value), PROPERTY_TIMESTAMP_SUB);
+    }
+
+    /** Returns whether external trigger input is enabled through {@code 0x3A00}. */
+    public boolean isExternalTriggerInEnabled() {
+        return getRegisterValue(REG_EXTERNAL_TRIGGER_IN) == 0x01;
+    }
+
+    /**
+     * Enables or disables external trigger input, updating all required trigger-control registers.
+     */
+    public void setExternalTriggerInEnabled(boolean enabled) {
+        try {
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_IN, enabled ? 0x01 : 0x00, "external trigger in");
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_GATE, enabled ? 0x01 : 0x00, "external trigger in");
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_CONTROL, enabled ? 0x42 : 0x40, "external trigger in");
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV external trigger input write failed: " + e.getMessage());
+        }
+    }
+
+    /** Returns the current value of external trigger mode register {@code 0x3A02}. */
+    public int getExternalTriggerMode() {
+        return getRegisterValue(REG_EXTERNAL_TRIGGER_MODE);
+    }
+
+    /** Sets external trigger mode register {@code 0x3A02}. */
+    public void setExternalTriggerMode(int mode) {
+        if (mode != EXTERNAL_TRIGGER_MODE_SINGLE && mode != EXTERNAL_TRIGGER_MODE_BURST
+                && mode != EXTERNAL_TRIGGER_MODE_BURST_SINGLE) {
+            throw new IllegalArgumentException("Unsupported external trigger mode: 0x" + Integer.toHexString(mode));
+        }
+        try {
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_MODE, mode, "external trigger mode");
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV external trigger mode write failed: " + e.getMessage());
+        }
+    }
+
+    /** Returns whether global reset mode is enabled by {@code 0x320C[1]}. */
+    public boolean isGlobalResetModeEnabled() {
+        return (getRegisterValue(REG_DTAG_MODE) & DTAG_GLOBAL_RESET_MODE_ENABLE_MASK) != 0;
+    }
+
+    /** Enables or disables global reset mode through {@code 0x320C[1]}. */
+    public void setGlobalResetModeEnabled(boolean enabled) {
+        setDtagModeBit(DTAG_GLOBAL_RESET_MODE_ENABLE_MASK, enabled, "global reset mode");
+    }
+
+    /** Returns whether global hold mode is enabled by {@code 0x320C[0]}. */
+    public boolean isGlobalHoldModeEnabled() {
+        return (getRegisterValue(REG_DTAG_MODE) & DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK) != 0;
+    }
+
+    /** Enables or disables global hold mode through {@code 0x320C[0]}. */
+    public void setGlobalHoldModeEnabled(boolean enabled) {
+        setDtagModeBit(DTAG_GLOBAL_HOLD_MODE_ENABLE_MASK, enabled, "global hold mode");
+    }
+
+    private void setDtagModeBit(int mask, boolean enabled, String comment) {
+        final int current = getRegisterValue(REG_DTAG_MODE);
+        final int updated = enabled ? current | mask : current & ~mask;
+        if (current == updated) {
+            return;
+        }
+        try {
+            writeOrCreateRegister(REG_DTAG_MODE, updated, comment);
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV " + comment + " write failed: " + e.getMessage());
+        }
     }
 
     /**

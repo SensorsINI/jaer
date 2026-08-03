@@ -12,6 +12,7 @@ import java.beans.PropertyChangeListener;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -44,6 +45,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
     private static final String TIMING_SECTION_TOOLTIP = "<html>Scan rate morphs DTAG registers (0x321D:321E and block).<br>"
             + "Sub-timestamp (0x32B2) is USB packet cadence within each ms.";
 
+    private static final String GLOBAL_SETTING_TOOLTIP = "<html>Global settings for the NRV sensor(0x320C register).";
+
     private static final int SUB_UNIT_MIN = 1;
     private static final int SUB_UNIT_MAX = 0x7F;
 
@@ -52,6 +55,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
     private final PotTweaker onOffBalanceTweaker = new PotTweaker();
     private final JSlider scanRateSlider = new JSlider(NRVConfig.SCAN_RATE_HZ_MIN, NRVConfig.SCAN_RATE_HZ_MAX, 300);
     private final JSlider timestampSubSlider = new JSlider(SUB_UNIT_MIN, SUB_UNIT_MAX, 0x21);
+    private final JCheckBox globalResetCheckBox = new JCheckBox("Enable global reset mode (0x320C[1])");
+    private final JCheckBox globalHoldCheckBox = new JCheckBox("Enable global hold mode (0x320C[0])");
     private final JLabel thresholdValueLabel = new JLabel();
     private final JLabel onOffValueLabel = new JLabel();
     private final JLabel thresholdReadoutLabel = new JLabel();
@@ -94,6 +99,9 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         timestampSubSlider.setToolTipText("<html>Register 0x32B2 — sub-timestamp USB packet rate within each ref ms.<br>"
                 + "Auto-updated with scan rate; fine-tune here. Factory: 100→0x0B … 1000→0x7D.");
 
+        globalResetCheckBox.setToolTipText("Enables global reset mode via register 0x320C bit 1.");
+        globalHoldCheckBox.setToolTipText("Enables global hold mode via register 0x320C bit 0.");
+
         scanRateSlider.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
@@ -106,6 +114,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
                 onTimestampSubChanged();
             }
         });
+        globalResetCheckBox.addActionListener(e -> onGlobalResetChanged());
+        globalHoldCheckBox.addActionListener(e -> onGlobalHoldChanged());
         thresholdTweaker.addChangeListener(e -> onThresholdChanged());
         onOffBalanceTweaker.addChangeListener(e -> onOnOffBalanceChanged());
 
@@ -118,6 +128,8 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         contentPanel.add(buildBiasSection());
         contentPanel.add(Box.createVerticalStrut(8));
         contentPanel.add(buildTimingSection());
+        contentPanel.add(Box.createVerticalStrut(8));
+        contentPanel.add(buildGlobalSettingSection());
 
         scrollPane = new JScrollPane(new TopAlignedScrollView(contentPanel));
         scrollPane.setBorder(null);
@@ -192,6 +204,18 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         section.add(wrapRegisterSlider("Sub-timestamp (0x32B2)", timestampSubSlider, timestampSubValueLabel));
         section.add(Box.createVerticalStrut(2));
         section.add(wrapDetailLabel(subTimestampTimingLabel));
+        stretchChildren(section);
+        return section;
+    }
+
+    private JPanel buildGlobalSettingSection() {
+        final JPanel section = new JPanel();
+        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
+        section.setBorder(BorderFactory.createTitledBorder("Global setting"));
+        section.setToolTipText(GLOBAL_SETTING_TOOLTIP);
+
+        section.add(globalResetCheckBox);
+        section.add(globalHoldCheckBox);
         stretchChildren(section);
         return section;
     }
@@ -290,11 +314,24 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         updateValueLabels();
     }
 
+    private void onGlobalResetChanged() {
+        if (!updatingFromConfig) {
+            config.setGlobalResetModeEnabled(globalResetCheckBox.isSelected());
+        }
+    }
+
+    private void onGlobalHoldChanged() {
+        if (!updatingFromConfig) {
+            config.setGlobalHoldModeEnabled(globalHoldCheckBox.isSelected());
+        }
+    }
+
     void syncFromConfig() {
         updatingFromConfig = true;
         thresholdTweaker.setValue(config.getThresholdTweak());
         onOffBalanceTweaker.setValue(config.getOnOffBalanceTweak());
         syncTimingSliders();
+        syncGlobalModeCheckBoxes();
         updatingFromConfig = false;
         updateValueLabels();
     }
@@ -304,6 +341,11 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
                 NRVConfig.SCAN_RATE_HZ_MIN, NRVConfig.SCAN_RATE_HZ_MAX, 300));
         final int sub = clamp(config.getTimestampSubUnit(), SUB_UNIT_MIN, SUB_UNIT_MAX, config.getBaselineTimestampSub());
         timestampSubSlider.setValue(sub);
+    }
+
+    private void syncGlobalModeCheckBoxes() {
+        globalResetCheckBox.setSelected(config.isGlobalResetModeEnabled());
+        globalHoldCheckBox.setSelected(config.isGlobalHoldModeEnabled());
     }
 
     private static int clamp(int value, int min, int max, int fallback) {
@@ -339,12 +381,11 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
         final float padUs = config.getFrmMarginPaddingUsForMargin(margin);
         final String pad = Float.isNaN(padUs) ? "—" : String.format("%.2f ms", padUs / 1000f);
         scanRateDetailLabel.setText(String.format(
-                "<html>FRM_MARGIN 0x%04X (pad %s)<br>SELX 0x%02X, SENSE 0x%02X, COL 0x%02X, MODE 0x%02X",
+                "<html>FRM_MARGIN 0x%04X (pad %s)<br>SELX 0x%02X, SENSE 0x%02X, COL 0x%02X",
                 margin, pad,
                 config.getRegisterValue(NRVConfig.REG_DTAG_SELX),
                 config.getRegisterValue(NRVConfig.REG_DTAG_SENSE),
-                config.getRegisterValue(NRVConfig.REG_DTAG_COL_MARGIN),
-                config.getRegisterValue(NRVConfig.REG_DTAG_MODE)));
+                config.getRegisterValue(NRVConfig.REG_DTAG_COL_MARGIN)));
     }
 
     private void updateThresholdReadoutLabels() {
@@ -415,6 +456,7 @@ public class NRVUserControlPanel extends JPanel implements PropertyChangeListene
                         || addr == NRVConfig.REG_DTAG_MODE) {
                     updatingFromConfig = true;
                     syncTimingSliders();
+                    syncGlobalModeCheckBoxes();
                     updatingFromConfig = false;
                 }
             }
