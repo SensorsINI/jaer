@@ -45,6 +45,7 @@ public class NRVControlPanel extends JPanel {
 
     private final NRVConfig config;
     private final NRVUserControlPanel userPanel;
+    private final NRVExternalTriggerPanel externalTriggerPanel;
     private final NRVPixelBiasPanel pixelBiasPanel;
     private final List<NRVRegisterSetting> rowSettings = new ArrayList<>();
     private final JLabel summaryLabel = new JLabel("No settings loaded");
@@ -106,6 +107,7 @@ public class NRVControlPanel extends JPanel {
         super(new BorderLayout());
         this.config = config;
         this.userPanel = new NRVUserControlPanel(config);
+        this.externalTriggerPanel = new NRVExternalTriggerPanel(config);
         this.pixelBiasPanel = new NRVPixelBiasPanel(config);
 
         table.setAutoCreateRowSorter(true);
@@ -116,6 +118,7 @@ public class NRVControlPanel extends JPanel {
 
         final JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("User-Friendly Controls", userPanel);
+        tabs.addTab("External Trigger", externalTriggerPanel);
         tabs.addTab("Pixel Biases", pixelBiasPanel);
         tabs.addTab("Register Table", registerPanel);
         add(tabs, BorderLayout.CENTER);
@@ -184,6 +187,7 @@ public class NRVControlPanel extends JPanel {
             summaryLabel.setForeground(Color.DARK_GRAY);
             summaryLabel.setText("No settings loaded");
             userPanel.syncFromConfig();
+            externalTriggerPanel.syncFromConfig();
             pixelBiasPanel.syncFromConfig();
             return;
         }
@@ -198,6 +202,7 @@ public class NRVControlPanel extends JPanel {
                 fileName,
                 settings.size()));
         userPanel.syncFromConfig();
+        externalTriggerPanel.syncFromConfig();
         pixelBiasPanel.syncFromConfig();
     }
 
@@ -231,6 +236,7 @@ public class NRVControlPanel extends JPanel {
             updatingTableProgrammatically = false;
         }
         userPanel.updateValueLabels();
+        externalTriggerPanel.syncFromConfig();
         pixelBiasPanel.syncFromConfig();
     }
 

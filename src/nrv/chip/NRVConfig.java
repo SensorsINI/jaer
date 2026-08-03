@@ -69,6 +69,14 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     /** TSTAMP_REF_UNIT_VAL_r MSB/LSB — sub-µs field spans 0..ref within each ref ms. */
     public static final int REG_TSTAMP_REF_MSB = 0x32B3;
     public static final int REG_TSTAMP_REF_LSB = 0x32B4;
+    /** External-trigger input enable, mode, and supporting control registers. */
+    public static final int REG_EXTERNAL_TRIGGER_IN = 0x3A00;
+    public static final int REG_EXTERNAL_TRIGGER_MODE = 0x3A02;
+    public static final int REG_EXTERNAL_TRIGGER_GATE = 0x3283;
+    public static final int REG_EXTERNAL_TRIGGER_CONTROL = 0x303B;
+    public static final int EXTERNAL_TRIGGER_MODE_SINGLE = 0x00;
+    public static final int EXTERNAL_TRIGGER_MODE_BURST = 0x01;
+    public static final int EXTERNAL_TRIGGER_MODE_BURST_SINGLE = 0x11;
 
     /**
      * Gain on ln(K ratio) terms — analogous to DVS {@code κ_n C_2 / (κ_p² C_1)} (≈ 0.05–0.1),
@@ -899,6 +907,42 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
      */
     public void setTimestampSubUnit(int value) {
         applyDirectRegisterValue(REG_TSTAMP_SUB_UNIT_LSB, clampTimestampSub(value), PROPERTY_TIMESTAMP_SUB);
+    }
+
+    /** Returns whether external trigger input is enabled through {@code 0x3A00}. */
+    public boolean isExternalTriggerInEnabled() {
+        return getRegisterValue(REG_EXTERNAL_TRIGGER_IN) == 0x01;
+    }
+
+    /**
+     * Enables or disables external trigger input, updating all required trigger-control registers.
+     */
+    public void setExternalTriggerInEnabled(boolean enabled) {
+        try {
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_IN, enabled ? 0x01 : 0x00, "external trigger in");
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_GATE, enabled ? 0x01 : 0x00, "external trigger in");
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_CONTROL, enabled ? 0x42 : 0x40, "external trigger in");
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV external trigger input write failed: " + e.getMessage());
+        }
+    }
+
+    /** Returns the current value of external trigger mode register {@code 0x3A02}. */
+    public int getExternalTriggerMode() {
+        return getRegisterValue(REG_EXTERNAL_TRIGGER_MODE);
+    }
+
+    /** Sets external trigger mode register {@code 0x3A02}. */
+    public void setExternalTriggerMode(int mode) {
+        if (mode != EXTERNAL_TRIGGER_MODE_SINGLE && mode != EXTERNAL_TRIGGER_MODE_BURST
+                && mode != EXTERNAL_TRIGGER_MODE_BURST_SINGLE) {
+            throw new IllegalArgumentException("Unsupported external trigger mode: 0x" + Integer.toHexString(mode));
+        }
+        try {
+            writeOrCreateRegister(REG_EXTERNAL_TRIGGER_MODE, mode, "external trigger mode");
+        } catch (HardwareInterfaceException e) {
+            log.warning("NRV external trigger mode write failed: " + e.getMessage());
+        }
     }
 
     /** Returns whether global reset mode is enabled by {@code 0x320C[1]}. */
