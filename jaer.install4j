@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
-  <directoryPresets config="./images/256h" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.0.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <directoryPresets config="./images/1024w" />
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.0.1" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./installers/install4j-custom-resources.utf8" />
     </languages>
-    <jreBundles jdkProviderId="Adoptium" release="21/jdk-21+35">
+    <!-- Bundle current Temurin 21 LTS (still supported through 2029). 25 is the newest LTS;
+         stay on 21 for wider OS/media compatibility unless we deliberately bump language level. -->
+    <jreBundles jdkProviderId="Adoptium" release="21/jdk-21.0.12+8">
       <modules>
         <defaultModules set="all" />
       </modules>
@@ -16,7 +18,7 @@
       <mountPoint id="24" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form,jaer-clone*">
+      <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form,*.orig,jaer-clone*">
         <exclude>
           <entry location=".classpath" />
           <entry location=".git" />
@@ -29,9 +31,12 @@
           <entry location="build.xml" />
           <entry location="BUILDVERSION.txt" />
           <entry location="docs" />
+          <entry location="dist/javadoc" />
           <entry location="dvs-slice-avi-writer.exe4j" />
           <entry location="exe4j-launcher" />
           <entry location="hs_err_pid33652.log" />
+          <!-- Repo art / demos (~29MB); splash for installers is read at build time from images/1024w. -->
+          <entry location="images" />
           <entry location="install4j License key  2024-01-02 0834.txt" />
           <entry location="installers" />
           <entry location="ivy" />
@@ -47,8 +52,46 @@
           <entry location="manifest.mf" />
           <entry location="nbproject" />
           <entry location="README-releasing-tagging.txt" />
+          <entry location="release-notes" />
           <entry location="sven_goethel" />
           <entry location="test" />
+          <!-- Prefer javacpp 1.5.10 (TensorFlow); drop leftover 1.4 from older Ivy resolves. -->
+          <entry location="lib/javacpp-1.4.jar" />
+          <!-- Safety net: OS TensorFlow natives (~70–150MB). Ivy no longer retrieves these;
+               MLPNoiseFilter downloads via TensorFlowNativeSupport. Keep API + stub jars. -->
+          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-linux-arm64.jar" />
+          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-linux-x86_64.jar" />
+          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-macosx-arm64.jar" />
+          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-macosx-x86_64.jar" />
+          <entry location="lib/tensorflow-core-native-1.0.0-rc.2-windows-x86_64.jar" />
+          <!-- Safety net: Ivy test-scope leakage (commons-text→GraalJS, zstd-jni→scalatest). -->
+          <entry location="lib/js-22.0.0.2.jar" />
+          <entry location="lib/js-scriptengine-22.0.0.2.jar" />
+          <entry location="lib/truffle-api-22.0.0.2.jar" />
+          <entry location="lib/regex-22.0.0.2.jar" />
+          <entry location="lib/graal-sdk-22.0.0.2.jar" />
+          <entry location="lib/scala-library-2.13.11.jar" />
+          <entry location="lib/scala-reflect-2.13.10.jar" />
+          <entry location="lib/scala-xml_2.13-2.1.0.jar" />
+          <entry location="lib/scalactic_2.13-3.2.17.jar" />
+          <entry location="lib/scalacheck_2.13-1.17.0.jar" />
+          <entry location="lib/scalacheck-1-17_2.13-3.2.17.0.jar" />
+          <entry location="lib/scalatest_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-compatible-3.2.17.jar" />
+          <entry location="lib/scalatest-core_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-diagrams_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-featurespec_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-flatspec_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-freespec_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-funspec_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-funsuite_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-matchers-core_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-mustmatchers_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-propspec_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-refspec_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-shouldmatchers_2.13-3.2.17.jar" />
+          <entry location="lib/scalatest-wordspec_2.13-3.2.17.jar" />
+          <entry location="lib/test-interface-1.0.jar" />
         </exclude>
       </dirEntry>
     </entries>
@@ -58,9 +101,11 @@
       <executable name="jaer" iconSet="true" iconFile="./jaer.ico" executableMode="gui">
         <versionInfo fileDescription="jAER event sensor application" />
       </executable>
-      <splashScreen show="true" bitmapFile="./images/256h/SplashScreen.png" />
+      <splashScreen show="true" bitmapFile="./images/1024w/SplashScreen.png" />
       <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED">
         <classPath>
+          <!-- First on classpath so Loader is 1.5.10 even if leftover javacpp-1.4.jar remains in lib/. -->
+          <jarFile location="lib/javacpp-1.5.10.jar" failOnError="false" />
           <scanDirectory location="dist" failOnError="false" />
           <scanDirectory location="jars" failOnError="false" />
           <scanDirectory location="lib" failOnError="false" />
@@ -68,7 +113,9 @@
       </java>
       <vmOptionsFile mode="none" />
       <iconImageFiles>
+        <!-- Windows .ico / multi-res icons: keep 256 for shell icons; splash above uses 1024. -->
         <file path="./images/256h/SplashScreen.png" />
+        <file path="./images/1024w/SplashScreen.png" />
       </iconImageFiles>
     </launcher>
   </launchers>
@@ -180,6 +227,49 @@ return console.askOkCancel(message, true);
           <screen id="15" beanClass="com.install4j.runtime.beans.screens.InstallationScreen" rollbackBarrier="true" rollbackBarrierExitCode="0">
             <actions>
               <action id="17" beanClass="com.install4j.runtime.beans.actions.InstallFilesAction" actionElevationType="elevated" rollbackBarrierExitCode="0" failureStrategy="quit" errorMessage="${i18n:FileCorrupted}" />
+              <!-- Upgrade leftover cleanup: excludes only skip packing new media; ifNewer leaves old jars.
+                   Class is under actions.control (not misc) in install4j 13. -->
+              <action id="50" beanClass="com.install4j.runtime.beans.actions.control.RunScriptAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
+                <serializedBean>
+                  <property name="script">
+                    <object class="com.install4j.api.beans.ScriptProperty">
+                      <property name="value" type="string">File lib = new File(context.getInstallationDirectory(), "lib");
+if (lib.isDirectory()) {
+    String[] orphans = {
+        "javacpp-1.4.jar",
+        "tensorflow-core-platform-1.0.0-rc.2.jar",
+        "tensorflow-core-native-1.0.0-rc.2-linux-arm64.jar",
+        "tensorflow-core-native-1.0.0-rc.2-linux-x86_64.jar",
+        "tensorflow-core-native-1.0.0-rc.2-macosx-arm64.jar",
+        "tensorflow-core-native-1.0.0-rc.2-macosx-x86_64.jar",
+        "tensorflow-core-native-1.0.0-rc.2-windows-x86_64.jar",
+        "js-22.0.0.2.jar",
+        "js-scriptengine-22.0.0.2.jar",
+        "truffle-api-22.0.0.2.jar",
+        "regex-22.0.0.2.jar",
+        "graal-sdk-22.0.0.2.jar"
+    };
+    for (String name : orphans) {
+        File f = new File(lib, name);
+        if (f.isFile() &amp;&amp; f.delete()) {
+            com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+        }
+    }
+    File[] scalaJunk = lib.listFiles((dir, n) -&gt; n.startsWith("scala") || n.startsWith("scalatest") || n.startsWith("scalactic") || n.startsWith("scalacheck") || n.equals("test-interface-1.0.jar"));
+    if (scalaJunk != null) {
+        for (File f : scalaJunk) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
+}
+return true;
+</property>
+                    </object>
+                  </property>
+                </serializedBean>
+              </action>
               <action id="18" beanClass="com.install4j.runtime.beans.actions.desktop.CreateDefaultStartMenuEntriesAction" actionElevationType="elevated" rollbackBarrierExitCode="0">
                 <serializedBean>
                   <property name="folderName" type="string">${installer:sys.programGroupName}</property>

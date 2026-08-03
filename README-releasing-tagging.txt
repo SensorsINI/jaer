@@ -29,8 +29,8 @@ Build media:
 You will be prompted to confirm the VERSION.txt value. On "y" / "yes", ant release:
 
 - regenerates splash PNGs (ant generate-splash)
-  - images/1024w/SplashScreen.png (1024x1024, jar / JVM splash)
-  - images/256h/SplashScreen.png (256x256, install4j launcher splash and Windows installer icons)
+  - images/1024w/SplashScreen.png (1024x1024, JVM splash and install4j launcher splash)
+  - images/256h/SplashScreen.png (256x256, Windows shell / installer wizard icons)
 - syncs jaer.install4j application version from VERSION.txt
 - runs clean + jar (clean build of classes and dist jar)
 - runs: install4jc --release=<VERSION.txt> jaer.install4j
@@ -40,8 +40,21 @@ Then:
 6. Copy updates.xml to the repo root and push so install4j auto-update can see the new build
 7. Push a git tag matching VERSION.txt and create/edit the GitHub release (see Tagging below)
 
-Note: In jaer.install4j, launcher and installer custom icon paths must use the 256h file;
-install4j rejects larger PNGs for the Windows installer icon step.
+Note: install4j launcher splash uses the 1024w PNG; keep 256h for Windows installer/shell
+icon entries (install4j can reject oversized PNGs for the icon step).
+
+TensorFlow for MLPNoiseFilter (two layers):
+- Ivy (lib/ for compile & ant release tree): tensorflow-core-api + unclassified
+  tensorflow-core-native stub, plus org.bytedeco:javacpp:1.5.10 (TF requires this; do not
+  leave javacpp-1.4 from hdf5 on the classpath). Not tensorflow-core-platform.
+- install4j: still lists the large OS classifier jars under dirEntry excludes as a safety net
+  so they never enter media even if present in lib/. On first MLPNoiseFilter use,
+  TensorFlowNativeSupport downloads the current-OS jar into lib/ or ~/.jaer/lib/.
+  Air-gapped: copy tensorflow-core-native-1.0.0-rc.2-<platform>.jar into lib/ manually.
+  Also ensure lib/javacpp-1.5.10.jar is present (and javacpp-1.4.jar is not).
+  Upgrading over an older install can leave javacpp-1.4.jar and OS TF native jars in
+  lib/; install4j now deletes those leftovers after InstallFiles. Until then, delete
+  lib/javacpp-1.4.jar manually (it sorts before 1.5.10 and breaks TensorFlow Loader).
 
 Splash only (no installer build): ant generate-splash
 

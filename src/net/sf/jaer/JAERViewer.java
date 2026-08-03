@@ -674,6 +674,7 @@ public class JAERViewer {
         }
 
         log.info("jAERViewer starting up");
+        net.sf.jaer.util.TensorFlowNativeSupport.installDownloadedJarsOnClasspath();
         log.info("java.version=" + System.getProperty("java.version") + "  java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
         net.sf.jaer.util.MemoryDiagnostics.maybeStartPeriodicLogging(log);
         log.info("Java logging is configured by the command line option -Djava.util.logging.config.file=<filename>."

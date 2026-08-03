@@ -49,8 +49,15 @@ MA 02110-1301  USA
         <dependency org="commons-net" name="commons-net" rev="3.10.0"/>
         <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
         <dependency org="commons-io" name="commons-io" rev="2.15.1"/>
-        <!--https://mvnrepository.com/artifact/org.apache.commons/commons-text--> 
-        <dependency org="org.apache.commons" name="commons-text" rev="1.11.0"/>
+        <!--https://mvnrepository.com/artifact/org.apache.commons/commons-text-->
+        <!-- Used only for WordUtils. GraalJS is a commons-text *test* dep that Ivy wrongly
+             pulls into default (~60MB js+truffle); exclude it. -->
+        <dependency org="org.apache.commons" name="commons-text" rev="1.11.0">
+            <exclude org="org.graalvm.js" module="*"/>
+            <exclude org="org.graalvm.truffle" module="*"/>
+            <exclude org="org.graalvm.sdk" module="*"/>
+            <exclude org="org.graalvm.regex" module="*"/>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
         <dependency org="org.apache.commons" name="commons-collections4" rev="4.4"/>
 
@@ -61,7 +68,17 @@ MA 02110-1301  USA
         <dependency org="com.google.flatbuffers" name="flatbuffers-java" rev="23.5.26" />
         <!-- AEDAT-4 packet compression (DV IOHeader CompressionType) -->
         <dependency org="org.lz4" name="lz4-java" rev="1.8.0" />
-        <dependency org="com.github.luben" name="zstd-jni" rev="1.5.5-11" />
+        <!-- zstd-jni declares scalatest as a *test* dependency; Ivy maps it into default
+             (~19MB scala-library + scalatest*). Exclude — JNI jar alone is enough. -->
+        <dependency org="com.github.luben" name="zstd-jni" rev="1.5.5-11">
+            <exclude org="org.scalatest" module="*"/>
+            <exclude org="org.scalatestplus" module="*"/>
+            <exclude org="org.scalacheck" module="*"/>
+            <exclude org="org.scalactic" module="*"/>
+            <exclude org="org.scala-lang" module="*"/>
+            <exclude org="org.scala-lang.modules" module="*"/>
+            <exclude org="org.scala-sbt" module="*"/>
+        </dependency>
         
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
         <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
@@ -69,14 +86,23 @@ MA 02110-1301  USA
         <!--jblas is a matrix library for Java which uses existing high performance BLAS and LAPACK libraries like ATLAS -->
         <dependency org="org.jblas" name="jblas" rev="1.2.4" />
         
-        <dependency org="org.scala-saddle" name="jhdf5" rev="2.9" />
+        <!-- jhdf5 is the NCSA Java HDF5 API (ncsa.hdf.*); jar is pure Java. Declares
+             scala-library only because the artifact was published under org.scala-saddle. -->
+        <dependency org="org.scala-saddle" name="jhdf5" rev="2.9">
+            <exclude org="org.scala-lang" module="scala-library"/>
+        </dependency>
+        <!-- HDF5 presets pull javacpp 1.4; TensorFlow 1.0.0-rc.2 needs 1.5.10. Exclude old
+             javacpp here and declare 1.5.10 explicitly below. -->
         <dependency org="org.bytedeco.javacpp-presets" name="hdf5" rev="1.10.1-1.4" >
             <artifact name="hdf5" type="jar" ext="jar" m:classifier="macosx-x86_64"/>
             <artifact name="hdf5" type="jar" ext="jar" m:classifier="windows-x86_64"/>
             <artifact name="hdf5" type="jar" ext="jar" m:classifier="windows-x86"/>
             <artifact name="hdf5" type="jar" ext="jar" m:classifier="linux-x86_64"/>
             <artifact name="hdf5" type="jar" ext="jar" m:classifier="linux-x86"/>
+            <exclude org="org.bytedeco" module="javacpp"/>
         </dependency>
+        <!-- Required by tensorflow-core-native (omitted when that dep is transitive=false). -->
+        <dependency org="org.bytedeco" name="javacpp" rev="1.5.10" />
 
         <dependency org="net.java.linoleum" name="jlfgr" rev="1_0" />
         <dependency org="com.neuronrobotics" name="nrjavaserial" rev="3.13.0" />
@@ -132,19 +158,27 @@ MA 02110-1301  USA
         <!--<dependency org="org.bytedeco" name="javacv" rev="1.0" />-->
         <!--<dependency org="org.bytedeco" name="javacv" rev="1.5.9" />-->
         
-        <!--Tensor flow-->
+        <!-- TensorFlow for MLPNoiseFilter — roles:
+             * Ivy: tensorflow-core-api (+ transitives) and unclassified native stub only.
+               Exclude classifier natives that Ivy would otherwise resolve via ${native.classifier}.
+             * install4j: excludes any leftover OS classifier jars (safety net).
+             * Runtime: TensorFlowNativeSupport downloads current-OS classifier jar on demand. -->
+        <!-- See https://github.com/tensorflow/java -->
+        <dependency org="org.tensorflow" name="tensorflow-core-api" rev="1.0.0-rc.2">
+            <exclude org="org.tensorflow" module="tensorflow-core-native"/>
+        </dependency>
+        <!-- Force unclassified stub jar (Maven URL); Ivy+POM otherwise picks a bogus OS classifier.
+             transitive=false avoids OS natives; javacpp is declared explicitly above. -->
+        <dependency org="org.tensorflow" name="tensorflow-core-native" rev="1.0.0-rc.2" transitive="false">
+            <artifact name="tensorflow-core-native" type="jar" ext="jar"
+                       url="https://repo1.maven.org/maven2/org/tensorflow/tensorflow-core-native/1.0.0-rc.2/tensorflow-core-native-1.0.0-rc.2.jar"/>
+        </dependency>
+        <!-- protobuf was previously pulled via tensorflow-core-native transitives; keep it explicit for compile. -->
+        <dependency org="com.google.protobuf" name="protobuf-java" rev="3.21.9" />
+        <!-- Avoid: tensorflow-core-platform (every OS native, ~600MB). -->
+        <!--<dependency org="org.tensorflow" name="tensorflow-core-platform" rev="1.0.0-rc.2" />-->
         
-<!--        See Code and Usage Examples
-Please look at this repository: https://github.com/tensorflow/java-models-->
-        <!--tensorflow has native libraries, but handled fine with this dependeny - see https://www.tensorflow.org/install/lang_java -->
-        <!-- See the java tensorflow landing page (new in 2024) https://github.com/tensorflow/java -->
-        <!--if having trouble loading the DLL, you might have to downgrade locally to version 1.5.0-->
-        <!--make sure to delete newer versions of libtensorflow* and tensorflow* from lib/-->
-        <!--<dependency org="org.tensorflow" name="tensorflow" rev="1.15.0" />-->
-        <!--<dependency org="org.tensorflow" name="tensorflow-core-platform" rev="1.15.0" />-->
-        <dependency org="org.tensorflow" name="tensorflow-core-platform" rev="1.0.0-rc.2" />
-        
-        <!--to use GPU if you have an Nvida GPU installed, comment line above and use lines below with appropriate version of tensor flow. 
+        <!--to use GPU if you have an Nvida GPU installed, comment lines above and use GPU artifacts.
         You have to separately install Cuda toolkit  for this to work - see https://developer.nvidia.com/cuda-toolkit -->
         <!--<dependency org="org.tensorflow" name="libtensorflow" rev="1.12.0" />-->
         <!--<dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.0.0-rc.2" />-->

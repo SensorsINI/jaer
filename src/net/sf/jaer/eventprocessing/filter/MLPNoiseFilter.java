@@ -34,6 +34,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import java.awt.Component;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
@@ -41,6 +42,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventprocessing.TimeLimiter;
 import net.sf.jaer.graphics.ImageDisplay;
+import net.sf.jaer.util.TensorFlowNativeSupport;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.tensorflow.Graph;
 import org.tensorflow.SavedModelBundle;
@@ -577,15 +579,44 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     }
 
     @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        if (yes && !ensureTensorFlowNatives()) {
+            super.setFilterEnabled(false);
+            return;
+        }
+        super.setFilterEnabled(yes);
+    }
+
+    /**
+     * Downloads / loads OS-specific TensorFlow JNI jar if missing (omitted from installers).
+     *
+     * @return true if natives are available for use
+     */
+    private boolean ensureTensorFlowNatives() {
+        Component parent = chip != null ? chip.getAeViewer() : null;
+        return TensorFlowNativeSupport.ensureAvailable(parent);
+    }
+
+    @Override
     public void initFilter() {
+        // Platform TF natives are not shipped in installers; fetch on first use if needed.
+        // Avoid recursive ensure when natives missing: super.setFilterEnabled(false) only.
+        if (!ensureTensorFlowNatives()) {
+            log.warning("MLPNoiseFilter: TensorFlow natives not available; disable filter until download/restart completes.");
+            super.setFilterEnabled(false);
+            return;
+        }
         // if dnn was loaded before, load it now
         if (preferenceExists(KEY_NETWORK_FILENAME) && tfExecutionGraph == null) {
             File f = new File(getString(KEY_NETWORK_FILENAME, getDefaultSettingsFolder()));
             if (f.exists()/* && f.isFile()*/) {  // file or folder ok here now
                 try {
                     loadNetwork(f);
-                } catch (Exception ex) {
+                } catch (Throwable ex) {
+                    // NoClassDefFoundError / UnsatisfiedLinkError are Errors, not Exceptions
                     log.warning("Couldn't load network: Caught " + ex.toString());
+                    log.log(Level.WARNING, "MLPNoiseFilter network load failed", ex);
+                    super.setFilterEnabled(false);
                 }
             } else {
                 log.warning("MLPNoiseFilter: MLP weights in \n    " + f.getAbsolutePath() + "\n are not available.\nUse Load network button to load a set of weights.");
@@ -739,6 +770,9 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
     synchronized public String loadNetwork(File f) throws IOException {
         if (f == null) {
             throw new IOException("null file");
+        }
+        if (!ensureTensorFlowNatives()) {
+            throw new IOException("TensorFlow natives not available (download cancelled or restart required)");
         }
         ArrayList<String> ioLayers = new ArrayList();
         StringBuilder resultSB = new StringBuilder(f.toString()).append(":\n");

@@ -223,7 +223,12 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         int status = LibUsb.open(device, deviceHandle);
         if (status != LibUsb.SUCCESS) {
             deviceHandle = null;
-            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status));
+            String hint = "";
+            if (status == LibUsb.ERROR_ACCESS || status == LibUsb.ERROR_BUSY) {
+                hint = " Close other jAER/SDK instances. On Windows, Zadig must bind WinUSB "
+                        + "(winusb.sys), not libusb-win32 (libusb0.sys), for 04B4:00F0/00F1.";
+            }
+            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + hint);
         }
 
         deviceDescriptor = new DeviceDescriptor();
@@ -293,7 +298,10 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         }
         final int status = LibUsb.claimInterface(deviceHandle, 0);
         if (status != LibUsb.SUCCESS) {
-            throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status));
+            String hint = (status == LibUsb.ERROR_ACCESS || status == LibUsb.ERROR_BUSY)
+                    ? " Another process may hold the CX3/FX20, or the driver is not WinUSB."
+                    : "";
+            throw new HardwareInterfaceException("claimInterface(): " + LibUsb.errorName(status) + hint);
         }
     }
 
