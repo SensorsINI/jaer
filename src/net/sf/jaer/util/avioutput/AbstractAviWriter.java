@@ -52,10 +52,15 @@ import net.sf.jaer.graphics.FrameAnnotater;
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 
+    /** Property fired with Boolean new value when recording starts (true) or finishes (false). */
+    public static final String EVENT_RECORDING_ACTIVE = "recordingActive";
+
     protected final int LOG_EVERY_THIS_MANY_FRAMES = 100; // for logging concole messages
 
     // writers, both express our VideoFrameWriterInterface for handling
     private VideoFrameWriterInterface videoOutputStream = null;
+    /** When false, close-on-rewind does not show its own JOptionPane (e.g. File/Export handles UI). */
+    protected boolean showCloseOnRewindDialog = true;
     @Preferred protected AVIOutputStream.VideoFormat format = AVIOutputStream.VideoFormat.valueOf(getString("format", AVIOutputStream.VideoFormat.RAW.toString()));
     protected File frameSequenceOutputFolder = null;
 
@@ -77,6 +82,17 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     @Preferred private int frameRate = getInt("frameRate", 30);
     private boolean writeOnlyWhenMousePressed = getBoolean("writeOnlyWhenMousePressed", false);
     protected volatile boolean writeEnabled = true;
+    /**
+     * When true (default), AVI playback FPS is taken from {@link AEViewer#getDesiredFrameRate()}
+     * at recording start so exported video plays at the target rendering rate.
+     */
+    @Preferred private boolean matchViewerFrameRate = getBoolean("matchViewerFrameRate", true);
+    /** Lock for ViewLoop ↔ annotate handshake during synchronized frame capture. */
+    private final Object frameCaptureLock = new Object();
+    /** ViewLoop requested a capture of the next painted OpenGL frame. */
+    private volatile boolean frameCaptureRequested = false;
+    /** Annotate finished writing the requested frame (or capture was cancelled). */
+    private volatile boolean frameCaptureCompleted = false;
 
     public enum OutputContainer {
         AVI, AnimatedGIF, ImageSequence
@@ -99,8 +115,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         setPropertyTooltip("framesWritten", "READONLY, shows number of frames written");
         setPropertyTooltip("compressionQuality", "In PNG or JPG format, sets compression quality; 0 is lowest quality and 1 is highest, 0.9 is default value");
         setPropertyTooltip("showFolderInDesktop", "Opens the folder containging the last-written AVI file");
-        setPropertyTooltip("frameRate", "<html>Specifies the <b>playback</b> frame rate of AVI file (different than jAER rendering rate)."
-                + "<p>For real time playback, match frameRate to the frame slice duration (View/Increase|Decrease playback speed)");
+        setPropertyTooltip("frameRate", "<html>Specifies the <b>playback</b> frame rate of the AVI file."
+                + "<p>With matchViewerFrameRate, this is set automatically from AEViewer target rendering rate at recording start."
+                + "<p>Recording waits for each rendered frame (may run slower than real time) so playback is smooth at this rate.");
+        setPropertyTooltip("matchViewerFrameRate", "If selected, AVI playback FPS is set from AEViewer target rendering rate when recording starts");
         setPropertyTooltip("saveFramesAsIndividualImageFiles", "If selected, then the frames are saved as individual image files in the selected folder");
         setPropertyTooltip("writeOnlyWhenMousePressed", "If selected, then the frames are are saved only when the mouse is pressed in the AEViewer window");
         setPropertyTooltip("writeEnabled", "Selects if writing frames is enabled. Use this to temporarily disable output, or in conjunction with writeOnlyWhenMousePressed");
@@ -303,17 +321,82 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
                     return;
                 }
             }
-            setVideoOutputStream(openVideoOutputStream(selectedFile, additionalComments));
-            if (rewindBeforeRecording) {
-                ignoreRewinwdEventFlag = true;
-                chip.getAeViewer().getAePlayer().rewind();
+            if (!startRecording(selectedFile)) {
+                return;
             }
+            return; // startRecording already enabled writing / rewind
         }
         setWriteEnabled(true); // make sure write is enabled if user started a recording
         setFramesWritten(0);
     }
 
+    /**
+     * Opens the AVI (or current outputContainer) file and starts recording without a file chooser.
+     * Used by File/Export and by {@link #doStartRecordingAndSaveAs()} after the user picks a path.
+     *
+     * @param file output file (e.g. .avi); must not be null
+     * @return true if recording started
+     */
+    synchronized public boolean startRecording(File file) {
+        if (file == null) {
+            log.warning("startRecording: file is null");
+            return false;
+        }
+        if (getVideoOutputStream() != null) {
+            log.warning("video output stream is already opened");
+            return false;
+        }
+        if (outputContainer == OutputContainer.ImageSequence) {
+            log.warning("startRecording(File) does not support ImageSequence; use doStartRecordingAndSaveAs()");
+            return false;
+        }
+        if (outputContainer == OutputContainer.AVI && !file.getName().toLowerCase().endsWith(".avi")) {
+            file = new File(file.toString() + ".avi");
+        } else if (outputContainer == OutputContainer.AnimatedGIF && !file.getName().toLowerCase().endsWith(".gif")) {
+            file = new File(file.toString() + ".gif");
+        }
+        applyViewerFrameRateIfEnabled();
+        lastFileName = file.toString();
+        lastFile = file;
+        putString("lastFileName", lastFileName);
+        resetFrameCaptureHandshake();
+        setVideoOutputStream(openVideoOutputStream(file, additionalComments));
+        if (getVideoOutputStream() == null) {
+            return false;
+        }
+        setWriteEnabled(true);
+        setFramesWritten(0);
+        getSupport().firePropertyChange(EVENT_RECORDING_ACTIVE, false, true);
+        if (rewindBeforeRecording && chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null) {
+            ignoreRewinwdEventFlag = true;
+            chip.getAeViewer().getAePlayer().rewind();
+        }
+        return true;
+    }
+
+    /**
+     * Sets {@link #frameRate} from the AEViewer target rendering rate when
+     * {@link #isMatchViewerFrameRate()} is true.
+     */
+    protected void applyViewerFrameRateIfEnabled() {
+        if (!isMatchViewerFrameRate()) {
+            return;
+        }
+        AEViewer v = chip.getAeViewer();
+        if (v == null) {
+            return;
+        }
+        int fps = v.getDesiredFrameRate();
+        if (fps < 1) {
+            fps = 1;
+        }
+        setFrameRate(fps);
+        log.info("AVI playback frame rate set to AEViewer target rendering rate " + fps + " Hz");
+    }
+
     synchronized public void doFinishRecording() {
+        boolean wasRecording = getVideoOutputStream() != null || frameSequenceOutputFolder != null;
+        cancelPendingFrameCapture(); // unblock ViewLoop waiters
         if (getVideoOutputStream() != null) {
             try {
                 getVideoOutputStream().close();
@@ -335,7 +418,99 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
             log.info("Finished recording frames to " + frameSequenceOutputFolder + " in format " + format + " with " + framesWritten + " frames");
             frameSequenceOutputFolder = null;
         }
+        if (wasRecording) {
+            getSupport().firePropertyChange(EVENT_RECORDING_ACTIVE, true, false);
+        }
+    }
 
+    /**
+     * ViewLoop calls this immediately before {@code paintFrame()} so annotate
+     * will capture exactly that rendered frame. Blocks later via
+     * {@link #awaitFrameCapture(long)} until the frame is written (or cancelled).
+     */
+    public void requestFrameCapture() {
+        synchronized (frameCaptureLock) {
+            frameCaptureRequested = true;
+            frameCaptureCompleted = false;
+            frameCaptureLock.notifyAll();
+        }
+    }
+
+    /**
+     * True when a capture was requested and not yet completed/cancelled.
+     */
+    public boolean isFrameCapturePending() {
+        return frameCaptureRequested && !frameCaptureCompleted;
+    }
+
+    /**
+     * Called from annotate after a requested frame has been written to the AVI.
+     */
+    protected void signalFrameCaptureComplete() {
+        synchronized (frameCaptureLock) {
+            frameCaptureRequested = false;
+            frameCaptureCompleted = true;
+            frameCaptureLock.notifyAll();
+        }
+    }
+
+    /**
+     * Cancels a pending capture (e.g. paint was skipped for a blank packet) so
+     * the ViewLoop does not wait forever.
+     */
+    public void cancelPendingFrameCapture() {
+        synchronized (frameCaptureLock) {
+            frameCaptureRequested = false;
+            frameCaptureCompleted = true;
+            frameCaptureLock.notifyAll();
+        }
+    }
+
+    private void resetFrameCaptureHandshake() {
+        synchronized (frameCaptureLock) {
+            frameCaptureRequested = false;
+            frameCaptureCompleted = false;
+        }
+    }
+
+    /**
+     * Waits until the requested OpenGL frame has been written (or cancelled).
+     * Safe to call after {@code paintFrame()} when capture runs synchronously in
+     * annotate; still required when encode is slow or runs across threads.
+     *
+     * @param timeoutMs maximum wait; &lt;=0 waits indefinitely
+     * @return true if capture completed or was cancelled; false on timeout
+     */
+    public boolean awaitFrameCapture(long timeoutMs) {
+        synchronized (frameCaptureLock) {
+            if (frameCaptureCompleted || !frameCaptureRequested) {
+                return true;
+            }
+            try {
+                if (timeoutMs <= 0) {
+                    while (frameCaptureRequested && !frameCaptureCompleted) {
+                        frameCaptureLock.wait();
+                    }
+                    return true;
+                }
+                long deadline = System.nanoTime() + timeoutMs * 1_000_000L;
+                while (frameCaptureRequested && !frameCaptureCompleted) {
+                    long remainingNs = deadline - System.nanoTime();
+                    if (remainingNs <= 0) {
+                        log.warning("Timed out waiting for video frame capture after " + timeoutMs + " ms");
+                        frameCaptureRequested = false;
+                        return false;
+                    }
+                    long waitMs = remainingNs / 1_000_000L;
+                    int waitNs = (int) (remainingNs % 1_000_000L);
+                    frameCaptureLock.wait(waitMs, waitNs);
+                }
+                return true;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return frameCaptureCompleted;
+            }
+        }
     }
 
     /**
@@ -450,9 +625,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         putBoolean("rewindBeforeRecording", closeOnRewind);
     }
 
-    @Override
     public void annotate(GLAutoDrawable drawable) {
-
+        // empty; subclasses such as JaerAviWriter override to capture frames
     }
 
     /**
@@ -460,7 +634,7 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      *
      * @return true if active
      */
-    protected boolean isRecordingActive() {
+    public boolean isRecordingActive() {
         return getVideoOutputStream() != null || frameSequenceOutputFolder != null;
     }
 
@@ -514,7 +688,11 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
     }
 
     /**
-     * Turns gl to BufferedImage with fixed format
+     * Turns gl to BufferedImage with fixed format.
+     * <p>
+     * Reads the <b>back</b> buffer: {@code annotate()} runs inside
+     * {@code GLEventListener.display()} before the buffers are swapped, so
+     * {@code GL_FRONT} would capture the previous frame (causing jerky export).
      *
      * @param gl
      * @param w
@@ -523,7 +701,8 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      */
     protected BufferedImage toImage(GL2 gl, int w, int h) {
 
-        gl.glReadBuffer(GL.GL_FRONT); // or GL.GL_BACK
+        gl.glFinish(); // ensure draw commands for this frame have completed
+        gl.glReadBuffer(GL.GL_BACK);
         ByteBuffer glBB = Buffers.newDirectByteBuffer(4 * w * h);
         gl.glReadPixels(0, 0, w, h, GL2.GL_BGRA, GL.GL_BYTE, glBB);
 
@@ -642,10 +821,20 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         if (evt.getPropertyName() == AEInputStream.EVENT_REWOUND) {
             if (!ignoreRewinwdEventFlag && closeOnRewind && getVideoOutputStream() != null) {
                 doFinishRecording();
-                JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file" + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
+                if (showCloseOnRewindDialog && chip.getAeViewer() != null) {
+                    JOptionPane.showMessageDialog(chip.getAeViewer(), "Closed file " + lastFileName + " on Rewind event after " + framesWritten + " frames were written");
+                }
             }
             ignoreRewinwdEventFlag = false;
         }
+    }
+
+    public boolean isShowCloseOnRewindDialog() {
+        return showCloseOnRewindDialog;
+    }
+
+    public void setShowCloseOnRewindDialog(boolean showCloseOnRewindDialog) {
+        this.showCloseOnRewindDialog = showCloseOnRewindDialog;
     }
 
     /**
@@ -677,7 +866,10 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
      * @return the File written
      */
     public File getFile() {
-        return lastFile;
+        if (lastFile != null) {
+            return lastFile;
+        }
+        return lastFileName != null ? new File(lastFileName) : null;
     }
 
     /**
@@ -689,6 +881,15 @@ public class AbstractAviWriter extends EventFilter2DMouseAdaptor implements Fram
         }
         this.frameRate = frameRate;
         putInt("frameRate", frameRate);
+    }
+
+    public boolean isMatchViewerFrameRate() {
+        return matchViewerFrameRate;
+    }
+
+    public void setMatchViewerFrameRate(boolean matchViewerFrameRate) {
+        this.matchViewerFrameRate = matchViewerFrameRate;
+        putBoolean("matchViewerFrameRate", matchViewerFrameRate);
     }
 
 //    /**

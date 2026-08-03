@@ -17,6 +17,7 @@ import org.usb4java.LibUsb;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
 import org.usb4java.Context;
 import org.usb4java.HotplugCallback;
@@ -90,6 +91,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
 
     private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
+        UsbHardwareRegistry.instance().register(VID, PID, cls);
         log.info(String.format("Put mapping from USB VID/PID=0x%x/0x%x to class %s", VID, PID, cls));
         if (LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
             HotplugCallback callback = (Context cntxt, Device device, int event, Object userData) -> {

@@ -31,7 +31,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventprocessing.EventFilter2DMouseAdaptor;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
-import scala.actors.threadpool.Arrays;
+import java.util.Arrays;
 
 /**
  * Implementation of theory in paper for event-based sparse linear filtering of

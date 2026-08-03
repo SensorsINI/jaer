@@ -15,7 +15,12 @@ import java.util.prefs.Preferences;
 import net.sf.jaer.JaerConstants;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.BasicEvent;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasLEDControl;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasResettablePixelArray;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
@@ -24,7 +29,8 @@ import org.usb4java.Device;
 
 /**
  * The LibUsb hardware interface for the DVS128 (second Tmpdiff128 board, with
- * CPLD) retina boards.
+ * CPLD) retina boards. Optionally demuxes polarity (+ sync specials) into a
+ * typed {@link PacketBundle} on the USB thread.
  *
  * @author tobi/rapha
  * @see LibUsbHardwareInterfaceFactory
@@ -32,6 +38,8 @@ import org.usb4java.Device;
 public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen implements CypressFX2DVS128HardwareInterfaceInterface {
 
     protected static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
+    /** Pref kill-switch for USB→PacketBundle polarity demux. */
+    public static final String PREF_USB_TYPED_DEMUX = "CypressFX2DVS128.usbTypedDemux";
     private boolean syncEventEnabled = CypressFX2LibUsbDVS128HardwareInterface.prefs.getBoolean(
             "CypressFX2DVS128HardwareInterface.syncEventEnabled", true); // default
     //  is true so that device is the timestamp master by default, necessary after firmware rev 11
@@ -42,11 +50,50 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
     public final byte VENDOR_REQUEST_LED = (byte) 0xCD;
     private LEDState ledState = LEDState.UNKNOWN; // efferent copy, since we can't read it
 
+    private final PacketBundlePool packetBundlePool = new PacketBundlePool();
+    private PacketBundle lastPacketBundle = new PacketBundle();
+    private volatile boolean usbTypedDemuxActive = prefs.getBoolean(PREF_USB_TYPED_DEMUX, true);
+    private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
+
     /**
      * Creates a new instance of CypressFX2Biasgen
      */
     protected CypressFX2LibUsbDVS128HardwareInterface(final Device device) {
         super(device);
+        CypressFX2.log.info("DVS128 libusb USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
+    }
+
+    @Override
+    public AEPacketRaw acquireAvailableEventsFromDriver() throws HardwareInterfaceException {
+        if (!isOpen()) {
+            open();
+        }
+        if (!inEndpointEnabled) {
+            setEventAcquisitionEnabled(true);
+        }
+        final AEPacketRaw lastEventsAcquired;
+        synchronized (aePacketRawPool) {
+            aePacketRawPool.swap();
+            packetBundlePool.swap();
+            lastEventsAcquired = aePacketRawPool.readBuffer();
+            lastPacketBundle = packetBundlePool.readBuffer();
+            eventCounter = 0;
+        }
+        this.lastEventsAcquired = lastEventsAcquired;
+        computeEstimatedEventRate(lastEventsAcquired);
+        if (lastEventsAcquired.getNumEvents() != 0) {
+            support.firePropertyChange(CypressFX2.PROPERTY_CHANGE_NEW_EVENTS, null, lastEventsAcquired);
+        }
+        return lastEventsAcquired;
+    }
+
+    @Override
+    public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
+        if (!usbTypedDemuxActive) {
+            return null;
+        }
+        acquireAvailableEventsFromDriver();
+        return lastPacketBundle;
     }
 
     /**
@@ -199,6 +246,9 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
         protected void translateEvents(final ByteBuffer b) {
             synchronized (aePacketRawPool) {
                 final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
+                if (usbTypedDemuxActive) {
+                    polarityBuilder.attach(packetBundlePool.writeBuffer());
+                }
                 int shortts;
 
                 int bytesSent = b.limit();
@@ -270,14 +320,31 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                         }
                         lastTimestampTmp = timestamps[eventCounter];
                         // this is USB2AERmini2 or StereoRetina board which have 1us timestamp tick
-                        if ((addresses[eventCounter] & CypressFX2LibUsbDVS128HardwareInterface.SYNC_EVENT_BITMASK) != 0) {
+                        final int addr = addresses[eventCounter];
+                        final int ts = timestamps[eventCounter];
+                        final boolean sync = (addr & CypressFX2LibUsbDVS128HardwareInterface.SYNC_EVENT_BITMASK) != 0;
+                        if (sync) {
                             if (printedSyncEventWarningCount < 10) {
                                 if (printedSyncEventWarningCount < 10) {
-                                    CypressFX2.log.info("sync event at timestamp=" + timestamps[eventCounter]);
+                                    CypressFX2.log.info("sync event at timestamp=" + ts);
                                 } else {
                                     CypressFX2.log.warning("disabling further printing of sync events");
                                 }
                                 printedSyncEventWarningCount++;
+                            }
+                        }
+                        if (usbTypedDemuxActive) {
+                            if (sync || (addr & BasicEvent.SPECIAL_EVENT_BIT_MASK) != 0) {
+                                polarityBuilder.addSpecial(addr, ts);
+                            } else {
+                                // Match DVS128.Extractor: x flipped, type = (1-addr)&1
+                                final AEChip chip = getChip();
+                                final int sizeX = chip != null ? chip.getSizeX() : 128;
+                                final int sxm = sizeX - 1;
+                                final int x = sxm - ((addr & 0xfe) >>> 1);
+                                final int y = (addr & 0x7f00) >>> 8;
+                                final boolean on = ((1 - addr) & 1) != 0;
+                                polarityBuilder.addPolarity(x, y, on, ts);
                             }
                         }
                         eventCounter++;
@@ -288,6 +355,10 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                 // write capture size
                 buffer.lastCaptureLength = eventCounter - buffer.lastCaptureIndex;
                 buffer.systemModificationTimeNs = System.nanoTime();
+                if (usbTypedDemuxActive) {
+                    polarityBuilder.flushAll();
+                    packetBundlePool.writeBuffer().setRawPacket(buffer);
+                }
 
                 // if (NumberOfWrapEvents!=0) {
                 // System.out.println("Number of wrap events received: "+ NumberOfWrapEvents);

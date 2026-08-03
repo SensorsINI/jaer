@@ -53,7 +53,6 @@ import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
-import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.eventio.AEInputStream;
@@ -329,14 +328,8 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
 //        resultAngleHistogramMax = Integer.MIN_VALUE;
         Arrays.fill(scaleResultCounts, 0);
         int minDistScale = 0;
-        // following awkward block needed to deal with DVS/DAVIS and IMU/APS events
-        // block STARTS
-        Iterator i = null;
-        if (in instanceof ApsDvsEventPacket) {
-            i = ((ApsDvsEventPacket) in).fullIterator();
-        } else {
-            i = ((EventPacket) in).inputIterator();
-        }
+        // following block needed to deal with DVS / polarity packets (APS is FramePacket, not in this stream)
+        Iterator i = ((EventPacket) in).inputIterator();
 
         nSkipped = 0;
         nProcessed = 0;
@@ -346,9 +339,6 @@ public class Speedo extends AbstractMotionFlow implements FrameAnnotater {
             if (o == null) {
                 log.warning("null event passed in, returning input packet");
                 return in;
-            }
-            if ((o instanceof ApsDvsEvent) && ((ApsDvsEvent) o).isApsData()) {
-                continue;
             }
             PolarityEvent ein = (PolarityEvent) o;
 

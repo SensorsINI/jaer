@@ -42,7 +42,15 @@ public interface USBInterface extends HardwareInterface {
      */
     public String[] getStringDescriptors();
 
-    /**@return PID (vendor ID) */
+    /**
+     * @return USB vendor ID. Prefer this over {@link #getVID_THESYCON_FX2_CPLD()}
+     * which is a historical misnomer (returns VID, not PID).
+     */
+    default short getVID() {
+        return getVID_THESYCON_FX2_CPLD();
+    }
+
+    /**@return VID (vendor ID); historical name — use {@link #getVID()} */
     public short getVID_THESYCON_FX2_CPLD();
 
     /**@return PID (product ID) */

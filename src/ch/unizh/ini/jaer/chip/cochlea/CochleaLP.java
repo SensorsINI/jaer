@@ -24,6 +24,8 @@ import ch.unizh.ini.jaer.config.spi.SPIConfigValue;
 import com.jogamp.opengl.util.gl2.GLUT;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.UsbDevice;
+import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.AddressedIPotArray;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -48,11 +50,15 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CochleaFX3HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
 /** Low-power binaural AER silicon cochlea with 64 channels. Hardware interface is CochleaFX3HardwareInterface */
 @Description("Low-power binaural AER silicon cochlea with 64 channels")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@UsbDevices({
+    @UsbDevice(vid = CypressFX3.VID, pid = CochleaFX3HardwareInterface.PID_FX3)
+})
 public class CochleaLP extends CochleaChip implements Observer {
 
 	private final GLUT glut = new GLUT();

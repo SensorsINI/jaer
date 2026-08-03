@@ -18,6 +18,11 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.ExternalEvent;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.ImuPacket;
+import net.sf.jaer.event.PacketType;
+import net.sf.jaer.event.TypedDataPacket;
 
 /**
  * A filter that filters or otherwise processes a packet of events.
@@ -133,6 +138,76 @@ abstract public class EventFilter2D extends EventFilter implements PropertyChang
      * @return the output packet
      */
     public abstract EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in);
+
+    /**
+     * jAER 3.0: which {@link PacketType}s this filter wants to process.
+     * Default: polarity (and legacy EventPacket kinds) only; Frame/IMU/External
+     * pass through unchanged in {@link FilterChain#filterBundle}.
+     */
+    public boolean accepts(PacketType type) {
+        if (type == null) {
+            return false;
+        }
+        return type == PacketType.POLARITY || type == PacketType.EAR || type == PacketType.SPIKE
+                || type == PacketType.POINT2D || type == PacketType.SPECIAL;
+    }
+
+    /**
+     * jAER 3.0 typed polarity path. Default delegates to {@link #filterPacket}.
+     */
+    @SuppressWarnings("unchecked")
+    public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
+        return filterPacket(in);
+    }
+
+    /**
+     * jAER 3.0: process a frame packet. Default returns {@code in} unchanged.
+     */
+    public FramePacket processFrame(FramePacket in) {
+        return in;
+    }
+
+    /**
+     * jAER 3.0: process an IMU packet. Default returns {@code in} unchanged.
+     */
+    public ImuPacket processImu(ImuPacket in) {
+        return in;
+    }
+
+    /**
+     * jAER 3.0: process external/special EventPacket. Default returns {@code in}
+     * unchanged (does not call {@link #filterPacket}).
+     */
+    public EventPacket<? extends BasicEvent> processExternal(EventPacket<? extends BasicEvent> in) {
+        return in;
+    }
+
+    /**
+     * Dispatch one typed packet. Used by {@link FilterChain#filterBundle}.
+     */
+    public TypedDataPacket processTyped(TypedDataPacket in) {
+        if (in == null || !isFilterEnabled()) {
+            return in;
+        }
+        PacketType type = in.getPacketType();
+        if (!accepts(type)) {
+            return in;
+        }
+        if (in instanceof FramePacket) {
+            return processFrame((FramePacket) in);
+        }
+        if (in instanceof ImuPacket) {
+            return processImu((ImuPacket) in);
+        }
+        if (in instanceof EventPacket) {
+            EventPacket<? extends BasicEvent> ep = (EventPacket<? extends BasicEvent>) in;
+            if (type == PacketType.SPECIAL || ExternalEvent.class.isAssignableFrom(ep.getEventClass())) {
+                return processExternal(ep);
+            }
+            return processPolarity(ep);
+        }
+        return in;
+    }
 
     /**
      * Subclasses should call this super initializer

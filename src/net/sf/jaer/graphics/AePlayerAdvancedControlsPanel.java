@@ -284,22 +284,46 @@ public class AePlayerAdvancedControlsPanel extends javax.swing.JPanel implements
     }
 
     public void setMarks(Marks marks) {
+        if (marks == null) {
+            return;
+        }
+        if (aePlayer.getAEInputStream() == null || aePlayer.getAEInputStream().size() <= 0) {
+            log.fine("setMarks deferred/skipped: AEInputStream not ready");
+            return;
+        }
         marksTable.clear();
         markInPosition = null;
         markOutPosition = null;
         markInPosition = convertToSlider(marks.markIn);
         markOutPosition = convertToSlider(marks.markOut);
-        marksTable.put(markOutPosition, markOutLabel);
-        marksTable.put(markInPosition, markInLabel);
-        for (long pos : marks.otherMarks) {
-            marksTable.put(convertToSlider(pos), markerLabel);
+        if (markOutPosition != null) {
+            marksTable.put(markOutPosition, markOutLabel);
+        }
+        if (markInPosition != null) {
+            marksTable.put(markInPosition, markInLabel);
+        }
+        if (marks.otherMarks != null) {
+            for (long pos : marks.otherMarks) {
+                Integer sliderPos = convertToSlider(pos);
+                if (sliderPos != null) {
+                    marksTable.put(sliderPos, markerLabel);
+                }
+            }
         }
         playerSlider.setLabelTable(marksTable);
         playerSlider.setPaintLabels(true);
     }
 
     private Integer convertToSlider(long pos) {
-        return Math.round((float) pos / aePlayer.getAEInputStream().size() * playerSlider.getMaximum());
+        AEFileInputStreamInterface stream = aePlayer.getAEInputStream();
+        if (stream == null) {
+            return null;
+        }
+        long size = stream.size();
+        if (size <= 0) {
+            return 0;
+        }
+        return Math.round((float) pos / size * playerSlider.getMaximum());
     }
 
     /**

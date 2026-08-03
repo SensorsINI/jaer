@@ -42,6 +42,8 @@ import ch.unizh.ini.jaer.chip.util.externaladc.ADCHardwareInterfaceProxy;
 import ch.unizh.ini.jaer.chip.util.scanner.ScannerHardwareInterfaceProxy;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.UsbDevice;
+import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.biasgen.IPot;
@@ -62,6 +64,7 @@ import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2DVS128HardwareInterface;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.HasSyncEventOutput;
@@ -81,6 +84,10 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  */
 @Description("Binaural AER silicon cochlea with 64 channels and 8 ganglion cells of two types per channel with many fixes to CochleaAMS1b")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
+@UsbDevices({
+    // Actual AMS1c board PID is 0x8406 (libusb); USBIO CypressFX2.PID_COCHLEAAMS is still 0x8405 (AMS1b-era).
+    @UsbDevice(vid = USBInterface.VID_THESYCON, pid = CochleaAMS1cHardwareInterface.PID)
+})
 public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSyncEventOutput {
 
     final GLUT glut = new GLUT();

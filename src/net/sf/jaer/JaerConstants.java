@@ -60,6 +60,12 @@ public class JaerConstants {
     /** @deprecated use {@link #HELP_URL_INIVATION_CAMERAS} */
     public static final String HELP_URL_HARDWARE_USER_GUIDE = HELP_URL_INIVATION_CAMERAS;
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
+    /** Community list of event-based vision papers, datasets, code, workshops, etc. */
+    public static final String HELP_URL_EVENT_BASED_VISION_RESOURCES = "https://github.com/uzh-rpg/event-based_vision_resources";
+    /** DAVIS346 AEDAT-2 sample recordings (Google Drive via DAVIS24 site). */
+    public static final String HELP_URL_DAVIS346_SAMPLE_DATA = "https://sites.google.com/view/davis24-davis-sample-data/home";
+    /** Open AEDAT-4 (DV) sample recordings with per-file download links (DAVIS346). */
+    public static final String HELP_URL_AEDAT4_SAMPLE_DATA = "https://github.com/MISTLab/event_based_data";
     
     public static final String getBuildVersion(){
         // when running from webstart  we are not allowed to open a file on the local file system, but we can

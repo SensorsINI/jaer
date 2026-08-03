@@ -21,6 +21,7 @@ import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -36,6 +37,7 @@ import javax.swing.event.ChangeListener;
 
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
 
@@ -54,6 +56,8 @@ public class AEViewerPreferencesDialog extends JDialog {
     private JCheckBox checkNonMonotonicCB;
     private JCheckBox syncEnabledCB;
     private JTextField timestampResetBitmaskTF;
+    private JComboBox<String> loggingFormatCB;
+    private JComboBox<String> aedat4CompressionCB;
 
     private JCheckBox activeRenderingCB;
     private JCheckBox renderBlankFramesCB;
@@ -356,6 +360,46 @@ public class AEViewerPreferencesDialog extends JDialog {
         JPanel p = titledSection("File");
         int y = 0;
 
+        p.add(new JLabel("Recording format:"), gbcLabel(y));
+        loggingFormatCB = new JComboBox<>(new String[]{"AEDAT-4 (.aedat4)", "AEDAT-2 (.aedat2)"});
+        loggingFormatCB.setToolTipText("File format used when starting logging with the button or 'l' key");
+        loggingFormatCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                boolean aedat4 = loggingFormatCB.getSelectedIndex() == 0;
+                viewer.setLoggingDataFileVersion(aedat4
+                        ? AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4
+                        : AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
+                aedat4CompressionCB.setEnabled(aedat4);
+            }
+        });
+        p.add(loggingFormatCB, gbcField(y++));
+
+        p.add(new JLabel("AEDAT-4 compression:"), gbcLabel(y));
+        aedat4CompressionCB = new JComboBox<>(new String[]{
+            "None",
+            "LZ4 (recommended)",
+            "LZ4 high",
+            "ZSTD",
+            "ZSTD high"
+        });
+        aedat4CompressionCB.setToolTipText("<html>DV-compatible per-packet compression for AEDAT-4.<br>"
+                + "LZ4 is best for real-time recording. HIGH modes shrink files more but may slow live display "
+                + "at high event rates. Takes effect on the next Start logging.");
+        aedat4CompressionCB.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (updatingUi) {
+                    return;
+                }
+                viewer.setAedat4Compression(aedat4CompressionCB.getSelectedIndex());
+            }
+        });
+        p.add(aedat4CompressionCB, gbcField(y++));
+
         loggingPlaybackImmediatelyCB = new JCheckBox("Playback logged data immediately after logging enabled");
         loggingPlaybackImmediatelyCB.setToolTipText("If enabled, logged data plays back immediately");
         loggingPlaybackImmediatelyCB.addActionListener(new ActionListener() {
@@ -644,6 +688,10 @@ public class AEViewerPreferencesDialog extends JDialog {
             JAERViewer jaerViewer = viewer.getJaerViewer();
             syncEnabledCB.setSelected(jaerViewer != null && jaerViewer.isSyncEnabled());
             timestampResetBitmaskTF.setText(Integer.toHexString(viewer.getAeFileInputStreamTimestampResetBitmask()));
+            boolean aedat4 = AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT4.equals(viewer.getLoggingDataFileVersion());
+            loggingFormatCB.setSelectedIndex(aedat4 ? 0 : 1);
+            aedat4CompressionCB.setSelectedIndex(viewer.getAedat4Compression());
+            aedat4CompressionCB.setEnabled(aedat4);
 
             activeRenderingCB.setSelected(viewer.isActiveRenderingEnabled());
             renderBlankFramesCB.setSelected(viewer.isRenderBlankFramesEnabled());

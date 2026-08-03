@@ -291,44 +291,10 @@
         <copy file="images/1024w/SplashScreen.png" todir="build/classes"/>
     </target>
 
-    <!--    The exe4j launcher target to build jAERViewer.exe with integrated java 6 splash screen.
-            http://www.ej-technologies.com/products/exe4j/overview.html
-    -->
-    <target name="jaer-exe4j">
-        <echo message="Building Windows .exe. launchers using exe4j (https://www.ej-technologies.com/download/exe4j/files). ${line.separator} Note that depending on 32- or 64-bit installed JDKs, ${line.separator} you may not be able to build one or the other of these launchers. ${line.separator} Don't worry about this."/>
-        <!--        <subant failonerror="false" target="jaer-exe4jx86">
-            <fileset dir="." includes="build.xml"/>
-        </subant>-->
-        <subant failonerror="false" target="jaer-exe4j9">
-            <fileset dir="." includes="build.xml"/>
-        </subant>
-    </target>
-    
-    <!--    
-    Your license key for exe4j 4.x is:
-    L-TOBI_DELBRUCK#50022033010001-1evjjgm42c2fj#2311
-    -->
-    
-    <target name="jaer-exe4j9" depends="checkos" if="isWindows">
-        <echo message="Building exe4j jAERViewer.exe 64-bit Windows launcher for 64-bit Java Virtual Machines - embedding icon and setting SplashScreen in jAERViewer.exe. ${line.separator} Don't worry if this task fails for you unless you have changed the classpath. ${line.separator}jAERViewer.exe does not normally need to be rebuilt."/>
-        <property environment="env"/>
-        <property name="env.EXE4J_JAVA_HOME" value="${java.home}"/>
-        <echo message="java.home=${java.home} env.EXE4J_JAVA_HOME=${env.EXE4J_JAVA_HOME}" />
-        <taskdef name="exe4j" classname="com.exe4j.Exe4JTask" classpath="exe4j-launcher/exe4j9/bin/ant.jar" onerror="report"/>
-        <exe4j projectfile="jaer_win_jre_x64.exe4j" requirelicense="true"/>
-    </target>
+    <!-- Windows/macOS/Linux launchers come from install4j (ant release / jaer.install4j).
+         The old exe4j jAERViewer_win64.exe path was removed. -->
 
-    <!--    <taskdef name="install4j"
-             classname="com.install4j.Install4JTask"
-             classpath="C:\Program Files\install4j10\bin\ant.jar"/>
-
-    <target name="media">
-        <install4j projectFile="jaer.install4j"/>
-    </target>-->
- 
-
-    <!-- builds the windows executable .exe launcher files -->
-    <target name="-post-jar" depends="jaer-exe4j,-revert-project-properties-if-only-datestamp">
+    <target name="-post-jar" depends="-revert-project-properties-if-only-datestamp">
     </target>
 
 
@@ -359,10 +325,11 @@
 
     <!-- builds a file with the output of svnversion that is used for the About dialogs -->
     <!--TODO fix to get rev info from git-->
-    <target name="jaer-setBuildVersion" depends="init">
+    <target name="jaer-setBuildVersion" depends="init,-load-version">
         <tstamp/>
         <echo message="Making build version file ${buildversion.outputfile} - you can ignore any error ${line.separator}generated here since it will only affect the Help/About... dialog." />
         <delete file="${buildversion.outputfile}"/>
+        <echo message="${jaer.version}${line.separator}" append="true" file="${buildversion.outputfile}" />
         <echo message="Built ${TODAY} at ${TSTAMP} by ${user.name}${line.separator}" append="true" file="${buildversion.outputfile}" />
         <echo message="os.name=${os.name}${line.separator}" append="true" file="${buildversion.outputfile}" />
         <echo message="os.version=${os.version}${line.separator}" append="true" file="${buildversion.outputfile}" />
@@ -378,8 +345,90 @@
             <filelist dir="${basedir}" files="${buildversion.outputfile}"/>
         </concat>
     </target>
-    
 
+    <!-- Single source of truth: root VERSION.txt (e.g. 2.8.0). -->
+    <target name="-load-version">
+        <available file="${basedir}/VERSION.txt" property="jaer.version.file.exists"/>
+        <fail unless="jaer.version.file.exists" message="VERSION.txt is missing at ${basedir}/VERSION.txt"/>
+        <loadfile property="jaer.version" srcFile="${basedir}/VERSION.txt">
+            <filterchain>
+                <striplinebreaks/>
+                <tokenfilter>
+                    <trim/>
+                </tokenfilter>
+            </filterchain>
+        </loadfile>
+        <fail message="VERSION.txt is empty">
+            <condition>
+                <equals arg1="${jaer.version}" arg2=""/>
+            </condition>
+        </fail>
+        <echo message="jAER version from VERSION.txt: ${jaer.version}"/>
+    </target>
+
+    <target name="-compile-splash-tool" depends="init">
+        <mkdir dir="${build.dir}/tools"/>
+        <javac srcdir="${basedir}/scripts"
+               includes="GenerateSplashScreen.java"
+               destdir="${build.dir}/tools"
+               includeantruntime="false"
+               release="11">
+            <compilerarg value="-Xlint:-options"/>
+        </javac>
+    </target>
+
+    <target name="generate-splash" depends="-load-version,-compile-splash-tool"
+            description="Overlay jAER/version on images/SplashScreen.png into 1024w and 256h PNGs.">
+        <available file="${basedir}/images/SplashScreen.png" property="jaer.splash.base.exists"/>
+        <fail unless="jaer.splash.base.exists"
+              message="Base splash missing: ${basedir}/images/SplashScreen.png (export text-free PNG from SplashScreen.pdf)"/>
+        <mkdir dir="${basedir}/images/1024w"/>
+        <mkdir dir="${basedir}/images/256h"/>
+        <java classname="GenerateSplashScreen"
+              classpath="${build.dir}/tools"
+              fork="true"
+              failonerror="true">
+            <arg value="${basedir}/images/SplashScreen.png"/>
+            <arg value="${jaer.version}"/>
+            <arg value="${basedir}/images/1024w/SplashScreen.png"/>
+            <arg value="${basedir}/images/256h/SplashScreen.png"/>
+        </java>
+    </target>
+
+    <target name="-sync-install4j-version" depends="-load-version">
+        <replaceregexp file="${basedir}/jaer.install4j"
+                       match='(&lt;application\b[^&gt;]*\bversion=")[^"]*(")'
+                       replace="\1${jaer.version}\2"
+                       byline="true"/>
+        <echo message="Synced jaer.install4j application version to ${jaer.version}"/>
+    </target>
+
+    <target name="-confirm-release" depends="-load-version">
+        <input message="Release version is ${jaer.version} (from VERSION.txt). Proceed with splash, clean jar, and install4jc? [y/N]"
+               addproperty="jaer.release.confirm"
+               defaultvalue="n"/>
+        <condition property="jaer.release.confirmed">
+            <matches string="${jaer.release.confirm}" pattern="(?i)\s*y(es)?\s*"/>
+        </condition>
+        <fail unless="jaer.release.confirmed" message="Release cancelled (reply y or yes to proceed)."/>
+    </target>
+
+    <target name="-run-install4jc" depends="-load-version">
+        <available file="${basedir}/jaer.install4j" property="jaer.install4j.exists"/>
+        <fail unless="jaer.install4j.exists" message="jaer.install4j not found"/>
+        <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="--release=${jaer.version}"/>
+            <arg value="${basedir}/jaer.install4j"/>
+        </exec>
+    </target>
+
+    <target name="release"
+            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
+            description="Confirm VERSION.txt, generate splash PNGs, sync install4j, clean/jar, run install4jc.">
+        <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
+        <echo message="Next: copy/push updates.xml, git tag ${jaer.version}, and create the GitHub release."/>
+        <echo message="See README-releasing-tagging.txt"/>
+    </target>
 
     <target name="jaer-sign-jar" depends="jar">
         <echo message="Self-signing jar"/>

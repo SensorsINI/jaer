@@ -37,6 +37,8 @@ import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.UsbDevice;
+import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip;
@@ -47,6 +49,7 @@ import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.graphics.ChipRendererDisplayMethodRGBA;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DVXplorerFX3HardwareInterface;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.util.TextRendererScale;
@@ -58,6 +61,9 @@ import net.sf.jaer.util.TextRendererScale;
  */
 @Description("DVXplorer")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@UsbDevices({
+    @UsbDevice(vid = CypressFX3.VID, pid = DVXplorerFX3HardwareInterface.PID_FX3)
+})
 public class DVXplorer extends AETemporalConstastRetina {
     
     private DVXExtractor dvxExtractor;

@@ -21,12 +21,18 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
- * Adds functionality of apsDVS sensors to based CypressFX3Biasgen class. The
- * key method is translateEvents that parses
- * the data from the sensor to construct jAER raw events.
+ * GAER-format SciDVS USB decode (orphaned).
+ * <p>
+ * <b>Not registered</b> in {@link LibUsb3HardwareInterfaceFactory}: PID
+ * {@code 0x841A}/{@code 0x841B} open as {@link DAViSFX3HardwareInterface}. Live
+ * SciDVS therefore shares the Davis FX3 typed {@code PacketBundle} demux path
+ * (prefs {@code hardware/DAViSFX3/usbTypedDemux}). This class remains for
+ * reference / experimental GAER boards only — do not assume it is the live path.
  *
  * @author Christian/Tobi
+ * @deprecated Use {@link DAViSFX3HardwareInterface} for factory-opened SciDVS devices.
  */
+@Deprecated
 public class SciDVSHardwareInterface extends CypressFX3Biasgen {
 
 	protected SciDVSHardwareInterface(final Device device) {

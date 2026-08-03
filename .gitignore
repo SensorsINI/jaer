@@ -9,7 +9,12 @@
 /dist/
 hs_err*.log
 nbproject/build-native.xml~
-/exe4j-launcher/exe4j9/
+# Obsolete exe4j launcher (replaced by install4j); may still exist locally
+/exe4j-launcher/
+/jAERViewer_win64.exe
+/jAERViewer.exe
+/jaer_win_jre_x64.exe4j
+/dvs-slice-avi-writer.exe4j
 /installers/
 /install4j License key  2024-01-02 0834.txt
 exe*.tmp

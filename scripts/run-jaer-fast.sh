@@ -18,6 +18,20 @@ fi
 # Classpath separator is ':' on Unix
 JAER_CP="build/classes:lib/*:jars/*"
 
+# Split args: -D* / -X* / --* go to the JVM; everything else to JAERViewer (e.g. data files).
+JVM_EXTRA=()
+APP_ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        -D*|-X*|--*)
+            JVM_EXTRA+=("$arg")
+            ;;
+        *)
+            APP_ARGS+=("$arg")
+            ;;
+    esac
+done
+
 # OOM debug (uncomment as needed):
 # -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=oom.hprof
 # -XX:NativeMemoryTracking=summary
@@ -37,5 +51,7 @@ exec java \
   -Xmx10g \
   -Xrs \
   -splash:SplashScreen.png \
+  "${JVM_EXTRA[@]}" \
   -cp "$JAER_CP" \
-  net.sf.jaer.JAERViewer "$@"
+  net.sf.jaer.JAERViewer \
+  "${APP_ARGS[@]}"

@@ -194,6 +194,13 @@ abstract public class TypedEventExtractor<T extends BasicEvent> implements Event
         if (subsamplingEnabled) {
             skipBy = n / getSubsampleThresholdEventCount();
             incEach = getSubsampleThresholdEventCount() / (n % getSubsampleThresholdEventCount());
+        } else if (n > EventPacket.MAX_CAPACITY) {
+            // Live NRV (and similar) can deliver multi‑Mevent raw packets when ViewLoop lags;
+            // thin uniformly instead of growing EventPacket past MAX_CAPACITY / killing the loop.
+            skipBy = Math.max(1, (n + EventPacket.MAX_CAPACITY - 1) / EventPacket.MAX_CAPACITY);
+            log.warning(String.format(
+                    "Raw packet has %d events (> EventPacket.MAX_CAPACITY=%d); extracting every %d-th event",
+                    n, EventPacket.MAX_CAPACITY, skipBy));
         }
         if (skipBy == 0) {
             incEach = 0;

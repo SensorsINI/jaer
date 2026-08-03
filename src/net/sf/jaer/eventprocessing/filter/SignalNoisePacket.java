@@ -172,8 +172,10 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
     }
 
     /**
-     * Copy from another event packet, labeling all events as signal events that
-     * are unclassified
+     * Copy from another event packet. Non-{@link SignalNoiseEvent} sources are
+     * labeled as signal unless {@link BasicEvent#isSpecial()} (v2e / textio
+     * convention: special = labeled noise). Existing {@link SignalNoiseEvent}
+     * labels are preserved by {@link SignalNoiseEvent#copyFrom}.
      *
      * @param in
      */
@@ -183,7 +185,10 @@ public class SignalNoisePacket extends ApsDvsEventPacket<SignalNoiseEvent> {
         for (BasicEvent o : in) {
             SignalNoiseEvent sne = (SignalNoiseEvent) outItr.nextOutput();
             sne.copyFrom((BasicEvent) o);
-            sne.labelAsSignal(true);
+            if (!(o instanceof SignalNoiseEvent)) {
+                // v2e / DavisTextIo: special bit marks labeled noise
+                sne.labelAsSignal(!o.isSpecial());
+            }
             sne.unclassify();
         }
     }

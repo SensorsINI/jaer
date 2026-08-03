@@ -1,0 +1,91 @@
+file_identifier "FRME";
+
+namespace dv;
+
+/// Format values are compatible with OpenCV.
+/// Pixel layout follows OpenCV standard.
+enum FrameFormat : int8 {
+    OPENCV_8U_C1  = 0,
+    OPENCV_8S_C1  = 1,
+    OPENCV_16U_C1 = 2,
+    OPENCV_16S_C1 = 3,
+    OPENCV_32S_C1 = 4,
+    OPENCV_32F_C1 = 5,
+    OPENCV_64F_C1 = 6,
+    OPENCV_16F_C1 = 7,
+    OPENCV_8U_C2  = 8,
+    OPENCV_8S_C2  = 9,
+    OPENCV_16U_C2 = 10,
+    OPENCV_16S_C2 = 11,
+    OPENCV_32S_C2 = 12,
+    OPENCV_32F_C2 = 13,
+    OPENCV_64F_C2 = 14,
+    OPENCV_16F_C2 = 15,
+    OPENCV_8U_C3  = 16,
+    OPENCV_8S_C3  = 17,
+    OPENCV_16U_C3 = 18,
+    OPENCV_16S_C3 = 19,
+    OPENCV_32S_C3 = 20,
+    OPENCV_32F_C3 = 21,
+    OPENCV_64F_C3 = 22,
+    OPENCV_16F_C3 = 23,
+    OPENCV_8U_C4  = 24,
+    OPENCV_8S_C4  = 25,
+    OPENCV_16U_C4 = 26,
+    OPENCV_16S_C4 = 27,
+    OPENCV_32S_C4 = 28,
+    OPENCV_32F_C4 = 29,
+    OPENCV_64F_C4 = 30,
+    OPENCV_16F_C4 = 31
+}
+
+/// Image data source
+enum FrameSource : int8 {
+    /// Undefined source, this value indicates that source field shouldn't be considered at all
+    UNDEFINED,
+    /// Image comes from a frame sensor
+    SENSOR,
+    /// Image was accumulated
+    ACCUMULATION,
+    /// Image was accumulated using motion compensation
+    MOTION_COMPENSATION,
+    /// Image is synthetic, it does not represent any real data
+    SYNTHETIC,
+    /// Reconstructed image, it may come from a neural network that convert events to images
+    RECONSTRUCTION,
+    /// The image is designated for visualization only
+    VISUALIZATION,
+    /// Other sources, can be used to indicate a custom algorithm for image generation
+    OTHER
+}
+
+table Frame {
+	/// Central timestamp (µs), corresponds to exposure midpoint.
+	timestamp: int64;
+	/// Start of Frame (SOF) timestamp.
+	timestampStartOfFrame: int64;
+	/// End of Frame (EOF) timestamp.
+	timestampEndOfFrame: int64;
+	/// Start of Exposure (SOE) timestamp.
+	timestampStartOfExposure: int64;
+	/// End of Exposure (EOE) timestamp.
+	timestampEndOfExposure: int64;
+	/// Pixel format (grayscale, RGB, ...).
+	format : FrameFormat = OPENCV_8U_C1;
+	/// X axis length in pixels.
+	sizeX: int16;
+	/// Y axis length in pixels.
+	sizeY: int16;
+	/// X axis position (upper left offset) in pixels.
+	positionX: int16;
+	/// Y axis position (upper left offset) in pixels.
+	positionY: int16;
+	/// Pixel values, 8bit depth.
+	pixels: [uint8];
+	/// Exposure duration
+	exposure: int64;
+	/// Source of the image data, whether it's from sensor or from some form of event accumulation
+	source: FrameSource = UNDEFINED;
+}
+
+root_type Frame;

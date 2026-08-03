@@ -417,6 +417,27 @@ public class IMUSample {
     }
 
     /**
+     * Fills this sample from physical units as written to AEDAT-4 / DV IMU
+     * packets (same units as {@link #getAccelX()}, {@link #getGyroTiltX()},
+     * {@link #getTemperature()}, etc.).
+     */
+    public void setFromPhysicalUnits(final int timestampUs,
+            final float accelXg, final float accelYg, final float accelZg,
+            final float gyroTiltXdps, final float gyroYawYdps, final float gyroRollZdps,
+            final float temperatureC) {
+        this.timestampUs = timestampUs;
+        data[IMUSampleType.ax.code] = (short) Math.round(-accelXg / accelSensitivityScaleFactorGPerLsb);
+        data[IMUSampleType.ay.code] = (short) Math.round(accelYg / accelSensitivityScaleFactorGPerLsb);
+        data[IMUSampleType.az.code] = (short) Math.round(accelZg / accelSensitivityScaleFactorGPerLsb);
+        data[IMUSampleType.gx.code] = (short) Math.round(-gyroTiltXdps / gyroSensitivityScaleFactorDegPerSecPerLsb);
+        data[IMUSampleType.gy.code] = (short) Math.round(gyroYawYdps / gyroSensitivityScaleFactorDegPerSecPerLsb);
+        data[IMUSampleType.gz.code] = (short) Math.round(-gyroRollZdps / gyroSensitivityScaleFactorDegPerSecPerLsb);
+        data[IMUSampleType.temp.code] = (short) Math.round(
+                (temperatureC - temperatureOffsetDegC) / temperatureScaleFactorDegCPerLsb);
+        updateStatistics(timestampUs);
+    }
+
+    /**
      * Returns raw AE address corresponding to a particular IMU sample type from
      * this IMUSample object that has all sensor values. This method is used to
      * encode the sensor values as raw addresses.

@@ -653,10 +653,12 @@ public class JAERViewer {
     /**
      * The main launcher for AEViewer's.
      *
-     * @param args the first argument can be a recorded AE data filename (.dat)
-     * with full path; the viewer will play this file
+     * @param args optional recorded AE data filename, and/or {@code -Dname=value}
+     * flags (applied via {@link System#setProperty} when a shell passed them as
+     * app args instead of JVM args — common with unquoted {@code -D} in PowerShell)
      */
     public static void main(String[] args) {
+        final String[] fileArgs = applyLauncherArgsAsSystemProperties(args);
 
         Thread.UncaughtExceptionHandler handler = new LoggingThreadGroup("jAER UncaughtExceptionHandler");
         Thread.setDefaultUncaughtExceptionHandler(handler);
@@ -694,9 +696,15 @@ public class JAERViewer {
 //            }
         }
 
-        if (args.length > 0) {
-            log.info("starting with args[0]=" + args[0] + " in working directory=" + System.getProperty("user.dir"));
-            final File f = new File(args[0]);
+        if (fileArgs.length > 0) {
+            final File f = new File(fileArgs[0]);
+            if (!f.isFile()) {
+                log.warning("Ignoring non-file launch argument \"" + fileArgs[0]
+                        + "\" (from PowerShell quote -D flags, use --%, or set JAER_JVM_ARGS)");
+                SwingUtilities.invokeLater(() -> new JAERViewer());
+                return;
+            }
+            log.info("starting with file=" + f.getAbsolutePath() + " in working directory=" + System.getProperty("user.dir"));
             try {
                 JAERViewer jv = new JAERViewer();
                 while (jv.getNumViewers() == 0) {
@@ -707,7 +715,7 @@ public class JAERViewer {
                 JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + e);
             }
         } else {
-            log.info("starting with no arguments in working directory=" + System.getProperty("user.dir"));
+            log.info("starting with no file arguments in working directory=" + System.getProperty("user.dir"));
             SwingUtilities.invokeLater(new Runnable() {
 
                 @Override
@@ -717,6 +725,60 @@ public class JAERViewer {
             });
         }
 
+    }
+
+    /**
+     * Apply {@code -Dname=value} from the app argument list via
+     * {@link System#setProperty}; return remaining file-path args. Also repairs
+     * PowerShell mangling of {@code -Djaer.live.bench=true} into
+     * {@code .live.bench} + {@code true}.
+     */
+    static String[] applyLauncherArgsAsSystemProperties(String[] args) {
+        if (args == null || args.length == 0) {
+            return new String[0];
+        }
+        final ArrayList<String> files = new ArrayList<>(args.length);
+        for (int i = 0; i < args.length; i++) {
+            final String a = args[i];
+            if (a == null || a.isEmpty()) {
+                continue;
+            }
+            if (a.startsWith("-D") && a.length() > 2) {
+                setPropertyFromDashD(a.substring(2));
+                continue;
+            }
+            // PowerShell: -Djaer.live.bench=true → ".live.bench", "true"
+            if (a.startsWith(".") && i + 1 < args.length && isLooseTrueFalse(args[i + 1])) {
+                final String key = "jaer" + a;
+                if (key.startsWith("jaer.")) {
+                    System.setProperty(key, args[i + 1]);
+                    i++;
+                    continue;
+                }
+            }
+            if (a.startsWith("jaer.") && a.indexOf('=') > 0) {
+                setPropertyFromDashD(a);
+                continue;
+            }
+            if (a.startsWith("-")) {
+                continue; // unknown option, not a data file
+            }
+            files.add(a);
+        }
+        return files.toArray(new String[0]);
+    }
+
+    private static void setPropertyFromDashD(String nameEqualsValue) {
+        final int eq = nameEqualsValue.indexOf('=');
+        if (eq <= 0) {
+            System.setProperty(nameEqualsValue, "");
+            return;
+        }
+        System.setProperty(nameEqualsValue.substring(0, eq), nameEqualsValue.substring(eq + 1));
+    }
+
+    private static boolean isLooseTrueFalse(String s) {
+        return "true".equalsIgnoreCase(s) || "false".equalsIgnoreCase(s);
     }
 
 }

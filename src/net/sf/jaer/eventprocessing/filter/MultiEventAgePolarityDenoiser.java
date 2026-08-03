@@ -148,6 +148,8 @@ public class MultiEventAgePolarityDenoiser extends SpatioTemporalCorrelationFilt
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         resetCountsAndNegativeEvents();
+        signalNoiseClassificationEnabled = (in instanceof SignalNoisePacket)
+                || (in != null && in.getEventPrototype() instanceof SignalNoiseEvent);
         tauUs = (int) Math.round(getCorrelationTimeS() * 1e6f);
         ssx = sxm1 >> subsampleBy;
         ssy = sym1 >> subsampleBy;

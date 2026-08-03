@@ -76,7 +76,7 @@ import net.sf.jaer.eventprocessing.TimeLimiter;
  * @see BasicEvent
  * @see BasicEvent#isFilteredOut()
  */
-public class EventPacket<E extends BasicEvent> implements /* EventPacketInterface<E>, */ Cloneable, Iterable<E> {
+public class EventPacket<E extends BasicEvent> implements /* EventPacketInterface<E>, */ Cloneable, Iterable<E>, TypedDataPacket {
 
     static final Logger log = Logger.getLogger(EventPacket.class.getName());
     /**
@@ -459,8 +459,11 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         @Override
         final public E nextOutput() {
             if (size >= capacity) {
-                enlargeCapacity();
-                // System.out.println("enlarged "+EventPacket.this);
+                if (!enlargeCapacity()) {
+                    // Hard cap / OOM: overwrite last slot so ViewLoop stays alive (NRV megapackets).
+                    elementData[capacity - 1].setFilteredOut(false);
+                    return elementData[capacity - 1];
+                }
             }
             elementData[size].setFilteredOut(false);
             return elementData[size++];
@@ -487,7 +490,11 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         public void writeToNextOutput(final E event) {
             {
                 if (size >= capacity) {
-                    enlargeCapacity();
+                    if (!enlargeCapacity()) {
+                        event.setFilteredOut(false);
+                        elementData[capacity - 1] = event;
+                        return;
+                    }
                 }
                 // System.out.println("at position "+size+" wrote event "+event);
                 event.setFilteredOut(false);
@@ -612,13 +619,34 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
-     * Enlarges capacity by some factor, then copies all event references to the
-     * new packet
+     * Hard cap on packet capacity to avoid OutOfMemoryError when a runaway
+     * extractor/filter tries to materialize an entire APS frame as events.
+     * Sized to cover large live AE buffers (e.g. NRV ~4M) with headroom; callers
+     * that hit the cap must not kill {@code AEViewer.ViewLoop}.
      */
-    private void enlargeCapacity() {
+    public static final int MAX_CAPACITY = 8_388_608; // 2^23
+
+    private static final long CAPACITY_WARN_INTERVAL_MS = 2000;
+    private static volatile long lastCapacityWarnMs = 0;
+
+    /**
+     * Enlarges capacity by some factor, then copies all event references to the
+     * new packet.
+     *
+     * @return true if capacity grew; false if already at {@link #MAX_CAPACITY} or OOM
+     */
+    private boolean enlargeCapacity() {
         try {
-            EventPacket.log.info("enlarging capacity of " + this);
-            final int ncapacity = capacity * 2; // (capacity*3)/2+1;
+            if (capacity >= MAX_CAPACITY) {
+                warnCapacityCapped("at MAX_CAPACITY");
+                return false;
+            }
+            EventPacket.log.fine("enlarging capacity of " + this);
+            final int ncapacity = (int) Math.min((long) capacity * 2, MAX_CAPACITY);
+            if (ncapacity <= capacity) {
+                warnCapacityCapped("cannot grow past " + capacity);
+                return false;
+            }
             Object oldData[] = elementData;
             elementData = (E[]) Array.newInstance(eventClass, ncapacity);
             System.arraycopy(oldData, 0, elementData, 0, size);
@@ -627,10 +655,23 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
             // in up to new capacity with new events
             fillWithDefaultEvents(capacity, ncapacity);
             capacity = ncapacity;
+            return true;
         } catch (final OutOfMemoryError e) {
             EventPacket.log.log(Level.WARNING, "{0}: could not enlarge packet capacity from {1}", new Object[]{e.toString(), capacity});
-            throw new ArrayIndexOutOfBoundsException(e.toString() + ":could not enlarge capacity from " + capacity);
+            return false;
         }
+    }
+
+    private void warnCapacityCapped(String detail) {
+        final long now = System.currentTimeMillis();
+        if (now - lastCapacityWarnMs < CAPACITY_WARN_INTERVAL_MS) {
+            return;
+        }
+        lastCapacityWarnMs = now;
+        EventPacket.log.warning(String.format(
+                "EventPacket capacity capped at MAX_CAPACITY=%d (size=%d, %s); truncating further outputs. "
+                        + "High-rate sensors: check AE buffer size / logging compression load.",
+                MAX_CAPACITY, size, detail));
     }
 
     /**
@@ -644,7 +685,13 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
         if (n <= capacity) {
             return;
         }
-        EventPacket.log.info("enlarging capacity of " + this + " to " + n + " events");
+        if (n > MAX_CAPACITY) {
+            EventPacket.log.severe(String.format(
+                    "allocate(%d) exceeds MAX_CAPACITY=%d for %s; clamping", n, MAX_CAPACITY, this));
+            allocate(MAX_CAPACITY);
+            return;
+        }
+        EventPacket.log.fine("enlarging capacity of " + this + " to " + n + " events");
         final int ncapacity = n; // (capacity*3)/2+1;
         Object oldData[] = elementData;
         elementData = (E[]) Array.newInstance(eventClass, ncapacity);
@@ -682,7 +729,11 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     public void appendCopyOfEvent(final E event) {
         if (size >= capacity) {
-            enlargeCapacity();
+            if (!enlargeCapacity()) {
+                event.setFilteredOut(false);
+                elementData[capacity - 1].copyFrom(event);
+                return;
+            }
         }
         // System.out.println("at position "+size+" wrote event "+event);
         event.setFilteredOut(false);
@@ -891,6 +942,44 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
      */
     final public Class<E> getEventClass() {
         return eventClass;
+    }
+
+    /**
+     * jAER 3.0: uniform packet kind for this EventPacket. Inferred from
+     * {@link #eventClass} (e.g. {@link PolarityEvent} → {@link PacketType#POLARITY}).
+     */
+    @Override
+    public PacketType getPacketType() {
+        if (eventClass == null) {
+            return PacketType.POLARITY;
+        }
+        if (ExternalEvent.class.isAssignableFrom(eventClass)) {
+            return PacketType.SPECIAL;
+        }
+        if (PolarityEvent.class.isAssignableFrom(eventClass)) {
+            // ApsDvsEvent extends PolarityEvent — treat as polarity until purged
+            return PacketType.POLARITY;
+        }
+        if (eventClass.getName().contains("Ear") || eventClass.getName().contains("Cochlea")) {
+            return PacketType.EAR;
+        }
+        return PacketType.POLARITY;
+    }
+
+    @Override
+    public long getFirstTimestampUs() {
+        if (size == 0) {
+            return 0;
+        }
+        return getFirstTimestamp();
+    }
+
+    @Override
+    public long getLastTimestampUs() {
+        if (size == 0) {
+            return 0;
+        }
+        return getLastTimestamp();
     }
 
     /**

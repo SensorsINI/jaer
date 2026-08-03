@@ -8,6 +8,12 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
+/**
+ * SciDVS APS-DVS. Live USB opens as {@code DAViSFX3HardwareInterface} (same PID
+ * as Davis FX3); typed PacketBundle demux is shared with Davis
+ * ({@code hardware/DAViSFX3/usbTypedDemux}). The GAER
+ * {@code SciDVSHardwareInterface} is not factory-registered.
+ */
 @Description("SciDVS 126x112 pixel with APS-DVS DAVIS sensor")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class SciDVS extends DavisBaseCamera {

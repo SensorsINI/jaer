@@ -44,6 +44,8 @@ import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import java.util.ArrayList;
 import javax.swing.JCheckBoxMenuItem;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.UsbDevice;
+import net.sf.jaer.UsbDevices;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -54,7 +56,11 @@ import net.sf.jaer.event.ApsDvsEvent.ColorFilter;
 import net.sf.jaer.event.ApsDvsEvent.ReadoutType;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.ImuPacket;
 import net.sf.jaer.event.OutputEventIterator;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedEvent;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.graphics.Chip2DRenderer;
@@ -66,6 +72,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3.SPIConfigSequence;
+import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.DAViSFX3HardwareInterface;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -78,6 +85,10 @@ import net.sf.jaer.util.histogram.AbstractHistogram;
  *
  * @author tobi
  */
+@UsbDevices({
+    @UsbDevice(vid = CypressFX3.VID, pid = DAViSFX3HardwareInterface.PID_FX3),
+    @UsbDevice(vid = CypressFX3.VID, pid = DAViSFX3HardwareInterface.PID_FX2)
+})
 abstract public class DavisBaseCamera extends DavisChip implements RemoteControlled {
 
 //    public static final String HELP_URL_HW_USERGUIDES = "http://inilabs.com/support/hardware/";
@@ -338,6 +349,42 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
         return imuSample;
     }
 
+    /** Sets the latest IMU sample (e.g. from AEDAT-4 typed playback). */
+    public void setImuSample(IMUSample imuSample) {
+        this.imuSample = imuSample;
+    }
+
+    /**
+     * Called when USB typed demux completes an APS {@link FramePacket} so the
+     * DAVIS overlay (frame count / exposure / frame rate) stays in sync without
+     * extractBundle.
+     */
+    public void noteUsbAssembledFrame(FramePacket frame) {
+        frameCount++;
+        if (frame == null) {
+            return;
+        }
+        if (frame.getExposureUs() > 0) {
+            exposureDurationUs = frame.getExposureUs();
+            setMeasuredExposureMs(exposureDurationUs / 1000f);
+        }
+        // Same bookkeeping extractBundle uses for the overlay "Frame rate: X Hz"
+        final int sof = (int) frame.getTimestampStartUs();
+        if (sof != 0) {
+            if (frameExposureStartTimestampUs != 0) {
+                final int dt = sof - frameExposureStartTimestampUs;
+                if (dt > 0) {
+                    frameIntervalUs = dt;
+                    setFrameRateHz(1e6f / dt);
+                }
+            }
+            frameExposureStartTimestampUs = sof;
+        }
+        if (frame.getTimestampEndUs() != 0) {
+            frameExposureEndTimestampUs = (int) frame.getTimestampEndUs();
+        }
+    }
+
     @Override
     public int getMaxADC() {
         return DavisChip.MAX_ADC;
@@ -429,12 +476,21 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
 
         protected int autoshotEventsSinceLastShot = 0; // autoshot counter
 
+        /** jAER 3.0 typed demux state (extractBundle); does not affect extractPacket. */
+        private DavisFrameAssembler frameAssembler;
+        private EventPacket<PolarityEvent> bundlePolarityOut;
+        private ImuPacket bundleImuOut;
+        private PacketBundle reusedBundle;
+
         public DavisEventExtractor(final DavisBaseCamera chip) {
             super(chip);
             this.setXshift((byte)DavisChip.XSHIFT);
             this.setYshift((byte)DavisChip.YSHIFT);
             this.setXmask((byte)DavisChip.XMASK);
             this.setYmask((byte)DavisChip.YMASK); // used to construct raw address from synthetic events, such as those used for NoiseTesterFilter denoising studies. Ensures unique hashcode for HotPixelFilter
+            if (chip instanceof DavisBaseCamera) {
+                frameAssembler = new DavisFrameAssembler((DavisBaseCamera) chip);
+            }
         }
 
         int lastImuTs = 0; // DEBUG
@@ -647,6 +703,216 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             return out;
         } // extractPacket
 
+        /**
+         * jAER 3.0 hard break: demux raw AE into typed {@link PacketBundle}
+         * (DVS → {@link PolarityEvent}, APS → {@link FramePacket}, IMU →
+         * {@link ImuPacket}). Does not emit mixed {@link ApsDvsEventPacket}.
+         * Legacy {@link #extractPacket} remains for tools that still need it.
+         * Opt out with {@code -Djaer.legacyExtractBundle=true}.
+         */
+        @Override
+        synchronized public PacketBundle extractBundle(final AEPacketRaw in) {
+            if (Boolean.getBoolean("jaer.legacyExtractBundle")) {
+                if (reusedBundle == null) {
+                    reusedBundle = new PacketBundle();
+                } else {
+                    reusedBundle.clear();
+                }
+                EventPacket cooked = extractPacket(in);
+                if (cooked != null) {
+                    cooked.setRawPacket(in);
+                    reusedBundle.addAllowEmpty(cooked);
+                }
+                reusedBundle.setRawPacket(in);
+                return reusedBundle;
+            }
+            return extractBundleTyped(in);
+        }
+
+        /**
+         * Typed demux implementation (default {@link #extractBundle} path).
+         */
+        synchronized public PacketBundle extractBundleTyped(final AEPacketRaw in) {
+            if (reusedBundle == null) {
+                reusedBundle = new PacketBundle();
+            } else {
+                reusedBundle.clear();
+            }
+            if (!(getChip() instanceof DavisChip) || in == null) {
+                reusedBundle.setRawPacket(in);
+                return reusedBundle;
+            }
+            if (bundlePolarityOut == null) {
+                bundlePolarityOut = new EventPacket<>(PolarityEvent.class);
+            }
+            if (bundleImuOut == null) {
+                bundleImuOut = new ImuPacket();
+            }
+            if (frameAssembler == null) {
+                frameAssembler = new DavisFrameAssembler(DavisBaseCamera.this);
+            }
+            bundlePolarityOut.clear();
+            bundleImuOut.clear();
+
+            final int n = in.getNumEvents();
+            final int sx1 = getChip().getSizeX() - 1;
+            final boolean rollingShutter = !getDavisConfig().isGlobalShutter();
+            final int[] datas = in.getAddresses();
+            final int[] timestamps = in.getTimestamps();
+            OutputEventIterator<PolarityEvent> polItr = bundlePolarityOut.outputIterator();
+
+            enum ActiveKind { NONE, POLARITY, IMU }
+            ActiveKind active = ActiveKind.NONE;
+
+            for (int i = 0; i < n; i++) {
+                final int data = datas[i];
+
+                if ((incompleteIMUSampleException != null) || ((DavisChip.ADDRESS_TYPE_IMU & data) == DavisChip.ADDRESS_TYPE_IMU)) {
+                    if (IMUSample.extractSampleTypeCode(data) == 0) {
+                        try {
+                            final IMUSample possibleSample = IMUSample.constructFromAEPacketRaw(in, i, incompleteIMUSampleException);
+                            i += IMUSample.SIZE_EVENTS - 1;
+                            incompleteIMUSampleException = null;
+                            imuSample = possibleSample;
+                            // Do not flush or reset polarity here: outputIterator() resets size to 0,
+                            // and flushing per-IMU left only the first DVS chunk for render/stats.
+                            active = ActiveKind.IMU;
+                            bundleImuOut.appendCopy(possibleSample);
+                            continue;
+                        } catch (final IMUSample.IncompleteIMUSampleException ex) {
+                            incompleteIMUSampleException = ex;
+                            if ((missedImuSampleCounter++ % DavisEventExtractor.IMU_WARNING_INTERVAL) == 0) {
+                                Chip.log.warning(String.format("%s (obtained %d partial samples so far)", ex.toString(), missedImuSampleCounter));
+                            }
+                            break;
+                        } catch (final IMUSample.BadIMUDataException ex2) {
+                            if ((badImuDataCounter++ % DavisEventExtractor.IMU_WARNING_INTERVAL) == 0) {
+                                Chip.log.warning(String.format("%s (%d bad samples so far)", ex2.toString(), badImuDataCounter));
+                            }
+                            incompleteIMUSampleException = null;
+                            continue;
+                        }
+                    }
+                } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_DVS) {
+                    active = ActiveKind.POLARITY;
+                    final PolarityEvent e = polItr.nextOutput();
+                    e.reset();
+                    e.address = data;
+                    e.timestamp = timestamps[i];
+                    if ((data & DavisChip.EXTERNAL_INPUT_EVENT_ADDR) != 0) {
+                        e.setSpecial(true);
+                    }
+                    e.polarity = (data & DavisChip.POLMASK) == DavisChip.POLMASK ? PolarityEvent.Polarity.On : PolarityEvent.Polarity.Off;
+                    e.type = (byte) ((data & DavisChip.POLMASK) == DavisChip.POLMASK ? 1 : 0);
+                    e.x = (short) (sx1 - ((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+                    e.y = (short) ((data & DavisChip.YMASK) >>> DavisChip.YSHIFT);
+                    autoshotEventsSinceLastShot++;
+                } else if ((data & DavisChip.ADDRESS_TYPE_MASK) == DavisChip.ADDRESS_TYPE_APS) {
+                    // Do NOT flush polarity on APS (interleaved with DVS). Keep one polarity buffer
+                    // for the whole extractBundle; frames are added as they complete.
+                    if (active == ActiveKind.POLARITY || active == ActiveKind.IMU) {
+                        active = ActiveKind.NONE;
+                    }
+
+                    final int timestamp = timestamps[i];
+                    final short x = (short) (((data & DavisChip.XMASK) >>> DavisChip.XSHIFT));
+                    final short y = (short) (((data & DavisChip.YMASK) >>> DavisChip.YSHIFT));
+                    final boolean pixFirst = firstFrameAddress(x, y);
+                    final boolean pixLast = lastFrameAddress(x, y);
+                    ApsDvsEvent.ReadoutType readoutType = ApsDvsEvent.ReadoutType.Null;
+                    final int readout_type = (data & DavisChip.ADC_READCYCLE_MASK) >> DavisChip.ADC_NUMBER_OF_TRAILING_ZEROS;
+                    switch (readout_type) {
+                        case 0:
+                            readoutType = ApsDvsEvent.ReadoutType.ResetRead;
+                            break;
+                        case 1:
+                            readoutType = ApsDvsEvent.ReadoutType.SignalRead;
+                            break;
+                        default:
+                            break;
+                    }
+                    if (readoutType == ApsDvsEvent.ReadoutType.Null) {
+                        continue;
+                    }
+
+                    // Keep chip exposure bookkeeping in sync with legacy extractPacket
+                    if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.ResetRead)) {
+                        if (rollingShutter) {
+                            frameExposureStartTimestampUs = timestamp;
+                        }
+                    }
+                    if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.ResetRead) && !rollingShutter) {
+                        frameIntervalUs = timestamp - frameExposureStartTimestampUs;
+                        frameExposureEndTimestampUs = timestamp;
+                        exposureDurationUs = (int) (davisConfig.getExposureDelayMs() * 1000);
+                    }
+                    if (pixFirst && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
+                        frameExposureStartTimestampUs = timestamp;
+                    }
+                    if (pixLast && (readoutType == ApsDvsEvent.ReadoutType.SignalRead)) {
+                        frameExposureEndTimestampUs = timestamp;
+                        if (rollingShutter) {
+                            exposureDurationUs = timestamp - frameExposureStartTimestampUs;
+                        } else {
+                            exposureDurationUs = (int) (davisConfig.getExposureDelayMs() * 1000);
+                        }
+                    }
+
+                    final FramePacket frame = frameAssembler.process(data & DavisChip.ADC_DATA_MASK, timestamp, x, y,
+                            readoutType, pixFirst, pixLast, rollingShutter);
+                    if (frame != null) {
+                        reusedBundle.add(frame);
+                        increaseFrameCount(1);
+                        if (frame.getExposureUs() > 0) {
+                            exposureDurationUs = frame.getExposureUs();
+                        }
+                    }
+                }
+            }
+
+            // Flush remaining typed packets once at end (single polarity packet for the whole slice)
+            if (bundleImuOut != null && !bundleImuOut.isEmpty()) {
+                flushImu(reusedBundle, bundleImuOut);
+            }
+            if (bundlePolarityOut != null && !bundlePolarityOut.isEmpty()) {
+                flushPolarity(reusedBundle, bundlePolarityOut);
+            }
+
+            if ((getAutoshotThresholdEvents() > 0) && (autoshotEventsSinceLastShot > getAutoshotThresholdEvents())) {
+                takeSnapshot();
+                autoshotEventsSinceLastShot = 0;
+            }
+
+            reusedBundle.setRawPacket(in);
+            return reusedBundle;
+        }
+
+        /**
+         * Moves polarity events into the bundle without allocating a full copy
+         * EventPacket when possible (ownership transfer of the working buffer).
+         */
+        private void flushPolarity(PacketBundle bundle, EventPacket<PolarityEvent> src) {
+            if (src == null || src.isEmpty()) {
+                return;
+            }
+            // Ownership transfer: add the working packet, then replace it so further
+            // extractBundle calls do not mutate the packet already in the bundle.
+            bundle.add(src);
+            bundlePolarityOut = new EventPacket<>(PolarityEvent.class);
+        }
+
+        private void flushImu(PacketBundle bundle, ImuPacket src) {
+            if (src == null || src.isEmpty()) {
+                return;
+            }
+            ImuPacket copy = new ImuPacket(Math.max(ImuPacket.DEFAULT_CAPACITY, src.getSize()));
+            for (int i = 0; i < src.getSize(); i++) {
+                copy.appendCopy(src.get(i));
+            }
+            bundle.add(copy);
+            src.clear();
+        }
+
         protected ApsDvsEvent nextApsDvsEvent(final OutputEventIterator outItr) {
             final ApsDvsEvent e = (ApsDvsEvent) outItr.nextOutput();
             e.reset();
@@ -810,6 +1076,22 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             this.isDVSColorFilter = isDVSColorFilter;
             this.colorFilterSequence = colorFilterSequence;
             this.isDavisNotCDavisReadout = isDavisNotCDavisReadout;
+        }
+
+        /**
+         * Color APS demux into FramePacket is not yet implemented. Keep legacy
+         * mixed extractPacket wrapped in a PacketBundle until color assembler lands.
+         */
+        @Override
+        synchronized public PacketBundle extractBundle(final AEPacketRaw in) {
+            PacketBundle bundle = new PacketBundle();
+            EventPacket cooked = extractPacket(in);
+            if (cooked != null) {
+                cooked.setRawPacket(in);
+                bundle.addAllowEmpty(cooked);
+                bundle.setRawPacket(in);
+            }
+            return bundle;
         }
 
         /**

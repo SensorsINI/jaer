@@ -19,6 +19,8 @@ import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import prophesee.chip.PropheseeConfig;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.event.PacketBundle;
+import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
@@ -50,6 +52,8 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             new PropertyChangeEvent(PropheseeHardwareInterface.class, "NewEvents", null, null);
 
     private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("Prophesee");
+    /** Pref kill-switch for USB→PacketBundle polarity demux. */
+    public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
 
     static {
         VendorPrefsMigration.migrateHardwarePrefs(VendorPrefsMigration.LEGACY_PROPHESEE_HW_PACKAGE, PREFS);
@@ -89,6 +93,9 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private int usbNumBuffers = UsbReaderBufferSettings.loadNumBuffers(
             PREFS, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, DEFAULT_USB_NUM_BUFFERS, usbFifoSize, log, "Prophesee");
     private final AEPacketRawPool aePacketRawPool = new AEPacketRawPool(this);
+    private final PacketBundlePool packetBundlePool = new PacketBundlePool();
+    private PacketBundle lastPacketBundle = new PacketBundle();
+    private volatile boolean usbTypedDemuxActive = PREFS.getBoolean(PREF_USB_TYPED_DEMUX, true);
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
 
     private String serial = "";
@@ -106,6 +113,15 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
 
     public PropheseeHardwareInterface(Device device) {
         this.device = device;
+        log.info("Prophesee USB typed demux=" + usbTypedDemuxActive + " (pref " + PREF_USB_TYPED_DEMUX + ")");
+    }
+
+    boolean isUsbTypedDemuxActive() {
+        return usbTypedDemuxActive;
+    }
+
+    PacketBundlePool getPacketBundlePool() {
+        return packetBundlePool;
     }
 
     private int loadAeBufferSizePref() {
@@ -354,6 +370,8 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         final AEPacketRaw lastEventsAcquired;
         synchronized (aePacketRawPool) {
             aePacketRawPool.swap();
+            packetBundlePool.swap();
+            lastPacketBundle = packetBundlePool.readBuffer();
             eventCounter = 0;
             lastEventsAcquired = aePacketRawPool.readBuffer();
         }
@@ -367,6 +385,15 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         }
         return lastEventsAcquired;
+    }
+
+    @Override
+    public PacketBundle acquireAvailablePacketBundle() throws HardwareInterfaceException {
+        if (!usbTypedDemuxActive) {
+            return null;
+        }
+        acquireAvailableEventsFromDriver();
+        return lastPacketBundle;
     }
 
     private void computeEstimatedEventRate(AEPacketRaw events) {
@@ -514,18 +541,36 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         return stringDescriptors.clone();
     }
 
+    /**
+     * Populate device descriptor from libusb without claiming the interface.
+     */
+    public void ensureUsbDeviceDescriptor() {
+        if (deviceDescriptor != null || device == null) {
+            return;
+        }
+        deviceDescriptor = new DeviceDescriptor();
+        int status = LibUsb.getDeviceDescriptor(device, deviceDescriptor);
+        if (status != LibUsb.SUCCESS) {
+            log.warning("Could not read Prophesee USB device descriptor: " + LibUsb.errorName(status));
+            deviceDescriptor = null;
+        }
+    }
+
     @Override
     public short getVID_THESYCON_FX2_CPLD() {
+        ensureUsbDeviceDescriptor();
         return deviceDescriptor == null ? VID : deviceDescriptor.idVendor();
     }
 
     @Override
     public short getPID() {
+        ensureUsbDeviceDescriptor();
         return deviceDescriptor == null ? 0 : deviceDescriptor.idProduct();
     }
 
     @Override
     public short getDID() {
+        ensureUsbDeviceDescriptor();
         return deviceDescriptor == null ? 0 : deviceDescriptor.bcdDevice();
     }
 

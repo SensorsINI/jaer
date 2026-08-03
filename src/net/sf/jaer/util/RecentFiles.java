@@ -34,10 +34,14 @@ public class RecentFiles {
     ArrayList<File> fileList; // contains files and folders mixed together
     transient JMenu fileMenu;
     transient ActionListener listener;
-    int menuPosition=0;
     public static final int MAX_FILES=20, MAX_FOLDERS=15;
-    ArrayList<JMenuItem> fileMenuList=null, folderMenuList=null;
+    ArrayList<JMenuItem> fileMenuList=null;
     private static Logger log=Logger.getLogger("net.sf.jaer");
+
+    /** Separator before recent files, between files and folders, and before Preferences. */
+    private final JSeparator beforeFilesSep = new JSeparator();
+    private final JSeparator beforeFoldersSep = new JSeparator();
+    private final JSeparator beforePreferencesSep = new JSeparator();
     
     /** Creates a new instance of RecentFiles
      * @param prefs the Preferences node to store recent files in
@@ -51,13 +55,8 @@ public class RecentFiles {
         this.listener=listener;
         getPrefs();
         fileMenuList=new ArrayList<JMenuItem>(MAX_FILES);
-        
-        int insertAt = getRecentFilesInsertIndex();
-        fileMenu.insertSeparator(insertAt);
-        fileMenu.insertSeparator(insertAt); // we put stuff after this
         buildMenu();
     }
-    JSeparator fileSep=new JSeparator(), folderSep=new JSeparator();
 
     /**
      * Index at which to insert recent-file items: immediately before Preferences
@@ -91,10 +90,15 @@ public class RecentFiles {
             fileMenu.remove(i);
         }
         fileMenuList.clear();
+        fileMenu.remove(beforeFilesSep);
+        fileMenu.remove(beforeFoldersSep);
+        fileMenu.remove(beforePreferencesSep);
+
+        ArrayList<JMenuItem> fileItems = new ArrayList<>();
+        ArrayList<JMenuItem> folderItems = new ArrayList<>();
         int fileIndex=0;
         int folderIndex=0;
         for(File f:fileList){
-            // add files
             if(f==null){
                 System.err.println("RecentFiles.buildMenu(): null File in fileList");
                 continue;
@@ -109,9 +113,7 @@ public class RecentFiles {
                 item.setToolTipText(String.format("<html>%s<p>(Hold Shift and select to open folder)",f.getPath()));
                 item.addActionListener(listener);
                 item.setMnemonic(item.getText().charAt(0));
-                fileMenuList.add(item);
-                // Insert immediately before Preferences/Exit; each subsequent insert lands after prior items.
-                fileMenu.insert(item, getRecentFilesInsertIndex());
+                fileItems.add(item);
                 fileIndex++;
                 if(fileIndex>MAX_FILES) break;
             }else if(!f.isDirectory()){
@@ -119,7 +121,6 @@ public class RecentFiles {
             }
         }
         for(File f:fileList){
-            // add folders
             if(f==null){
                 System.err.println("RecentFiles.buildMenu(): null File in fileList");
                 continue;
@@ -130,12 +131,34 @@ public class RecentFiles {
                 item.setActionCommand(f.getPath());
                 item.setToolTipText(f.getPath());
                 item.addActionListener(listener);
-                fileMenuList.add(item);
-                fileMenu.insert(item, getRecentFilesInsertIndex());
+                folderItems.add(item);
                 folderIndex++;
                 if(folderIndex>MAX_FOLDERS) break;
             }
         }
+
+        boolean hasFiles = !fileItems.isEmpty();
+        boolean hasFolders = !folderItems.isEmpty();
+        if (!hasFiles && !hasFolders) {
+            return;
+        }
+
+        // Insert as a block immediately before Preferences/Exit:
+        // [sep] files... [sep] folders... [sep] Preferences
+        int idx = getRecentFilesInsertIndex();
+        fileMenu.add(beforeFilesSep, idx++);
+        for (JMenuItem item : fileItems) {
+            fileMenu.insert(item, idx++);
+            fileMenuList.add(item);
+        }
+        if (hasFolders) {
+            fileMenu.add(beforeFoldersSep, idx++);
+            for (JMenuItem item : folderItems) {
+                fileMenu.insert(item, idx++);
+                fileMenuList.add(item);
+            }
+        }
+        fileMenu.add(beforePreferencesSep, idx);
     }
     
     void putPrefs(){

@@ -1,0 +1,34 @@
+file_identifier "IMUS";
+
+namespace dv;
+
+table IMU {
+	/// Timestamp (µs).
+	timestamp: int64;
+	/// Temperature, measured in °C.
+	temperature: float;
+	/// Acceleration in the X axis, measured in g (9.81m/s²).
+	accelerometerX: float;
+	/// Acceleration in the Y axis, measured in g (9.81m/s²).
+	accelerometerY: float;
+	/// Acceleration in the Z axis, measured in g (9.81m/s²).
+	accelerometerZ: float;
+	/// Rotation in the X axis, measured in °/s.
+	gyroscopeX: float;
+	/// Rotation in the Y axis, measured in °/s.
+	gyroscopeY: float;
+	/// Rotation in the Z axis, measured in °/s.
+	gyroscopeZ: float;
+	/// Magnetometer X axis, measured in µT (magnetic flux density).
+	magnetometerX: float;
+	/// Magnetometer Y axis, measured in µT (magnetic flux density).
+	magnetometerY: float;
+	/// Magnetometer Z axis, measured in µT (magnetic flux density).
+	magnetometerZ: float;
+}
+
+table IMUPacket {
+	elements: [IMU] (native_inline);
+}
+
+root_type IMUPacket;

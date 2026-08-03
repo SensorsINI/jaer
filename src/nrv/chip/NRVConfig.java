@@ -203,10 +203,22 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         tryEnsureSettingsParsedFromPreferences();
     }
 
+    /**
+     * True when a register settings file has been loaded into memory (or already
+     * applied to an NRV device). Used by the "uninitialized configuration" warning.
+     * <p>
+     * Do not require {@link NRVHardwareInterface#isSettingsApplied()}: that flag is
+     * about I2C push to a live NRV camera. Returning false whenever the attached
+     * interface is missing or is a different camera (e.g. Davis while NRV chip is
+     * selected) caused a spurious warning even after a successful {@code .txt} load.
+     */
     @Override
     public boolean isInitialized() {
-        if (getHardwareInterface() instanceof NRVHardwareInterface) {
-            return ((NRVHardwareInterface) getHardwareInterface()).isSettingsApplied();
+        if (loadedSettings != null && !loadedSettings.isEmpty()) {
+            return true;
+        }
+        if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
+            return hw.isSettingsApplied();
         }
         return false;
     }
@@ -1267,7 +1279,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         if (getHardwareInterface() instanceof NRVHardwareInterface hw) {
             hw.writeRegister(setting.getSlaveAddr(), setting.getRegAddr(), newValue);
             setting.setApplied(true);
-            log.info(String.format("Wrote NRV register %02x:%04x=%02x", setting.getSlaveAddr(),
+            log.fine(String.format("Wrote NRV register %02x:%04x=%02x", setting.getSlaveAddr(),
                     setting.getRegAddr(), newValue & 0xff));
         } else {
             setting.setApplied(false);

@@ -15,12 +15,15 @@ import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
 import net.sf.jaer.util.DrawGL;
 
 /**
- * Writes AVI file from displayed AEViewer frames, The AVI file is in RAW
- * format.
+ * Writes AVI file from displayed AEViewer frames. Frame capture is driven by
+ * the AEViewer ViewLoop via {@link #requestFrameCapture()} /
+ * {@link #awaitFrameCapture(long)} so each rendered frame is written before the
+ * loop advances (recording may run slower than real time). AVI playback rate
+ * matches the AEViewer target rendering rate when
+ * {@link #isMatchViewerFrameRate()} is enabled.
  *
  * @author Tobi
  */
@@ -31,8 +34,6 @@ public class JaerAviWriter extends AbstractAviWriter {
     @Preferred private boolean showTimeFactor = getBoolean("showTimeFactor", false);
     private int fontSize = getInt("fontSize", 9);
     private float timeExpansionFactor = 1;
-    
-    private volatile boolean writeFrameNowFlag=false;
 
     public JaerAviWriter(AEChip chip) {
         super(chip);
@@ -46,37 +47,44 @@ public class JaerAviWriter extends AbstractAviWriter {
         if (in.getDurationUs() > 0) {
             timeExpansionFactor = in.getDurationUs() * 1e-6f * getFrameRate();
         }
-        writeFrameNowFlag=true; // frame is processed by filter chain, write it on next rendering cycle
-//        log.info("processing"); // TODO debug
+        // Frame capture is requested by AEViewer.ViewLoop immediately before paintFrame(),
+        // not here — that keeps one AVI frame per rendered view regardless of filter mode.
         return in;
     }
 
     @Override
     public void annotate(GLAutoDrawable drawable) {
         if (showTimeFactor) {
-            String s = null;
+            String s;
             if (timeExpansionFactor < 1) {
                 s = String.format("%.1fX slow-down", 1 / timeExpansionFactor);
             } else {
                 s = String.format("%.1fX speed-up", timeExpansionFactor);
             }
-            DrawGL.drawString(fontSize,0,0,0,Color.white,s);
+            DrawGL.drawString(fontSize, 0, 0, 0, Color.white, s);
         }
 
-        if (isRecordingActive() && isWriteEnabled() && writeFrameNowFlag) {
-            if(!chip.getAeViewer().isActiveRenderingEnabled()){
+        if (isRecordingActive() && isWriteEnabled() && isFrameCapturePending()) {
+            if (chip.getAeViewer() != null && !chip.getAeViewer().isActiveRenderingEnabled()) {
                 chip.getAeViewer().setActiveRenderingEnabled(true);
-                showPlainMessageDialogInSwingThread("Set active rendering enabled (View/View/Filtering options) to ensure that each frame is painted", "Active rendering enabled");
+                showPlainMessageDialogInSwingThread(
+                        "Set active rendering enabled (View/View/Filtering options) to ensure that each frame is painted",
+                        "Active rendering enabled");
             }
-            GL2 gl = drawable.getGL().getGL2();
-            BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(), drawable.getNativeSurface().getSurfaceHeight());
-            int timecode = chip.getAeViewer().getAePlayer().getTime();
-            writeFrame(bi, timecode);
-            writeFrameNowFlag=false; // TODO move to super
+            try {
+                GL2 gl = drawable.getGL().getGL2();
+                BufferedImage bi = toImage(gl, drawable.getNativeSurface().getSurfaceWidth(),
+                        drawable.getNativeSurface().getSurfaceHeight());
+                int timecode = chip.getAeViewer() != null && chip.getAeViewer().getAePlayer() != null
+                        ? chip.getAeViewer().getAePlayer().getTime()
+                        : 0;
+                writeFrame(bi, timecode);
+            } finally {
+                // Always release ViewLoop wait, even if write failed/closed the file
+                signalFrameCaptureComplete();
+            }
         }
     }
-    
-    
 
     /**
      * @return the showTimeFactor
