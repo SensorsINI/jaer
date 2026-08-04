@@ -206,6 +206,20 @@ public class DavisColorRenderer extends DavisRenderer {
         return (x & 1) == 0 ? 3 : 2;
     }
 
+    /**
+     * Bayer channel for a DVS event: prefer {@link ApsDvsEvent#getColorFilter()}
+     * when present, else the chip CFA pattern at {@code (x,y)}.
+     */
+    private ColorFilter colorFilterForEvent(final PolarityEvent e) {
+        if (e instanceof ApsDvsEvent) {
+            final ColorFilter cf = ((ApsDvsEvent) e).getColorFilter();
+            if (cf != null) {
+                return cf;
+            }
+        }
+        return colorFilterSequence[cfaPhaseIndex(e.x & 0xffff, e.y & 0xffff)];
+    }
+
     @Override
     protected void updateEventMaps(final PolarityEvent e) {
         float[] map = dvsEventsMap.array();
@@ -226,10 +240,10 @@ public class DavisColorRenderer extends DavisRenderer {
             idx3 = getPixMapIndex(e.x + 1, e.y + 1);
         }
 
-        // Change colors of DVS if SeparatyAPSByColor is selected: instead of Red/Green
-        // for all, each quarter has its own color based on the pixel color.
+        // Colorize DVS by Bayer site. Typed PolarityEvent (AEDAT-4 / USB demux) has no
+        // ColorFilter field — derive from CFA at (x,y). Legacy ApsDvsEvent still carries it.
         if (!isDVSQuarterOfAPS /*&& isSeparateAPSByColor()*/) {
-            switch (((ApsDvsEvent) e).getColorFilter()) {
+            switch (colorFilterForEvent(e)) {
                 case R:
                     // Red
                     onColor[0] = colorContrastAdditiveStep;
@@ -838,6 +852,20 @@ public class DavisColorRenderer extends DavisRenderer {
                 image[index + 2] = gray;
                 image[index + 3] = 1;
             }
+        }
+    }
+
+    /**
+     * AEDAT-4 DV color frames are already OpenCV BGR→RGB; skip CFA demosaic.
+     * Mono/CFA {@link net.sf.jaer.event.FramePacket}s still use {@link #endFrame(int)}.
+     */
+    @Override
+    protected void finalizeAppliedFramePacket(final int timestampEndUs, final boolean cfaOrMono) {
+        if (cfaOrMono) {
+            endFrame(timestampEndUs);
+        } else {
+            // Already RGB: copy pixmap without processColorFrame / demosaic.
+            super.endFrame(timestampEndUs, true);
         }
     }
 

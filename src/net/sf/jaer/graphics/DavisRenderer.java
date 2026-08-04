@@ -298,24 +298,41 @@ public class DavisRenderer extends AEChipRenderer {
             return;
         }
 
-        // Legacy mixed packet (color Davis extractBundle fallback)
+        // Color Davis extractBundle still wraps a legacy mixed ApsDvsEventPacket for
+        // polarity. Render that first (may resetMaps), then blit typed FramePackets
+        // from AEDAT-4 / USB so they are not discarded by the early return.
+        boolean renderedMixedApsDvs = false;
         for (TypedDataPacket p : bundle) {
             if (p instanceof ApsDvsEventPacket) {
                 render((EventPacket) p);
-                return;
+                renderedMixedApsDvs = true;
+                break;
             }
         }
 
-        renderedApsFrame = false;
-        if (isDisplayFrames()) {
-            for (TypedDataPacket p : bundle) {
-                if (p instanceof FramePacket) {
+        final boolean displayFrames = isDisplayFrames();
+        int framePacketsInBundle = 0;
+        // If mixed path already painted APS from address-events, keep that flag;
+        // FramePackets (AEDAT-4) overwrite the pixmap when present.
+        if (!renderedMixedApsDvs) {
+            renderedApsFrame = false;
+        }
+        for (TypedDataPacket p : bundle) {
+            if (p instanceof FramePacket) {
+                framePacketsInBundle++;
+                if (displayFrames) {
                     applyFramePacket((FramePacket) p);
                 }
             }
         }
+        if (framePacketsInBundle > 0 || log.isLoggable(java.util.logging.Level.FINER)) {
+            log.log(framePacketsInBundle > 0 ? java.util.logging.Level.FINE : java.util.logging.Level.FINER,
+                    String.format("render(PacketBundle) mixedApsDvs=%s displayFrames=%s framePackets=%d applied=%s polarityEvents=%d",
+                            renderedMixedApsDvs, displayFrames, framePacketsInBundle, renderedApsFrame,
+                            bundle.getNumPolarityEvents()));
+        }
 
-        // USB demux / extractBundle: keep chip.imuSample current for overlay / Steadicam
+        // USB demux / extractBundle / AEDAT-4: keep chip.imuSample current for overlay
         if (chip instanceof DavisBaseCamera) {
             for (TypedDataPacket p : bundle) {
                 if (p instanceof ImuPacket) {
@@ -327,10 +344,12 @@ public class DavisRenderer extends AEChipRenderer {
             }
         }
 
-        EventPacket polarity = bundle.getFirstPolarityPacket();
-        if (polarity != null && !polarity.isEmpty()) {
-            numEventTypes = polarity.getNumCellTypes();
-            renderPureDvsEvents(polarity);
+        if (!renderedMixedApsDvs) {
+            EventPacket polarity = bundle.getFirstPolarityPacket();
+            if (polarity != null && !polarity.isEmpty()) {
+                numEventTypes = polarity.getNumCellTypes();
+                renderPureDvsEvents(polarity);
+            }
         }
 
         if (chip.getAeViewer() != null && !chip.getAeViewer().isPaused()) {
@@ -345,9 +364,23 @@ public class DavisRenderer extends AEChipRenderer {
     /**
      * Blit a completed CDS frame into the APS pixmap (replaces per-AE
      * {@link #updateFrameBuffer} path).
+     * <p>
+     * {@link FramePacket.ColorMode#GRAYSCALE} is treated as raw CFA / mono and
+     * may be demosaiced by {@link #finalizeAppliedFramePacket}. RGB/RGBA packets
+     * (e.g. DV OpenCV {@code 8U_C3}) are written as color and must not be
+     * demosaiced again.
      */
     protected void applyFramePacket(final FramePacket frame) {
-        if (frame == null || frame.isEmpty() || skipFrame()) {
+        if (frame == null) {
+            log.fine("applyFramePacket: null frame");
+            return;
+        }
+        if (frame.isEmpty()) {
+            log.fine("applyFramePacket: empty " + frame);
+            return;
+        }
+        if (skipFrame()) {
+            log.fine("applyFramePacket: skipped by adaptive render skipping " + frame);
             return;
         }
         if (getChip() instanceof DavisBaseCamera) {
@@ -359,43 +392,53 @@ public class DavisRenderer extends AEChipRenderer {
         final int w = frame.getWidth();
         final int h = frame.getHeight();
         final short[] pix = frame.getPixels();
+        final int ch = Math.max(1, frame.channelsPerPixel());
+        final boolean rgb = ch >= 3;
         minValue = Float.MAX_VALUE;
         maxValue = Float.MIN_VALUE;
         if (computeHistograms) {
             nextHist.reset();
         }
+        int written = 0;
+        int clipped = 0;
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                final int val = pix[y * w + x] & 0xffff;
-                if (val < minValue) {
-                    minValue = val;
+                final int base = (y * w + x) * ch;
+                final int valR = pix[base] & 0xffff;
+                final int valG = rgb ? (pix[base + 1] & 0xffff) : valR;
+                final int valB = rgb ? (pix[base + 2] & 0xffff) : valR;
+                final int valHist = rgb ? ((valR + valG + valB) / 3) : valR;
+                if (valHist < minValue) {
+                    minValue = valHist;
                 }
-                if (val > maxValue) {
-                    maxValue = val;
+                if (valHist > maxValue) {
+                    maxValue = valHist;
                 }
                 if (computeHistograms) {
                     if (!((DavisChip) chip).getAutoExposureController().isCenterWeighted()) {
-                        nextHist.add(val);
+                        nextHist.add(valHist);
                     } else {
                         float d = (1 - Math.abs(((float) x - (sizeX / 2)) / sizeX)) + Math.abs(((float) y - (sizeY / 2)) / sizeY);
                         d *= d;
                         if (random.nextFloat() > d) {
-                            nextHist.add(val);
+                            nextHist.add(valHist);
                         }
                     }
                 }
-                final float fval = normalizeFramePixel(val);
                 final int index = getPixMapIndex(x, y);
                 if ((index < 0) || (index + 3 >= buf.length)) {
+                    clipped++;
                     continue;
                 }
-                buf[index] = fval;
-                buf[index + 1] = fval;
-                buf[index + 2] = fval;
+                buf[index] = normalizeFramePixel(valR);
+                buf[index + 1] = normalizeFramePixel(valG);
+                buf[index + 2] = normalizeFramePixel(valB);
                 buf[index + 3] = 1;
+                written++;
             }
         }
-        endFrame((int) frame.getTimestampEndUs());
+        // CFA/mono may demosaic; already-RGB frames must skip that step.
+        finalizeAppliedFramePacket((int) frame.getTimestampEndUs(), !rgb);
         if (computeHistograms) {
             final SimpleHistogram tmp = currentHist;
             currentHist = nextHist;
@@ -403,9 +446,25 @@ public class DavisRenderer extends AEChipRenderer {
             nextHist.reset();
         }
         renderedApsFrame = true;
+        // AEDAT-4 / typed USB: keep DAVIS overlay (Frame N / exposure / Hz) in sync
+        if (chip instanceof DavisBaseCamera) {
+            ((DavisBaseCamera) chip).noteUsbAssembledFrame(frame);
+        }
         if (chip instanceof DavisChip) {
             ((DavisChip) chip).controlExposure();
         }
+        log.fine(String.format(
+                "applyFramePacket OK %s rgb=%s min=%d max=%d written=%d clipped=%d sizeX=%d sizeY=%d pixmapLen=%d",
+                frame, rgb, (int) minValue, (int) maxValue, written, clipped, sizeX, sizeY,
+                buf == null ? -1 : buf.length));
+    }
+
+    /**
+     * Finish an {@link #applyFramePacket} blit. When {@code cfaOrMono} is true,
+     * subclasses (color Davis) may demosaic; when false the pixmap is already RGB.
+     */
+    protected void finalizeAppliedFramePacket(final int timestampEndUs, final boolean cfaOrMono) {
+        endFrame(timestampEndUs);
     }
 
     protected void renderApsDvsEvents(final EventPacket pkt) {

@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -56,8 +57,11 @@ import net.sf.jaer.util.EngineeringFormat;
 public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    /** v8: packet-level sparse index (no per-event address/timestamp dump). */
-    private static final int INDEX_CACHE_VERSION = 8;
+    /**
+     * v9: packet-level sparse index (no per-event dump). Chip class is not part of
+     * the cache — indexing is file-format only; AEChip affects decode/render only.
+     */
+    private static final int INDEX_CACHE_VERSION = 9;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
     private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
@@ -180,6 +184,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (bundle == null) {
             return;
         }
+        final int nFrames = pendingFrames.size();
+        final int nImu = pendingImu.size();
         for (FramePacket frame : pendingFrames) {
             bundle.add(frame);
         }
@@ -188,6 +194,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (chip instanceof DavisBaseCamera && imu.getSize() > 0) {
                 ((DavisBaseCamera) chip).setImuSample(imu.get(imu.getSize() - 1));
             }
+        }
+        if (nFrames > 0 || log.isLoggable(Level.FINER)) {
+            log.log(nFrames > 0 ? Level.FINE : Level.FINER,
+                    String.format("AEDAT-4 appendTypedPackets window=[%d,%d] frames=%d imuPkts=%d (indexed frames=%d)",
+                            lastReadT0, lastReadT1, nFrames, nImu, frameRefs.length));
         }
         pendingFrames.clear();
         pendingImu.clear();
@@ -524,12 +535,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         final boolean useDavisPacking = chip instanceof DavisChip;
         int sx1 = chip == null ? 0 : chip.getSizeX() - 1;
         if (useDavisPacking) {
-            if (x > sx1 || y >= (chip == null ? 0 : chip.getSizeY())) {
+            final int sy = chip == null ? 0 : chip.getSizeY();
+            if (x > sx1 || y >= sy) {
                 return -1;
             }
+            // DV/OpenCV: origin top-left. jAER Davis addresses / display: flip X and Y.
+            final int sy1 = sy - 1;
             return DavisChip.ADDRESS_TYPE_DVS
                     | (((sx1 - x) & 0x3ff) << DavisChip.XSHIFT)
-                    | ((y & 0x1ff) << DavisChip.YSHIFT)
+                    | (((sy1 - y) & 0x1ff) << DavisChip.YSHIFT)
                     | ((type & 1) << DavisChip.POLSHIFT);
         }
         if (extractor != null) {
@@ -549,7 +563,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         int fi = frameCursor;
         while (fi < frameRefs.length && frameRefs[fi].unixStart <= t1) {
             if (frameRefs[fi].unixEnd >= t0) {
-                pendingFrames.add(decodeFrame(frameRefs[fi]));
+                FramePacket decoded = decodeFrame(frameRefs[fi]);
+                pendingFrames.add(decoded);
+                if (log.isLoggable(Level.FINE)) {
+                    log.fine(String.format(
+                            "AEDAT-4 collectTyped frameRef[%d] relTs=[%d,%d] -> %s empty=%s",
+                            fi, frameRefs[fi].unixStart, frameRefs[fi].unixEnd, decoded, decoded.isEmpty()));
+                }
             }
             fi++;
         }
@@ -574,28 +594,117 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             w = chip != null ? chip.getSizeX() : 0;
             h = chip != null ? chip.getSizeY() : 0;
         }
-        FramePacket out = new FramePacket(w, h, FramePacket.ColorMode.GRAYSCALE);
+        final int nbytes = frame.pixelsLength();
+        final byte fmt = frame.format();
+        final FrameLayout layout = resolveFrameLayout(fmt, w, h, nbytes);
+        FramePacket out = new FramePacket(w, h, layout.colorMode);
         out.setTimestampStartUs((int) ref.unixStart);
         out.setTimestampEndUs((int) ref.unixEnd);
         out.setExposureUs((int) Math.min(Integer.MAX_VALUE, Math.max(0, frame.exposure())));
         out.setSource(frame.source());
         short[] pixels = out.getPixels();
-        int nbytes = frame.pixelsLength();
-        boolean u16 = frame.format() == FrameFormat.OPENCV_16U_C1 || nbytes >= pixels.length * 2;
-        if (u16) {
-            int n = Math.min(pixels.length, nbytes / 2);
-            for (int i = 0; i < n; i++) {
-                int lo = frame.pixels(i * 2) & 0xff;
-                int hi = frame.pixels(i * 2 + 1) & 0xff;
-                pixels[i] = (short) (lo | (hi << 8));
-            }
-        } else {
-            int n = Math.min(pixels.length, nbytes);
-            for (int i = 0; i < n; i++) {
-                pixels[i] = (short) ((frame.pixels(i) & 0xff) << 8);
+        final int ch = layout.channels;
+        final int srcStride = w * ch * (layout.u16 ? 2 : 1);
+        // DV/OpenCV: y=0 at top. jAER Davis pixmap: y=0 at bottom — flip while copying.
+        for (int y = 0; y < h; y++) {
+            final int srcY = h - 1 - y;
+            final int srcRow = srcY * srcStride;
+            final int dstRow = y * w * ch;
+            for (int x = 0; x < w; x++) {
+                final int srcPix = srcRow + x * ch * (layout.u16 ? 2 : 1);
+                final int dstPix = dstRow + x * ch;
+                if (layout.u16) {
+                    for (int c = 0; c < ch; c++) {
+                        final int o = srcPix + c * 2;
+                        if (o + 1 >= nbytes) {
+                            break;
+                        }
+                        int lo = frame.pixels(o) & 0xff;
+                        int hi = frame.pixels(o + 1) & 0xff;
+                        pixels[dstPix + c] = (short) (lo | (hi << 8));
+                    }
+                } else {
+                    for (int c = 0; c < ch; c++) {
+                        final int o = srcPix + c;
+                        if (o >= nbytes) {
+                            break;
+                        }
+                        // Expand 8-bit to jAER's 16-bit-ish APS range (same as mono 8U path).
+                        pixels[dstPix + c] = (short) ((frame.pixels(o) & 0xff) << 8);
+                    }
+                }
+                // OpenCV C3/C4 is BGR(A); FramePacket RGB stores R,G,B(,A).
+                if (layout.opencvBgr && ch >= 3) {
+                    short b = pixels[dstPix];
+                    short r = pixels[dstPix + 2];
+                    pixels[dstPix] = r;
+                    pixels[dstPix + 2] = b;
+                }
             }
         }
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format(
+                    "AEDAT-4 decodeFrame fmt=%d %dx%d nbytes=%d -> %s u16=%s bgr=%s (Y flipped to jAER)",
+                    fmt & 0xff, w, h, nbytes, layout.colorMode, layout.u16, layout.opencvBgr));
+        }
         return out;
+    }
+
+    /**
+     * Maps DV {@link FrameFormat} (+ nbytes fallback) to {@link FramePacket} layout.
+     * OpenCV multi-channel frames are BGR(A) in the file.
+     */
+    private static FrameLayout resolveFrameLayout(byte fmt, int w, int h, int nbytes) {
+        final int n = Math.max(0, w) * Math.max(0, h);
+        switch (fmt) {
+            case FrameFormat.OPENCV_8U_C3:
+                return new FrameLayout(FramePacket.ColorMode.RGB, 3, false, true);
+            case FrameFormat.OPENCV_16U_C3:
+                return new FrameLayout(FramePacket.ColorMode.RGB, 3, true, true);
+            case FrameFormat.OPENCV_8U_C4:
+                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, false, true);
+            case FrameFormat.OPENCV_16U_C4:
+                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, true, true);
+            case FrameFormat.OPENCV_16U_C1:
+                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, true, false);
+            case FrameFormat.OPENCV_8U_C1:
+                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, false, false);
+            default:
+                break;
+        }
+        // Infer from payload size when format is missing/unknown (do not treat C3 as u16 C1).
+        if (n > 0) {
+            if (nbytes == n * 3) {
+                return new FrameLayout(FramePacket.ColorMode.RGB, 3, false, true);
+            }
+            if (nbytes == n * 6) {
+                return new FrameLayout(FramePacket.ColorMode.RGB, 3, true, true);
+            }
+            if (nbytes == n * 4) {
+                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, false, true);
+            }
+            if (nbytes == n * 8) {
+                return new FrameLayout(FramePacket.ColorMode.RGBA, 4, true, true);
+            }
+            if (nbytes >= n * 2) {
+                return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, true, false);
+            }
+        }
+        return new FrameLayout(FramePacket.ColorMode.GRAYSCALE, 1, false, false);
+    }
+
+    private static final class FrameLayout {
+        final FramePacket.ColorMode colorMode;
+        final int channels;
+        final boolean u16;
+        final boolean opencvBgr;
+
+        FrameLayout(FramePacket.ColorMode colorMode, int channels, boolean u16, boolean opencvBgr) {
+            this.colorMode = colorMode;
+            this.channels = channels;
+            this.u16 = u16;
+            this.opencvBgr = opencvBgr;
+        }
     }
 
     private ImuPacket decodeImu(PacketRef ref) throws IOException {
@@ -708,10 +817,6 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
     }
 
-    private String chipClassName() {
-        return chip == null ? "null" : chip.getClass().getName();
-    }
-
     private File indexCacheFile() {
         String name = String.format("%s.%d.%d.aedat4idx",
                 file.getName(), file.length(), file.lastModified());
@@ -731,14 +836,6 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             if (in.readLong() != file.length() || in.readLong() != file.lastModified()) {
                 log.info("AEDAT-4 index cache stale, rebuilding: " + cache);
-                return false;
-            }
-            String cachedChip = in.readUTF();
-            String currentChip = chipClassName();
-            if (!cachedChip.equals(currentChip)) {
-                log.info(String.format(
-                        "AEDAT-4 index cache chip mismatch (cache=%s, viewer=%s), rebuilding: %s",
-                        cachedChip, currentChip, cache.getName()));
                 return false;
             }
             if (progressMonitor != null) {
@@ -792,7 +889,6 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeInt(INDEX_CACHE_VERSION);
             out.writeLong(file.length());
             out.writeLong(file.lastModified());
-            out.writeUTF(chipClassName());
             out.writeLong(baseUnixUs);
             out.writeLong(eventCount);
             out.writeLong(frameCount);

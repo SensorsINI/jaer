@@ -11,7 +11,9 @@ public final class FrameFormat {
     public static final byte OPENCV_16F_C1 = 7;
     public static final byte OPENCV_8U_C2 = 8;
     public static final byte OPENCV_8U_C3 = 16;
+    public static final byte OPENCV_16U_C3 = 18;
     public static final byte OPENCV_8U_C4 = 24;
+    public static final byte OPENCV_16U_C4 = 26;
 
     private FrameFormat() {
     }

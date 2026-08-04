@@ -58,6 +58,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -310,6 +311,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private final Object viewLoopPauseLock = new Object();
     /** WIP experimental: max wait for ViewLoop exit before {@link System#exit(int)}. */
     private static final long VIEWLOOP_EXIT_JOIN_TIMEOUT_MS = 3000;
+    /**
+     * If orderly close (ViewLoop join + {@link #cleanup()}) has not called
+     * {@link System#exit} within this time, a non-EDT watchdog forces exit.
+     * Must exceed {@link #VIEWLOOP_EXIT_JOIN_TIMEOUT_MS}.
+     */
+    private static final long EXIT_WATCHDOG_MS = 8000;
+    /** If {@link System#exit} itself hangs in shutdown hooks, {@link Runtime#halt} after this. */
+    private static final long EXIT_HALT_AFTER_EXIT_MS = 3000;
+    private final AtomicBoolean exitWatchdogArmed = new AtomicBoolean(false);
     FilterChain filterChain = null;
     private FilterFrame filterFrame = null;
     RecentFiles recentFiles = null;
@@ -4971,22 +4981,34 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if ((biasgenFrame != null) && !biasgenFrame.isModificationsSaved()) {
                 return;
             }
-            stopViewLoopForExit();
-            cleanup();
+            final boolean lastViewer = jaerViewer.getViewers().size() == 1;
+            // Arm before any work that can block the EDT (USB close, ViewLoop join).
+            if (lastViewer) {
+                armExitWatchdog();
+            }
+            try {
+                stopViewLoopForExit();
+                cleanup();
 
-            if (jaerViewer.getViewers().size() == 1) {
-                log.info("window closing event, only 1 viewer, calling System.exit");
-                //            stopMe(); // TODO seems to deadlock
-                System.exit(0);
-            } else {
-                log.info("window closing event with more than one AEViewer window, calling stopMe");
-                if ((filterFrame != null) && filterFrame.isVisible()) {
-                    filterFrame.dispose();  // close this frame if the window is closed
+                if (lastViewer) {
+                    log.info("window closing event, only 1 viewer, calling System.exit");
+                    //            stopMe(); // TODO seems to deadlock
+                    System.exit(0);
+                } else {
+                    log.info("window closing event with more than one AEViewer window, calling stopMe");
+                    if ((filterFrame != null) && filterFrame.isVisible()) {
+                        filterFrame.dispose();  // close this frame if the window is closed
+                    }
+
+                    // TODO should close biasgen window also
+                    stopMe();
+                    dispose();
                 }
-
-                // TODO should close biasgen window also
-                stopMe();
-                dispose();
+            } catch (Throwable t) {
+                log.log(Level.SEVERE, "orderly window-close shutdown failed", t);
+                if (lastViewer) {
+                    System.exit(1);
+                }
             }
 	}//GEN-LAST:event_formWindowClosing
 
@@ -6373,6 +6395,51 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
+     * Starts a daemon watchdog <em>before</em> orderly shutdown work that may
+     * block the EDT (USB close, ViewLoop join). A try/finally on the EDT cannot
+     * recover from that hang; this thread can still call {@link System#exit}
+     * and, if shutdown hooks also hang, {@link Runtime#halt}.
+     * <p>
+     * Does <b>not</b> help if the EDT is already deadlocked before the user
+     * clicks close — {@code windowClosing} never runs, so the watchdog is never
+     * armed.
+     */
+    private void armExitWatchdog() {
+        if (!exitWatchdogArmed.compareAndSet(false, true)) {
+            return;
+        }
+        Thread watchdog = new Thread(() -> {
+            try {
+                Thread.sleep(EXIT_WATCHDOG_MS);
+            } catch (InterruptedException e) {
+                return;
+            }
+            log.severe(String.format(
+                    "Orderly AEViewer shutdown did not finish within %d ms (EDT blocked, USB hang, or deadlock); calling System.exit(1)",
+                    EXIT_WATCHDOG_MS));
+            Thread haltThread = new Thread(() -> {
+                try {
+                    Thread.sleep(EXIT_HALT_AFTER_EXIT_MS);
+                } catch (InterruptedException e) {
+                    return;
+                }
+                // Last resort: skip shutdown hooks if System.exit itself hung.
+                System.err.println("AEViewer: System.exit hung in shutdown hooks; Runtime.halt(1)");
+                System.err.flush();
+                Runtime.getRuntime().halt(1);
+            }, "AEViewer-ExitHalt");
+            haltThread.setDaemon(true);
+            haltThread.start();
+            System.exit(1);
+        }, "AEViewer-ExitWatchdog");
+        watchdog.setDaemon(true);
+        watchdog.start();
+        log.info(String.format(
+                "Armed AEViewer exit watchdog (%d ms -> System.exit(1), then %d ms -> Runtime.halt(1))",
+                EXIT_WATCHDOG_MS, EXIT_HALT_AFTER_EXIT_MS));
+    }
+
+    /**
      * WIP experimental: stop ViewLoop and wait briefly so JVM shutdown is not
      * blocked by this non-daemon thread stuck in wait/sleep/USB/JOGL.
      */
@@ -6762,12 +6829,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 return;
             }
 
-            stopViewLoopForExit();
-            cleanup();
-
-            dispose();
-
-            System.exit(0);
+            armExitWatchdog();
+            try {
+                stopViewLoopForExit();
+                cleanup();
+                dispose();
+                System.exit(0);
+            } catch (Throwable t) {
+                log.log(Level.SEVERE, "orderly Exit-menu shutdown failed; forcing System.exit(1)", t);
+                System.exit(1);
+            }
 	}//GEN-LAST:event_exitMenuItemActionPerformed
 
 	private void preferencesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_preferencesMenuItemActionPerformed

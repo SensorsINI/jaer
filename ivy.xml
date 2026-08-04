@@ -63,8 +63,38 @@ MA 02110-1301  USA
 
         <!-- AEDAT-4 FlatBuffers (DV-compatible) -->
         <dependency org="com.google.flatbuffers" name="flatbuffers-java" rev="23.5.26" />
-        <!-- AEDAT-4 packet compression (DV IOHeader CompressionType) -->
+        <!-- AEDAT-4 LZ4:
+             * Write: lz4-java (native, independent blocks) — needed for live high-rate logging (NRV).
+             * Read:  commons-compress framed LZ4 — supports DV dependent-block frames that lz4-java rejects.
+             Overrides older commons-compress pulled transitively (e.g. bag-reader → 1.10).
+             Ivy maps Maven test/optional deps into default — exclude them (same issue as zstd-jni). -->
         <dependency org="org.lz4" name="lz4-java" rev="1.8.0" />
+        <dependency org="org.apache.commons" name="commons-compress" rev="1.26.2">
+            <!-- optional compressors we do not use (AEDAT-4 ZSTD goes through zstd-jni directly) -->
+            <exclude org="com.github.luben" module="zstd-jni"/>
+            <exclude org="org.tukaani" module="xz"/>
+            <exclude org="org.brotli" module="dec"/>
+            <exclude org="org.ow2.asm" module="asm"/>
+            <!-- test / OSGi integration (must not land on runtime classpath) -->
+            <exclude org="org.junit.jupiter" module="*"/>
+            <exclude org="org.junit.vintage" module="*"/>
+            <exclude org="org.junit.platform" module="*"/>
+            <exclude org="org.hamcrest" module="hamcrest"/>
+            <exclude org="org.mockito" module="*"/>
+            <exclude org="com.github.marschall" module="memoryfilesystem"/>
+            <exclude org="org.ops4j.pax.exam" module="*"/>
+            <exclude org="org.ops4j.pax.url" module="*"/>
+            <exclude org="org.ops4j.pax.swissbox" module="*"/>
+            <exclude org="org.ops4j.base" module="*"/>
+            <exclude org="org.apache.felix" module="*"/>
+            <exclude org="org.osgi" module="*"/>
+            <exclude org="biz.aQute.bnd" module="*"/>
+            <exclude org="org.ops4j.pax.tinybundles" module="tinybundles"/>
+            <exclude org="org.slf4j" module="slf4j-api"/>
+            <exclude org="org.slf4j" module="jcl-over-slf4j"/>
+            <exclude org="javax.inject" module="javax.inject"/>
+            <exclude org="org.codehaus.mojo" module="animal-sniffer-annotations"/>
+        </dependency>
         <!-- zstd-jni declares scalatest as a *test* dependency; Ivy maps it into default
              (~19MB scala-library + scalatest*). Exclude — JNI jar alone is enough. -->
         <dependency org="com.github.luben" name="zstd-jni" rev="1.5.5-11">

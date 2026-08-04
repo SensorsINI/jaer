@@ -28,19 +28,20 @@ import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 /**
  * Resolves which {@link AEChip} a recording likely needs, preferring the
  * jAER filename convention ({@code ChipSimpleName-...}), then AEDAT-4
- * {@code infoNode} source / size, then AEDAT-2 ASCII header hints.
+ * {@code infoNode} source / size / colorFilter, then AEDAT-2 ASCII header hints.
  * <p>
  * Only matches against the viewer's loaded (selected) chip class names.
+ * AEDAT-4 {@code infoNode} uses DV attribute form
+ * {@code <attr key="k" type="t">v</attr>}.
  */
 public final class RecordingChipDetector {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final Pattern ATTR_SOURCE = Pattern.compile(
-            "key\\s*=\\s*\"source\"\\s+value\\s*=\\s*\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ATTR_SIZE_X = Pattern.compile(
-            "key\\s*=\\s*\"sizeX\"\\s+value\\s*=\\s*\"(\\d+)\"", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ATTR_SIZE_Y = Pattern.compile(
-            "key\\s*=\\s*\"sizeY\"\\s+value\\s*=\\s*\"(\\d+)\"", Pattern.CASE_INSENSITIVE);
+
+    /** DV: {@code <attr key="source" type="string">DAVIS346_…</attr>} */
+    private static final Pattern ATTR_TYPED = Pattern.compile(
+            "<attr\\s+key\\s*=\\s*\"([^\"]+)\"\\s+type\\s*=\\s*\"[^\"]*\"\\s*>\\s*([^<]*?)\\s*</attr>",
+            Pattern.CASE_INSENSITIVE);
 
     private RecordingChipDetector() {
     }
@@ -50,19 +51,26 @@ public final class RecordingChipDetector {
         public final String name;
         public final Integer sizeX;
         public final Integer sizeY;
+        /** DV colorFilter (0–3 Bayer); null if absent (mono / unknown). */
+        public final Integer colorFilter;
         public final String origin;
 
         public Hint(String name, Integer sizeX, Integer sizeY, String origin) {
+            this(name, sizeX, sizeY, null, origin);
+        }
+
+        public Hint(String name, Integer sizeX, Integer sizeY, Integer colorFilter, String origin) {
             this.name = name;
             this.sizeX = sizeX;
             this.sizeY = sizeY;
+            this.colorFilter = colorFilter;
             this.origin = origin;
         }
 
         @Override
         public String toString() {
-            return String.format("Hint{name=%s size=%sx%s origin=%s}",
-                    name, sizeX, sizeY, origin);
+            return String.format("Hint{name=%s size=%sx%s colorFilter=%s origin=%s}",
+                    name, sizeX, sizeY, colorFilter, origin);
         }
     }
 
@@ -149,17 +157,23 @@ public final class RecordingChipDetector {
             if (info == null || info.isEmpty()) {
                 return null;
             }
-            String source = firstGroup(ATTR_SOURCE, info);
-            Integer sx = parseInt(firstGroup(ATTR_SIZE_X, info));
-            Integer sy = parseInt(firstGroup(ATTR_SIZE_Y, info));
-            if ((source == null || source.isEmpty()) && sx == null && sy == null) {
-                return null;
-            }
-            return new Hint(source, sx, sy, "aedat4-infoNode");
+            return hintFromInfoNodeXml(info);
         } catch (Exception e) {
             log.log(Level.FINE, "Could not peek AEDAT-4 infoNode from " + file.getName() + ": " + e, e);
             return null;
         }
+    }
+
+    /** Parse DV-format infoNode XML into a hint. */
+    public static Hint hintFromInfoNodeXml(String info) {
+        String source = attr(info, "source");
+        Integer sx = parseInt(attr(info, "sizeX"));
+        Integer sy = parseInt(attr(info, "sizeY"));
+        Integer colorFilter = parseInt(attr(info, "colorFilter"));
+        if ((source == null || source.isEmpty()) && sx == null && sy == null) {
+            return null;
+        }
+        return new Hint(source, sx, sy, colorFilter, "aedat4-infoNode");
     }
 
     /**
@@ -203,7 +217,7 @@ public final class RecordingChipDetector {
     }
 
     /**
-     * Resolve hint against loaded chips by name (exact, then unique soft match).
+     * Resolve hint against loaded chips by name (exact, family+color, then unique soft match).
      * Size alone is not used — many chips share resolution (e.g. Davis346*).
      */
     public static Class<? extends AEChip> resolve(Hint hint, List<Class<? extends AEChip>> loaded) {
@@ -213,17 +227,21 @@ public final class RecordingChipDetector {
         if (hint.name == null || hint.name.isEmpty()) {
             return null;
         }
-        return matchByName(hint.name, loaded);
+        return matchByName(hint, loaded);
     }
 
-    private static Class<? extends AEChip> matchByName(String hintName, List<Class<? extends AEChip>> loaded) {
+    private static Class<? extends AEChip> matchByName(Hint hint, List<Class<? extends AEChip>> loaded) {
+        String hintName = hint.name;
         String normHint = normalize(hintName);
         if (normHint.isEmpty()) {
             return null;
         }
+        // DV camera names: MODEL_SERIAL → use MODEL for matching
+        String family = dvCameraFamily(hintName);
+        String normFamily = family != null ? normalize(family) : "";
+
         Class<? extends AEChip> exact = null;
-        Class<? extends AEChip> soft = null;
-        int softCount = 0;
+        List<Class<? extends AEChip>> soft = new ArrayList<>();
         for (Class<? extends AEChip> c : loaded) {
             String simple = c.getSimpleName();
             String normSimple = normalize(simple);
@@ -232,17 +250,79 @@ public final class RecordingChipDetector {
                 break;
             }
             if (normSimple.contains(normHint) || normHint.contains(normSimple)) {
-                soft = c;
-                softCount++;
+                soft.add(c);
+                continue;
+            }
+            if (!normFamily.isEmpty()
+                    && (normSimple.contains(normFamily) || normFamily.contains(normSimple))) {
+                soft.add(c);
             }
         }
         if (exact != null) {
             return exact;
         }
-        if (softCount == 1) {
-            return soft;
+        if (soft.isEmpty()) {
+            return null;
         }
-        return null;
+        soft = preferColorMatch(soft, hint.colorFilter);
+        if (soft.size() == 1) {
+            return soft.get(0);
+        }
+        // Prefer common "red" DAVIS case when still ambiguous among same family/color.
+        Class<? extends AEChip> red = null;
+        for (Class<? extends AEChip> c : soft) {
+            if (c.getSimpleName().toLowerCase(Locale.ROOT).contains("red")) {
+                if (red != null) {
+                    return null; // still ambiguous
+                }
+                red = c;
+            }
+        }
+        return red;
+    }
+
+    /**
+     * DV {@code colorFilter} present (Bayer index) → prefer *Color* chip classes;
+     * absent → prefer non-color. If filtering would empty the list, keep original.
+     */
+    private static List<Class<? extends AEChip>> preferColorMatch(
+            List<Class<? extends AEChip>> candidates, Integer colorFilter) {
+        if (candidates.size() <= 1) {
+            return candidates;
+        }
+        boolean wantColor = colorFilter != null;
+        List<Class<? extends AEChip>> filtered = new ArrayList<>();
+        for (Class<? extends AEChip> c : candidates) {
+            boolean isColor = isColorChipName(c.getSimpleName());
+            if (wantColor == isColor) {
+                filtered.add(c);
+            }
+        }
+        return filtered.isEmpty() ? candidates : filtered;
+    }
+
+    private static boolean isColorChipName(String simpleName) {
+        String n = simpleName.toLowerCase(Locale.ROOT);
+        return n.contains("color") || n.contains("rgb");
+    }
+
+    /**
+     * {@code DAVIS346_00000843} → {@code DAVIS346}; non-DV names return null.
+     */
+    static String dvCameraFamily(String source) {
+        if (source == null || source.isEmpty()) {
+            return null;
+        }
+        int us = source.indexOf('_');
+        if (us <= 0) {
+            return null;
+        }
+        String family = source.substring(0, us);
+        // Heuristic: DV models are uppercase alnum like DAVIS346, DVXplorerLite
+        if (!family.equals(family.toUpperCase(Locale.ROOT)) && !family.matches("(?i)DVX.*|DAVIS.*|DVS.*")) {
+            return null;
+        }
+        return family;
     }
 
     private static String normalize(String s) {
@@ -250,6 +330,19 @@ public final class RecordingChipDetector {
             return "";
         }
         return s.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private static String attr(String xml, String key) {
+        if (xml == null || key == null) {
+            return null;
+        }
+        Matcher typed = ATTR_TYPED.matcher(xml);
+        while (typed.find()) {
+            if (key.equalsIgnoreCase(typed.group(1))) {
+                return typed.group(2).trim();
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -268,17 +361,12 @@ public final class RecordingChipDetector {
         return out;
     }
 
-    private static String firstGroup(Pattern p, String text) {
-        Matcher m = p.matcher(text);
-        return m.find() ? m.group(1) : null;
-    }
-
     private static Integer parseInt(String s) {
-        if (s == null) {
+        if (s == null || s.isEmpty()) {
             return null;
         }
         try {
-            return Integer.parseInt(s);
+            return Integer.parseInt(s.trim());
         } catch (NumberFormatException e) {
             return null;
         }
