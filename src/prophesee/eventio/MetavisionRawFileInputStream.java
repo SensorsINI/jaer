@@ -2,8 +2,14 @@ package prophesee.eventio;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.time.LocalDateTime;
@@ -33,6 +39,10 @@ import prophesee.usb.evt3.Evt3Parser;
  * <p>
  * ASCII {@code % key value} header, then little-endian EVT3 words decoded with
  * {@link Evt3Parser} (same path as live EVK4 USB).
+ * <p>
+ * First open builds a sparse seek index; a small cache under
+ * {@code java.io.tmpdir} (like AEDAT-4) makes subsequent opens effectively
+ * instant until the source file size/mtime changes.
  *
  * @see <a href="https://docs.prophesee.ai/stable/data/file_formats/raw.html">RAW File Format</a>
  */
@@ -41,6 +51,11 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
 
     public static final String DATA_FILE_EXTENSION = "raw";
+
+    private static final String INDEX_CACHE_MAGIC = "JAER_METAVISION_RAW_IDX";
+    /** v1: sparse checkpoints with Evt3Parser state for seek. */
+    private static final int INDEX_CACHE_VERSION = 1;
+    private static final int INDEX_CACHE_MAX_CHECKPOINTS = 100_000;
 
     private static final int READ_CHUNK_BYTES = 64 * 1024;
     /** Leave enough words so Vect12 triples are not split across chunks. */
@@ -129,7 +144,10 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
             if (absoluteStartingTimeMs == 0) {
                 absoluteStartingTimeMs = parseAbsoluteTimeMs(header.get("Date"));
             }
-            indexFile(progressMonitor);
+            if (!maybeLoadCachedIndex(progressMonitor)) {
+                indexFile(progressMonitor);
+                cacheIndex(progressMonitor);
+            }
             clearMarks();
             seekToEvent(0);
             EngineeringFormat eng = new EngineeringFormat();
@@ -185,6 +203,127 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
 
     public int getHeight() {
         return height;
+    }
+
+    private File indexCacheFile() {
+        String name = String.format("%s.%d.%d.metavisionrawidx",
+                file.getName(), fileLength, file.lastModified());
+        return new File(System.getProperty("java.io.tmpdir"), name);
+    }
+
+    private boolean maybeLoadCachedIndex(ProgressMonitor progressMonitor) {
+        File cache = indexCacheFile();
+        if (!cache.isFile() || !cache.canRead() || cache.length() == 0) {
+            return false;
+        }
+        long t0 = System.currentTimeMillis();
+        try (DataInputStream in = new DataInputStream(
+                new BufferedInputStream(new FileInputStream(cache), 1 << 20))) {
+            if (!INDEX_CACHE_MAGIC.equals(in.readUTF()) || in.readInt() != INDEX_CACHE_VERSION) {
+                log.info("Metavision RAW index cache version mismatch, rebuilding: " + cache);
+                return false;
+            }
+            if (in.readLong() != fileLength || in.readLong() != file.lastModified()) {
+                log.info("Metavision RAW index cache stale, rebuilding: " + cache);
+                return false;
+            }
+            if (in.readLong() != dataStart) {
+                log.info("Metavision RAW index cache dataStart mismatch, rebuilding: " + cache);
+                return false;
+            }
+            if (progressMonitor != null) {
+                progressMonitor.setNote("Reading cached Metavision RAW index");
+                progressMonitor.setMaximum(100);
+                progressMonitor.setProgress(1);
+            }
+            eventCount = in.readLong();
+            firstTimestamp = in.readInt();
+            lastTimestamp = in.readInt();
+            int nCp = in.readInt();
+            if (nCp < 1 || nCp > INDEX_CACHE_MAX_CHECKPOINTS) {
+                log.warning("Metavision RAW index cache bad checkpoint count=" + nCp + ", rebuilding");
+                return false;
+            }
+            checkpoints.clear();
+            for (int i = 0; i < nCp; i++) {
+                long eventIndex = in.readLong();
+                long fileByteOffset = in.readLong();
+                Evt3Parser.State st = new Evt3Parser.State();
+                st.x = in.readInt();
+                st.y = in.readInt();
+                st.polarityOn = in.readBoolean();
+                st.tUs = in.readLong();
+                st.timestampOriginUs = in.readLong();
+                st.lastOutputAbsoluteUs = in.readLong();
+                st.bigWrapCount = in.readInt();
+                st.previousMsbT = in.readInt();
+                st.previousLsbT = in.readInt();
+                st.overflows = in.readInt();
+                checkpoints.add(new Checkpoint(eventIndex, fileByteOffset, st));
+            }
+            if (progressMonitor != null) {
+                progressMonitor.setProgress(99);
+            }
+            log.info(String.format(
+                    "Loaded Metavision RAW index from %s in %d ms (%,d events, %d checkpoints, %.1f KB)",
+                    cache.getAbsolutePath(),
+                    System.currentTimeMillis() - t0,
+                    eventCount,
+                    checkpoints.size(),
+                    cache.length() / 1024.0));
+            return eventCount > 0 && !checkpoints.isEmpty();
+        } catch (IOException e) {
+            log.warning("Could not load Metavision RAW index cache, rebuilding: " + e);
+            return false;
+        } catch (Exception e) {
+            log.warning("Could not load Metavision RAW index cache, rebuilding: " + e);
+            return false;
+        }
+    }
+
+    private void cacheIndex(ProgressMonitor progressMonitor) {
+        File cache = indexCacheFile();
+        if (progressMonitor != null) {
+            progressMonitor.setNote("Writing Metavision RAW index cache");
+            progressMonitor.setProgress(99);
+        }
+        try (DataOutputStream out = new DataOutputStream(
+                new BufferedOutputStream(new FileOutputStream(cache), 1 << 20))) {
+            out.writeUTF(INDEX_CACHE_MAGIC);
+            out.writeInt(INDEX_CACHE_VERSION);
+            out.writeLong(fileLength);
+            out.writeLong(file.lastModified());
+            out.writeLong(dataStart);
+            out.writeLong(eventCount);
+            out.writeInt(firstTimestamp);
+            out.writeInt(lastTimestamp);
+            out.writeInt(checkpoints.size());
+            for (Checkpoint cp : checkpoints) {
+                out.writeLong(cp.eventIndex);
+                out.writeLong(cp.fileByteOffset);
+                Evt3Parser.State st = cp.parserState;
+                out.writeInt(st.x);
+                out.writeInt(st.y);
+                out.writeBoolean(st.polarityOn);
+                out.writeLong(st.tUs);
+                out.writeLong(st.timestampOriginUs);
+                out.writeLong(st.lastOutputAbsoluteUs);
+                out.writeInt(st.bigWrapCount);
+                out.writeInt(st.previousMsbT);
+                out.writeInt(st.previousLsbT);
+                out.writeInt(st.overflows);
+            }
+            out.flush();
+            log.info(String.format("Cached Metavision RAW index (%s) to %s (%.1f KB)",
+                    file.getName(), cache.getAbsolutePath(), cache.length() / 1024.0));
+        } catch (IOException e) {
+            log.warning("Could not cache Metavision RAW index: " + e);
+            if (!cache.delete() && cache.exists()) {
+                log.warning("Could not delete partial Metavision RAW index cache " + cache);
+            }
+        } catch (Exception e) {
+            log.warning("Could not cache Metavision RAW index: " + e);
+        }
     }
 
     private void indexFile(ProgressMonitor progressMonitor) throws IOException {
