@@ -640,10 +640,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             addHelpItem(new JSeparator());
             addHelpURLItem(JaerConstants.HELP_URL_EVENT_BASED_VISION_RESOURCES, "Event-Based Vision Resources",
                     "Community list of papers, workshops, datasets, code, and videos for event-based vision");
-            addHelpURLItem(JaerConstants.HELP_URL_DAVIS346_SAMPLE_DATA, "DAVIS346 sample data (AEDAT-2)",
-                    "DAVIS24 sample DAVIS346 recordings (mostly AEDAT-2.0) for exploring data and algorithm development");
-            addHelpURLItem(JaerConstants.HELP_URL_AEDAT4_SAMPLE_DATA, "AEDAT-4 / DV sample data",
-                    "Open MIT-licensed DAVIS346 AEDAT-4 recordings with direct per-file downloads (soccer ball scenes)");
+            JMenu sampleDataMenu = new JMenu("Sample data");
+            sampleDataMenu.setToolTipText("Links to publicly available event camera sample recordings");
+            sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_DAVIS346_SAMPLE_DATA,
+                    "DAVIS346 sample data (AEDAT-2)",
+                    "DAVIS24 sample DAVIS346 recordings (mostly AEDAT-2.0) for exploring data and algorithm development"));
+            sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_AEDAT4_SAMPLE_DATA,
+                    "AEDAT-4 / DV sample data",
+                    "Open MIT-licensed DAVIS346 AEDAT-4 recordings with direct per-file downloads (soccer ball scenes)"));
+            sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_PROPHESEE_SAMPLE_DATA,
+                    "Prophesee / Metavision sample data",
+                    "Prophesee sample recordings and datasets (RAW EVT2/EVT3, HDF5, DAT) including EVK4 / IMX636"));
+            addHelpItem(sampleDataMenu);
             addHelpItem(new JSeparator());
         } catch (Exception e) {
             log.warning("could register help item: " + e.toString());
@@ -6495,28 +6503,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * @see #removeHelpItem(javax.swing.JMenuItem)
      */
     final public JComponent addHelpURLItem(final String url, String title, String tooltip) {
+        JMenuItem menuItem = makeHelpURLMenuItem(url, title, tooltip);
+        addHelpItem(menuItem);
+        return menuItem;
+    }
+
+    /** Builds a Help URL menu item without inserting it into the Help menu. */
+    private JMenuItem makeHelpURLMenuItem(final String url, String title, String tooltip) {
         JMenuItem menuItem = new JMenuItem(title);
         menuItem.setToolTipText(tooltip);
-
         menuItem.addActionListener(new java.awt.event.ActionListener() {
-
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 showInBrowser(url);
-                //                try {
-                //                    BrowserLauncher launcher=new BrowserLauncher();
-                //                    launcher.openURLinBrowser(url);
-
-            
-        
-        ////                    BrowserLauncher.openURL(url);
-                //                } catch (Exception e) {
-                //                    log.warning(e.toString());
-                //                    setStatusMessage(e.getMessage());
-                //                }
             }
         });
-        addHelpItem(menuItem);
         return menuItem;
     }
 
