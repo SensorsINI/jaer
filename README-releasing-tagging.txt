@@ -98,8 +98,7 @@ Already pushed:
 
     git push --delete origin 3.0.0
 
-## CI notes
+## Build notes
 
-View builds at https://travis-ci.com/github/SensorsINI/jaer .
-OAuth token for GitHub: https://travis-ci.com/github/SensorsINI/jaer/settings
-Create tokens at https://github.com/settings/tokens
+Compile / jar / release packaging is local Ant (`ant compile`, `ant jar`, `ant release`), then install4j for installers.
+Travis CI was removed; there is no GitHub Actions workflow for builds.
