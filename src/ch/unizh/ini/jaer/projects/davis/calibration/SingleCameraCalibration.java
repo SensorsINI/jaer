@@ -33,16 +33,12 @@ import org.opencv.core.Size;
 import org.opencv.core.TermCriteria;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
-import org.openni.Device;
-import org.openni.DeviceInfo;
-import org.openni.OpenNI;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
 import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
-import ch.unizh.ini.jaer.projects.davis.stereo.SimpleDepthCameraViewerApplication;
 import com.esotericsoftware.yamlbeans.YamlException;
 import java.awt.Dimension;
 import java.io.FileNotFoundException;
@@ -91,8 +87,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * Fires property change with this string when new calibration is available
      */
     public static final String EVENT_NEW_CALIBRATION = "EVENT_NEW_CALIBRATION";
-
-    private SimpleDepthCameraViewerApplication depthViewerThread;
 
     //encapsulated fields
     private boolean realtimePatternDetectionEnabled = getBoolean("realtimePatternDetectionEnabled", true);
@@ -161,7 +155,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("undistortDVSevents", "applies LUT undistortion to DVS event address if calibration has been completed; events outside AEChip address space are filtered out");
         setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
-        setPropertyTooltip("depthViewer", "shows the depth or color image viewer if a Kinect device is connected via NI2 interface");
         setPropertyTooltip("displayCalibrationImage", "shows the calibration image that you can aim the camera at");
         setPropertyTooltip("setPath", "sets the folder and basename of saved images");
         setPropertyTooltip("saveCalibration", "saves calibration files to a selected folder");
@@ -362,14 +355,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 String fullFilePath = dirPath + File.separator + filename;
                 Imgcodecs.imwrite(fullFilePath, imgSave);
                 log.info("saved image " + fullFilePath);
-                //save depth sensor image if enabled
-                if (depthViewerThread != null) {
-                    if (depthViewerThread.isFrameCaptureRunning()) {
-                        //save img
-                        String fileSuffix = "-" + String.format("%03d", imageCounter) + ".jpg";
-                        depthViewerThread.saveLastImage(dirPath, fileSuffix);
-                    }
-                }
                 //store image points
                 if ((imageCounter == 0) || (allObjectPoints == null) || (allImagePoints == null)) {
                     allImagePoints = new ArrayList<Mat>();
@@ -1035,29 +1020,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public void setShowUndistortedFrames(boolean showUndistortedFrames) {
         this.showUndistortedFrames = showUndistortedFrames;
         putBoolean("showUndistortedFrames", showUndistortedFrames);
-    }
-
-    public void doDepthViewer() {
-        try {
-            System.load(System.getProperty("user.dir") + "\\jars\\openni2\\OpenNI2.dll");
-
-            // initialize OpenNI
-            OpenNI.initialize();
-
-            List<DeviceInfo> devicesInfo = OpenNI.enumerateDevices();
-            if (devicesInfo.isEmpty()) {
-                JOptionPane.showMessageDialog(null, "No Kinect device is connected via NI2 interface", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            Device device = Device.open(devicesInfo.get(0).getUri());
-
-            depthViewerThread = new SimpleDepthCameraViewerApplication(device);
-            depthViewerThread.start();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     /**

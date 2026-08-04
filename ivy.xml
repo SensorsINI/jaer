@@ -37,16 +37,14 @@ MA 02110-1301  USA
  
         <dependency org="org.swinglabs" name="swing-layout" rev="1.0.3" />
         <dependency org="org.jdesktop" name="beansbinding" rev="1.2.1" />
-        
-        <dependency org="org.webjars.npm" name="semver" rev="5.4.1" />
-        
+
         <!--bag-reader-java-1.9.0 is here to obtain all of its dependencies, but we are using the fork at https://github.com/tobidelbruck/bag-reader-java currently-->
         <!--since our fixes were pulled, we can now use bag-reader-java 1.10.x-->
         <dependency org="com.github.swri-robotics" name="bag-reader-java" rev="1.10.0" />
-        
-        <!--<dependency org="org.apache.commons" name="commons-lang3" rev="3.14.0"/>-->
-        <dependency org="org.apache.commons" name="commons-math4-core" rev="4.0-beta1"/>
-        <dependency org="commons-net" name="commons-net" rev="3.10.0"/>
+
+        <!-- Code uses commons-math3 (DescriptiveStatistics, geometry, …). Do not rely on
+             Ivy test-scope leakage from commons-text for this. -->
+        <dependency org="org.apache.commons" name="commons-math3" rev="3.6.1"/>
         <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
         <dependency org="commons-io" name="commons-io" rev="2.15.1"/>
         <!--https://mvnrepository.com/artifact/org.apache.commons/commons-text-->
@@ -60,7 +58,6 @@ MA 02110-1301  USA
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
         <dependency org="org.apache.commons" name="commons-collections4" rev="4.4"/>
-
 
         <dependency org="com.google.code.gson" name="gson" rev="2.8.2" />
 
@@ -79,85 +76,28 @@ MA 02110-1301  USA
             <exclude org="org.scala-lang.modules" module="*"/>
             <exclude org="org.scala-sbt" module="*"/>
         </dependency>
-        
-        <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
-        <dependency org="javax.mail" name="javax.mail-api" rev="1.6.0" />
-        
-        <!--jblas is a matrix library for Java which uses existing high performance BLAS and LAPACK libraries like ATLAS -->
-        <dependency org="org.jblas" name="jblas" rev="1.2.4" />
-        
-        <!-- jhdf5 is the NCSA Java HDF5 API (ncsa.hdf.*); jar is pure Java. Declares
-             scala-library only because the artifact was published under org.scala-saddle. -->
-        <dependency org="org.scala-saddle" name="jhdf5" rev="2.9">
-            <exclude org="org.scala-lang" module="scala-library"/>
-        </dependency>
-        <!-- HDF5 presets pull javacpp 1.4; TensorFlow 1.0.0-rc.2 needs 1.5.10. Exclude old
-             javacpp here and declare 1.5.10 explicitly below. -->
-        <dependency org="org.bytedeco.javacpp-presets" name="hdf5" rev="1.10.1-1.4" >
-            <artifact name="hdf5" type="jar" ext="jar" m:classifier="macosx-x86_64"/>
-            <artifact name="hdf5" type="jar" ext="jar" m:classifier="windows-x86_64"/>
-            <artifact name="hdf5" type="jar" ext="jar" m:classifier="windows-x86"/>
-            <artifact name="hdf5" type="jar" ext="jar" m:classifier="linux-x86_64"/>
-            <artifact name="hdf5" type="jar" ext="jar" m:classifier="linux-x86"/>
-            <exclude org="org.bytedeco" module="javacpp"/>
-        </dependency>
+
         <!-- Required by tensorflow-core-native (omitted when that dep is transitive=false). -->
         <dependency org="org.bytedeco" name="javacpp" rev="1.5.10" />
 
-        <dependency org="net.java.linoleum" name="jlfgr" rev="1_0" />
         <dependency org="com.neuronrobotics" name="nrjavaserial" rev="3.13.0" />
         <dependency org="com.kitfox.svg" name="svg-salamander" rev="1.0" />
-        <dependency org="org.uncommons.maths" name="uncommons-maths" rev="1.2.2a" />
-        <!--<dependency org="io.github.andreas-solti.matrix-toolkits-java" name="mtj" rev="1.0.7" />-->
         <dependency org="org.tallison" name="jmatio" rev="1.2" />
-        <!--<dependency org="com.github.fommil.netlib" name="all" rev="1.1.2" />-->
-        <!--        <dependency org="com.github.fommil.netlib" name="native_system-java" rev="1.1" />
-        <dependency org="com.github.fommil.netlib" name="core" rev="1.1.2" />-->
-        <!--<dependency org="org.usb4java" name="usb4java" rev="1.2.0" />-->
-        <!--<dependency org="com.google.guava" name="guava" rev="30.1-jre" />-->
         <!--
         libusb not obtained from maven because there is no artifcact for Mac osx darwin (M1 apple silicon)
         Instead tobi obtained it separately from https://github.com/marian-m12l/studio/issues/244 and combined with jar download
         of libusb4java release
-        --> 
-        <!--libusb4java needs following to work around bug in maven that incorrectly constucts the ivy dependency - see https://github.com/sbt/sbt/issues/285 -->
-        <!--
-        <dependency org="org.usb4java" name="libusb4java" rev="1.2.0">
-            <artifact name="libusb4java" type="jar" ext="jar" m:classifier="osx-x86_64"/>
-            <artifact name="libusb4java" type="jar" ext="jar" m:classifier="osx-x86"/>
-            <artifact name="libusb4java" type="jar" ext="jar" m:classifier="windows-x86_64"/>
-            <artifact name="libusb4java" type="jar" ext="jar" m:classifier="windows-x86"/>
-            <artifact name="libusb4java" type="jar" ext="jar" m:classifier="linux-arm"/>
-            <artifact name="libusb4java" type="jar" ext="jar" m:classifier="linux-x86_64"/>
-            <artifact name="libusb4java" type="jar" ext="jar" m:classifier="linux-x86"/>
-        </dependency>
         -->
-        <!--TODO sort out opencv and javacv - seems to be multiple versions used in jaer-->
-        <!--TODO the bytedeco wrapper on opencv (opencv_core) is needed in a few places -->
-        <!--        <dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.2.0-1.3" >
-            <artifact name="opencv" type="jar" ext="jar"/>
-            <artifact name="opencv" type="jar" ext="jar" m:classifier="macosx-x86_64"/>
-            <artifact name="opencv" type="jar" ext="jar" m:classifier="windows-x86_64"/>
-            <artifact name="opencv" type="jar" ext="jar" m:classifier="windows-x86"/>
-            <artifact name="opencv" type="jar" ext="jar" m:classifier="linux-x86_64"/>
-            <artifact name="opencv" type="jar" ext="jar" m:classifier="linux-x86"/>
-        </dependency>-->
-        
+
         <!--following is for the official org.opencv.core classes from nu.pattern, forked to org.openpnp now
-        
+
         It is important to read https://github.com/openpnp/opencv to see how the OpenCV native libraries must be loaded to the JVM!
-        
+
         This OpenCV is used by SingleCameraCalibration at least.
-        
+
         -->
         <dependency org="org.openpnp" name="opencv" rev="4.8.1-0" />
-        <!--<dependency org="org.openpnp" name="opencv" rev="3.2.0-1" />-->
-        <!--<dependency org="org.openpnp" name="opencv" rev="2.4.13-0" />-->
-        <!--<dependency org="org.bytedeco.javacpp-presets" name="opencv" rev="3.4.0-1.4" />-->
-        <!--we use version 1.0 of javacv because the stereo matching opencv only has 3 arguments in existing code but later opencv has many more options-->
-        <!--<dependency org="org.bytedeco" name="javacv" rev="1.0" />-->
-        <!--<dependency org="org.bytedeco" name="javacv" rev="1.5.9" />-->
-        
+
         <!-- TensorFlow for MLPNoiseFilter — roles:
              * Ivy: tensorflow-core-api (+ transitives) and unclassified native stub only.
                Exclude classifier natives that Ivy would otherwise resolve via ${native.classifier}.
@@ -176,49 +116,33 @@ MA 02110-1301  USA
         <!-- protobuf was previously pulled via tensorflow-core-native transitives; keep it explicit for compile. -->
         <dependency org="com.google.protobuf" name="protobuf-java" rev="3.21.9" />
         <!-- Avoid: tensorflow-core-platform (every OS native, ~600MB). -->
-        <!--<dependency org="org.tensorflow" name="tensorflow-core-platform" rev="1.0.0-rc.2" />-->
-        
-        <!--to use GPU if you have an Nvida GPU installed, comment lines above and use GPU artifacts.
-        You have to separately install Cuda toolkit  for this to work - see https://developer.nvidia.com/cuda-toolkit -->
-        <!--<dependency org="org.tensorflow" name="libtensorflow" rev="1.12.0" />-->
-        <!--<dependency org="org.tensorflow" name="libtensorflow_jni_gpu" rev="1.0.0-rc.2" />-->
-        
-        
+
         <!--for reading yaml files that store the input format for tensorflow graphs, e.g. cnns. Also for reading OpenCV Mat files in YamlMatLoader -->
         <dependency org="com.esotericsoftware.yamlbeans" name="yamlbeans" rev="1.17" />
 
         <!--mathematics, linear algebra and optimisation java library-->
-        <dependency org="org.ojalgo" name="ojalgo" rev="44.0.0" />      
-        
-        <dependency org="org.jblas" name="jblas" rev="1.2.4" />    
-        <!--used in telluride for communicating to foosball-->    
+        <dependency org="org.ojalgo" name="ojalgo" rev="44.0.0" />
+        <!--used in telluride for communicating to foosball-->
         <dependency org="redis.clients" name="jedis" rev="2.9.0" />
-        
+
         <!-- https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit -->
-        <dependency org="org.eclipse.jgit" name="org.eclipse.jgit" rev="5.7.0.202003110725-r" />    
-        
+        <dependency org="org.eclipse.jgit" name="org.eclipse.jgit" rev="5.7.0.202003110725-r" />
+
         <!-- for rebuild myself task in JaerUpdater -->
         <dependency org="org.apache.ant" name="ant-commons-net" rev="1.10.8" />
-        
+
         <!-- used for numpy data file format npy and npz support in JVM -->
-        <dependency org="org.jetbrains.bio" name="npy" rev="0.3.5"/>      
-        
+        <dependency org="org.jetbrains.bio" name="npy" rev="0.3.5"/>
+
         <!-- https://github.com/sh0nk/matplotlib4j -->
         <dependency org="com.github.sh0nk" name="matplotlib4j" rev="0.5.0" />
- 
+
         <dependency org="joda-time" name="joda-time" rev="2.10.6">
             <artifact name="joda-time" type="jar" />
         </dependency>
-        
-        <dependency org="com.install4j" name="install4j-runtime" rev="10.0.6" />
-        
-        <!--         https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox 
-        https://stackoverflow.com/questions/5614206/buffered-randomaccessfile-java
-        Used in TextFileInputStream
-        
-        <dependency org="org.apache.pdfbox" name="pdfbox" rev="3.0.1"/>-->
 
-        
+        <dependency org="com.install4j" name="install4j-runtime" rev="10.0.6" />
+
     </dependencies>
 </ivy-module>
 

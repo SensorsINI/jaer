@@ -23,12 +23,10 @@ import net.sf.jaer.hardwareinterface.udp.UDPInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
-import net.sf.jaer.hardwareinterface.usb.cypressfx2.USBIOHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.LibUsbHardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.LibUsb3HardwareInterfaceFactory;
 import nrv.usb.NRVHardwareInterfaceFactory;
 import prophesee.usb.PropheseeHardwareInterfaceFactory;
-import net.sf.jaer.hardwareinterface.usb.silabs.SiLabs_USBIO_C8051F3xxFactory;
 import de.thesycon.usbio.PnPNotifyInterface;
 import es.us.atc.jaer.hardwareinterface.OpalKellyFX3Factory;
 import java.util.logging.Level;
@@ -38,6 +36,9 @@ import java.util.logging.Level;
  * It is a singleton: get the instance() and ask it to make an interface for you.
  * You need to first call the expensive {@link #buildInterfaceList() } to enumerate all devices available.
  * Afterwards the list is stored and may be cheaply accessed.
+ * <p>
+ * Thesycon USBIO factories ({@code USBIOHardwareInterfaceFactory}, {@code SiLabs_USBIO_C8051F3xxFactory})
+ * are intentionally not registered; see {@code docs/WIP-USBIO-purge.md}. Sources remain for libusb porting.
  *
  * @author tobi
  */
@@ -54,8 +55,9 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 
 	/** Factories that can be queried for interfaces. */
 	final public static Class[] factories = {
-		SiLabs_USBIO_C8051F3xxFactory.class,
-		USBIOHardwareInterfaceFactory.class,
+		// USBIO / Thesycon factories unregistered — see docs/WIP-USBIO-purge.md
+		// SiLabs_USBIO_C8051F3xxFactory.class,
+		// USBIOHardwareInterfaceFactory.class,
 		LibUsbHardwareInterfaceFactory.class,
 		LibUsb3HardwareInterfaceFactory.class,
 		NRVHardwareInterfaceFactory.class,
@@ -69,9 +71,7 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 
 	/** Creates a new instance of HardwareInterfaceFactory, private because this is a singleton factory class */
 	private HardwareInterfaceFactory() {
-		// UsbIoUtilities.enablePnPNotification(this, SiLabs_USBIO_C8051F3xxFactory.GUID); // TODO not needed since we
-		// rebuild list on each call for interfaces
-		// UsbIoUtilities.enablePnPNotification(this, USBIOHardwareInterfaceFactory.GUID);
+		// USBIO PnP notification disabled — see docs/WIP-USBIO-purge.md
 	}
 
 	/**

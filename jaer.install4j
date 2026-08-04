@@ -263,6 +263,19 @@ if (lib.isDirectory()) {
             }
         }
     }
+    // Dropped Ivy deps: jblas, jhdf5, bytedeco hdf5, commons-math4, commons-net, mail, semver, jlfgr, uncommons-maths
+    File[] ivyOrphans = lib.listFiles((dir, n) -&gt;
+        n.startsWith("jblas") || n.startsWith("jhdf5") || n.startsWith("hdf5-")
+        || n.startsWith("commons-math4") || n.startsWith("commons-net") || n.startsWith("ftpserver")
+        || n.startsWith("javax.mail") || n.startsWith("mail-api") || n.startsWith("semver")
+        || n.startsWith("jlfgr") || n.startsWith("uncommons-maths"));
+    if (ivyOrphans != null) {
+        for (File f : ivyOrphans) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
 }
 File jars = new File(context.getInstallationDirectory(), "jars");
 if (jars.isDirectory()) {
@@ -274,11 +287,47 @@ if (jars.isDirectory()) {
             }
         }
     }
+    // Thesycon USBIO natives / jars/win32|win64 removed; see docs/WIP-USBIO-purge.md
+    String[] usbioDllDirs = { "win32", "win64" };
+    for (String sub : usbioDllDirs) {
+        File dir = new File(jars, sub);
+        File dll = new File(dir, "usbiojava.dll");
+        if (dll.isFile() &amp;&amp; dll.delete()) {
+            com.install4j.api.Util.logInfo(context, "Removed leftover " + dll.getAbsolutePath());
+        }
+        if (dir.isDirectory() &amp;&amp; dir.list() != null &amp;&amp; dir.list().length == 0 &amp;&amp; dir.delete()) {
+            com.install4j.api.Util.logInfo(context, "Removed leftover " + dir.getAbsolutePath());
+        }
+    }
+    // OpenNI2 / Kinect depth stack removed (StereoRecorder / depth viewer)
+    File openni2 = new File(jars, "openni2");
+    if (openni2.isDirectory()) {
+        try {
+            java.util.List paths = java.nio.file.Files.walk(openni2.toPath())
+                .sorted(java.util.Comparator.reverseOrder())
+                .collect(java.util.stream.Collectors.toList());
+            for (Object o : paths) {
+                java.nio.file.Files.deleteIfExists((java.nio.file.Path) o);
+            }
+            com.install4j.api.Util.logInfo(context, "Removed leftover " + openni2.getAbsolutePath());
+        } catch (Exception ex) {
+            com.install4j.api.Util.logInfo(context, "Could not remove " + openni2.getAbsolutePath() + ": " + ex);
+        }
+    }
 }
 File nativeDir = new File(context.getInstallationDirectory(), "native");
-File javacan = new File(nativeDir, "libjavacan-core.so");
-if (javacan.isFile() &amp;&amp; javacan.delete()) {
-    com.install4j.api.Util.logInfo(context, "Removed leftover " + javacan.getAbsolutePath());
+if (nativeDir.isDirectory()) {
+    try {
+        java.util.List npaths = java.nio.file.Files.walk(nativeDir.toPath())
+            .sorted(java.util.Comparator.reverseOrder())
+            .collect(java.util.stream.Collectors.toList());
+        for (Object o : npaths) {
+            java.nio.file.Files.deleteIfExists((java.nio.file.Path) o);
+        }
+        com.install4j.api.Util.logInfo(context, "Removed leftover " + nativeDir.getAbsolutePath());
+    } catch (Exception ex) {
+        com.install4j.api.Util.logInfo(context, "Could not remove " + nativeDir.getAbsolutePath() + ": " + ex);
+    }
 }
 return true;
 </property>

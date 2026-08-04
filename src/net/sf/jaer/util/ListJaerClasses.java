@@ -47,10 +47,10 @@ public class ListJaerClasses {
         // by excluding items from the list that will never contain jAER code.
         // This also helps eliminating 'UnsatisfiedLinkError' on some systems.
         "com/googlecode/", "org/jfree/", "org/jblas/", "flanagan/", "org/apache/",
-        "org/jdesktop/", "de/thesycon/", "com/kitfox/", "org/uncommons/",
+        "org/jdesktop/", "de/thesycon/", "com/kitfox/",
         "de/ailis/", "org/netbean/s",
-        "com/kitfox/", "org/bytedeco/", "org/usb4jav/a", "org/openni/",
-        "jogamp/", "org/jogamp/", "com/jogamp/", "gluegen/", "newt/", "ncsa.hdf.hdf5li/b", "ncsa.hdf/",
+        "com/kitfox/", "org/bytedeco/", "org/usb4jav/a",
+        "jogamp/", "org/jogamp/", "com/jogamp/", "gluegen/", "newt/",
         "lib/", "org/tensorflow/", "org/ros/", "com/fasterxml/", "ch/qos/", "groovy/lang/", "com/google/", "groovy/", "ch/systemsx/"
     };
 

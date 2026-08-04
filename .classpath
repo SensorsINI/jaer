@@ -4,7 +4,6 @@
 	<classpathentry kind="lib" path="jars/UsbIoJava.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-21"/>
 	<classpathentry kind="lib" path="jars/USBTransferThread-0.9.6.jar"/>
-	<classpathentry kind="lib" path="jars/openni2/org.openni.jar"/>
 	<classpathentry kind="con" path="org.apache.ivyde.eclipse.cpcontainer.IVYDE_CONTAINER/?project=jAER_1.5&amp;ivyXmlPath=ivy.xml&amp;confs=*&amp;ivySettingsPath=ivysettings.xml&amp;loadSettingsOnDemand=false&amp;ivyUserDir=&amp;propertyFiles="/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
