@@ -58,6 +58,7 @@ public class JaerConstants {
     public static final String HELP_URL_PROPHESEE_CAMERAS = "https://docs.prophesee.ai/stable/hw/sensors/index.html";
     public static final String HELP_URL_NRV_CAMERAS = "https://nrvcorp.github.io/docs/";
     /** @deprecated use {@link #HELP_URL_INIVATION_CAMERAS} */
+    @Deprecated
     public static final String HELP_URL_HARDWARE_USER_GUIDE = HELP_URL_INIVATION_CAMERAS;
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
     /** Community list of event-based vision papers, datasets, code, workshops, etc. */
