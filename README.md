@@ -6,7 +6,7 @@ Java tools for Address-Event Representation (AER) neuromorphic processing.
 **Welcome to the jAER Open Source Project
 Real time sensory-motor processing for event-based sensors and systems**
 
-Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch). 
+Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch). Now supports cameras and recordings from all manufacturers (see *Device Hardware Support* below).
 
 #### What jAER feels like to use
 
@@ -37,14 +37,28 @@ you can [initialize the release to a git working copy and pull+build within jAER
 drop them onto the jAER window to play them with the *DVS128* *AEChip*.
 * Download [DAVIS346 sample data files from the DAVIS24 dataset](https://sites.google.com/view/davis24-davis-sample-data/home) and
 drop them onto the jAER window to play them with the *Davis346blue* *AEChip*.
+* See the *Help/Sample Data* menu in jAER for more sample data.
+* See [`docs/README-file-formats.md`](docs/README-file-formats.md) for detailed information about supported file formats in jAER.
 
 ## Device hardware support
-Systems built with Sensors Group chips:
-* inilabs DVS128 DVS event camera and inivation DAVIS240, and DAVIS346 HVS cameras
-* inilabs DAS (CochleaAMS) cochleas
 
-Event cameras from others:
-* iniVation Samsung DVExplorer
+Live USB cameras selectable in the AEViewer **AEChip** menu (default list and related variants). File playback for many more sensors is listed in [`docs/README-file-formats.md`](docs/README-file-formats.md).
+
+| Camera / product | Manufacturer | Sensor / resolution | Interface | jAER chip class(es) | Status |
+|------------------|--------------|---------------------|-----------|---------------------|--------|
+| **DAVIS346** (red/blue/color) | [iniVation](https://inivation.com/) | APS+DVS 346×260 | USB 3 (FX3) | `Davis346red`, `Davis346blue`, `Davis346redColor`, … | Primary / default |
+| **DAVIS240** (A/B/C) | iniVation / inilabs | APS+DVS 240×180 | USB 2/3 | `DAVIS240C`, `DAVIS240B`, … | Supported |
+| **DVXplorer** | iniVation | DVS (Samsung Gen3) ~640×480 | USB 3 (FX3) | `DVXplorer` | Supported |
+| **DVS128** | inilabs / SensorsINI | DVS 128×128 | USB 2 (FX2) | `DVS128` | Supported (classic) |
+| **EVK4 HD** | [Prophesee](https://www.prophesee.ai/) | Sony IMX636 DVS 1280×720 | USB 3 (Cypress) | `PropheseeIMX636HD` | Experimental ([notes](src/prophesee/README.md)); also Metavision `.raw` EVT3 playback |
+| **DELTA01** | [NRV](https://nrvcorp.github.io/docs/) | Samsung S5KRC1S DVS 960×720 | USB 3 (FX20/CX3) | `NRVS5KRC1S` | Experimental ([notes](src/nrv/README.md)) |
+| **CDAVIS** | SensorsINI / partners | Color APS+DVS 640×480 / 320×240 DVS | USB 3 | `CDAVIS` | Supported (specialized) |
+| **CochleaAMS / CochleaLP** | SensorsINI / inilabs | Silicon cochlea (audio AER) | USB 2/3 | `CochleaAMS1c`, `CochleaLP`, … | Supported |
+| Generic DVS viewers | — | 640×480, 1280×720 | Playback / viz | `DVS640`, `DVS1280x720SD` | Visualization helpers |
+
+Stereo and multi-camera wrappers (e.g. `DVS128StereoPair`, `MultiDAVIS346BCameraChip`) combine several of the above over separate USB interfaces.
+
+Hardware docs in Help menu: iniVation cameras, Prophesee sensors, NRV cameras.
 
 ## Citation
 T. Delbruck, “Frame-free dynamic digital vision,” 
@@ -53,27 +67,30 @@ Mar. 2008, pp. 21–26.
 doi: 10.5167/uzh-17620. Available: http://dx.doi.org/10.5167/uzh-17620
 
 ### jAER applications
-jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors), 
-but has also been used to build many robots: 
-[robogoalie](https://youtu.be/IC5x7ftJ96w?si=ajsJWWYJW-tSJ2MI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/Goalie.java)), 
-[audio localization by spike ITD](https://www.youtube.com/watch?v=-Klbmm4vgew) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/cochsoundloc/ITDFilter.java)), 
-[speaker identification from spiking cochlea](https://www.youtube.com/watch?v=KFPi65WV-S8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/speakerid/CochleaSVMTwoEars.java)), 
-[laser goalie](https://www.youtube.com/watch?v=5c5W18nuPQk) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/LaserGoalie.java)), 
-[pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/pencilbalancer/PencilBalancer.java)), 
-[bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/billcatcher/BillCatcher.java)), 
-[slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/virtualslotcar/SlotCarRacer.java)), 
-[Dextra roshambo (rock-scissors-poaper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java)), 
-[incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoIncremental.java)).
-jAER was also used to develop many event camera algorithms: 
-[Feature extraction](https://www.youtube.com/watch?v=IEsMkIpCE1o) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/label/SimpleOrientationFilter.java)), 
-[tracking](https://www.youtube.com/watch?v=5I6haFXVuD8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/tracking/RectangularClusterTracker.java)), 
-[optical flow methods](https://www.youtube.com/watch?v=Ji1MzE4QbM4) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/rbodo/opticalflow/AbstractMotionFlowIMU.java)),
-[EDFLOW hardware optical flow](https://www.youtube.com/watch?v=8LedyiHMe_A) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/minliu/PatchMatchFlow.java)), and 
-[efficient and accurate event denoising](https://sites.google.com/view/dnd21/home?authuser=0) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/filter/NoiseTesterFilter.java)).
+jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors),
+but has also been used to build many robots:
+
+1. [robogoalie](https://youtu.be/IC5x7ftJ96w?si=ajsJWWYJW-tSJ2MI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/Goalie.java))
+2. [audio localization by spike ITD](https://www.youtube.com/watch?v=-Klbmm4vgew) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/cochsoundloc/ITDFilter.java))
+3. [speaker identification from spiking cochlea](https://www.youtube.com/watch?v=KFPi65WV-S8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/speakerid/CochleaSVMTwoEars.java))
+4. [laser goalie](https://www.youtube.com/watch?v=5c5W18nuPQk) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/goalie/LaserGoalie.java))
+5. [pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/pencilbalancer/PencilBalancer.java))
+6. [bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/billcatcher/BillCatcher.java))
+7. [slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/virtualslotcar/SlotCarRacer.java))
+8. [Dextra roshambo (rock-scissors-paper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java))
+9. [incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoIncremental.java))
+
+jAER was also used to develop many event camera algorithms, including:
+
+1. [Feature extraction](https://www.youtube.com/watch?v=IEsMkIpCE1o) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/label/SimpleOrientationFilter.java))
+2. [tracking](https://www.youtube.com/watch?v=5I6haFXVuD8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/tracking/RectangularClusterTracker.java))
+3. [optical flow methods](https://www.youtube.com/watch?v=Ji1MzE4QbM4) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/rbodo/opticalflow/AbstractMotionFlowIMU.java))
+4. [EDFLOW hardware optical flow](https://www.youtube.com/watch?v=8LedyiHMe_A) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/minliu/PatchMatchFlow.java))
+5. [efficient and accurate event denoising](https://sites.google.com/view/dnd21/home?authuser=0) ([code](https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/eventprocessing/filter/NoiseTesterFilter.java))
 
 ## Developing with jAER
 
-To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing).
+To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/edit?usp=sharing), or the [Developing with jAER](#developing-with-jaer) section above for setup and build instructions.
 
 ### Developing in an LLM AI client (Cursor, VS Code, …)
 
