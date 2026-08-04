@@ -795,8 +795,11 @@ public class DVXplorer extends AETemporalConstastRetina {
             setXshift((byte) XSHIFT);
             setYmask(YMASK);
             setYshift((byte) YSHIFT);
-            setTypemask(1);
-            setTypeshift((byte) 0);
+            // Must match AEDAT-2 / live USB packing and extractPacket POLARITY_MASK (bit 11).
+            // typemask=1 / typeshift=0 put polarity at bit 0, so AEDAT-4 getAddressFromCell
+            // packing made every event look like Off.
+            setTypemask(POLARITY_MASK);
+            setTypeshift((byte) POLARITY_SHIFT);
             
             boolean isFlipX = (boolean)(dvsFlipX > 0);
             boolean isFlipY = (boolean)(dvsFlipY > 0);
