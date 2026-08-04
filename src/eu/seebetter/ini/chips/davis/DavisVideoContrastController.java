@@ -108,7 +108,7 @@ public class DavisVideoContrastController extends Observable {
     }
 
     final public void loadPrefences() {
-        setUseAutoContrast(prefs.getBoolean("DavisVideoContrastController.useAutoContrast", false));
+        setUseAutoContrast(prefs.getBoolean("DavisVideoContrastController.useAutoContrast", true));
         setAutoContrastTimeconstantMs(prefs.getFloat("DavisVideoContrastController.autoContrastControlTimeConstantMs", 1000f));
         setContrast(prefs.getFloat("DavisVideoContrastController.contrast", 1.0F));
         setBrightness(prefs.getFloat("DavisVideoContrastController.brightness", 0.0F));
