@@ -75,6 +75,87 @@ public final class RecordingChipDetector {
     }
 
     /**
+     * One AEDAT-4 {@code infoNode} stream (events/frames/IMU from a camera or module).
+     * DV Recorder can mux several cameras into one file with distinct stream IDs.
+     */
+    public static final class StreamHint {
+        public final int streamId;
+        public final String typeIdentifier;
+        public final String source;
+        public final Integer sizeX;
+        public final Integer sizeY;
+        public final Integer colorFilter;
+        public final String originalOutputName;
+        public final String originalModuleName;
+
+        public StreamHint(int streamId, String typeIdentifier, String source,
+                Integer sizeX, Integer sizeY, Integer colorFilter, String originalOutputName) {
+            this(streamId, typeIdentifier, source, sizeX, sizeY, colorFilter, originalOutputName, null);
+        }
+
+        public StreamHint(int streamId, String typeIdentifier, String source,
+                Integer sizeX, Integer sizeY, Integer colorFilter,
+                String originalOutputName, String originalModuleName) {
+            this.streamId = streamId;
+            this.typeIdentifier = typeIdentifier;
+            this.source = source;
+            this.sizeX = sizeX;
+            this.sizeY = sizeY;
+            this.colorFilter = colorFilter;
+            this.originalOutputName = originalOutputName;
+            this.originalModuleName = originalModuleName;
+        }
+
+        /**
+         * True when coordinates follow DV/OpenCV convention (origin top-left),
+         * as opposed to jAER live addresses (Davis already X/Y flipped).
+         */
+        public boolean hasDvOpenCvCoordinates() {
+            if (originalModuleName != null && originalModuleName.equalsIgnoreCase("jAER")) {
+                return false;
+            }
+            return dvCameraFamily(source) != null;
+        }
+
+        public boolean isEvents() {
+            return typeIdentifier != null && typeIdentifier.equalsIgnoreCase("EVTS");
+        }
+
+        public boolean isFrames() {
+            return typeIdentifier != null && typeIdentifier.equalsIgnoreCase("FRME");
+        }
+
+        public boolean isImu() {
+            return typeIdentifier != null && typeIdentifier.equalsIgnoreCase("IMUS");
+        }
+
+        public Hint toChipHint() {
+            return new Hint(source, sizeX, sizeY, colorFilter, "aedat4-stream-" + streamId);
+        }
+
+        /** Short label for UI selection lists. */
+        public String displayLabel() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("stream ").append(streamId);
+            if (typeIdentifier != null && !typeIdentifier.isEmpty()) {
+                sb.append(" [").append(typeIdentifier).append(']');
+            }
+            if (source != null && !source.isEmpty()) {
+                sb.append(": ").append(source);
+            }
+            if (sizeX != null && sizeY != null) {
+                sb.append(" (").append(sizeX).append('\u00d7').append(sizeY).append(')');
+            }
+            return sb.toString();
+        }
+
+        @Override
+        public String toString() {
+            return displayLabel();
+        }
+    }
+
+    /**
      * Detect chip class among {@code loadedChipClassNames} (FQCN list from the
      * AEViewer device menu). Returns null if unknown or ambiguous.
      */
@@ -145,6 +226,40 @@ public final class RecordingChipDetector {
     }
 
     static Hint fromAedat4InfoNode(File file) {
+        List<StreamHint> streams = listAedat4Streams(file);
+        if (streams.isEmpty()) {
+            return null;
+        }
+        for (StreamHint s : streams) {
+            if (s.isEvents()) {
+                return s.toChipHint();
+            }
+        }
+        return streams.get(0).toChipHint();
+    }
+
+    /** All streams declared in the AEDAT-4 {@code infoNode}, or empty if unavailable. */
+    public static List<StreamHint> listAedat4Streams(File file) {
+        String info = peekAedat4InfoNodeXml(file);
+        if (info == null || info.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return streamsFromInfoNodeXml(info);
+    }
+
+    /** Polarity (EVTS) streams only — candidates for playback chip / stream selection. */
+    public static List<StreamHint> listAedat4EventStreams(File file) {
+        List<StreamHint> all = listAedat4Streams(file);
+        List<StreamHint> events = new ArrayList<>();
+        for (StreamHint s : all) {
+            if (s.isEvents()) {
+                events.add(s);
+            }
+        }
+        return events;
+    }
+
+    static String peekAedat4InfoNodeXml(File file) {
         try (FileInputStream in = new FileInputStream(file); FileChannel channel = in.getChannel()) {
             ByteBuffer version = ByteBuffer.allocate(Aedat4FileOutputStream.VERSION_LINE.length);
             readFully(channel, version);
@@ -153,27 +268,68 @@ public final class RecordingChipDetector {
             }
             ByteBuffer headerBytes = readSizePrefixed(channel);
             IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(headerBytes);
-            String info = header.infoNode();
-            if (info == null || info.isEmpty()) {
-                return null;
-            }
-            return hintFromInfoNodeXml(info);
+            return header.infoNode();
         } catch (Exception e) {
             log.log(Level.FINE, "Could not peek AEDAT-4 infoNode from " + file.getName() + ": " + e, e);
             return null;
         }
     }
 
-    /** Parse DV-format infoNode XML into a hint. */
+    /**
+     * Parse DV-format infoNode XML into a hint (first EVTS stream, else first stream).
+     * Prefer {@link #listAedat4EventStreams(File)} when multiple cameras may be present.
+     */
     public static Hint hintFromInfoNodeXml(String info) {
-        String source = attr(info, "source");
-        Integer sx = parseInt(attr(info, "sizeX"));
-        Integer sy = parseInt(attr(info, "sizeY"));
-        Integer colorFilter = parseInt(attr(info, "colorFilter"));
-        if ((source == null || source.isEmpty()) && sx == null && sy == null) {
-            return null;
+        List<StreamHint> streams = streamsFromInfoNodeXml(info);
+        if (streams.isEmpty()) {
+            String source = attr(info, "source");
+            Integer sx = parseInt(attr(info, "sizeX"));
+            Integer sy = parseInt(attr(info, "sizeY"));
+            Integer colorFilter = parseInt(attr(info, "colorFilter"));
+            if ((source == null || source.isEmpty()) && sx == null && sy == null) {
+                return null;
+            }
+            return new Hint(source, sx, sy, colorFilter, "aedat4-infoNode");
         }
-        return new Hint(source, sx, sy, colorFilter, "aedat4-infoNode");
+        for (StreamHint s : streams) {
+            if (s.isEvents()) {
+                return s.toChipHint();
+            }
+        }
+        return streams.get(0).toChipHint();
+    }
+
+    /** Parse each numbered stream node under {@code outInfo}. */
+    public static List<StreamHint> streamsFromInfoNodeXml(String info) {
+        List<StreamHint> out = new ArrayList<>();
+        if (info == null || info.isEmpty()) {
+            return out;
+        }
+        Pattern streamStart = Pattern.compile(
+                "<node\\s+name\\s*=\\s*\"(\\d+)\"[^>]*>",
+                Pattern.CASE_INSENSITIVE);
+        Matcher m = streamStart.matcher(info);
+        List<Integer> starts = new ArrayList<>();
+        List<Integer> ids = new ArrayList<>();
+        while (m.find()) {
+            starts.add(m.start());
+            ids.add(Integer.parseInt(m.group(1)));
+        }
+        for (int i = 0; i < starts.size(); i++) {
+            int from = starts.get(i);
+            int to = (i + 1 < starts.size()) ? starts.get(i + 1) : info.length();
+            String body = info.substring(from, to);
+            out.add(new StreamHint(
+                    ids.get(i),
+                    attr(body, "typeIdentifier"),
+                    attr(body, "source"),
+                    parseInt(attr(body, "sizeX")),
+                    parseInt(attr(body, "sizeY")),
+                    parseInt(attr(body, "colorFilter")),
+                    attr(body, "originalOutputName"),
+                    attr(body, "originalModuleName")));
+        }
+        return out;
     }
 
     /**

@@ -37,6 +37,7 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
+import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.Event;
 import net.sf.jaer.eventio.aedat4.dv.EventPacket;
@@ -58,10 +59,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     /**
-     * v9: packet-level sparse index (no per-event dump). Chip class is not part of
-     * the cache — indexing is file-format only; AEChip affects decode/render only.
+     * v10: packet-level sparse index per selected EVTS stream (multi-camera AEDAT-4).
+     * Chip class is not part of the cache — AEChip affects decode/render only.
      */
-    private static final int INDEX_CACHE_VERSION = 9;
+    private static final int INDEX_CACHE_VERSION = 10;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
     private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
@@ -78,6 +79,23 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private RandomAccessFile randomAccessFile;
     private FileChannel channel;
     private int compression = CompressionType.NONE;
+
+    /**
+     * Stream IDs selected for playback. DV may mux several cameras; jAER plays one
+     * EVTS stream (plus FRME/IMUS that share that camera's {@code source}).
+     * Resolved from the constructor argument / infoNode during open.
+     */
+    private int eventStreamId = Aedat4FileOutputStream.STREAM_EVENTS;
+    private int frameStreamId = Aedat4FileOutputStream.STREAM_FRAMES;
+    private int imuStreamId = Aedat4FileOutputStream.STREAM_IMU;
+    /** Requested EVTS stream before header parse; null = first EVTS in infoNode. */
+    private final Integer requestedEventStreamId;
+    private String selectedSource;
+    /**
+     * True when file event/frame coords use DV/OpenCV (top-left). False for jAER-written
+     * streams whose addresses already match live Davis packing (no extra XY flip on read).
+     */
+    private boolean dvOpenCvCoordinates = true;
 
     /** Polarity stream packets (sparse seek table). */
     private PacketRef[] eventRefs = new PacketRef[0];
@@ -115,18 +133,32 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private ByteBuffer cachedEventFlat;
 
     public Aedat4FileInputStream(File file, AEChip chip) throws IOException {
-        this(file, chip, null);
+        this(file, chip, null, null);
     }
 
     public Aedat4FileInputStream(File file, AEChip chip, ProgressMonitor progressMonitor) throws IOException {
+        this(file, chip, progressMonitor, null);
+    }
+
+    /**
+     * @param eventStreamId AEDAT-4 EVTS stream to play; {@code null} selects the first
+     *        EVTS stream from {@code infoNode} (legacy files: stream 0).
+     */
+    public Aedat4FileInputStream(File file, AEChip chip, ProgressMonitor progressMonitor,
+            Integer eventStreamId) throws IOException {
         this.file = file;
         this.chip = chip;
+        this.requestedEventStreamId = eventStreamId;
         this.randomAccessFile = new RandomAccessFile(file, "r");
         this.channel = randomAccessFile.getChannel();
         try {
-            log.fine("Aedat4FileInputStream open begin: " + file);
-            readCompressionFromHeader();
-            log.fine("header compression=" + Aedat4Compression.nameOf(compression));
+            log.fine("Aedat4FileInputStream open begin: " + file + " requestedEventStreamId=" + eventStreamId);
+            readHeaderAndResolveStreams();
+            log.fine("header compression=" + Aedat4Compression.nameOf(compression)
+                    + " eventStreamId=" + this.eventStreamId
+                    + " frameStreamId=" + this.frameStreamId
+                    + " imuStreamId=" + this.imuStreamId
+                    + " source=" + selectedSource);
             if (!maybeLoadCachedIndex(progressMonitor)) {
                 log.fine("no usable cache; indexing " + file.getName());
                 indexFile(progressMonitor);
@@ -156,9 +188,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         EngineeringFormat eng = new EngineeringFormat();
         eng.setPrecision(3);
         log.info(String.format(
-                "Opened AEDAT-4 %s (%s): %s events, %s frames, %s IMU samples, duration=%ss (%d EVTS packets indexed)",
+                "Opened AEDAT-4 %s (%s): stream %d%s: %s events, %s frames, %s IMU samples, duration=%ss (%d EVTS packets indexed)",
                 file.getName(),
                 Aedat4Compression.nameOf(compression),
+                this.eventStreamId,
+                selectedSource == null ? "" : " (" + selectedSource + ")",
                 eng.format((double) eventCount).trim(),
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
@@ -166,6 +200,15 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 eventRefs.length));
         support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
         log.fine("Aedat4FileInputStream constructor returning");
+    }
+
+    /** Selected polarity stream ID after open. */
+    public int getEventStreamId() {
+        return eventStreamId;
+    }
+
+    public String getSelectedSource() {
+        return selectedSource;
     }
 
     private static void throwIfCanceled(ProgressMonitor progressMonitor, String what) throws IOException {
@@ -204,8 +247,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         pendingImu.clear();
     }
 
-    /** Reads only the IOHeader compression field (also used when loading a disk index cache). */
-    private void readCompressionFromHeader() throws IOException {
+    /** Reads IOHeader, resolves selected camera stream IDs from infoNode. */
+    private void readHeaderAndResolveStreams() throws IOException {
         channel.position(0);
         ByteBuffer version = ByteBuffer.allocate(Aedat4FileOutputStream.VERSION_LINE.length);
         readFully(channel, version);
@@ -215,6 +258,89 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         ByteBuffer headerBytes = readSizePrefixed(channel);
         IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(headerBytes);
         compression = Aedat4Compression.clamp(header.compression());
+        resolveStreamIds(header.infoNode());
+    }
+
+    /**
+     * Map infoNode streams to the EVTS/FRME/IMUS IDs used for indexing.
+     * Multi-camera DV files assign arbitrary IDs (e.g. 0=DAVIS EVTS, 1=DVXplorer EVTS).
+     */
+    private void resolveStreamIds(String infoNode) {
+        eventStreamId = Aedat4FileOutputStream.STREAM_EVENTS;
+        frameStreamId = Aedat4FileOutputStream.STREAM_FRAMES;
+        imuStreamId = Aedat4FileOutputStream.STREAM_IMU;
+        selectedSource = null;
+        List<RecordingChipDetector.StreamHint> streams
+                = RecordingChipDetector.streamsFromInfoNodeXml(infoNode);
+        if (streams.isEmpty()) {
+            if (requestedEventStreamId != null) {
+                eventStreamId = requestedEventStreamId;
+            }
+            return;
+        }
+        List<RecordingChipDetector.StreamHint> evts = new ArrayList<>();
+        for (RecordingChipDetector.StreamHint s : streams) {
+            if (s.isEvents()) {
+                evts.add(s);
+            }
+        }
+        RecordingChipDetector.StreamHint chosen = null;
+        if (requestedEventStreamId != null) {
+            for (RecordingChipDetector.StreamHint s : evts) {
+                if (s.streamId == requestedEventStreamId) {
+                    chosen = s;
+                    break;
+                }
+            }
+            if (chosen == null) {
+                for (RecordingChipDetector.StreamHint s : streams) {
+                    if (s.streamId == requestedEventStreamId) {
+                        chosen = s;
+                        break;
+                    }
+                }
+            }
+            if (chosen == null) {
+                log.warning("Requested AEDAT-4 event stream " + requestedEventStreamId
+                        + " not in infoNode; using first EVTS stream");
+            }
+        }
+        if (chosen == null && !evts.isEmpty()) {
+            chosen = evts.get(0);
+        }
+        if (chosen == null) {
+            chosen = streams.get(0);
+        }
+        eventStreamId = chosen.streamId;
+        selectedSource = chosen.source;
+        dvOpenCvCoordinates = chosen.hasDvOpenCvCoordinates();
+        if (!dvOpenCvCoordinates) {
+            log.info("AEDAT-4 stream " + eventStreamId
+                    + ": jAER coordinate space (skip DV OpenCV XY remap on read)");
+        }
+        frameStreamId = -1;
+        imuStreamId = -1;
+        for (RecordingChipDetector.StreamHint s : streams) {
+            if (s.streamId == eventStreamId) {
+                continue;
+            }
+            boolean sameSource = selectedSource != null && selectedSource.equals(s.source);
+            // Same-source typed streams, or legacy single-camera 0/1/2 layout.
+            if (s.isFrames() && (sameSource || frameStreamId < 0 && streams.size() <= 3)) {
+                if (frameStreamId < 0 || sameSource) {
+                    frameStreamId = s.streamId;
+                }
+            } else if (s.isImu() && (sameSource || imuStreamId < 0 && streams.size() <= 3)) {
+                if (imuStreamId < 0 || sameSource) {
+                    imuStreamId = s.streamId;
+                }
+            }
+        }
+        if (evts.size() > 1) {
+            log.info(String.format(
+                    "AEDAT-4 multi-camera file: playing EVTS stream %d (%s); %d EVTS streams available",
+                    eventStreamId, selectedSource, evts.size()));
+        }
     }
 
     private void indexFile(ProgressMonitor progressMonitor) throws IOException {
@@ -238,8 +364,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long fileSize = channel.size();
         ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
         long scannedPackets = 0;
+        long skippedOtherStreams = 0;
         if (progressMonitor != null) {
-            progressMonitor.setNote("Indexing AEDAT-4 packets");
+            progressMonitor.setNote("Indexing AEDAT-4 packets (stream " + eventStreamId + ")");
         }
         while (channel.position() + 8 <= fileSize) {
             throwIfCanceled(progressMonitor, "AEDAT-4 indexing");
@@ -256,11 +383,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (payloadSize < 0 || payloadSize > remaining) {
                 break;
             }
-            // dataTablePosition may be unset (-1) or pending (-2) on older/broken writes; stop before FTAB.
-            if (dataTablePosition < 0
-                    && streamId != Aedat4FileOutputStream.STREAM_EVENTS
-                    && streamId != Aedat4FileOutputStream.STREAM_FRAMES
-                    && streamId != Aedat4FileOutputStream.STREAM_IMU) {
+            boolean known = streamId == eventStreamId
+                    || streamId == frameStreamId
+                    || streamId == imuStreamId;
+            // dataTablePosition may be unset (-1) or pending (-2); stop before FTAB.
+            // Do not treat other camera stream IDs as end-of-data when multi-camera.
+            if (dataTablePosition < 0 && !known && streamId > 64) {
                 log.info(String.format(
                         "Stopping AEDAT-4 index at offset %d (streamId=%d); FileDataTable follows and IOHeader dataTablePosition=%d",
                         packetOffset, streamId, dataTablePosition));
@@ -271,6 +399,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             readFully(channel, payload);
             payload.flip();
             scannedPackets++;
+            if (!known) {
+                skippedOtherStreams++;
+                continue;
+            }
             ByteBuffer flat;
             try {
                 flat = maybeDecompress(payload);
@@ -281,7 +413,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
                 throw ex;
             }
-            if (streamId == Aedat4FileOutputStream.STREAM_EVENTS) {
+            if (streamId == eventStreamId) {
                 EventPacket packet = EventPacket.getSizePrefixedRootAsEventPacket(flat);
                 int n = packet.elementsLength();
                 long start = 0;
@@ -292,12 +424,12 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 }
                 events.add(new PacketRef(payloadOffset, payloadSize, start, end, n, cumEvents));
                 cumEvents += n;
-            } else if (streamId == Aedat4FileOutputStream.STREAM_FRAMES) {
+            } else if (streamId == frameStreamId) {
                 Frame frame = Frame.getSizePrefixedRootAsFrame(flat);
                 long start = frame.timestampStartOfFrame() != 0 ? frame.timestampStartOfFrame() : frame.timestamp();
                 long end = frame.timestampEndOfFrame() != 0 ? frame.timestampEndOfFrame() : start;
                 frames.add(new PacketRef(payloadOffset, payloadSize, start, end, 1, 0));
-            } else if (streamId == Aedat4FileOutputStream.STREAM_IMU) {
+            } else if (streamId == imuStreamId) {
                 IMUPacket packet = IMUPacket.getSizePrefixedRootAsIMUPacket(flat);
                 int n = packet.elementsLength();
                 long start = 0;
@@ -343,8 +475,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         cachedEventPacketIndex = -1;
         cachedEventFlat = null;
         log.info(String.format(
-                "Indexed AEDAT-4 %s (%s) in %d ms (%d packets scanned): %,d events in %d EVTS packets, %,d frames, %,d IMU samples",
-                file.getName(), Aedat4Compression.nameOf(compression), System.currentTimeMillis() - t0, scannedPackets,
+                "Indexed AEDAT-4 %s (%s) stream %d in %d ms (%d packets scanned, %d other-stream skipped): %,d events in %d EVTS packets, %,d frames, %,d IMU samples",
+                file.getName(), Aedat4Compression.nameOf(compression), eventStreamId,
+                System.currentTimeMillis() - t0, scannedPackets, skippedOtherStreams,
                 eventCount, eventRefs.length, frameCount, imuSampleCount));
     }
 
@@ -539,11 +672,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             if (x > sx1 || y >= sy) {
                 return -1;
             }
-            // DV/OpenCV: origin top-left. jAER Davis addresses / display: flip X and Y.
-            final int sy1 = sy - 1;
+            // DavisEventExtractor.extractBundleTyped always sets e.x = sx1 - addrX
+            // (USB typed demux writes the same unflipped display X into PacketBundle).
+            // Pack addrX = sx1 - fileX so playback restores fileX.
+            final int px = sx1 - x;
+            // Y: DV/OpenCV is top-left → flip into jAER bottom-origin. jAER-written
+            // files already store display Y — leave as-is.
+            final int py = dvOpenCvCoordinates ? (sy - 1 - y) : y;
             return DavisChip.ADDRESS_TYPE_DVS
-                    | (((sx1 - x) & 0x3ff) << DavisChip.XSHIFT)
-                    | (((sy1 - y) & 0x1ff) << DavisChip.YSHIFT)
+                    | ((px & 0x3ff) << DavisChip.XSHIFT)
+                    | ((py & 0x1ff) << DavisChip.YSHIFT)
                     | ((type & 1) << DavisChip.POLSHIFT);
         }
         if (extractor != null) {
@@ -606,8 +744,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         final int ch = layout.channels;
         final int srcStride = w * ch * (layout.u16 ? 2 : 1);
         // DV/OpenCV: y=0 at top. jAER Davis pixmap: y=0 at bottom — flip while copying.
+        // jAER-written frames are already bottom-origin; copy without Y remap.
         for (int y = 0; y < h; y++) {
-            final int srcY = h - 1 - y;
+            final int srcY = dvOpenCvCoordinates ? (h - 1 - y) : y;
             final int srcRow = srcY * srcStride;
             final int dstRow = y * w * ch;
             for (int x = 0; x < w; x++) {
@@ -644,8 +783,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         }
         if (log.isLoggable(Level.FINE)) {
             log.fine(String.format(
-                    "AEDAT-4 decodeFrame fmt=%d %dx%d nbytes=%d -> %s u16=%s bgr=%s (Y flipped to jAER)",
-                    fmt & 0xff, w, h, nbytes, layout.colorMode, layout.u16, layout.opencvBgr));
+                    "AEDAT-4 decodeFrame fmt=%d %dx%d nbytes=%d -> %s u16=%s bgr=%s dvOpenCv=%s",
+                    fmt & 0xff, w, h, nbytes, layout.colorMode, layout.u16, layout.opencvBgr, dvOpenCvCoordinates));
         }
         return out;
     }
@@ -818,8 +957,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     private File indexCacheFile() {
-        String name = String.format("%s.%d.%d.aedat4idx",
-                file.getName(), file.length(), file.lastModified());
+        String name = String.format("%s.%d.%d.s%d.aedat4idx",
+                file.getName(), file.length(), file.lastModified(), eventStreamId);
         return new File(System.getProperty("java.io.tmpdir"), name);
     }
 
@@ -836,6 +975,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             }
             if (in.readLong() != file.length() || in.readLong() != file.lastModified()) {
                 log.info("AEDAT-4 index cache stale, rebuilding: " + cache);
+                return false;
+            }
+            if (in.readInt() != eventStreamId) {
+                log.info("AEDAT-4 index cache for different event stream, rebuilding: " + cache);
                 return false;
             }
             if (progressMonitor != null) {
@@ -862,8 +1005,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             cachedEventPacketIndex = -1;
             cachedEventFlat = null;
             log.info(String.format(
-                    "Loaded sparse AEDAT-4 index from %s in %d ms (%,d events in %d packets, %,d frames, %,d IMU, %.1f KB)",
-                    cache.getName(), System.currentTimeMillis() - t0,
+                    "Loaded sparse AEDAT-4 index from %s in %d ms (stream %d: %,d events in %d packets, %,d frames, %,d IMU, %.1f KB)",
+                    cache.getName(), System.currentTimeMillis() - t0, eventStreamId,
                     eventCount, eventRefs.length, frameCount, imuSampleCount, cache.length() / 1024.0));
             return true;
         } catch (IOException e) {
@@ -889,6 +1032,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeInt(INDEX_CACHE_VERSION);
             out.writeLong(file.length());
             out.writeLong(file.lastModified());
+            out.writeInt(eventStreamId);
             out.writeLong(baseUnixUs);
             out.writeLong(eventCount);
             out.writeLong(frameCount);

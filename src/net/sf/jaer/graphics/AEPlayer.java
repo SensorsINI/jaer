@@ -335,14 +335,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         if ((file == null) || !file.isFile()) {
             throw new FileNotFoundException("file not found: " + file);
         }
-        // Filename / header chip check before open (may switch AEChip or cancel).
-        if (!viewer.ensureChipCompatibleWithRecording(file)) {
-            return;
-        }
-        // Stop ViewLoop from opening USB / flipping to LIVE while we index the file.
-        // Known race: ViewLoop openAEMonitor() can set LIVE and ignore playback.
+        // Stop ViewLoop from opening USB / flipping to LIVE before any AEChip switch.
+        // Chip switch may close a live interface; doing that while ViewLoop is in LIVE hangs
+        // (seen with NRV plugged in). Known race: ViewLoop openAEMonitor() can set LIVE.
         viewer.beginFilePlaybackOpen();
         setPaused(true);
+        // Filename / header / multi-stream check (may switch AEChip or cancel).
+        if (!viewer.ensureChipCompatibleWithRecording(file)) {
+            viewer.endFilePlaybackOpen();
+            setPaused(false);
+            return;
+        }
         // idea is that we set open the file and set playback mode and the ViewLoop.run
         // loop will then render from the file.
         String ext = "." + IndexFileFilter.getExtension(file); // TODO change to use of a new static method in AEDataFile for determining file type

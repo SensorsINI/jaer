@@ -498,7 +498,11 @@ public class AEChip extends Chip2D {
                 throw new IOException("Could not open " + file + ": got " + ex.toString(), ex);
             }
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT4.substring(1))) {
-            aeInputStream = new Aedat4FileInputStream(file, this, progressMonitor);
+            Integer eventStreamId = null;
+            if (aeViewer != null) {
+                eventStreamId = aeViewer.consumePendingAedat4EventStreamId();
+            }
+            aeInputStream = new Aedat4FileInputStream(file, this, progressMonitor, eventStreamId);
         } else if (FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.DATA_FILE_EXTENSION_AEDAT2.substring(1))
                 || FilenameUtils.isExtension(file.getName(), AEDataFile.OLD_DATA_FILE_EXTENSION.substring(1))) {

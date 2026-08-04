@@ -56,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -429,6 +430,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * {@link #openAEMonitor()} (USB open can block for a long time and miss PLAYBACK).
      */
     private volatile boolean suppressHardwareOpen;
+    /** Max wait for {@link HardwareInterface#close()} from UI actions (NRV LibUsb can hang). */
+    private static final long HARDWARE_CLOSE_TIMEOUT_MS = 3000L;
+    /**
+     * AEDAT-4 EVTS stream chosen in {@link #ensureChipCompatibleWithRecording(File)}
+     * for multi-camera files; consumed by {@link AEChip#constuctFileInputStream}.
+     */
+    private Integer pendingAedat4EventStreamId;
     private boolean suppressAdaptiveRenderSkipMenuSync;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
@@ -745,12 +753,27 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         stopLogging(true); // in case logging, make sure we give chance to save file
         // Stop playback before closing HW so stopPlayback can resume LIVE only when still open.
         // Do not reopen USB from stopPlayback (that hung the EDT on NRV exit).
-        if (aePlayer != null) {
+        if (aePlayer != null && !suppressHardwareOpen) {
+            // During file-open chip switch, keep the AEPlayer that is opening the file.
             aePlayer.stopPlayback();
         }
         if ((aemon != null) && aemon.isOpen()) {
             log.fine("closing device " + aemon);
-            aemon.close();
+            if (suppressHardwareOpen) {
+                final AEMonitorInterface mon = aemon;
+                aemon = null;
+                Thread t = new Thread(() -> {
+                    try {
+                        mon.close();
+                    } catch (Exception e) {
+                        log.warning("async aemon.close in cleanup: " + e);
+                    }
+                }, "jaer-async-aemon-close");
+                t.setDaemon(true);
+                t.start();
+            } else {
+                aemon.close();
+            }
         }
 
         if (aeServerSocket != null) {
@@ -1161,14 +1184,38 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     /**
      * If the recording's chip (from filename, then header) differs from the
-     * current {@link AEChip}, ask to switch before opening. Returns false if the
-     * user cancels open.
+     * current {@link AEChip}, ask to switch before opening. For multi-camera
+     * AEDAT-4 files, also let the user pick which EVTS stream to play.
+     * Returns false if the user cancels open.
      */
     public boolean ensureChipCompatibleWithRecording(File file) {
         if (file == null || !file.isFile()) {
             return true;
         }
-        Class<? extends AEChip> suggested = RecordingChipDetector.detect(file, chipClassNames);
+        pendingAedat4EventStreamId = null;
+        Class<? extends AEChip> suggested = null;
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        if (name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4) || name.endsWith(".aedat4")) {
+            List<RecordingChipDetector.StreamHint> eventStreams
+                    = RecordingChipDetector.listAedat4EventStreams(file);
+            if (eventStreams.size() > 1) {
+                RecordingChipDetector.StreamHint chosen = chooseAedat4EventStream(file, eventStreams);
+                if (chosen == null) {
+                    log.info("Playback open canceled (AEDAT-4 stream selection)");
+                    return false;
+                }
+                pendingAedat4EventStreamId = chosen.streamId;
+                suggested = RecordingChipDetector.resolve(chosen.toChipHint(),
+                        loadChipClasses(chipClassNames));
+                log.info("AEDAT-4 stream selected: " + chosen.displayLabel()
+                        + (suggested == null ? "" : " -> " + suggested.getSimpleName()));
+            } else if (eventStreams.size() == 1) {
+                pendingAedat4EventStreamId = eventStreams.get(0).streamId;
+            }
+        }
+        if (suggested == null) {
+            suggested = RecordingChipDetector.detect(file, chipClassNames);
+        }
         if (suggested == null) {
             return true;
         }
@@ -1191,6 +1238,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 JOptionPane.WARNING_MESSAGE);
         if (choice == JOptionPane.CANCEL_OPTION || choice == JOptionPane.CLOSED_OPTION) {
             log.info("Playback open canceled (AEChip mismatch dialog)");
+            pendingAedat4EventStreamId = null;
             return false;
         }
         if (choice == JOptionPane.YES_OPTION) {
@@ -1202,6 +1250,65 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     + suggested.getSimpleName());
         }
         return true;
+    }
+
+    /**
+     * Consumed once by file open: selected AEDAT-4 EVTS stream, or null.
+     */
+    public Integer consumePendingAedat4EventStreamId() {
+        Integer id = pendingAedat4EventStreamId;
+        pendingAedat4EventStreamId = null;
+        return id;
+    }
+
+    private RecordingChipDetector.StreamHint chooseAedat4EventStream(
+            File file, List<RecordingChipDetector.StreamHint> eventStreams) {
+        String[] labels = new String[eventStreams.size()];
+        for (int i = 0; i < eventStreams.size(); i++) {
+            labels[i] = eventStreams.get(i).displayLabel();
+        }
+        javax.swing.JList<String> list = new javax.swing.JList<>(labels);
+        list.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        list.setSelectedIndex(0);
+        list.setVisibleRowCount(Math.min(8, labels.length));
+        int choice = JOptionPane.showConfirmDialog(
+                this,
+                new Object[]{
+                    "<html>This AEDAT-4 file contains <b>" + eventStreams.size()
+                    + "</b> event camera streams.<br>"
+                    + "jAER can play one stream at a time. Select which to open:<br><br></html>",
+                    new javax.swing.JScrollPane(list)
+                },
+                "Select AEDAT-4 camera stream — " + file.getName(),
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) {
+            return null;
+        }
+        int idx = list.getSelectedIndex();
+        if (idx < 0 || idx >= eventStreams.size()) {
+            return null;
+        }
+        return eventStreams.get(idx);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Class<? extends AEChip>> loadChipClasses(List<String> fqcn) {
+        List<Class<? extends AEChip>> out = new ArrayList<>();
+        if (fqcn == null) {
+            return out;
+        }
+        for (String name : fqcn) {
+            try {
+                Class<?> c = Class.forName(name);
+                if (AEChip.class.isAssignableFrom(c)) {
+                    out.add((Class<? extends AEChip>) c);
+                }
+            } catch (ClassNotFoundException e) {
+                // ignore
+            }
+        }
+        return out;
     }
 
     private long lastTimeTitleSet = 0;
@@ -1268,12 +1375,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             viewFiltersMenuItem.setEnabled(false);
             showBiasgen(false);
             cleanup(); // close sockets so they can be reused
-            if ((chip != null) && (chip.getHardwareInterface() != null)) {
-                chip.getHardwareInterface().close();
-            }
-            if (chip != null) {
-                chip.setHardwareInterface(null);
-            }
+            // During file open, never block the EDT on USB close (NRV/libusb can hang).
+            closeHardwareInterfaceForChipSwitch();
             AEFileInputStreamInterface oldAeInputStream = null;
             if (chip != null) {
                 oldAeInputStream = chip.getAeInputStream(); // save it to assign to new chip in case we have a stream open already
@@ -1324,8 +1427,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 //                calibrationStartStop.setEnabled(false);
 //            }
             // end added by Philipp
-            if (aemon != null) { // force reopen
-                aemon.close();
+            if (aemon != null) { // force reopen on next LIVE; avoid blocking file-open path
+                if (suppressHardwareOpen) {
+                    final AEMonitorInterface mon = aemon;
+                    aemon = null;
+                    Thread t = new Thread(() -> {
+                        try {
+                            mon.close();
+                        } catch (Exception e) {
+                            log.warning("async aemon.close after chip construct: " + e);
+                        }
+                    }, "jaer-async-aemon-close2");
+                    t.setDaemon(true);
+                    t.start();
+                } else {
+                    aemon.close();
+                }
             }
             makeCanvas();
             Component[] devMenuComps = deviceMenu.getMenuComponents();
@@ -1644,20 +1761,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public void actionPerformed(ActionEvent evt) {
+                final HardwareInterface hw;
                 synchronized (viewLoop) {
-                    if (chip.getHardwareInterface() != null) {
-                        log.info(String.format("selected None interface so closing %s", chip.getHardwareInterface().toString()));
-                        try {
-                            chip.getHardwareInterface().close();
-                        } catch (Exception e) {
-                            String s = String.format("Exception closing device: %s", e.toString());
-                            log.warning(s);
-                            JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
-                        }
+                    hw = (chip != null) ? chip.getHardwareInterface() : null;
+                    if (chip != null) {
+                        chip.setHardwareInterface(null);
                     }
-                    chip.setHardwareInterface(null);
-                    // force null interface
+                    if (aemon == hw) {
+                        aemon = null;
+                    }
+                    // force null interface (do not auto-reopen)
                     nullInterface = true;
+                }
+                if (hw != null) {
+                    log.info(String.format("selected None interface so closing %s (async, timeout %d ms)",
+                            hw, HARDWARE_CLOSE_TIMEOUT_MS));
+                    closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "Close interface");
                 }
             }
         });
@@ -1740,21 +1859,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         @Override
         public void actionPerformed(ActionEvent e) {
-
             showAction("USB reset");
-            synchronized (viewLoop) {
-                if (chip.getHardwareInterface() != null) {
-                    log.info(String.format("Resetting %s", chip.getHardwareInterface().toString()));
-                    try {
-                        chip.getHardwareInterface().close();
-                    } catch (Exception ex) {
-                        String s = String.format("Exception closing device: %s", ex.toString());
-                        log.warning(s);
-                        JOptionPane.showConfirmDialog(AEViewer.this, s, "Error", JOptionPane.WARNING_MESSAGE);
-                    }
-                }
-                chip.setHardwareInterface(null); // force null interface, AEViewer will repopen it
+            // Detach immediately; never call close() while holding viewLoop (deadlock / EDT hang).
+            final HardwareInterface hw = detachHardwareInterfaceForReset();
+            if (hw == null) {
+                showAction("No USB interface to reset");
+                return;
             }
+            log.info(String.format("Resetting %s (async close, timeout %d ms)",
+                    hw, HARDWARE_CLOSE_TIMEOUT_MS));
+            closeHardwareInterfaceWithTimeout(hw, HARDWARE_CLOSE_TIMEOUT_MS, "USB reset");
         }
     }
 
@@ -2011,6 +2125,105 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             setPlayMode(PlayMode.PLAYBACK);
         } else {
             wakeViewLoopForPlayback();
+        }
+    }
+
+    /**
+     * Detach current chip HW under the viewLoop lock so LIVE acquisition stops
+     * using it; does not call {@link HardwareInterface#close()}.
+     */
+    private HardwareInterface detachHardwareInterfaceForReset() {
+        synchronized (viewLoop) {
+            HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
+            if (chip != null) {
+                chip.setHardwareInterface(null); // AEViewer will reopen when nullInterface is false
+            }
+            if (aemon == hw) {
+                aemon = null;
+            }
+            nullInterface = false; // allow ViewLoop to reopen after reset
+            return hw;
+        }
+    }
+
+    /**
+     * Close a detached hardware interface on a daemon thread. Waits up to
+     * {@code timeoutMs} then abandons the close so the EDT cannot hang forever
+     * (seen with NRV {@code LibUsb.close} / transfer teardown).
+     */
+    private void closeHardwareInterfaceWithTimeout(HardwareInterface hw, long timeoutMs, String actionLabel) {
+        if (hw == null) {
+            return;
+        }
+        Thread closer = new Thread(() -> {
+            try {
+                hw.close();
+                log.info(actionLabel + ": closed " + hw);
+            } catch (Exception ex) {
+                log.warning(actionLabel + ": exception closing device: " + ex);
+            }
+        }, "jaer-hw-close");
+        closer.setDaemon(true);
+        closer.start();
+        // Do not block the EDT: schedule a timeout watcher on a background thread.
+        Thread watcher = new Thread(() -> {
+            try {
+                closer.join(timeoutMs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            if (closer.isAlive()) {
+                log.warning(String.format(
+                        "%s: hardware close timed out after %d ms; abandoning stuck close of %s (daemon thread). UI continues; unplug/replug if device stays busy.",
+                        actionLabel, timeoutMs, hw));
+                SwingUtilities.invokeLater(() -> showActionText(actionLabel + " timed out"));
+            } else {
+                SwingUtilities.invokeLater(() -> showActionText(actionLabel + " done"));
+            }
+        }, "jaer-hw-close-watch");
+        watcher.setDaemon(true);
+        watcher.start();
+    }
+
+    /**
+     * Close chip HW / {@link #aemon} for an AEChip class switch. When
+     * {@link #suppressHardwareOpen} (file open), close asynchronously so a stuck
+     * USB driver cannot hang the EDT.
+     */
+    private void closeHardwareInterfaceForChipSwitch() {
+        final HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
+        final AEMonitorInterface mon = aemon;
+        if (chip != null) {
+            chip.setHardwareInterface(null);
+        }
+        aemon = null;
+        if (hw == null && mon == null) {
+            return;
+        }
+        Runnable close = () -> {
+            try {
+                if (mon != null && mon.isOpen()) {
+                    mon.close();
+                }
+            } catch (Exception e) {
+                log.warning("async aemon.close during chip switch: " + e);
+            }
+            try {
+                if (hw != null && hw != mon && hw.isOpen()) {
+                    hw.close();
+                }
+            } catch (Exception e) {
+                log.warning("async hardwareInterface.close during chip switch: " + e);
+            }
+        };
+        if (suppressHardwareOpen) {
+            Thread t = new Thread(close, "jaer-async-hw-close");
+            t.setDaemon(true);
+            t.start();
+            log.info("Closing live hardware asynchronously for file playback chip switch");
+        } else {
+            close.run();
         }
     }
 
