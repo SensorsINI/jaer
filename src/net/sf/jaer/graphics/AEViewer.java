@@ -138,6 +138,7 @@ import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
+import prophesee.eventio.MetavisionRawFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -7747,7 +7748,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(AEDataFile.OLD_INDEX_FILE_EXTENSION)
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
                             || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_CSV)
-                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)) {
+                            || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)
+                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);
                     } else {

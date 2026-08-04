@@ -11,6 +11,7 @@ import java.io.File;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
+import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
  * filter for AE event data files.
@@ -34,7 +35,8 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
         if (extension != null) {
             if (extension.equals(EXTENSION)  || extension.equals(EXTENSION2) || extension.equals(EXTENSION4) || extension.equals(OLDEXTENSION) 
                     || extension.endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
-                    || extension.equals(TextFileInputStream.FILE_EXTENSION_CSV) || extension.equals(TextFileInputStream.FILE_EXTENSION_TXT)){
+                    || extension.equals(TextFileInputStream.FILE_EXTENSION_CSV) || extension.equals(TextFileInputStream.FILE_EXTENSION_TXT)
+                    || extension.equals(MetavisionRawFileInputStream.DATA_FILE_EXTENSION)){
                 return true;
             } else {
                 return false;
@@ -55,7 +57,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     public String getDescription() {
-        return "AEDAT data (.aedat4, .aedat2, .aedat, .dat), ROS bag (.bag), or text (.csv / .txt)";
+        return "AEDAT (.aedat4, .aedat2, .aedat, .dat), Metavision RAW (.raw), ROS bag (.bag), or text (.csv / .txt)";
     }
     
     /** Legacy extension without dot: "aedat" */

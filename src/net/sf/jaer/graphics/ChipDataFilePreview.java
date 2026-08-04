@@ -31,6 +31,7 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.util.EngineeringFormat;
+import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
  * Provides preview of recorded AE data file in file dialogs. It uses the
@@ -155,9 +156,23 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                     // http://bugs.sun.com/bugdatabase/view_bug.do;:YfiG?bug_id=4724038
                 }
                 try {
-                    ais = new AEFileInputStream(file, chip);
-                    ais.rewind();
-                    fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
+                    String lower = file.getName().toLowerCase();
+                    if (lower.endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
+                        // Full RAW index is slow; preview shows header only.
+                        MetavisionRawFileInputStream.HeaderInfo hi
+                                = MetavisionRawFileInputStream.peekHeader(file);
+                        if (hi != null && hi.evt3) {
+                            fileSizeString = String.format("Metavision RAW EVT3 %dx%d (open to index)",
+                                    hi.width, hi.height);
+                        } else {
+                            fileSizeString = "Metavision RAW (not EVT3 or unreadable header)";
+                        }
+                        ais = null;
+                    } else {
+                        ais = new AEFileInputStream(file, chip);
+                        ais.rewind();
+                        fileSizeString = fmt.format(ais.size()) + " events " + fmt.format(ais.getDurationUs() / 1e6f) + " s";
+                    }
                 } catch (IOException e) {
                     log.warning("Caught " + e.toString() + " trying to open file " + file);
 

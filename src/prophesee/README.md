@@ -99,6 +99,14 @@ Legacy paths under `ch/unizh/ini/jaer/chip/prophesee` and the old hardware packa
 | Biasing | SDK `.txt` register scripts | idac_ctl bytes over EVK4 |
 | Timestamp wire | Ref ms + sub-µs packets | EVT3 TIME_HIGH/LOW tokens |
 
+## File playback (Metavision RAW)
+
+Open Prophesee / Metavision native **`.raw` EVT3** recordings (File → Open, or drag-drop).
+jAER parses the ASCII `%` header, indexes CD events, and decodes with the same `Evt3Parser` as live USB.
+
+- Supported: RAW EVT3 (EVK4 IMX636 / Gen4.1 HD samples such as `laser.raw`)
+- Not yet: RAW EVT2, HDF5, DAT
+
 ## Code entry points
 
 - Chip: `prophesee.chip.PropheseeIMX636HD`
@@ -107,3 +115,4 @@ Legacy paths under `ch/unizh/ini/jaer/chip/prophesee` and the old hardware packa
 - Parser: `prophesee.usb.evt3.Evt3Parser`
 - Reader: `prophesee.usb.PropheseeAEReader`
 - Init: `prophesee.usb.evk4.Imx636Init`
+- RAW file: `prophesee.eventio.MetavisionRawFileInputStream`

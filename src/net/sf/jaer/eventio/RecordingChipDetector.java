@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
+import prophesee.chip.PropheseeIMX636HD;
+import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
  * Resolves which {@link AEChip} a recording likely needs, preferring the
@@ -212,17 +214,32 @@ public final class RecordingChipDetector {
         return new Hint(token, null, null, "filename");
     }
 
-    /** Peek AEDAT-4 infoNode or AEDAT-2 ASCII header without full open. */
+    /** Peek AEDAT-4 infoNode, Metavision RAW, or AEDAT-2 ASCII header without full open. */
     public static Hint fromHeader(File file) {
         String name = file.getName().toLowerCase(Locale.ROOT);
         if (name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)
                 || name.endsWith(".aedat4")) {
             return fromAedat4InfoNode(file);
         }
+        if (name.endsWith(".raw")) {
+            return fromMetavisionRawHeader(file);
+        }
         if (AEDataFile.hasDataFileExtension(file.getName())) {
             return fromAedat2AsciiHeader(file);
         }
         return null;
+    }
+
+    /**
+     * Metavision / Prophesee {@code .raw} EVT3 (EVK4 IMX636 or Gen4.1 HD) →
+     * {@link PropheseeIMX636HD}.
+     */
+    static Hint fromMetavisionRawHeader(File file) {
+        MetavisionRawFileInputStream.HeaderInfo hi = MetavisionRawFileInputStream.peekHeader(file);
+        if (hi == null || !hi.evt3) {
+            return null;
+        }
+        return new Hint(PropheseeIMX636HD.class.getSimpleName(), hi.width, hi.height, "metavision-raw");
     }
 
     static Hint fromAedat4InfoNode(File file) {

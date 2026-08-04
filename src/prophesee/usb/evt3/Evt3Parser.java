@@ -33,8 +33,16 @@ public class Evt3Parser {
     private long traceVect12Triples;
     private long traceOthersSkipped;
 
+    /** Bytes of the last {@link #parse} input that were consumed (even on overrun). */
+    private int lastBytesConsumed;
+
     public Evt3Parser() {
         reset();
+    }
+
+    /** Bytes consumed from the last {@link #parse} call (valid after success or overrun). */
+    public int getLastBytesConsumed() {
+        return lastBytesConsumed;
     }
 
     public void reset() {
@@ -50,6 +58,52 @@ public class Evt3Parser {
         bigWrapCount = 0;
     }
 
+    /** Snapshot of decoder state for RAW file seek checkpoints. */
+    public static final class State {
+        public int x;
+        public int y;
+        public boolean polarityOn;
+        public long tUs;
+        public long timestampOriginUs;
+        public long lastOutputAbsoluteUs;
+        public int bigWrapCount;
+        public int previousMsbT;
+        public int previousLsbT;
+        public int overflows;
+    }
+
+    public State snapshot() {
+        final State s = new State();
+        s.x = x;
+        s.y = y;
+        s.polarityOn = polarityOn;
+        s.tUs = tUs;
+        s.timestampOriginUs = timestampOriginUs;
+        s.lastOutputAbsoluteUs = lastOutputAbsoluteUs;
+        s.bigWrapCount = bigWrapCount;
+        s.previousMsbT = previousMsbT;
+        s.previousLsbT = previousLsbT;
+        s.overflows = overflows;
+        return s;
+    }
+
+    public void restore(State s) {
+        if (s == null) {
+            reset();
+            return;
+        }
+        x = s.x;
+        y = s.y;
+        polarityOn = s.polarityOn;
+        tUs = s.tUs;
+        timestampOriginUs = s.timestampOriginUs;
+        lastOutputAbsoluteUs = s.lastOutputAbsoluteUs;
+        bigWrapCount = s.bigWrapCount;
+        previousMsbT = s.previousMsbT;
+        previousLsbT = s.previousLsbT;
+        overflows = s.overflows;
+    }
+
     public void resetTimestampOrigin() {
         final long anchor = lastOutputAbsoluteUs >= 0 ? lastOutputAbsoluteUs : tUs;
         timestampOriginUs = anchor;
@@ -57,10 +111,12 @@ public class Evt3Parser {
     }
 
     /**
-     * @return number of events written, or -1 on buffer overrun
+     * @return number of events written, or -1 on buffer overrun (events
+     *         {@code [eventOffset, maxEvents)} are valid; see {@link #getLastBytesConsumed()})
      */
     public int parse(byte[] data, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
         int eventCount = eventOffset;
+        lastBytesConsumed = 0;
         for (int i = 0; i + 1 < len; i += 2) {
             final int word = readWord(data, i);
             switch (word >>> 12) {
@@ -75,6 +131,7 @@ public class Evt3Parser {
                     if (x < WIDTH && y < HEIGHT) {
                         eventCount = emitEvent(addresses, timestamps, eventCount, maxEvents, x, y, polarityOn);
                         if (eventCount < 0) {
+                            lastBytesConsumed = i; // do not consume the overflowing word
                             return -1;
                         }
                     }
@@ -91,21 +148,18 @@ public class Evt3Parser {
                             final int valid1 = readWord(data, i) & 0xFFF;
                             final int valid2 = readWord(data, i + 2) & 0xFFF;
                             final int valid3 = readWord(data, i + 4) & 0xFF;
+                            final int need = Integer.bitCount(valid1) + Integer.bitCount(valid2)
+                                    + Integer.bitCount(valid3 & 0xFF);
+                            if (eventCount + need > maxEvents) {
+                                lastBytesConsumed = i;
+                                return -1;
+                            }
                             eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
                                     baseX, y, polarityOn, valid1, 0, 12);
-                            if (eventCount < 0) {
-                                return -1;
-                            }
                             eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
                                     baseX, y, polarityOn, valid2, 12, 12);
-                            if (eventCount < 0) {
-                                return -1;
-                            }
                             eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
                                     baseX, y, polarityOn, valid3, 24, 8);
-                            if (eventCount < 0) {
-                                return -1;
-                            }
                         }
                         x = (x + 32) & 0xffff;
                         i += 4;
@@ -114,13 +168,15 @@ public class Evt3Parser {
                 case 0b0101:
                     if (x < WIDTH && y < HEIGHT) {
                         final int set = word & ((1 << Math.min(8, WIDTH - x)) - 1);
+                        final int need = Integer.bitCount(set);
+                        if (eventCount + need > maxEvents) {
+                            lastBytesConsumed = i;
+                            return -1;
+                        }
                         for (int bit = 0; bit < 8; bit++) {
                             if ((set & (1 << bit)) != 0) {
                                 eventCount = emitEvent(addresses, timestamps, eventCount, maxEvents,
                                         x + bit, y, polarityOn);
-                                if (eventCount < 0) {
-                                    return -1;
-                                }
                             }
                         }
                         x = (x + 8) & 0xffff;
@@ -140,6 +196,7 @@ public class Evt3Parser {
                 default:
                     break;
             }
+            lastBytesConsumed = i + 2;
         }
         return eventCount - eventOffset;
     }
