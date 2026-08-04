@@ -312,30 +312,67 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         }
     }
 
+    private static final long LIBUSB_CLOSE_TIMEOUT_MS = 2000L;
+
     @Override
-    public synchronized void close() {
-        if (!isOpen()) {
+    public void close() {
+        final NRVAEReader reader;
+        final DeviceHandle handle;
+        synchronized (this) {
+            if (!isOpen()) {
+                return;
+            }
+            // Mark closed first so ViewLoop / acquire stop using this interface
+            // even if USB teardown blocks in native code.
+            isOpened = false;
+            eventAcquisitionEnabled = false;
+            reader = aeReader;
+            aeReader = null;
+            handle = deviceHandle;
+            deviceHandle = null;
+            deviceDescriptor = null;
+            i2cTransport = null;
+            settingsApplied = false;
+            usbTransferFailed = false;
+            aePacketRawPool.reset();
+        }
+        if (reader != null) {
+            try {
+                reader.stopThread(); // already join-limited
+            } catch (Exception e) {
+                log.warning("Error stopping NRV AEReader on close: " + e.getMessage());
+            }
+        }
+        if (handle == null) {
             return;
         }
+        // releaseInterface / LibUsb.close can hang forever on Windows WinUSB; bound it.
+        Thread usbClose = new Thread(() -> {
+            try {
+                final int status = LibUsb.releaseInterface(handle, 0);
+                if (status != LibUsb.SUCCESS) {
+                    log.warning("releaseInterface on close: " + LibUsb.errorName(status));
+                }
+            } catch (Exception e) {
+                log.warning("Error releasing NRV interface on close: " + e.getMessage());
+            }
+            try {
+                LibUsb.close(handle);
+            } catch (Exception e) {
+                log.warning("Error in LibUsb.close: " + e.getMessage());
+            }
+        }, "NRV-LibUsb-close");
+        usbClose.setDaemon(true);
+        usbClose.start();
         try {
-            setEventAcquisitionEnabled(false);
-        } catch (HardwareInterfaceException e) {
-            log.warning("Error disabling event acquisition on close: " + e.getMessage());
+            usbClose.join(LIBUSB_CLOSE_TIMEOUT_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
-        try {
-            releaseDevice();
-        } catch (HardwareInterfaceException e) {
-            log.warning("Error releasing device: " + e.getMessage());
+        if (usbClose.isAlive()) {
+            log.warning("NRV LibUsb.close/releaseInterface timed out after "
+                    + LIBUSB_CLOSE_TIMEOUT_MS + " ms; abandoning daemon teardown thread");
         }
-        if (deviceHandle != null) {
-            LibUsb.close(deviceHandle);
-            deviceHandle = null;
-        }
-        deviceDescriptor = null;
-        i2cTransport = null;
-        settingsApplied = false;
-        aePacketRawPool.reset();
-        isOpened = false;
     }
 
     @Override
