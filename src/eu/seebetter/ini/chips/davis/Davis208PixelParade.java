@@ -22,7 +22,7 @@ public class Davis208PixelParade extends DavisBaseCamera {
 
     public Davis208PixelParade() {
         setName("Davis208PixelParade");
-        // Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis208PixelParade/
+        // Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis208PixelParade/
         setDefaultPreferencesFile(null);
         setSizeX(Davis208PixelParade.WIDTH_PIXELS);
         setSizeY(Davis208PixelParade.HEIGHT_PIXELS);

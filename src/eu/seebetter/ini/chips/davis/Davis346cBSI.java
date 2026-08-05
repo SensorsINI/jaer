@@ -13,7 +13,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 public class Davis346cBSI extends Davis346BaseCamera {
 	public Davis346cBSI() {
 		setName("Davis346cBSI");
-		// Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis346cBSI/
+		// Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis346cBSI/
 		setDefaultPreferencesFile(null);
 
 		davisRenderer = new DavisRenderer(this);

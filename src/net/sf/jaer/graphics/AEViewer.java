@@ -1066,11 +1066,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return chipClassNames;
     }
 
+    /** Prefs key prefix: remembered AEChip FQCN for a live USB device key. */
+    private static final String LIVE_CHIP_REMEMBERED_PREF_PREFIX = "AEViewer.liveChipOffer.chip.";
+
     /**
-     * When a single live USB device is about to be bound, offer matching
-     * {@link AEChip} class(es) declared via {@link net.sf.jaer.UsbDevices}.
-     * Prompts at most once per device key per session (and skips if prefs
-     * disable prompts for that key). Safe to call from ViewLoop (uses EDT).
+     * When a live USB device is about to be bound (startup or hot-plug), align
+     * the viewer AEChip with {@link net.sf.jaer.UsbDevices} matches:
+     * <ul>
+     * <li>If a remembered AEChip exists for this device key and is still a
+     * match, apply it silently.</li>
+     * <li>If exactly one menu AEChip matches and it is already selected,
+     * continue.</li>
+     * <li>If exactly one matches but differs from current, offer switch with
+     * optional Remember.</li>
+     * <li>If several match (e.g. Davis346 red/blue), offer a chooser with
+     * Remember.</li>
+     * </ul>
+     * Safe to call from ViewLoop (uses EDT).
      */
     public void ensureChipCompatibleWithLiveDevice(HardwareInterface hw) {
         if (hw == null || chipClassNames == null || chipClassNames.isEmpty()) {
@@ -1084,30 +1096,50 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         String deviceKey = liveDevicePromptKey(hw, ids);
-        if (liveChipOfferPromptedKeys.contains(deviceKey)) {
-            return;
-        }
-        if (prefs.getBoolean("AEViewer.liveChipOffer.skip." + deviceKey, false)) {
-            liveChipOfferPromptedKeys.add(deviceKey);
-            return;
-        }
-        if (LiveDeviceChipDetector.currentChipMatches(getAeChipClass(), hw)) {
-            liveChipOfferPromptedKeys.add(deviceKey);
-            return;
-        }
         java.util.List<Class<? extends AEChip>> matches
                 = LiveDeviceChipDetector.findMatches(hw, chipClassNames);
         if (matches.isEmpty()) {
+            return;
+        }
+
+        // Per-device remembered choice (survives restart / re-plug).
+        Class<? extends AEChip> remembered = loadRememberedLiveChip(deviceKey, matches);
+        if (remembered != null) {
+            liveChipOfferPromptedKeys.add(deviceKey);
+            if (!remembered.equals(getAeChipClass())) {
+                log.info("Using remembered AEChip " + remembered.getSimpleName()
+                        + " for USB device " + deviceKey);
+                setAeChipClass(remembered);
+            }
+            return;
+        }
+
+        Class current = getAeChipClass();
+        boolean currentIsMatch = false;
+        for (Class<? extends AEChip> m : matches) {
+            if (m.equals(current)) {
+                currentIsMatch = true;
+                break;
+            }
+        }
+
+        // Unique match and already selected — continue.
+        if (matches.size() == 1 && currentIsMatch) {
             liveChipOfferPromptedKeys.add(deviceKey);
             return;
         }
+
+        // Ambiguous, or unique match but wrong AEChip selected.
+        if (liveChipOfferPromptedKeys.contains(deviceKey)) {
+            return; // already asked this session (user did not Remember)
+        }
         liveChipOfferPromptedKeys.add(deviceKey);
+
         final Class<? extends AEChip>[] chosenHolder = new Class[1];
-        final boolean[] dontAskHolder = new boolean[1];
+        final boolean[] rememberHolder = new boolean[1];
+        final String idLabel = ids.key();
         Runnable dialog = () -> {
-            Class current = getAeChipClass();
             String currentName = current == null ? "(none)" : current.getSimpleName();
-            String idLabel = ids.key();
             if (matches.size() == 1) {
                 Class<? extends AEChip> suggested = matches.get(0);
                 String msg = String.format(
@@ -1115,35 +1147,52 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         + "but the viewer is set to <b>%s</b>.<br><br>"
                         + "Switch to <b>%s</b> before opening?</html>",
                         idLabel, suggested.getSimpleName(), currentName, suggested.getSimpleName());
-                Object[] options = {"Yes", "No", "Don't ask again"};
+                Object[] options = {"Yes", "Remember this selection", "No"};
                 int choice = JOptionPane.showOptionDialog(
                         this, msg, "AEChip for USB device",
                         JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
                         null, options, options[0]);
                 if (choice == 0) {
                     chosenHolder[0] = suggested;
-                } else if (choice == 2) {
-                    dontAskHolder[0] = true;
+                } else if (choice == 1) {
+                    chosenHolder[0] = suggested;
+                    rememberHolder[0] = true;
                 }
             } else {
-                String[] names = new String[matches.size() + 1];
-                names[0] = "Keep " + currentName;
+                String[] names = new String[matches.size()];
+                int preselect = 0;
                 for (int i = 0; i < matches.size(); i++) {
-                    names[i + 1] = matches.get(i).getSimpleName();
+                    names[i] = matches.get(i).getSimpleName();
+                    if (matches.get(i).equals(current)) {
+                        preselect = i;
+                    }
                 }
-                Object sel = JOptionPane.showInputDialog(
-                        this,
-                        String.format(
-                                "<html>USB device <b>%s</b> matches several AEChips in the menu.<br>"
-                                + "Choose which AEChip to use:</html>", idLabel),
-                        "AEChip for USB device",
-                        JOptionPane.QUESTION_MESSAGE, null, names, names[0]);
-                if (sel != null && !sel.equals(names[0])) {
-                    for (Class<? extends AEChip> c : matches) {
-                        if (c.getSimpleName().equals(sel)) {
-                            chosenHolder[0] = c;
-                            break;
+                javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(0, 10));
+                panel.add(new javax.swing.JLabel(String.format(
+                        "<html>USB device <b>%s</b> matches several AEChips (same VID/PID).<br>"
+                        + "jAER cannot tell which physical camera this is (e.g. Davis346 red vs blue).<br>"
+                        + "Current AEChip is <b>%s</b>. Choose the AEChip for this camera:</html>",
+                        idLabel, currentName)), java.awt.BorderLayout.NORTH);
+                javax.swing.JComboBox<String> combo = new javax.swing.JComboBox<>(names);
+                combo.setSelectedIndex(preselect);
+                panel.add(combo, java.awt.BorderLayout.CENTER);
+                Object[] options = {"OK", "Remember this selection", "Cancel"};
+                int choice = JOptionPane.showOptionDialog(
+                        this, panel, "AEChip for USB device",
+                        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
+                        null, options, options[0]);
+                if (choice == 0 || choice == 1) {
+                    Object sel = combo.getSelectedItem();
+                    if (sel != null) {
+                        for (Class<? extends AEChip> c : matches) {
+                            if (c.getSimpleName().equals(sel)) {
+                                chosenHolder[0] = c;
+                                break;
+                            }
                         }
+                    }
+                    if (choice == 1) {
+                        rememberHolder[0] = true;
                     }
                 }
             }
@@ -1162,15 +1211,39 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("Live AEChip offer dialog failed: " + e.getCause());
             return;
         }
-        if (dontAskHolder[0]) {
-            prefs.putBoolean("AEViewer.liveChipOffer.skip." + deviceKey, true);
-            log.info("Will not offer AEChip switch again for " + deviceKey);
-        }
         if (chosenHolder[0] != null) {
-            log.info("Switching AEChip to " + chosenHolder[0].getSimpleName()
-                    + " for USB device " + deviceKey);
-            setAeChipClass(chosenHolder[0]);
+            if (rememberHolder[0]) {
+                prefs.put(LIVE_CHIP_REMEMBERED_PREF_PREFIX + deviceKey, chosenHolder[0].getName());
+                log.info("Remembered AEChip " + chosenHolder[0].getSimpleName()
+                        + " for USB device " + deviceKey);
+            }
+            if (!chosenHolder[0].equals(getAeChipClass())) {
+                log.info("Switching AEChip to " + chosenHolder[0].getSimpleName()
+                        + " for USB device " + deviceKey);
+                setAeChipClass(chosenHolder[0]);
+            }
         }
+    }
+
+    /**
+     * Loads a previously remembered AEChip for {@code deviceKey} if it is still
+     * among the VID/PID matches.
+     */
+    private Class<? extends AEChip> loadRememberedLiveChip(String deviceKey,
+            java.util.List<Class<? extends AEChip>> matches) {
+        String fqcn = prefs.get(LIVE_CHIP_REMEMBERED_PREF_PREFIX + deviceKey, null);
+        if (fqcn == null || fqcn.isEmpty()) {
+            return null;
+        }
+        for (Class<? extends AEChip> m : matches) {
+            if (m.getName().equals(fqcn)) {
+                return m;
+            }
+        }
+        log.info("Forgetting stale remembered AEChip " + fqcn + " for " + deviceKey
+                + " (no longer in menu matches)");
+        prefs.remove(LIVE_CHIP_REMEMBERED_PREF_PREFIX + deviceKey);
+        return null;
     }
 
     private String liveDevicePromptKey(HardwareInterface hw, UsbIds.Pair ids) {

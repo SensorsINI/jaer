@@ -1,7 +1,7 @@
 Nominal bias / hardware configuration presets for production AEChips.
 
 Convention for factory defaults (auto-loaded on first live hardware use):
-  biasgenSettings/<Family>/<AEChipSimpleName>.xml
+  deviceSettings/<Family>/<AEChipSimpleName>.xml
 
 Examples:
   Davis240/DAVIS240B.xml

@@ -305,15 +305,20 @@ AEChip classes may optionally declare the same IDs with `@UsbDevices` /
 `@UsbDevice` (inherited), for example on `DavisBaseCamera` or a unique camera
 class such as `NRVS5KRC1S`.
 
-When a single USB device is available and the viewer has no open interface,
+When a single USB device is available and the viewer has no open interface
+(startup or hot-plug),
 [`LiveDeviceChipDetector`](../src/net/sf/jaer/hardwareinterface/usb/LiveDeviceChipDetector.java)
 matches that device against the AEChip menu. AEViewer then:
 
-- binds without prompting if the current chip already matches;
-- offers a Yes/No switch when exactly one menu chip matches;
-- offers a list when several chips share the PID (typical for Davis FX3);
-- prompts at most once per `{vid:pid[#serial]}` per session (optional
-  “Don't ask again” preference).
+- if a **Remember this selection** mapping exists for `{vid:pid[#serial]}` and is
+  still a valid match, applies that AEChip silently;
+- binds without prompting if the current chip is the **sole** VID/PID match;
+- offers Yes / Remember / No when exactly one menu chip matches but differs from current;
+- offers a chooser (OK / Remember this selection / Cancel) when several chips share
+  the PID (typical for Davis FX3) — USB cannot distinguish e.g. Davis346 red vs blue;
+- without Remember, prompts at most once per device key per session.
+
+Remembered mapping prefs key: `AEViewer.liveChipOffer.chip.<deviceKey>` → AEChip FQCN.
 
 To support a new camera chip, register its VID/PID in the appropriate
 hardware-interface factory (which also updates the registry) and annotate the

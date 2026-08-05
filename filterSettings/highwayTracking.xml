@@ -90,7 +90,7 @@
                 <entry key="rx" value="10000.0"/>
                 <entry key="rint" value="46000.0"/>
                 <entry key="internalResistorUsed" value="false"/>
-                <entry key="BiasgenFrame.lastFile" value="C:\Documents and Settings\tobi\My Documents\~jAER-sourceForge\trunk\biasgenSettings\tmpdiff128LowerThresholds.xml"/>
+                <entry key="BiasgenFrame.lastFile" value="C:\Documents and Settings\tobi\My Documents\~jAER-sourceForge\trunk\deviceSettings\tmpdiff128LowerThresholds.xml"/>
                 <entry key="BiasgenFrame.Xposition" value="121"/>
                 <entry key="BiasgenFrame.YPosition" value="587"/>
                 <entry key="BiasgenFrame.XPosition" value="237"/>

@@ -451,7 +451,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
         }
         final File settingsFile = resolveLastSettingsFile(getBiasgenFrameLastFile());
         if (settingsFile == null) {
-            log.warning("NRV camera attached but no settings .txt found (check biasgenSettings/NRV)");
+            log.warning("NRV camera attached but no settings .txt found (check deviceSettings/NRV)");
             return false;
         }
         try {
@@ -1162,7 +1162,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
 
     /**
      * Resolves the settings file to auto-load: saved preference, then BiasgenFrame
-     * last file if it is an NRV {@code .txt}, then default preset in biasgenSettings/NRV.
+     * last file if it is an NRV {@code .txt}, then default preset in deviceSettings/NRV.
      */
     public File resolveLastSettingsFile(File biasgenFrameLastFile) {
         final String savedPath = getChip().getPrefs().get(PREFS_LAST_SETTINGS_FILE, "");
@@ -1185,7 +1185,7 @@ public class NRVConfig extends Biasgen implements ChipControlPanel, DvsDisplayCo
     }
 
     public static File getDefaultSettingsFolder() {
-        final String rel = "biasgenSettings" + File.separator + "NRV";
+        final String rel = "deviceSettings" + File.separator + "NRV";
         final File fromUserDir = new File(System.getProperty("user.dir"), rel);
         if (fromUserDir.isDirectory()) {
             return fromUserDir;

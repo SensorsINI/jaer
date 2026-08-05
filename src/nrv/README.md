@@ -7,7 +7,7 @@ jAER driver for the [NRV](https://nrv.kr/) **DELTA01** DVS camera (960×720). DE
 | `nrv.chip` | AEChip, bias UI, user-facing controls |
 | `nrv.usb` | LibUsb hardware interface, USB readout, settings parser |
 
-Factory presets for biasing live in [`biasgenSettings/NRV/`](../../biasgenSettings/NRV/).
+Factory presets for biasing live in [`deviceSettings/NRV/`](../../deviceSettings/NRV/).
 
 ## Hardware
 
@@ -154,7 +154,7 @@ Qualitative behavior (with MSBs fixed as in presets):
 
 ### Preset naming
 
-Settings files use the SDK sensor id **S5KRC1S** in filenames and the `//@ DVS_VERSION` header (not “DELTA01”). Under `biasgenSettings/NRV/` they are named by nominal rate and USB bridge, e.g. `S5KRC1S_1000_CX3.txt` (1000 fps, CX3). The default loaded on first run is `S5KRC1S_300_CX3.txt`.
+Settings files use the SDK sensor id **S5KRC1S** in filenames and the `//@ DVS_VERSION` header (not “DELTA01”). Under `deviceSettings/NRV/` they are named by nominal rate and USB bridge, e.g. `S5KRC1S_1000_CX3.txt` (1000 fps, CX3). The default loaded on first run is `S5KRC1S_300_CX3.txt`.
 
 ### Registers exposed in the UI
 

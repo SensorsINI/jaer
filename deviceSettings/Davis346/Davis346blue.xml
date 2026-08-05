@@ -158,7 +158,7 @@
             <entry key="AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.biasBuffer.Sex" value="N"/>
             <entry key="AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
-            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\biasgenSettings\Davis346b\DAVIS346blue.xml"/>
+            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\deviceSettings\Davis346b\DAVIS346blue.xml"/>
             <entry key="Chip.AERnArow" value="false"/>
             <entry key="Chip.AnalogMux0" value="0"/>
             <entry key="Chip.AnalogMux1" value="0"/>

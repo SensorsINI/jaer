@@ -22,7 +22,7 @@ public class DAVIS240A extends DAVIS240BaseCamera {
 
 	public DAVIS240A() {
 		setName("DAVIS240A");
-		// Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis240a/
+		// Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis240a/
 		setDefaultPreferencesFile(null);
 
 		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));

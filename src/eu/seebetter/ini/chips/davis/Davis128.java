@@ -17,7 +17,7 @@ public class Davis128 extends DavisBaseCamera {
 
 	public Davis128() {
 		setName("Davis128");
-		// Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis128/
+		// Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis128/
 		setDefaultPreferencesFile(null);
 		setSizeX(Davis128.WIDTH_PIXELS);
 		setSizeY(Davis128.HEIGHT_PIXELS);

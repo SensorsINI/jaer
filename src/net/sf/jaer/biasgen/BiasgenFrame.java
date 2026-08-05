@@ -66,7 +66,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     private boolean fileModified = false;
     Chip chip;
     private boolean viewFunctionalBiasesEnabled;
-    private String defaultFolder = ""; // "/biasgenSettings is appended in importPreferencesDialog
+    private String defaultFolder = ""; // "/deviceSettings is appended in importPreferencesDialog
 
     /**
      * Creates new form BiasgenApp, using an existing {@link Biasgen}.
@@ -94,7 +94,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         fixUndoRedo();
         defaultFolder = System.getProperty("user.dir");
         try {
-            File f = new File(defaultFolder + File.separator + "biasgenSettings");
+            File f = new File(defaultFolder + File.separator + "deviceSettings");
             if (biasgen instanceof NRVConfig) {
                 f = new File(f, "NRV");
             }
@@ -185,7 +185,7 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
             }
             Biasgen bg = chip.getBiasgen();
             if ((bg != null) && !bg.isInitialized() && !chip.isFirstHardwareUseHandled()) {
-                final String WARNING_MESSAGE = "<html>No bias values or other hardware configuration have been set for " + chip.getName() + ".<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Hardware Configuration panel and load values using the File/Load settings menu item. <p>Settings are available in the folder <i>biasgenSettings</i><p>Navigate to appropriate folder to load values from the XML file.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
+                final String WARNING_MESSAGE = "<html>No bias values or other hardware configuration have been set for " + chip.getName() + ".<p> To remove this warning and to run your hardware you probably need to load confiruration (e.g. biases) for your hardware.<p>To load existing bias values, open Hardware Configuration panel and load values using the File/Load settings menu item. <p>Settings are available in the folder <i>deviceSettings</i><p>Navigate to appropriate folder to load values from the XML file.<p>Or, to remove this message, set any bias to a non-zero value.</html>";
                 final String WARNING_TITLE = "Unitialized configuration for " + chip.getName();
                 WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(this, true, WARNING_TITLE, WARNING_MESSAGE);
                 d.setVisible(true);

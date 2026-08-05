@@ -63,7 +63,7 @@ Bias workflow:
 3. Slider changes apply immediately over USB; **Revert** restores the last saved snapshot.
 4. Export/import bias XML via the Biases frame (same mechanism as DVS128). XML with legacy package paths is rewritten on import.
 
-Default preferences file (when present): `biasgenSettings/PropheseeIMX636HD/PropheseeIMX636HD.xml`.
+Default preferences file (when present): `deviceSettings/PropheseeIMX636HD/PropheseeIMX636HD.xml`.
 
 ## Device init
 

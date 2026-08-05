@@ -19,7 +19,7 @@ public class Davis208PixelParadeColor extends DavisBaseCamera {
 
 	public Davis208PixelParadeColor() {
 		setName("Davis208PixelParade");
-		// Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis208PixelParade/
+		// Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis208PixelParade/
 		setDefaultPreferencesFile(null);
 		setSizeX(Davis208PixelParadeColor.WIDTH_PIXELS);
 		setSizeY(Davis208PixelParadeColor.HEIGHT_PIXELS);

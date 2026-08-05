@@ -19,7 +19,7 @@ public class Davis640Color extends DavisBaseCamera {
 
 	public Davis640Color() {
 		setName("Davis640Color");
-		// Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis640/
+		// Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis640/
 		setDefaultPreferencesFile(null);
 		setSizeX(Davis640Color.WIDTH_PIXELS);
 		setSizeY(Davis640Color.HEIGHT_PIXELS);

@@ -17,7 +17,7 @@ public class Davis640 extends DavisBaseCamera {
 
 	public Davis640() {
 		setName("Davis640");
-		// Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis640/
+		// Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis640/
 		setDefaultPreferencesFile(null);
 		setSizeX(Davis640.WIDTH_PIXELS);
 		setSizeY(Davis640.HEIGHT_PIXELS);

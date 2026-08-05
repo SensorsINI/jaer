@@ -225,9 +225,9 @@ public class Chip extends Observable {
 
     /**
      * Sets the default preferences path to
-     * {@code biasgenSettings/<familyFolder>/<ChipSimpleName>.xml}.
+     * {@code deviceSettings/<familyFolder>/<ChipSimpleName>.xml}.
      *
-     * @param familyFolder short family folder under {@code biasgenSettings/}
+     * @param familyFolder short family folder under {@code deviceSettings/}
      *            (e.g. {@code Davis240}, {@code Davis346}, {@code DVS128})
      */
     protected void setDefaultPreferencesFileForFamily(String familyFolder) {
@@ -235,13 +235,13 @@ public class Chip extends Observable {
             setDefaultPreferencesFile(null);
             return;
         }
-        setDefaultPreferencesFile("biasgenSettings/" + familyFolder + "/" + getClass().getSimpleName() + ".xml");
+        setDefaultPreferencesFile("deviceSettings/" + familyFolder + "/" + getClass().getSimpleName() + ".xml");
     }
 
     /**
      * Resolves the default preferences file path: explicit
      * {@link #getDefaultPreferencesFile()}, else conventional
-     * {@code biasgenSettings/<SimpleName>/<SimpleName>.xml} if that file exists.
+     * {@code deviceSettings/<SimpleName>/<SimpleName>.xml} if that file exists.
      *
      * @return path string, or null if none
      */
@@ -249,7 +249,7 @@ public class Chip extends Observable {
         if (defaultPreferencesFile != null && !defaultPreferencesFile.isEmpty()) {
             return defaultPreferencesFile;
         }
-        String conventional = "biasgenSettings/" + getClass().getSimpleName() + "/" + getClass().getSimpleName() + ".xml";
+        String conventional = "deviceSettings/" + getClass().getSimpleName() + "/" + getClass().getSimpleName() + ".xml";
         if (new File(conventional).isFile()) {
             return conventional;
         }
@@ -307,7 +307,7 @@ public class Chip extends Observable {
 
     /**
      * Shows an informational dialog that initial preferences were loaded from a
-     * default biasgenSettings XML file.
+     * default deviceSettings XML file.
      *
      * @param parent parent frame (may be null)
      * @param path path that was imported
@@ -508,7 +508,7 @@ public class Chip extends Observable {
      * been initialized. A Chip can set this path relative to the startup folder
      * (in jAER the startup folder is host/java) to automatically have
      * preferences imported on first use. For example set the file path to
-     * "biasgenSettings/DVS128/DVS128Fast.xml".
+     * "deviceSettings/DVS128/DVS128Fast.xml".
      *
      * @return the defaultPreferencesFile
      */

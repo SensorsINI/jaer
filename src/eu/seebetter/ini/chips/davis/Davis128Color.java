@@ -19,7 +19,7 @@ public class Davis128Color extends DavisBaseCamera {
 
 	public Davis128Color() {
 		setName("Davis128");
-		// Default presets archived under biasgenSettings/olderSystemsAndExperimental/Davis128/
+		// Default presets archived under deviceSettings/olderSystemsAndExperimental/Davis128/
 		setDefaultPreferencesFile(null);
 		setSizeX(Davis128Color.WIDTH_PIXELS);
 		setSizeY(Davis128Color.HEIGHT_PIXELS);

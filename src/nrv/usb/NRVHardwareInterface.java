@@ -462,7 +462,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         }
         if (chip != null && chip.getBiasgen() instanceof NRVConfig config) {
             if (!config.ensureAppliedToHardware()) {
-                log.warning("NRV: register settings not applied — load biasgenSettings/NRV/S5KRC1S_300_CX3.txt "
+                log.warning("NRV: register settings not applied — load deviceSettings/NRV/S5KRC1S_300_CX3.txt "
                         + "via Biases > File > Load settings");
             }
         }
@@ -556,7 +556,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
             ensureSettingsBeforeAcquisition();
             if (!settingsApplied) {
                 log.warning("NRV: event reader not started until settings are applied "
-                        + "(Biases > File > Load settings, or biasgenSettings/NRV/S5KRC1S_300_CX3.txt)");
+                        + "(Biases > File > Load settings, or deviceSettings/NRV/S5KRC1S_300_CX3.txt)");
                 return;
             }
             if (aeReader == null) {
