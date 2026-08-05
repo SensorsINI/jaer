@@ -5,6 +5,8 @@
 package eu.seebetter.ini.chips.davis;
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.beans.PropertyChangeEvent;
@@ -13,6 +15,9 @@ import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Logger;
 
+import javax.swing.BoxLayout;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
 import javax.swing.JSpinner;
 
 import ch.unizh.ini.jaer.chip.retina.DVSTweaks;
@@ -50,6 +55,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         renderer = this.chip.getRenderer();
         apsDvsTweaks = (DavisTweaks) chip.getBiasgen();
         initComponents();
+        // FlowLayout preferred size is a single row of all children; with three ~500px
+        // panels that makes BiasgenFrame pack ~1500px wide. Stack them vertically.
+        stackDvsPanelVertically();
         // code must be after initComponents so that these components exist
         final PotTweaker[] tweakers = {thresholdTweaker, onOffBalanceTweaker, maxFiringRateTweaker, bandwidthTweaker};
         for (final PotTweaker tweaker : tweakers) {
@@ -118,6 +126,33 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
 
     private DavisConfig getConfig() {
         return ((DavisBaseCamera) chip).getDavisConfig();
+    }
+
+    /**
+     * Rebuilds {@link #dvsPanel} with a vertical {@link BoxLayout} so preferred
+     * width matches the stacked tweaker panels instead of FlowLayout's single-row
+     * preferred size (which was inflating {@code BiasgenFrame} pack width).
+     */
+    private void stackDvsPanelVertically() {
+        final Component[] comps = dvsPanel.getComponents();
+        dvsPanel.removeAll();
+        dvsPanel.setLayout(new BoxLayout(dvsPanel, BoxLayout.Y_AXIS));
+        final JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        header.setAlignmentX(LEFT_ALIGNMENT);
+        for (final Component c : comps) {
+            if ((c == bwPanel) || (c == thrPanel) || (c == refrPanel)) {
+                if (header.getParent() == null) {
+                    dvsPanel.add(header);
+                }
+                ((JComponent) c).setAlignmentX(LEFT_ALIGNMENT);
+                dvsPanel.add(c);
+            } else {
+                header.add(c);
+            }
+        }
+        if (header.getParent() == null) {
+            dvsPanel.add(header);
+        }
     }
 
     private class SpinnerMouseWheelIntHandler implements MouseWheelListener {
@@ -502,11 +537,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         bwEstimatePanelLayout.setHorizontalGroup(
             bwEstimatePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(bwEstimatePanelLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap()
                 .addComponent(bwEstLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(bwEstTF, javax.swing.GroupLayout.PREFERRED_SIZE, 276, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(182, 182, 182))
+                .addComponent(bwEstTF, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         bwEstimatePanelLayout.setVerticalGroup(
             bwEstimatePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -621,18 +656,14 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         thrPanel.setLayout(thrPanelLayout);
         thrPanelLayout.setHorizontalGroup(
             thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, thrPanelLayout.createSequentialGroup()
+            .addGroup(thrPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(thrPanelLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, thrPanelLayout.createSequentialGroup()
-                        .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                            .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 472, Short.MAX_VALUE)
-                            .addComponent(thresholdTweaker, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addGap(231, 231, 231))
+                .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addComponent(onOffBalanceTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, 472, Short.MAX_VALUE)
+                        .addComponent(thresholdTweaker, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         thrPanelLayout.setVerticalGroup(
             thrPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -680,11 +711,11 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
         refrEstimatePanelLayout.setHorizontalGroup(
             refrEstimatePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(refrEstimatePanelLayout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap()
                 .addComponent(refrPerLabel)
                 .addGap(5, 5, 5)
-                .addComponent(refrPerTF, javax.swing.GroupLayout.PREFERRED_SIZE, 348, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addComponent(refrPerTF, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         refrEstimatePanelLayout.setVerticalGroup(
             refrEstimatePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -991,7 +1022,7 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addGap(10, 10, 10)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 569, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(apsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
@@ -1010,9 +1041,9 @@ public class DavisUserControlPanel extends javax.swing.JPanel implements Propert
                         .addComponent(toggleDualViewJB)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                         .addComponent(imuPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(27, 27, 27)
-                .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 532, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(158, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(dvsPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
         );
 
         add(jPanel2, java.awt.BorderLayout.PAGE_START);
