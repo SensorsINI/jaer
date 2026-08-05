@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -301,6 +302,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     EventExtractor2D extractor = null;
     private BiasgenFrame biasgenFrame = null;
     Biasgen biasgen = null;
+    /**
+     * First-hardware-use dialog / Hardware Configuration open, run on EDT after
+     * {@link PlayMode#LIVE} so preference import and camera start are not blocked.
+     */
+    private volatile Runnable pendingFirstHardwareUseUi = null;
+    /** True if shipped deviceSettings XML should be imported after LIVE. */
+    private volatile boolean pendingFirstHardwareUseImport = false;
+    /** Heartbeat for EDT liveness during first-use open/import (0 = not armed). */
+    private final AtomicLong edtHeartbeatMs = new AtomicLong(0);
+    private static final long EDT_FREEZE_HALT_MS = 20000;
     EventFilter2D filter1 = null, filter2 = null;
     private AEChipRenderer renderer = null;
     AEMonitorInterface aemon = null;
@@ -1129,9 +1140,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
 
-        // Ambiguous, or unique match but wrong AEChip selected.
-        if (liveChipOfferPromptedKeys.contains(deviceKey)) {
-            return; // already asked this session (user did not Remember)
+        // Already asked this session: only skip if the current AEChip can still drive
+        // this device. If the user switched to another chip (e.g. NRV) and replugged
+        // Davis, we must offer again — otherwise HI is bound to the wrong AEChip and
+        // LIVE never recovers.
+        if (currentIsMatch && liveChipOfferPromptedKeys.contains(deviceKey)) {
+            return;
         }
         liveChipOfferPromptedKeys.add(deviceKey);
 
@@ -1731,13 +1745,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         ButtonGroup bg = new ButtonGroup();
 
-        //create a list of available hardware interfaces from enumerated devices
-        log.info("finding number of available interfaces");
-        int n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
-        //        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
-//                log.info("found "+n+" interfaces");
+        //create a list of available hardware interfaces from enumerated devices.
+        // Skip USB re-enumeration when a device is already open: getNumInterfacesAvailable()
+        // blocks on the EDT and can hang the UI during/after open or preference download.
         boolean choseOneButton = false;
         JRadioButtonMenuItem interfaceButton = null;
+        final int n;
+        if (interfaceAlreadyOpen) {
+            log.info("Interface menu: device already open, skipping USB re-enumeration");
+            n = 0;
+        } else {
+            log.info("finding number of available interfaces");
+            n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
+        }
+        //        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
+//                log.info("found "+n+" interfaces");
         for (int i = 0; i < n; i++) {
             HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(i);// should only return interfaces that are not opened and exclusively owned (modified contract as of Feb 2015, tobi and luca)
 //                        log.info("found device "+hw);
@@ -1764,19 +1786,43 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         JComponent comp = (JComponent) evt.getSource();
                         int interfaceNumber = (Integer) comp.getClientProperty("HardwareInterfaceNumber");
                         HardwareInterface hw = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
+                        if (hw == null || chip == null) {
+                            return;
+                        }
+                        HardwareInterface currentHw = chip.getHardwareInterface();
                         //only select an interface if it is not the same as already selected
-                        if (((hw != null) && (chip != null) && (chip.getHardwareInterface() == null)) || !hw.toString().equals(chip.getHardwareInterface().toString())) {
-                            synchronized (viewLoop) {
-                                // close interface on chip if there is one and it's open
-                                if ((chip.getHardwareInterface() != null) && chip.getHardwareInterface().isOpen()) {
-                                    log.info("closing " + chip.getHardwareInterface().toString());
-                                    chip.getHardwareInterface().close();
-                                    aemon = null;
-                                }
-                                log.info("selected interface " + evt.getActionCommand() + " with HardwareInterface number" + interfaceNumber + " which is " + hw);
-                                chip.setHardwareInterface(hw);
+                        if (currentHw != null && hw.toString().equals(currentHw.toString()) && currentHw.isOpen()) {
+                            return;
+                        }
+                        // Allow auto/manual reopen after Interface→None.
+                        nullInterface = false;
+                        final HardwareInterface previous = currentHw;
+                        aemon = null;
+                        // Detach first; close previous async so EDT does not block on USB.
+                        chip.setHardwareInterface(null);
+                        if (previous != null && previous.isOpen()) {
+                            log.info("closing previous interface before selecting " + hw);
+                            closeHardwareInterfaceWithTimeout(previous, HARDWARE_CLOSE_TIMEOUT_MS, "Switch interface");
+                        }
+                        // Offer / apply AEChip for this USB device (e.g. NRV → Davis346).
+                        ensureChipCompatibleWithLiveDevice(hw);
+                        // Chip switch may have cleared HI; bind selected device if still free.
+                        if (chip.getHardwareInterface() == null) {
+                            // Re-resolve index after possible chip rebuild / USB re-enum.
+                            HardwareInterface bind = HardwareInterfaceFactory.instance().getInterface(interfaceNumber);
+                            if (bind == null) {
+                                bind = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+                            }
+                            log.info("selected interface " + evt.getActionCommand()
+                                    + " with HardwareInterface number" + interfaceNumber + " which is " + bind);
+                            if (bind != null) {
+                                chip.setHardwareInterface(bind);
                             }
                         }
+                        if (getPlayMode() != PlayMode.PLAYBACK && getPlayMode() != PlayMode.FILTER_INPUT) {
+                            setPlayMode(PlayMode.WAITING);
+                        }
+                        interruptViewloop();
                     }
                 });
                 //            if(chip!=null && chip.getHardwareInterface()==hw) b.setSelected(true);
@@ -1843,18 +1889,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             @Override
             public void actionPerformed(ActionEvent evt) {
-                final HardwareInterface hw;
-                synchronized (viewLoop) {
-                    hw = (chip != null) ? chip.getHardwareInterface() : null;
-                    if (chip != null) {
-                        chip.setHardwareInterface(null);
-                    }
-                    if (aemon == hw) {
-                        aemon = null;
-                    }
-                    // force null interface (do not auto-reopen)
-                    nullInterface = true;
+                final HardwareInterface hw = (chip != null) ? chip.getHardwareInterface() : null;
+                if (chip != null) {
+                    chip.setHardwareInterface(null);
                 }
+                aemon = null;
+                // force null interface (do not auto-reopen until user picks a device)
+                nullInterface = true;
+                if (getPlayMode() == PlayMode.LIVE || getPlayMode() == PlayMode.SEQUENCING) {
+                    setPlayMode(PlayMode.WAITING);
+                }
+                interruptViewloop();
                 if (hw != null) {
                     log.info(String.format("selected None interface so closing %s (async, timeout %d ms)",
                             hw, HARDWARE_CLOSE_TIMEOUT_MS));
@@ -2121,21 +2166,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (aemon instanceof BiasgenHardwareInterface) {
                         Biasgen bg = chip.getBiasgen();
                         if (bg != null && !chip.isFirstHardwareUseHandled()) {
-                            // First live use of this AEChip: import shipped defaults if any, open Hardware Configuration.
-                            String defaultPath = chip.resolveDefaultPreferencesFile();
-                            boolean loadedDefaults = false;
-                            if (!chip.isDefaultPreferencesLoadedOnce()) {
-                                loadedDefaults = chip.maybeLoadDefaultPreferences();
-                                if (loadedDefaults) {
-                                    bg.loadPreferences();
-                                }
-                            }
-                            // Mark before showBiasgen so BiasgenFrame skips the uninitialized-biases warning.
+                            // Do not import here — that used to block before LIVE and flood SPI (DavisConfig).
+                            // Mark handled, then import + UI after PlayMode.LIVE (see below).
+                            final String defaultPath = chip.resolveDefaultPreferencesFile();
+                            final boolean wantDefaults = !chip.isDefaultPreferencesLoadedOnce() && defaultPath != null;
                             chip.setFirstHardwareUseHandled(true);
-                            showBiasgen(true);
-                            if (loadedDefaults && defaultPath != null) {
-                                chip.showDefaultPreferencesLoadedDialog(this, defaultPath);
-                            }
+                            final AEChip chipForUi = chip;
+                            pendingFirstHardwareUseImport = wantDefaults;
+                            pendingFirstHardwareUseUi = () -> {
+                                try {
+                                    log.info("running first-hardware-use UI for "
+                                            + chipForUi.getClass().getSimpleName()
+                                            + " (notifyDefaults=" + wantDefaults + ")");
+                                    if (wantDefaults) {
+                                        chipForUi.showDefaultPreferencesLoadedDialog(AEViewer.this, defaultPath);
+                                    }
+                                    showBiasgenOnEdt(true);
+                                } catch (Throwable t) {
+                                    log.log(java.util.logging.Level.WARNING, "First-hardware-use UI failed", t);
+                                }
+                            };
                         } else if ((bg != null) && !bg.isInitialized()) {
                             bg.showUnitializedBiasesWarningDialog(this);
                         }
@@ -2195,11 +2245,102 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         fixDeviceControlMenuItems();
         if (wantWaiting) {
+            pendingFirstHardwareUseUi = null;
+            pendingFirstHardwareUseImport = false;
+            disarmEdtLivenessWatchdog();
             setPlayMode(PlayMode.WAITING);
         } else if (wantLive && getPlayMode() == PlayMode.WAITING && !suppressHardwareOpen) {
             // Only WAITING→LIVE; never overwrite PLAYBACK/REMOTE/FILTER_INPUT (file-open race).
             setPlayMode(PlayMode.LIVE);
+            runPendingFirstHardwareUseAfterLive();
         }
+    }
+
+    /**
+     * After LIVE: import shipped defaults (batched SPI), then show dialog / Hardware Configuration.
+     * Import runs on ViewLoop here so the title already shows LIVE and close/EDT stay responsive
+     * once DavisConfig respects {@link Biasgen#isBatchEditOccurring()}.
+     */
+    private void runPendingFirstHardwareUseAfterLive() {
+        final boolean doImport = pendingFirstHardwareUseImport;
+        pendingFirstHardwareUseImport = false;
+        final Runnable ui = pendingFirstHardwareUseUi;
+        pendingFirstHardwareUseUi = null;
+        if (!doImport && ui == null) {
+            return;
+        }
+        armEdtLivenessWatchdog();
+        try {
+            if (doImport && chip != null) {
+                log.info("importing first-hardware-use preferences after LIVE for "
+                        + chip.getClass().getSimpleName());
+                chip.maybeLoadDefaultPreferences();
+            }
+        } catch (Throwable t) {
+            log.log(Level.WARNING, "First-hardware-use preference import failed", t);
+        }
+        if (ui == null) {
+            disarmEdtLivenessWatchdog();
+            return;
+        }
+        log.info("scheduling first-hardware-use UI after LIVE");
+        // Delay so Biasgen.importPreferences' deferred sendConfiguration can finish before BiasgenFrame.
+        javax.swing.Timer t = new javax.swing.Timer(1200, e -> {
+            try {
+                ui.run();
+            } catch (Throwable ex) {
+                log.log(Level.WARNING, "First-hardware-use UI failed", ex);
+            } finally {
+                disarmEdtLivenessWatchdog();
+            }
+        });
+        t.setRepeats(false);
+        t.start();
+    }
+
+    /**
+     * If the EDT stops pumping for {@link #EDT_FREEZE_HALT_MS} during first-use open/import,
+     * force-halt so the process is not left requiring Task Manager (window close never runs
+     * when the EDT is deadlocked).
+     */
+    private void armEdtLivenessWatchdog() {
+        edtHeartbeatMs.set(System.currentTimeMillis());
+        javax.swing.Timer beat = new javax.swing.Timer(250, e -> {
+            if (edtHeartbeatMs.get() != 0) {
+                edtHeartbeatMs.set(System.currentTimeMillis());
+            } else {
+                ((javax.swing.Timer) e.getSource()).stop();
+            }
+        });
+        beat.start();
+        Thread watchdog = new Thread(() -> {
+            try {
+                while (true) {
+                    Thread.sleep(500);
+                    long t0 = edtHeartbeatMs.get();
+                    if (t0 == 0) {
+                        return; // disarmed
+                    }
+                    long frozenMs = System.currentTimeMillis() - t0;
+                    if (frozenMs > EDT_FREEZE_HALT_MS) {
+                        System.err.println(String.format(
+                                "AEViewer: EDT frozen for %d ms during first-hardware-use; Runtime.halt(1)",
+                                frozenMs));
+                        System.err.flush();
+                        Runtime.getRuntime().halt(1);
+                    }
+                }
+            } catch (InterruptedException e) {
+                // exit
+            }
+        }, "AEViewer-EdtLiveness");
+        watchdog.setDaemon(true);
+        watchdog.start();
+        log.info(String.format("Armed EDT liveness watchdog (%d ms -> Runtime.halt)", EDT_FREEZE_HALT_MS));
+    }
+
+    private void disarmEdtLivenessWatchdog() {
+        edtHeartbeatMs.set(0);
     }
 
     /**
@@ -2973,7 +3114,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     openAEMonitor();
 
                     if ((aemon == null) || !aemon.isOpen()) {
-                        statisticsLabel.setText("Choose desired HardwareInterface from Interface menu");
+                        statisticsLabel.setText("Choose AEChip (Interface menu if needed)");
 
                         try {
                             Thread.sleep(600);
@@ -5780,60 +5921,64 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (chip == null) {
             if (yes) {
                 log.warning("null chip, can't try to show biasgen");
-            } // only show warning if trying to show biasgen for null chip
-
+            }
             return;
         }
+        Runnable r = () -> showBiasgenOnEdt(yes);
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
 
-        SwingUtilities.invokeLater(new Runnable() {
-
-            @Override
-            public void run() {
-                if (chip.getBiasgen() == null) { // this chip has no biasgen object defined or registered with setBiasgen
-                    if (getBiasgenFrame() != null) {
-                        getBiasgenFrame().dispose();
-                    }
-                    //            biasesToggleButton.setEnabled(false);  // chip don't have biasgen until it has HW interface, which it doesn't at first....
-
-                    return;
-                } else {
-                    biasesToggleButton.setEnabled(true);
-                    viewBiasesMenuItem.setEnabled(true);
-                }
-
-                try {
-                    if (biasgen != chip.getBiasgen()) { // biasgen changed
-                        if (getBiasgenFrame() != null) {
-                            getBiasgenFrame().dispose();
-                        }
-
-                        biasgenFrame = new BiasgenFrame(chip);
-                        biasgenFrame.addWindowListener(new WindowAdapter() {
-
-                            @Override
-                            public void windowClosed(WindowEvent e) {
-                                //                            log.info(e.toString());
-                                biasesToggleButton.setSelected(false);
-                            }
-                        });
-                    }
-
-                    if (getBiasgenFrame() != null) {
-                        getBiasgenFrame().setVisible(yes);
-                    }
-
-                    biasesToggleButton.setSelected(yes);
-                    biasgen = chip.getBiasgen();
-                } catch (Exception e) {
-                    StringWriter writer = new StringWriter();
-//                    PrintWriter printWriter = new PrintWriter(writer);
-//                    e.printStackTrace(printWriter);
-
-                    log.warning("Caught exception when trying to set up Biasgen: " + e.toString() + " - Stacktrace: " + writer.toString());
-                }
-
+    /**
+     * Shows or hides the Hardware Configuration frame; must run on the EDT.
+     * When hiding, only disposes an existing frame (does not construct a new
+     * one) so chip switches do not race first-use preference loading.
+     */
+    private void showBiasgenOnEdt(boolean yes) {
+        if (chip == null) {
+            return;
+        }
+        if (chip.getBiasgen() == null) {
+            if (getBiasgenFrame() != null) {
+                getBiasgenFrame().dispose();
+                biasgenFrame = null;
             }
-        });
+            biasgen = null;
+            return;
+        }
+        biasesToggleButton.setEnabled(true);
+        viewBiasesMenuItem.setEnabled(true);
+        try {
+            if (!yes) {
+                if (getBiasgenFrame() != null) {
+                    getBiasgenFrame().dispose();
+                    biasgenFrame = null;
+                }
+                biasesToggleButton.setSelected(false);
+                biasgen = null;
+                return;
+            }
+            if (biasgen != chip.getBiasgen() || getBiasgenFrame() == null) {
+                if (getBiasgenFrame() != null) {
+                    getBiasgenFrame().dispose();
+                }
+                biasgenFrame = new BiasgenFrame(chip);
+                biasgenFrame.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosed(WindowEvent e) {
+                        biasesToggleButton.setSelected(false);
+                    }
+                });
+            }
+            getBiasgenFrame().setVisible(true);
+            biasesToggleButton.setSelected(true);
+            biasgen = chip.getBiasgen();
+        } catch (Exception e) {
+            log.warning("Caught exception when trying to set up Biasgen: " + e);
+        }
     }
 
     synchronized public void toggleLogging() {
@@ -7522,6 +7667,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 	}//GEN-LAST:event_newViewerMenuItemActionPerformed
 
 	private void interfaceMenuMenuSelected(javax.swing.event.MenuEvent evt) {//GEN-FIRST:event_interfaceMenuMenuSelected
+            // Build off the critical path when possible: if a device is already open we skip USB
+            // scan (see buildInterfaceMenu). Otherwise keep WAIT cursor but never hold ViewLoop.
             try {
                 setCursor(new Cursor(Cursor.WAIT_CURSOR));
                 buildInterfaceMenu();
