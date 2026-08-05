@@ -42,17 +42,12 @@ public class PropheseeIMX636HD extends AETemporalConstastRetina implements Seria
 
     public PropheseeIMX636HD() {
         setName("PropheseeIMX636HD");
-        setDefaultPreferencesFile("biasgenSettings/PropheseeIMX636HD/PropheseeIMX636HD_default.xml");
+        setDefaultPreferencesFileForFamily("PropheseeIMX636HD");
         setSizeX(Evt3Parser.WIDTH);
         setSizeY(Evt3Parser.HEIGHT);
         setNumCellTypes(2);
         setEventExtractor(new Extractor(this));
         setBiasgen(new PropheseeConfig(this));
-
-        if (getBiasgen() instanceof PropheseeConfig config && !config.isInitialized()) {
-            maybeLoadDefaultPreferences();
-            config.loadPreferences();
-        }
         getRenderer().ensurePixmapReadyForDisplay();
 
         EventOnlyChipDisplay.apply(this);

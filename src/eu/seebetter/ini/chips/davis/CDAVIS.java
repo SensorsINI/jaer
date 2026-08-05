@@ -38,7 +38,8 @@ public class CDAVIS extends DavisBaseCamera {
 
     public CDAVIS() {
         setName("CDAVIS");
-        setDefaultPreferencesFile("biasgenSettings/CDAVIS/CDAVIS.xml");
+        // Default presets archived under biasgenSettings/olderSystemsAndExperimental/CDAVIS/
+        setDefaultPreferencesFile(null);
         setSizeX(CDAVIS.WIDTH_PIXELS);
         setSizeY(CDAVIS.HEIGHT_PIXELS);
         setPixelHeightUm(10);

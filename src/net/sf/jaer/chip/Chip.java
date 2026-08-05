@@ -11,6 +11,7 @@ package net.sf.jaer.chip;
 
 import java.beans.PropertyChangeSupport;
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,6 +21,10 @@ import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
+
 import net.sf.jaer.Description;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.aemonitor.AEMonitorInterface;
@@ -28,6 +33,7 @@ import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.util.RemoteControl;
+import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * A chip, having possibly a hardware interface and a bias generator. This class
@@ -68,6 +74,12 @@ public class Chip extends Observable {
      * preferred values have been loaded at least once for this Chip.
      */
     public static final String PREFERENCES_LOADED_ONCE_KEY = "defaultPreferencesWereLoaded";
+
+    /**
+     * Preferences key: first live hardware open for this chip already ran
+     * first-use UX (default prefs import + Hardware Configuration panel).
+     */
+    public static final String FIRST_HARDWARE_USE_HANDLED_KEY = "firstHardwareUseHandled";
 
     /**
      * The default preferences file location for initial import of preferred
@@ -212,6 +224,39 @@ public class Chip extends Observable {
     }
 
     /**
+     * Sets the default preferences path to
+     * {@code biasgenSettings/<familyFolder>/<ChipSimpleName>.xml}.
+     *
+     * @param familyFolder short family folder under {@code biasgenSettings/}
+     *            (e.g. {@code Davis240}, {@code Davis346}, {@code DVS128})
+     */
+    protected void setDefaultPreferencesFileForFamily(String familyFolder) {
+        if (familyFolder == null || familyFolder.isEmpty()) {
+            setDefaultPreferencesFile(null);
+            return;
+        }
+        setDefaultPreferencesFile("biasgenSettings/" + familyFolder + "/" + getClass().getSimpleName() + ".xml");
+    }
+
+    /**
+     * Resolves the default preferences file path: explicit
+     * {@link #getDefaultPreferencesFile()}, else conventional
+     * {@code biasgenSettings/<SimpleName>/<SimpleName>.xml} if that file exists.
+     *
+     * @return path string, or null if none
+     */
+    public String resolveDefaultPreferencesFile() {
+        if (defaultPreferencesFile != null && !defaultPreferencesFile.isEmpty()) {
+            return defaultPreferencesFile;
+        }
+        String conventional = "biasgenSettings/" + getClass().getSimpleName() + "/" + getClass().getSimpleName() + ".xml";
+        if (new File(conventional).isFile()) {
+            return conventional;
+        }
+        return null;
+    }
+
+    /**
      * Check if this Chip has default preferences, and if so and they have not
      * yet been loaded, loads them into the Preferences node for this Chip.
      * <p>
@@ -221,32 +266,87 @@ public class Chip extends Observable {
      * written to signal that preferences were loaded at least once. To use this
      * method for existing Chip classes, the Chip's constructor can also call
      * the Biasgen isInitalized method to check if any Pot has been set to a
-     * non-zero value.
+     * non-zero value. Prefer calling from first hardware open (AEViewer) after
+     * biasgen is built.
      *
-     * @see ch.unizh.ini.jaer.chip.retina.DVS128 for an example of use
+     * @return true if a default preferences file was imported
      * @see #getDefaultPreferencesFile()
+     * @see #resolveDefaultPreferencesFile()
      */
-    protected void maybeLoadDefaultPreferences() {
-        if ((getDefaultPreferencesFile() != null) && !isDefaultPreferencesLoadedOnce()) {
-            InputStream is = null;
+    public boolean maybeLoadDefaultPreferences() {
+        String path = resolveDefaultPreferencesFile();
+        if (path == null || isDefaultPreferencesLoadedOnce()) {
+            return false;
+        }
+        File file = new File(path);
+        if (!file.isFile()) {
+            log.warning("default preferences file not found for " + getClass().getSimpleName() + ": " + path);
+            return false;
+        }
+        InputStream is = null;
+        try {
+            log.info("importing initial preferences for " + getClass().getSimpleName() + " from " + path
+                    + " into Preferences node " + getPrefs().absolutePath());
+            is = new BufferedInputStream(new FileInputStream(file));
+            Preferences.importPreferences(is);
+            getPrefs().putBoolean(PREFERENCES_LOADED_ONCE_KEY, true);
+            return true;
+        } catch (Exception ex) {
+            log.log(Level.SEVERE, "failed to import default preferences from " + path, ex);
+            return false;
+        } finally {
             try {
-                log.warning("no default preferences were loaded so far - importing from " + getDefaultPreferencesFile() + " to Preferences node " + getPrefs());
-
-                is = new BufferedInputStream(new FileInputStream(getDefaultPreferencesFile()));
-                Preferences.importPreferences(is);  // this uses the Preferences object to load all preferences from the input stream which an xml file
-                getPrefs().putBoolean(PREFERENCES_LOADED_ONCE_KEY, true);
-            } catch (Exception ex) {
-                Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
-            } finally {
-                try {
-                    if (is != null) {
-                        is.close();
-                    }
-                } catch (IOException ex) {
-                    Logger.getLogger(Chip.class.getName()).log(Level.SEVERE, null, ex);
+                if (is != null) {
+                    is.close();
                 }
+            } catch (IOException ex) {
+                log.log(Level.SEVERE, null, ex);
             }
         }
+    }
+
+    /**
+     * Shows an informational dialog that initial preferences were loaded from a
+     * default biasgenSettings XML file.
+     *
+     * @param parent parent frame (may be null)
+     * @param path path that was imported
+     */
+    public void showDefaultPreferencesLoadedDialog(final JFrame parent, final String path) {
+        final String chipName = getClass().getSimpleName();
+        final String message = "<html>Initial hardware preferences for <b>" + chipName
+                + "</b> were loaded from<p><code>" + path + "</code>."
+                + "<p>The Hardware Configuration panel is opening so you can review biases and other options."
+                + "<p>You can change settings later via that panel (File → Load/Save settings).</html>";
+        final String title = "Initial preferences loaded for " + chipName;
+        Runnable r = () -> {
+            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(
+                    parent, true, title, message, JOptionPane.INFORMATION_MESSAGE);
+            d.setVisible(true);
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(r);
+            } catch (Exception e) {
+                log.info(e.toString());
+            }
+        }
+    }
+
+    /**
+     * @return true if first live hardware-open UX already ran for this chip
+     */
+    public boolean isFirstHardwareUseHandled() {
+        return getPrefs().getBoolean(FIRST_HARDWARE_USE_HANDLED_KEY, false);
+    }
+
+    /**
+     * Marks that first live hardware-open UX has run for this chip.
+     */
+    public void setFirstHardwareUseHandled(boolean handled) {
+        getPrefs().putBoolean(FIRST_HARDWARE_USE_HANDLED_KEY, handled);
     }
 
     /**

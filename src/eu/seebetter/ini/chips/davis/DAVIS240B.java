@@ -22,7 +22,7 @@ public class DAVIS240B extends DAVIS240BaseCamera {
 
 	public DAVIS240B() {
 		setName("DAVIS240B");
-		setDefaultPreferencesFile("biasgenSettings/Davis240b/Davis240bBasic_GlobalShutter_ImuOn_AutoExposure.xml");
+		setDefaultPreferencesFileForFamily("Davis240");
 
 		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
 		setApsLastPixelReadOut(new Point(0, 0));

@@ -20,7 +20,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 public class JAER3chip extends DAVIS240BaseCamera {
 	public JAER3chip() {
 		setName("JAER3CHIP");
-		setDefaultPreferencesFile("biasgenSettings/Davis240a/David240aBasic.xml");
+		setDefaultPreferencesFile(null);
 
 		setApsFirstPixelReadOut(new Point(getSizeX() - 1, getSizeY() - 1));
 		setApsLastPixelReadOut(new Point(0, 0));

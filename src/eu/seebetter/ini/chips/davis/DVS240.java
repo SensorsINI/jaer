@@ -17,7 +17,8 @@ public class DVS240 extends DAVIS240BaseCamera {
 
 	public DVS240() {
 		setName("DVS240");
-		setDefaultPreferencesFile("biasgenSettings/Davis240bc/dvs240.xml");
+		// Share DAVIS240C factory default (same family sensor)
+		setDefaultPreferencesFile("biasgenSettings/Davis240/DAVIS240C.xml");
 
 		setApsFirstPixelReadOut(new Point(getSizeX() - 1, 0));
 		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));

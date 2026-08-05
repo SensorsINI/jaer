@@ -71,12 +71,23 @@ public class WarningDialogWithDontShowPreference extends javax.swing.JDialog {
      * @param modal true to make dialog model, i.e. to stop other GUI interaction
      */
     public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text) {
+        this(parent, modal, title, text, JOptionPane.WARNING_MESSAGE);
+    }
+
+    /**
+     * @param parent parent frame to center on, or null
+     * @param modal true to make dialog modal
+     * @param title dialog title (also used as don't-show-again prefs key basis)
+     * @param text message body (may be HTML)
+     * @param messageType {@link JOptionPane} message type (e.g. INFORMATION_MESSAGE)
+     */
+    public WarningDialogWithDontShowPreference(java.awt.Frame parent, boolean modal, String title, String text, int messageType) {
         super(parent, modal);
         initComponents();
         optionPane.setMessage(text);
         key = title;
         setTitle(title);
-        optionPane.setMessageType(JOptionPane.WARNING_MESSAGE);
+        optionPane.setMessageType(messageType);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         pack();
     }

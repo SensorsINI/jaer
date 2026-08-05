@@ -27,7 +27,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 public class Davis346Zynq extends Davis346BaseCamera {
 	public Davis346Zynq() {
 		setName("Davis346Zynq");
-		setDefaultPreferencesFile("biasgenSettings/Davis346b/Davis346Zynq.xml");
+		setDefaultPreferencesFile(null);
 
 		davisRenderer = new DavisRenderer(this);
 //		davisRenderer.setMaxADC(DavisChip.MAX_ADC);

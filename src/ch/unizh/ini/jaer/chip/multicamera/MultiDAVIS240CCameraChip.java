@@ -48,7 +48,7 @@ public class MultiDAVIS240CCameraChip extends MultiDavisCameraChip {
         
         setApsFirstPixelReadOut(new Point(0, DAVIS240C.WIDTH_PIXELS - 1));
         setApsLastPixelReadOut(new Point(DAVIS240C.HEIGHT_PIXELS - 1, 0));        
-        setDefaultPreferencesFile("biasgenSettings/Davis240bc/MultiDAVIS240CCameraChip.xml");
+        setDefaultPreferencesFile(null);
         setBiasgen(new Biasgen(this)); 
   
     }

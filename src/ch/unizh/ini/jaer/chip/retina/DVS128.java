@@ -105,7 +105,7 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
      */
     public DVS128() {
         setName("DVS128");
-        setDefaultPreferencesFile("biasgenSettings/DVS128/DVS128Slow.xml");
+        setDefaultPreferencesFileForFamily("DVS128");
         setSizeX(128);
         setSizeY(128);
         setNumCellTypes(2);
@@ -121,10 +121,6 @@ public class DVS128 extends AETemporalConstastRetina implements Serializable, Ob
         }
         //        ChipCanvas c = getCanvas();
         addObserver(this);
-
-        if (!dvs128Biasgen.isInitialized()) {
-            maybeLoadDefaultPreferences();  // call *after* biasgen is built so that we check for unitialized biases as well.
-        }//        if(c!=null)c.setBorderSpacePixels(5);// make border smaller than default
         dvsRenderer = new DavisRenderer(this);
         setRenderer(dvsRenderer);
 

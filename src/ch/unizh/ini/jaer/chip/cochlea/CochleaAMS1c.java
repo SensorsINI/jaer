@@ -100,6 +100,7 @@ public class CochleaAMS1c extends CochleaAMSNoBiasgen implements Observer, HasSy
     /** Creates a new instance of CochleaAMS1c */
     public CochleaAMS1c() {
         super();
+        setDefaultPreferencesFileForFamily("CochleaAMS1c");
         addObserver(this); // we observe ourselves so that when AEViewer adds this chip it can call us back by notifying observers of the chip
         setBiasgen((ams1cbiasgen = new CochleaAMS1c.Biasgen(this)));
         getCanvas().setBorderSpacePixels(40);

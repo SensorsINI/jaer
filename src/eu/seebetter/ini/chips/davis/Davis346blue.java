@@ -13,7 +13,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
 public class Davis346blue extends Davis346BaseCamera {
 	public Davis346blue() {
 		setName("Davis346blue");
-		setDefaultPreferencesFile("biasgenSettings/Davis346b/DAVIS346blue.xml");
+		setDefaultPreferencesFileForFamily("Davis346");
 
 		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);

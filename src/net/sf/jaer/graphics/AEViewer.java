@@ -2047,7 +2047,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
                     if (aemon instanceof BiasgenHardwareInterface) {
                         Biasgen bg = chip.getBiasgen();
-                        if ((bg != null) && !bg.isInitialized()) {
+                        if (bg != null && !chip.isFirstHardwareUseHandled()) {
+                            // First live use of this AEChip: import shipped defaults if any, open Hardware Configuration.
+                            String defaultPath = chip.resolveDefaultPreferencesFile();
+                            boolean loadedDefaults = false;
+                            if (!chip.isDefaultPreferencesLoadedOnce()) {
+                                loadedDefaults = chip.maybeLoadDefaultPreferences();
+                                if (loadedDefaults) {
+                                    bg.loadPreferences();
+                                }
+                            }
+                            // Mark before showBiasgen so BiasgenFrame skips the uninitialized-biases warning.
+                            chip.setFirstHardwareUseHandled(true);
+                            showBiasgen(true);
+                            if (loadedDefaults && defaultPath != null) {
+                                chip.showDefaultPreferencesLoadedDialog(this, defaultPath);
+                            }
+                        } else if ((bg != null) && !bg.isInitialized()) {
                             bg.showUnitializedBiasesWarningDialog(this);
                         }
                     }
