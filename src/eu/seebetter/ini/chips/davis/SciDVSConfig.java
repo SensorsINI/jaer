@@ -154,6 +154,9 @@ public class SciDVSConfig extends DavisConfig implements DavisDisplayConfigInter
 	@Override
 	public synchronized void update(final Observable observable, final Object object) {
 		super.update(observable, object);
+		if (isBatchEditOccurring()) {
+			return;
+		}
 
 		if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
 			final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();

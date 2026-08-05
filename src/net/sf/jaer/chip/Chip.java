@@ -33,7 +33,6 @@ import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 import net.sf.jaer.eventprocessing.filter.PreferencesMover;
 import net.sf.jaer.util.RemoteControl;
-import net.sf.jaer.util.WarningDialogWithDontShowPreference;
 
 /**
  * A chip, having possibly a hardware interface and a bias generator. This class
@@ -283,25 +282,21 @@ public class Chip extends Observable {
             log.warning("default preferences file not found for " + getClass().getSimpleName() + ": " + path);
             return false;
         }
-        InputStream is = null;
-        try {
+        try (InputStream is = new BufferedInputStream(new FileInputStream(file))) {
             log.info("importing initial preferences for " + getClass().getSimpleName() + " from " + path
                     + " into Preferences node " + getPrefs().absolutePath());
-            is = new BufferedInputStream(new FileInputStream(file));
-            Preferences.importPreferences(is);
+            // Prefer Biasgen.importPreferences: batches USB configuration instead of sending
+            // on every preferenceChange during Preferences.importPreferences (which wedges USB/EDT).
+            if (biasgen != null) {
+                biasgen.importPreferences(is);
+            } else {
+                Preferences.importPreferences(is);
+            }
             getPrefs().putBoolean(PREFERENCES_LOADED_ONCE_KEY, true);
             return true;
         } catch (Exception ex) {
             log.log(Level.SEVERE, "failed to import default preferences from " + path, ex);
             return false;
-        } finally {
-            try {
-                if (is != null) {
-                    is.close();
-                }
-            } catch (IOException ex) {
-                log.log(Level.SEVERE, null, ex);
-            }
         }
     }
 
@@ -316,22 +311,19 @@ public class Chip extends Observable {
         final String chipName = getClass().getSimpleName();
         final String message = "<html>Initial hardware preferences for <b>" + chipName
                 + "</b> were loaded from<p><code>" + path + "</code>."
-                + "<p>The Hardware Configuration panel is opening so you can review biases and other options."
+                + "<p>The Hardware Configuration panel will open so you can review biases and other options."
                 + "<p>You can change settings later via that panel (File → Load/Save settings).</html>";
         final String title = "Initial preferences loaded for " + chipName;
         Runnable r = () -> {
-            WarningDialogWithDontShowPreference d = new WarningDialogWithDontShowPreference(
-                    parent, true, title, message, JOptionPane.INFORMATION_MESSAGE);
-            d.setVisible(true);
+            // Prefer simple JOptionPane: WarningDialogWithDontShowPreference can be suppressed and
+            // is easier to miss when BiasgenFrame construction races the EDT.
+            log.info("showing initial-preferences dialog for " + chipName + " loaded from " + path);
+            JOptionPane.showMessageDialog(parent, message, title, JOptionPane.INFORMATION_MESSAGE);
         };
         if (SwingUtilities.isEventDispatchThread()) {
             r.run();
         } else {
-            try {
-                SwingUtilities.invokeAndWait(r);
-            } catch (Exception e) {
-                log.info(e.toString());
-            }
+            SwingUtilities.invokeLater(r);
         }
     }
 

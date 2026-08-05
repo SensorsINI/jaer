@@ -834,12 +834,13 @@ public class AddressedIPotCF extends AddressedIPot {
 //            log.info("key="+key+" value="+val);
             if (key.equals(base + KEY_BITVALUE_FINE)) {
                 if (getFineBitValue() != Integer.parseInt(val)) {
-                    log.info(base + " fine bit value change from " + getFineBitValue() + " to " + Integer.parseInt(val) + " from preferences");
+                    // FINE: bulk Preferences.importPreferences floods the log at INFO and can stall the UI.
+                    log.fine(base + " fine bit value change from " + getFineBitValue() + " to " + Integer.parseInt(val) + " from preferences");
                 }
                 setFineBitValue(Integer.parseInt(val));
             } else if (key.equals(base + KEY_BITVALUE_COARSE)) {
                 if (getCoarseBitValue() != Integer.parseInt(val)) {
-                    log.info("coarse bit value change from preferences");
+                    log.fine("coarse bit value change from preferences");
                 }
                 setCoarseBitValue(Integer.parseInt(val));
             } else if (key.equals(base + KEY_ENABLED)) {

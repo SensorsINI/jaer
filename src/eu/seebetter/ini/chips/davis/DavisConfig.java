@@ -6,6 +6,7 @@
 package eu.seebetter.ini.chips.davis;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeSupport;
@@ -224,6 +225,11 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         globalShutter.addObserver(new Observer() {
             @Override
             public void update(final Observable gsObs, final Object arg) {
+                // Respect batch edit (e.g. Preferences.importPreferences) — otherwise one GS change
+                // during a bulk import still does a blocking SPI send on the importer thread.
+                if (isBatchEditOccurring()) {
+                    return;
+                }
                 if ((getHardwareInterface() != null) && (getHardwareInterface() instanceof CypressFX3)) {
                     final CypressFX3 fx3HwIntf = (CypressFX3) getHardwareInterface();
 
@@ -477,7 +483,11 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
 
     private void makeConfigTabbedPane() {
         configTabbedPane = new JTabbedPane();
+        configTabbedPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
         userFriendlyControls = new DavisUserControlPanel(getChip());
+        // JTabbedPane preferred size is the max of all tabs; size expert tabs to the
+        // user-friendly panel so BiasgenFrame.pack() does not open far too wide.
+        final Dimension ufPref = userFriendlyControls.getPreferredSize();
         configTabbedPane.addTab("<html><strong><font color=\"red\">User-Friendly Controls", userFriendlyControls);
         // biasgen
         combinedBiasShiftedSourcePanel = new JPanel();
@@ -487,38 +497,38 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         combinedBiasShiftedSourcePanel.add(super.buildControlPanel());
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssp));
         combinedBiasShiftedSourcePanel.add(new ShiftedSourceControlsCF(ssn));
-        configTabbedPane.addTab("Bias Current Config", combinedBiasShiftedSourcePanel);
+        configTabbedPane.addTab("Bias Current Config", scrollWrap(combinedBiasShiftedSourcePanel, ufPref));
         // Multiplexer
         final JPanel muxPanel = new JPanel();
         muxPanel.setLayout(new BoxLayout(muxPanel, BoxLayout.Y_AXIS));
-        configTabbedPane.addTab("Multiplexer Config", muxPanel);
         SPIConfigValue.addGUIControls(muxPanel, muxControl);
+        configTabbedPane.addTab("Multiplexer Config", scrollWrap(muxPanel, ufPref));
         // DVS
         final JPanel dvsPanel = new JPanel();
         dvsPanel.setLayout(new BoxLayout(dvsPanel, BoxLayout.Y_AXIS));
-        configTabbedPane.addTab("DVS Config", dvsPanel);
         SPIConfigValue.addGUIControls(dvsPanel, dvsControl);
+        configTabbedPane.addTab("DVS Config", scrollWrap(dvsPanel, ufPref));
         // APS
         final JPanel apsPanel = new JPanel();
         apsPanel.setLayout(new BoxLayout(apsPanel, BoxLayout.Y_AXIS));
-        configTabbedPane.addTab("APS Config", apsPanel);
         SPIConfigValue.addGUIControls(apsPanel, apsControl);
+        configTabbedPane.addTab("APS Config", scrollWrap(apsPanel, ufPref));
         // IMU
         final JPanel imuControlPanel = new JPanel();
         imuControlPanel.add(new JLabel("<html>Low-level control of integrated inertial measurement unit."));
         imuControlPanel.setLayout(new BoxLayout(imuControlPanel, BoxLayout.Y_AXIS));
         imuControlPanel.add(new ImuControlPanel(this));
-        configTabbedPane.addTab("IMU Config", imuControlPanel);
+        configTabbedPane.addTab("IMU Config", scrollWrap(imuControlPanel, ufPref));
         // External Input
         final JPanel extPanel = new JPanel();
         extPanel.setLayout(new BoxLayout(extPanel, BoxLayout.Y_AXIS));
-        configTabbedPane.addTab("External Input Config", extPanel);
         SPIConfigValue.addGUIControls(extPanel, extInControl);
+        configTabbedPane.addTab("External Input Config", scrollWrap(extPanel, ufPref));
         // Chip config
         final JPanel chipPanel = new JPanel();
         chipPanel.setLayout(new BoxLayout(chipPanel, BoxLayout.Y_AXIS));
-        configTabbedPane.addTab("Chip Config", chipPanel);
         SPIConfigValue.addGUIControls(chipPanel, chipControl);
+        configTabbedPane.addTab("Chip Config", scrollWrap(chipPanel, ufPref));
         // Autoexposure
         if (getChip() instanceof DavisBaseCamera) {
             final JPanel autoExposurePanel = new JPanel();
@@ -526,7 +536,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                     "<html>Automatic exposure control.<p>The settings here determine when and by how much the exposure value should be changed. <p> The strategy followed attempts to avoid a sitation <b> where too many pixels are under- or over-exposed. Hover over entry fields to see explanations."));
             autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
             autoExposurePanel.add(new ParameterControlPanel(((DavisBaseCamera) getChip()).getAutoExposureController()));
-            configTabbedPane.addTab("APS Autoexposure Control", autoExposurePanel);
+            configTabbedPane.addTab("APS Autoexposure Control", scrollWrap(autoExposurePanel, ufPref));
         }
         // Video Control
         final JPanel videoControlPanel = new JPanel();
@@ -534,7 +544,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         videoControlPanel.setLayout(new BoxLayout(videoControlPanel, BoxLayout.Y_AXIS));
         videoParameterControlPanel = new ParameterControlPanel(getVideoControl());
         videoControlPanel.add(videoParameterControlPanel);
-        configTabbedPane.addTab("Video Control", videoControlPanel);
+        configTabbedPane.addTab("Video Control", scrollWrap(videoControlPanel, ufPref));
         getVideoControl().addObserver(videoParameterControlPanel);
         getVideoControl().getContrastContoller().addObserver(videoParameterControlPanel);
 
@@ -551,6 +561,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
                 tabbedPaneMouseClicked(evt);
             }
         });
+    }
+
+    /** Wraps a tab panel in a scroll pane sized to the user-friendly controls preferred size. */
+    private static JScrollPane scrollWrap(final JPanel panel, final Dimension preferred) {
+        final JScrollPane sp = new JScrollPane(panel);
+        sp.setPreferredSize(preferred);
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        return sp;
     }
 
     @Override
@@ -921,6 +939,12 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
      */
     @Override
     public synchronized void update(final Observable observable, final Object object) {
+        // Critical: Biasgen.batchEdit only suppresses Biasgen.update→sendConfiguration.
+        // This override sends SPI per Observable change; without this guard, Preferences.importPreferences
+        // floods USB (hundreds of spiConfigSend calls), freezes ViewLoop/EDT, and makes window close dead.
+        if (isBatchEditOccurring()) {
+            return;
+        }
         if (getHardwareInterface() != null) {
             try {
                 if (getHardwareInterface() instanceof MultiCameraBiasgenHardwareInterface) {
