@@ -55,6 +55,8 @@ TensorFlow for MLPNoiseFilter (two layers):
   Upgrading over an older install can leave javacpp-1.4.jar and OS TF native jars in
   lib/; install4j now deletes those leftovers after InstallFiles. Until then, delete
   lib/javacpp-1.4.jar manually (it sorts before 1.5.10 and breaks TensorFlow Loader).
+- Media excludes: tmp/, src/, scripts/, logs/, bin/, tools/ (tmp alone can be hundreds of MB
+  of local scratch and must not ship in installers).
 
 Splash only (no installer build): ant generate-splash
 

@@ -55,6 +55,15 @@
           <entry location="release-notes" />
           <entry location="sven_goethel" />
           <entry location="test" />
+          <!-- Local scratch / sources / tooling — not needed at runtime (tmp alone was ~676MB). -->
+          <entry location="tmp" />
+          <entry location="src" />
+          <entry location="scripts" />
+          <entry location="logs" />
+          <entry location="bin" />
+          <entry location="tools" />
+          <entry location=".cursor" />
+          <entry location=".vscode" />
           <!-- Prefer javacpp 1.5.10 (TensorFlow); drop leftover 1.4 from older Ivy resolves. -->
           <entry location="lib/javacpp-1.4.jar" />
           <!-- Safety net: OS TensorFlow natives (~70–150MB). Ivy no longer retrieves these;
@@ -303,11 +312,11 @@ if (jars.isDirectory()) {
     File openni2 = new File(jars, "openni2");
     if (openni2.isDirectory()) {
         try {
-            java.util.List paths = java.nio.file.Files.walk(openni2.toPath())
+            java.util.List&lt;java.nio.file.Path&gt; paths = java.nio.file.Files.walk(openni2.toPath())
                 .sorted(java.util.Comparator.reverseOrder())
                 .collect(java.util.stream.Collectors.toList());
-            for (Object o : paths) {
-                java.nio.file.Files.deleteIfExists((java.nio.file.Path) o);
+            for (java.nio.file.Path p : paths) {
+                java.nio.file.Files.deleteIfExists(p);
             }
             com.install4j.api.Util.logInfo(context, "Removed leftover " + openni2.getAbsolutePath());
         } catch (Exception ex) {
@@ -318,11 +327,11 @@ if (jars.isDirectory()) {
 File nativeDir = new File(context.getInstallationDirectory(), "native");
 if (nativeDir.isDirectory()) {
     try {
-        java.util.List npaths = java.nio.file.Files.walk(nativeDir.toPath())
+        java.util.List&lt;java.nio.file.Path&gt; npaths = java.nio.file.Files.walk(nativeDir.toPath())
             .sorted(java.util.Comparator.reverseOrder())
             .collect(java.util.stream.Collectors.toList());
-        for (Object o : npaths) {
-            java.nio.file.Files.deleteIfExists((java.nio.file.Path) o);
+        for (java.nio.file.Path p : npaths) {
+            java.nio.file.Files.deleteIfExists(p);
         }
         com.install4j.api.Util.logInfo(context, "Removed leftover " + nativeDir.getAbsolutePath());
     } catch (Exception ex) {
