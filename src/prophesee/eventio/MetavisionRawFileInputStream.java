@@ -104,6 +104,8 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
     private boolean markOutSet;
     private boolean repeat = true;
     private final NavigableSet<Long> markers = new TreeSet<>();
+    /** For quick double-prev: skip marker just landed on via next/prev. */
+    private long lastJumpTimeMs;
 
     private static final class Checkpoint {
         final long eventIndex;
@@ -728,7 +730,8 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
     }
 
     @Override
-    public boolean jumpToNextMarker() {
+    public synchronized boolean jumpToNextMarker() {
+        lastJumpTimeMs = System.currentTimeMillis();
         Long next = markers.higher(position);
         if (next == null) {
             return false;
@@ -738,11 +741,18 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
     }
 
     @Override
-    public boolean jumpToPrevMarker() {
+    public synchronized boolean jumpToPrevMarker() {
         Long prev = markers.lower(position);
         if (prev == null) {
             return false;
         }
+        if (System.currentTimeMillis() - lastJumpTimeMs <= 2000) {
+            Long earlier = markers.lower(prev);
+            if (earlier != null) {
+                prev = earlier;
+            }
+        }
+        lastJumpTimeMs = System.currentTimeMillis();
         position(prev);
         return true;
     }
@@ -766,7 +776,11 @@ public class MetavisionRawFileInputStream implements AEFileInputStreamInterface 
         } catch (IOException e) {
             log.warning("Metavision RAW seek failed: " + e);
         }
+        currentStartTimestamp = mostRecentTimestamp;
         support.firePropertyChange(AEInputStream.EVENT_REPOSITIONED, old, position);
+        if (old != position) {
+            firePosition();
+        }
     }
 
     @Override

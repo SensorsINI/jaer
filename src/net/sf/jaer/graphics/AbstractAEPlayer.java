@@ -249,14 +249,23 @@ public abstract class AbstractAEPlayer {
     public void jogForwards(int packets) {
         jogOccuring = true;
         jogPacketsLeft += packets;
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format("jogForwards +%d -> left=%d", packets, jogPacketsLeft));
+        }
     }
 
     public void jogBackwards(int packets) {
         jogOccuring = true;
         jogPacketsLeft -= packets;
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format("jogBackwards -%d -> left=%d", packets, jogPacketsLeft));
+        }
     }
 
     public void cancelJog() {
+        if (log.isLoggable(Level.FINE) && (jogOccuring || jogPacketsLeft != 0)) {
+            log.fine(String.format("cancelJog (was left=%d)", jogPacketsLeft));
+        }
         jogOccuring = false;
         jogPacketsLeft = 0;
     }

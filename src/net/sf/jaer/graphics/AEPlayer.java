@@ -22,6 +22,7 @@ import javax.swing.filechooser.FileFilter;
 
 import com.jogamp.opengl.GLException;
 import java.time.ZoneId;
+import java.util.logging.Level;
 
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEDataFile;
@@ -687,20 +688,38 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
 
         try {
             boolean flex = viewer.aePlayer.isFlexTimeEnabled();
-            int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
-            if (!jogOccuring || (jogOccuring && jogPacketsLeft == 0)) {
+            if (!jogOccuring || jogPacketsLeft == 0) {
+                int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
                 if (!flex) {
                     aeRaw = aeInputStream.readPacketByTime(slice);
                 } else {
                     aeRaw = aeInputStream.readPacketByNumber(slice);
                 }
             } else {
+                // Must re-read slice AFTER setDirection* — previously slice was captured once
+                // while still positive, so jog-backwards kept calling readPacket*(+dt).
+                if (log.isLoggable(Level.FINE)) {
+                    log.fine(String.format(
+                            "jog begin left=%d flex=%s pos=%d stream=%s",
+                            jogPacketsLeft, flex,
+                            aeInputStream != null ? aeInputStream.position() : -1,
+                            aeInputStream != null ? aeInputStream.getClass().getSimpleName() : "null"));
+                }
                 while (jogPacketsLeft != 0) {
-                    setDirectionForwards(jogPacketsLeft >= 0);
+                    boolean forwards = jogPacketsLeft >= 0;
+                    setDirectionForwards(forwards);
+                    int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
+                    long posBefore = aeInputStream.position();
                     if (!flex) {
                         aeRaw = aeInputStream.readPacketByTime(slice);
                     } else {
                         aeRaw = aeInputStream.readPacketByNumber(slice);
+                    }
+                    if (log.isLoggable(Level.FINE)) {
+                        log.fine(String.format(
+                                "jog step forwards=%s slice=%d pos %d->%d events=%d left=%d",
+                                forwards, slice, posBefore, aeInputStream.position(),
+                                aeRaw != null ? aeRaw.getNumEvents() : -1, jogPacketsLeft));
                     }
                     if (jogPacketsLeft < 0) {
                         jogPacketsLeft++;
@@ -712,8 +731,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             if (jogOccuring && jogPacketsLeft == 0) {
                 jogOccuring = false;
                 setDirectionForwards(true);
+                if (log.isLoggable(Level.FINE)) {
+                    log.fine(String.format("jog done pos=%d",
+                            aeInputStream != null ? aeInputStream.position() : -1));
+                }
             }
-            // log.fine(... AEPlayer.getNextPacket ...);
             return aeRaw;
         } catch (EOFException e) {
             log.fine(String.format("%s: %s", player.getAEInputStream().getFile(), e.toString()));

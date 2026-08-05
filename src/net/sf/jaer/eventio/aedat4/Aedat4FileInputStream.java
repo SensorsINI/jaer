@@ -79,6 +79,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private final AEChip chip;
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
     private final TreeSet<Long> markers = new TreeSet<>();
+    /** For quick double-prev: skip marker just landed on via next/prev (see {@link #jumpToPrevMarker()}). */
+    private long lastJumpTimeMs;
     private File file;
     private RandomAccessFile randomAccessFile;
     private FileChannel channel;
@@ -909,6 +911,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private void collectTypedForWindow(int t0, int t1) throws IOException {
         pendingFrames.clear();
         pendingImu.clear();
+        // Backward jog/seek can move earlier than the last window — rewind typed cursors.
+        if (t0 < lastReadT0) {
+            frameCursor = 0;
+            imuCursor = 0;
+        }
         lastReadT0 = t0;
         lastReadT1 = t1;
         while (frameCursor < frameRefs.length && frameRefs[frameCursor].unixEnd < t0) {
@@ -1327,48 +1334,131 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     @Override
     public synchronized AEPacketRaw readPacketByNumber(int n) throws IOException {
-        ensureReadableOrThrow();
         ensureChannelOpen();
-        long start = position;
-        int cappedN = Math.min(Math.max(1, n), MAX_EVENTS_PER_READ);
-        long end = Math.min(effectiveMarkOut(), position + cappedN);
-        // log.fine(String.format("AEDAT-4 readPacketByNumber ENTER n=%d [%d,%d)", n, start, end));
-        position = end;
-        currentStartTimestamp = timestampApprox(start);
-        int tEnd = timestampApprox(Math.max(start, end - 1));
-        collectTypedForWindow(currentStartTimestamp, tEnd);
+        if (n == 0) {
+            n = 1;
+        }
+        boolean forwards = n > 0;
+        ensureReadableOrThrow(forwards);
+        long limitOut = effectiveMarkOut();
+        long limitIn = markIn;
+        long pos0 = position;
+        if (forwards) {
+            long start = position;
+            int cappedN = Math.min(n, MAX_EVENTS_PER_READ);
+            long end = Math.min(limitOut, position + cappedN);
+            if (start >= end) {
+                throw new EOFException();
+            }
+            position = end;
+            currentStartTimestamp = timestampApprox(start);
+            int tEnd = timestampApprox(Math.max(start, end - 1));
+            collectTypedForWindow(currentStartTimestamp, tEnd);
+            firePosition();
+            AEPacketRaw pkt = extractPolarity(start, end);
+            if (log.isLoggable(Level.FINE)) {
+                log.fine(String.format("readPacketByNumber n=%d pos %d->%d [%d,%d) events=%d",
+                        n, pos0, position, start, end, pkt.getNumEvents()));
+            }
+            return pkt;
+        }
+        // Backwards: events in [start, position), then move position to start.
+        int cappedN = Math.min(-n, MAX_EVENTS_PER_READ);
+        long end = position;
+        long start = Math.max(limitIn, end - cappedN);
+        if (start >= end) {
+            throw new EOFException("reached start of file");
+        }
+        position = start;
+        int t0 = timestampApprox(start);
+        int t1 = timestampApprox(Math.max(start, end - 1));
+        currentStartTimestamp = t0;
+        collectTypedForWindow(t0, t1);
         firePosition();
-        return extractPolarity(start, end);
+        AEPacketRaw pkt = extractPolarity(start, end);
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format("readPacketByNumber n=%d (back) pos %d->%d [%d,%d) events=%d",
+                    n, pos0, position, start, end, pkt.getNumEvents()));
+        }
+        return pkt;
     }
 
     @Override
     public synchronized AEPacketRaw readPacketByTime(int dt) throws IOException {
-        ensureReadableOrThrow();
         ensureChannelOpen();
-        long start = position;
-        long limit = effectiveMarkOut();
+        if (dt == 0) {
+            dt = 1;
+        }
+        boolean forwards = dt > 0;
+        ensureReadableOrThrow(forwards);
+        long limitOut = effectiveMarkOut();
+        long limitIn = markIn;
+        long pos0 = position;
         // Approx timestamps from packet table only — do not decompress here (slider/UI race).
-        int tStart = timestampApprox(start);
-        int target = tStart + Math.max(0, dt);
-        // log.fine(String.format("AEDAT-4 readPacketByTime ENTER dt=%d pos=%d tStart=%d", dt, start, tStart));
-        long end;
+        if (forwards) {
+            long start = position;
+            int tStart = timestampApprox(start);
+            int target = tStart + dt;
+            long end;
+            if (hasPolarity()) {
+                end = findEndIndexByTime(start, target, limitOut);
+            } else {
+                end = start + 1;
+                while (end < limitOut && timelineTimestamps[(int) (end - 1)] <= target) {
+                    end++;
+                }
+            }
+            if (end - start > MAX_EVENTS_PER_READ) {
+                end = start + MAX_EVENTS_PER_READ;
+            }
+            if (start >= end) {
+                throw new EOFException();
+            }
+            position = end;
+            currentStartTimestamp = tStart;
+            int tEnd = timestampApprox(Math.max(start, end - 1));
+            collectTypedForWindow(currentStartTimestamp, tEnd);
+            firePosition();
+            AEPacketRaw pkt = extractPolarity(start, end);
+            if (log.isLoggable(Level.FINE)) {
+                log.fine(String.format("readPacketByTime dt=%d pos %d->%d [%d,%d) t=%d..%d events=%d",
+                        dt, pos0, position, start, end, tStart, tEnd, pkt.getNumEvents()));
+            }
+            return pkt;
+        }
+        // Backwards: exclusive end is current position; find start with ts >= target.
+        long end = position;
+        if (end <= limitIn) {
+            throw new EOFException("reached start of file");
+        }
+        int tEnd = timestampApprox(Math.max(limitIn, end - 1));
+        int target = tEnd + dt; // dt < 0
+        long start;
         if (hasPolarity()) {
-            end = findEndIndexByTime(start, target, limit);
+            start = findStartIndexByTime(end, target, limitIn);
         } else {
-            end = start + 1;
-            while (end < limit && timelineTimestamps[(int) (end - 1)] <= target) {
-                end++;
+            start = end - 1;
+            while (start > limitIn && timelineTimestamps[(int) (start - 1)] >= target) {
+                start--;
             }
         }
         if (end - start > MAX_EVENTS_PER_READ) {
-            end = start + MAX_EVENTS_PER_READ;
+            start = end - MAX_EVENTS_PER_READ;
         }
-        position = end;
-        currentStartTimestamp = tStart;
-        int tEnd = timestampApprox(Math.max(start, end - 1));
-        collectTypedForWindow(currentStartTimestamp, tEnd);
+        if (start >= end) {
+            throw new EOFException("reached start of file");
+        }
+        position = start;
+        int t0 = timestampApprox(start);
+        currentStartTimestamp = t0;
+        collectTypedForWindow(t0, tEnd);
         firePosition();
-        return extractPolarity(start, end);
+        AEPacketRaw pkt = extractPolarity(start, end);
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format("readPacketByTime dt=%d (back) pos %d->%d [%d,%d) t=%d..%d target=%d events=%d",
+                    dt, pos0, position, start, end, t0, tEnd, target, pkt.getNumEvents()));
+        }
+        return pkt;
     }
 
     /**
@@ -1414,25 +1504,79 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return Math.min(limit, end);
     }
 
-    private void ensureReadableOrThrow() throws EOFException {
+    /**
+     * Inclusive start index for a backward window ending at exclusive {@code end},
+     * covering events with approx timestamp &gt;= {@code target}, floored by {@code limitIn}.
+     * At least one event when {@code end > limitIn}.
+     */
+    private long findStartIndexByTime(long end, int target, long limitIn) {
+        if (end <= limitIn) {
+            return limitIn;
+        }
+        long start = end - 1; // at least one event
+        int pi = findEventPacket(end - 1);
+        while (pi >= 0 && start > limitIn) {
+            PacketRef ref = eventRefs[pi];
+            long pktStart = ref.firstEventIndex;
+            long pktEnd = pktStart + ref.numElements;
+            long segStart = Math.max(limitIn, pktStart);
+            long segEnd = Math.min(end, pktEnd);
+            if (segStart >= segEnd) {
+                pi--;
+                continue;
+            }
+            // Entire packet older than target — stop; keep start from newer packets.
+            if (ref.unixEnd < target) {
+                return start;
+            }
+            // Entire packet at/after target — include and keep walking back.
+            if (ref.unixStart >= target) {
+                start = segStart;
+                pi--;
+                continue;
+            }
+            // Target inside this packet — interpolate (no I/O).
+            if (ref.unixEnd <= ref.unixStart || ref.numElements <= 0) {
+                return Math.max(limitIn, Math.min(start, segStart));
+            }
+            double frac = (target - (double) ref.unixStart) / (double) (ref.unixEnd - ref.unixStart);
+            if (frac < 0) {
+                frac = 0;
+            } else if (frac > 1) {
+                frac = 1;
+            }
+            long estInclusive = ref.firstEventIndex
+                    + (long) Math.round(frac * Math.max(0, ref.numElements - 1));
+            return Math.max(segStart, Math.min(segEnd - 1, estInclusive));
+        }
+        return Math.max(limitIn, start);
+    }
+
+    private void ensureReadableOrThrow(boolean forwards) throws EOFException {
         if (playableSize() == 0) {
             throw new EOFException("AEDAT-4 file has no playable timeline (no events/frames/IMU)");
         }
-        if (position < effectiveMarkOut()) {
+        if (forwards) {
+            if (position < effectiveMarkOut()) {
+                return;
+            }
+            if (repeat) {
+                try {
+                    rewind();
+                } catch (IOException e) {
+                    throw new EOFException(e.toString());
+                }
+                if (position >= effectiveMarkOut()) {
+                    throw new EOFException();
+                }
+                return;
+            }
+            throw new EOFException();
+        }
+        if (position > markIn) {
             return;
         }
-        if (repeat) {
-            try {
-                rewind();
-            } catch (IOException e) {
-                throw new EOFException(e.toString());
-            }
-            if (position >= effectiveMarkOut()) {
-                throw new EOFException();
-            }
-            return;
-        }
-        throw new EOFException();
+        throw new EOFException("reached start of file");
     }
 
     private long effectiveMarkOut() {
@@ -1618,7 +1762,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     }
 
     @Override
-    public boolean jumpToNextMarker() {
+    public synchronized boolean jumpToNextMarker() {
+        lastJumpTimeMs = System.currentTimeMillis();
         Long next = markers.higher(position);
         if (next == null) {
             return false;
@@ -1627,12 +1772,27 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return true;
     }
 
+    /**
+     * Jump to the previous marker strictly before {@link #position}.
+     * <p>
+     * If another marker jump happened within 2&nbsp;s (typically right after
+     * {@link #jumpToNextMarker()}), skip that just-reached marker and go to the
+     * one before it — otherwise {@code lower(position)} returns the marker we
+     * are already on/just past and the jump looks like a no-op.
+     */
     @Override
-    public boolean jumpToPrevMarker() {
+    public synchronized boolean jumpToPrevMarker() {
         Long prev = markers.lower(position);
         if (prev == null) {
             return false;
         }
+        if (System.currentTimeMillis() - lastJumpTimeMs <= 2000) {
+            Long earlier = markers.lower(prev);
+            if (earlier != null) {
+                prev = earlier;
+            }
+        }
+        lastJumpTimeMs = System.currentTimeMillis();
         position(prev);
         return true;
     }
@@ -1647,12 +1807,13 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public long position() { return position; }
 
     @Override
-    public void position(long n) {
+    public synchronized void position(long n) {
         long old = position;
         position = Math.max(markIn, Math.min(n, effectiveMarkOut()));
         // Packet-table approx only — never decompress on slider seek (that hung ViewLoop).
         int t = playableSize() == 0 ? 0
                 : timestampApprox(Math.min(Math.max(0, position), playableSize() - 1));
+        currentStartTimestamp = t;
         // log.fine(String.format("AEDAT-4 position %d->%d approxTs=%d", old, position, t));
         frameCursor = 0;
         imuCursor = 0;
@@ -1663,6 +1824,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             imuCursor++;
         }
         support.firePropertyChange(AEInputStream.EVENT_REPOSITIONED, old, position);
+        // Player slider listens for EVENT_POSITION (not EVENT_REPOSITIONED).
+        if (old != position) {
+            firePosition();
+        }
     }
 
     @Override

@@ -42,7 +42,6 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.TreeSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -910,13 +909,14 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         // log.info("Listeners for EVENT_REWOUND of "+this+" are \n"+s);
     }
 
-    private long lastJumpTimeMs = System.currentTimeMillis();
+    /** 0 = no prior jump; used so a prev soon after next skips the marker just landed on. */
+    private long lastJumpTimeMs;
 
     @Override
-    public boolean jumpToNextMarker() {
+    public synchronized boolean jumpToNextMarker() {
         lastJumpTimeMs = System.currentTimeMillis();
         long oldPosition = position();
-        Long marker = marks.otherMarks.ceiling(oldPosition);
+        Long marker = marks.otherMarks.higher(oldPosition); // strictly after current (not ceiling: stay put)
         if (marker != null) {
             position(marker);
             try {
@@ -932,45 +932,32 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     @Override
-    public boolean jumpToPrevMarker() {
+    public synchronized boolean jumpToPrevMarker() {
         long oldPosition = position();
-        // jump back to previous marker that is less than current position,
-        // or if time is less than 1 second since last jump, then
-        // to 2nd previous marker
-        Iterator<Long> it = marks.otherMarks.reversed().iterator();
-        while (it.hasNext()) {
-            Long m = it.next();
-            if (m != null && m < oldPosition) {
-                if (System.currentTimeMillis() - lastJumpTimeMs > 2000) {
-                    position(m);
-                    currentStartTimestamp = mostRecentTimestamp;
-                    lastJumpTimeMs = System.currentTimeMillis();
-                    log.fine(String.format("Jumped back to previous marker at %,d", m));
-
-                    return true;
-                } else {
-                    if (it.hasNext()) {
-                        m = it.next();
-                        if (m != null) {
-                            position(m);
-                            currentStartTimestamp = mostRecentTimestamp;
-                            lastJumpTimeMs = System.currentTimeMillis();
-                            log.fine(String.format("Quick jumped back to 2nd previous marker at %,d", m));
-                            return true;
-                        }
-                    } else {
-                        position(m);
-                        currentStartTimestamp = mostRecentTimestamp;
-                        lastJumpTimeMs = System.currentTimeMillis();
-                        log.fine(String.format("Jumped back to first marker at %,d", m));
-
-                        return true;
-                    }
-                    return false;
-                }
+        // Jump back to previous marker; if another jump was within 2s (e.g. just used
+        // next), skip that marker and go to the 2nd previous so prev is not a no-op.
+        Long prev = marks.otherMarks.lower(oldPosition);
+        if (prev == null) {
+            return false;
+        }
+        if (System.currentTimeMillis() - lastJumpTimeMs <= 2000) {
+            Long earlier = marks.otherMarks.lower(prev);
+            if (earlier != null) {
+                prev = earlier;
             }
         }
-        return false;
+        position(prev);
+        try {
+            readEventForwards();
+            currentStartTimestamp = mostRecentTimestamp;
+        } catch (IOException | NonMonotonicTimeException ex) {
+            Logger.getLogger(AEFileInputStream.class.getName()).log(Level.SEVERE, null, ex);
+            // position() does not refresh mostRecentTimestamp; keep time coherent for readPacketByTime
+            currentStartTimestamp = mostRecentTimestamp;
+        }
+        lastJumpTimeMs = System.currentTimeMillis();
+        log.fine(String.format("Jumped back to previous marker at %,d", prev));
+        return true;
     }
 
     /**
