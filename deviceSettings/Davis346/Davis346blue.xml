@@ -9,7 +9,7 @@
         <map/>
         <node name="Davis346blue">
           <map>
-            <entry key="colorScale" value="5"/>
+            <entry key="colorScale" value="2"/>
             <entry key="borderSpacePixels" value="10"/>
             <entry key="ChipCanvas.origin3dx" value="0"/>
             <entry key="ChipCanvas.origin3dy" value="0"/>
@@ -17,7 +17,7 @@
             <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
             <entry key="APS.ADCTestMode" value="false"/>
             <entry key="APS.ColumnSettle" value="30"/>
-            <entry key="APS.Exposure" value="7245"/>
+            <entry key="APS.Exposure" value="21409"/>
             <entry key="APS.FrameDelay" value="1000"/>
             <entry key="APS.FrameInterval" value="70711"/>
             <entry key="APS.GlobalShutter" value="true"/>
@@ -158,7 +158,7 @@
             <entry key="AddressedIPotCF.biasBuffer.LowCurrent" value="false"/>
             <entry key="AddressedIPotCF.biasBuffer.Sex" value="N"/>
             <entry key="AddressedIPotCF.biasBuffer.Type" value="NORMAL"/>
-            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\deviceSettings\Davis346b\DAVIS346blue.xml"/>
+            <entry key="BiasgenFrame.lastFile" value="C:\Users\tobid\Dropbox\GitHub\SensorsINI\jaer\deviceSettings\Davis346\Davis346blue.xml"/>
             <entry key="Chip.AERnArow" value="false"/>
             <entry key="Chip.AnalogMux0" value="0"/>
             <entry key="Chip.AnalogMux1" value="0"/>
@@ -197,7 +197,7 @@
             <entry key="DavisVideoContrastController.brightness" value="0.0"/>
             <entry key="DavisVideoContrastController.contrast" value="1.0"/>
             <entry key="DavisVideoContrastController.gamma" value="1.0"/>
-            <entry key="DavisVideoContrastController.useAutoContrast" value="false"/>
+            <entry key="DavisVideoContrastController.useAutoContrast" value="true"/>
             <entry key="ExtInput.DetectFallingEdges" value="false"/>
             <entry key="ExtInput.DetectPulseLength" value="120"/>
             <entry key="ExtInput.DetectPulsePolarity" value="true"/>
@@ -268,14 +268,14 @@
             <entry key="displayEvents" value="true"/>
             <entry key="displayFrames" value="true"/>
             <entry key="monochrome" value="true"/>
-            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAACdwQAAAACc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABHQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGJpYXNnZW5TZXR0aW5nc1xEYXZpczM0NmJ3AgBceHNxAH4AAnQAWEM6XFVzZXJzXHRvYmlkXERyb3Bib3hcR2l0SHViXFNlbnNvcnNJTklcamFlclxiaWFzZ2VuU2V0dGluZ3NcRGF2aXMzNDZiXERBVklTMzQ2Ymx1ZS54bWx3AgBceHg="/>
+            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAEdwQAAAAEc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdABFQzpcVXNlcnNcdG9iaWRcRHJvcGJveFxHaXRIdWJcU2Vuc29yc0lOSVxqYWVyXGRldmljZVNldHRpbmdzXERhdmlzMzQ2dwIAXHhzcQB+AAJ0AFZDOlxVc2Vyc1x0b2JpZFxEcm9wYm94XEdpdEh1YlxTZW5zb3JzSU5JXGphZXJcZGV2aWNlU2V0dGluZ3NcRGF2aXMzNDZcRGF2aXMzNDZibHVlLnhtbHcCAFx4c3EAfgACdAAtQzpcUHJvZ3JhbSBGaWxlc1xqQUVSXGRldmljZVNldHRpbmdzXERhdmlzMzQ2dwIAXHhzcQB+AAJ0AD5DOlxQcm9ncmFtIEZpbGVzXGpBRVJcZGV2aWNlU2V0dGluZ3NcRGF2aXMzNDZcRGF2aXMzNDZibHVlLnhtbHcCAFx4eA=="/>
             <entry key="separateAPSByColor" value="false"/>
             <entry key="AEViewer.adaptiveRenderSkippingEnabled" value="false"/>
             <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAJdwQAAAAJdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0ACxuZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlN0ZWFkaWNhbXQAJ25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuSW5mb3QAMm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuQ2VsbFN0YXRzUHJvYmVydAAobmV0LnNmLmphZXIudXRpbC5hdmlvdXRwdXQuSmFlckF2aVdyaXRlcng="/>
             <entry key="Davis346blue.preferredDisplayMethod" value="net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod"/>
-            <entry key="ChipCanvas.angley" value="19.778225"/>
-            <entry key="ChipCanvas.anglex" value="-11.428572"/>
-            <entry key="fadingFrames" value="26"/>
+            <entry key="ChipCanvas.angley" value="76.04278"/>
+            <entry key="ChipCanvas.anglex" value="-9.490334"/>
+            <entry key="fadingFrames" value="11"/>
           </map>
         </node>
       </node>
