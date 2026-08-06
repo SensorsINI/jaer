@@ -441,6 +441,11 @@ public final class RecordingChipDetector {
         if (soft.size() == 1) {
             return soft.get(0);
         }
+        // DV source DAVIS346_* matches several Davis346* chips; prefer common mono "B".
+        Class<? extends AEChip> familyB = preferFamilyB(soft, normFamily);
+        if (familyB != null) {
+            return familyB;
+        }
         // Prefer common "red" DAVIS case when still ambiguous among same family/color.
         Class<? extends AEChip> red = null;
         for (Class<? extends AEChip> c : soft) {
@@ -452,6 +457,20 @@ public final class RecordingChipDetector {
             }
         }
         return red;
+    }
+
+    /** {@code Davis346B} for family {@code davis346}; otherwise {@code null}. */
+    private static Class<? extends AEChip> preferFamilyB(
+            List<Class<? extends AEChip>> candidates, String normFamily) {
+        if (candidates.isEmpty() || normFamily == null || normFamily.isEmpty()) {
+            return null;
+        }
+        for (Class<? extends AEChip> c : candidates) {
+            if (normalize(c.getSimpleName()).equals(normFamily + "b")) {
+                return c;
+            }
+        }
+        return null;
     }
 
     /**

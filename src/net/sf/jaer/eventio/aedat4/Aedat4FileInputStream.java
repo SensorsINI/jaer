@@ -271,6 +271,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         compression = Aedat4Compression.clamp(header.compression());
         dataTablePosition = header.dataTablePosition();
         resolveStreamIds(header.infoNode());
+        log.info(String.format(
+                "AEDAT-4 header %s: compression=%s dataTablePosition=%d",
+                file.getName(),
+                Aedat4Compression.nameOf(compression),
+                dataTablePosition));
     }
 
     /**
@@ -284,6 +289,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         selectedSource = null;
         List<RecordingChipDetector.StreamHint> streams
                 = RecordingChipDetector.streamsFromInfoNodeXml(infoNode);
+        logAedat4InfoNodeSummary(streams);
         if (streams.isEmpty()) {
             if (requestedEventStreamId != null) {
                 eventStreamId = requestedEventStreamId;
@@ -353,6 +359,30 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     "AEDAT-4 multi-camera file: playing EVTS stream %d (%s); %d EVTS streams available",
                     eventStreamId, selectedSource, evts.size()));
         }
+    }
+
+    /** One INFO line per stream so DV source / size / colorFilter are visible on open. */
+    private void logAedat4InfoNodeSummary(List<RecordingChipDetector.StreamHint> streams) {
+        if (streams == null || streams.isEmpty()) {
+            log.info("AEDAT-4 infoNode: (no streams parsed)");
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("AEDAT-4 infoNode: ").append(streams.size()).append(" stream(s)");
+        for (RecordingChipDetector.StreamHint s : streams) {
+            sb.append(" | ").append(s.displayLabel());
+            if (s.colorFilter != null) {
+                sb.append(" colorFilter=").append(s.colorFilter);
+            }
+            if (s.originalModuleName != null && !s.originalModuleName.isEmpty()) {
+                sb.append(" module=").append(s.originalModuleName);
+            }
+            if (s.originalOutputName != null && !s.originalOutputName.isEmpty()
+                    && (s.source == null || !s.originalOutputName.equals(s.source))) {
+                sb.append(" out=").append(s.originalOutputName);
+            }
+        }
+        log.info(sb.toString());
     }
 
     /**
