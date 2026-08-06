@@ -182,6 +182,25 @@ public class ChipCanvas implements GLEventListener, Observer {
     protected boolean annotationEnabled = true;
 
     /**
+     * Optional GLCanvas to reuse for the next {@link #ChipCanvas(Chip2D)} on this
+     * thread. Avoids constructing a second JOGL canvas during AEChip switch
+     * (Intel Arc crashes in {@code SetPixelFormat} if a second canvas is created).
+     */
+    private static final ThreadLocal<GLCanvas> GL_CANVAS_TO_ADOPT = new ThreadLocal<>();
+
+    /**
+     * Supply a GLCanvas for the next ChipCanvas constructed on this thread.
+     * Cleared automatically when consumed (or pass null to clear).
+     */
+    public static void setGlCanvasToAdopt(final GLCanvas canvas) {
+        if (canvas == null) {
+            GL_CANVAS_TO_ADOPT.remove();
+        } else {
+            GL_CANVAS_TO_ADOPT.set(canvas);
+        }
+    }
+
+    /**
      * Creates a new instance of ChipCanvas
      */
     public ChipCanvas(final Chip2D chip) {
@@ -195,15 +214,26 @@ public class ChipCanvas implements GLEventListener, Observer {
         pwidth = prefs.getInt("ChipCanvas.pwidth", 512);
         updateSpikeMarkerScale();
 
-        // make the glCanvas
+        final boolean reusedGlCanvas;
+        // make the glCanvas (or reuse one from AEChip switch — never create a second)
         try {
+            final GLCanvas adopt = GL_CANVAS_TO_ADOPT.get();
+            GL_CANVAS_TO_ADOPT.remove();
+            if (adopt != null) {
+                reusedGlCanvas = true;
+                log.info("Reusing existing GLCanvas for " + chip.getName()
+                        + " (avoids second OpenGL SetPixelFormat on this GPU)");
+                glCanvas = adopt;
+                glCanvas.setAutoSwapBufferMode(true);
+            } else {
+                reusedGlCanvas = false;
 //            final GLProfile glp = GLProfile.getMaxProgrammable(true);//GLProfile.getDefault(); //getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.getGL2ES1(); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL2); // getMaxProgrammable(true);// FixedFunc(true);
 //            final GLProfile glp = GLProfile.get(GLProfile.GL3bc); // getMaxProgrammable(true);// FixedFunc(true);
             log.info("""
                      Getting GLProfile with GLProfile.getDefault()
-                      If this throws access violotion outside the JVM, and in atio6axx.dll driver, then it may be your AMD graphics driver.
+                      If this throws access violation outside the JVM (atio6axx.dll / igxelpgicd64.dll), it may be your GPU driver.
                       If you are running dual display on laptop, try starting with only main laptop display.
                       Try to enable use of discrete Nvidia GPU.""");
             final GLProfile glp = GLProfile.getDefault();
@@ -212,27 +242,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             caps.setDoubleBuffered(true);
             glCanvas = new GLCanvas(caps);
             glCanvas.setAutoSwapBufferMode(true);
-//            if (SystemUtils.IS_OS_WINDOWS) {
-//                List<GLCapabilitiesImmutable> capsAvailable = GLDrawableFactory.getDesktopFactory()
-//                        .getAvailableCapabilities(null);
-//                GLCapabilitiesImmutable chosenGLCaps = null;
-//                int listnum = 0;
-//                if (capsAvailable != null) {
-//                    for (GLCapabilitiesImmutable cap : capsAvailable) {
-//                        log.info("GLCapabilitiesImmutable #" + listnum + " is " + cap.toString());
-//                        if (chosenGLCaps == null) {
-//                            chosenGLCaps = cap;
-//                        }
-//                        if (listnum++ >= 0) {
-//                            break;
-//                        }
-//                    }
-//                }
-//
-//                glCanvas = new GLCanvas(chosenGLCaps);
-//            } else {
-//                glCanvas = new GLCanvas();
-//            }
+            }
 
             if (glCanvas == null) {
                 // Failed to init OpenGL, exit system!
@@ -252,6 +262,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             System.err.println("java.libary.path=" + System.getProperty("java.library.path"));
             System.err.println("user.dir=" + System.getProperty("user.dir"));
             System.exit(1);
+            return;
         }
         try {
             glut = new GLUT();
@@ -269,7 +280,9 @@ public class ChipCanvas implements GLEventListener, Observer {
         // add us as listeners for the glCanvas. then when the display wants to redraw display() will be called. or we can
         // call glCanvas.display();
         glCanvas.addGLEventListener(this);
-        glCanvas.setSize(200, 200); // set a size explicitly here
+        if (!reusedGlCanvas) {
+            glCanvas.setSize(200, 200); // set a size explicitly here
+        }
         initComponents();
         chip.addObserver(this);
 
@@ -811,9 +824,11 @@ public class ChipCanvas implements GLEventListener, Observer {
         checkGLError(gl, glu, "after init");
     }
 
+    private ZoomMouseAdaptor zoomMouseAdaptor;
+
     protected void initComponents() {
-        if (getRenderer() != null) {
-            final ZoomMouseAdaptor zoomMouseAdaptor = new ZoomMouseAdaptor();
+        if (getRenderer() != null && glCanvas != null) {
+            zoomMouseAdaptor = new ZoomMouseAdaptor();
             glCanvas.addMouseListener(zoomMouseAdaptor);
             glCanvas.addMouseMotionListener(zoomMouseAdaptor);
         }
@@ -2100,6 +2115,70 @@ public class ChipCanvas implements GLEventListener, Observer {
     @Override
     public void dispose(final GLAutoDrawable arg0) {
         log.fine("disposing " + arg0);
+    }
+
+    /**
+     * Detaches this ChipCanvas from its {@link GLCanvas} without destroying the
+     * native drawable. Used when switching AEChips so the same GLCanvas can be
+     * reused — creating a second realized GLCanvas crashes some GPU drivers
+     * during {@code SetPixelFormat} (Intel Arc {@code igxelpgicd64.dll}).
+     *
+     * @return the detached GLCanvas, or null
+     */
+    public GLCanvas detachGlCanvas() {
+        final GLCanvas c = glCanvas;
+        if (c == null) {
+            return null;
+        }
+        log.fine("detaching GLCanvas (keeping native drawable) " + c);
+        try {
+            c.removeGLEventListener(this);
+        } catch (final Exception e) {
+            log.log(Level.WARNING, "removeGLEventListener during detachGlCanvas: " + e, e);
+        }
+        if (zoomMouseAdaptor != null) {
+            try {
+                c.removeMouseListener(zoomMouseAdaptor);
+                c.removeMouseMotionListener(zoomMouseAdaptor);
+            } catch (final Exception e) {
+                log.log(Level.WARNING, "remove mouse listeners during detachGlCanvas: " + e, e);
+            }
+            zoomMouseAdaptor = null;
+        }
+        glCanvas = null;
+        return c;
+    }
+
+    /**
+     * Destroys the native OpenGL drawable. Call on the EDT only when the
+     * GLCanvas will not be reused (e.g. viewer shutdown). Prefer
+     * {@link #detachGlCanvas()} + {@link #setGlCanvasToAdopt(GLCanvas)} on AEChip switch.
+     */
+    public void destroy() {
+        if (glCanvas == null) {
+            return;
+        }
+        log.fine("destroying GLCanvas " + glCanvas);
+        try {
+            glCanvas.removeGLEventListener(this);
+        } catch (final Exception e) {
+            log.log(Level.WARNING, "removeGLEventListener during ChipCanvas.destroy: " + e, e);
+        }
+        if (zoomMouseAdaptor != null) {
+            try {
+                glCanvas.removeMouseListener(zoomMouseAdaptor);
+                glCanvas.removeMouseMotionListener(zoomMouseAdaptor);
+            } catch (final Exception e) {
+                log.log(Level.WARNING, "remove mouse listeners during destroy: " + e, e);
+            }
+            zoomMouseAdaptor = null;
+        }
+        try {
+            glCanvas.destroy();
+        } catch (final Exception e) {
+            log.log(Level.WARNING, "GLCanvas.destroy failed: " + e, e);
+        }
+        glCanvas = null;
     }
 
     private static boolean checkedRetinaDisplay = false;

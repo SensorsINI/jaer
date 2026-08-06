@@ -676,6 +676,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         HardwareInterfaceFactory.instance().buildInterfaceList(); // once only to start
         buildInterfaceMenu();
         buildDeviceMenu();
+        // Prefer remembered live AEChip before first GLCanvas so ViewLoop does not
+        // immediately recreate/reparent OpenGL (crashes some Intel Arc drivers).
+        maybeUseRememberedLiveChipAtStartup();
         // we need to do this after building device menu so that proper menu item radio button can be selected
 //        cleanup(); // close sockets if they are open
         setAeChipClass(aeChipClass);
@@ -1568,6 +1571,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * to the AEChip menu
      */
     public void setAeChipClass(Class deviceClass) {
+        // ChipCanvas / GLCanvas create+realize must run on the EDT. ViewLoop calls
+        // ensureChipCompatibleWithLiveDevice off-EDT; racing AWT reshape into
+        // SetPixelFormat crashes some drivers (Intel Arc igxelpgicd64.dll).
+        if (!SwingUtilities.isEventDispatchThread()) {
+            log.fine("Marshaling setAeChipClass(" + deviceClass + ") to EDT");
+            try {
+                SwingUtilities.invokeAndWait(() -> setAeChipClass(deviceClass));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warning("Interrupted while switching AEChip on EDT");
+            } catch (InvocationTargetException e) {
+                log.log(Level.SEVERE, "AEChip switch on EDT failed", e.getCause() != null ? e.getCause() : e);
+            }
+            return;
+        }
         log.fine("AEViewer.setAeChipClass(" + deviceClass + ")");
         try {
             if (filterFrame != null) {
@@ -1599,17 +1617,28 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     oldChip.getCanvas().getDisplayMethod().onDeregistration();
                 }
             }
-            if (getChip() == null) { // handle initial case
-                constructChip(constructor);
-            } else {
-                synchronized (chip) { // TODO handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
-                    synchronized (extractor) {
-                        synchronized (getRenderer()) {
-                            getChip().cleanup();
-                            constructChip(constructor);
+            // Keep the existing GLCanvas across AEChip switches. Creating a second
+            // GLCanvas crashes Intel Arc (igxelpgicd64.dll SetPixelFormat) even if
+            // the new canvas is never realized — so pass it into ChipCanvas ctor.
+            final com.jogamp.opengl.awt.GLCanvas reusableGlCanvas = detachChipCanvasKeepGl();
+            if (reusableGlCanvas != null) {
+                ChipCanvas.setGlCanvasToAdopt(reusableGlCanvas);
+            }
+            try {
+                if (getChip() == null) { // handle initial case
+                    constructChip(constructor);
+                } else {
+                    synchronized (chip) { // TODO handle live case -- this is not ideal thread programming - better to sync on a lock object in the run loop
+                        synchronized (extractor) {
+                            synchronized (getRenderer()) {
+                                getChip().cleanup();
+                                constructChip(constructor);
+                            }
                         }
                     }
                 }
+            } finally {
+                ChipCanvas.setGlCanvasToAdopt(null); // clear if constructChip failed
             }
             if (chip == null) {
                 log.warning("null chip, not continuing");
@@ -1758,15 +1787,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     void makeCanvas() {
         synchronized (getTreeLock()) {
-            if (chipCanvas != null) {
-                getImagePanel().remove(chipCanvas.getCanvas());
-            }
             if (chip == null) {
                 log.warning("null chip, not making canvas");
                 return;
             }
             chipCanvas = chip.getCanvas();
-            getImagePanel().add(chipCanvas.getCanvas(), BorderLayout.CENTER);
+            Component glComp = chipCanvas.getCanvas();
+            // Only add if not already parented — never remove/re-add (new HWND → SetPixelFormat crash on Intel Arc).
+            if (glComp != null && glComp.getParent() != getImagePanel()) {
+                getImagePanel().add(glComp, BorderLayout.CENTER);
+            }
 
             //        chipCanvas.getCanvas().invalidate();
             // find display menu reference and fill it with display menu for this canvas
@@ -1783,6 +1813,70 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             viewMenu.invalidate();
         }
 
+    }
+
+    /**
+     * Detaches the current ChipCanvas from its {@link com.jogamp.opengl.awt.GLCanvas}
+     * but leaves the GLCanvas in the image panel. Reparenting a GLCanvas creates a
+     * new native peer and a second {@code SetPixelFormat}, which crashes some
+     * Intel Arc drivers ({@code igxelpgicd64.dll}).
+     *
+     * @return reusable GLCanvas, or null
+     */
+    private com.jogamp.opengl.awt.GLCanvas detachChipCanvasKeepGl() {
+        if (chipCanvas == null) {
+            return null;
+        }
+        com.jogamp.opengl.awt.GLCanvas gl = null;
+        try {
+            gl = chipCanvas.detachGlCanvas();
+        } catch (Exception e) {
+            log.log(Level.WARNING, "Error detaching GLCanvas: " + e, e);
+        }
+        chipCanvas = null;
+        return gl;
+    }
+
+    /**
+     * If exactly one USB interface is present and a remembered AEChip exists for
+     * it, use that class for the first {@link #setAeChipClass} so startup does not
+     * build a Davis canvas then immediately rebuild for the live device.
+     */
+    private void maybeUseRememberedLiveChipAtStartup() {
+        try {
+            if (chipClassNames == null || chipClassNames.isEmpty()) {
+                return;
+            }
+            if (HardwareInterfaceFactory.instance().getNumInterfacesAvailable() != 1) {
+                return;
+            }
+            HardwareInterface hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
+            if (hw == null || UDPInterface.class.isInstance(hw)
+                    || (aeChipClass != null && NetworkChip.class.isAssignableFrom(aeChipClass))) {
+                return;
+            }
+            UsbIds.Pair ids = UsbIds.peek(hw);
+            if (!ids.isKnown()) {
+                return;
+            }
+            java.util.List<Class<? extends AEChip>> matches
+                    = LiveDeviceChipDetector.findMatches(hw, chipClassNames);
+            if (matches.isEmpty()) {
+                return;
+            }
+            String deviceKey = liveDevicePromptKey(hw, ids);
+            Class<? extends AEChip> remembered = loadRememberedLiveChip(deviceKey, matches);
+            if (remembered != null && !remembered.equals(aeChipClass)) {
+                log.info("Startup: using remembered AEChip " + remembered.getSimpleName()
+                        + " for USB device " + deviceKey
+                        + " (avoids recreating OpenGL canvas)");
+                aeChipClass = remembered;
+                aeChipClassName = remembered.getName();
+                liveChipOfferPromptedKeys.add(deviceKey);
+            }
+        } catch (Throwable t) {
+            log.log(Level.WARNING, "Could not apply remembered live AEChip at startup", t);
+        }
     }
 
     /**
@@ -2564,11 +2658,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.warning("async hardwareInterface.close during chip switch: " + e);
             }
         };
-        if (suppressHardwareOpen) {
+        // Never block the EDT on USB close (NRV/libusb can hang). setAeChipClass
+        // runs on the EDT, including live-device chip offers marshaled from ViewLoop.
+        if (suppressHardwareOpen || SwingUtilities.isEventDispatchThread()) {
             Thread t = new Thread(close, "jaer-async-hw-close");
             t.setDaemon(true);
             t.start();
-            log.info("Closing live hardware asynchronously for file playback chip switch");
+            log.info(suppressHardwareOpen
+                    ? "Closing live hardware asynchronously for file playback chip switch"
+                    : "Closing live hardware asynchronously for AEChip switch on EDT");
         } else {
             close.run();
         }
