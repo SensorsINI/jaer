@@ -136,8 +136,10 @@ import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventio.RecordingChipDetector;
 import net.sf.jaer.eventio.TextFileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
 import net.sf.jaer.eventio.ros.RosbagFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 import net.sf.jaer.eventprocessing.EventFilter;
@@ -659,6 +661,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_AEDAT4_SAMPLE_DATA,
                     "AEDAT-4 / DV sample data",
                     "Open MIT-licensed DAVIS346 AEDAT-4 recordings with direct per-file downloads (soccer ball scenes)"));
+            sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_INIVATION_AEDAT4_DATA,
+                    "Inivation AEDAT-4 data",
+                    "iniVation AEDAT-4 samples; use dv-filestat -v to check XML 'source' for camera (e.g. mean_shift is DVXplorer)"));
             sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_PROPHESEE_SAMPLE_DATA,
                     "Prophesee / Metavision sample data",
                     "Prophesee sample recordings and datasets (RAW EVT2/EVT3, HDF5, DAT) including EVK4 / IMX636"));
@@ -1355,6 +1360,109 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         Integer id = pendingAedat4EventStreamId;
         pendingAedat4EventStreamId = null;
         return id;
+    }
+
+    /**
+     * If {@code file} is a DV AEDAT-4 with dependent-block LZ4, offer to open or
+     * create a sibling {@code *-rerecord.aedat4} with fast independent-block LZ4.
+     *
+     * @return open plan, or {@code null} if the user canceled playback
+     */
+    public Aedat4Lz4Rerecorder.OpenPlan offerAedat4Lz4Rerecord(File file) {
+        if (file == null || !file.isFile() || Aedat4Lz4Rerecorder.isRerecordFile(file)) {
+            return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+        }
+        String lower = file.getName().toLowerCase(Locale.ROOT);
+        if (!lower.endsWith(".aedat4") && !lower.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)) {
+            return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+        }
+        if (!Aedat4Compression.probeUsesDependentBlockLz4(file)) {
+            return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+        }
+        File sibling = Aedat4Lz4Rerecorder.rerecordSibling(file);
+        File parent = sibling.getParentFile();
+        boolean canWrite = parent != null && parent.isDirectory() && parent.canWrite();
+        EngineeringFormat eng = new EngineeringFormat();
+        String sizeHint = eng.format(file.length()) + "B";
+        if (sibling.isFile()) {
+            Object[] options = {
+                "Open optimized copy",
+                "Play original (slow)",
+                "Re-create optimized copy"
+            };
+            int choice = JOptionPane.showOptionDialog(
+                    this,
+                    String.format(
+                            "<html>This AEDAT-4 file uses <b>dependent-block LZ4</b> (common in DV recordings),<br>"
+                            + "which is much slower to play in jAER.<br><br>"
+                            + "An optimized copy already exists:<br><code>%s</code><br><br>"
+                            + "Open the optimized copy?</html>",
+                            sibling.getName()),
+                    "Slow LZ4 — " + file.getName(),
+                    JOptionPane.YES_NO_CANCEL_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    null,
+                    options,
+                    options[0]);
+            if (choice == 0) {
+                log.info("Opening existing AEDAT-4 LZ4 re-record: " + sibling.getName());
+                return new Aedat4Lz4Rerecorder.OpenPlan(sibling, null);
+            }
+            if (choice == 1) {
+                log.info("Playing original dependent-block LZ4 file: " + file.getName());
+                return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+            }
+            if (choice == 2) {
+                if (!canWrite) {
+                    JOptionPane.showMessageDialog(this,
+                            "Cannot write optimized copy in:\n" + parent,
+                            "Re-record failed",
+                            JOptionPane.ERROR_MESSAGE);
+                    return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+                }
+                log.info("Re-creating AEDAT-4 LZ4 re-record: " + sibling.getName());
+                return new Aedat4Lz4Rerecorder.OpenPlan(sibling, file);
+            }
+            log.info("Playback open canceled (AEDAT-4 LZ4 re-record dialog)");
+            return null;
+        }
+        if (!canWrite) {
+            int keep = JOptionPane.showConfirmDialog(
+                    this,
+                    String.format(
+                            "<html>This AEDAT-4 file uses <b>dependent-block LZ4</b>, which is slow in jAER.<br>"
+                            + "Cannot write an optimized copy next to the file (folder not writable).<br><br>"
+                            + "Play the original anyway?</html>"),
+                    "Slow LZ4 — " + file.getName(),
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (keep == JOptionPane.YES_OPTION) {
+                return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+            }
+            return null;
+        }
+        int create = JOptionPane.showConfirmDialog(
+                this,
+                String.format(
+                        "<html>This AEDAT-4 file uses <b>dependent-block LZ4</b> (common in DV recordings),<br>"
+                        + "which is much slower to play in jAER (~30× vs native LZ4).<br><br>"
+                        + "Create an optimized copy next to the original?<br>"
+                        + "<code>%s</code><br>"
+                        + "(about %s; same folder as the source)</html>",
+                        sibling.getName(), sizeHint),
+                "Slow LZ4 — create optimized copy?",
+                JOptionPane.YES_NO_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (create == JOptionPane.YES_OPTION) {
+            log.info("Will create AEDAT-4 LZ4 re-record: " + sibling.getName());
+            return new Aedat4Lz4Rerecorder.OpenPlan(sibling, file);
+        }
+        if (create == JOptionPane.NO_OPTION) {
+            log.info("Playing original dependent-block LZ4 file: " + file.getName());
+            return new Aedat4Lz4Rerecorder.OpenPlan(file, null);
+        }
+        log.info("Playback open canceled (AEDAT-4 LZ4 re-record dialog)");
+        return null;
     }
 
     private RecordingChipDetector.StreamHint chooseAedat4EventStream(

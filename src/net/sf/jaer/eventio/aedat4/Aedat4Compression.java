@@ -3,14 +3,21 @@ package net.sf.jaer.eventio.aedat4;
 import com.github.luben.zstd.Zstd;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.channels.FileChannel;
+import java.util.Arrays;
 import net.jpountz.lz4.LZ4FrameInputStream;
 import net.jpountz.lz4.LZ4FrameOutputStream;
 import net.jpountz.lz4.LZ4FrameOutputStream.BLOCKSIZE;
 import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorInputStream;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
+import net.sf.jaer.eventio.aedat4.dv.IOHeader;
 
 /**
  * AEDAT-4 / DV packet payload compression (LZ4 or ZSTD frame per packet).
@@ -130,10 +137,61 @@ public final class Aedat4Compression {
     }
 
     /**
+     * True when the LZ4 frame descriptor clears block independence (DV default).
+     * Unknown/short/non-LZ4 buffers return false.
+     */
+    public static boolean isDependentBlockLz4Frame(byte[] data) {
+        return lz4FrameNeedsDependentBlockDecoder(data);
+    }
+
+    /**
+     * Peeks the first data packet of an AEDAT-4 file and returns true when it uses
+     * dependent-block LZ4 (slow Commons Compress path in jAER).
+     * Returns false for non-LZ4 files, empty files, or independent-block LZ4.
+     */
+    public static boolean probeUsesDependentBlockLz4(File file) {
+        if (file == null || !file.isFile()) {
+            return false;
+        }
+        try (RandomAccessFile raf = new RandomAccessFile(file, "r"); FileChannel ch = raf.getChannel()) {
+            ByteBuffer version = ByteBuffer.allocate(Aedat4FileOutputStream.VERSION_LINE.length);
+            readFully(ch, version);
+            if (!Arrays.equals(version.array(), Aedat4FileOutputStream.VERSION_LINE)) {
+                return false;
+            }
+            ByteBuffer headerBytes = readSizePrefixed(ch);
+            IOHeader header = IOHeader.getSizePrefixedRootAsIOHeader(headerBytes);
+            int compression = clamp(header.compression());
+            if (compression != CompressionType.LZ4 && compression != CompressionType.LZ4_HIGH) {
+                return false;
+            }
+            long dataTablePosition = header.dataTablePosition();
+            long fileSize = ch.size();
+            long dataEnd = (dataTablePosition >= 0 && dataTablePosition < fileSize) ? dataTablePosition : fileSize;
+            if (ch.position() + 8 > dataEnd) {
+                return false;
+            }
+            ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
+            readFully(ch, packetHeader);
+            packetHeader.flip();
+            packetHeader.getInt(); // streamId
+            int payloadSize = packetHeader.getInt();
+            if (payloadSize < 5 || ch.position() + payloadSize > dataEnd) {
+                return false;
+            }
+            ByteBuffer prefix = ByteBuffer.allocate(Math.min(16, payloadSize));
+            readFully(ch, prefix);
+            return isDependentBlockLz4Frame(prefix.array());
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
      * Prefer {@code lz4-java}; use Commons Compress only for dependent-block frames.
      */
     private static byte[] lz4FrameDecompress(byte[] data) throws IOException {
-        if (lz4FrameNeedsDependentBlockDecoder(data)) {
+        if (isDependentBlockLz4Frame(data)) {
             return lz4FrameDecompressCommonsCompress(data);
         }
         try {
@@ -144,6 +202,29 @@ public final class Aedat4Compression {
                 return lz4FrameDecompressCommonsCompress(data);
             }
             throw e;
+        }
+    }
+
+    private static ByteBuffer readSizePrefixed(FileChannel channel) throws IOException {
+        ByteBuffer sizeBuffer = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN);
+        readFully(channel, sizeBuffer);
+        sizeBuffer.flip();
+        int size = sizeBuffer.getInt();
+        if (size < 0) {
+            throw new IOException("Negative FlatBuffer size prefix " + size);
+        }
+        ByteBuffer payload = ByteBuffer.allocate(size + 4).order(ByteOrder.LITTLE_ENDIAN);
+        payload.putInt(size);
+        readFully(channel, payload);
+        payload.flip();
+        return payload;
+    }
+
+    private static void readFully(FileChannel channel, ByteBuffer buffer) throws IOException {
+        while (buffer.hasRemaining()) {
+            if (channel.read(buffer) < 0) {
+                throw new IOException("Unexpected EOF");
+            }
         }
     }
 

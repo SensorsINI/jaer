@@ -31,6 +31,7 @@ import net.sf.jaer.eventio.AEFileInputStream.Marks;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
+import net.sf.jaer.eventio.aedat4.Aedat4Lz4Rerecorder;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.util.DATFileFilter;
@@ -347,13 +348,23 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             setPaused(false);
             return;
         }
+        // Dependent-block LZ4 DV files: offer sibling *-rerecord.aedat4 for fast playback.
+        final Aedat4Lz4Rerecorder.OpenPlan lz4Plan = viewer.offerAedat4Lz4Rerecord(file);
+        if (lz4Plan == null || lz4Plan.fileToOpen == null) {
+            viewer.endFilePlaybackOpen();
+            setPaused(false);
+            return;
+        }
+        final File playFile = lz4Plan.fileToOpen;
+        final File rerecordFrom = lz4Plan.rerecordFrom;
+        inputFile = playFile;
         // idea is that we set open the file and set playback mode and the ViewLoop.run
         // loop will then render from the file.
-        String ext = "." + IndexFileFilter.getExtension(file); // TODO change to use of a new static method in AEDataFile for determining file type
+        String ext = "." + IndexFileFilter.getExtension(playFile); // TODO change to use of a new static method in AEDataFile for determining file type
         if (ext.equals(AEDataFile.INDEX_FILE_EXTENSION) || ext.equals(AEDataFile.OLD_INDEX_FILE_EXTENSION)) {
             try {
                 if (viewer.getJaerViewer() != null) {
-                    viewer.getJaerViewer().getSyncPlayer().startPlayback(file);
+                    viewer.getJaerViewer().getSyncPlayer().startPlayback(playFile);
                 }
             } finally {
                 viewer.endFilePlaybackOpen();
@@ -376,7 +387,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             setPaused(false);
             throw new IOException("chip is not set in AEViewer so we cannot contruct the file input stream for it");
         }
-        final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + file, "Generating or loading cache of events", 0, 100);
+        final ProgressMonitor progressMonitor = new ProgressMonitor(viewer, "Opening " + playFile,
+                rerecordFrom != null ? "Re-recording LZ4 for faster playback" : "Generating or loading cache of events",
+                0, 100);
         progressMonitor.setMillisToPopup(300);
         progressMonitor.setMillisToDecideToPopup(300);
         final Timer[] cancelPollRef = new Timer[1];
@@ -387,7 +400,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             protected AEFileInputStreamInterface doInBackground() throws Exception {
                 AEFileInputStreamInterface stream = null;
                 try {
-                    log.fine("startPlayback.doInBackground begin file=" + file.getName()
+                    log.fine("startPlayback.doInBackground begin file=" + playFile.getName()
                             + " chip=" + viewer.getChip().getClass().getSimpleName()
                             + " thread=" + Thread.currentThread().getName());
                     setPaused(true);
@@ -395,15 +408,33 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     // Do not set WAIT_CURSOR for the whole open — ProgressMonitor is enough.
                     // A stuck wait cursor was left behind when open hung or cancel raced.
                     progressMonitor.setProgress(0);
-                    progressMonitor.setNote("Opening " + file.getName());
+                    if (rerecordFrom != null) {
+                        progressMonitor.setNote("Re-recording LZ4 (independent blocks)…");
+                        try {
+                            Aedat4Lz4Rerecorder.rerecord(rerecordFrom, playFile, progressMonitor);
+                        } catch (InterruptedException ie) {
+                            log.info("AEDAT-4 LZ4 re-record canceled: " + rerecordFrom.getName());
+                            return null;
+                        } catch (Exception e) {
+                            exception = e;
+                            log.warning("AEDAT-4 LZ4 re-record failed: " + e);
+                            e.printStackTrace();
+                            return null;
+                        }
+                        if (isCancelled() || progressMonitor.isCanceled()) {
+                            log.info("File open canceled after re-record: " + playFile.getName());
+                            return null;
+                        }
+                    }
+                    progressMonitor.setNote("Opening " + playFile.getName());
                     try {
                         log.fine("constuctFileInputStream calling");
-                        stream = viewer.getChip().constuctFileInputStream(file, progressMonitor);
+                        stream = viewer.getChip().constuctFileInputStream(playFile, progressMonitor);
                         log.fine("constuctFileInputStream returned " + (stream == null ? "null" : stream.getClass().getSimpleName()));
                     } catch (Exception e) {
                         if (progressMonitor.isCanceled() || Thread.currentThread().isInterrupted()
                                 || (e.getMessage() != null && e.getMessage().toLowerCase().contains("cancel"))) {
-                            log.info("File open canceled: " + file.getName());
+                            log.info("File open canceled: " + playFile.getName());
                             return null;
                         }
                         exception = e;
@@ -412,7 +443,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         return null;
                     }
                     if (isCancelled() || progressMonitor.isCanceled()) {
-                        log.info("File open canceled after construct: " + file.getName());
+                        log.info("File open canceled after construct: " + playFile.getName());
                         if (stream != null) {
                             try {
                                 stream.close();
@@ -423,7 +454,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     }
                     // Configure stream only on this worker thread; UI updates run in done() on EDT.
                     log.fine("configuring stream on worker thread");
-                    stream.setFile(file);
+                    stream.setFile(playFile);
                     stream.marksInitialize();
                     log.fine("marksInitialize done (" + stream.getClass().getSimpleName() + ")");
                     stream.setRepeat(isRepeat());
@@ -490,7 +521,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         viewer.endFilePlaybackOpen();
                         viewer.setPaused(false);
                         if (isCancelled() || progressMonitor.isCanceled()) {
-                            log.info("Playback open canceled for " + file.getName());
+                            log.info("Playback open canceled for " + playFile.getName());
                         }
                         return;
                     }
@@ -525,7 +556,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                         renderer.showRenderingModeTextOnAeViewer();
                     }
                     log.fine("done(): fire EVENT_FILEOPEN");
-                    getSupport().firePropertyChange(EVENT_FILEOPEN, null, file);
+                    getSupport().firePropertyChange(EVENT_FILEOPEN, null, playFile);
                     log.fine("done(): setInputFile");
                     viewer.setInputFile(file);
                     log.fine("done(): endFilePlaybackOpen + setPaused(false)");
