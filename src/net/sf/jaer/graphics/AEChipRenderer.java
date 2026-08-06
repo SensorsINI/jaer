@@ -86,6 +86,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         GrayLevel("Each event causes linear change in brightness", .5f),
         //        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
         RedGreen("ON events are green; OFF events are red, black background", 0),
+        RedBlue("ON events are blue; OFF events are red, black background", 0),
         //        FadingActivity("Events are accumulated (without polarity) and are faded away according to color scale", 0),
         //        SlidingWindow("Events are accumulated in overlapping windows", 0),
         ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events", 0f),
@@ -426,6 +427,27 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     continue;
                                 }
                                 f[ind + type] += colorContrastAdditiveStep;
+                            }
+                            break;
+                        case RedBlue:
+                            colorContrastAdditiveStep = 1f / (colorScale); // cs=1, colorContrastAdditiveStep=1, cs=2, colorContrastAdditiveStep=.5
+                            for (Object obj : pkt) {
+                                BasicEvent e = (BasicEvent) obj;
+
+                                int type = e.getType();
+                                if (e.isSpecial()) {
+                                    setSpecialCount(specialCount + 1); // TODO optimate special count increment
+                                    continue;
+                                }
+                                if ((e.x == xsel) && (e.y == ysel)) {
+                                    playSpike(type);
+                                }
+                                int ind = getPixMapIndex(e.x, e.y);
+                                if (ind < 0) {
+                                    continue;
+                                }
+                                // type 0=OFF -> red (ind+0), type 1=ON -> blue (ind+2)
+                                f[ind + (type == 0 ? 0 : 2)] += colorContrastAdditiveStep;
                             }
                             break;
                         case ColorTime:

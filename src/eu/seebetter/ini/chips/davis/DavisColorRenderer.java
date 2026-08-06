@@ -421,6 +421,14 @@ public class DavisColorRenderer extends DavisRenderer {
                     offColor[1] = 0;
                     offColor[2] = 0;
                     break;
+                case RedBlue:
+                    onColor[0] = 0;
+                    onColor[1] = 0;
+                    onColor[2] = colorContrastAdditiveStep;
+                    offColor[0] = colorContrastAdditiveStep;
+                    offColor[1] = 0;
+                    offColor[2] = 0;
+                    break;
 
             }
 

@@ -863,6 +863,15 @@ public class DavisRenderer extends AEChipRenderer {
                     }
                 }
                 break;
+                case RedBlue: {
+                    map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  clip01(scale); // alpha
+                    if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
+                        map[index + 2] += colorContrastAdditiveStep; // blue up from black 0
+                    } else {
+                        map[index] += colorContrastAdditiveStep; // red up
+                    }
+                }
+                break;
                 case WhiteBackground: {
                     map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  clip01(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {

@@ -138,7 +138,26 @@ public class MultiCameraDifferentColorDisplayRenderer extends DavisRenderer{
                 offColor[3] = 0.0f;
                 break;
             case RedGreen:
-            default:    
+                onColor[0] = 0.0f;
+                onColor[1] = 1.0f;
+                onColor[2] = 0.0f;
+                onColor[3] = 0.0f;
+                offColor[0] = 1.0f;
+                offColor[1] = 0.0f;
+                offColor[2] = 0.0f;
+                offColor[3] = 0.0f;
+                break;
+            case RedBlue:
+                onColor[0] = 0.0f;
+                onColor[1] = 0.0f;
+                onColor[2] = 1.0f;
+                onColor[3] = 0.0f;
+                offColor[0] = 1.0f;
+                offColor[1] = 0.0f;
+                offColor[2] = 0.0f;
+                offColor[3] = 0.0f;
+                break;
+            default:
                 onColor[0] = 0.0f;
                 onColor[1] = 1.0f;
                 onColor[2] = 0.0f;
