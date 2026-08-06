@@ -8,7 +8,12 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
-@Description("DAVIS346 346x260 pixel APS-DVS DAVIS sensor")
+/**
+ * Experimental INI motherboard DAVIS346 used during early development.
+ * Prefer {@link Davis346red} for the common iniVation red-case camera.
+ */
+@Deprecated
+@Description("DAVIS346 experimental INI motherboard (deprecated; use Davis346red)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class Davis346B extends Davis346BaseCamera {
 	public Davis346B() {

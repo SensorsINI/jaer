@@ -28,10 +28,10 @@ import net.sf.jaer.eventio.aedat4.dv.IOHeader;
  * <ul>
  *   <li><b>Write</b> — {@code lz4-java} framed LZ4 with independent blocks
  *       (native/JNI when available) for live high-rate logging.</li>
- *   <li><b>Read</b> — {@code lz4-java} when the frame has independent blocks;
- *       fall back to Commons Compress only for DV <em>dependent-block</em> frames
- *       that {@code lz4-java} rejects. Commons Compress has no fast decompress
- *       path (pure Java, ~30× slower).</li>
+ *   <li><b>Read</b> — {@code lz4-java} frame reader for independent blocks;
+ *       for DV <em>dependent-block</em> frames use {@link Aedat4Lz4FrameDecoder}
+ *       (native lz4-java per block, Commons {@code BlockLZ4}+prefill only for
+ *       continuation blocks). Full Commons framed reader is the last resort.</li>
  * </ul>
  */
 public final class Aedat4Compression {
@@ -188,18 +188,26 @@ public final class Aedat4Compression {
     }
 
     /**
-     * Prefer {@code lz4-java}; use Commons Compress only for dependent-block frames.
+     * Prefer {@code lz4-java}; dependent-block DV frames use the hybrid decoder.
      */
     private static byte[] lz4FrameDecompress(byte[] data) throws IOException {
         if (isDependentBlockLz4Frame(data)) {
-            return lz4FrameDecompressCommonsCompress(data);
+            try {
+                return Aedat4Lz4FrameDecoder.decompress(data);
+            } catch (IOException | RuntimeException e) {
+                return lz4FrameDecompressCommonsCompress(data);
+            }
         }
         try {
             return lz4FrameDecompressLz4Java(data);
         } catch (RuntimeException e) {
             // lz4-java throws RuntimeException when BLOCK_INDEPENDENCE is clear.
             if (isDependentBlockUnsupported(e)) {
-                return lz4FrameDecompressCommonsCompress(data);
+                try {
+                    return Aedat4Lz4FrameDecoder.decompress(data);
+                } catch (IOException | RuntimeException e2) {
+                    return lz4FrameDecompressCommonsCompress(data);
+                }
             }
             throw e;
         }

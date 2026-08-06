@@ -518,10 +518,20 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             }
                         }
                         aeInputStream = null;
+                        // beginFilePlaybackOpen() forced PLAYBACK before the stream existed;
+                        // leave WAITING so ViewLoop does not call getNextPacket() on a null stream.
+                        if (viewer.getPlayMode() == AEViewer.PlayMode.PLAYBACK) {
+                            viewer.setPlayMode(AEViewer.PlayMode.WAITING);
+                        }
                         viewer.endFilePlaybackOpen();
                         viewer.setPaused(false);
                         if (isCancelled() || progressMonitor.isCanceled()) {
                             log.info("Playback open canceled for " + playFile.getName());
+                        } else if (rerecordFrom != null) {
+                            log.info("Playback open aborted (re-record/open failed) for "
+                                    + rerecordFrom.getName());
+                        } else {
+                            log.info("Playback open aborted for " + playFile.getName());
                         }
                         return;
                     }
@@ -716,6 +726,10 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
             throw new UnsupportedOperationException("tried to get data from some other player");
         }
         AEPacketRaw aeRaw = null;
+        if (aeInputStream == null) {
+            // Common after canceling file open / LZ4 re-record before the stream is ready.
+            return new AEPacketRaw(0);
+        }
 
         try {
             boolean flex = viewer.aePlayer.isFlexTimeEnabled();
@@ -793,11 +807,18 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         } catch (Exception anyOtherException) {
             setDirectionForwards(true);
             cancelJog();
-            log.warning(anyOtherException.toString() + ", returning empty AEPacketRaw");
-            anyOtherException.printStackTrace();
+            // Rate-limit: cancel races used to spam NPE stack traces every ViewLoop frame.
+            long now = System.currentTimeMillis();
+            if (now - lastGetNextPacketWarnMs > 2000) {
+                lastGetNextPacketWarnMs = now;
+                log.warning(anyOtherException.toString() + ", returning empty AEPacketRaw");
+                anyOtherException.printStackTrace();
+            }
             return new AEPacketRaw(0);
         }
     }
+
+    private long lastGetNextPacketWarnMs;
 
     private long lastClosedChannelWarnMs;
 

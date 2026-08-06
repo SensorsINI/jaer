@@ -441,12 +441,12 @@ public final class RecordingChipDetector {
         if (soft.size() == 1) {
             return soft.get(0);
         }
-        // DV source DAVIS346_* matches several Davis346* chips; prefer common mono "B".
-        Class<? extends AEChip> familyB = preferFamilyB(soft, normFamily);
-        if (familyB != null) {
-            return familyB;
+        // DV source DAVIS346_* matches several Davis346* chips; prefer common iniVation red.
+        Class<? extends AEChip> preferred = preferCommonDvChip(soft, normFamily);
+        if (preferred != null) {
+            return preferred;
         }
-        // Prefer common "red" DAVIS case when still ambiguous among same family/color.
+        // Prefer any unique "*red*" chip when still ambiguous among same family/color.
         Class<? extends AEChip> red = null;
         for (Class<? extends AEChip> c : soft) {
             if (c.getSimpleName().toLowerCase(Locale.ROOT).contains("red")) {
@@ -459,14 +459,24 @@ public final class RecordingChipDetector {
         return red;
     }
 
-    /** {@code Davis346B} for family {@code davis346}; otherwise {@code null}. */
-    private static Class<? extends AEChip> preferFamilyB(
+    /**
+     * Preferred jAER chip for a DV camera family when several soft-match.
+     * {@code davis346} → {@code Davis346red} (most common iniVation camera).
+     */
+    private static Class<? extends AEChip> preferCommonDvChip(
             List<Class<? extends AEChip>> candidates, String normFamily) {
         if (candidates.isEmpty() || normFamily == null || normFamily.isEmpty()) {
             return null;
         }
+        String want = null;
+        if ("davis346".equals(normFamily)) {
+            want = "davis346red";
+        }
+        if (want == null) {
+            return null;
+        }
         for (Class<? extends AEChip> c : candidates) {
-            if (normalize(c.getSimpleName()).equals(normFamily + "b")) {
+            if (normalize(c.getSimpleName()).equals(want)) {
                 return c;
             }
         }

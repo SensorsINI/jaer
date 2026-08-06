@@ -221,7 +221,8 @@ public final class Aedat4Lz4Rerecorder {
                 defs.add(new DataDef(outPacketOffset, streamId, recompressed.length, numElements, tStart, tEnd));
                 packetIndex++;
 
-                if (progressMonitor != null) {
+                // ProgressMonitor updates are surprisingly expensive at high packet rates.
+                if (progressMonitor != null && (packetIndex & 31) == 0) {
                     progressMonitor.setProgress((int) Math.min(90,
                             ((in.position() - dataStart) * 90L) / dataSpan));
                 }
