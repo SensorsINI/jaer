@@ -75,7 +75,7 @@ public class DavisVideoContrastController extends Observable {
     public DavisVideoContrastController(final DavisChip chip) {
         this.chip = chip;
         this.prefs = chip.getPrefs();
-        loadPrefences();
+        loadPreferences();
 
         autoContrast2DLowpassRangeFilter.setTauMs(autoContrastControlTimeConstantMs);
     }
@@ -107,7 +107,7 @@ public class DavisVideoContrastController extends Observable {
         return v;
     }
 
-    final public void loadPrefences() {
+    final public void loadPreferences() {
         setUseAutoContrast(prefs.getBoolean("DavisVideoContrastController.useAutoContrast", true));
         setAutoContrastTimeconstantMs(prefs.getFloat("DavisVideoContrastController.autoContrastControlTimeConstantMs", 1000f));
         setContrast(prefs.getFloat("DavisVideoContrastController.contrast", 1.0F));

@@ -917,7 +917,7 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         videoControl.storePreference();
 
         if (autoExposureController != null) {
-            autoExposureController.loadPreferences();
+            autoExposureController.storePreferences();
         }
 
         super.storePreferences();
@@ -1243,10 +1243,9 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             setAutoWhiteBalance(getChip().getPrefs().getBoolean(getPreferencesHeader() + "autoWhiteBalance", true));
             setColorCorrection(getChip().getPrefs().getBoolean(getPreferencesHeader() + "colorCorrection", true));
             setMonochrome(getChip().getPrefs().getBoolean(getPreferencesHeader() + "monochrome", true));
-            setSeparateAPSByColor(getChip().getPrefs().getBoolean(getPreferencesHeader() + "separateAPSByColor", false));
 
             if (getContrastContoller() != null) { // might not exist until constructor is finished
-                getContrastContoller().loadPrefences();
+                getContrastContoller().loadPreferences();
             } else {
                 log.warning("Could not load preferences for null ContrastController");
             }
