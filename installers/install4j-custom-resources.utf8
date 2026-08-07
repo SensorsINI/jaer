@@ -1,0 +1,3 @@
+SelectDirLabel=Select the folder where you would like {0} to be installed, then click Next.  ${compiler:sys.newLine}${compiler:sys.newLine}If you later want to convert jAER to a .git updateable version, choose a folder that you have rights to modify as a user.
+FinishedLabel=Setup has finished installing {0} on your computer. jAER may be launched by the installed icon or by launching the executable ${compiler:sys.shortName} in the installation folder ${installer:sys.installationDir}.
+UninstalledAll={0} was successfully removed from your computer. ${compiler:sys.newLine}${compiler:sys.newLine}There may still be files left over from self-updating; check ${installer:sys.installationDir}
