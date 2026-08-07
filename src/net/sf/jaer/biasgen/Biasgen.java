@@ -197,23 +197,25 @@ public class Biasgen implements BiasgenPreferences, Observer, BiasgenHardwareInt
      */
     public void exportPreferences(java.io.OutputStream os) throws java.io.IOException {
         storePreferences();
+        HashMap<String, String> removed = new HashMap<>(); // temporarily remove excluded UX keys
         try {
-            String[] keys = prefs.keys();
-            String header="";
-            HashMap<String,String> removed=new HashMap(); // save the entries temporarily removed
-            for (String k : keys) {
-                if (!k.startsWith(header)) {
-                    removed.put(k, prefs.get(k, null));
+            for (String k : Chip.HARDWARE_PREFS_EXPORT_EXCLUDED_KEYS) {
+                String v = prefs.get(k, null);
+                if (v != null) {
+                    removed.put(k, v);
                     prefs.remove(k);
                 }
             }
-            prefs.exportNode(os); // only export biases and chip config prefs, not event filters, AEViewer prefs, etc.....
-            log.info("exported preferences node " + prefs+ " filtered for "+header+" keys");
-            for(String k:removed.keySet()){
-                prefs.put(k, removed.get(k)); // put back the filtered out prefs
-            }
+            // exportNode: this chip node only (not EventFilter child nodes / AEViewer)
+            prefs.exportNode(os);
+            log.info("exported preferences node " + prefs
+                    + " excluding UX keys " + Chip.HARDWARE_PREFS_EXPORT_EXCLUDED_KEYS);
         } catch (BackingStoreException bse) {
             bse.printStackTrace();
+        } finally {
+            for (String k : removed.keySet()) {
+                prefs.put(k, removed.get(k));
+            }
         }
 
     }

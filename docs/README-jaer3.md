@@ -336,6 +336,27 @@ by live matching.
 
 ---
 
+## Hardware Configuration Save / Load
+
+Biasgen **Hardware Configuration → Save / Save settings as…** exports the chip
+preferences node `/jaer/chips/<ChipSimpleName>` (see
+[`Biasgen.exportPreferences`](../src/net/sf/jaer/biasgen/Biasgen.java)).
+
+First-use UX flags on that node are **not** written into the XML:
+
+- `defaultPreferencesWereLoaded`
+- `firstHardwareUseHandled`
+
+Those keys stay local so a saved/shared settings file does not suppress the
+first-use load / Hardware Configuration offer for other users. Remembered live
+chip mappings (`AEViewer.liveChipOffer.chip.*`) live under `/jaer/AEViewer` and
+are outside Biasgen export entirely.
+
+Shipped defaults under [`deviceSettings/`](../deviceSettings/) use the same
+`/jaer/chips/<Chip>` tree (not legacy Java package paths).
+
+---
+
 ## Key classes (quick index)
 
 | Area | Classes |

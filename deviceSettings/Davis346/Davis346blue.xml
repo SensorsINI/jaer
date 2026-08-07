@@ -17,7 +17,7 @@
             <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
             <entry key="APS.ADCTestMode" value="false"/>
             <entry key="APS.ColumnSettle" value="30"/>
-            <entry key="APS.Exposure" value="21409"/>
+            <entry key="APS.Exposure" value="8294"/>
             <entry key="APS.FrameDelay" value="1000"/>
             <entry key="APS.FrameInterval" value="70711"/>
             <entry key="APS.GlobalShutter" value="true"/>
@@ -276,6 +276,14 @@
             <entry key="ChipCanvas.angley" value="76.04278"/>
             <entry key="ChipCanvas.anglex" value="-9.490334"/>
             <entry key="fadingFrames" value="11"/>
+            <entry key="preferredDisplayMethod" value="net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod"/>
+            <entry key="expDelta" value="0.1"/>
+            <entry key="autoExposureEnabled" value="true"/>
+            <entry key="underOverFractionThreshold" value="0.2"/>
+            <entry key="AutoExposureController.lowBoundary" value="0.25"/>
+            <entry key="AutoExposureController.highBoundary" value="0.75"/>
+            <entry key="pidControllerEnabled" value="false"/>
+            <entry key="AutoExposureController.debuggingLogEnabled" value="false"/>
           </map>
         </node>
       </node>

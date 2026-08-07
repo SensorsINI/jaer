@@ -15,7 +15,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.Observable;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -79,6 +81,14 @@ public class Chip extends Observable {
      * first-use UX (default prefs import + Hardware Configuration panel).
      */
     public static final String FIRST_HARDWARE_USE_HANDLED_KEY = "firstHardwareUseHandled";
+
+    /**
+     * Machine/session UX flags on the chip prefs node that must not be written
+     * into Hardware Configuration Save / deviceSettings XML. They are not device
+     * configuration; exporting them would skip first-use for anyone who loads the file.
+     */
+    public static final Set<String> HARDWARE_PREFS_EXPORT_EXCLUDED_KEYS = Collections.unmodifiableSet(
+            Set.of(PREFERENCES_LOADED_ONCE_KEY, FIRST_HARDWARE_USE_HANDLED_KEY));
 
     /**
      * The default preferences file location for initial import of preferred
