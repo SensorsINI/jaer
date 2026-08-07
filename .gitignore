@@ -62,3 +62,12 @@ Benchmarking_7_9_2026/PropheseeIMX636HD-2026-07-10T18-21-21-0400--0 disk with 1i
 
 # Local Dropbox archive of obsolete biasgen presets (not shipped)
 deviceSettings/olderSystemsAndExperimental/
+
+# Local SignPath / install4j credentials (Dropbox; never commit secrets)
+/signpath/**
+!/signpath/README.txt
+
+# Tracked SignPath artifact configs (repo *.xml ignore would otherwise hide these)
+!.signpath/
+!.signpath/**/
+!.signpath/**/*.xml

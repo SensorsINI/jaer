@@ -16,11 +16,12 @@ Founded in 2007 to support event sensors and robot demonstrators developed by th
 
 You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. 
 
-Starting with jAER 2.0, (unsigned) binary installers are now available thanks to the 
-multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html). 
+Starting with jAER 2.0, binary installers are available thanks to the
+multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html).
 
-Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers. 
-**Windows:** Click *More info*, *Run anyway* and *Install anyway* for unsigned app.
+Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers,
+or use [GitHub Releases](https://github.com/SensorsINI/jaer/releases) (Windows builds may be Authenticode-signed via SignPath; see [Code signing policy](#code-signing-policy)).
+**Windows:** Prefer a SignPath-signed installer from GitHub Releases when available. For unsigned builds: Click *More info*, *Run anyway* and *Install anyway*.
 **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder.
 **Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu.
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
@@ -109,6 +110,19 @@ jAER is an Ant + Ivy Java project (not Maven/Gradle). An AI coding client works 
 5. Use the included `.vscode/launch.json` configs (**jAER**, **jAER (fast)**, **jAER (fast debug)**) once dependencies are in `lib/` (created by Ivy on `ant compile` / `ant run`).
 
 Ask the agent for Ant targets, chip/filter code under `src/`, and device USB notes rather than inventing a Maven layout.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org/).
+
+Windows installers submitted for signing are built from this repository on GitHub Actions (see [`.github/workflows/sign-windows-test.yml`](.github/workflows/sign-windows-test.yml) and [`README-releasing-tagging.txt`](README-releasing-tagging.txt)). Publisher identity on signed builds is **SignPath Foundation**.
+
+**Team roles**
+
+* **Authors / reviewers:** [SensorsINI/jaer](https://github.com/SensorsINI/jaer) maintainers with commit access (pull requests reviewed by a team member when required).
+* **Approvers:** repository owners / maintainers who approve SignPath release signing requests in the SignPath UI.
+
+**Privacy:** This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it (for example opening a camera, downloading sample data, or using optional online Help links).
 
 ## Support
 

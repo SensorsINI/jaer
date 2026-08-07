@@ -1,0 +1,125 @@
+# Build Windows install4j media on GitHub-hosted runners and SignPath test-sign it.
+# Prerequisites (repo Settings → Secrets and variables → Actions):
+#   Secrets: INSTALL4J_LICENSE, SIGNPATH_API_TOKEN
+#   Variables: SIGNPATH_ORGANIZATION_ID
+# SignPath UI: GitHub App on SensorsINI/jaer, artifact config slug windows-installer,
+# CI builds user submitter on test-signing. See README-releasing-tagging.txt.
+
+name: Sign Windows (SignPath test-signing)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - '3.*'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  build-and-sign:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Ant
+        uses: stCarolas/setup-ant@v1.1.0
+        with:
+          ant-version: '1.10.14'
+
+      - name: Set up install4j
+        uses: luangong/setup-install4j@v1
+        with:
+          version: '13.0.2'
+          license: ${{ secrets.INSTALL4J_LICENSE }}
+
+      - name: Read VERSION.txt
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content -Raw VERSION.txt).Trim()
+          if (-not $v) { throw 'VERSION.txt is empty' }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "jAER version: $v"
+
+      - name: Build Windows installer (ant release-windows-ci)
+        shell: pwsh
+        run: ant release-windows-ci
+
+      - name: Locate Windows installer
+        id: locate
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          $dir = Join-Path 'installers' $v
+          $exe = Get-ChildItem -Path $dir -Filter 'jAER_windows-x64_*.exe' -File -ErrorAction Stop |
+            Select-Object -First 1
+          if (-not $exe) { throw "No jAER_windows-x64_*.exe under $dir" }
+          "installer_path=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "installer_name=$($exe.Name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Unsigned installer: $($exe.FullName) ($([math]::Round($exe.Length/1MB,1)) MB)"
+
+      - name: Upload unsigned installer for SignPath
+        id: upload-unsigned
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.locate.outputs.installer_path }}
+          if-no-files-found: error
+          # Raw PE (not ZIP) so SignPath root element can be pe-file. name is ignored when archive is false.
+          archive: false
+
+      - name: Submit SignPath test-signing request
+        id: signpath
+        uses: signpath/github-action-submit-signing-request@v2
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: jaer
+          signing-policy-slug: test-signing
+          artifact-configuration-slug: windows-installer
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          service-unavailable-timeout-in-seconds: 600
+          skip-decompress: true
+          output-artifact-directory: ${{ github.workspace }}/signed
+          parameters: |
+            version: ${{ toJSON(steps.version.outputs.version) }}
+
+      - name: Upload signed installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jaer-windows-signed
+          path: signed/**
+          if-no-files-found: error
+
+      - name: Attach signed installer to GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: signed/**
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        if: always()
+        shell: pwsh
+        run: |
+          @"
+          ## SignPath Windows test-signing
+          - Version: `${{ steps.version.outputs.version }}`
+          - Unsigned: `${{ steps.locate.outputs.installer_name }}`
+          - Signing request: ${{ steps.signpath.outputs.signing-request-web-url }}
+          - Signed download: ${{ steps.signpath.outputs.signed-artifact-download-url }}
+          - Note: approve the request in SignPath UI if the job waits on approval.
+          "@ | Add-Content -Path $env:GITHUB_STEP_SUMMARY

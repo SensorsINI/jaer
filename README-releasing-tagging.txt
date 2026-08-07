@@ -100,7 +100,78 @@ Already pushed:
 
     git push --delete origin 3.0.0
 
+## SignPath Windows CI (test-signing)
+
+SignPath Foundation signs only artifacts built on GitHub-hosted runners. Local
+`ant release` Windows media cannot be signed as-is. Use GitHub Actions to rebuild
+Windows media and submit SignPath **test-signing** (switch to release-signing later).
+
+Signed Windows comes from Actions; local `ant release` is still fine for unsigned
+Mac/Unix media and for local Windows smoke tests.
+
+### Local credentials (signpath/ — not in git)
+
+Keep secrets in Dropbox under signpath/ (gitignored except signpath/README.txt).
+Do not commit tokens or license keys.
+
+  signpath/signpath-organization-id.txt   — org UUID (yours may already be filled)
+  signpath/signpath-api-token.txt         — CI builds API token (stub; fill in)
+  signpath/install4j-license.txt          — install4j license key (stub; fill in)
+  signpath/signpath-project-slug.txt      — default jaer
+  signpath/signpath-signing-policy-slug.txt — default test-signing
+
+Recreate stubs if needed:
+
+    powershell -File scripts/init-signpath-local.ps1
+
+Local Ant reads install4j-license.txt when non-empty (`ant release` /
+`ant release-windows-ci`) so you need not set session env vars.
+
+### Push credentials to GitHub Actions (not to git)
+
+Runners cannot see Dropbox. After filling signpath/*.txt, sync once with gh:
+
+    powershell -File scripts/sync-signpath-secrets-to-github.ps1
+
+That sets secrets INSTALL4J_LICENSE + SIGNPATH_API_TOKEN and variables
+SIGNPATH_ORGANIZATION_ID (+ project/policy). Values never enter the repo.
+
+Or paste the same values manually in GitHub → Settings → Secrets and variables → Actions.
+
+SignPath UI (project "jaer" / "jaer [OSS]"):
+
+  1. Install SignPath GitHub App on SensorsINI/jaer; link Trusted Build System GitHub.com
+  2. Ensure "CI builds" has submitter role on policy test-signing
+  3. Add artifact configuration slug **windows-installer** from
+     .signpath/artifact-configurations/windows-installer.xml (or upload a sample
+     unsigned jAER_windows-x64_*.exe and customize)
+  4. Leave release-signing until its INVALID status is fixed
+
+### Workflow
+
+  File: .github/workflows/sign-windows-test.yml
+  Triggers: workflow_dispatch, or push of tags matching 3.*
+  Steps: JDK 21 + Ant + install4j 13.0.2 → ant release-windows-ci → upload unsigned
+  PE → SignPath test-signing → upload signed artifact; on tag, attach to GitHub Release
+
+### First dry run (recommended before tagging)
+
+  1. Push the workflow + Ant target to master (or your working branch)
+  2. Actions → "Sign Windows (SignPath test-signing)" → Run workflow
+  3. If SignPath waits on approval, approve in the SignPath UI
+  4. Download the jaer-windows-signed artifact; check Properties → Digital Signatures
+     (publisher SignPath Foundation)
+  5. For a tagged release, push tag matching VERSION.txt; workflow attaches the signed
+     Windows exe to the GitHub Release
+
+Non-interactive Windows-only local/CI Ant target (no confirm prompt):
+
+    ant release-windows-ci
+
+Output: installers/<VERSION.txt>/jAER_windows-x64_*.exe
+
 ## Build notes
 
-Compile / jar / release packaging is local Ant (`ant compile`, `ant jar`, `ant release`), then install4j for installers.
-Travis CI was removed; there is no GitHub Actions workflow for builds.
+Compile / jar / full multi-platform packaging is local Ant (`ant compile`, `ant jar`,
+`ant release`), then install4j for installers. Windows SignPath signing uses
+`.github/workflows/sign-windows-test.yml` and `ant release-windows-ci`.

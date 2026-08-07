@@ -413,14 +413,83 @@
         <fail unless="jaer.release.confirmed" message="Release cancelled (reply y or yes to proceed)."/>
     </target>
 
-    <target name="-run-install4jc" depends="-load-version">
+    <!-- Optional local license from signpath/install4j-license.txt (gitignored; GH Actions uses secret). -->
+    <target name="-probe-install4j-license-local">
+        <available file="${basedir}/signpath/install4j-license.txt"
+                   property="jaer.install4j.license.file.exists"/>
+        <condition property="jaer.install4j.license.file.usable">
+            <and>
+                <isset property="jaer.install4j.license.file.exists"/>
+                <length file="${basedir}/signpath/install4j-license.txt" when="greater" length="0"/>
+            </and>
+        </condition>
+    </target>
+
+    <target name="-load-install4j-license-local" depends="-probe-install4j-license-local"
+            if="jaer.install4j.license.file.usable">
+        <loadfile property="jaer.install4j.license"
+                  srcFile="${basedir}/signpath/install4j-license.txt">
+            <filterchain>
+                <striplinebreaks/>
+                <tokenfilter>
+                    <trim/>
+                </tokenfilter>
+            </filterchain>
+        </loadfile>
+        <echo message="Using install4j license from signpath/install4j-license.txt"/>
+    </target>
+
+    <target name="-require-install4j-project">
         <available file="${basedir}/jaer.install4j" property="jaer.install4j.exists"/>
         <fail unless="jaer.install4j.exists" message="jaer.install4j not found"/>
+    </target>
+
+    <target name="-run-install4jc-with-license"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            if="jaer.install4j.license">
+        <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="--license=${jaer.install4j.license}"/>
+            <arg value="--release=${jaer.version}"/>
+            <arg value="${basedir}/jaer.install4j"/>
+        </exec>
+    </target>
+
+    <target name="-run-install4jc-without-license"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            unless="jaer.install4j.license">
         <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
             <arg value="--release=${jaer.version}"/>
             <arg value="${basedir}/jaer.install4j"/>
         </exec>
     </target>
+
+    <target name="-run-install4jc"
+            depends="-run-install4jc-with-license,-run-install4jc-without-license"/>
+
+    <!-- Windows-only media for SignPath CI (media set id 26 / type windows). No interactive confirm. -->
+    <target name="-run-install4jc-windows-with-license"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            if="jaer.install4j.license">
+        <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="--license=${jaer.install4j.license}"/>
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=windows"/>
+            <arg value="${basedir}/jaer.install4j"/>
+        </exec>
+    </target>
+
+    <target name="-run-install4jc-windows-without-license"
+            depends="-require-install4j-project,-load-version,-load-install4j-license-local"
+            unless="jaer.install4j.license">
+        <exec executable="install4jc" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="--release=${jaer.version}"/>
+            <arg value="--media-types=windows"/>
+            <arg value="${basedir}/jaer.install4j"/>
+        </exec>
+    </target>
+
+    <target name="-run-install4jc-windows"
+            depends="-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
 
     <target name="release"
             depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
@@ -428,6 +497,14 @@
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
         <echo message="Next: copy/push updates.xml, git tag ${jaer.version}, and create the GitHub release."/>
         <echo message="See README-releasing-tagging.txt"/>
+    </target>
+
+    <target name="release-windows-ci"
+            depends="-load-version,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc-windows"
+            description="Non-interactive Windows-only install4j media for SignPath CI (no confirm prompt).">
+        <echo message="${line.separator}Windows install4j media build finished for ${jaer.version}."/>
+        <echo message="Output: installers/${jaer.version}/jAER_windows-x64_*.exe"/>
+        <echo message="See README-releasing-tagging.txt (SignPath Windows CI)."/>
     </target>
 
     <target name="jaer-sign-jar" depends="jar">
