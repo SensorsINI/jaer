@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Paste/upload this into SignPath project "jaer" as artifact configuration slug: windows-installer
+  SignPath project "jaer" artifact configuration slug: windows-installer-2
+  (windows-installer v1 was inactivated after product-name mismatch; slug cannot be reused.)
   Docs: https://docs.signpath.io/artifact-configuration/syntax
 -->
 <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
   <parameters>
     <parameter name="version" required="true" />
   </parameters>
-  <!-- product-name must match install4j <application name="..."> PE FileDescription/ProductName -->
+  <!-- product-name must match install4j <application name="..."> PE ProductName -->
   <pe-file path="jAER_windows-x64_*.exe"
            product-name="jaer - Java Tools for Address Event Representation Sensors and Processing"
            product-version="${version}">

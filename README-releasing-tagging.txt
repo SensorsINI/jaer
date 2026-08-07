@@ -142,9 +142,8 @@ SignPath UI (project "jaer" / "jaer [OSS]"):
 
   1. Install SignPath GitHub App on SensorsINI/jaer; link Trusted Build System GitHub.com
   2. Ensure "CI builds" has submitter role on policy test-signing
-  3. Add artifact configuration slug **windows-installer** from
-     .signpath/artifact-configurations/windows-installer.xml (or upload a sample
-     unsigned jAER_windows-x64_*.exe and customize)
+  3. Artifact configuration slug **windows-installer-2** (v1 inactivated; see
+     .signpath/artifact-configurations/windows-installer-2.xml)
   4. Leave release-signing until its INVALID status is fixed
 
 ### Workflow
