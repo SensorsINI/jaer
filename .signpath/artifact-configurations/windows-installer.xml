@@ -7,8 +7,9 @@
   <parameters>
     <parameter name="version" required="true" />
   </parameters>
+  <!-- product-name must match install4j <application name="..."> PE FileDescription/ProductName -->
   <pe-file path="jAER_windows-x64_*.exe"
-           product-name="jAER"
+           product-name="jaer - Java Tools for Address Event Representation Sensors and Processing"
            product-version="${version}">
     <authenticode-sign />
   </pe-file>
