@@ -31,10 +31,10 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Set up Ant
-        uses: stCarolas/setup-ant@v1.1.0
-        with:
-          ant-version: '1.10.14'
+      # Ant is preinstalled on windows-latest runner images (no third-party setup-ant).
+      - name: Check Ant
+        shell: pwsh
+        run: ant -version
 
       - name: Set up install4j
         uses: luangong/setup-install4j@v1
