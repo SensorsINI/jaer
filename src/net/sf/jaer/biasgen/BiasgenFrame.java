@@ -17,8 +17,16 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -286,12 +294,17 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
     }
 
     void importPreferencesFromFile(File f) throws Exception {
-        log.info("Current chip object is class " + chip == null ? null : chip.getClass() + "; importing biasgen settings from File " + f);
+        log.info("Current chip object is class " + (chip == null ? null : chip.getClass())
+                + "; importing biasgen settings from File " + f);
         if (biasgen instanceof NRVConfig && f.getName().toLowerCase().endsWith(NRVSettingsFileFilter.EXTENSION)) {
             ((NRVConfig) biasgen).loadSettingsFile(f);
             setCurrentFile(f);
             setFileModified(false);
             recentFiles.addFile(f);
+            return;
+        }
+        if (!confirmImportIfChipMismatch(f)) {
+            log.info("Cancelled import of " + f + " (AEChip / preferences-node mismatch)");
             return;
         }
         InputStream is = new BufferedInputStream(new FileInputStream(f));
@@ -306,6 +319,87 @@ public class BiasgenFrame extends javax.swing.JFrame implements UndoableEditList
         }else{
             log.fine(result.message());
         }
+    }
+
+    /**
+     * Warns if the XML targets a preferences node other than the current AEChip
+     * node. {@link Preferences#importPreferences} imports into the path encoded
+     * in the file, so a mismatch usually does not update the active chip.
+     *
+     * @return true to proceed with import, false if the user cancelled
+     */
+    private boolean confirmImportIfChipMismatch(File f) {
+        Set<String> filePaths;
+        try {
+            filePaths = findPreferenceNodePathsWithEntries(f);
+        } catch (Exception e) {
+            log.warning("Could not inspect preference chip node in " + f + ": " + e);
+            return true;
+        }
+        if (filePaths.isEmpty()) {
+            return true;
+        }
+        String currentPath = chip.getPrefs().absolutePath();
+        if (filePaths.contains(currentPath)) {
+            return true;
+        }
+        String currentChip = chip.getClass().getSimpleName();
+        StringBuilder fileNodes = new StringBuilder();
+        for (String p : filePaths) {
+            if (fileNodes.length() > 0) {
+                fileNodes.append(", ");
+            }
+            fileNodes.append(leafNodeName(p)).append(" (").append(p).append(')');
+        }
+        String msg = "<html>This settings file is for a different AEChip preference node.<br><br>"
+                + "File: <b>" + fileNodes + "</b><br>"
+                + "Current AEChip: <b>" + currentChip + "</b> (" + currentPath + ")<br><br>"
+                + "Java Preferences import uses the node path inside the XML, so loading this file "
+                + "will update the file's chip node and may <b>not</b> change settings for "
+                + currentChip + ".<br><br>"
+                + "Load anyway?</html>";
+        int r = JOptionPane.showConfirmDialog(this, msg, "AEChip mismatch",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+        return r == JOptionPane.OK_OPTION;
+    }
+
+    private static String leafNodeName(String absolutePath) {
+        if (absolutePath == null || absolutePath.isEmpty() || absolutePath.equals("/")) {
+            return absolutePath;
+        }
+        int slash = absolutePath.lastIndexOf('/');
+        return slash >= 0 ? absolutePath.substring(slash + 1) : absolutePath;
+    }
+
+    /**
+     * Walks a Java Preferences XML export and returns absolute paths of nodes
+     * that contain at least one {@code <entry>}.
+     */
+    private static Set<String> findPreferenceNodePathsWithEntries(File f) throws Exception {
+        String text = Files.readString(f.toPath(), StandardCharsets.UTF_8);
+        Pattern tag = Pattern.compile("<node name=\"([^\"]+)\"|</node>|<entry\\s");
+        Matcher m = tag.matcher(text);
+        Deque<String> stack = new ArrayDeque<>();
+        Set<String> paths = new LinkedHashSet<>();
+        while (m.find()) {
+            String match = m.group();
+            if (match.startsWith("<node")) {
+                stack.addLast(m.group(1));
+            } else if (match.startsWith("</node>")) {
+                if (!stack.isEmpty()) {
+                    stack.removeLast();
+                }
+            } else { // <entry
+                StringBuilder path = new StringBuilder();
+                for (String n : stack) {
+                    path.append('/').append(n);
+                }
+                if (path.length() > 0) {
+                    paths.add(path.toString());
+                }
+            }
+        }
+        return paths;
     }
 
     private void exportPreferencesToFile(File f) throws Exception {

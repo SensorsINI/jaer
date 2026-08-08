@@ -355,6 +355,10 @@ are outside Biasgen export entirely.
 Shipped defaults under [`deviceSettings/`](../deviceSettings/) use the same
 `/jaer/chips/<Chip>` tree (not legacy Java package paths).
 
+**Load** warns if the XML preference node does not match the current AEChip
+(prefs import follows the path in the file, so a mismatch usually does not
+update the active chip). The user can cancel or load anyway.
+
 ---
 
 ## Key classes (quick index)
