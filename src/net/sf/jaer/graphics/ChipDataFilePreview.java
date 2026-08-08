@@ -171,8 +171,10 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                         ais = null;
                     } else if (DsecHdf5AEInputStream.isHdf5Extension(file)
                             && DsecHdf5AEInputStream.isDsecEventsFile(file)) {
-                        fileSizeString = String.format("DSEC HDF5 %dx%d (open to play)",
-                                DsecHdf5AEInputStream.WIDTH, DsecHdf5AEInputStream.HEIGHT);
+                        DsecHdf5AEInputStream.SensorSize sz = DsecHdf5AEInputStream.peekSensorSize(file);
+                        int w = sz != null ? sz.width : DsecHdf5AEInputStream.DEFAULT_WIDTH;
+                        int h = sz != null ? sz.height : DsecHdf5AEInputStream.DEFAULT_HEIGHT;
+                        fileSizeString = String.format("DSEC HDF5 %dx%d (open to play)", w, h);
                         ais = null;
                     } else {
                         ais = new AEFileInputStream(file, chip);

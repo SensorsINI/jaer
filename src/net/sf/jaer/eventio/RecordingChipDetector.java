@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
+import ch.unizh.ini.jaer.chip.retina.DVS1280x720SD;
 import ch.unizh.ini.jaer.chip.retina.DVS640;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import prophesee.chip.PropheseeIMX636HD;
@@ -235,14 +236,51 @@ public final class RecordingChipDetector {
         return null;
     }
 
-    /** DSEC {@code events.h5} (cooked VGA polarity) → {@link DVS640}. */
+    /**
+     * DSEC-layout cooked HDF5 → {@link DVS640} (640×480) or
+     * {@link DVS1280x720SD} (1280×720), from peeked sensor size (attrs or max x/y).
+     */
     static Hint fromDsecHdf5(File file) {
         if (!DsecHdf5AEInputStream.isDsecEventsFile(file)) {
             return null;
         }
-        return new Hint(DVS640.class.getSimpleName(),
-                DsecHdf5AEInputStream.WIDTH, DsecHdf5AEInputStream.HEIGHT, "dsec-hdf5");
+        DsecHdf5AEInputStream.SensorSize size = DsecHdf5AEInputStream.peekSensorSize(file);
+        int w = size != null ? size.width : DsecHdf5AEInputStream.DEFAULT_WIDTH;
+        int h = size != null ? size.height : DsecHdf5AEInputStream.DEFAULT_HEIGHT;
+        String chipName = preferredDsecChipName(w, h);
+        String origin = size != null ? "dsec-hdf5/" + size.origin : "dsec-hdf5/default";
+        return new Hint(chipName, w, h, origin);
     }
+
+    /**
+     * Map DSEC-layout geometry to a generic playback chip. Exact VGA / HD sizes
+     * first; otherwise pick the smallest known chip that fits the sampled max x/y.
+     */
+    static String preferredDsecChipName(int width, int height) {
+        if (width == DVS1280x720SD_WIDTH && height == DVS1280x720SD_HEIGHT) {
+            return DVS1280x720SD.class.getSimpleName();
+        }
+        if (width == DVS640_WIDTH && height == DVS640_HEIGHT) {
+            return DVS640.class.getSimpleName();
+        }
+        // Sparse samples may not hit the last pixel — fit into known chips.
+        if (width <= DVS640_WIDTH && height <= DVS640_HEIGHT) {
+            return DVS640.class.getSimpleName();
+        }
+        if (width <= DVS1280x720SD_WIDTH && height <= DVS1280x720SD_HEIGHT) {
+            return DVS1280x720SD.class.getSimpleName();
+        }
+        // Larger than HD: still recommend HD viewer (events may clip) — log via Hint size.
+        log.info(String.format(
+                "DSEC HDF5 geometry %dx%d exceeds known playback chips; recommending %s",
+                width, height, DVS1280x720SD.class.getSimpleName()));
+        return DVS1280x720SD.class.getSimpleName();
+    }
+
+    private static final int DVS640_WIDTH = 640;
+    private static final int DVS640_HEIGHT = 480;
+    private static final int DVS1280x720SD_WIDTH = 1280;
+    private static final int DVS1280x720SD_HEIGHT = 720;
 
     /**
      * Metavision / Prophesee {@code .raw} EVT3 (EVK4 IMX636 or Gen4.1 HD) →

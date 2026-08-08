@@ -9,6 +9,7 @@ import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Locale;
+import java.util.Map;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 import java.util.logging.Logger;
@@ -16,6 +17,7 @@ import java.util.logging.Logger;
 import javax.swing.ProgressMonitor;
 
 import io.jhdf.HdfFile;
+import io.jhdf.api.Attribute;
 import io.jhdf.api.Dataset;
 import io.jhdf.api.Node;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -28,8 +30,8 @@ import net.sf.jaer.util.EngineeringFormat;
 
 /**
  * Plays a single-camera
- * <a href="https://dsec.ifi.uzh.ch/data-format/">DSEC</a> event recording
- * ({@code events.h5} / {@code .h5}).
+ * <a href="https://dsec.ifi.uzh.ch/data-format/">DSEC</a>-layout event recording
+ * ({@code events.h5} / {@code .h5} / {@code .hdf5}).
  * <p>
  * DSEC stores <em>cooked</em> polarity streams (column, row, polarity, time) —
  * not a vendor raw address encoding. Events are packed into
@@ -48,7 +50,11 @@ import net.sf.jaer.util.EngineeringFormat;
  * Left and right cameras are separate files; open one at a time. Blosc+ZSTD
  * compression is handled by {@link BloscHdf5Filter}.
  * <p>
- * Prefer chip {@link ch.unizh.ini.jaer.chip.retina.DVS640} (640×480).
+ * Resolution is <em>not</em> assumed VGA: use {@link #peekSensorSize(File)}
+ * (HDF5 attributes when present, else max {@code x}/{@code y} sample). Prefer
+ * {@link ch.unizh.ini.jaer.chip.retina.DVS640} for 640×480 or
+ * {@link ch.unizh.ini.jaer.chip.retina.DVS1280x720SD} for 1280×720
+ * (e.g. Prophesee EVK4 exports in this layout).
  *
  * @see <a href="https://dsec.ifi.uzh.ch/data-format/">DSEC Data Format</a>
  */
@@ -59,12 +65,20 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
     public static final String DATA_FILE_EXTENSION_H5 = "h5";
     public static final String DATA_FILE_EXTENSION_HDF5 = "hdf5";
 
-    /** Sensor resolution used by DSEC event cameras. */
-    public static final int WIDTH = 640;
-    public static final int HEIGHT = 480;
+    /** Classic DSEC Gen3.1 VGA size (default when size cannot be peeked). */
+    public static final int DEFAULT_WIDTH = 640;
+    public static final int DEFAULT_HEIGHT = 480;
+    /** @deprecated use {@link #DEFAULT_WIDTH} */
+    @Deprecated
+    public static final int WIDTH = DEFAULT_WIDTH;
+    /** @deprecated use {@link #DEFAULT_HEIGHT} */
+    @Deprecated
+    public static final int HEIGHT = DEFAULT_HEIGHT;
 
     private static final int MAX_EVENTS_PER_READ = 1_000_000;
     private static final int WINDOW_EVENTS = 1 << 20; // 1M-event sliding window
+    /** Events per slice when inferring size from max x/y. */
+    private static final int PEEK_SAMPLE_EVENTS = 256_000;
 
     private final PropertyChangeSupport support = new PropertyChangeSupport(this);
     private final AEPacketRaw packet = new AEPacketRaw();
@@ -79,6 +93,9 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
     private long[] msToIdx = new long[0];
     private long tOffset;
     private long eventCount;
+    /** Sensor size from HDF5 attrs or max x/y sample (not assumed VGA). */
+    private int sensorWidth = DEFAULT_WIDTH;
+    private int sensorHeight = DEFAULT_HEIGHT;
     /** Raw {@code t[0]} from the file (before remapping to player timeline). */
     private int firstRawT;
     private int firstTimestamp;
@@ -132,6 +149,7 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             }
             hdf = new HdfFile(file.toPath());
             openDatasets();
+            resolveSensorSizeFromOpenFile();
             loadIndexAndBounds(progressMonitor);
             clearMarks();
             seekToEvent(0);
@@ -141,8 +159,8 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
                     "Opened DSEC HDF5 %s: %,d events, %dx%d, duration=%ss, t_offset=%d, chip=%s",
                     file.getName(),
                     eventCount,
-                    WIDTH,
-                    HEIGHT,
+                    sensorWidth,
+                    sensorHeight,
                     eng.format(getDurationUs() * 1e-6).trim(),
                     tOffset,
                     chip.getClass().getSimpleName()));
@@ -190,6 +208,257 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
         }
         String n = file.getName().toLowerCase(Locale.ROOT);
         return n.endsWith(".h5") || n.endsWith(".hdf5");
+    }
+
+    /**
+     * Sensor geometry from a DSEC-layout HDF5 file.
+     */
+    public static final class SensorSize {
+        public final int width;
+        public final int height;
+        /** {@code hdf5-attr} or {@code xy-sample}. */
+        public final String origin;
+
+        public SensorSize(int width, int height, String origin) {
+            this.width = width;
+            this.height = height;
+            this.origin = origin;
+        }
+
+        @Override
+        public String toString() {
+            return width + "x" + height + " (" + origin + ")";
+        }
+    }
+
+    /**
+     * Peek sensor width/height without full playback open. Prefers HDF5
+     * attributes ({@code width}/{@code height}, {@code sizeX}/{@code sizeY}, …)
+     * on the root or {@code /events} group; otherwise samples max {@code x}/{@code y}.
+     *
+     * @return size, or {@code null} if the file is not readable as DSEC events
+     */
+    public static SensorSize peekSensorSize(File file) {
+        if (file == null || !file.isFile()) {
+            return null;
+        }
+        BloscHdf5Filter.ensureRegistered();
+        try (HdfFile h = new HdfFile(file.toPath())) {
+            if (!(h.getByPath("/events/x") instanceof Dataset)
+                    || !(h.getByPath("/events/y") instanceof Dataset)) {
+                return null;
+            }
+            SensorSize fromAttr = sensorSizeFromAttributes(h);
+            if (fromAttr != null) {
+                return fromAttr;
+            }
+            return sensorSizeFromXySample(h);
+        } catch (Exception e) {
+            log.fine("Could not peek DSEC sensor size from " + file.getName() + ": " + e);
+            return null;
+        }
+    }
+
+    private void resolveSensorSizeFromOpenFile() {
+        SensorSize fromAttr = sensorSizeFromAttributes(hdf);
+        if (fromAttr != null) {
+            sensorWidth = fromAttr.width;
+            sensorHeight = fromAttr.height;
+            log.fine("DSEC sensor size from attributes: " + fromAttr);
+            return;
+        }
+        try {
+            SensorSize sampled = sensorSizeFromXySample(hdf);
+            if (sampled != null) {
+                sensorWidth = sampled.width;
+                sensorHeight = sampled.height;
+                log.fine("DSEC sensor size from x/y sample: " + sampled);
+                return;
+            }
+        } catch (Exception e) {
+            log.warning("Could not sample DSEC x/y for sensor size: " + e);
+        }
+        sensorWidth = DEFAULT_WIDTH;
+        sensorHeight = DEFAULT_HEIGHT;
+        log.warning("Assuming default DSEC size " + sensorWidth + "x" + sensorHeight
+                + " (could not peek geometry)");
+    }
+
+    private static SensorSize sensorSizeFromAttributes(HdfFile h) {
+        Integer w = firstIntAttr(h, "width", "sizeX", "sensor_width", "WIDTH", "geometry_width");
+        Integer ht = firstIntAttr(h, "height", "sizeY", "sensor_height", "HEIGHT", "geometry_height");
+        Node events = h.getByPath("/events");
+        if (events != null) {
+            if (w == null) {
+                w = firstIntAttr(events, "width", "sizeX", "sensor_width", "WIDTH");
+            }
+            if (ht == null) {
+                ht = firstIntAttr(events, "height", "sizeY", "sensor_height", "HEIGHT");
+            }
+        }
+        // Single "geometry" / "sensor_size" array attribute [w,h] or [h,w]
+        if (w == null || ht == null) {
+            int[] pair = firstIntPairAttr(h, "geometry", "sensor_size", "size");
+            if (pair == null && events != null) {
+                pair = firstIntPairAttr(events, "geometry", "sensor_size", "size");
+            }
+            if (pair != null) {
+                // Prefer landscape (w >= h) as width×height
+                if (pair[0] >= pair[1]) {
+                    w = pair[0];
+                    ht = pair[1];
+                } else {
+                    w = pair[1];
+                    ht = pair[0];
+                }
+            }
+        }
+        if (w != null && ht != null && w > 0 && ht > 0 && w <= 8192 && ht <= 8192) {
+            return new SensorSize(w, ht, "hdf5-attr");
+        }
+        return null;
+    }
+
+    private static SensorSize sensorSizeFromXySample(HdfFile h) {
+        Dataset dsX = (Dataset) h.getByPath("/events/x");
+        Dataset dsY = (Dataset) h.getByPath("/events/y");
+        if (dsX == null || dsY == null) {
+            return null;
+        }
+        long ntot = dsX.getDimensions()[0];
+        if (ntot <= 0) {
+            return null;
+        }
+        int n = (int) Math.min(PEEK_SAMPLE_EVENTS, ntot);
+        long mid = Math.max(0L, (ntot / 2) - (n / 2L));
+        long end = Math.max(0L, ntot - n);
+        int xmax = -1;
+        int ymax = -1;
+        for (long off : new long[]{0L, mid, end}) {
+            int[] xs = toIntArray(dsX.getData(new long[]{off}, new int[]{n}));
+            int[] ys = toIntArray(dsY.getData(new long[]{off}, new int[]{n}));
+            for (int i = 0; i < xs.length; i++) {
+                int xv = xs[i] & 0xffff;
+                int yv = ys[i] & 0xffff;
+                if (xv > xmax) {
+                    xmax = xv;
+                }
+                if (yv > ymax) {
+                    ymax = yv;
+                }
+            }
+        }
+        if (xmax < 0 || ymax < 0) {
+            return null;
+        }
+        return new SensorSize(xmax + 1, ymax + 1, "xy-sample");
+    }
+
+    private static Integer firstIntAttr(Node node, String... keys) {
+        if (node == null || keys == null) {
+            return null;
+        }
+        Map<String, Attribute> attrs;
+        try {
+            attrs = node.getAttributes();
+        } catch (Exception e) {
+            return null;
+        }
+        if (attrs == null || attrs.isEmpty()) {
+            return null;
+        }
+        for (String key : keys) {
+            for (Map.Entry<String, Attribute> e : attrs.entrySet()) {
+                if (e.getKey() != null && e.getKey().equalsIgnoreCase(key)) {
+                    Integer v = attributeToInt(e.getValue());
+                    if (v != null) {
+                        return v;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static int[] firstIntPairAttr(Node node, String... keys) {
+        if (node == null || keys == null) {
+            return null;
+        }
+        Map<String, Attribute> attrs;
+        try {
+            attrs = node.getAttributes();
+        } catch (Exception e) {
+            return null;
+        }
+        if (attrs == null || attrs.isEmpty()) {
+            return null;
+        }
+        for (String key : keys) {
+            for (Map.Entry<String, Attribute> e : attrs.entrySet()) {
+                if (e.getKey() != null && e.getKey().equalsIgnoreCase(key)) {
+                    int[] pair = attributeToIntPair(e.getValue());
+                    if (pair != null) {
+                        return pair;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Integer attributeToInt(Attribute a) {
+        if (a == null) {
+            return null;
+        }
+        Object d = a.getData();
+        if (d == null) {
+            return null;
+        }
+        if (d instanceof Number) {
+            return ((Number) d).intValue();
+        }
+        if (d instanceof int[] && ((int[]) d).length >= 1) {
+            return ((int[]) d)[0];
+        }
+        if (d instanceof long[] && ((long[]) d).length >= 1) {
+            return (int) ((long[]) d)[0];
+        }
+        if (d instanceof short[] && ((short[]) d).length >= 1) {
+            return ((short[]) d)[0] & 0xffff;
+        }
+        if (d instanceof String) {
+            try {
+                return Integer.parseInt(((String) d).trim());
+            } catch (NumberFormatException ignore) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static int[] attributeToIntPair(Attribute a) {
+        if (a == null) {
+            return null;
+        }
+        Object d = a.getData();
+        if (d instanceof int[] && ((int[]) d).length >= 2) {
+            return new int[]{((int[]) d)[0], ((int[]) d)[1]};
+        }
+        if (d instanceof long[] && ((long[]) d).length >= 2) {
+            return new int[]{(int) ((long[]) d)[0], (int) ((long[]) d)[1]};
+        }
+        if (d instanceof short[] && ((short[]) d).length >= 2) {
+            return new int[]{((short[]) d)[0] & 0xffff, ((short[]) d)[1] & 0xffff};
+        }
+        return null;
+    }
+
+    public int getSensorWidth() {
+        return sensorWidth;
+    }
+
+    public int getSensorHeight() {
+        return sensorHeight;
     }
 
     private void openDatasets() throws IOException {
@@ -290,7 +559,7 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             windowTimestamps = new int[len];
             windowTRel = new int[len];
         }
-        final int sizeY = chip.getSizeY() > 0 ? chip.getSizeY() : HEIGHT;
+        final int sizeY = chip.getSizeY() > 0 ? chip.getSizeY() : sensorHeight;
         for (int i = 0; i < len; i++) {
             int xi = x[i] & 0xffff;
             int yi = y[i] & 0xffff;
