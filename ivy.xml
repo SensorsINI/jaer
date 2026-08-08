@@ -107,6 +107,16 @@ MA 02110-1301  USA
             <exclude org="org.scala-sbt" module="*"/>
         </dependency>
 
+        <!-- Pure-Java HDF5 (DSEC events.h5 playback). Blosc+ZSTD chunks use our BloscHdf5Filter + zstd-jni. -->
+        <dependency org="io.jhdf" name="jhdf" rev="0.12.0">
+            <!-- jHDF pulls at.yawk.lz4; we already ship org.lz4:lz4-java for AEDAT-4. -->
+            <exclude org="at.yawk.lz4" module="lz4-java"/>
+            <exclude org="org.lz4" module="lz4-java"/>
+        </dependency>
+        <!-- jHDF runtime; keep explicit so Ivy does not drop it via weird scopes. -->
+        <dependency org="org.slf4j" name="slf4j-api" rev="2.0.16"/>
+        <dependency org="org.apache.commons" name="commons-lang3" rev="3.17.0"/>
+
         <!-- Required by tensorflow-core-native (omitted when that dep is transitive=false). -->
         <dependency org="org.bytedeco" name="javacpp" rev="1.5.10" />
 

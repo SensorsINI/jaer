@@ -89,6 +89,7 @@ import org.apache.commons.io.FileUtils;
 
 import ch.unizh.ini.jaer.chip.retina.*;
 import nrv.chip.NRVS5KRC1S;
+import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import prophesee.chip.PropheseeIMX636HD;
 import com.google.common.collect.EvictingQueue;
 import eu.seebetter.ini.chips.davis.*;
@@ -5286,7 +5287,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * ARS is for live overload; disable while playing back a file unless the user turns it on.
      */
     private void updateAdaptiveRenderSkippingForPlayMode(PlayMode oldMode, PlayMode newMode) {
-        if (getRenderer() == null) {
+        // Avoid getRenderer() here: it throws if chip is still null during startup.
+        if (chip == null || chip.getRenderer() == null) {
             return;
         }
         if (newMode == PlayMode.PLAYBACK && oldMode != PlayMode.PLAYBACK) {
@@ -8192,7 +8194,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             || f.getName().endsWith(RosbagFileInputStream.DATA_FILE_EXTENSION)
                             || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_CSV)
                             || f.getName().endsWith(TextFileInputStream.FILE_EXTENSION_TXT)
-                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)) {
+                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + MetavisionRawFileInputStream.DATA_FILE_EXTENSION)
+                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_H5)
+                            || f.getName().toLowerCase(Locale.ROOT).endsWith("." + DsecHdf5AEInputStream.DATA_FILE_EXTENSION_HDF5)) {
                         draggedFile = f;
                         log.info("User dragged file " + draggedFile);
                     } else {

@@ -707,13 +707,33 @@ public class JAERViewer {
             }
             log.info("starting with file=" + f.getAbsolutePath() + " in working directory=" + System.getProperty("user.dir"));
             try {
-                JAERViewer jv = new JAERViewer();
-                while (jv.getNumViewers() == 0) {
-                    Thread.sleep(300);
+                // Windows file association / double-click passes the path as argv[0].
+                // AEViewer registers itself in JAERViewer before setAeChipClass finishes,
+                // so waiting only for getNumViewers()>0 races and startPlayback hits a null chip.
+                final JAERViewer jv = new JAERViewer();
+                final AEViewer ready = waitForReadyViewer(jv, 60_000L);
+                if (ready == null || jv.getSyncPlayer() == null) {
+                    throw new IllegalStateException(
+                            "Timed out waiting for AEViewer chip to initialize before opening "
+                            + f.getAbsolutePath());
                 }
-                jv.getSyncPlayer().startPlayback(f);
+                // File open shows Swing dialogs and may switch AEChip; run on EDT.
+                SwingUtilities.invokeAndWait(() -> {
+                    try {
+                        jv.getSyncPlayer().startPlayback(f);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             } catch (Exception e) {
-                JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + e);
+                Throwable shown = e;
+                while ((shown instanceof java.lang.reflect.InvocationTargetException
+                        || shown instanceof RuntimeException)
+                        && shown.getCause() != null && shown.getCause() != shown) {
+                    shown = shown.getCause();
+                }
+                log.log(Level.SEVERE, "Failed to open launch file " + f, shown);
+                JOptionPane.showMessageDialog(null, "<html>Trying to start JAERViewer with <br>file=\"" + f + "\"<br>Caught " + shown);
             }
         } else {
             log.info("starting with no file arguments in working directory=" + System.getProperty("user.dir"));
@@ -726,6 +746,28 @@ public class JAERViewer {
             });
         }
 
+    }
+
+    /**
+     * Wait until at least one {@link AEViewer} has finished constructing its
+     * {@link net.sf.jaer.chip.AEChip}. Used when opening a file from argv
+     * (Windows "Open with" / file association).
+     *
+     * @param jv top-level viewer manager
+     * @param timeoutMs max wait; return null on timeout
+     */
+    static AEViewer waitForReadyViewer(JAERViewer jv, long timeoutMs) throws InterruptedException {
+        final long deadline = System.currentTimeMillis() + Math.max(0L, timeoutMs);
+        while (System.currentTimeMillis() <= deadline) {
+            if (jv.getNumViewers() > 0) {
+                final AEViewer v = jv.getViewers().get(0);
+                if (v != null && v.getChip() != null && jv.getSyncPlayer() != null) {
+                    return v;
+                }
+            }
+            Thread.sleep(50);
+        }
+        return null;
     }
 
     /**

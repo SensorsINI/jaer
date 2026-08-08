@@ -24,6 +24,8 @@ import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
+import ch.unizh.ini.jaer.chip.retina.DVS640;
+import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import prophesee.chip.PropheseeIMX636HD;
 import prophesee.eventio.MetavisionRawFileInputStream;
 
@@ -224,10 +226,22 @@ public final class RecordingChipDetector {
         if (name.endsWith(".raw")) {
             return fromMetavisionRawHeader(file);
         }
+        if (name.endsWith(".h5") || name.endsWith(".hdf5")) {
+            return fromDsecHdf5(file);
+        }
         if (AEDataFile.hasDataFileExtension(file.getName())) {
             return fromAedat2AsciiHeader(file);
         }
         return null;
+    }
+
+    /** DSEC {@code events.h5} (cooked VGA polarity) → {@link DVS640}. */
+    static Hint fromDsecHdf5(File file) {
+        if (!DsecHdf5AEInputStream.isDsecEventsFile(file)) {
+            return null;
+        }
+        return new Hint(DVS640.class.getSimpleName(),
+                DsecHdf5AEInputStream.WIDTH, DsecHdf5AEInputStream.HEIGHT, "dsec-hdf5");
     }
 
     /**

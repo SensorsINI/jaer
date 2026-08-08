@@ -54,7 +54,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  *
  * @author tobi
  */
-@Description("Generic 640x480 VGA DVS for visualizing data")
+@Description("Generic 640x480 VGA DVS for visualizing data (incl. DSEC events.h5)")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DVS640 extends AETemporalConstastRetina implements Serializable {
 
