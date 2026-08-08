@@ -30,6 +30,9 @@ import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
 import java.awt.dnd.DropTargetEvent;
 import java.awt.dnd.DropTargetListener;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
@@ -524,6 +527,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        // Esc cancels queued jog even when focus is on the heavyweight GL canvas
+        // (menu accelerators alone are not always delivered in that case).
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
+            @Override
+            public boolean dispatchKeyEvent(KeyEvent e) {
+                if (e.getID() != KeyEvent.KEY_PRESSED || e.getKeyCode() != KeyEvent.VK_ESCAPE) {
+                    return false;
+                }
+                Window active = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (active != AEViewer.this) {
+                    return false;
+                }
+                if ((getPlayMode() != PlayMode.PLAYBACK) || (getAePlayer() == null) || !getAePlayer().isJogOccurring()) {
+                    return false;
+                }
+                getAePlayer().cancelJog();
+                e.consume();
+                return true;
+            }
+        });
         setupUsbTuningMenus();
         setupAdaptiveRenderSkippingMenu();
         setFocusTraversalKeysEnabled(false); // enable TAB key for menus - doesn't work
@@ -4225,6 +4248,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         jSeparator10 = new javax.swing.JPopupMenu.Separator();
         jogForwardMI = new javax.swing.JMenuItem();
         jogBackwardsMI = new javax.swing.JMenuItem();
+        cancelJogMI = new javax.swing.JMenuItem();
         setJogNCount = new javax.swing.JMenuItem();
         jSeparator19 = new javax.swing.JPopupMenu.Separator();
         setMarkInMI = new javax.swing.JMenuItem();
@@ -4955,6 +4979,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         playbackMenu.add(jogBackwardsMI);
+
+        cancelJogMI.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0));
+        cancelJogMI.setText("Cancel jog");
+        cancelJogMI.setToolTipText("Cancel queued jog packets (Esc); useful for slow HDF5 seeks");
+        cancelJogMI.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cancelJogMIActionPerformed(evt);
+            }
+        });
+        playbackMenu.add(cancelJogMI);
 
         setJogNCount.setText("Set jog N...");
         setJogNCount.setToolTipText("Sets the size of jog for keyboard jog");
@@ -7955,6 +7989,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_jogBackwardsMIActionPerformed
 
+    private void cancelJogMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelJogMIActionPerformed
+        if ((getPlayMode() == PlayMode.PLAYBACK) && (getAePlayer() != null)) {
+            getAePlayer().cancelJogAction.actionPerformed(evt);
+        }
+    }//GEN-LAST:event_cancelJogMIActionPerformed
+
     private void setJogNCountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setJogNCountActionPerformed
         String s = JOptionPane.showInputDialog("Number of packets to fast forward or rewind?", getAePlayer().getJogPacketCount());
         if ((s == null) || s.isEmpty()) {
@@ -8754,6 +8794,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
     private javax.swing.JSeparator jSeparator9;
+    private javax.swing.JMenuItem cancelJogMI;
     private javax.swing.JMenuItem jogBackwardsMI;
     private javax.swing.JMenuItem jogForwardMI;
     private javax.swing.JMenuItem jumpNextMarkerMI;

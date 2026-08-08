@@ -750,7 +750,9 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                             aeInputStream != null ? aeInputStream.position() : -1,
                             aeInputStream != null ? aeInputStream.getClass().getSimpleName() : "null"));
                 }
-                while (jogPacketsLeft != 0) {
+                // Check jogOccuring each step so Esc (cancelJog on EDT) can abort remaining
+                // queued steps between slow reads (e.g. DSEC HDF5 window loads).
+                while (jogOccuring && jogPacketsLeft != 0) {
                     boolean forwards = jogPacketsLeft >= 0;
                     setDirectionForwards(forwards);
                     int slice = flex ? viewer.aePlayer.getPacketSizeEvents() : viewer.aePlayer.getTimesliceUs();
@@ -766,19 +768,26 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                                 forwards, slice, posBefore, aeInputStream.position(),
                                 aeRaw != null ? aeRaw.getNumEvents() : -1, jogPacketsLeft));
                     }
+                    if (!jogOccuring) {
+                        break; // cancelled during read
+                    }
                     if (jogPacketsLeft < 0) {
                         jogPacketsLeft++;
                     } else if (jogPacketsLeft > 0) {
                         jogPacketsLeft--;
                     }
                 }
-            }
-            if (jogOccuring && jogPacketsLeft == 0) {
-                jogOccuring = false;
-                setDirectionForwards(true);
-                if (log.isLoggable(Level.FINE)) {
-                    log.fine(String.format("jog done pos=%d",
-                            aeInputStream != null ? aeInputStream.position() : -1));
+                if (jogOccuring && jogPacketsLeft == 0) {
+                    jogOccuring = false;
+                    setDirectionForwards(true);
+                    setJogWaitCursor(false);
+                    if (log.isLoggable(Level.FINE)) {
+                        log.fine(String.format("jog done pos=%d",
+                                aeInputStream != null ? aeInputStream.position() : -1));
+                    }
+                } else if (!jogOccuring) {
+                    // cancelled mid-drain; cancelJog already cleared cursor
+                    setJogWaitCursor(false);
                 }
             }
             return aeRaw;

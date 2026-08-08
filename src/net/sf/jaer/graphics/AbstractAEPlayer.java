@@ -4,6 +4,8 @@
  */
 package net.sf.jaer.graphics;
 
+import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeListener;
@@ -14,6 +16,7 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JFileChooser;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.util.EngineeringFormat;
@@ -63,6 +66,7 @@ public abstract class AbstractAEPlayer {
     public final StepBackwardAction stepBackwardAction = new StepBackwardAction();
     public final JogForwardAction jogForwardAction = new JogForwardAction();
     public final JogBackwardAction jogBackwardAction = new JogBackwardAction();
+    public final CancelJogAction cancelJogAction = new CancelJogAction();
     public final ToggleFlextimeAction toggleFlextimeAction = new ToggleFlextimeAction();
 //    public final SyncPlaybackAction syncPlaybackAction = new SyncPlaybackAction();
     public final MarkInAction markInAction = new MarkInAction();
@@ -183,8 +187,10 @@ public abstract class AbstractAEPlayer {
     protected int timesliceUs = 20000;
     protected int packetSizeEvents = 256;
     protected int jogPacketCount = 20;
-    protected int jogPacketsLeft = 0;
-    protected boolean jogOccuring = false;
+    /** Remaining jog steps; written from EDT (Esc cancel) and read on ViewLoop — must be volatile. */
+    volatile protected int jogPacketsLeft = 0;
+    /** True while a jog queue is being drained; volatile for Esc cancel from EDT. */
+    volatile protected boolean jogOccuring = false;
 
     abstract public void openAEInputFileDialog();
 
@@ -249,6 +255,7 @@ public abstract class AbstractAEPlayer {
     public void jogForwards(int packets) {
         jogOccuring = true;
         jogPacketsLeft += packets;
+        setJogWaitCursor(true);
         if (log.isLoggable(Level.FINE)) {
             log.fine(String.format("jogForwards +%d -> left=%d", packets, jogPacketsLeft));
         }
@@ -257,17 +264,61 @@ public abstract class AbstractAEPlayer {
     public void jogBackwards(int packets) {
         jogOccuring = true;
         jogPacketsLeft -= packets;
+        setJogWaitCursor(true);
         if (log.isLoggable(Level.FINE)) {
             log.fine(String.format("jogBackwards -%d -> left=%d", packets, jogPacketsLeft));
         }
     }
 
     public void cancelJog() {
-        if (log.isLoggable(Level.FINE) && (jogOccuring || jogPacketsLeft != 0)) {
+        boolean wasJogging = jogOccuring || jogPacketsLeft != 0;
+        if (log.isLoggable(Level.FINE) && wasJogging) {
             log.fine(String.format("cancelJog (was left=%d)", jogPacketsLeft));
         }
         jogOccuring = false;
         jogPacketsLeft = 0;
+        if (wasJogging) {
+            setDirectionForwards(true);
+            setJogWaitCursor(false);
+            if (viewer != null) {
+                viewer.showActionText("Jog cancelled");
+            }
+        }
+    }
+
+    /** True if a jog is in progress or packets remain queued. */
+    public boolean isJogOccurring() {
+        return jogOccuring || jogPacketsLeft != 0;
+    }
+
+    /**
+     * Show wait cursor while jog is pending (display may freeze on slow H5 seeks).
+     * Safe from ViewLoop or EDT; also sets cursor on heavyweight GL canvas.
+     */
+    protected void setJogWaitCursor(boolean waiting) {
+        if (viewer == null) {
+            return;
+        }
+        Runnable r = () -> {
+            Cursor c = waiting
+                    ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+                    : Cursor.getDefaultCursor();
+            viewer.setCursor(c);
+            try {
+                if (viewer.getChip() != null && viewer.getChip().getCanvas() != null) {
+                    Component canvas = viewer.getChip().getCanvas().getCanvas();
+                    if (canvas != null) {
+                        canvas.setCursor(c);
+                    }
+                }
+            } catch (Exception ignore) {
+            }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
     }
 
     /**
@@ -991,6 +1042,22 @@ public abstract class AbstractAEPlayer {
         public void actionPerformed(ActionEvent e) {
             showAction(String.format("Jog backwards %d", getJogPacketCount()));
             jogBackwards(getJogPacketCount());
+            putValue(Action.SELECTED_KEY, true);
+        }
+    }
+
+    final public class CancelJogAction extends MyAction {
+
+        public CancelJogAction() {
+            super("Cancel jog", null);
+            putValue(Action.ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0));
+            putValue(Action.SHORT_DESCRIPTION, "Cancel queued jog packets (Esc); useful for slow HDF5 seeks");
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            if (isJogOccurring()) {
+                cancelJog();
+            }
             putValue(Action.SELECTED_KEY, true);
         }
     }
