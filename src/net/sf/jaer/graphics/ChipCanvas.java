@@ -1570,14 +1570,22 @@ public class ChipCanvas implements GLEventListener, Observer {
                 }
 
                 if (getClipArea().isDirty()) {
-                    Vec totalPan=panPx.add(dragPx);
-                    panFromCurrentBy(totalPan.negate());
                     if (!isZoomed()) {
+                        // Rebuild default view, then apply pan bookkeeping.
                         computeUnzoomedBounds();
+                        Vec totalPan = panPx.add(dragPx);
+                        // panFromCurrentBy(Vec) negates; use float form so drag-right moves content with mouse.
+                        panFromCurrentBy(-totalPan.x, -totalPan.y);
+                        previousZoomFactor = 1;
                     } else {
+                        // Incremental zoom around mouse. Prior pan is already baked into left/right/bot/top.
+                        // Do not re-apply panPx here: while zoomed, pan is applied directly in mouseDragged.
+                        // Clearing pan bookkeeping avoids double-applying if we later return to unzoomed.
                         computeAdditionalZoom();
+                        if (panPx.isNonZero()) {
+                            panPx.clear();
+                        }
                     }
-                    panFromCurrentBy(totalPan);
                     computeCenterPixel();
                     final float scalex = (float) glCanvas.getWidth() / (getWidth());
                     final float scaley = (float) glCanvas.getHeight() / getHeight();
@@ -2282,16 +2290,20 @@ public class ChipCanvas implements GLEventListener, Observer {
 
         @Override
         public void mouseReleased(final MouseEvent evt) {
-            dragging=false;
+            final boolean wasDragging = dragging;
+            dragging = false;
             setInteractionPreview3d(false);
             if (is3DEnabled()) {
                 log.fine("3d rotation: angley=" + angley + " deg anglex=" + anglex + " deg 3d origin: x="
                         + getOrigin3dx() + " y=" + getOrigin3dy());
-            } else if (dragging) {
-                // drag end
-                getZoom().panPx = new Vec(getZoom().panPx.add(getZoom().dragPx));
+            } else if (wasDragging) {
+                if (!isZoomed()) {
+                    // Unzoomed pan is reapplied from panPx on each computeBounds.
+                    getZoom().panPx = new Vec(getZoom().panPx.add(getZoom().dragPx));
+                    getClipArea().setDirty();
+                }
+                // While zoomed, pan was baked into the clip area during mouseDragged.
                 getZoom().dragPx.clear();
-                getClipArea().setDirty();
                 log.fine(String.format("pan=%s, zoom=%s", getZoom().panPx, zoom));
             }
             log.fine("released pixel " + getPixelFromMouseEventUnclipped(evt));
@@ -2332,14 +2344,19 @@ public class ChipCanvas implements GLEventListener, Observer {
                     origin3dy = origin3dMouseDragStartPoint.y + Math.round((getChip().getMaxSize() * ((float) -dy)) / glCanvas.getHeight());
                 } else { // normal pan
                     Point mPt = e.getPoint();
-//                    Point2D.Float mdpx = new Point2D.Float(mPt.x / getScale(),
-//                            -mPt.y / getScale()); // current px, arbitrary origin
-                    Vec dr=new Vec(mPt.x/getScale(),-mPt.y/getScale()); // drag in chip px is flipped vertically from screen drag
-                    
-//                    float pxDx = mdpx.x - dragLastPx.x, pxDy = mdpx.y - dragLastPx.y;
-//                    getZoom().dragPx = new Vec(pxDx, pxDy);
-                    getZoom().dragPx = dr.subtract(drStPx);
-                    getClipArea().setDirty();
+                    // drag in chip px is flipped vertically from screen drag
+                    Vec dr = new Vec(mPt.x / getScale(), -mPt.y / getScale());
+                    Vec newDrag = dr.subtract(drStPx);
+                    if (isZoomed()) {
+                        // While zoomed, clip bounds are incremental; apply only the delta since last drag event.
+                        Vec delta = newDrag.subtract(getZoom().dragPx);
+                        getZoom().dragPx = newDrag;
+                        getClipArea().panFromCurrentBy(-delta.x, -delta.y);
+                        getClipArea().computeCenterPixel();
+                    } else {
+                        getZoom().dragPx = newDrag;
+                        getClipArea().setDirty();
+                    }
                 }
             }
             repaint();
