@@ -4287,6 +4287,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         monSeqOpMode1 = new javax.swing.JRadioButtonMenuItem();
         helpMenu = new javax.swing.JMenu();
         jSeparator7 = new javax.swing.JSeparator();
+        releaseNotesMenuItem = new javax.swing.JMenuItem();
         checkForUpdatesMenuItem = new javax.swing.JMenuItem();
         gitUpdateMenuItem = new javax.swing.JMenuItem();
         jSeparator6 = new javax.swing.JPopupMenu.Separator();
@@ -5207,6 +5208,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         helpMenu.setMnemonic('h');
         helpMenu.setText("Help");
         helpMenu.add(jSeparator7);
+
+        releaseNotesMenuItem.setText("Release notes");
+        releaseNotesMenuItem.setToolTipText("Opens jAER GitHub Releases (release notes and installers)");
+        releaseNotesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                releaseNotesMenuItemActionPerformed(evt);
+            }
+        });
+        helpMenu.add(releaseNotesMenuItem);
 
         checkForUpdatesMenuItem.setText("Check for release updates...");
         checkForUpdatesMenuItem.setToolTipText("Checks if there is a newer release of jAER installer on github");
@@ -8037,6 +8047,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }//GEN-LAST:event_resetAccumulationMenuItemActionPerformed
 
+    private void releaseNotesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+        showInBrowser(JaerConstants.JAER_RELEASES);
+    }
+
     private void checkForUpdatesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_checkForUpdatesMenuItemActionPerformed
         new JaerUpdaterInstall4j().checkForInstall4jReleaseUpdate(this, true);
     }//GEN-LAST:event_checkForUpdatesMenuItemActionPerformed
@@ -8725,6 +8739,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPanel bottomPanel;
     private javax.swing.JPanel buttonsPanel;
     private ScrollWheelTunableMenuItem aeRenderBufferMenuItem;
+    private javax.swing.JMenuItem releaseNotesMenuItem;
     private javax.swing.JMenuItem checkForUpdatesMenuItem;
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem clearMarksMI;

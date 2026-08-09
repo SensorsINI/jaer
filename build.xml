@@ -508,12 +508,12 @@
     </macrodef>
 
     <target name="copy-updates-xml" depends="-load-version"
-            description="Copy installers/<VERSION.txt>/updates.xml to repo root (non-interactive).">
+            description="Copy installers/VERSION/updates.xml to repo root (non-interactive).">
         <jaer-copy-updates-xml/>
     </target>
 
     <target name="offer-copy-updates-xml" depends="-load-version"
-            description="Ask whether to copy installers/<version>/updates.xml to repo root.">
+            description="Ask whether to copy installers/VERSION/updates.xml to repo root.">
         <property name="jaer.updates.xml.source"
                   value="${basedir}/installers/${jaer.version}/updates.xml"/>
         <available file="${jaer.updates.xml.source}" property="jaer.updates.xml.source.exists"/>
