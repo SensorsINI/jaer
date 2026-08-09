@@ -8,11 +8,11 @@
 -->
 
 
-Go to [install4j jAER installers on Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers.
+Go to [install4j jAER installers on Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers. Choose the release folder corresponding to this release.
 
-See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
+See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
 
-**jAER 3.1.1** adds **DSEC-layout HDF5 event playback** (classic [DSEC](https://dsec.ifi.uzh.ch/) VGA and HD exports such as [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html)), plus a patch focused on **faster DV / AEDAT-4 LZ4 playback**: detect slow dependent-block LZ4, optionally re-record a sibling optimized copy, and open large recordings with less waiting. Also adds a **RedBlue** DVS color mode, **iniVation AEDAT-4 sample-data** Help links, and fixes an **Intel Arc OpenGL** crash when switching AEChips live.
+**jAER 3.1.1** adds **DSEC-layout HDF5 event playback** (classic [DSEC](https://dsec.ifi.uzh.ch/) VGA and HD exports such as [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html)), plus a patch focused on **faster DV / AEDAT-4 LZ4 playback**: detect slow dependent-block LZ4, optionally re-record a sibling optimized copy, and open large recordings with less waiting. Also expands **DVS color modes** (RedBlue, GrayTime, HotCode, WhiteBackground), **iniVation AEDAT-4 sample-data** Help links, and fixes an **Intel Arc OpenGL** crash when switching AEChips live.
 
 ### Highlights
 
@@ -30,7 +30,9 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 * **Faster LZ4 decode / re-record** — hybrid framed LZ4 decoder (native lz4-java blocks; BlockLZ4 only where dependent continuations require it). Re-record writes independent-block LZ4 for snappy seek and playback.
 
-* **RedBlue DVS color mode** — ON events blue, OFF events red (black background), alongside existing RedGreen / gray modes.
+* **More DVS color modes** — **RedBlue** (ON blue / OFF red), **GrayTime** (time within slice on white), **HotCode** (event-count heatmap), and **WhiteBackground** (RedGreen on white), alongside existing ColorTime / RedGreen / gray modes.
+
+![DVS color modes mosaic](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.1.1/colormodes-mosaic.png)
 
 * **Intel Arc OpenGL fix** — live AEChip switch no longer crashes on some Intel Arc GPUs (reuse one `GLCanvas`, EDT-safe chip change, prefer remembered live AEChip at startup).
 
@@ -50,7 +52,8 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
   * Multi-stream infoNode kept intact across re-record.
 
 * **Display**
-  * New **RedBlue** color mode in AEChip / Davis / multi-camera renderers.
+  * New / completed DVS color modes in `AEChipRenderer` (and Davis / multi-camera paths): **RedBlue**, **GrayTime**, **HotCode**, **WhiteBackground**.
+  * Fixed right-drag pan after mouse-wheel zoom.
 
 * **Help / samples**
   * Help menu: iniVation release-repo AEDAT-4 datasets (`https://release.inivation.com/?prefix=datasets/`) alongside existing DAVIS346 / MISTLab / Prophesee links.
