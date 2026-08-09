@@ -6,7 +6,7 @@ VERSION.txt at the repo root is the single source of truth for the release versi
 (e.g. 3.0.0). It drives:
 
 - install4j application version (synced into jaer.install4j; also passed as install4jc --release=...)
-- splash overlay text (major.minor, e.g. 3.0.0 -> "3.0")
+- splash overlay text (full VERSION.txt, e.g. 3.1.1)
 - About / BUILDVERSION.txt first line on jar build
 
 See latest releases at https://github.com/SensorsINI/jaer/releases and tags at
@@ -37,7 +37,13 @@ You will be prompted to confirm the VERSION.txt value. On "y" / "yes", ant relea
 
 Then:
 5. Installers land under installers/<version>/ (Dropbox installers folder path as configured in the project)
-6. Copy updates.xml to the repo root and push so install4j auto-update can see the new build
+6. ant release asks whether to copy installers/<version>/updates.xml to the repo root
+   (for install4j auto-update). Reply y/yes to copy. Standalone (no rebuild):
+
+       ant offer-copy-updates-xml   # prompts
+       ant copy-updates-xml         # copy without prompt
+
+   Then commit/push updates.xml so auto-update can see the new build.
 7. Push a git tag matching VERSION.txt and create/edit the GitHub release (see Tagging below)
 
 Note: install4j launcher splash uses the 1024w PNG; keep 256h for Windows installer/shell

@@ -491,11 +491,52 @@
     <target name="-run-install4jc-windows"
             depends="-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
 
+    <!-- Copy install4j updates.xml from installers/<version>/ to repo root (auto-update descriptor). -->
+    <macrodef name="jaer-copy-updates-xml">
+        <sequential>
+            <property name="jaer.updates.xml.source"
+                      value="${basedir}/installers/${jaer.version}/updates.xml"/>
+            <available file="${jaer.updates.xml.source}" property="jaer.updates.xml.source.exists"/>
+            <fail unless="jaer.updates.xml.source.exists"
+                  message="Missing ${jaer.updates.xml.source} — run ant release (or install4jc) first."/>
+            <copy file="${jaer.updates.xml.source}"
+                  tofile="${basedir}/updates.xml"
+                  overwrite="true"/>
+            <echo message="Copied ${jaer.updates.xml.source} -&gt; ${basedir}/updates.xml"/>
+            <echo message="Commit and push updates.xml so install4j auto-update can see ${jaer.version}."/>
+        </sequential>
+    </macrodef>
+
+    <target name="copy-updates-xml" depends="-load-version"
+            description="Copy installers/<VERSION.txt>/updates.xml to repo root (non-interactive).">
+        <jaer-copy-updates-xml/>
+    </target>
+
+    <target name="offer-copy-updates-xml" depends="-load-version"
+            description="Ask whether to copy installers/<version>/updates.xml to repo root.">
+        <property name="jaer.updates.xml.source"
+                  value="${basedir}/installers/${jaer.version}/updates.xml"/>
+        <available file="${jaer.updates.xml.source}" property="jaer.updates.xml.source.exists"/>
+        <fail unless="jaer.updates.xml.source.exists"
+              message="Missing ${jaer.updates.xml.source} — run ant release (or install4jc) first."/>
+        <input message="Copy installers/${jaer.version}/updates.xml to repo root for auto-update? [y/N]"
+               addproperty="jaer.copy.updates.confirm"
+               defaultvalue="n"/>
+        <condition property="jaer.copy.updates.confirmed">
+            <matches string="${jaer.copy.updates.confirm}" pattern="(?i)\s*y(es)?\s*"/>
+        </condition>
+        <antcall target="-do-copy-updates-xml-if-confirmed"/>
+    </target>
+
+    <target name="-do-copy-updates-xml-if-confirmed" if="jaer.copy.updates.confirmed">
+        <jaer-copy-updates-xml/>
+    </target>
+
     <target name="release"
-            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
-            description="Confirm VERSION.txt, generate splash PNGs, sync install4j, clean/jar, run install4jc.">
+            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc,offer-copy-updates-xml"
+            description="Confirm VERSION.txt, generate splash PNGs, sync install4j, clean/jar, run install4jc, offer updates.xml copy.">
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
-        <echo message="Next: copy/push updates.xml, git tag ${jaer.version}, and create the GitHub release."/>
+        <echo message="Next: git tag ${jaer.version}, push updates.xml if copied, and create the GitHub release."/>
         <echo message="See README-releasing-tagging.txt"/>
     </target>
 

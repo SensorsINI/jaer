@@ -17,7 +17,7 @@ import java.util.Arrays;
 import javax.imageio.ImageIO;
 
 /**
- * Overlays "jAER" and a short version string onto the splash base PNG and
+ * Overlays "jAER" and the full VERSION.txt string onto the splash base PNG and
  * writes 1024x1024 and 256x256 outputs for jar / install4j.
  *
  * Usage: GenerateSplashScreen &lt;base.png&gt; &lt;version&gt; &lt;out-1024.png&gt; &lt;out-256.png&gt;
@@ -49,7 +49,6 @@ public final class GenerateSplashScreen {
             throw new IllegalArgumentException("Version string is empty");
         }
 
-        String shortVersion = shortVersion(fullVersion);
         BufferedImage base = ImageIO.read(baseFile);
         if (base == null) {
             throw new IllegalArgumentException("Could not read image: " + baseFile.getAbsolutePath());
@@ -63,7 +62,7 @@ public final class GenerateSplashScreen {
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             g.drawImage(base, 0, 0, SIZE_1024, SIZE_1024, null);
-            drawTitle(g, "jAER", shortVersion);
+            drawTitle(g, "jAER", fullVersion);
         } finally {
             g.dispose();
         }
@@ -83,20 +82,7 @@ public final class GenerateSplashScreen {
         ImageIO.write(small, "png", out256);
 
         System.out.println("Wrote " + out1024.getAbsolutePath() + " and " + out256.getAbsolutePath()
-                + " (overlay jAER / " + shortVersion + ")");
-    }
-
-    /** Prefer major.minor for splash (2.8.0 -> 2.8); leave non-semver strings unchanged. */
-    static String shortVersion(String version) {
-        String[] parts = version.split("\\.");
-        if (parts.length >= 2
-                && parts[0].matches("\\d+")
-                && parts[1].matches("\\d+.*")) {
-            // Keep second component digits only up to first non-digit (e.g. 8 from 8 or 8-rc1)
-            String minor = parts[1].replaceFirst("^(\\d+).*$", "$1");
-            return parts[0] + "." + minor;
-        }
-        return version;
+                + " (overlay jAER / " + fullVersion + ")");
     }
 
     private static void drawTitle(Graphics2D g, String title, String version) {
