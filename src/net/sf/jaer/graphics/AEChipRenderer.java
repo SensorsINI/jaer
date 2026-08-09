@@ -10,6 +10,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -175,6 +176,11 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
      */
     protected boolean subsamplingEnabled = prefs.getBoolean("ChipRenderer.subsamplingEnabled", false);
     protected float[][] timeColors;
+    /**
+     * Per-pixel event count (0–1) for {@link ColorMode#HotCode} on RGB pixmaps
+     * that have no alpha channel (unlike {@link DavisRenderer}).
+     */
+    protected float[] eventCountMap;
     protected int specialCount = 0;
 
     private EngineeringFormat fmt = new EngineeringFormat();
@@ -486,6 +492,100 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     f[index] = timeColors[ind][0];
                                     f[index + 1] = timeColors[ind][1];
                                     f[index + 2] = timeColors[ind][2];
+                                }
+                            }
+                            break;
+                        case GrayTime: {
+                            if (numEvents == 0) {
+                                return;
+                            }
+                            final int grayTs0 = pkt.getFirstTimestamp();
+                            final float grayDt = pkt.getDurationUs();
+                            for (Object obj : pkt) {
+                                BasicEvent e = (BasicEvent) obj;
+
+                                int type = e.getType();
+                                if (e.isSpecial()) {
+                                    setSpecialCount(getSpecialCount() + 1);
+                                    continue;
+                                }
+                                if ((e.x == xsel) && (e.y == ysel)) {
+                                    playSpike(type);
+                                }
+                                int index = getPixMapIndex(e.x, e.y);
+                                if (index < 0) {
+                                    continue;
+                                }
+                                final float v = grayDt <= 0 ? 0.95f
+                                        : (0.95f - (0.95f * ((e.timestamp - grayTs0) / grayDt)));
+                                f[index] = v;
+                                f[index + 1] = v;
+                                f[index + 2] = v;
+                            }
+                        }
+                        break;
+                        case HotCode: {
+                            checkEventCountMapAllocation();
+                            colorContrastAdditiveStep = 1f / (colorScale);
+                            final int width = getWidth();
+                            for (Object obj : pkt) {
+                                BasicEvent e = (BasicEvent) obj;
+
+                                int type = e.getType();
+                                if (e.isSpecial()) {
+                                    setSpecialCount(specialCount + 1);
+                                    continue;
+                                }
+                                if ((e.x == xsel) && (e.y == ysel)) {
+                                    playSpike(type);
+                                }
+                                int index = getPixMapIndex(e.x, e.y);
+                                if (index < 0) {
+                                    continue;
+                                }
+                                final int pix = e.x + (e.y * width);
+                                float count = eventCountMap[pix] + colorContrastAdditiveStep;
+                                if (count > 1f) {
+                                    count = 1f;
+                                }
+                                eventCountMap[pix] = count;
+                                int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * count));
+                                if (ind < 0) {
+                                    ind = 0;
+                                } else if (ind >= timeColors.length) {
+                                    ind = timeColors.length - 1;
+                                }
+                                f[index] = timeColors[ind][0];
+                                f[index + 1] = timeColors[ind][1];
+                                f[index + 2] = timeColors[ind][2];
+                            }
+                        }
+                        break;
+                        case WhiteBackground:
+                            colorContrastAdditiveStep = 1f / (colorScale);
+                            for (Object obj : pkt) {
+                                BasicEvent e = (BasicEvent) obj;
+
+                                int type = e.getType();
+                                if (e.isSpecial()) {
+                                    setSpecialCount(specialCount + 1);
+                                    continue;
+                                }
+                                if ((e.x == xsel) && (e.y == ysel)) {
+                                    playSpike(type);
+                                }
+                                int ind = getPixMapIndex(e.x, e.y);
+                                if (ind < 0) {
+                                    continue;
+                                }
+                                if ((type != 0) || ignorePolarity) { // ON (or ignore polarity)
+                                    f[ind + 1] += colorContrastAdditiveStep; // green up
+                                    f[ind] -= colorContrastAdditiveStep;
+                                    f[ind + 2] -= colorContrastAdditiveStep;
+                                } else { // OFF
+                                    f[ind] += colorContrastAdditiveStep; // red up
+                                    f[ind + 1] -= colorContrastAdditiveStep;
+                                    f[ind + 2] -= colorContrastAdditiveStep;
                                 }
                             }
                             break;
@@ -1007,6 +1107,30 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
     }
 
+    @Override
+    synchronized public void resetFrame(float value) {
+        super.resetFrame(value);
+        resetEventCountMap();
+    }
+
+    /** Allocates {@link #eventCountMap} to match current chip size. */
+    protected void checkEventCountMapAllocation() {
+        final int n = getWidth() * getHeight();
+        if (n <= 0) {
+            return;
+        }
+        if ((eventCountMap == null) || (eventCountMap.length != n)) {
+            eventCountMap = new float[n];
+        }
+    }
+
+    /** Clears HotCode per-pixel counts (called when the pixmap is reset). */
+    protected void resetEventCountMap() {
+        if (eventCountMap != null) {
+            Arrays.fill(eventCountMap, 0f);
+        }
+    }
+
     /**
      * Fades frame data toward the background gray level.
      */
@@ -1023,6 +1147,12 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         for (int i = 0; i < fr.length; i++) {
 
             fr[i] = fadeToGray(fr[i], fadeBy, grayValue);
+        }
+        // HotCode stores counts separately (no alpha channel); fade them toward 0.
+        if ((colorMode == ColorMode.HotCode) && (eventCountMap != null)) {
+            for (int i = 0; i < eventCountMap.length; i++) {
+                eventCountMap[i] *= fadeBy;
+            }
         }
     }
 
