@@ -29,6 +29,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
+import net.sf.jaer.util.ShowFolderSaveConfirmation;
 
 /**
  * File/Export video dialog: drives {@link JaerAviWriter} to capture the rendered
@@ -360,15 +361,13 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
             if (success) {
                 pendingMp4Convert = false;
                 statusLabel.setText("MP4 written: " + (out != null ? out.getName() : ""));
-                JOptionPane.showMessageDialog(this,
-                        "Saved MP4:\n" + (out != null ? out.getAbsolutePath() : message),
-                        "Export video", JOptionPane.INFORMATION_MESSAGE);
+                showExportSavedDialog(out != null ? out : avi,
+                        "<html>Saved MP4:<br>" + (out != null ? out.getAbsolutePath() : message));
             } else if (!"ffmpeg not found".equals(message)) {
                 statusLabel.setText("MP4 convert failed; AVI kept");
-                JOptionPane.showMessageDialog(this,
-                        "MP4 conversion failed:\n" + message
-                        + "\n\nAVI: " + avi.getAbsolutePath(),
-                        "Export video", JOptionPane.WARNING_MESSAGE);
+                showExportSavedDialog(avi,
+                        "<html>MP4 conversion failed:<br>" + message
+                        + "<br><br>AVI kept:<br>" + avi.getAbsolutePath());
             } else {
                 statusLabel.setText("ffmpeg missing; AVI kept");
             }
@@ -578,9 +577,9 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
 
         if (!convertToMp4) {
             pendingMp4Convert = false;
-            JOptionPane.showMessageDialog(this,
-                    "Saved AVI with " + frames + " frames:\n" + (avi != null ? avi.getAbsolutePath() : ""),
-                    "Export video", JOptionPane.INFORMATION_MESSAGE);
+            showExportSavedDialog(avi,
+                    "<html>Saved AVI with " + frames + " frames:<br>"
+                    + (avi != null ? avi.getAbsolutePath() : ""));
             return;
         }
 
@@ -597,22 +596,41 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
         FfmpegMp4Converter.convertAviToMp4Async(this, avi, mp4File, deleteAviAfterMp4, (success, out, message) -> {
             if (success) {
                 statusLabel.setText("MP4 written: " + (out != null ? out.getName() : ""));
-                JOptionPane.showMessageDialog(this,
-                        "Saved MP4 (" + frames + " frames):\n" + (out != null ? out.getAbsolutePath() : message),
-                        "Export video", JOptionPane.INFORMATION_MESSAGE);
+                showExportSavedDialog(out != null ? out : avi,
+                        "<html>Saved MP4 (" + frames + " frames):<br>"
+                        + (out != null ? out.getAbsolutePath() : message));
             } else if (!"ffmpeg not found".equals(message)) {
                 pendingMp4Convert = true;
                 statusLabel.setText("MP4 convert failed; AVI kept");
-                JOptionPane.showMessageDialog(this,
-                        "AVI was saved, but MP4 conversion failed:\n" + message
-                        + (avi != null ? ("\n\nAVI: " + avi.getAbsolutePath()) : ""),
-                        "Export video", JOptionPane.WARNING_MESSAGE);
+                showExportSavedDialog(avi,
+                        "<html>AVI was saved, but MP4 conversion failed:<br>" + message
+                        + (avi != null ? ("<br><br>AVI:<br>" + avi.getAbsolutePath()) : ""));
             } else {
                 pendingMp4Convert = true;
                 statusLabel.setText("ffmpeg missing; AVI kept");
             }
             updateFfmpegStatus();
         });
+    }
+
+    /**
+     * Confirmation after a successful (or AVI-kept) export: Show folder / Play video / OK.
+     */
+    private void showExportSavedDialog(File videoFile, String htmlMsg) {
+        if (videoFile == null) {
+            JOptionPane.showMessageDialog(this, htmlMsg.replaceAll("<[^>]+>", " "),
+                    "Export video", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final File toOpen = videoFile;
+        ShowFolderSaveConfirmation dialog = new ShowFolderSaveConfirmation(
+                this,
+                videoFile,
+                htmlMsg,
+                () -> ShowFolderSaveConfirmation.openWithDesktop(toOpen),
+                "Play video",
+                "Export video");
+        dialog.setVisible(true);
     }
 
     /**

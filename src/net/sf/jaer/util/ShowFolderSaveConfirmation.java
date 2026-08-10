@@ -15,6 +15,10 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+/**
+ * Confirmation after saving a file: message plus optional Show folder / play /
+ * OK buttons.
+ */
 public class ShowFolderSaveConfirmation extends JDialog {
 
     static final private Logger log = Logger.getLogger("net.sf.jaer");
@@ -31,12 +35,12 @@ public class ShowFolderSaveConfirmation extends JDialog {
      * @param msg the message
      */
     public ShowFolderSaveConfirmation(Window owner, File file, String msg) {
-        this(owner, file, msg, null);
+        this(owner, file, msg, null, null, "File saved");
     }
 
     /**
      * Constructs a new dialog that shows a message, optional folder button, and
-     * optional immediate playback button.
+     * optional immediate playback button labeled "Playback".
      *
      * @param owner the owner of the dialog, or null
      * @param file the File
@@ -44,6 +48,21 @@ public class ShowFolderSaveConfirmation extends JDialog {
      * @param playAction if non-null, adds a Playback button that runs this action
      */
     public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction) {
+        this(owner, file, msg, playAction, "Playback", "File saved");
+    }
+
+    /**
+     * Constructs a new dialog with custom play-button label and title.
+     *
+     * @param owner the owner of the dialog, or null
+     * @param file the File (used for Show folder parent path)
+     * @param msg the message (HTML allowed)
+     * @param playAction if non-null, adds a play button that runs this action
+     * @param playButtonLabel label for the play button (e.g. "Play video"); ignored if playAction is null
+     * @param title dialog title
+     */
+    public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction,
+            String playButtonLabel, String title) {
         super(owner);
         this.file = file;
         this.msg = msg;
@@ -52,7 +71,7 @@ public class ShowFolderSaveConfirmation extends JDialog {
         if (getContentPane() instanceof JPanel panel) {
             panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // top, left, bottom, right
         }
-        setTitle("File saved");
+        setTitle(title != null ? title : "File saved");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setAlwaysOnTop(true);
         getContentPane().setLayout(new BorderLayout());
@@ -61,8 +80,9 @@ public class ShowFolderSaveConfirmation extends JDialog {
         JPanel buts = new JPanel();
         buts.setLayout(new FlowLayout());
 
-        if (Desktop.isDesktopSupported()) {
+        if (Desktop.isDesktopSupported() && file != null && file.getParentFile() != null) {
             final JButton showFileLocationButton = new JButton("Show folder");
+            showFileLocationButton.setToolTipText("Open the folder containing the saved file");
             final File f2 = new File(file.getAbsolutePath());
             showFileLocationButton.addActionListener((ActionEvent e) -> {
                 try {
@@ -77,8 +97,8 @@ public class ShowFolderSaveConfirmation extends JDialog {
 
         }
         if (playAction != null) {
-            JButton playB = new JButton("Playback");
-            playB.setToolTipText("Play back this recording immediately");
+            JButton playB = new JButton(playButtonLabel != null ? playButtonLabel : "Playback");
+            playB.setToolTipText("Open the file with the system default application");
             playB.addActionListener((ActionEvent e) -> {
                 dispose();
                 playAction.run();
@@ -94,6 +114,25 @@ public class ShowFolderSaveConfirmation extends JDialog {
         add(buts, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(okB);
         pack();
+    }
+
+    /**
+     * Opens {@code file} with the OS default application (e.g. video player).
+     */
+    public static void openWithDesktop(File file) {
+        if (file == null || !file.isFile()) {
+            log.warning("Cannot open file: " + file);
+            return;
+        }
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("Desktop operations not supported");
+            return;
+        }
+        try {
+            Desktop.getDesktop().open(file);
+        } catch (Exception ex) {
+            log.warning("Could not open " + file + ": " + ex);
+        }
     }
 
     public static final void main(String[] args) {
