@@ -1,3 +1,7 @@
+
+
+https://github.com/user-attachments/assets/b035d563-20e5-40c0-9bfe-d7ebba0e1698
+
 <!--
   Paste-ready for GitHub Releases once these files are on GitHub (master or tag 3.1.1).
   Image links below use raw.githubusercontent.com so they render in the Release body.
@@ -37,12 +41,6 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * **Intel Arc OpenGL fix** — live AEChip switch no longer crashes on some Intel Arc GPUs (reuse one `GLCanvas`, EDT-safe chip change, prefer remembered live AEChip at startup).
 
 * **Video export** — after **File → Export video** finishes (AVI and optional ffmpeg MP4), a confirmation offers **Show folder** and **Play video** so you can open the output immediately. Export still matches AEViewer target frame rate for smooth playback.
-
-DVS128 walk-to-Kripa example (exported from jAER; autoplay / muted / loop when the host supports HTML `<video>`):
-
-<video src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.1.1/dvs128_walk_to_kripa2.mp4" autoplay muted loop playsinline width="100%"></video>
-
-[Download DVS128 walk-to-Kripa MP4](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.1.1/dvs128_walk_to_kripa2.mp4)
 
 ### Features
 
