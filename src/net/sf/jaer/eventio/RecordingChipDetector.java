@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.aedat4.Aedat4FileOutputStream;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
+import ch.unizh.ini.jaer.chip.retina.DVS128;
 import ch.unizh.ini.jaer.chip.retina.DVS1280x720SD;
 import ch.unizh.ini.jaer.chip.retina.DVS640;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
@@ -34,6 +35,7 @@ import prophesee.eventio.MetavisionRawFileInputStream;
  * Resolves which {@link AEChip} a recording likely needs, preferring the
  * jAER filename convention ({@code ChipSimpleName-...}), then AEDAT-4
  * {@code infoNode} source / size / colorFilter, then AEDAT-2 ASCII header hints.
+ * Legacy {@code .dat} (pre-2010 / DVS09 dataset) falls back to {@link DVS128}.
  * <p>
  * Only matches against the viewer's loaded (selected) chip class names.
  * AEDAT-4 {@code infoNode} uses DV attribute form
@@ -181,17 +183,46 @@ public final class RecordingChipDetector {
         }
 
         Hint fromHeader = fromHeader(file);
+        if (fromHeader != null) {
+            Class<? extends AEChip> byHeader = resolve(fromHeader, loaded);
+            if (byHeader != null) {
+                log.info("Recording chip from header: " + byHeader.getSimpleName() + " (" + fromHeader + ")");
+                return byHeader;
+            }
+            log.info("Could not match recording chip hint among loaded AEChips: " + fromHeader);
+        }
+
+        // Pre-2010 jAER / DVS09 downloads use .dat and almost always came from DVS128.
+        Hint fromLegacyDat = fromLegacyDatExtension(file);
+        if (fromLegacyDat != null) {
+            Class<? extends AEChip> byDat = resolve(fromLegacyDat, loaded);
+            if (byDat != null) {
+                log.info("Recording chip from legacy .dat extension: " + byDat.getSimpleName()
+                        + " (" + fromLegacyDat + ")");
+                return byDat;
+            }
+        }
+
         if (fromHeader == null) {
-            log.fine("No chip hint from filename or header for " + file.getName());
+            log.fine("No chip hint from filename, header, or extension for " + file.getName());
+        }
+        return null;
+    }
+
+    /**
+     * Legacy {@link AEDataFile#OLD_DATA_FILE_EXTENSION} ({@code .dat}) recordings
+     * (DVS09 dataset and early jAER) are assumed to be {@link DVS128} when no
+     * stronger filename/header hint is available.
+     */
+    static Hint fromLegacyDatExtension(File file) {
+        if (file == null) {
             return null;
         }
-        Class<? extends AEChip> byHeader = resolve(fromHeader, loaded);
-        if (byHeader != null) {
-            log.info("Recording chip from header: " + byHeader.getSimpleName() + " (" + fromHeader + ")");
-            return byHeader;
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        if (!name.endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)) {
+            return null;
         }
-        log.info("Could not match recording chip hint among loaded AEChips: " + fromHeader);
-        return null;
+        return new Hint(DVS128.class.getSimpleName(), 128, 128, "legacy-.dat");
     }
 
     /**

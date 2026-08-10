@@ -680,6 +680,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     "Community list of papers, workshops, datasets, code, and videos for event-based vision");
             JMenu sampleDataMenu = new JMenu("Sample data");
             sampleDataMenu.setToolTipText("Links to publicly available event camera sample recordings");
+            sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_DVS128_SAMPLE_DATA,
+                    "DVS09 / DVS128 sample data",
+                    "DVS09 DVS128 sample data files (Google Doc with download links)"));
             sampleDataMenu.add(makeHelpURLMenuItem(JaerConstants.HELP_URL_DAVIS346_SAMPLE_DATA,
                     "DAVIS346 sample data (AEDAT-2)",
                     "DAVIS24 sample DAVIS346 recordings (mostly AEDAT-2.0) for exploring data and algorithm development"));

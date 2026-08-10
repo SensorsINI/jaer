@@ -66,6 +66,8 @@ public class JaerConstants {
     public static final String HELP_URL_HELP_FORUM = "https://groups.google.com/forum/#!forum/jaer-users";
     /** Community list of event-based vision papers, datasets, code, workshops, etc. */
     public static final String HELP_URL_EVENT_BASED_VISION_RESOURCES = "https://github.com/uzh-rpg/event-based_vision_resources";
+    /** DVS09 / DVS128 sample recordings (Google Doc with download links). */
+    public static final String HELP_URL_DVS128_SAMPLE_DATA = "https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?tab=t.0";
     /** DAVIS346 AEDAT-2 sample recordings (Google Drive via DAVIS24 site). */
     public static final String HELP_URL_DAVIS346_SAMPLE_DATA = "https://sites.google.com/view/davis24-davis-sample-data/home";
     /** Open AEDAT-4 (DV) sample recordings with per-file download links (DAVIS346). */
