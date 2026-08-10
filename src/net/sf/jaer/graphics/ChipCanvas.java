@@ -36,10 +36,13 @@ import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JRadioButtonMenuItem;
 
+import net.sf.jaer.JaerConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.Chip2D;
 import net.sf.jaer.eventprocessing.EventFilter;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.hardwareinterface.HardwareInterface;
+import net.sf.jaer.util.DrawGL;
 
 import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
@@ -168,6 +171,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     // chip fills glCanvas space
     private float ZCLIP = 1;
     private TextRenderer renderer = null;
+    /** Cached first-line release version for welcome overlay. */
+    private static String welcomeReleaseVersion;
 
     private Point mdStPt = null; // start point of drag in screen coordinates
     private Vec drStPx = null; // start point of drag in px, arb origin
@@ -559,6 +564,7 @@ public class ChipCanvas implements GLEventListener, Observer {
             renderer.draw3D(s, 1f, 1f, 0f, (float) (chip.getSizeX() / 2 / r.getWidth()));
             renderer.end3DRendering();
         }
+        drawWelcomeOverlayIfNeeded(drawable);
         gl.glFlush();
         // gl.glPopMatrix();
         checkGLError(gl, glu, "after display");
@@ -571,6 +577,60 @@ public class ChipCanvas implements GLEventListener, Observer {
     }
 
     float[] rgbVec = new float[3];
+
+    /**
+     * Centered welcome text when waiting with no open hardware (blank AEChip view).
+     */
+    private void drawWelcomeOverlayIfNeeded(final GLAutoDrawable drawable) {
+        if (!(chip instanceof AEChip)) {
+            return;
+        }
+        AEChip aeChip = (AEChip) chip;
+        AEViewer viewer = aeChip.getAeViewer();
+        if (viewer == null) {
+            viewer = aeViewer;
+        }
+        if (viewer == null || viewer.getPlayMode() != PlayMode.WAITING || viewer.isSuppressHardwareOpen()) {
+            return;
+        }
+        HardwareInterface hw = aeChip.getHardwareInterface();
+        if (hw != null && hw.isOpen()) {
+            return;
+        }
+        if (welcomeReleaseVersion == null) {
+            welcomeReleaseVersion = JaerConstants.getReleaseVersion();
+        }
+        String[] lines = {
+            "Welcome to jAER-" + welcomeReleaseVersion,
+            "Plug in a device or use File/Open logged data file..",
+            "Choose device from AEChip menu",
+            "Get sample data via Help / Sample data",
+            "See Help menu for more information"
+        };
+        try {
+            GL2 gl = drawable.getGL().getGL2();
+            // ~1.5× smaller than initial welcome overlay sizing
+            int fontsize = Math.max(6, Math.round(10 * (chip.getSizeX() / 346f) / 1.5f));
+            float scale = 1f;
+            if (fontsize < 10) {
+                fontsize *= 2;
+                scale = .5f;
+            }
+            gl.glPushMatrix();
+            gl.glScalef(scale, scale, scale);
+            float lineSpace = fontsize * 1.55f;
+            float blockH = lineSpace * lines.length;
+            float xpos = (chip.getSizeX() / 2f) / scale;
+            float y = (chip.getSizeY() / 2f) / scale + (blockH / 2f) - fontsize;
+            for (String line : lines) {
+                DrawGL.drawStringDropShadow(fontsize, xpos, y, .5f, Color.white, line);
+                y -= lineSpace;
+            }
+            gl.glPopMatrix();
+        } catch (GLException e) {
+            log.log(Level.FINE, "welcome overlay: {0}", e.toString());
+        }
+    }
 
     public void displayChanged(final GLAutoDrawable drawable, final boolean modeChanged, final boolean deviceChanged) {
         log.info("display changed");

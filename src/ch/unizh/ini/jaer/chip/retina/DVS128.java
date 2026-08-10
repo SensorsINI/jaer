@@ -74,7 +74,7 @@ import net.sf.jaer.util.WarningDialogWithDontShowPreference;
  *
  * @author tobi
  */
-@Description("DVS128 Dynamic Vision Sensor")
+@Description("DVS128 Dynamic Vision Sensor, 128x128, 40um pitch, the granddaddy of all event cameras")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @UsbDevices({
     @UsbDevice(vid = USBInterface.VID_THESYCON, pid = CypressFX2.PID_DVS128_REV0),

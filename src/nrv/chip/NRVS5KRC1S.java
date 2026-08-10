@@ -26,7 +26,7 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
  *
  * @see https://nrv.kr/
  */
-@Description("NRV S5KRC1S 960x720 DVS camera")
+@Description("NRV (NeuroReality Vision) S5KRC1S 960x720 DVS camera, 9um pitch, final Samsung DVS chip for first round of event camera development")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 @UsbDevices({
     @UsbDevice(vid = NRVHardwareInterface.VID, pid = NRVHardwareInterface.PID_FX20),

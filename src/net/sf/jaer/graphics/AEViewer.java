@@ -105,6 +105,7 @@ import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.KeyStroke;
+import net.sf.jaer.Description;
 import net.sf.jaer.JAERViewer;
 import net.sf.jaer.JaerConstants;
 import net.sf.jaer.JaerUpdaterFrame;
@@ -1038,6 +1039,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 Class c = FastClassFinder.forName(deviceClassName);
                 chipClasses.add(c);
                 JRadioButtonMenuItem b = new JRadioButtonMenuItem(deviceClassName);
+                b.setToolTipText(descriptionTooltipForClass(c));
                 deviceMenu.insert(b, deviceMenu.getItemCount() - 4); // change if more items added at end of AEChip menu, e.g. renewChipMI
                 b.addActionListener((ActionEvent evt) -> {
                     try {
@@ -1076,6 +1078,18 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
              * froozen items top, frozen items bottom
          */
         MenuScroller.setScrollerFor(deviceMenu, 15, 100, 4, 2);
+    }
+
+    /** Tooltip from {@link Description} on the AEChip class, or a short placeholder. */
+    private static String descriptionTooltipForClass(Class<?> c) {
+        if (c != null && c.isAnnotationPresent(Description.class)) {
+            String d = c.getAnnotation(Description.class).value();
+            if (d != null && !d.isBlank()) {
+                return d;
+            }
+        }
+        return "No @Description on " + (c != null ? c.getSimpleName() : "?")
+                + " — add @Description(\"...\") on the AEChip class";
     }
 
     /**
@@ -2567,6 +2581,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private void disarmEdtLivenessWatchdog() {
         edtHeartbeatMs.set(0);
+    }
+
+    /** True while a file open is in progress (ViewLoop should not open USB). */
+    public boolean isSuppressHardwareOpen() {
+        return suppressHardwareOpen;
     }
 
     /**

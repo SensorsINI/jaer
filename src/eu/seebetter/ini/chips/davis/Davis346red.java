@@ -8,7 +8,7 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
-@Description("DAVIS346 346x260 pixel APS-DVS DAVIS USB 3.0 sensor (red case)")
+@Description("Inivation DAVIS346 346x260 hybrid vision sensor (HVS) with events+frames+IMU; pixel APS-DVS DAVIS USB 3.0 sensor (red case); 18.5um pitch")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Davis346red extends Davis346BaseCamera {
 	public Davis346red() {

@@ -59,7 +59,7 @@ import net.sf.jaer.util.TextRendererScale;
  * 
  * @author Pei Haoxiang
  */
-@Description("DVXplorer")
+@Description("DVXplorer, 640x480, 9um pitch, Samsung DVS built into USB camera by inivation")
 @DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
 @UsbDevices({
     @UsbDevice(vid = CypressFX3.VID, pid = DVXplorerFX3HardwareInterface.PID_FX3)

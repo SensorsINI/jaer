@@ -21,6 +21,9 @@ package net.sf.jaer;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 import org.apache.commons.io.IOUtils;
@@ -91,10 +94,36 @@ public class JaerConstants {
                 }
                 return "(version not found)";
             } catch (Exception e) {
-                return String.format("(version not found, caught %$s)",e.toString());
+                return String.format("(version not found, caught %s)",e.toString());
             }
         } else {
             return "(missing file " + VERSION_FILE + " in jAER.jar)";
         }
+    }
+
+    /**
+     * Short release version for UI (e.g. splash / welcome overlay), from first line of
+     * {@link #VERSION_FILE} or repo-root {@code VERSION.txt}.
+     */
+    public static String getReleaseVersion() {
+        String build = getBuildVersion();
+        if (build != null && !build.isEmpty() && !build.startsWith("(")) {
+            String first = build.split("\\R", 2)[0].trim();
+            if (!first.isEmpty()) {
+                return first;
+            }
+        }
+        try {
+            Path p = Path.of("VERSION.txt");
+            if (Files.isRegularFile(p)) {
+                String line = Files.readString(p, StandardCharsets.UTF_8).split("\\R", 2)[0].trim();
+                if (!line.isEmpty()) {
+                    return line;
+                }
+            }
+        } catch (Exception e) {
+            log.fine("Could not read VERSION.txt: " + e);
+        }
+        return "dev";
     }
 }

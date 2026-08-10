@@ -16,7 +16,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  *
  * @author Tobi
  */
-@Description("The DAVIS240C camera")
+@Description("The DAVIS240C camera, 240x180, 18.5um pitch, the original DAVIS camera published 2014 in JSSC")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class DAVIS240C extends DAVIS240BaseCamera {
 
