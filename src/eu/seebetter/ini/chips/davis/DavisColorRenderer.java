@@ -422,8 +422,9 @@ public class DavisColorRenderer extends DavisRenderer {
                     offColor[2] = 0;
                     break;
                 case RedBlue:
-                    onColor[0] = 0;
-                    onColor[1] = 0;
+                    // lightened blue (mix white into R/G) — pure blue is dim on dark backgrounds
+                    onColor[0] = RED_BLUE_BLUE_WHITE_MIX * colorContrastAdditiveStep;
+                    onColor[1] = RED_BLUE_BLUE_WHITE_MIX * colorContrastAdditiveStep;
                     onColor[2] = colorContrastAdditiveStep;
                     offColor[0] = colorContrastAdditiveStep;
                     offColor[1] = 0;

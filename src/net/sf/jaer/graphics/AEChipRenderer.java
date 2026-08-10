@@ -87,12 +87,12 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         GrayLevel("Each event causes linear change in brightness", .5f),
         //        Contrast("Each event causes multiplicative change in brightness to produce logarithmic scale"),
         RedGreen("ON events are green; OFF events are red, black background", 0),
-        RedBlue("ON events are blue; OFF events are red, black background", 0),
+        RedBlue("ON events are light blue; OFF events are red, black background", 0),
         //        FadingActivity("Events are accumulated (without polarity) and are faded away according to color scale", 0),
         //        SlidingWindow("Events are accumulated in overlapping windows", 0),
         ColorTime("Events are colored according to time within displayed slice, with red coding old events and green coding new events", 0f),
         GrayTime("Events are colored according to time within displayed slice, with white coding old events and black coding new events", 1f),
-        HotCode("Events counts are colored blue to red, blue=0, red=full scale", 0),
+        HotCode("Event counts colored blue→red (levels span full ramp), white at full scale", 0),
         WhiteBackground("ON events are green; OFF events are red, white background", 1), //		ComplementaryFilter("Events are reconstructed using bandpass event filter")
         ;
         public String description;
@@ -177,6 +177,17 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     protected boolean subsamplingEnabled = prefs.getBoolean("ChipRenderer.subsamplingEnabled", false);
     protected float[][] timeColors;
     /**
+     * HotCode color LUT: blue→red hue sweep. Distinct from {@link #timeColors}
+     * so ColorTime is unchanged. Full-scale white is applied in {@link #setHotCodeColor},
+     * which also remaps counts by {@code colorScale} so discrete event levels span the full ramp.
+     */
+    protected float[][] hotCodeColors;
+    /**
+     * White mix added to R and G for {@link ColorMode#RedBlue} ON (blue) events,
+     * so blue is more visible on a dark background (pure blue is perceptually dim).
+     */
+    protected static final float RED_BLUE_BLUE_WHITE_MIX = 0.30f;
+    /**
      * Per-pixel event count (0–1) for {@link ColorMode#HotCode} on RGB pixmaps
      * that have no alpha channel (unlike {@link DavisRenderer}).
      */
@@ -206,7 +217,6 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         }
         setChip(chip);
         timeColors = new float[NUM_TIME_COLORS][3];
-        float s = 1f / NUM_TIME_COLORS;
         for (int i = 0; i < NUM_TIME_COLORS; i++) {
             int rgb = Color.HSBtoRGB((0.66f * (NUM_TIME_COLORS - i)) / NUM_TIME_COLORS, 1f, 1f);
             Color c = new Color(rgb);
@@ -215,6 +225,18 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
             timeColors[i][2] = comp[2];
             timeColors[i][1] = comp[1];
             // System.out.println(String.format("%.2f %.2f %.2f",comp[0],comp[1],comp[2]));
+        }
+        // HotCode LUT: pure blue (H=0.66) → pure red (H=0). Indexing by colorScale
+        // (so every discrete level is used) is done in setHotCodeColor.
+        hotCodeColors = new float[NUM_TIME_COLORS][3];
+        for (int i = 0; i < NUM_TIME_COLORS; i++) {
+            final float hue = 0.66f * (1f - ((float) i / (NUM_TIME_COLORS - 1)));
+            int rgb = Color.HSBtoRGB(hue, 1f, 1f);
+            Color c = new Color(rgb);
+            float[] comp = c.getRGBColorComponents(null);
+            hotCodeColors[i][0] = comp[0];
+            hotCodeColors[i][1] = comp[1];
+            hotCodeColors[i][2] = comp[2];
         }
         setColorScale(prefs.getInt("colorScale", 2)); // tobi changed default to 2 events full scale Apr 2013
         final int legacyMax = prefs.getInt(PREF_SKIP_PACKETS_RENDERING_MAX,
@@ -452,8 +474,15 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                 if (ind < 0) {
                                     continue;
                                 }
-                                // type 0=OFF -> red (ind+0), type 1=ON -> blue (ind+2)
-                                f[ind + (type == 0 ? 0 : 2)] += colorContrastAdditiveStep;
+                                // type 0=OFF -> red; type 1=ON -> lightened blue (mix white into R/G)
+                                if (type == 0) {
+                                    f[ind] += colorContrastAdditiveStep;
+                                } else {
+                                    final float white = RED_BLUE_BLUE_WHITE_MIX * colorContrastAdditiveStep;
+                                    f[ind] += white;
+                                    f[ind + 1] += white;
+                                    f[ind + 2] += colorContrastAdditiveStep;
+                                }
                             }
                             break;
                         case ColorTime:
@@ -549,15 +578,7 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
                                     count = 1f;
                                 }
                                 eventCountMap[pix] = count;
-                                int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * count));
-                                if (ind < 0) {
-                                    ind = 0;
-                                } else if (ind >= timeColors.length) {
-                                    ind = timeColors.length - 1;
-                                }
-                                f[index] = timeColors[ind][0];
-                                f[index + 1] = timeColors[ind][1];
-                                f[index + 2] = timeColors[ind][2];
+                                setHotCodeColor(f, index, count);
                             }
                         }
                         break;
@@ -1129,6 +1150,46 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
         if (eventCountMap != null) {
             Arrays.fill(eventCountMap, 0f);
         }
+    }
+
+    /**
+     * Maps a HotCode event-count fraction in [0,1] into RGB at pixmap {@code index}.
+     * Full scale (1) is white. Below that, counts are remapped by {@code colorScale} so
+     * the first event is blue and the last step before full scale is red — otherwise with
+     * moderate FS the first discrete step already skips past blue.
+     */
+    protected void setHotCodeColor(float[] map, int index, float count) {
+        if (count >= 1f) {
+            map[index] = 1f;
+            map[index + 1] = 1f;
+            map[index + 2] = 1f;
+            return;
+        }
+        // count = k/colorScale for integer event levels k.
+        // Remap so k=1 → blue (t=0) and k=colorScale-1 → red (t=1).
+        final int scale = Math.max(1, getColorScale());
+        final float t;
+        if (scale <= 2) {
+            // Only one color before white: use mid-ramp (green/yellow).
+            t = 0.5f;
+        } else {
+            float tr = (count * scale - 1f) / (scale - 2f);
+            if (tr < 0f) {
+                tr = 0f;
+            } else if (tr > 1f) {
+                tr = 1f;
+            }
+            t = tr;
+        }
+        int ind = (int) Math.floor(((NUM_TIME_COLORS - 1) * t));
+        if (ind < 0) {
+            ind = 0;
+        } else if (ind >= hotCodeColors.length) {
+            ind = hotCodeColors.length - 1;
+        }
+        map[index] = hotCodeColors[ind][0];
+        map[index + 1] = hotCodeColors[ind][1];
+        map[index + 2] = hotCodeColors[ind][2];
     }
 
     /**

@@ -817,17 +817,7 @@ public class DavisRenderer extends AEChipRenderer {
                 break;
                 case HotCode: {
                     map[index + 3] = clip01(map[index + 3] + colorContrastAdditiveStep); // use alpha channel for storing event count
-                    int ind = (int) Math.floor(((AEChipRenderer.NUM_TIME_COLORS - 1) * map[index + 3]));
-
-                    if (ind < 0) {
-                        ind = 0;
-                    } else if (ind >= timeColors.length) {
-                        ind = timeColors.length - 1;
-                    }
-
-                    map[index] = timeColors[ind][0];
-                    map[index + 1] = timeColors[ind][1];
-                    map[index + 2] = timeColors[ind][2];
+                    setHotCodeColor(map, index, map[index + 3]);
                 }
                 break;
                 case GrayTime: {
@@ -866,7 +856,11 @@ public class DavisRenderer extends AEChipRenderer {
                 case RedBlue: {
                     map[index + 3] = 1;  // use full alpha, just scale each color change by scale //  clip01(scale); // alpha
                     if ((e.polarity == PolarityEvent.Polarity.On) || ignorePolarityEnabled) {
-                        map[index + 2] += colorContrastAdditiveStep; // blue up from black 0
+                        // lightened blue (mix white into R/G) — pure blue is dim on dark backgrounds
+                        final float white = RED_BLUE_BLUE_WHITE_MIX * colorContrastAdditiveStep;
+                        map[index] += white;
+                        map[index + 1] += white;
+                        map[index + 2] += colorContrastAdditiveStep;
                     } else {
                         map[index] += colorContrastAdditiveStep; // red up
                     }
