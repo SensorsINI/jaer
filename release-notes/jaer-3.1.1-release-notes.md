@@ -1,17 +1,3 @@
-
-
-https://github.com/user-attachments/assets/b035d563-20e5-40c0-9bfe-d7ebba0e1698
-
-<!--
-  Paste-ready for GitHub Releases once these files are on GitHub (master or tag 3.1.1).
-  Image links below use raw.githubusercontent.com so they render in the Release body.
-  After you push tag 3.1.1, optionally change /master/ → /3.1.1/ in the image URLs for permanence.
-
-  Relative paths (3.1.1/....png) also work when viewing this file in the repo on GitHub,
-  but they do NOT work when pasted into a Release description — use the absolute URLs.
--->
-
-
 Go to [install4j jAER installers on Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers. Choose the release folder corresponding to this release.
 
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
