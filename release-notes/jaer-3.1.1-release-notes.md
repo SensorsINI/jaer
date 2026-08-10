@@ -12,7 +12,7 @@ Go to [install4j jAER installers on Dropbox](https://www.dropbox.com/scl/fo/ibqm
 
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
 
-**jAER 3.1.1** adds **DSEC-layout HDF5 event playback** (classic [DSEC](https://dsec.ifi.uzh.ch/) VGA and HD exports such as [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html)), plus a patch focused on **faster DV / AEDAT-4 LZ4 playback**: detect slow dependent-block LZ4, optionally re-record a sibling optimized copy, and open large recordings with less waiting. Also expands **DVS color modes** (RedBlue, GrayTime, HotCode, WhiteBackground), **iniVation AEDAT-4 sample-data** Help links, and fixes an **Intel Arc OpenGL** crash when switching AEChips live.
+**jAER 3.1.1** adds **DSEC-layout HDF5 event playback** (classic [DSEC](https://dsec.ifi.uzh.ch/) VGA and HD exports such as [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html)), plus a patch focused on **faster DV / AEDAT-4 LZ4 playback**: detect slow dependent-block LZ4, optionally re-record a sibling optimized copy, and open large recordings with less waiting. Also expands **DVS color modes** (RedBlue, GrayTime, HotCode, WhiteBackground), improves **File → Export video** (Show folder / Play video after export), adds **sample-data** Help links (incl. DVS128), and fixes an **Intel Arc OpenGL** crash when switching AEChips live.
 
 ### Highlights
 
@@ -36,6 +36,14 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 * **Intel Arc OpenGL fix** — live AEChip switch no longer crashes on some Intel Arc GPUs (reuse one `GLCanvas`, EDT-safe chip change, prefer remembered live AEChip at startup).
 
+* **Video export** — after **File → Export video** finishes (AVI and optional ffmpeg MP4), a confirmation offers **Show folder** and **Play video** so you can open the output immediately. Export still matches AEViewer target frame rate for smooth playback.
+
+DVS128 walk-to-Kripa example (exported from jAER; autoplay / muted / loop when the host supports HTML `<video>`):
+
+<video src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.1.1/dvs128_walk_to_kripa2.mp4" autoplay muted loop playsinline width="100%"></video>
+
+[Download DVS128 walk-to-Kripa MP4](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.1.1/dvs128_walk_to_kripa2.mp4)
+
 ### Features
 
 * **DSEC / EventKitchen HDF5**
@@ -55,8 +63,12 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
   * New / completed DVS color modes in `AEChipRenderer` (and Davis / multi-camera paths): **RedBlue**, **GrayTime**, **HotCode**, **WhiteBackground**.
   * Fixed right-drag pan after mouse-wheel zoom.
 
+* **Video export**
+  * Post-export confirmation: **Show folder** and **Play video** (AVI or MP4) via `ShowFolderSaveConfirmation`.
+  * Continues File → Export video path: OpenGL capture to AVI, optional ffmpeg MP4, frame rate matched to AEViewer target FPS.
+
 * **Help / samples**
-  * Help menu: iniVation release-repo AEDAT-4 datasets (`https://release.inivation.com/?prefix=datasets/`) alongside existing DAVIS346 / MISTLab / Prophesee links.
+  * Help → Sample data: **DVS09 / DVS128** sample files first ([Google Doc](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?tab=t.0)), then iniVation AEDAT-4 datasets (`https://release.inivation.com/?prefix=datasets/`) alongside existing DAVIS346 / MISTLab / Prophesee links.
 
 ### Bug fixes and minor improvements
 
