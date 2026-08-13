@@ -72,20 +72,35 @@ public final class Imx636Init {
         return b;
     }
 
-    public static void applyBiases(DeviceHandle handle, PropheseeBiases biases) throws HardwareInterfaceException {
-        writeBias(handle, REG_BIAS_PR, biases.pr);
-        writeBias(handle, REG_BIAS_FO, biases.fo);
-        writeBias(handle, REG_BIAS_HPF, biases.hpf);
-        writeBias(handle, REG_BIAS_DIFF_ON, biases.diffOn);
-        writeBias(handle, REG_BIAS_DIFF, biases.diff);
-        writeBias(handle, REG_BIAS_DIFF_OFF, biases.diffOff);
-        writeBias(handle, REG_BIAS_INV, biases.inv);
-        writeBias(handle, REG_BIAS_REFR, biases.refr);
-        writeBias(handle, REG_BIAS_REQPUY, biases.reqpuy);
-        writeBias(handle, REG_BIAS_REQPUX, biases.reqpux);
-        writeBias(handle, REG_BIAS_SENDREQPDY, biases.sendreqpdy);
-        writeBias(handle, REG_BIAS_UNKNOWN1, biases.unknown1);
-        writeBias(handle, REG_BIAS_UNKNOWN2, biases.unknown2);
+    public static void applyBiases(DeviceHandle handle, PropheseeBiases biases)
+            throws HardwareInterfaceException {
+        applyChangedBiases(handle, null, biases);
+    }
+
+    /** Writes only registers that differ from {@code previous} (null = write all). */
+    public static void applyChangedBiases(DeviceHandle handle, PropheseeBiases previous, PropheseeBiases biases)
+            throws HardwareInterfaceException {
+        writeBiasIfChanged(handle, previous, REG_BIAS_PR, previous == null ? -1 : previous.pr, biases.pr);
+        writeBiasIfChanged(handle, previous, REG_BIAS_FO, previous == null ? -1 : previous.fo, biases.fo);
+        writeBiasIfChanged(handle, previous, REG_BIAS_HPF, previous == null ? -1 : previous.hpf, biases.hpf);
+        writeBiasIfChanged(handle, previous, REG_BIAS_DIFF_ON, previous == null ? -1 : previous.diffOn, biases.diffOn);
+        writeBiasIfChanged(handle, previous, REG_BIAS_DIFF, previous == null ? -1 : previous.diff, biases.diff);
+        writeBiasIfChanged(handle, previous, REG_BIAS_DIFF_OFF, previous == null ? -1 : previous.diffOff, biases.diffOff);
+        writeBiasIfChanged(handle, previous, REG_BIAS_INV, previous == null ? -1 : previous.inv, biases.inv);
+        writeBiasIfChanged(handle, previous, REG_BIAS_REFR, previous == null ? -1 : previous.refr, biases.refr);
+        writeBiasIfChanged(handle, previous, REG_BIAS_REQPUY, previous == null ? -1 : previous.reqpuy, biases.reqpuy);
+        writeBiasIfChanged(handle, previous, REG_BIAS_REQPUX, previous == null ? -1 : previous.reqpux, biases.reqpux);
+        writeBiasIfChanged(handle, previous, REG_BIAS_SENDREQPDY, previous == null ? -1 : previous.sendreqpdy, biases.sendreqpdy);
+        writeBiasIfChanged(handle, previous, REG_BIAS_UNKNOWN1, previous == null ? -1 : previous.unknown1, biases.unknown1);
+        writeBiasIfChanged(handle, previous, REG_BIAS_UNKNOWN2, previous == null ? -1 : previous.unknown2, biases.unknown2);
+    }
+
+    private static void writeBiasIfChanged(DeviceHandle handle, PropheseeBiases previous, int address,
+            int oldIdac, int newIdac) throws HardwareInterfaceException {
+        if (previous != null && oldIdac == newIdac) {
+            return;
+        }
+        writeBias(handle, address, newIdac);
     }
 
     private static void writeBias(DeviceHandle handle, int address, int idacCtl)
@@ -93,7 +108,7 @@ public final class Imx636Init {
         Evk4BoardCommand.writeRegister(handle, address, Evk4BoardCommand.encodeBiasValue(idacCtl));
     }
 
-    public static InitResult initializeAndStart(DeviceHandle handle, PropheseeBiases biases)
+    public static InitResult initialize(DeviceHandle handle, PropheseeBiases biases)
             throws HardwareInterfaceException {
         long t0 = System.currentTimeMillis();
         log.fine("Prophesee IMX636 init: begin");
@@ -124,12 +139,26 @@ public final class Imx636Init {
         fineStep("apply DEFAULT biases", t0);
         applyDefaultRoiAndMasks(handle);
         fineStep("apply ROI/masks", t0);
-        issdStart(handle);
-        fineStep("issdStart", t0);
-        Evk4BoardCommand.clearEventEndpointHalt(handle);
-        log.fine(String.format("Prophesee IMX636 init: complete in %dms serial=%s",
+        log.fine(String.format("Prophesee IMX636 init: complete in %dms serial=%s (streaming not started)",
                 System.currentTimeMillis() - t0, serial));
         return new InitResult(serial, chipBiases);
+    }
+
+    public static InitResult initializeAndStart(DeviceHandle handle, PropheseeBiases biases)
+            throws HardwareInterfaceException {
+        final InitResult result = initialize(handle, biases);
+        startStreaming(handle);
+        return result;
+    }
+
+    /** Queue USB bulk INs first, then call this so the FX3 is not overflowing into a stalled endpoint. */
+    public static void startStreaming(DeviceHandle handle) throws HardwareInterfaceException {
+        issdStart(handle);
+        Evk4BoardCommand.clearEventEndpointHalt(handle);
+    }
+
+    public static void stopStreaming(DeviceHandle handle) throws HardwareInterfaceException {
+        issdStop(handle);
     }
 
     /** Re-runs ISSD stop/start (configuration already applied). */

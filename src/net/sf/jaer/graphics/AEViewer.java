@@ -95,6 +95,7 @@ import ch.unizh.ini.jaer.chip.retina.*;
 import nrv.chip.NRVS5KRC1S;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import prophesee.chip.PropheseeIMX636HD;
+import prophesee.usb.PropheseeHardwareInterface;
 import com.google.common.collect.EvictingQueue;
 import eu.seebetter.ini.chips.davis.*;
 import java.awt.Container;
@@ -791,11 +792,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private void cleanup() {
         log.fine("cleanup()");
         stopLogging(true); // in case logging, make sure we give chance to save file
-        // Stop playback before closing HW so stopPlayback can resume LIVE only when still open.
-        // Do not reopen USB from stopPlayback (that hung the EDT on NRV exit).
+        // Close the playback file without starting USB; aemon.close() follows.
         if (aePlayer != null && !suppressHardwareOpen) {
-            // During file-open chip switch, keep the AEPlayer that is opening the file.
-            aePlayer.stopPlayback();
+            aePlayer.stopPlayback(false);
         }
         if ((aemon != null) && aemon.isOpen()) {
             log.fine("closing device " + aemon);
@@ -2683,6 +2682,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } catch (Exception e) {
                 log.warning(e.getMessage() + " (Could some other process have the device open, e.g. flashy or caer?)");
                 log.log(Level.FINE, e.toString(), e);
+                if (aemon instanceof PropheseeHardwareInterface) {
+                    PropheseeHardwareInterface.maybeShowLinuxUdevAccessDialog(this, e);
+                }
                 if (aemon != null) {
                     log.info("closing Monitor" + aemon);
                     aemon.close();
@@ -3109,9 +3111,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             skipRendering = getRenderer().advanceSkipRenderSlot();
                         }
                         if (skipRendering && !filtersNeeded) {
-                            numEvents = numRawEvents;
-                            numFilteredEvents = numRawEvents;
-                            chip.setLastData(cookedPacket);
+                            numEvents = cookedBundle != null && !cookedBundle.isEmpty()
+                                    ? cookedBundle.getNumPolarityEvents()
+                                    : numRawEvents;
+                            numFilteredEvents = numEvents;
+                            if (cookedBundle != null) {
+                                cookedPacket = firstEventPacket(cookedBundle);
+                                chip.setLastData(cookedPacket);
+                                chip.setLastBundle(cookedBundle);
+                            } else {
+                                chip.setLastData(cookedPacket);
+                            }
                             if (isLoggingEnabled() & !isLoggingPaused()) {
                                 logPacket(rawPacket, null);
                             }
@@ -3120,7 +3130,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 break;
                             }
                             singleStepDone();
-                            makeStatisticsLabel(cookedPacket);
                             getFrameRater().takeAfter();
                             getRenderer().adaptRenderSkipping();
                             renderCount++;

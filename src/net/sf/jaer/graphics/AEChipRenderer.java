@@ -1820,11 +1820,9 @@ public class AEChipRenderer extends Chip2DRenderer implements PropertyChangeList
     }
 
     private boolean computeAndAdvanceSkipRenderSlot() {
-        if (skipFrameRenderingNumberCurrent > 0) {
-            if (skipFramesCounter-- > 0) {
-                log.fine(String.format("Skipping rendering this frame (count=%d is positive)", skipFramesCounter));
-                return true;
-            }
+        if (skipFrameRenderingNumberCurrent > 0 && skipFramesCounter > 0) {
+            skipFramesCounter--;
+            return true;
         }
         skipFramesCounter = skipFrameRenderingNumberCurrent;
         return false;

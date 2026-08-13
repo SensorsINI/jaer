@@ -690,7 +690,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
                 prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, usbNumBuffers, this.usbFifoSize, log, "NRV");
         if (aeReader != null) {
-            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+            aeReader.applyBufferSettingsAndRestart(usbFifoSize, usbNumBuffers);
         }
     }
 
@@ -704,7 +704,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
                 prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, numBuffers, usbFifoSize, log, "NRV");
         if (aeReader != null) {
-            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+            aeReader.applyBufferSettingsAndRestart(usbFifoSize, usbNumBuffers);
         }
     }
 

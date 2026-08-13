@@ -1,9 +1,27 @@
 package prophesee.usb;
 
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeSupport;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
@@ -19,6 +37,7 @@ import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import prophesee.chip.PropheseeConfig;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.JaerConstants;
+import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.util.VendorPrefsMigration;
@@ -54,6 +73,12 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("Prophesee");
     /** Pref kill-switch for USB→PacketBundle polarity demux. */
     public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
+
+    /** Shown at most once per JVM; ViewLoop retries open every few hundred ms. */
+    private static final AtomicBoolean LINUX_UDEV_DIALOG_SHOWN = new AtomicBoolean();
+    static final String LINUX_UDEV_RULES_FILE = "/etc/udev/rules.d/99-prophesee-evk4.rules";
+    static final String LINUX_UDEV_RULE =
+            "SUBSYSTEM==\"usb\", ATTR{idVendor}==\"04b4\", ATTR{idProduct}==\"00f5\", MODE=\"0666\"";
 
     static {
         VendorPrefsMigration.migrateHardwarePrefs(VendorPrefsMigration.LEGACY_PROPHESEE_HW_PACKAGE, PREFS);
@@ -106,6 +131,8 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private boolean isOpened = false;
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
+    /** True after {@link Imx636Init#startStreaming}; USB URBs must be queued before this. */
+    private boolean sensorStreaming = false;
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private long lastPacketTimestampLogMs;
@@ -173,9 +200,10 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     }
 
     public void setBiases(PropheseeBiases biases) throws HardwareInterfaceException {
+        final PropheseeBiases previous = this.biases;
         this.biases = biases.copy();
-        if (isOpen() && deviceInitialized) {
-            Imx636Init.applyBiases(deviceHandle, this.biases);
+        if (isOpen() && deviceInitialized && !closing) {
+            Imx636Init.applyChangedBiases(deviceHandle, previous, this.biases);
         }
     }
 
@@ -211,6 +239,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             }
             wasAcquiring = eventAcquisitionEnabled;
             reader = aeReader;
+            stopSensorStreaming();
             if (reader != null) {
                 reader.prepareForStop();
             }
@@ -223,10 +252,12 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
                 return;
             }
             if (includeHandshake) {
-                final Imx636Init.InitResult result = Imx636Init.initializeAndStart(deviceHandle, biases);
+                final Imx636Init.InitResult result = Imx636Init.initialize(deviceHandle, biases);
                 chipFirmwareBiases = result.chipBiases;
+                sensorStreaming = false;
             } else {
-                Imx636Init.restartStreaming(deviceHandle, biases);
+                Imx636Init.stopStreaming(deviceHandle);
+                sensorStreaming = false;
                 chipFirmwareBiases = Imx636Init.readDefaultBiases(deviceHandle);
             }
         }
@@ -238,6 +269,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
                 aeReader = new PropheseeAEReader(this);
             }
             aeReader.startThread();
+            startSensorStreaming();
         }
     }
 
@@ -250,12 +282,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         int status = LibUsb.open(device, deviceHandle);
         if (status != LibUsb.SUCCESS) {
             deviceHandle = null;
-            final String driverHint = (status == LibUsb.ERROR_ACCESS
-                    || status == LibUsb.ERROR_NOT_SUPPORTED
-                    || status == LibUsb.ERROR_BUSY)
-                    ? " Install WinUSB for EVK4 (Prophesee wdi-simple or Zadig, VID 04B4 PID 00F5)."
-                    : "";
-            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + driverHint);
+            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + libUsbOpenHint(status));
         }
 
         deviceDescriptor = new DeviceDescriptor();
@@ -284,17 +311,130 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             log.warning("Could not read all USB string descriptors: " + e.getMessage());
         }
 
-        log.fine("Prophesee open: running ISSD init pipeline");
-        final Imx636Init.InitResult initResult = Imx636Init.initializeAndStart(deviceHandle, biases);
+        log.fine("Prophesee open: running ISSD init pipeline (streaming deferred until USB reader starts)");
+        final Imx636Init.InitResult initResult = Imx636Init.initialize(deviceHandle, biases);
         serial = initResult.serial;
         chipFirmwareBiases = initResult.chipBiases;
         deviceInitialized = true;
+        sensorStreaming = false;
 
         usbTransferFailed = false;
         closing = false;
         isOpened = true;
         log.info("Prophesee EVK4 opened serial=" + serial + " VID:PID="
                 + String.format("%04x:%04x", deviceDescriptor.idVendor(), deviceDescriptor.idProduct()));
+    }
+
+    /**
+     * Hint after {@link LibUsb#open} failure. WinUSB/Zadig is Windows-only;
+     * Linux ACCESS is udev permissions or another process holding the device.
+     */
+    static String libUsbOpenHint(int status) {
+        if (status != LibUsb.ERROR_ACCESS && status != LibUsb.ERROR_NOT_SUPPORTED
+                && status != LibUsb.ERROR_BUSY) {
+            return "";
+        }
+        final String os = System.getProperty("os.name", "");
+        if (os.startsWith("Windows")) {
+            return " Install WinUSB for EVK4 (Prophesee wdi-simple or Zadig, VID 04B4 PID 00F5).";
+        }
+        if (os.contains("Linux")) {
+            if (status == LibUsb.ERROR_ACCESS) {
+                return " Linux: udev rule for 04b4:00f5 (MODE=0666) then unplug/replug;"
+                        + " or another process holds the device.";
+            }
+            return " Linux: close Metavision/flashy/caer/another jAER that holds the device.";
+        }
+        return " Close other processes using the camera (Metavision, another jAER).";
+    }
+
+    static String kernelDriverHint() {
+        final String os = System.getProperty("os.name", "");
+        if (os.startsWith("Windows")) {
+            return "Install the Prophesee WinUSB driver (wdi-simple) or replace with WinUSB via Zadig.";
+        }
+        if (os.contains("Linux")) {
+            return "Check lsusb -t / udev for 04b4:00f5, or close Metavision if it claimed the interface.";
+        }
+        return "A kernel driver may be bound; close other software using the camera.";
+    }
+
+    static String linuxUdevInstallCommands() {
+        return "sudo tee " + LINUX_UDEV_RULES_FILE + " >/dev/null <<'EOF'\n"
+                + LINUX_UDEV_RULE + "\n"
+                + "EOF\n"
+                + "sudo udevadm control --reload-rules\n"
+                + "sudo udevadm trigger\n";
+    }
+
+    /**
+     * Once per JVM, on Linux {@code LIBUSB_ERROR_ACCESS}, post a udev how-to dialog on the EDT.
+     * Safe to call from ViewLoop.
+     */
+    public static void maybeShowLinuxUdevAccessDialog(final Component parent, final Throwable error) {
+        if (error == null || error.getMessage() == null
+                || !error.getMessage().contains("LIBUSB_ERROR_ACCESS")) {
+            return;
+        }
+        if (!System.getProperty("os.name", "").contains("Linux")) {
+            return;
+        }
+        if (!LINUX_UDEV_DIALOG_SHOWN.compareAndSet(false, true)) {
+            return;
+        }
+        final Runnable r = () -> showLinuxUdevAccessDialog(parent);
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    private static void showLinuxUdevAccessDialog(final Component parent) {
+        final String commands = linuxUdevInstallCommands();
+        final JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        final JLabel intro = new JLabel("<html>"
+                + "jAER cannot open the Prophesee EVK4 (USB <code>04b4:00f5</code>)."
+                + " Linux denied libusb access (<code>LIBUSB_ERROR_ACCESS</code>).<br><br>"
+                + "<b>1.</b> Copy the commands below.<br>"
+                + "<b>2.</b> Paste them into a terminal and run them (enter your sudo password).<br>"
+                + "<b>3.</b> Unplug the EVK4, plug it back in, then choose it again from the"
+                + " Interface menu (or restart jAER).<br><br>"
+                + "If it still fails, close Metavision, flashy, caer, or another jAER instance."
+                + "</html>");
+        intro.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(intro);
+        panel.add(Box.createVerticalStrut(8));
+
+        final JTextArea area = new JTextArea(commands);
+        area.setEditable(false);
+        area.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        area.setLineWrap(false);
+        area.setTabSize(4);
+        area.selectAll();
+        final JScrollPane scroll = new JScrollPane(area);
+        scroll.setAlignmentX(Component.LEFT_ALIGNMENT);
+        scroll.setPreferredSize(new Dimension(560, 110));
+        panel.add(scroll);
+        panel.add(Box.createVerticalStrut(8));
+
+        final JButton copy = new JButton("Copy commands");
+        copy.setAlignmentX(Component.LEFT_ALIGNMENT);
+        copy.addActionListener(e -> {
+            Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new StringSelection(area.getText()), null);
+            copy.setText("Copied");
+        });
+        panel.add(copy);
+
+        final JPanel wrap = new JPanel(new BorderLayout());
+        wrap.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
+        wrap.add(panel, BorderLayout.CENTER);
+
+        JOptionPane.showMessageDialog(parent, wrap,
+                "Linux USB permission for Prophesee EVK4",
+                JOptionPane.WARNING_MESSAGE);
     }
 
     private void acquireDevice() throws HardwareInterfaceException {
@@ -328,6 +468,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         } catch (HardwareInterfaceException e) {
             log.warning("Error disabling event acquisition on close: " + e.getMessage());
         }
+        sensorStreaming = false;
         if (deviceHandle != null) {
             Imx636Init.shutdown(deviceHandle);
         }
@@ -375,9 +516,15 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             eventCounter = 0;
             lastEventsAcquired = aePacketRawPool.readBuffer();
         }
-        final int nEvents = lastEventsAcquired.getNumEvents();
-        computeEstimatedEventRate(lastEventsAcquired);
+        if (usbTypedDemuxActive) {
+            computeEstimatedEventRate(lastPacketBundle);
+        } else {
+            computeEstimatedEventRate(lastEventsAcquired);
+        }
         maybeLogPacketTimestampStats(lastEventsAcquired);
+        final int nEvents = usbTypedDemuxActive
+                ? lastPacketBundle.getNumPolarityEvents()
+                : lastEventsAcquired.getNumEvents();
         if (nEvents != 0) {
             support.firePropertyChange(NEW_EVENTS_PROPERTY_CHANGE);
         } else if (lastEventsAcquired.overrunOccuredFlag) {
@@ -404,6 +551,21 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         final int[] ts = events.getTimestamps();
         final int n = events.getNumEvents();
         final int dt = ts[n - 1] - ts[0];
+        estimatedEventRate = dt <= 0 ? 0 : (int) ((1e6f * n) / dt);
+    }
+
+    private void computeEstimatedEventRate(PacketBundle bundle) {
+        if (bundle == null) {
+            estimatedEventRate = 0;
+            return;
+        }
+        final EventPacket<?> polarity = bundle.getFirstPolarityPacket();
+        if (polarity == null || polarity.getSize() < 2) {
+            estimatedEventRate = 0;
+            return;
+        }
+        final int n = polarity.getSize();
+        final int dt = polarity.getEvent(n - 1).timestamp - polarity.getEvent(0).timestamp;
         estimatedEventRate = dt <= 0 ? 0 : (int) ((1e6f * n) / dt);
     }
 
@@ -473,11 +635,17 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         synchronized (aePacketRawPool) {
             aePacketRawPool.allocateMemory();
         }
+        if (aeReader != null) {
+            aeReader.onAeBufferSizeChanged(size);
+        }
     }
 
     @Override
     public void setEventAcquisitionEnabled(boolean enable) throws HardwareInterfaceException {
         if (enable) {
+            if (closing || !isOpen()) {
+                return;
+            }
             if (aeReader == null) {
                 aeReader = new PropheseeAEReader(this);
                 synchronized (aePacketRawPool) {
@@ -486,11 +654,40 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             }
             log.fine("Prophesee open: starting event reader thread");
             aeReader.startThread();
+            startSensorStreaming();
         } else if (aeReader != null) {
+            stopSensorStreaming();
             aeReader.prepareForStop();
             aeReader.finishStop();
         }
         eventAcquisitionEnabled = enable;
+    }
+
+    void stopSensorStreaming() {
+        if (!sensorStreaming || deviceHandle == null) {
+            return;
+        }
+        try {
+            Imx636Init.stopStreaming(deviceHandle);
+        } catch (HardwareInterfaceException e) {
+            log.warning("Prophesee ISSD stop: " + e.getMessage());
+        }
+        sensorStreaming = false;
+    }
+
+    void startSensorStreaming() throws HardwareInterfaceException {
+        if (sensorStreaming || deviceHandle == null || closing) {
+            return;
+        }
+        Imx636Init.startStreaming(deviceHandle);
+        sensorStreaming = true;
+    }
+
+    void persistUsbFifoSize(int fifoSize) {
+        this.usbFifoSize = UsbReaderBufferSettings.applyFifoSize(
+                prefs, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, fifoSize, log, "Prophesee");
+        this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
+                prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, usbNumBuffers, this.usbFifoSize, log, "Prophesee");
     }
 
     @Override
@@ -608,7 +805,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
                 prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, usbNumBuffers, this.usbFifoSize, log, "Prophesee");
         if (aeReader != null) {
-            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+            aeReader.applyBufferSettingsAndRestart(usbFifoSize, usbNumBuffers);
         }
     }
 
@@ -622,7 +819,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         this.usbNumBuffers = UsbReaderBufferSettings.applyNumBuffers(
                 prefs, UsbReaderBufferSettings.PREF_KEY_NUM_BUFFERS, numBuffers, usbFifoSize, log, "Prophesee");
         if (aeReader != null) {
-            aeReader.syncUsbBufferSettings(usbFifoSize, usbNumBuffers);
+            aeReader.applyBufferSettingsAndRestart(usbFifoSize, usbNumBuffers);
         }
     }
 

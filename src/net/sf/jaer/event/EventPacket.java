@@ -704,6 +704,34 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
     }
 
     /**
+     * Exchange backing arrays with {@code other} (same event class). USB demux
+     * fills a private packet off the pool lock, then installs it here in O(1).
+     */
+    public void swapBackingStore(EventPacket<E> other) {
+        if (other == null) {
+            throw new NullPointerException("other");
+        }
+        if (other.eventClass != eventClass) {
+            throw new IllegalArgumentException("swapBackingStore requires the same event class");
+        }
+        final E[] tmpData = elementData;
+        final int tmpSize = size;
+        final int tmpCap = capacity;
+        elementData = other.elementData;
+        size = other.size;
+        capacity = other.capacity;
+        other.elementData = tmpData;
+        other.size = tmpSize;
+        other.capacity = tmpCap;
+        outputIterator = null;
+        inputIterator = null;
+        other.outputIterator = null;
+        other.inputIterator = null;
+        filteredOutCount = 0;
+        other.filteredOutCount = 0;
+    }
+
+    /**
      * Adds the events from another packet to the events of this packet. 
      * <b> Note that only the references are appended, not copies of the events.
      * These references can be reused which invalidates your copy. </b>

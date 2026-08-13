@@ -657,6 +657,17 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
      */
     @Override
     public void stopPlayback() {
+        stopPlayback(true);
+    }
+
+    /**
+     * Stops file playback.
+     *
+     * @param resumeLive if true and the camera is still open, re-enable USB
+     *        acquisition and go {@code LIVE}. Pass false from {@code cleanup()}
+     *        so exit/chip-switch does not start ISSD streaming just to close the device.
+     */
+    public void stopPlayback(boolean resumeLive) {
         if (viewer.getPlayMode() != AEViewer.PlayMode.PLAYBACK) {
             return;
         }
@@ -665,7 +676,7 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
         // cleanup() used to close the device then call stopPlayback(), and open() can hang
         // the EDT in native USB (NRV LibUsb.getStringDescriptorAscii while the reader thread
         // is stuck in deallocateTransfers/handleEventsTimeout).
-        if (viewer.aemon != null && viewer.aemon.isOpen()) {
+        if (resumeLive && viewer.aemon != null && viewer.aemon.isOpen()) {
             try {
                 viewer.aemon.setEventAcquisitionEnabled(true);
                 if (viewer.aemon.getChip().getBiasgen() != null) {

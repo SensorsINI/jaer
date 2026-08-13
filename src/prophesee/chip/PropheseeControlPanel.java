@@ -144,7 +144,9 @@ public class PropheseeControlPanel extends JPanel implements PropertyChangeListe
             }
             final int v = slider.getValue();
             valueLabel.setText(String.format("0x%02X", v));
-            setter.accept(v);
+            if (!slider.getValueIsAdjusting()) {
+                setter.accept(v);
+            }
             if (!slider.getValueIsAdjusting() && biasRow.dragStartValue < 0 && biasRow.lastStableValue != v) {
                 postBiasEdit(biasRow, biasRow.lastStableValue, v);
                 biasRow.lastStableValue = v;

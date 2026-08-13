@@ -55,9 +55,24 @@ public class NRVAEReader {
     void syncUsbBufferSettings(int fifoSize, int numBuffers) {
         this.fifoSize = fifoSize;
         this.numBuffers = numBuffers;
-        if (usbTransfer != null) {
-            usbTransfer.setBufferSize(this.fifoSize);
-            usbTransfer.setBufferNumber(this.numBuffers);
+    }
+
+    /**
+     * {@link USBTransferThread} cannot resize in-flight bulk transfers (LIBUSB_ERROR_IO).
+     * Stop capture, then start a new transfer thread with the new sizes.
+     */
+    void applyBufferSettingsAndRestart(int fifoSize, int numBuffers) {
+        this.fifoSize = fifoSize;
+        this.numBuffers = numBuffers;
+        if (usbTransfer == null) {
+            return;
+        }
+        log.info("Restarting NRV AEReader to apply USB fifo=" + fifoSize + " buffers=" + numBuffers);
+        stopThread();
+        try {
+            startThreadInternal(false);
+        } catch (HardwareInterfaceException e) {
+            log.warning("Failed to restart NRV AEReader after USB buffer change: " + e);
         }
     }
 
@@ -74,8 +89,16 @@ public class NRVAEReader {
     }
 
     public void startThread() throws HardwareInterfaceException {
+        startThreadInternal(true);
+    }
+
+    private void startThreadInternal(boolean resetParser) throws HardwareInterfaceException {
         if (!monitor.isOpen()) {
             monitor.open();
+        }
+        if (usbTransfer != null && !usbTransfer.isAlive()) {
+            log.warning("NRV AEReader thread died; starting a new one");
+            usbTransfer = null;
         }
         if (usbTransfer != null) {
             return;
@@ -84,7 +107,9 @@ public class NRVAEReader {
         synchronized (monitor.getAePacketRawPool()) {
             monitor.getAePacketRawPool().allocateMemory();
         }
-        parser.reset();
+        if (resetParser) {
+            parser.reset();
+        }
         clearEndpointHalt(monitor.getDeviceHandle());
         log.info("Starting NRV AEReader on endpoint 0x81 (fifo=" + getFifoSize()
                 + " buffers=" + getNumBuffers()

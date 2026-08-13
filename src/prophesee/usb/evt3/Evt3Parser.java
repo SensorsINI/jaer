@@ -115,8 +115,18 @@ public class Evt3Parser {
      *         {@code [eventOffset, maxEvents)} are valid; see {@link #getLastBytesConsumed()})
      */
     public int parse(byte[] data, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents) {
+        return parse(data, len, addresses, timestamps, eventOffset, maxEvents, false);
+    }
+
+    /**
+     * @param consumeAllBytes if true (live USB), keep scanning the buffer after the
+     *        output is full so EVT3 timebase stays in sync; dropped events return -1
+     */
+    public int parse(byte[] data, int len, int[] addresses, int[] timestamps, int eventOffset, int maxEvents,
+            boolean consumeAllBytes) {
         int eventCount = eventOffset;
         lastBytesConsumed = 0;
+        boolean overflowed = false;
         for (int i = 0; i + 1 < len; i += 2) {
             final int word = readWord(data, i);
             switch (word >>> 12) {
@@ -129,9 +139,12 @@ public class Evt3Parser {
                     x = word & 0x7FF;
                     polarityOn = (word & (1 << 11)) != 0;
                     if (x < WIDTH && y < HEIGHT) {
-                        eventCount = emitEvent(addresses, timestamps, eventCount, maxEvents, x, y, polarityOn);
-                        if (eventCount < 0) {
-                            lastBytesConsumed = i; // do not consume the overflowing word
+                        if (eventCount < maxEvents) {
+                            eventCount = emitEvent(addresses, timestamps, eventCount, maxEvents, x, y, polarityOn);
+                        } else if (consumeAllBytes) {
+                            overflowed = true;
+                        } else {
+                            lastBytesConsumed = i;
                             return -1;
                         }
                     }
@@ -151,15 +164,19 @@ public class Evt3Parser {
                             final int need = Integer.bitCount(valid1) + Integer.bitCount(valid2)
                                     + Integer.bitCount(valid3 & 0xFF);
                             if (eventCount + need > maxEvents) {
-                                lastBytesConsumed = i;
-                                return -1;
+                                if (!consumeAllBytes) {
+                                    lastBytesConsumed = i;
+                                    return -1;
+                                }
+                                overflowed = true;
+                            } else {
+                                eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
+                                        baseX, y, polarityOn, valid1, 0, 12);
+                                eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
+                                        baseX, y, polarityOn, valid2, 12, 12);
+                                eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
+                                        baseX, y, polarityOn, valid3, 24, 8);
                             }
-                            eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
-                                    baseX, y, polarityOn, valid1, 0, 12);
-                            eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
-                                    baseX, y, polarityOn, valid2, 12, 12);
-                            eventCount = emitVectorMask(addresses, timestamps, eventCount, maxEvents,
-                                    baseX, y, polarityOn, valid3, 24, 8);
                         }
                         x = (x + 32) & 0xffff;
                         i += 4;
@@ -170,13 +187,17 @@ public class Evt3Parser {
                         final int set = word & ((1 << Math.min(8, WIDTH - x)) - 1);
                         final int need = Integer.bitCount(set);
                         if (eventCount + need > maxEvents) {
-                            lastBytesConsumed = i;
-                            return -1;
-                        }
-                        for (int bit = 0; bit < 8; bit++) {
-                            if ((set & (1 << bit)) != 0) {
-                                eventCount = emitEvent(addresses, timestamps, eventCount, maxEvents,
-                                        x + bit, y, polarityOn);
+                            if (!consumeAllBytes) {
+                                lastBytesConsumed = i;
+                                return -1;
+                            }
+                            overflowed = true;
+                        } else {
+                            for (int bit = 0; bit < 8; bit++) {
+                                if ((set & (1 << bit)) != 0) {
+                                    eventCount = emitEvent(addresses, timestamps, eventCount, maxEvents,
+                                            x + bit, y, polarityOn);
+                                }
                             }
                         }
                         x = (x + 8) & 0xffff;
@@ -198,7 +219,8 @@ public class Evt3Parser {
             }
             lastBytesConsumed = i + 2;
         }
-        return eventCount - eventOffset;
+        final int written = eventCount - eventOffset;
+        return overflowed ? -1 : written;
     }
 
     public long getTUs() {

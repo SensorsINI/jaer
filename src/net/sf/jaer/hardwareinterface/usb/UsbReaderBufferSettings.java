@@ -13,10 +13,15 @@ public final class UsbReaderBufferSettings {
     public static final String PREF_KEY_NUM_BUFFERS = "AEReader.numBuffers";
 
     public static final int MIN_FIFO_SIZE = 4096;
-    public static final int MAX_FIFO_SIZE = 20 * 1024 * 1024;
+    /** Per-URB cap. Linux usbfs often rejects very large single transfers. */
+    public static final int MAX_FIFO_SIZE = 2 * 1024 * 1024;
     public static final int MIN_NUM_BUFFERS = 1;
     public static final int MAX_NUM_BUFFERS = 32;
-    public static final long MAX_TOTAL_USB_BUFFER_BYTES = (long) MAX_FIFO_SIZE * MAX_NUM_BUFFERS;
+    /**
+     * Host-side cap on fifo×buffers. Linux {@code usbfs_memory_mb} defaults to 16;
+     * staying under 8 MB leaves headroom for other USB devices.
+     */
+    public static final long MAX_TOTAL_USB_BUFFER_BYTES = 8L * 1024 * 1024;
 
     private UsbReaderBufferSettings() {
     }

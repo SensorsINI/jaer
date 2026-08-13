@@ -21,8 +21,34 @@ public class UsbPolarityBundleBuilder {
     private EventPacket<PolarityEvent> polarity0;
     private EventPacket<PolarityEvent> polarity1;
     private EventPacket<PolarityEvent> polarity;
+    private EventPacket<PolarityEvent> fill;
     private OutputEventIterator<PolarityEvent> polarityOut;
     private boolean polarityInBundle;
+    private int targetCapacity;
+
+    /**
+     * Pre-size both pool-slot polarity packets so live USB does not double
+     * {@link EventPacket} capacity (that allocates hundreds of thousands of
+     * {@link PolarityEvent}s and looks like GC pauses).
+     */
+    public void ensureCapacity(int n) {
+        if (n <= 0) {
+            return;
+        }
+        targetCapacity = Math.max(targetCapacity, n);
+        if (polarity0 == null) {
+            polarity0 = new EventPacket<>(PolarityEvent.class);
+        }
+        polarity0.allocate(targetCapacity);
+        if (polarity1 == null) {
+            polarity1 = new EventPacket<>(PolarityEvent.class);
+        }
+        polarity1.allocate(targetCapacity);
+        if (fill == null) {
+            fill = new EventPacket<>(PolarityEvent.class);
+        }
+        fill.allocate(targetCapacity);
+    }
 
     public void attach(PacketBundle writeBundle) {
         if (writeBundle == null) {
@@ -43,6 +69,9 @@ public class UsbPolarityBundleBuilder {
             if (polarity0 == null) {
                 polarity0 = new EventPacket<>(PolarityEvent.class);
             }
+            if (targetCapacity > 0) {
+                polarity0.allocate(targetCapacity);
+            }
             return polarity0;
         }
         if (slot1 == null || writeBundle == slot1) {
@@ -50,12 +79,18 @@ public class UsbPolarityBundleBuilder {
             if (polarity1 == null) {
                 polarity1 = new EventPacket<>(PolarityEvent.class);
             }
+            if (targetCapacity > 0) {
+                polarity1.allocate(targetCapacity);
+            }
             return polarity1;
         }
         // Unexpected third identity (pool reallocated): remap slot0.
         slot0 = writeBundle;
         if (polarity0 == null) {
             polarity0 = new EventPacket<>(PolarityEvent.class);
+        }
+        if (targetCapacity > 0) {
+            polarity0.allocate(targetCapacity);
         }
         return polarity0;
     }
@@ -119,6 +154,71 @@ public class UsbPolarityBundleBuilder {
                 type = 1 - type;
             }
             addPolarity(x, y, type != 0, ts);
+        }
+    }
+
+    /**
+     * Decode packed addresses into a private packet (not the pool write buffer).
+     * Call off the {@code AEPacketRawPool} lock, then {@link #installFill}.
+     */
+    public void fillPackedOffline(final int[] addresses, final int[] timestamps, final int start, final int n,
+            final int xMask, final int xShift, final int yMask, final int yShift,
+            final int typeMask, final int typeShift,
+            final boolean flipX, final boolean flipY, final boolean flipType,
+            final int sizeX, final int sizeY) {
+        if (n <= 0 || addresses == null || timestamps == null) {
+            return;
+        }
+        if (fill == null) {
+            fill = new EventPacket<>(PolarityEvent.class);
+        }
+        if (targetCapacity > 0) {
+            fill.allocate(targetCapacity);
+        }
+        final EventPacket<PolarityEvent> saved = polarity;
+        final OutputEventIterator<PolarityEvent> savedOut = polarityOut;
+        final boolean savedIn = polarityInBundle;
+        polarity = fill;
+        polarityOut = fill.outputIterator();
+        polarityInBundle = true;
+        try {
+            addPacked(addresses, timestamps, start, n,
+                    xMask, xShift, yMask, yShift, typeMask, typeShift,
+                    flipX, flipY, flipType, sizeX, sizeY);
+        } finally {
+            polarity = saved;
+            polarityOut = savedOut;
+            polarityInBundle = savedIn;
+        }
+    }
+
+    /**
+     * Install the offline fill into the pool write bundle. Empty write slot
+     * swaps backing arrays in O(1); a partial packet appends by {@code copyFrom}.
+     */
+    public void installFill(PacketBundle writeBundle) {
+        installFill(writeBundle, fill != null ? fill.getSize() : 0);
+    }
+
+    public void installFill(PacketBundle writeBundle, int maxEvents) {
+        if (writeBundle == null || fill == null || fill.isEmpty() || maxEvents <= 0) {
+            return;
+        }
+        if (fill.size > maxEvents) {
+            fill.size = maxEvents;
+        }
+        attach(writeBundle);
+        if (polarity.isEmpty()) {
+            polarity.swapBackingStore(fill);
+            polarityOut = null;
+            polarityInBundle = false;
+            flushAll();
+            return;
+        }
+        final OutputEventIterator<PolarityEvent> out = polarity.getOutputIterator();
+        final int n = fill.getSize();
+        for (int i = 0; i < n; i++) {
+            out.nextOutput().copyFrom(fill.getEvent(i));
         }
     }
 

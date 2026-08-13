@@ -148,13 +148,17 @@ public final class Evk4BoardCommand {
     }
 
     public static int flushEventEndpoint(DeviceHandle handle) {
+        return flushEventEndpoint(handle, TIMEOUT_MS);
+    }
+
+    public static int flushEventEndpoint(DeviceHandle handle, long timeoutMs) {
         final ByteBuffer buf = BufferUtils.allocateByteBuffer(1 << 17);
         int totalBytes = 0;
         int transfers = 0;
         while (true) {
             int n;
             try {
-                n = bulkTransfer(handle, EP_EVENTS_IN, buf, TIMEOUT_MS);
+                n = bulkTransfer(handle, EP_EVENTS_IN, buf, timeoutMs);
             } catch (HardwareInterfaceException e) {
                 log.fine("EVK4 flush endpoint: " + e.getMessage());
                 break;

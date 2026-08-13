@@ -119,20 +119,20 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
                 LibUsb.close(devHandle);
                 if (driverStatus != LibUsb.ERROR_NOT_SUPPORTED && driverStatus != LibUsb.SUCCESS) {
                     log.warning(String.format(
-                            "Prophesee EVK4 HD %04x:%04x found but a kernel driver is bound. "
-                                    + "Install the Prophesee WinUSB driver (wdi-simple) or replace with WinUSB via Zadig.",
-                            devDesc.idVendor(), devDesc.idProduct()));
+                            "Prophesee EVK4 HD %04x:%04x found but a kernel driver is bound. %s",
+                            devDesc.idVendor(), devDesc.idProduct(),
+                            PropheseeHardwareInterface.kernelDriverHint()));
                 }
             } else if (openStatus == LibUsb.ERROR_ACCESS || openStatus == LibUsb.ERROR_BUSY) {
                 log.fine(String.format(
-                        "Prophesee EVK4 HD %04x:%04x present but LibUsb.open failed: %s (device likely already open).",
-                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus)));
+                        "Prophesee EVK4 HD %04x:%04x present but LibUsb.open failed: %s (device likely already open).%s",
+                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus),
+                        PropheseeHardwareInterface.libUsbOpenHint(openStatus)));
             } else {
                 log.warning(String.format(
-                        "Prophesee EVK4 HD %04x:%04x detected but LibUsb.open failed: %s. "
-                                + "On Windows, install WinUSB with: wdi-simple.exe -n \"EVK\" -m \"Prophesee\" -v 0x04b4 -p 0x00f5 "
-                                + "(admin Command Prompt), or use Zadig to assign WinUSB to the EVK4.",
-                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus)));
+                        "Prophesee EVK4 HD %04x:%04x detected but LibUsb.open failed: %s.%s",
+                        devDesc.idVendor(), devDesc.idProduct(), LibUsb.errorName(openStatus),
+                        PropheseeHardwareInterface.libUsbOpenHint(openStatus)));
             }
 
             // List matching devices even when open fails so they appear in Interface menu.
