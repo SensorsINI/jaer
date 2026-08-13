@@ -24,6 +24,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.logging.Logger;
 
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
@@ -34,6 +35,15 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
  *
  * @author tobi
  */
+@Description("""
+        <html>
+        <b>UDP multicast AE output</b><br>
+        Broadcast this viewer's events as UDP datagrams to multicast group 230.3.1.4 (LAN only).<br>
+        Any AEViewer with multicast input enabled will receive them.<br>
+        <p><b>Warning:</b> if no one is listening, datagrams still go onto the network and can flood the LAN.
+        Use unicast UDP to send to one host, or TCP for a reliable stream.
+        </html>
+        """)
 public class AEMulticastOutput {
     
 //    enum State {WAITING,CONNECTED};

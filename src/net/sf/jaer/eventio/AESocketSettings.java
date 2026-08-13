@@ -11,17 +11,17 @@ package net.sf.jaer.eventio;
 import java.io.IOException;
 public interface AESocketSettings {
 
-    public static final int DEFAULT_RECEIVE_BUFFER_SIZE_BYTES=8192;
+    public static final int DEFAULT_RECEIVE_BUFFER_SIZE_BYTES=1024 * 1024;
 
-    public static final int DEFAULT_SEND_BUFFER_SIZE_BYTES=8192;
+    public static final int DEFAULT_SEND_BUFFER_SIZE_BYTES=1024 * 1024;
 
-    public static final int DEFAULT_BUFFERED_STREAM_SIZE_BYTES=8192;
+    public static final int DEFAULT_BUFFERED_STREAM_SIZE_BYTES=1024 * 1024;
 
     public static final boolean DEFAULT_USE_BUFFERED_STREAM=false;
 
     /** timeout in ms for connection attempts */
     public static final int CONNECTION_TIMEOUT_MS=3000;
-    /** timeout in ms for read/write attempts */
+    /** Default timeout in ms for read attempts; write still blocks on a full TCP window */
     public static final int SO_TIMEOUT=1; // 1 means we should timeout as soon as there are no more events in the datainputstream
 
     /** Default address first (versus timestamp first) setting */
@@ -38,8 +38,8 @@ public interface AESocketSettings {
     /** jAER by default uses the AE data timestamps */
     public static final boolean DEFAULT_USE_LOCAL_TIMESTAMPS_ENABLED=false;
 
-    /** Incoming or outgoing events times should be treated as timestamps **/
-    public static final boolean DEFAULT_USE_ISI_ENABLED=true;
+    /** Incoming or outgoing events times should be treated as timestamps (not ISIs). */
+    public static final boolean DEFAULT_USE_ISI_ENABLED=false;
 
     public final int MAX_NONMONOTONIC_TIME_EXCEPTIONS_TO_PRINT=10;
 

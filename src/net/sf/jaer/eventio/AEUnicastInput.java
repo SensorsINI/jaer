@@ -24,6 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AENetworkRawPacket;
 import net.sf.jaer.aemonitor.AEPacket;
 import net.sf.jaer.aemonitor.AEPacketRaw;
@@ -65,6 +66,15 @@ import net.sf.jaer.eventio.Jaer3BufferParser.Jaer3EventExtractor;
  *
  *
  */
+@Description("""
+        <html>
+        <b>UDP unicast AE input</b><br>
+        Receive address-events as UDP datagrams on a local port (default 8991).<br>
+        Another AEViewer (or program) sends to this host:port — typically <i>localhost</i> for two viewers on one computer.<br>
+        <p>UDP is unreliable: bursts larger than the socket queue can drop packets. Sequence numbers (first int32 of each datagram)
+        detect gaps. Prefer this over multicast for a single receiver; use TCP sockets if you need guaranteed delivery.
+        </html>
+        """)
 public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener {
 
     private int NBUFFERS = 256; // should match somehow the expected number of datagrams that come in a burst before the readPacket() method is called.

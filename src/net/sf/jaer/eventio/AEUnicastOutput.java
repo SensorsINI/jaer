@@ -23,6 +23,7 @@ import java.util.concurrent.Exchanger;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.util.ByteSwapper;
@@ -41,6 +42,16 @@ import net.sf.jaer.util.ByteSwapper;
  *
  * @author tobi
  */
+@Description("""
+        <html>
+        <b>UDP unicast AE output</b><br>
+        Send this viewer's address-events as UDP datagrams to one host:port (default localhost:8991).<br>
+        Open <b>Unicast UDP input</b> on the receiving AEViewer first, then enable this output.<br>
+        <p>Each AE packet is split into ~63&nbsp;kB datagrams with a sequence number. UDP does not retransmit:
+        if the receiver cannot keep up, packets are dropped (logged as sequence-number gaps).
+        For lossless same-machine streaming, use the TCP socket items instead.
+        </html>
+        """)
 public class AEUnicastOutput implements AEUnicastSettings {
 
     static Preferences prefs= net.sf.jaer.JaerConstants.PREFS_ROOT;

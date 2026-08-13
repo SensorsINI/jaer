@@ -132,6 +132,7 @@ import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.AEMulticastInput;
 import net.sf.jaer.eventio.AEMulticastOutput;
+import net.sf.jaer.eventio.AENetworkInterfaceConstants;
 import net.sf.jaer.eventio.AEServerSocket;
 import net.sf.jaer.eventio.AEServerSocketOptionsDialog;
 import net.sf.jaer.eventio.AESocket;
@@ -459,6 +460,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private boolean suppressAdaptiveRenderSkipMenuSync;
     public static final float FPS_LOWPASS_FILTER_TIMECONSTANT_MS = 300;
     private final int defaultDismissTimeout = ToolTipManager.sharedInstance().getDismissDelay();
+    /** How long File → Remote HTML tooltips stay visible while the pointer is over the item. */
+    private static final int NETWORK_MENU_TOOLTIP_DISMISS_MS = 60_000;
     
     // Actions
     FrameRateDecreaseAction frameRateDecreaseAction=new FrameRateDecreaseAction();
@@ -528,6 +531,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         playerControls = new AePlayerAdvancedControlsPanel(this);
 
         initComponents();
+        applyNetworkMenuDescriptionTooltips();
         // Esc cancels queued jog even when focus is on the heavyweight GL canvas
         // (menu accelerators alone are not always delivered in that case).
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
@@ -1083,16 +1087,107 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         MenuScroller.setScrollerFor(deviceMenu, 15, 100, 4, 2);
     }
 
-    /** Tooltip from {@link Description} on the AEChip class, or a short placeholder. */
+    /** Tooltip from {@link Description} on a class, or a short placeholder. */
     private static String descriptionTooltipForClass(Class<?> c) {
-        if (c != null && c.isAnnotationPresent(Description.class)) {
-            String d = c.getAnnotation(Description.class).value();
-            if (d != null && !d.isBlank()) {
-                return d;
+        return descriptionTooltip(c, null);
+    }
+
+    /**
+     * Tooltip from {@link Description} on a class or declared method. HTML is
+     * used so multi-line descriptions wrap in Swing tooltips.
+     */
+    private static String descriptionTooltip(Class<?> type, String methodName, Class<?>... parameterTypes) {
+        Description d = null;
+        String where = type != null ? type.getSimpleName() : "?";
+        if (type != null) {
+            try {
+                if (methodName != null) {
+                    where = where + "." + methodName;
+                    d = type.getDeclaredMethod(methodName, parameterTypes).getAnnotation(Description.class);
+                } else {
+                    d = type.getAnnotation(Description.class);
+                }
+            } catch (NoSuchMethodException e) {
+                log.warning("no method " + where + " for @Description tooltip");
             }
         }
-        return "No @Description on " + (c != null ? c.getSimpleName() : "?")
-                + " — add @Description(\"...\") on the AEChip class";
+        if (d != null && d.value() != null && !d.value().isBlank()) {
+            return htmlTooltip(d.value());
+        }
+        return htmlTooltip("No @Description on " + where + " — add @Description(\"...\") on the class or method");
+    }
+
+    private static String htmlTooltip(String text) {
+        String t = text.trim();
+        if (t.regionMatches(true, 0, "<html>", 0, 6)) {
+            return t;
+        }
+        return "<html>" + t.replace("\n", "<br>") + "</html>";
+    }
+
+    /**
+     * File → Remote (network) menu tooltips come from {@link Description} on the
+     * I/O classes and the AEViewer methods those items invoke.
+     */
+    private void applyNetworkMenuDescriptionTooltips() {
+        remoteMenu.setToolTipText(descriptionTooltip(AENetworkInterfaceConstants.class, null));
+        openSocketInputStreamMenuItem.setToolTipText(descriptionTooltip(AESocket.class, "readPacket"));
+        openSocketOutputStreamMenuItem.setToolTipText(descriptionTooltip(AESocket.class, "writePacket", AEPacketRaw.class));
+        reopenSocketInputStreamMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "reopenSocketInputStream"));
+        serverSocketOptionsMenuItem.setToolTipText(descriptionTooltip(AEServerSocket.class, null));
+        multicastOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEMulticastOutput.class, null));
+        openMulticastInputMenuItem.setToolTipText(descriptionTooltip(AEMulticastInput.class, null));
+        unicastOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEUnicastOutput.class, null));
+        openUnicastInputMenuItem.setToolTipText(descriptionTooltip(AEUnicastInput.class, null));
+        openBlockingQueueInputMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "openBlockingQueueInputMenuItemActionPerformed", ActionEvent.class));
+        enableLongLivedNetworkMenuTooltips(
+                remoteMenu,
+                openSocketInputStreamMenuItem,
+                openSocketOutputStreamMenuItem,
+                reopenSocketInputStreamMenuItem,
+                serverSocketOptionsMenuItem,
+                multicastOutputEnabledCheckBoxMenuItem,
+                openMulticastInputMenuItem,
+                unicastOutputEnabledCheckBoxMenuItem,
+                openUnicastInputMenuItem,
+                openBlockingQueueInputMenuItem);
+    }
+
+    /**
+     * Keep the long HTML network-menu tooltips on screen for a minute while the
+     * pointer is over the item; restore the default dismiss delay when the menu
+     * closes or the pointer leaves.
+     */
+    private void enableLongLivedNetworkMenuTooltips(JComponent... items) {
+        MouseAdapter linger = new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                ToolTipManager.sharedInstance().setDismissDelay(NETWORK_MENU_TOOLTIP_DISMISS_MS);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                ToolTipManager.sharedInstance().setDismissDelay(defaultDismissTimeout);
+            }
+        };
+        for (JComponent c : items) {
+            c.addMouseListener(linger);
+        }
+        remoteMenu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+                ToolTipManager.sharedInstance().setDismissDelay(defaultDismissTimeout);
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+                ToolTipManager.sharedInstance().setDismissDelay(defaultDismissTimeout);
+            }
+        });
     }
 
     /**
@@ -3505,8 +3600,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             if (socketOutputEnabled) {
                 if (getAeSocketClient() == null) {
-                    log.warning("null socketInputStream, going to WAITING state");
-                    setPlayMode(PlayMode.WAITING);
+                    log.warning("null AESocket TCP output client, disabling socket output");
                     socketOutputEnabled = false;
                 } else {
                     try {
@@ -7195,6 +7289,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
+    @Description("""
+            <html>
+            <b>Reopen last TCP input</b><br>
+            Close and reconnect the TCP AE input using the last host, port, and buffer settings stored in preferences.<br>
+            Use this after a dropped connection, or to apply stream-socket options without walking through the open dialog again.
+            </html>
+            """)
     public void reopenSocketInputStream() throws HeadlessException {
         log.info("closing and reopening socket " + aeSocket);
         if (aeSocket != null) {
@@ -7417,6 +7518,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return blockingQueueInput;
     }
 
+    private boolean isTcpOutputToOwnServer(AESocket client) {
+        if (client == null || aeServerSocket == null) {
+            return false;
+        }
+        if (client.getPort() != aeServerSocket.getPort()) {
+            return false;
+        }
+        String host = client.getHost();
+        if (host == null) {
+            return false;
+        }
+        String h = host.trim().toLowerCase();
+        return h.equals("localhost") || h.equals("127.0.0.1") || h.equals("::1") || h.equals("0.0.0.0");
+    }
+
     private void closeAESocket() {
         if (aeSocket != null) {
             try {
@@ -7426,7 +7542,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 log.log(Level.WARNING, "In trying close socket, caught: " + e.toString(), e);
             } finally {
                 openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
-                aeSocketClient = null;
+                aeSocket = null;
             }
         }
         socketInputEnabled = false;
@@ -7440,7 +7556,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } catch (IOException e) {
                 log.log(Level.WARNING, "In trying close client socket, caught: " + e.toString(), e);
             } finally {
-                openSocketOutputStreamMenuItem.setText("Open remote server iutput stream socket...");
+                openSocketOutputStreamMenuItem.setText("Open remote server output stream socket...");
                 aeSocketClient = null;
             }
         }
@@ -7576,6 +7692,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.warning("no effect here - this event is handled by jAERViewer, not AEViewer");
 	}//GEN-LAST:event_syncEnabledCheckBoxMenuItemActionPerformed
 
+	@Description("""
+            <html>
+            <b>BlockingQueue input from another viewer</b><br>
+            Receive events from another AEViewer in <i>this</i> JVM through an in-memory queue (no sockets, no packet loss).<br>
+            The other viewer must offer packets into this queue. Useful for stereo or retina+cochlea setups on one machine
+            without UDP/TCP.<br>
+            <p>Not a network protocol — both viewers must be started from the same jAER process.
+            </html>
+            """)
 	private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openBlockingQueueInputMenuItemActionPerformed
             blockingQueueInputEnabled = openBlockingQueueInputMenuItem.isSelected();
             if (blockingQueueInputEnabled) {
@@ -7753,7 +7878,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             // TODO appendOfEventReferences your handling code here:
             if (socketOutputEnabled) {
                 closeAESocketClient();
-                setPlayMode(PlayMode.WAITING);
+                // do not change play mode: TCP output is independent of live/file playback
             } else {
                 try {
                     aeSocketClient = new AESocket();
@@ -7762,6 +7887,25 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     int ret = dlg.getReturnStatus();
                     if (ret != AESocketDialog.RET_OK) {
                         return;
+                    }
+                    if (isTcpOutputToOwnServer(aeSocketClient)) {
+                        int c = JOptionPane.showConfirmDialog(this,
+                                "<html>This viewer already <b>listens</b> on TCP port "
+                                + (aeServerSocket != null ? aeServerSocket.getPort() : AENetworkInterfaceConstants.STREAM_PORT)
+                                + " and streams events to whoever connects.<br>"
+                                + "Connecting TCP output to " + aeSocketClient.getHost() + ":" + aeSocketClient.getPort()
+                                + " attaches this viewer to its own server.<br>"
+                                + "The display will hang because nothing reads that stream.<br><br>"
+                                + "For two AEViewers: leave TCP output <b>off</b> on the sender and use<br>"
+                                + "<b>Open remote server input stream socket</b> on the receiver.<br><br>"
+                                + "Connect anyway?",
+                                "TCP output to own server",
+                                JOptionPane.YES_NO_OPTION,
+                                JOptionPane.WARNING_MESSAGE);
+                        if (c != JOptionPane.YES_OPTION) {
+                            aeSocketClient = null;
+                            return;
+                        }
                     }
                     aeSocketClient.connect();
 

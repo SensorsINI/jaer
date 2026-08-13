@@ -21,6 +21,8 @@ import java.nio.channels.SocketChannel;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import net.sf.jaer.Description;
+import net.sf.jaer.aemonitor.AEPacket;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 
@@ -40,6 +42,14 @@ import net.sf.jaer.aemonitor.EventRaw;
  EventExtractor2D inner class extractor definitions for individual device address formats.
  * @author tobi
  */
+@Description("""
+        <html>
+        <b>TCP stream socket</b><br>
+        Reliable, ordered AE stream over TCP (default port 8990).<br>
+        The remote side must be listening (this viewer's stream-socket server, or another program).<br>
+        TCP provides flow control so the sender slows down instead of dropping packets — use this when lossless delivery matters.
+        </html>
+        """)
 public class AESocket implements AESocketSettings{
     Selector selector=null;
     SocketChannel channel=null;
@@ -155,53 +165,46 @@ public class AESocket implements AESocketSettings{
      * been received. An EOF exception returns events that have been recieved.
      @return the read packet
      */
-    int nTmp = 0;
-    int nEventCapacity =0;
-    int nTmpCount = 0;
+    @Description("""
+            <html>
+            <b>Open TCP AE input</b><br>
+            Connect as a TCP <i>client</i> to a remote host that is serving AE events (default port 8990).<br>
+            The sending AEViewer already listens on that port (started automatically). Do <i>not</i> also enable
+            TCP output on the sender or it will connect to itself and stall.<br>
+            <p>Events arrive as a reliable byte stream of timestamp/address pairs (1&nbsp;µs ticks).
+            Unlike UDP, TCP retransmits lost data and applies flow control — playback may stall rather than drop events.
+            </html>
+            """)
     public synchronized AEPacketRaw readPacket() throws IOException{
         checkDataInputStream();
-
-        //        int n = dis.available() / AENetworkInterface.EVENT_SIZE_BYTES;
         packet.setNumEvents(0);
-
-        try{
-            if(((nTmpCount != 0) && (nTmpCount < nEventCapacity)) || ((nTmpCount == 0) && (nEventCapacity != 0))){
-                while(nTmpCount < nEventCapacity){
-                    packet.addEvent(readEventForwards());
-                    nTmpCount += 1;
-                }
+        try {
+            while (packet.getNumEvents() < AEPacket.MAX_PACKET_SIZE_EVENTS) {
+                packet.addEvent(readEventForwards());
             }
-            else{
-                nTmp = swapByteOrder(dis.readInt());
-                if(nTmp != 0x10001)
-                {
-                    log.warning("!!!!!!!!!!The first byte of the packet is not 0x10001, is" + nTmp);
-                }
-                nTmp = swapByteOrder(dis.readInt());     //eventsize
-                nTmp = swapByteOrder(dis.readInt());     //eventoffset
-                nTmp = swapByteOrder(dis.readInt());     //eventoverflow
-                nTmpCount = 0;
-                nEventCapacity = swapByteOrder(dis.readInt());     //eventcapacity
-                nTmp = swapByteOrder(dis.readInt());     //eventnumber
-                nTmp = swapByteOrder(dis.readInt());     //eventvalid
-            }
+        } catch (EOFException e) {
             return packet;
-        }catch(EOFException e){
+        } catch (SocketTimeoutException eto) {
             return packet;
-        }/*catch(SocketTimeoutException eto){
-            // ok, this packet done
-            return packet;
-        }catch(IOException e2){ // removed since other errors should be handled by the user
-            log.warning(e2.toString()+" closing socket");
-            close();
-            return packet;
-        }*/
+        }
+        return packet;
     }
     /** Writes the packet to the stream. Returns doing nothing if packet is null or empty.
      *
      * @param p the packet
      * @throws IOException
      */
+    @Description("""
+            <html>
+            <b>Open TCP AE output</b><br>
+            Connect as a TCP <i>client</i> to a remote server and stream this viewer's events to it (default port 8990).<br>
+            The remote side must already be listening. This is a reliable stream: the sender blocks if the receiver is slow,
+            instead of dropping datagrams as UDP would.<br>
+            <p>For two AEViewers, prefer the built-in server: leave this output <b>off</b> on the sender
+            (it already listens on port 8990) and open <b>TCP input</b> on the receiver.
+            Enabling this output to localhost:8990 connects the sender to itself and hangs the display.
+            </html>
+            """)
     public synchronized void writePacket(AEPacketRaw packet) throws IOException{
         if(packet==null) return;
 
@@ -281,35 +284,18 @@ public class AESocket implements AESocketSettings{
      @return the raw event
      */
     private EventRaw readEventForwards() throws IOException{
-        int ts=0;
-        int addr=0;
-        byte pTmp[] = new byte[2000];
-        if(isSwapBytesEnabled()){
-            ts=this.swapByteOrder(normalize(dis.readInt()));
-            addr=this.swapByteOrder(dis.readInt());
+        int ts;
+        int addr;
+        if (isSwapBytesEnabled()) {
+            ts = swapByteOrder(dis.readInt());
+            addr = swapByteOrder(dis.readInt());
         } else {
-            // dis.read(pTmp);
-            addr=this.swapByteOrder(dis.readInt());
-            ts=this.swapByteOrder((dis.readInt()));
-            // ts=normalize(dis.readInt());
-            // addr=dis.readInt();
+            ts = dis.readInt();
+            addr = dis.readInt();
         }
-        // check for non-monotonic increasing timestamps, if we get one, reset our notion of the starting time
-        if(isWrappedTime(ts,mostRecentTimestamp,1)){
-        //                throw new WrappedTimeException(ts,mostRecentTimestamp);
-        }
-        if(ts<mostRecentTimestamp){
-//            log.warning("AEInputStream.readEventForwards returned ts="+ts+" which goes backwards in time (mostRecentTimestamp="+mostRecentTimestamp+")");
-        //                throw new NonMonotonicTimeException(ts,mostRecentTimestamp);
-        }
-        // tmpEvent.address=addr;
-        // tmpEvent.timestamp=ts;
-        //                        x_addr                          y_addr          on_off event
-        tmpEvent.address = ((addr & 0xfe0000) >> 16) + ((addr  & 0x1fc) << 6) + ((addr & 2) >> 1);     //just for DVS128 data format convertion
-        // tmpEvent.address = ((addr & 0x7fe0000) >> 5) + ((addr  & 0x7fc) << 20) + ((addr & 2) >> 1);     //just for DAVIS data format convertion
-        tmpEvent.timestamp=ts;
-        mostRecentTimestamp=ts;
-        // System.out.printf("timestamp = %d,%x\n",ts,addr);
+        tmpEvent.address = addr;
+        tmpEvent.timestamp = ts;
+        mostRecentTimestamp = ts;
         return tmpEvent;
     }
 
@@ -494,15 +480,16 @@ public class AESocket implements AESocketSettings{
         // we now also make a selector for it to enable checking if it is really still working
         //        socket.setPerformancePreferences(0,1,0); // low latency
 //        socket.setTcpNoDelay(true); // disable aggregation of data into full packets
-        socket.setReceiveBufferSize(receiveBufferSize);
-        socket.setSendBufferSize(sendBufferSize);
+        socket.setReceiveBufferSize(Math.max(receiveBufferSize, 1024 * 1024));
+        socket.setSendBufferSize(Math.max(sendBufferSize, 1024 * 1024));
+        socket.setTcpNoDelay(true); // do not wait to fill packets; we flush after each AE packet
         socket.setSoTimeout(SO_TIMEOUT);
         socket.connect(new InetSocketAddress(hostname,portNumber),CONNECTION_TIMEOUT_MS);
-        if(socket.getReceiveBufferSize()!=getReceiveBufferSize()){
-            log.warning("requested sendBufferSize="+getSendBufferSize()+" but got sendBufferSize="+socket.getSendBufferSize());
-        }
-        if(socket.getSendBufferSize()!=getSendBufferSize()){
+        if(socket.getReceiveBufferSize()<receiveBufferSize){
             log.warning("requested receiveBufferSize="+getReceiveBufferSize()+" but got receiveBufferSize="+socket.getReceiveBufferSize());
+        }
+        if(socket.getSendBufferSize()<sendBufferSize){
+            log.warning("requested sendBufferSize="+getSendBufferSize()+" but got sendBufferSize="+socket.getSendBufferSize());
         }
         //        selector=Selector.open();
 //        channel=socket.getChannel();

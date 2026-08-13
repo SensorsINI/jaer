@@ -20,6 +20,8 @@ import java.net.SocketException;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import net.sf.jaer.Description;
+
 /**
  * Following is target functionality (right now this class only opens a single socket to most recent client connecting to it
 and events are only streamed to this one socket): This server socket allows a source host to listen for connections from other hosts and open AESockets to them to allow
@@ -35,6 +37,15 @@ This AEServerSocket is a Thread and it must be started after construction to all
  * AEServerSocket has PropertyChangeSupport; see the {@link #getSupport() } method for change event information.
  * @author tobi
  */
+@Description("""
+        <html>
+        <b>TCP stream socket server options</b><br>
+        This AEViewer can listen for incoming TCP clients and stream events to them (default port 8990).<br>
+        Set the listen port and buffer sizes here, then have another AEViewer use <b>Open remote server input stream socket</b>
+        to connect to this host.<br>
+        <p>Currently one client is supported. TCP is reliable (no silent UDP drops) but adds latency compared with unicast UDP.
+        </html>
+        """)
 public class AEServerSocket extends Thread {
 
     static Preferences prefs = net.sf.jaer.JaerConstants.PREFS_ROOT;
@@ -97,8 +108,9 @@ public class AEServerSocket extends Thread {
                         log.warning("while closing old socket caught " + ioe.getMessage());
                     }
                 }
-                newSocket.setSendBufferSize(sendBufferSize);
-                if (newSocket.getSendBufferSize() != getSendBufferSize()) {
+                newSocket.setSendBufferSize(Math.max(sendBufferSize, 1024 * 1024));
+                newSocket.setTcpNoDelay(true);
+                if (newSocket.getSendBufferSize() < getSendBufferSize()) {
                     log.warning("accepted connection and asked for sendBufferSize=" + getSendBufferSize() + " but only got sendBufferSize=" + newSocket.getSendBufferSize());
                 }
                 AESocket aeSocket = new AESocket(newSocket);

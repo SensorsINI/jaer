@@ -11,6 +11,7 @@ import java.net.UnknownHostException;
 import java.util.concurrent.Exchanger;
 import java.util.logging.Logger;
 
+import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.EventRaw;
 
@@ -22,6 +23,15 @@ import net.sf.jaer.aemonitor.EventRaw;
  @author tobi
  
  */
+@Description("""
+        <html>
+        <b>UDP multicast AE input</b><br>
+        Join the jAER multicast group (230.3.1.4) and receive datagrams from any sender on the LAN.<br>
+        Enable multicast <i>output</i> on the sending AEViewer. Several viewers can listen at once.<br>
+        <p>UDP multicast is unreliable and has no destination host — anyone on the subnet can receive.
+        Prefer unicast UDP for a single receiver, or TCP if delivery must be reliable.
+        </html>
+        """)
 public class AEMulticastInput extends Thread {
     MulticastSocket socket = null;
     InetAddress address = null;
