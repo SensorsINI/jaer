@@ -25,11 +25,10 @@ import net.sf.jaer.Description;
         <html>
         <b>Network (Remote) AE streaming</b><br>
         Send or receive address-events between AEViewers or other programs on this machine or the LAN.<br>
-        <p><b>TCP sockets</b> — reliable, ordered, flow-controlled. Use when packet loss is not acceptable.<br>
-        <b>UDP unicast</b> — low-latency datagrams to one host (including localhost). Sequence numbers report drops.<br>
+        <p><b>UDP unicast</b> — low-latency datagrams to one host (including localhost). Sequence numbers report drops.<br>
         <b>UDP multicast</b> — one sender to many receivers on the LAN. Can flood the network if nobody is listening.<br>
         <b>BlockingQueue</b> — in-process handoff between two viewers in this JVM (no sockets).<br>
-        <p>Default TCP port 8990, UDP port 8991.
+        <p>Default UDP port 8991.
         </html>
         """)
 public interface AENetworkInterfaceConstants {

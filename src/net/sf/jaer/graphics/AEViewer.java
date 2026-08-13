@@ -19,7 +19,6 @@ import java.awt.Frame;
 import java.awt.Graphics2D;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.HeadlessException;
 import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
@@ -133,10 +132,7 @@ import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventio.AEMulticastInput;
 import net.sf.jaer.eventio.AEMulticastOutput;
 import net.sf.jaer.eventio.AENetworkInterfaceConstants;
-import net.sf.jaer.eventio.AEServerSocket;
-import net.sf.jaer.eventio.AEServerSocketOptionsDialog;
 import net.sf.jaer.eventio.AESocket;
-import net.sf.jaer.eventio.AESocketDialog;
 import net.sf.jaer.eventio.AEUnicastDialog;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
@@ -429,12 +425,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private volatile AEUnicastOutput unicastOutput = null;
     private volatile AEUnicastInput unicastInput = null;
     private boolean unicastInputEnabled = false, unicastOutputEnabled = false;
-    // socket connections
-    private volatile AEServerSocket aeServerSocket = null; // this server socket accepts connections from clients who want events from us
-    private volatile AESocket aeSocket = null; // this socket is used to getString events from a server to us
-    private volatile AESocket aeSocketClient = null; // this socket is used send events to a TCP server
-    private boolean socketInputEnabled = false; // flags that we are using socket input stream
-    private boolean socketOutputEnabled = false; // flags that we are using socket input stream
     private boolean blankDeviceMessageShown = false; // flags that we have warned about blank device, don't show message again
     AEViewerLoggingHandler loggingHandler;
     private RemoteControl remoteControl = null; // TODO move to JAERViewer
@@ -741,16 +731,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem.setSelected(prefs.getBoolean("AEViewer.checkNonMonotonicTimeExceptionsEnabled", true));
         syncAdaptiveRenderSkipMenuFromRenderer();
 
-        // start the server thread for incoming socket connections for remote consumers of events
-        if (aeServerSocket == null) {
-            try {
-                aeServerSocket = new AEServerSocket();
-                aeServerSocket.start();
-            } catch (IOException ex) {
-                log.warning(ex.toString() + ": While constructing AEServerSocket. Another viewer or process has already bound this port or some other error. This viewer will not have a server socket for AE data.");
-                aeServerSocket = null;
-            }
-        }
         viewLoop = new ViewLoop();
         viewLoop.start();
 
@@ -836,14 +816,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         }
 
-        if (aeServerSocket != null) {
-            log.fine("closing " + aeServerSocket);
-            try {
-                aeServerSocket.close();
-            } catch (IOException e) {
-                log.warning(e.toString());
-            }
-        }
         if (unicastInput != null) {
             log.fine("closing unicast input" + unicastInput);
             unicastInput.close();
@@ -1131,10 +1103,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void applyNetworkMenuDescriptionTooltips() {
         remoteMenu.setToolTipText(descriptionTooltip(AENetworkInterfaceConstants.class, null));
-        openSocketInputStreamMenuItem.setToolTipText(descriptionTooltip(AESocket.class, "readPacket"));
-        openSocketOutputStreamMenuItem.setToolTipText(descriptionTooltip(AESocket.class, "writePacket", AEPacketRaw.class));
-        reopenSocketInputStreamMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "reopenSocketInputStream"));
-        serverSocketOptionsMenuItem.setToolTipText(descriptionTooltip(AEServerSocket.class, null));
         multicastOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEMulticastOutput.class, null));
         openMulticastInputMenuItem.setToolTipText(descriptionTooltip(AEMulticastInput.class, null));
         unicastOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEUnicastOutput.class, null));
@@ -1142,10 +1110,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         openBlockingQueueInputMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "openBlockingQueueInputMenuItemActionPerformed", ActionEvent.class));
         enableLongLivedNetworkMenuTooltips(
                 remoteMenu,
-                openSocketInputStreamMenuItem,
-                openSocketOutputStreamMenuItem,
-                reopenSocketInputStreamMenuItem,
-                serverSocketOptionsMenuItem,
                 multicastOutputEnabledCheckBoxMenuItem,
                 openMulticastInputMenuItem,
                 unicastOutputEnabledCheckBoxMenuItem,
@@ -3385,34 +3349,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             return unicastInput.readPacket();  // TODO should throw interruptedexception
                         }
                     }
-                    if (socketInputEnabled) {
-                        if (getAeSocket() == null) {
-                            log.warning("null socketInputStream, going to WAITING state");
-                            setPlayMode(PlayMode.WAITING);
-                            socketInputEnabled = false;
-                        } else {
-                            try {
-                                return getAeSocket().readPacket(); // reads a packet if there is data available // TODO should throw interrupted excpetion
-                            } catch (IOException e) {
-                                if (stop) {
-                                    break;
-                                }
-                                log.warning(e.toString() + ": closing and reconnecting...");
-                                try {
-                                    getAeSocket().close();
-                                    aeSocket = new AESocket(); // uses last values stored in preferences
-                                    aeSocket.connect();
-                                    log.info("connected " + aeSocket);
-                                } catch (IOException ex3) {
-                                    log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
-                                    try {
-                                        Thread.sleep(1000);
-                                    } catch (InterruptedException ex2) {
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     if (multicastInputEnabled) {
                         if (aeMulticastInput == null) {
@@ -3445,7 +3381,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     break;
                 case WAITING:
-                    if (unicastInputEnabled || multicastInputEnabled || socketInputEnabled) {
+                    if (unicastInputEnabled || multicastInputEnabled) {
                         // if were were playing back a recording and a remote interface is active, then we go back to it here.
                         setPlayMode(PlayMode.REMOTE);
                         return emptyRawPacket;
@@ -3572,67 +3508,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * @return true to break out of loop, e.g. there is error, false is OK
          */
         private boolean writeOutputStreams(AEPacketRaw rawPacket, EventPacket cookedPacket) {
-            // write to network socket if a client has opened a socket to us
-            // we serve up events on this socket
-
-            if ((getAeServerSocket() != null) && (getAeServerSocket().getAESocket() != null)) {
-                AESocket s = getAeServerSocket().getAESocket();
-                try {
-                    if (!isLogFilteredEventsEnabled()) {
-                        s.writePacket(rawPacket);
-                    } else {
-                        // send the reconstructed packet after filtering
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
-                        s.writePacket(aeRawRecon);
-                    }
-                } catch (IOException e) {
-                    log.warning("sending packet " + rawPacket + " from " + this + " to " + s + " failed, closing socket");
-                    try {
-                        s.close();
-                    } catch (IOException e2) {
-                        log.log(Level.SEVERE, e2.toString(), e2);
-
-                    } finally {
-                        getAeServerSocket().setSocket(null);
-                    }
-                }
-            }
-
-            if (socketOutputEnabled) {
-                if (getAeSocketClient() == null) {
-                    log.warning("null AESocket TCP output client, disabling socket output");
-                    socketOutputEnabled = false;
-                } else {
-                    try {
-                        if (!isLogFilteredEventsEnabled()) {
-                            getAeSocketClient().writePacket(rawPacket);
-                        } else {
-                            // send the reconstructed packet after filtering
-                            AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
-                            getAeSocketClient().writePacket(aeRawRecon);
-                        }
-                        // reads a packet if there is data available // TODO should throw interrupted excpetion
-                    } catch (IOException e) {
-                        if (stop) {
-                            return true;
-                        }
-                        log.warning(e.toString() + ": closing and reconnecting...");
-                        try {
-                            getAeSocketClient().close();
-                            aeSocketClient = new AESocket(); // uses last values stored in preferences
-                            aeSocketClient.connect();
-                            log.info("connected " + aeSocketClient);
-                        } catch (IOException ex3) {
-                            log.warning(ex3 + ": failed reconnection, sleeping 1 s before trying again");
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException ex2) {
-                            }
-                        }
-                    }
-                }
-            }
-
             // if we are multicasting output send it out here
             if (multicastOutputEnabled && (aeMulticastOutput != null)) {
                 try {
@@ -4243,10 +4118,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     blockingQueueInput = null;
                     blockingQueueInputEnabled = false;
                 }
-
-                if (socketInputEnabled) {
-                    closeAESocket();
-                }
         }
         // viewer is removed by WindowClosing event
         //        if(caviarViewer!=null ){
@@ -4298,11 +4169,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         networkSeparator = new javax.swing.JSeparator();
         remoteMenu = new javax.swing.JMenu();
-        openSocketInputStreamMenuItem = new javax.swing.JMenuItem();
-        openSocketOutputStreamMenuItem = new javax.swing.JMenuItem();
-        reopenSocketInputStreamMenuItem = new javax.swing.JMenuItem();
-        serverSocketOptionsMenuItem = new javax.swing.JMenuItem();
-        jSeparator15 = new javax.swing.JSeparator();
         multicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         openMulticastInputMenuItem = new javax.swing.JCheckBoxMenuItem();
         jSeparator14 = new javax.swing.JSeparator();
@@ -4649,45 +4515,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
         remoteMenu.setMnemonic('r');
         remoteMenu.setText("Remote");
-
-        openSocketInputStreamMenuItem.setMnemonic('r');
-        openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
-        openSocketInputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
-        openSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                openSocketInputStreamMenuItemActionPerformed(evt);
-            }
-        });
-        remoteMenu.add(openSocketInputStreamMenuItem);
-
-        openSocketOutputStreamMenuItem.setText("Open remote server output stream socket...");
-        openSocketOutputStreamMenuItem.setToolTipText("Opens a remote connection for stream (TCP) packets of  events ");
-        openSocketOutputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                openSocketOutputStreamMenuItemActionPerformed(evt);
-            }
-        });
-        remoteMenu.add(openSocketOutputStreamMenuItem);
-
-        reopenSocketInputStreamMenuItem.setMnemonic('l');
-        reopenSocketInputStreamMenuItem.setText("Reopen last or preferred stream socket input stream");
-        reopenSocketInputStreamMenuItem.setToolTipText("After an input socket has been opened (and preferences set), this quickly closes and reopens it");
-        reopenSocketInputStreamMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                reopenSocketInputStreamMenuItemActionPerformed(evt);
-            }
-        });
-        remoteMenu.add(reopenSocketInputStreamMenuItem);
-
-        serverSocketOptionsMenuItem.setText("Stream socket server options...");
-        serverSocketOptionsMenuItem.setToolTipText("Sets options for server sockets");
-        serverSocketOptionsMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                serverSocketOptionsMenuItemActionPerformed(evt);
-            }
-        });
-        remoteMenu.add(serverSocketOptionsMenuItem);
-        remoteMenu.add(jSeparator15);
 
         multicastOutputEnabledCheckBoxMenuItem.setMnemonic('s');
         multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast (UDP) AE Output");
@@ -7289,34 +7116,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
     }
 
-    @Description("""
-            <html>
-            <b>Reopen last TCP input</b><br>
-            Close and reconnect the TCP AE input using the last host, port, and buffer settings stored in preferences.<br>
-            Use this after a dropped connection, or to apply stream-socket options without walking through the open dialog again.
-            </html>
-            """)
-    public void reopenSocketInputStream() throws HeadlessException {
-        log.info("closing and reopening socket " + aeSocket);
-        if (aeSocket != null) {
-            try {
-                aeSocket.close();
-            } catch (Exception e) {
-                log.warning("closing existing socket: caught " + e);
-            }
-        }
-        try {
-            aeSocket = new AESocket(); // uses preferred settings for port/buffer size, etc.
-            aeSocket.connect();
-            setPlayMode(PlayMode.REMOTE);
-            openSocketInputStreamMenuItem.setText("Close socket input stream from " + aeSocket.getHost() + ":" + aeSocket.getPort());
-            log.info("opened socket input stream " + aeSocket);
-            socketInputEnabled = true;
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Exception reopening socket: " + e, "AESocket Exception", JOptionPane.WARNING_MESSAGE);
-        }
-    }
-
     /**
      * Stores the preferred (startup) AEChip class for the viewer.
      *
@@ -7516,51 +7315,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     public ArrayBlockingQueue getBlockingQueueInput() {
         return blockingQueueInput;
-    }
-
-    private boolean isTcpOutputToOwnServer(AESocket client) {
-        if (client == null || aeServerSocket == null) {
-            return false;
-        }
-        if (client.getPort() != aeServerSocket.getPort()) {
-            return false;
-        }
-        String host = client.getHost();
-        if (host == null) {
-            return false;
-        }
-        String h = host.trim().toLowerCase();
-        return h.equals("localhost") || h.equals("127.0.0.1") || h.equals("::1") || h.equals("0.0.0.0");
-    }
-
-    private void closeAESocket() {
-        if (aeSocket != null) {
-            try {
-                aeSocket.close();
-                log.info("closed " + aeSocket);
-            } catch (IOException e) {
-                log.log(Level.WARNING, "In trying close socket, caught: " + e.toString(), e);
-            } finally {
-                openSocketInputStreamMenuItem.setText("Open remote server input stream socket...");
-                aeSocket = null;
-            }
-        }
-        socketInputEnabled = false;
-    }
-
-    private void closeAESocketClient() {
-        if (aeSocketClient != null) {
-            try {
-                aeSocketClient.close();
-                log.info("closed " + aeSocketClient);
-            } catch (IOException e) {
-                log.log(Level.WARNING, "In trying close client socket, caught: " + e.toString(), e);
-            } finally {
-                openSocketOutputStreamMenuItem.setText("Open remote server output stream socket...");
-                aeSocketClient = null;
-            }
-        }
-        socketOutputEnabled = false;
     }
 
     private void closeUnicastInput() {
@@ -7852,123 +7606,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 aeMulticastOutput.close();
             }
 	}//GEN-LAST:event_multicastOutputEnabledCheckBoxMenuItemActionPerformed
-
-	private void serverSocketOptionsMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_serverSocketOptionsMenuItemActionPerformed
-            if (aeServerSocket == null) {
-                log.warning("null aeServerSocket");
-                JOptionPane.showMessageDialog(this, "No server socket to configure - maybe port is already bound? (Check the output logging)", "No server socket", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-
-            AEServerSocketOptionsDialog dlg = new AEServerSocketOptionsDialog(this, true, aeServerSocket);
-            dlg.setVisible(true);
-            int ret = dlg.getReturnStatus();
-            if (ret != AEServerSocketOptionsDialog.RET_OK) {
-                return;
-            }
-
-            // TODO change options on server socket and reopen it - presently need to restart Viewer
-	}//GEN-LAST:event_serverSocketOptionsMenuItemActionPerformed
-
-	private void reopenSocketInputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_reopenSocketInputStreamMenuItemActionPerformed
-            reopenSocketInputStream();
-	}//GEN-LAST:event_reopenSocketInputStreamMenuItemActionPerformed
-
-	private void openSocketOutputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketOutputStreamMenuItemActionPerformed
-            // TODO appendOfEventReferences your handling code here:
-            if (socketOutputEnabled) {
-                closeAESocketClient();
-                // do not change play mode: TCP output is independent of live/file playback
-            } else {
-                try {
-                    aeSocketClient = new AESocket();
-                    AESocketDialog dlg = new AESocketDialog(this, true, aeSocketClient);
-                    dlg.setVisible(true);
-                    int ret = dlg.getReturnStatus();
-                    if (ret != AESocketDialog.RET_OK) {
-                        return;
-                    }
-                    if (isTcpOutputToOwnServer(aeSocketClient)) {
-                        int c = JOptionPane.showConfirmDialog(this,
-                                "<html>This viewer already <b>listens</b> on TCP port "
-                                + (aeServerSocket != null ? aeServerSocket.getPort() : AENetworkInterfaceConstants.STREAM_PORT)
-                                + " and streams events to whoever connects.<br>"
-                                + "Connecting TCP output to " + aeSocketClient.getHost() + ":" + aeSocketClient.getPort()
-                                + " attaches this viewer to its own server.<br>"
-                                + "The display will hang because nothing reads that stream.<br><br>"
-                                + "For two AEViewers: leave TCP output <b>off</b> on the sender and use<br>"
-                                + "<b>Open remote server input stream socket</b> on the receiver.<br><br>"
-                                + "Connect anyway?",
-                                "TCP output to own server",
-                                JOptionPane.YES_NO_OPTION,
-                                JOptionPane.WARNING_MESSAGE);
-                        if (c != JOptionPane.YES_OPTION) {
-                            aeSocketClient = null;
-                            return;
-                        }
-                    }
-                    aeSocketClient.connect();
-
-                    openSocketOutputStreamMenuItem.setText("Close socket output stream from " + aeSocketClient.getHost() + ":" + aeSocketClient.getPort());
-                    log.info("opened socket output stream " + aeSocketClient);
-                    socketOutputEnabled = true;
-                } catch (Exception e) {
-                    log.warning(e.toString());
-                    JOptionPane.showMessageDialog(this, "<html>Couldn't open AESocket output stream: <br>" + e.toString() + "</html>");
-                }
-            }
-	}//GEN-LAST:event_openSocketOutputStreamMenuItemActionPerformed
-
-	private void openSocketInputStreamMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openSocketInputStreamMenuItemActionPerformed
-            if (socketInputEnabled) {
-                closeAESocket();
-                setPlayMode(PlayMode.WAITING);
-            } else {
-                try {
-                    aeSocket = new AESocket();
-                    AESocketDialog dlg = new AESocketDialog(this, true, aeSocket);
-                    dlg.setVisible(true);
-                    int ret = dlg.getReturnStatus();
-                    if (ret != AESocketDialog.RET_OK) {
-                        return;
-                    }
-                    aeSocket.connect();
-                    setPlayMode(PlayMode.REMOTE);
-                    openSocketInputStreamMenuItem.setText("Close socket input stream from " + aeSocket.getHost() + ":" + aeSocket.getPort());
-                    //                reopenSocketInputStreamMenuItem.setEnabled(true);
-                    log.info("opened socket input stream " + aeSocket);
-                    socketInputEnabled = true;
-                } catch (Exception e) {
-                    log.warning(e.toString());
-                    JOptionPane.showMessageDialog(this, "<html>Couldn't open AESocket input stream: <br>" + e.toString() + "</html>");
-                }
-            }
-            //        if(socketInputStream==null){
-            //            try{
-            //
-        ////                socketInputStream=new AEUnicastInput();
-            //                String host=JOptionPane.showInputDialog(this,"Hostname to receive from",socketInputStream.getHost());
-            //                if(host==null) return;
-            //                aeSocket=new AESocket(host);
-            ////                socketInputStream.setHost(host);
-            ////                socketInputStream.start();
-            //                setPlayMode(PlayMode.REMOTE);
-            //                openSocketInputStreamMenuItem.setText("Close socket input stream");
-            //            }catch(Exception e){
-            //                e.printStackTrace();
-            //            }
-            //        }else{
-            //            if(aeSocket!=null){
-            //                aeSocket
-            //            }
-            //            if(socketInputStream!=null){
-            //                socketInputStream.close();
-            //                socketInputStream=null;
-            //            }
-            //            log.info("set socketInputStream to null");
-            //            openSocketInputStreamMenuItem.setText("Open socket input stream");
-            //        }
-	}//GEN-LAST:event_openSocketInputStreamMenuItemActionPerformed
 
 	private void logFilteredEventsCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logFilteredEventsCheckBoxMenuItemActionPerformed
             setLogFilteredEventsEnabled(logFilteredEventsCheckBoxMenuItem.isSelected());
@@ -8785,26 +8422,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * AEViewer makes a ServerSocket that accepts incoming connections. A
-     * connecting client gets served the events being rendered.
+     * TCP AE stream sockets are no longer started by AEViewer; kept so existing
+     * callers still compile.
      *
-     * @return the server socket. This holds the client socket.
-     */
-    public AEServerSocket getAeServerSocket() {
-        return aeServerSocket;
-    }
-
-    /**
-     * If we have opened a socket to a server of events, then this is it
-     *
-     * @return the input socket
+     * @return always {@code null}
      */
     public AESocket getAeSocket() {
-        return aeSocket;
-    }
-
-    public AESocket getAeSocketClient() {
-        return aeSocketClient;
+        return null;
     }
 
     /**
@@ -8953,7 +8577,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JSeparator jSeparator12;
     private javax.swing.JSeparator jSeparator13;
     private javax.swing.JSeparator jSeparator14;
-    private javax.swing.JSeparator jSeparator15;
     private javax.swing.JSeparator jSeparator16;
     private javax.swing.JPopupMenu.Separator jSeparator17;
     private javax.swing.JPopupMenu.Separator jSeparator18;
@@ -8999,8 +8622,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem openBlockingQueueInputMenuItem;
     private javax.swing.JMenuItem openMenuItem;
     private javax.swing.JCheckBoxMenuItem openMulticastInputMenuItem;
-    private javax.swing.JMenuItem openSocketInputStreamMenuItem;
-    private javax.swing.JMenuItem openSocketOutputStreamMenuItem;
     private javax.swing.JMenuItem openUnicastInputMenuItem;
     private javax.swing.JCheckBoxMenuItem pauseRenderingCheckBoxMenuItem;
     private javax.swing.JMenu playbackMenu;
@@ -9010,13 +8631,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JMenu remoteMenu;
     private javax.swing.ButtonGroup renderModeButtonGroup;
     private javax.swing.JMenuItem renewChipMI;
-    private javax.swing.JMenuItem reopenSocketInputStreamMenuItem;
     private javax.swing.JMenuItem resetAccumulationMenuItem;
     private javax.swing.JLabel resizeLabel;
     private javax.swing.JPanel resizePanel;
     private javax.swing.JMenuItem rewindPlaybackMenuItem;
     private javax.swing.JMenuItem sequenceMenuItem;
-    private javax.swing.JMenuItem serverSocketOptionsMenuItem;
     private javax.swing.JMenuItem setBorderSpaceMenuItem;
     private javax.swing.JMenuItem setFrameRateMenuItem;
     private javax.swing.JMenuItem setJogNCount;
