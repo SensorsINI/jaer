@@ -40,12 +40,18 @@
         <loadfile property="project.properties.snapshot.body"
                   srcFile="${build.dir}/project.properties.ant-snapshot" encoding="UTF-8">
             <filterchain>
+                <tokenfilter>
+                    <replaceregex pattern="\r" replace=""/>
+                </tokenfilter>
                 <headfilter lines="-1" skip="1"/>
             </filterchain>
         </loadfile>
         <loadfile property="project.properties.current.body"
                   srcFile="${basedir}/nbproject/project.properties" encoding="UTF-8">
             <filterchain>
+                <tokenfilter>
+                    <replaceregex pattern="\r" replace=""/>
+                </tokenfilter>
                 <headfilter lines="-1" skip="1"/>
             </filterchain>
         </loadfile>
@@ -54,12 +60,17 @@
                     arg2="${project.properties.current.body}"/>
         </condition>
         <antcall target="-restore-project-properties-snapshot"/>
+        <antcall target="-keep-project-properties-because-body-changed"/>
     </target>
 
     <target name="-restore-project-properties-snapshot" if="project.properties.only.datestamp.changed">
         <copy file="${build.dir}/project.properties.ant-snapshot"
               tofile="${basedir}/nbproject/project.properties" overwrite="true"/>
         <echo message="Reverted nbproject/project.properties (Ant datestamp-only change)"/>
+    </target>
+
+    <target name="-keep-project-properties-because-body-changed" unless="project.properties.only.datestamp.changed">
+        <echo message="nbproject/project.properties changed beyond the Ant datestamp (usually ivy.classpath); not reverting"/>
     </target>
 
     <!--
@@ -130,11 +141,26 @@
             <map from="${basedir}\" to=""/>
         </pathconvert>
 
+        <!-- propertyfile always rewrites the #datestamp header. Skip the write when
+             the classpath string is unchanged so ant run/compile does not dirty git. -->
+        <condition property="ivy.classpath.unchanged">
+            <equals arg1="${ivy.classpath}" arg2="${ivy.classpath.computed}"/>
+        </condition>
+        <antcall target="-write-ivy-classpath-if-changed"/>
+        <antcall target="-echo-ivy-classpath-unchanged"/>
+
+        <antcall target="-revert-project-properties-if-only-datestamp"/>
+    </target>
+
+    <target name="-write-ivy-classpath-if-changed" unless="ivy.classpath.unchanged">
         <propertyfile file="${basedir}/nbproject/project.properties">
             <entry operation="=" key="ivy.classpath" value="${ivy.classpath.computed}"/>
         </propertyfile>
+        <echo message="Updated ivy.classpath in nbproject/project.properties"/>
+    </target>
 
-        <antcall target="-revert-project-properties-if-only-datestamp"/>
+    <target name="-echo-ivy-classpath-unchanged" if="ivy.classpath.unchanged">
+        <echo message="ivy.classpath unchanged; not rewriting nbproject/project.properties"/>
     </target>
 
     <target name="clean-deps" description="Clean downloaded libraries.">
