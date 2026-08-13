@@ -33,12 +33,35 @@ public interface AENetworkInterfaceConstants {
     /** size of socket event in bytes */
     static public final int EVENT_SIZE_BYTES=8;
     
-     /** the sockets are set up to try to get this size in bytes as the buffer size. The max number of events per packet is computed from
-      this socket buffer size.
+     /** Max UDP datagram payload in bytes (one on-wire packet). Distinct from the kernel socket queue
+      * ({@link #DATAGRAM_SOCKET_BUFFER_SIZE_BYTES}): a 63 kB datagram of events is a single UDP packet,
+      * while a 32 k-event AE packet is several such datagrams sent back-to-back.
       */
     static public int DATAGRAM_BUFFER_SIZE_BYTES=63000; //1028; // 1300;  // 32k MAX_EVENTS*EVENT_SIZE_BYTES+Integer.SIZE/8;
 
-    
+    /**
+     * Kernel UDP socket queue (SO_SNDBUF / SO_RCVBUF) in bytes. Must hold a burst of datagrams.
+     * If this is only one datagram large, localhost loopback drops packets: UDP send() still
+     * succeeds, but the receiver's socket queue overflows before the reader thread wakes.
+     * 8 MiB holds ~130 max-size datagrams (~1e6 events).
+     */
+    static public final int DATAGRAM_SOCKET_BUFFER_SIZE_BYTES = 8 * 1024 * 1024;
+
+    /**
+     * Kernel socket queue size for a given max datagram payload. Always at least
+     * {@link #DATAGRAM_SOCKET_BUFFER_SIZE_BYTES}, and at least 32 datagrams.
+     */
+    static public int datagramSocketBufferSizeBytes(int datagramPayloadBytes) {
+        if (datagramPayloadBytes <= 0) {
+            return DATAGRAM_SOCKET_BUFFER_SIZE_BYTES;
+        }
+        long scaled = (long) datagramPayloadBytes * 32L;
+        if (scaled > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return Math.max(DATAGRAM_SOCKET_BUFFER_SIZE_BYTES, (int) scaled);
+    }
+
     /** the maximum number deliverable over a socket per packet. The UDP buffers are sized according to this number. */
     static public int MAX_DATAGRAM_EVENTS=(DATAGRAM_BUFFER_SIZE_BYTES-Integer.SIZE/8)/EVENT_SIZE_BYTES;
 

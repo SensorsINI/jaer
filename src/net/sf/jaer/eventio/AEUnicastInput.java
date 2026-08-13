@@ -56,8 +56,9 @@ import net.sf.jaer.eventio.Jaer3BufferParser.Jaer3EventExtractor;
  * account for big/little endian peers.
  *
  * <p>
- * The datagram socket is not connected to the receiver, i.e., connect() is not
- * called on the socket.
+ * The kernel UDP socket receive queue is sized independently of the datagram
+ * payload so that localhost bursts (several 63 kB datagrams per AE packet) are
+ * not dropped when the sender outruns the reader thread.
  *
  * @see #setAddressFirstEnabled
  * @see #setSequenceNumberEnabled
@@ -66,7 +67,7 @@ import net.sf.jaer.eventio.Jaer3BufferParser.Jaer3EventExtractor;
  */
 public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener {
 
-    private int NBUFFERS = 100; // should match somehow the expected number of datagrams that come in a burst before the readPacket() method is called.
+    private int NBUFFERS = 256; // should match somehow the expected number of datagrams that come in a burst before the readPacket() method is called.
 
     // TODO If the remote host sends 16 bit timestamps, then a local unwrapping is done to extend the time range
     private static Preferences prefs= net.sf.jaer.JaerConstants.PREFS_ROOT;
@@ -76,7 +77,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private boolean sequenceNumberEnabled = prefs.getBoolean("AEUnicastInput.sequenceNumberEnabled", true);
     private boolean cAERStreamEnabled = prefs.getBoolean("AEUnicastInput.cAERDisplayEnabled", true);
     private boolean addressFirstEnabled = prefs.getBoolean("AEUnicastInput.addressFirstEnabled", true);
-    private ArrayBlockingQueue<ByteBuffer> filledBufferQueue = new ArrayBlockingQueue(NBUFFERS), availableBufferQueue = new ArrayBlockingQueue(NBUFFERS);
+    // filled is NBUFFERS-1 so the reader always has at least one ByteBuffer and never blocks in take() before receive()
+    private ArrayBlockingQueue<ByteBuffer> filledBufferQueue = new ArrayBlockingQueue(NBUFFERS - 1), availableBufferQueue = new ArrayBlockingQueue(NBUFFERS);
     private AENetworkRawPacket packet = new AENetworkRawPacket();
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private int bufferSize = prefs.getInt("AEUnicastInput.bufferSize", AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES);
@@ -88,7 +90,7 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private boolean secDvsProtocolEnabled = prefs.getBoolean("AEUnicastInput.secDvsProtocolEnabled", false);
     boolean stopme = false;
     private DatagramChannel channel;
-    private int datagramCounter = 0;
+    private int datagramCounter = 1; // matches AEUnicastOutput, which writes sequence number 1 in the first datagram
     private int datagramSequenceNumber = 0;
     private EventRaw eventRaw = new EventRaw();
     private int timeZero = 0; // used to store initial timestamp for 4 byte timestamp reads to subtract this value
@@ -105,6 +107,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private Jaer3BufferParser j3Parser;
     private int secGen2TimestampMSB = 0;
     private int secGen2TimestampLSB = 0;
+    private long lastFilledQueueDropLogNs = 0;
+    private int filledQueueDropCount = 0;
 
     /**
      * Constructs an instance of AEUnicastInput and binds it to the default
@@ -148,6 +152,36 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
         filledBufferQueue.clear(); // allow GC to collect these references
     }
 
+    /**
+     * Queue a received datagram for readPacket(). Never blocks: if the Java queue
+     * is full, discard the oldest datagram so this thread keeps calling receive()
+     * and the kernel UDP socket does not overflow. Sequence numbers are checked
+     * when the datagram is extracted, so these discards show up as sequence gaps.
+     */
+    private void enqueueFilledBuffer(ByteBuffer buffer) {
+        if (filledBufferQueue.offer(buffer)) {
+            return;
+        }
+        ByteBuffer oldest = filledBufferQueue.poll();
+        if (oldest != null) {
+            filledQueueDropCount++;
+            oldest.clear();
+            availableBufferQueue.offer(oldest);
+            long now = System.nanoTime();
+            if ((now - lastFilledQueueDropLogNs) > 1_000_000_000L) {
+                log.warning("Java UDP datagram queue full (" + (NBUFFERS - 1)
+                        + " packets); discarded " + filledQueueDropCount
+                        + " datagram(s) before display. Next extracted packet should log a sequence-number gap.");
+                filledQueueDropCount = 0;
+                lastFilledQueueDropLogNs = now;
+            }
+        }
+        if (!filledBufferQueue.offer(buffer)) {
+            buffer.clear();
+            availableBufferQueue.offer(buffer);
+        }
+    }
+
     private int eventSize() {
         if (use4ByteAddrTs) {
             if (timestampsEnabled) {
@@ -172,6 +206,14 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     int nTmp = 0;
     int nEventCapacity = 0;
 
+    /**
+     * Max events assembled per {@link #readPacket()} call. Drain up to a full
+     * {@link AEPacket#MAX_PACKET_SIZE_EVENTS} so a large file slice (hundreds of
+     * k events, many UDP datagrams) is not truncated across frames or left to
+     * overflow the receive queue.
+     */
+    private static final int MAX_EVENTS_PER_READ = AEPacket.MAX_PACKET_SIZE_EVENTS;
+
     public AENetworkRawPacket readPacket() {
         packet.clear();
         readingThread.maxSizeExceeded = false;
@@ -183,8 +225,8 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 extractEvents(buffer, packet);
                 buffer.clear();
                 availableBufferQueue.put(buffer);
-                if (packet.getNumEvents() >= 10000) {
-                    break returnearly; // Set a threshold to avoid the big dealy caused by accumulating too many events in the packet.
+                if (packet.getNumEvents() >= MAX_EVENTS_PER_READ) {
+                    break returnearly;
                 }
             }
             return packet;
@@ -197,9 +239,11 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     private void checkSequenceNumber(ByteBuffer buffer) {
         if (sequenceNumberEnabled) {
             datagramSequenceNumber = buffer.getInt(); // swab(buffer.getInt());
-//                log.info("recieved packet with sequence number "+packetSequenceNumber);
             if (datagramSequenceNumber != datagramCounter) {
-                log.warning(String.format("Dropped %d packets. (Incoming packet sequence number (%d) doesn't match expected packetCounter (%d), resetting packetCounter)", datagramSequenceNumber - datagramCounter, datagramSequenceNumber, datagramCounter));
+                int dropped = datagramSequenceNumber - datagramCounter;
+                log.warning(String.format(
+                        "Dropped %d packets (seq %d, expected %d). Lost on the network or discarded from the receive queue before display, resetting packetCounter.",
+                        dropped, datagramSequenceNumber, datagramCounter));
                 datagramCounter = datagramSequenceNumber;
             }
             datagramCounter++;
@@ -236,13 +280,9 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
                 log.warning("unknown type of client address - should be InetSocketAddress: " + client);
             }
             buffer.flip();
-            if (!spinnakerProtocolEnabled && !secDvsProtocolEnabled) {
-                checkSequenceNumber(buffer);
-            }
-//            if(exchanger.size()>10){
-//                log.info("filled queue of datagrams has "+exchanger.size()+" buffers");
-//            }
-            filledBufferQueue.put(buffer); // blocks here until readPacket clears the packet
+            // Sequence numbers are checked in extractEvents, when the datagram is actually
+            // used. Checking here hid losses from discarding datagrams in enqueueFilledBuffer.
+            enqueueFilledBuffer(buffer); // never block here: that stops receive() and the kernel drops datagrams
         } catch (InterruptedException ie) {
             log.warning(ie.toString());
             return null;
@@ -531,6 +571,9 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
             
         }
         else { // normal jAER/cAER packet
+            // Check sequence here (on consume), not on receive, so datagrams discarded
+            // from the Java queue appear as sequence gaps.
+            checkSequenceNumber(buffer);
             // extract the ae data and add events to the packet we are presently filling
             int seqNumLength = sequenceNumberEnabled ? Integer.SIZE / 8 : 0;
             int eventSize = eventSize();
@@ -754,11 +797,20 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
 //            if (datagramSocket.getSoTimeout() != TIMEOUT_MS) {
 //                log.warning("datagram socket read timeout value read=" + datagramSocket.getSoTimeout() + " which is different than timeout value of " + TIMEOUT_MS + " that we tried to set - perhaps timeout is not supported?");
 //            }
+            int socketBuf = AENetworkInterfaceConstants.datagramSocketBufferSizeBytes(bufferSize);
+            // Set SO_RCVBUF before bind; some platforms ignore a later increase.
+            datagramSocket.setReceiveBufferSize(socketBuf);
             SocketAddress address = new InetSocketAddress(getPort());
             datagramSocket.bind(address);
-            log.info("bound " + this);
+            datagramSocket.setReceiveBufferSize(socketBuf); // again in case bind reset it
             datagramSocket.setSoTimeout(0); // infinite timeout
-            datagramSocket.setReceiveBufferSize(bufferSize);
+            int granted = datagramSocket.getReceiveBufferSize();
+            if (granted < socketBuf) {
+                log.warning("requested UDP SO_RCVBUF=" + socketBuf + " bytes but OS granted " + granted
+                        + " (datagram payload=" + bufferSize + "). Localhost bursts will drop packets if this is too small.");
+            } else {
+                log.info("bound " + this + " UDP SO_RCVBUF=" + granted + " bytes (datagram payload=" + bufferSize + ")");
+            }
             return true;
         } catch (IOException e) {
             log.warning("caught " + e + ", datagramSocket will be constructed later");
@@ -938,11 +990,11 @@ public class AEUnicastInput implements AEUnicastSettings, PropertyChangeListener
     }
 
     /**
-     * Sets the maximum datagram size that can be received in bytes. It is much
-     * faster to use small (e.g. 8k) packets than large ones to minimize CPU
-     * usage.
+     * Sets the maximum datagram payload that can be received in bytes. The
+     * kernel socket receive queue is sized separately (see
+     * {@link AENetworkInterfaceConstants#DATAGRAM_SOCKET_BUFFER_SIZE_BYTES}).
      *
-     * @param bufferSize the bufferSize to set in bytes.
+     * @param bufferSize the datagram payload size to set in bytes.
      */
     @Override
     synchronized public void setBufferSize(int bufferSize) {

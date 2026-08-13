@@ -213,14 +213,16 @@ public interface AEUnicastSettings {
     public boolean is4ByteAddrTimestampEnabled();
 
     /**
-     * Sets the buffer size in bytes used for the underlying datagrams.
+     * Sets the max UDP datagram payload size in bytes. This is not the kernel
+     * socket queue (SO_SNDBUF/SO_RCVBUF), which is sized separately so that
+     * localhost bursts of several datagrams are not dropped.
      *
      * @param size in bytes.
      */
     public void setBufferSize(int size);
 
     /**
-     * Gets the buffer size in bytes used for the datagrams.
+     * Gets the max UDP datagram payload size in bytes.
      *
      * @return the size in bytes.
      */

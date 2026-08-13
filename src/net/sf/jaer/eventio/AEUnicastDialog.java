@@ -49,7 +49,6 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         initComponents();
         addressFirstEnabledCheckBox.setSelected(unicastInterface.isAddressFirstEnabled());
         sequenceNumberEnabledCheckBox.setSelected(unicastInterface.isSequenceNumberEnabled());
-        caerDispRB.setSelected(unicastInterface.iscAERDisplayEnabled());
         hostnameTextField.setText(unicastInterface.getHost());
         portTextField.setText(Integer.toString(unicastInterface.getPort()));
         swapBytesCheckBox.setSelected(unicastInterface.isSwapBytesEnabled());
@@ -58,8 +57,15 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         bufferSizeTextBox.setText(Integer.toString(unicastInterface.getBufferSize()));
         includeTimestampsCheckBox.setSelected(unicastInterface.isTimestampsEnabled());
         useLocalTimestampsEnabledCheckBox.setSelected(unicastInterface.isLocalTimestampEnabled());
-        spinProtRB.setSelected(unicastInterface.isSpinnakerProtocolEnabled());
-        secProtRB.setSelected(unicastInterface.isSecDvsProtocolEnabled());
+        if (unicastInterface.isSpinnakerProtocolEnabled()) {
+            spinProtRB.setSelected(true);
+        } else if (unicastInterface.isSecDvsProtocolEnabled()) {
+            secProtRB.setSelected(true);
+        } else if (unicastInterface.iscAERDisplayEnabled()) {
+            caerDispRB.setSelected(true);
+        } else {
+            jaerProtRB.setSelected(true);
+        }
         KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false);
         Action escapeAction = new AbstractAction() {
             public void actionPerformed(ActionEvent e) {
@@ -431,6 +437,7 @@ public class AEUnicastDialog extends javax.swing.JDialog {
         bufferSizeTextBox.setText(Integer.toString(AENetworkInterfaceConstants.DATAGRAM_BUFFER_SIZE_BYTES)); // TODO mixup between AEUnicastSettings and AENetworkInterfaceConstants
         includeTimestampsCheckBox.setSelected(AEUnicastSettings.DEFAULT_TIMESTAMPS_ENABLED);
         useLocalTimestampsEnabledCheckBox.setSelected(AEUnicastSettings.DEFAULT_USE_LOCAL_TIMESTAMPS_ENABLED);
+        jaerProtRB.setSelected(true);
 }//GEN-LAST:event_jAERDefaultsButtonActionPerformed
 
     private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
@@ -492,7 +499,9 @@ private void applyButtonActionPerformed (java.awt.event.ActionEvent evt) {//GEN-
     }//GEN-LAST:event_secProtRBActionPerformed
 
     private void jaerProtRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jaerProtRBActionPerformed
-        // automatically will set other modes false by radio button group
+        unicastInterface.setCAERDisplayEnabled(false);
+        unicastInterface.setSpinnakerProtocolEnabled(false);
+        unicastInterface.setSecDvsProtocolEnabled(false);
     }//GEN-LAST:event_jaerProtRBActionPerformed
 
     private void caerDispRBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_caerDispRBActionPerformed

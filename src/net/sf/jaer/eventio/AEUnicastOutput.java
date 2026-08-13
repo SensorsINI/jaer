@@ -44,7 +44,6 @@ import net.sf.jaer.util.ByteSwapper;
 public class AEUnicastOutput implements AEUnicastSettings {
 
     static Preferences prefs= net.sf.jaer.JaerConstants.PREFS_ROOT;
-    private int sendBufferSize = prefs.getInt("AEUnicastOutput.bufferSize", 1500);
     static Logger log = Logger.getLogger("net.sf.jaer");
     protected DatagramChannel channel = null;
     protected DatagramSocket socket = null;
@@ -105,13 +104,12 @@ public class AEUnicastOutput implements AEUnicastSettings {
         channel = DatagramChannel.open();
         socket = channel.socket(); // bind to any available port because we will be sending datagrams with included host:port info
         socket.setTrafficClass(0x10 + 0x08); // low delay
-        setSocketBufferSize();
         allocateBuffers();
         consumerThread = new Thread(new Consumer(exchanger, initialFullBuffer));
         consumerThread.setName("AEUnicastOutput");
         consumerThread.setPriority(Thread.NORM_PRIORITY + -1);
         consumerThread.start();
-        log.info("opened AEUnicastOutput on local port=" + socket.getLocalPort() + " with bufferSize=" + getBufferSize());
+        log.info("opened AEUnicastOutput on local port=" + socket.getLocalPort() + " with datagram bufferSize=" + getBufferSize());
     }
 
     /**
@@ -264,7 +262,7 @@ public class AEUnicastOutput implements AEUnicastSettings {
                     }
                     if (currentBuf.remaining() < AENetworkInterfaceConstants.EVENT_SIZE_BYTES) {
 //                log.info("breaking packet to fit max datagram");
-                        // we break up into datagram packets of sendBufferSize
+                        // we break up into datagram packets of bufferSize
                         sendPacket();
                         maybeWriteSequenceNumber(currentBuf);
                     }
@@ -305,12 +303,14 @@ public class AEUnicastOutput implements AEUnicastSettings {
             log.warning("socket is null, cannot set its buffer size");
             return;
         }
-        socket.setSendBufferSize(bufferSize); // TODO chyanging buffer size later doesn't change this initial value
-        sendBufferSize = socket.getSendBufferSize();
-        if (sendBufferSize != bufferSize) {
-            log.warning("socket could not be sized to hold " + (bufferSize / AENetworkInterfaceConstants.EVENT_SIZE_BYTES) + " events (" + bufferSize + " bytes), could only get sendBufferSize=" + sendBufferSize);
+        int socketBuf = AENetworkInterfaceConstants.datagramSocketBufferSizeBytes(bufferSize);
+        socket.setSendBufferSize(socketBuf);
+        int granted = socket.getSendBufferSize();
+        if (granted < socketBuf) {
+            log.warning("requested UDP SO_SNDBUF=" + socketBuf + " bytes but OS granted " + granted
+                    + " (datagram payload=" + bufferSize + ")");
         } else {
-            log.info("getSendBufferSize (bytes)=" + sendBufferSize);
+            log.info("UDP SO_SNDBUF=" + granted + " bytes (datagram payload=" + bufferSize + ")");
         }
     }
 
@@ -352,20 +352,22 @@ public class AEUnicastOutput implements AEUnicastSettings {
     }
 
     /**
-     * Returns the buffer size for datagrams in bytes.
+     * Returns the max UDP datagram payload size in bytes, not the kernel socket
+     * queue (SO_SNDBUF).
      *
-     * @return the bufferSize in bytes. This is the actual value reported by the
-     * underlying socket.
+     * @return the datagram bufferSize in bytes.
      */
     @Override
     public int getBufferSize() {
-        return sendBufferSize;
+        return bufferSize;
     }
 
     /**
-     * Sets the desired maximum datagram size sent in bytes.
+     * Sets the desired maximum datagram payload size sent in bytes. The kernel
+     * socket send queue is sized separately (see
+     * {@link AENetworkInterfaceConstants#DATAGRAM_SOCKET_BUFFER_SIZE_BYTES}).
      *
-     * @param bufferSize the bufferSize to set in bytes.
+     * @param bufferSize the datagram payload size to set in bytes.
      * @see #getBufferSize()
      */
     @Override
