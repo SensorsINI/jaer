@@ -9,6 +9,16 @@
         <map/>
         <node name="DVS128">
           <map>
+            <entry key="BiasgenFrame.lastFile" value="/home/tobi/Dropbox/GitHub/SensorsINI/jaer/deviceSettings/DVS128/DVS128.xml"/>
+            <entry key="BiasgenFrame.viewFunctionalBiasesEnabled" value="false"/>
+            <entry key="ChipCanvas.origin3dx" value="0"/>
+            <entry key="ChipCanvas.origin3dy" value="0"/>
+            <entry key="ChipRenderer.colorMode" value="GrayLevel"/>
+            <entry key="DVS128.selectedBiasgenControlTab" value="0"/>
+            <entry key="FilterFrame.filters" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAKdwQAAAAKdAAvbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5YWVR5cGVGaWx0ZXJ0AC9uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLlJvdGF0ZUZpbHRlcnQAQm5ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuU3BhdGlvVGVtcG9yYWxDb3JyZWxhdGlvbkZpbHRlcnQAM25ldC5zZi5qYWVyLmV2ZW50cHJvY2Vzc2luZy5maWx0ZXIuUmVmcmFjdG9yeUZpbHRlcnQAK2V1LnNlZWJldHRlci5pbmkuY2hpcHMuZGF2aXMuSG90UGl4ZWxGaWx0ZXJ0AC5uZXQuc2YuamFlci5ldmVudHByb2Nlc3NpbmcuZmlsdGVyLkZhc3RGb3J3YXJkdAAnbmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5JbmZvdAAybmV0LnNmLmphZXIuZXZlbnRwcm9jZXNzaW5nLmZpbHRlci5DZWxsU3RhdHNQcm9iZXJ0AChuZXQuc2YuamFlci51dGlsLmF2aW91dHB1dC5KYWVyQXZpV3JpdGVydAAtY2gudW5pemguaW5pLmphZXIucHJvamVjdHMudG9iaS5nb2FsaWUuR29hbGlleA=="/>
+            <entry key="FilterFrame.lastFile" value="/home/tobi/Dropbox/GitHub/SensorsINI/jaer/filterSettings/learning_goalie.xml"/>
+            <entry key="FilterFrame.lastFilterSelected" value="class net.sf.jaer.eventprocessing.filter.Info"/>
+            <entry key="FilterFrame.restoreFilterEnabledStateEnabled" value="true"/>
             <entry key="IPot.Pr" value="917"/>
             <entry key="IPot.cas" value="556"/>
             <entry key="IPot.diff" value="8903"/>
@@ -24,6 +34,9 @@
             <entry key="Masterbias.internalResistorUsed" value="false"/>
             <entry key="Masterbias.rint" value="46000.0"/>
             <entry key="Masterbias.rx" value="8200.0"/>
+            <entry key="borderSpacePixels" value="30"/>
+            <entry key="colorScale" value="4"/>
+            <entry key="recentFiles" value="rO0ABXNyABNqYXZhLnV0aWwuQXJyYXlMaXN0eIHSHZnHYZ0DAAFJAARzaXpleHAAAAAGdwQAAAAGc3IADGphdmEuaW8uRmlsZQQtpEUODeT/AwABTAAEcGF0aHQAEkxqYXZhL2xhbmcvU3RyaW5nO3hwdAA/L2hvbWUvdG9iaS9Ecm9wYm94L0dpdEh1Yi9TZW5zb3JzSU5JL2phZXIvZGV2aWNlU2V0dGluZ3MvRFZTMTI4dwIAL3hzcQB+AAJ0AEovaG9tZS90b2JpL0Ryb3Bib3gvR2l0SHViL1NlbnNvcnNJTkkvamFlci9kZXZpY2VTZXR0aW5ncy9EVlMxMjgvRFZTMTI4LnhtbHcCAC94c3EAfgACdAA4L2hvbWUvdG9iaS9Ecm9wYm94L0dpdEh1Yi9TZW5zb3JzSU5JL2phZXIvZmlsdGVyU2V0dGluZ3N3AgAveHNxAH4AAnQATC9ob21lL3RvYmkvRHJvcGJveC9HaXRIdWIvU2Vuc29yc0lOSS9qYWVyL2ZpbHRlclNldHRpbmdzL2xlYXJuaW5nX2dvYWxpZS54bWx3AgAveHNxAH4AAnQAVS9ob21lL3RvYmkvRHJvcGJveC9HaXRIdWIvU2Vuc29yc0lOSS9qYWVyL2ZpbHRlclNldHRpbmdzL0dvaW5nRmlzaGluZy1JTkktT2N0MjAyMi54bWx3AgAveHNxAH4AAnQAUy9ob21lL3RvYmkvRHJvcGJveC9HaXRIdWIvU2Vuc29yc0lOSS9qYWVyL2ZpbHRlclNldHRpbmdzL0dvYWxpZSBtaW5pIGdvYWxpZSAyLjQueG1sdwIAL3h4"/>
             <entry key="selectedBiasgenControlTab" value="1"/>
           </map>
         </node>
