@@ -1279,22 +1279,42 @@ public class DavisRenderer extends AEChipRenderer {
         displayAnnotation = extRender;
     }
 
+    /**
+     * Some chip constructors create this renderer before {@code setBiasgen}, and
+     * {@link #initializeGrayLevelFromColorMode()} runs from the constructor.
+     */
+    private DvsDisplayConfigInterface getDvsDisplayConfig() {
+        if (chip == null) {
+            return null;
+        }
+        Object biasgen = chip.getBiasgen();
+        return (biasgen instanceof DvsDisplayConfigInterface) ? (DvsDisplayConfigInterface) biasgen : null;
+    }
+
     public boolean isDisplayFrames() {
-        return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayFrames();
+        DvsDisplayConfigInterface config = getDvsDisplayConfig();
+        return config == null || config.isDisplayFrames(); // default true, same as DavisConfig
     }
 
     public boolean isDisplayEvents() {
-        return ((DvsDisplayConfigInterface) chip.getBiasgen()).isDisplayEvents();
+        DvsDisplayConfigInterface config = getDvsDisplayConfig();
+        return config == null || config.isDisplayEvents(); // default true, same as DavisConfig
     }
 
     public void setDisplayFrames(boolean yes) {
         framesRenderedSinceApsFrame = 0;
-        ((DvsDisplayConfigInterface) chip.getBiasgen()).setDisplayFrames(yes);
+        DvsDisplayConfigInterface config = getDvsDisplayConfig();
+        if (config != null) {
+            config.setDisplayFrames(yes);
+        }
         resetFrame(getGrayValue()); // add in case background changes
     }
 
     public void setDisplayEvents(boolean yes) {
-        ((DvsDisplayConfigInterface) chip.getBiasgen()).setDisplayEvents(yes);
+        DvsDisplayConfigInterface config = getDvsDisplayConfig();
+        if (config != null) {
+            config.setDisplayEvents(yes);
+        }
         resetFrame(getGrayValue()); // add in case background changes
     }
 

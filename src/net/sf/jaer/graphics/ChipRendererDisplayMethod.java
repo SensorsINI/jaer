@@ -164,6 +164,7 @@ public class ChipRendererDisplayMethod extends DisplayMethod implements DisplayM
             histogramTextureId = ids[0];
         }
         gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glActiveTexture(GL.GL_TEXTURE0);
         gl.glBindTexture(GL.GL_TEXTURE_2D, histogramTextureId);
         gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
         gl.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL2.GL_CLAMP);

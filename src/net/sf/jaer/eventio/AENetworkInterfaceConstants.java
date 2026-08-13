@@ -26,8 +26,7 @@ import net.sf.jaer.Description;
         <b>Network (Remote) AE streaming</b><br>
         Send or receive address-events between AEViewers or other programs on this machine or the LAN.<br>
         <p><b>UDP unicast</b> — low-latency datagrams to one host (including localhost). Sequence numbers report drops.<br>
-        <b>UDP multicast</b> — one sender to many receivers on the LAN. Can flood the network if nobody is listening.<br>
-        <b>BlockingQueue</b> — in-process handoff between two viewers in this JVM (no sockets).<br>
+        <b>BlockingQueue</b> — in-process handoff: enable <i>input</i> on the receiver, then <i>output</i> on the sender (same jAER process).<br>
         <p>Default UDP port 8991.
         </html>
         """)
@@ -39,7 +38,7 @@ public interface AENetworkInterfaceConstants {
     /** the default port that unicast connections use */
     static public final int DATAGRAM_PORT=8991;
     
-    /** the default inet address we multicast to. Not used with unicast communications. */
+    /** Archival multicast group for {@link AEMulticastInput}/{@link AEMulticastOutput} (IoT-camera prototype). Not used by AEViewer. */
     static public final String MULTICAST_INETADDR="230.3.1.4"; // ok according to http://www.29west.com/docs/THPM/multicast-address-assignment.html
     
     /** size of socket event in bytes */

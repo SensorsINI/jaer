@@ -122,28 +122,6 @@
                 <Property name="text" type="java.lang.String" value="Remote"/>
               </Properties>
               <SubComponents>
-                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="multicastOutputEnabledCheckBoxMenuItem">
-                  <Properties>
-                    <Property name="mnemonic" type="int" value="115"/>
-                    <Property name="text" type="java.lang.String" value="Enable Multicast (UDP) AE Output"/>
-                    <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Enable multicast AE output (datagrams)&lt;br&gt;&lt;strong&gt;Warning! Will flood network if there are no listeners.&lt;/strong&gt;&lt;/html&gt;"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="multicastOutputEnabledCheckBoxMenuItemActionPerformed"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="openMulticastInputMenuItem">
-                  <Properties>
-                    <Property name="mnemonic" type="int" value="115"/>
-                    <Property name="text" type="java.lang.String" value="Enable Multicast (UDP) AE input"/>
-                    <Property name="toolTipText" type="java.lang.String" value="Enable multicast AE input (datagrams)"/>
-                  </Properties>
-                  <Events>
-                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openMulticastInputMenuItemActionPerformed"/>
-                  </Events>
-                </MenuItem>
-                <MenuItem class="javax.swing.JSeparator" name="jSeparator14">
-                </MenuItem>
                 <MenuItem class="javax.swing.JCheckBoxMenuItem" name="unicastOutputEnabledCheckBoxMenuItem">
                   <Properties>
                     <Property name="mnemonic" type="int" value="111"/>
@@ -172,6 +150,14 @@
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="openBlockingQueueInputMenuItemActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JCheckBoxMenuItem" name="blockingQueueOutputEnabledCheckBoxMenuItem">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Enable BlockingQueue output to another viewer"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed"/>
                   </Events>
                 </MenuItem>
               </SubComponents>

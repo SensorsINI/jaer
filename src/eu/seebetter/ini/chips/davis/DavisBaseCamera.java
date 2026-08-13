@@ -2210,6 +2210,8 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
             gl.glDisableVertexAttribArray(1);
             gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
             gl.glUseProgram(0);
+            gl.glActiveTexture(GL.GL_TEXTURE0);
+            gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
             gl.glPopMatrix();
 
             displayAnnotationLayer(drawable, colorRenderer, width, height);

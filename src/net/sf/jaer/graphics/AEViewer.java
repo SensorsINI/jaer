@@ -55,9 +55,11 @@ import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -129,8 +131,6 @@ import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEFileOutputStream;
 import net.sf.jaer.eventio.AEInputStream;
-import net.sf.jaer.eventio.AEMulticastInput;
-import net.sf.jaer.eventio.AEMulticastOutput;
 import net.sf.jaer.eventio.AENetworkInterfaceConstants;
 import net.sf.jaer.eventio.AESocket;
 import net.sf.jaer.eventio.AEUnicastDialog;
@@ -414,13 +414,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     protected Class aeChipClass = null;
     //    WindowSaver windowSaver;
     private JAERViewer jaerViewer;
-    // multicast connections
-    private AEMulticastInput aeMulticastInput = null;
-    private AEMulticastOutput aeMulticastOutput = null;
-    private boolean multicastInputEnabled = false, multicastOutputEnabled = false;
     // blockingQueue input
     private ArrayBlockingQueue blockingQueueInput = null;
     private boolean blockingQueueInputEnabled = false;
+    private ArrayBlockingQueue blockingQueueOutput = null;
+    private boolean blockingQueueOutputEnabled = false;
     // unicast dataqgram data xfer
     private volatile AEUnicastOutput unicastOutput = null;
     private volatile AEUnicastInput unicastInput = null;
@@ -553,7 +551,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (jaerViewer != null) {
             // all stuff having to do with synchronizing player buttons here, binding components
             // TODO rework binding of jAERViewer player, AEViewer player, and player GUI. The whole MVC idea is too convoluted now.
-            jaerViewer.addViewer(this); // register outselves, build menus here that sync views, e.g. synchronized playback // TODO, dependency, depends on existing player control panel
+            jaerViewer.addViewer(this); // register ourselves; assigns AEViewer-N name for WindowSaver
             if (jaerViewer.getSyncPlayer() != null) {
                 // now bind player control panel to SyncPlayer and bind jaer sync player to player control panel.
                 playerControls.addPropertyChangeListener(jaerViewer.getSyncPlayer());
@@ -562,6 +560,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     playerControls.setAePlayer(jaerViewer.getSyncPlayer());
                 }
             }
+        } else {
+            setViewerInstanceIndex(0);
         }
         validate();
 
@@ -824,14 +824,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             log.fine("closing unicastOutput " + unicastOutput);
             unicastOutput.close();
         }
-        if (aeMulticastInput != null) {
-            log.fine("closing aeMulticastInput " + aeMulticastInput);
-            aeMulticastInput.close();
-        }
-        if (aeMulticastOutput != null) {
-            log.fine("closing multicastOutput " + aeMulticastOutput);
-            aeMulticastOutput.close();
-        }
         if (chip != null) {
             log.fine("Running cleanup() for " + chip);
             chip.cleanup();
@@ -934,8 +926,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     if (ninterfaces == 1) {
                         hw = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
                     }
-                    log.info("setting hardware interface for unambiguous device to " + hw);
-                    chip.setHardwareInterface(hw); // if blank cypress, returns bare CypressFX2
+                    bindLiveHardwareIfCompatible(hw, "setting hardware interface for unambiguous device to ");
                 }
             }
         }
@@ -951,14 +942,62 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(bytes));
                 chipClassNames = (ArrayList<String>) in.readObject();
                 in.close();
+                if (mergeNewDefaultChipClassNames()) {
+                    putChipClassPrefs();
+                }
             } else {
                 log.warning("Building list of default AEChip devices - this can takes some time. To reduce startup time, use AEChip/Customize to specify desired devices");
                 makeDefaultChipClassNames();
+                storeMergedDefaultChipClassNames();
             }
         } catch (Exception e) {
             makeDefaultChipClassNames();
+            storeMergedDefaultChipClassNames();
             putChipClassPrefs(); // added this to cache chip classes to speed startup for subsequent launches
         }
+    }
+
+    /**
+     * Prefs key: newline-joined {@link #DEFAULT_CHIP_CLASS_NAMES} already merged
+     * into leftover {@code chipClassNames}. Chips the user later removes via
+     * Customize stay removed.
+     */
+    private static final String CHIP_CLASS_NAMES_DEFAULTS_MERGED_PREF = "AEViewer.chipClassNamesDefaultsMerged";
+
+    /**
+     * Leftover {@code chipClassNames} from older jAER omit cameras added later
+     * to {@link #DEFAULT_CHIP_CLASS_NAMES} (e.g. NRV). Add those once so an
+     * upgrade does not require clearing Preferences.
+     *
+     * @return true if {@link #chipClassNames} changed
+     */
+    private boolean mergeNewDefaultChipClassNames() {
+        if (chipClassNames == null) {
+            chipClassNames = new ArrayList<>();
+        }
+        String mergedRaw = prefs.get(CHIP_CLASS_NAMES_DEFAULTS_MERGED_PREF, "");
+        HashSet<String> previouslyMerged = new HashSet<>();
+        if (!mergedRaw.isEmpty()) {
+            for (String s : mergedRaw.split("\n")) {
+                if (!s.isEmpty()) {
+                    previouslyMerged.add(s);
+                }
+            }
+        }
+        boolean added = false;
+        for (String s : DEFAULT_CHIP_CLASS_NAMES) {
+            if (!chipClassNames.contains(s) && !previouslyMerged.contains(s)) {
+                chipClassNames.add(s);
+                added = true;
+                log.info("Upgrade: adding default AEChip " + s + " to AEChip menu");
+            }
+        }
+        storeMergedDefaultChipClassNames();
+        return added;
+    }
+
+    private void storeMergedDefaultChipClassNames() {
+        prefs.put(CHIP_CLASS_NAMES_DEFAULTS_MERGED_PREF, String.join("\n", DEFAULT_CHIP_CLASS_NAMES));
     }
 
     private void makeDefaultChipClassNames() {
@@ -1103,18 +1142,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void applyNetworkMenuDescriptionTooltips() {
         remoteMenu.setToolTipText(descriptionTooltip(AENetworkInterfaceConstants.class, null));
-        multicastOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEMulticastOutput.class, null));
-        openMulticastInputMenuItem.setToolTipText(descriptionTooltip(AEMulticastInput.class, null));
         unicastOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEUnicastOutput.class, null));
         openUnicastInputMenuItem.setToolTipText(descriptionTooltip(AEUnicastInput.class, null));
         openBlockingQueueInputMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "openBlockingQueueInputMenuItemActionPerformed", ActionEvent.class));
+        blockingQueueOutputEnabledCheckBoxMenuItem.setToolTipText(descriptionTooltip(AEViewer.class, "blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed", ActionEvent.class));
         enableLongLivedNetworkMenuTooltips(
                 remoteMenu,
-                multicastOutputEnabledCheckBoxMenuItem,
-                openMulticastInputMenuItem,
                 unicastOutputEnabledCheckBoxMenuItem,
                 openUnicastInputMenuItem,
-                openBlockingQueueInputMenuItem);
+                openBlockingQueueInputMenuItem,
+                blockingQueueOutputEnabledCheckBoxMenuItem);
     }
 
     /**
@@ -1192,12 +1229,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * When a live USB device is about to be bound (startup or hot-plug), align
      * the viewer AEChip with {@link net.sf.jaer.UsbDevices} matches:
      * <ul>
+     * <li>Search the AEChip menu, then {@link #DEFAULT_CHIP_CLASS_NAMES} if the
+     * leftover Customize list has no VID/PID match (upgrade without clearing
+     * Preferences).</li>
      * <li>If a remembered AEChip exists for this device key and is still a
      * match, apply it silently.</li>
-     * <li>If exactly one menu AEChip matches and it is already selected,
+     * <li>If exactly one AEChip matches and it is already selected,
      * continue.</li>
-     * <li>If exactly one matches but differs from current, offer switch with
-     * optional Remember.</li>
+     * <li>If exactly one matches but the current AEChip does not declare this
+     * VID/PID, switch to it (and add it to the menu if needed).</li>
      * <li>If several match (e.g. Davis346 red/blue), offer a chooser with
      * Remember.</li>
      * </ul>
@@ -1215,11 +1255,22 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
         String deviceKey = liveDevicePromptKey(hw, ids);
-        java.util.List<Class<? extends AEChip>> matches
+        java.util.List<Class<? extends AEChip>> found
                 = LiveDeviceChipDetector.findMatches(hw, chipClassNames);
-        if (matches.isEmpty()) {
+        if (found.isEmpty()) {
+            found = LiveDeviceChipDetector.findMatches(hw, Arrays.asList(DEFAULT_CHIP_CLASS_NAMES));
+            if (!found.isEmpty()) {
+                log.info("USB device " + ids.key()
+                        + " matched default AEChip(s) not in leftover AEChip menu; adding to menu");
+                addChipClassesToMenu(found);
+            }
+        }
+        if (found.isEmpty()) {
+            log.info("No loaded or default AEChip declares USB " + ids.key()
+                    + ". Use AEChip/Customize to add the device class.");
             return;
         }
+        final java.util.List<Class<? extends AEChip>> matches = found;
 
         // Per-device remembered choice (survives restart / re-plug).
         Class<? extends AEChip> remembered = loadRememberedLiveChip(deviceKey, matches);
@@ -1248,6 +1299,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return;
         }
 
+        // Unique VID/PID match and current AEChip cannot drive this device
+        // (typical upgrade: leftover preferred chip is CDAVIS, camera is NRV).
+        if (matches.size() == 1 && !currentIsMatch) {
+            Class<? extends AEChip> suggested = matches.get(0);
+            liveChipOfferPromptedKeys.add(deviceKey);
+            prefs.put(LIVE_CHIP_REMEMBERED_PREF_PREFIX + deviceKey, suggested.getName());
+            log.info("Switching AEChip from "
+                    + (current == null ? "(none)" : current.getSimpleName())
+                    + " to " + suggested.getSimpleName()
+                    + " for USB device " + deviceKey
+                    + " (unique @UsbDevices match)");
+            setAeChipClass(suggested);
+            return;
+        }
+
         // Already asked this session: only skip if the current AEChip can still drive
         // this device. If the user switched to another chip (e.g. NRV) and replugged
         // Davis, we must offer again — otherwise HI is bound to the wrong AEChip and
@@ -1262,60 +1328,40 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         final String idLabel = ids.key();
         Runnable dialog = () -> {
             String currentName = current == null ? "(none)" : current.getSimpleName();
-            if (matches.size() == 1) {
-                Class<? extends AEChip> suggested = matches.get(0);
-                String msg = String.format(
-                        "<html>USB device <b>%s</b> matches AEChip <b>%s</b>,<br>"
-                        + "but the viewer is set to <b>%s</b>.<br><br>"
-                        + "Switch to <b>%s</b> before opening?</html>",
-                        idLabel, suggested.getSimpleName(), currentName, suggested.getSimpleName());
-                Object[] options = {"Yes", "Remember this selection", "No"};
-                int choice = JOptionPane.showOptionDialog(
-                        this, msg, "AEChip for USB device",
-                        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
-                        null, options, options[0]);
-                if (choice == 0) {
-                    chosenHolder[0] = suggested;
-                } else if (choice == 1) {
-                    chosenHolder[0] = suggested;
-                    rememberHolder[0] = true;
+            String[] names = new String[matches.size()];
+            int preselect = 0;
+            for (int i = 0; i < matches.size(); i++) {
+                names[i] = matches.get(i).getSimpleName();
+                if (matches.get(i).equals(current)) {
+                    preselect = i;
                 }
-            } else {
-                String[] names = new String[matches.size()];
-                int preselect = 0;
-                for (int i = 0; i < matches.size(); i++) {
-                    names[i] = matches.get(i).getSimpleName();
-                    if (matches.get(i).equals(current)) {
-                        preselect = i;
-                    }
-                }
-                javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(0, 10));
-                panel.add(new javax.swing.JLabel(String.format(
-                        "<html>USB device <b>%s</b> matches several AEChips (same VID/PID).<br>"
-                        + "jAER cannot tell which physical camera this is (e.g. Davis346 red vs blue).<br>"
-                        + "Current AEChip is <b>%s</b>. Choose the AEChip for this camera:</html>",
-                        idLabel, currentName)), java.awt.BorderLayout.NORTH);
-                javax.swing.JComboBox<String> combo = new javax.swing.JComboBox<>(names);
-                combo.setSelectedIndex(preselect);
-                panel.add(combo, java.awt.BorderLayout.CENTER);
-                Object[] options = {"OK", "Remember this selection", "Cancel"};
-                int choice = JOptionPane.showOptionDialog(
-                        this, panel, "AEChip for USB device",
-                        JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
-                        null, options, options[0]);
-                if (choice == 0 || choice == 1) {
-                    Object sel = combo.getSelectedItem();
-                    if (sel != null) {
-                        for (Class<? extends AEChip> c : matches) {
-                            if (c.getSimpleName().equals(sel)) {
-                                chosenHolder[0] = c;
-                                break;
-                            }
+            }
+            javax.swing.JPanel panel = new javax.swing.JPanel(new java.awt.BorderLayout(0, 10));
+            panel.add(new javax.swing.JLabel(String.format(
+                    "<html>USB device <b>%s</b> matches several AEChips (same VID/PID).<br>"
+                    + "jAER cannot tell which physical camera this is (e.g. Davis346 red vs blue).<br>"
+                    + "Current AEChip is <b>%s</b>. Choose the AEChip for this camera:</html>",
+                    idLabel, currentName)), java.awt.BorderLayout.NORTH);
+            javax.swing.JComboBox<String> combo = new javax.swing.JComboBox<>(names);
+            combo.setSelectedIndex(preselect);
+            panel.add(combo, java.awt.BorderLayout.CENTER);
+            Object[] options = {"OK", "Remember this selection", "Cancel"};
+            int choice = JOptionPane.showOptionDialog(
+                    this, panel, "AEChip for USB device",
+                    JOptionPane.YES_NO_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE,
+                    null, options, options[0]);
+            if (choice == 0 || choice == 1) {
+                Object sel = combo.getSelectedItem();
+                if (sel != null) {
+                    for (Class<? extends AEChip> c : matches) {
+                        if (c.getSimpleName().equals(sel)) {
+                            chosenHolder[0] = c;
+                            break;
                         }
                     }
-                    if (choice == 1) {
-                        rememberHolder[0] = true;
-                    }
+                }
+                if (choice == 1) {
+                    rememberHolder[0] = true;
                 }
             }
         };
@@ -1384,6 +1430,69 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             return ids.key();
         }
         return ids.key() + "#" + serial;
+    }
+
+    /**
+     * Add AEChip classes to the Customize menu (and persist) so a USB match
+     * found only in {@link #DEFAULT_CHIP_CLASS_NAMES} is available next time.
+     */
+    private void addChipClassesToMenu(java.util.List<Class<? extends AEChip>> classes) {
+        if (classes == null || classes.isEmpty() || chipClassNames == null) {
+            return;
+        }
+        boolean added = false;
+        for (Class<? extends AEChip> c : classes) {
+            if (c == null) {
+                continue;
+            }
+            String name = c.getName();
+            if (!chipClassNames.contains(name)) {
+                chipClassNames.add(name);
+                added = true;
+                log.info("Added " + c.getSimpleName() + " to AEChip menu (USB device match)");
+            }
+        }
+        if (!added) {
+            return;
+        }
+        putChipClassPrefs();
+        Runnable rebuild = this::buildDeviceMenu;
+        if (SwingUtilities.isEventDispatchThread()) {
+            rebuild.run();
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(rebuild);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warning("Interrupted while rebuilding AEChip menu");
+            } catch (InvocationTargetException e) {
+                log.warning("Could not rebuild AEChip menu: " + e.getCause());
+            }
+        }
+    }
+
+    /**
+     * Bind live USB hardware only when the current AEChip either has no
+     * {@link net.sf.jaer.UsbDevices} annotation or declares this VID/PID.
+     * Prevents leftover preferred chips (e.g. CDAVIS) from opening an NRV
+     * interface.
+     */
+    private void bindLiveHardwareIfCompatible(HardwareInterface hw, String logPrefix) {
+        if (hw == null || chip == null) {
+            return;
+        }
+        Class current = getAeChipClass();
+        if (LiveDeviceChipDetector.declaresAnyUsbDevices(current)
+                && !LiveDeviceChipDetector.currentChipMatches(current, hw)) {
+            UsbIds.Pair ids = UsbIds.peek(hw);
+            log.warning("Not binding " + hw + " to "
+                    + (current == null ? "?" : current.getSimpleName())
+                    + " (USB " + ids.key()
+                    + " is not declared in @UsbDevices). Choose a matching AEChip.");
+            return;
+        }
+        log.info(logPrefix + hw);
+        chip.setHardwareInterface(hw);
     }
 
     /**
@@ -1618,6 +1727,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return out;
     }
 
+    private int viewerInstanceIndex = 0;
+
+    /**
+     * Stable WindowSaver key {@code AEViewer-N} and title suffix {@code #N+1}.
+     */
+    public int getViewerInstanceIndex() {
+        return viewerInstanceIndex;
+    }
+
+    /**
+     * Called from {@link JAERViewer#addViewer} before the frame is shown.
+     */
+    public void setViewerInstanceIndex(int viewerInstanceIndex) {
+        this.viewerInstanceIndex = viewerInstanceIndex;
+        setName("AEViewer-" + viewerInstanceIndex);
+    }
+
     private long lastTimeTitleSet = 0;
     PlayMode lastTitlePlayMode = null;
 
@@ -1625,7 +1751,16 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      * this sets window title according to actual state
      */
     public void setTitleAccordingToState() {
-        if ((lastTitlePlayMode == getPlayMode()) && ((System.currentTimeMillis() - lastTimeTitleSet) < 1000)) {
+        setTitleAccordingToState(false);
+    }
+
+    /**
+     * this sets window title according to actual state
+     *
+     * @param force ignore the 1 Hz throttle (e.g. when a second viewer opens)
+     */
+    public void setTitleAccordingToState(boolean force) {
+        if (!force && (lastTitlePlayMode == getPlayMode()) && ((System.currentTimeMillis() - lastTimeTitleSet) < 1000)) {
             return; // don't bother with this expenive window operation more than 1/second
         }
         lastTimeTitleSet = System.currentTimeMillis();
@@ -1652,6 +1787,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 break;
             default:
                 ts = "Unknown state";
+        }
+        if ((jaerViewer != null) && (jaerViewer.getNumViewers() > 1)) {
+            ts = ts + " #" + (viewerInstanceIndex + 1);
         }
         final String fts = ts;
         SwingUtilities.invokeLater(new Runnable() {
@@ -1911,6 +2049,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             displayMethodMenu = chipCanvas.getDisplayMethodMenu();
             viewMenu.add(chipCanvas.getDisplayMethodMenu(), dispMethodsMenuIdx - 1);
             viewMenu.invalidate();
+            chipCanvas.unzoom();
+            if (chip.getRenderer() != null) {
+                chip.getRenderer().ensurePixmapReadyForDisplay();
+            }
         }
 
     }
@@ -1938,9 +2080,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }
 
     /**
-     * If exactly one USB interface is present and a remembered AEChip exists for
-     * it, use that class for the first {@link #setAeChipClass} so startup does not
-     * build a Davis canvas then immediately rebuild for the live device.
+     * If exactly one USB interface is present, use a remembered AEChip or a
+     * unique {@link net.sf.jaer.UsbDevices} match for the first
+     * {@link #setAeChipClass} so startup does not build the leftover preferred
+     * chip then immediately rebuild for the live device.
      */
     private void maybeUseRememberedLiveChipAtStartup() {
         try {
@@ -1962,16 +2105,26 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             java.util.List<Class<? extends AEChip>> matches
                     = LiveDeviceChipDetector.findMatches(hw, chipClassNames);
             if (matches.isEmpty()) {
+                matches = LiveDeviceChipDetector.findMatches(hw, Arrays.asList(DEFAULT_CHIP_CLASS_NAMES));
+                if (!matches.isEmpty()) {
+                    addChipClassesToMenu(matches);
+                }
+            }
+            if (matches.isEmpty()) {
                 return;
             }
             String deviceKey = liveDevicePromptKey(hw, ids);
-            Class<? extends AEChip> remembered = loadRememberedLiveChip(deviceKey, matches);
-            if (remembered != null && !remembered.equals(aeChipClass)) {
-                log.info("Startup: using remembered AEChip " + remembered.getSimpleName()
+            Class<? extends AEChip> chosen = loadRememberedLiveChip(deviceKey, matches);
+            if (chosen == null && matches.size() == 1
+                    && (aeChipClass == null || !matches.get(0).equals(aeChipClass))) {
+                chosen = matches.get(0);
+            }
+            if (chosen != null && !chosen.equals(aeChipClass)) {
+                log.info("Startup: using AEChip " + chosen.getSimpleName()
                         + " for USB device " + deviceKey
                         + " (avoids recreating OpenGL canvas)");
-                aeChipClass = remembered;
-                aeChipClassName = remembered.getName();
+                aeChipClass = chosen;
+                aeChipClassName = chosen.getName();
                 liveChipOfferPromptedKeys.add(deviceKey);
             }
         } catch (Throwable t) {
@@ -2115,11 +2268,8 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             if (bind == null) {
                                 bind = HardwareInterfaceFactory.instance().getFirstAvailableInterface();
                             }
-                            log.info("selected interface " + evt.getActionCommand()
-                                    + " with HardwareInterface number" + interfaceNumber + " which is " + bind);
-                            if (bind != null) {
-                                chip.setHardwareInterface(bind);
-                            }
+                            bindLiveHardwareIfCompatible(bind, "selected interface " + evt.getActionCommand()
+                                    + " with HardwareInterface number" + interfaceNumber + " which is ");
                         }
                         if (getPlayMode() != PlayMode.PLAYBACK && getPlayMode() != PlayMode.FILTER_INPUT) {
                             setPlayMode(PlayMode.WAITING);
@@ -3349,15 +3499,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                             return unicastInput.readPacket();  // TODO should throw interruptedexception
                         }
                     }
-
-                    if (multicastInputEnabled) {
-                        if (aeMulticastInput == null) {
-                            log.warning("null aeMulticastInput, going to WAITING state");
-                            setPlayMode(PlayMode.WAITING);
-                        } else {
-                            return aeMulticastInput.readPacket();
-                        }
-                    }
                     if (blockingQueueInputEnabled) {
                         if (getBlockingQueueInput() == null) {
                             log.warning("null blockingQueueInput, going to WAITING state");
@@ -3381,7 +3522,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     }
                     break;
                 case WAITING:
-                    if (unicastInputEnabled || multicastInputEnabled) {
+                    if (unicastInputEnabled) {
                         // if were were playing back a recording and a remote interface is active, then we go back to it here.
                         setPlayMode(PlayMode.REMOTE);
                         return emptyRawPacket;
@@ -3508,20 +3649,12 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
          * @return true to break out of loop, e.g. there is error, false is OK
          */
         private boolean writeOutputStreams(AEPacketRaw rawPacket, EventPacket cookedPacket) {
-            // if we are multicasting output send it out here
-            if (multicastOutputEnabled && (aeMulticastOutput != null)) {
-                try {
-                    if (!isLogFilteredEventsEnabled()) {
-                        aeMulticastOutput.writePacket(rawPacket);
-                    } else {
-                        // log the reconstructed packet after filtering
-                        AEPacketRaw aeRawRecon = extractor.reconstructRawPacket(cookedPacket);
-                        aeMulticastOutput.writePacket(aeRawRecon);
-                    }
-                } catch (IOException e) {
-                    log.log(Level.SEVERE, e.toString(), e);
-
+            if (blockingQueueOutputEnabled && (blockingQueueOutput != null) && (rawPacket != null)) {
+                AEPacketRaw toSend = rawPacket;
+                if (isLogFilteredEventsEnabled()) {
+                    toSend = extractor.reconstructRawPacket(cookedPacket);
                 }
+                offerBlockingQueuePacket(toSend);
             }
 
             if (unicastOutputEnabled && (unicastOutput != null)) {
@@ -4110,10 +4243,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 if (unicastInputEnabled) {
                     closeUnicastInput();
                 }
-                if (multicastInputEnabled) {
-                    aeMulticastInput.close();
-                    multicastInputEnabled = false;
-                }
                 if (blockingQueueInputEnabled) {
                     blockingQueueInput = null;
                     blockingQueueInputEnabled = false;
@@ -4169,13 +4298,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         networkSeparator = new javax.swing.JSeparator();
         remoteMenu = new javax.swing.JMenu();
-        multicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
-        openMulticastInputMenuItem = new javax.swing.JCheckBoxMenuItem();
-        jSeparator14 = new javax.swing.JSeparator();
         unicastOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         openUnicastInputMenuItem = new javax.swing.JMenuItem();
         jSeparator17 = new javax.swing.JPopupMenu.Separator();
         openBlockingQueueInputMenuItem = new javax.swing.JCheckBoxMenuItem();
+        blockingQueueOutputEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         syncSeperator = new javax.swing.JSeparator();
         syncEnabledCheckBoxMenuItem = new javax.swing.JCheckBoxMenuItem();
         timestampResetBitmaskMenuItem = new javax.swing.JMenuItem();
@@ -4516,27 +4643,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         remoteMenu.setMnemonic('r');
         remoteMenu.setText("Remote");
 
-        multicastOutputEnabledCheckBoxMenuItem.setMnemonic('s');
-        multicastOutputEnabledCheckBoxMenuItem.setText("Enable Multicast (UDP) AE Output");
-        multicastOutputEnabledCheckBoxMenuItem.setToolTipText("<html>Enable multicast AE output (datagrams)<br><strong>Warning! Will flood network if there are no listeners.</strong></html>");
-        multicastOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                multicastOutputEnabledCheckBoxMenuItemActionPerformed(evt);
-            }
-        });
-        remoteMenu.add(multicastOutputEnabledCheckBoxMenuItem);
-
-        openMulticastInputMenuItem.setMnemonic('s');
-        openMulticastInputMenuItem.setText("Enable Multicast (UDP) AE input");
-        openMulticastInputMenuItem.setToolTipText("Enable multicast AE input (datagrams)");
-        openMulticastInputMenuItem.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                openMulticastInputMenuItemActionPerformed(evt);
-            }
-        });
-        remoteMenu.add(openMulticastInputMenuItem);
-        remoteMenu.add(jSeparator14);
-
         unicastOutputEnabledCheckBoxMenuItem.setMnemonic('o');
         unicastOutputEnabledCheckBoxMenuItem.setText("Enable unicast datagram (UDP) output...");
         unicastOutputEnabledCheckBoxMenuItem.setToolTipText("Enables unicast datagram (UDP) outputs to a single receiver");
@@ -4565,6 +4671,14 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
         });
         remoteMenu.add(openBlockingQueueInputMenuItem);
+
+        blockingQueueOutputEnabledCheckBoxMenuItem.setText("Enable BlockingQueue output to another viewer");
+        blockingQueueOutputEnabledCheckBoxMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed(evt);
+            }
+        });
+        remoteMenu.add(blockingQueueOutputEnabledCheckBoxMenuItem);
 
         fileMenu.add(remoteMenu);
         fileMenu.add(syncSeperator);
@@ -7317,6 +7431,37 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         return blockingQueueInput;
     }
 
+    /**
+     * Another viewer in this JVM that has BlockingQueue input enabled, or null.
+     */
+    private AEViewer findBlockingQueueInputViewer() {
+        if (jaerViewer == null) {
+            return null;
+        }
+        for (AEViewer v : jaerViewer.getViewers()) {
+            if ((v != this) && (v.getBlockingQueueInput() != null)) {
+                return v;
+            }
+        }
+        return null;
+    }
+
+    private void offerBlockingQueuePacket(AEPacketRaw src) {
+        if ((blockingQueueOutput == null) || (src == null) || (src.getNumEvents() == 0)) {
+            return;
+        }
+        int n = src.getNumEvents();
+        int[] a = new int[n];
+        int[] t = new int[n];
+        System.arraycopy(src.getAddresses(), 0, a, 0, n);
+        System.arraycopy(src.getTimestamps(), 0, t, 0, n);
+        AEPacketRaw copy = new AEPacketRaw(a, t);
+        if (!blockingQueueOutput.offer(copy)) {
+            blockingQueueOutput.poll();
+            blockingQueueOutput.offer(copy);
+        }
+    }
+
     private void closeUnicastInput() {
         if (unicastInput != null) {
             unicastInput.close();
@@ -7450,9 +7595,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             <html>
             <b>BlockingQueue input from another viewer</b><br>
             Receive events from another AEViewer in <i>this</i> JVM through an in-memory queue (no sockets, no packet loss).<br>
-            The other viewer must offer packets into this queue. Useful for stereo or retina+cochlea setups on one machine
-            without UDP/TCP.<br>
-            <p>Not a network protocol — both viewers must be started from the same jAER process.
+            On the <b>sending</b> viewer use File → Remote → <b>Enable BlockingQueue output to another viewer</b>.<br>
+            Start order: enable input here first, then enable output on the sender.<br>
+            <p>Not a network protocol — both viewers must be started from the same jAER process (File → New viewer).
             </html>
             """)
 	private void openBlockingQueueInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openBlockingQueueInputMenuItemActionPerformed
@@ -7516,6 +7661,38 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 	}//GEN-LAST:event_openBlockingQueueInputMenuItemActionPerformed
 
+	@Description("""
+            <html>
+            <b>BlockingQueue output to another viewer</b><br>
+            Send this viewer's events into another AEViewer's in-memory queue in <i>this</i> JVM (no sockets).<br>
+            On the <b>receiving</b> viewer first enable File → Remote → <b>Enable BlockingQueue input from another viewer</b>,
+            then enable this item.<br>
+            <p>Both viewers must be started from the same jAER process (File → New viewer), not two separate <code>ant run</code>s.
+            </html>
+            """)
+	private void blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed
+            if (blockingQueueOutputEnabledCheckBoxMenuItem.isSelected()) {
+                AEViewer consumer = findBlockingQueueInputViewer();
+                if (consumer == null) {
+                    blockingQueueOutputEnabledCheckBoxMenuItem.setSelected(false);
+                    JOptionPane.showMessageDialog(this,
+                            "<html>No other AEViewer has BlockingQueue <b>input</b> enabled.<br><br>"
+                            + "On the receiving viewer: File → Remote → <b>Enable BlockingQueue input from another viewer</b>.<br>"
+                            + "Then come back here and enable output.<br><br>"
+                            + "Both viewers must be in the same jAER process (File → New viewer).",
+                            "No BlockingQueue receiver",
+                            JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                blockingQueueOutput = consumer.getBlockingQueueInput();
+                blockingQueueOutputEnabled = true;
+                log.info("BlockingQueue output to " + consumer.getTitle());
+            } else {
+                blockingQueueOutputEnabled = false;
+                blockingQueueOutput = null;
+            }
+	}//GEN-LAST:event_blockingQueueOutputEnabledCheckBoxMenuItemActionPerformed
+
 	private void openUnicastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openUnicastInputMenuItemActionPerformed
             if (unicastInputEnabled) {
 
@@ -7578,34 +7755,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             }
 	}//GEN-LAST:event_unicastOutputEnabledCheckBoxMenuItemActionPerformed
-
-	private void openMulticastInputMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openMulticastInputMenuItemActionPerformed
-            multicastInputEnabled = openMulticastInputMenuItem.isSelected(); // TODO encapsulate in method so that stopme can call this close method
-            if (multicastInputEnabled) {
-                try {
-                    aeMulticastInput = new AEMulticastInput();
-                    aeMulticastInput.start();
-                    setPlayMode(PlayMode.REMOTE);
-                } catch (IOException e) {
-                    log.warning(e.getMessage());
-                    openMulticastInputMenuItem.setSelected(false);
-                }
-            } else {
-                if (aeMulticastInput != null) { // TODO replace with close multicast method that fixes menu items
-                    aeMulticastInput.close();
-                }
-                setPlayMode(PlayMode.WAITING);
-            }
-	}//GEN-LAST:event_openMulticastInputMenuItemActionPerformed
-
-	private void multicastOutputEnabledCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_multicastOutputEnabledCheckBoxMenuItemActionPerformed
-            multicastOutputEnabled = multicastOutputEnabledCheckBoxMenuItem.isSelected();
-            if (multicastOutputEnabled) {
-                aeMulticastOutput = new AEMulticastOutput();
-            } else if (aeMulticastOutput != null) {
-                aeMulticastOutput.close();
-            }
-	}//GEN-LAST:event_multicastOutputEnabledCheckBoxMenuItemActionPerformed
 
 	private void logFilteredEventsCheckBoxMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logFilteredEventsCheckBoxMenuItemActionPerformed
             setLogFilteredEventsEnabled(logFilteredEventsCheckBoxMenuItem.isSelected());
@@ -8576,7 +8725,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JPopupMenu.Separator jSeparator11;
     private javax.swing.JSeparator jSeparator12;
     private javax.swing.JSeparator jSeparator13;
-    private javax.swing.JSeparator jSeparator14;
     private javax.swing.JSeparator jSeparator16;
     private javax.swing.JPopupMenu.Separator jSeparator17;
     private javax.swing.JPopupMenu.Separator jSeparator18;
@@ -8616,12 +8764,11 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JRadioButtonMenuItem monSeqOpMode1;
     private javax.swing.ButtonGroup monSeqOpModeButtonGroup;
     private javax.swing.JMenu monSeqOperationModeMenu;
-    private javax.swing.JCheckBoxMenuItem multicastOutputEnabledCheckBoxMenuItem;
     private javax.swing.JSeparator networkSeparator;
     private javax.swing.JMenuItem newViewerMenuItem;
     private javax.swing.JCheckBoxMenuItem openBlockingQueueInputMenuItem;
+    private javax.swing.JCheckBoxMenuItem blockingQueueOutputEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem openMenuItem;
-    private javax.swing.JCheckBoxMenuItem openMulticastInputMenuItem;
     private javax.swing.JMenuItem openUnicastInputMenuItem;
     private javax.swing.JCheckBoxMenuItem pauseRenderingCheckBoxMenuItem;
     private javax.swing.JMenu playbackMenu;

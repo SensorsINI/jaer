@@ -331,6 +331,7 @@ public class JAERViewer {
             syncPlayer = new SyncPlayer(viewer, this);
             log.info("added " + syncPlayer + " to first viewer " + this);
         }
+        viewer.setViewerInstanceIndex(allocateViewerIndex());
         getViewers().add(viewer);
         viewer.addWindowListener(new java.awt.event.WindowAdapter() {
 
@@ -343,6 +344,31 @@ public class JAERViewer {
             }
         });
         buildMenus(viewer);
+        refreshViewerTitles();
+    }
+
+    /** Lowest unused {@code AEViewer-N} index so WindowSaver can restore each viewer separately. */
+    private int allocateViewerIndex() {
+        int i = 0;
+        while (true) {
+            boolean used = false;
+            for (AEViewer v : viewers) {
+                if (v.getViewerInstanceIndex() == i) {
+                    used = true;
+                    break;
+                }
+            }
+            if (!used) {
+                return i;
+            }
+            i++;
+        }
+    }
+
+    private void refreshViewerTitles() {
+        for (AEViewer v : viewers) {
+            v.setTitleAccordingToState(true);
+        }
     }
 
     void buildMenus(AEViewer v) {
@@ -383,6 +409,7 @@ public class JAERViewer {
         for (AbstractButton bb : syncEnableButtons) {
             bb.setEnabled(en);
         }
+        refreshViewerTitles();
     }
 
     /**

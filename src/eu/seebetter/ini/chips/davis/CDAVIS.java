@@ -47,11 +47,11 @@ public class CDAVIS extends DavisBaseCamera {
 
         setEventExtractor(new DavisColorEventExtractor(this, true, false, CDAVIS.COLOR_FILTER, false));
 
+        setBiasgen(davisConfig = new CDAVISConfig(this));
+
         davisRenderer = new DavisColorRenderer(this, true, CDAVIS.COLOR_FILTER, true, CDAVIS.COLOR_CORRECTION);
         davisRenderer.setMaxADC(DavisChip.MAX_ADC);
         setRenderer(davisRenderer);
-        
-        setBiasgen(davisConfig = new CDAVISConfig(this));
 
 
         setApsFirstPixelReadOut(new Point(0, 0));

@@ -78,6 +78,9 @@ public class Chip2D extends Chip {
         int newsize = sizeX * sizeY * numCellTypes;
         if (newsize > 0) {
             getSupport().firePropertyChange(EVENT_SIZE_SET, oldsize, newsize);
+            if (canvas != null) {
+                canvas.unzoom();
+            }
         }
     }
 
@@ -103,6 +106,9 @@ public class Chip2D extends Chip {
         int newsize = sizeX * sizeY * numCellTypes;
         if (newsize > 0) {
             getSupport().firePropertyChange(EVENT_SIZE_SET, oldsize, newsize);
+            if (canvas != null) {
+                canvas.unzoom();
+            }
         }
     }
 

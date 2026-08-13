@@ -1,3 +1,10 @@
+/*
+ * Archival: UDP multicast AE input, kept for possible later IoT-camera work.
+ * Not wired in AEViewer (File → Remote). Last used for a prototype IoT camera.
+ *
+ * Copyright 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
+ */
+
 package net.sf.jaer.eventio;
 
 import java.io.ByteArrayInputStream;
@@ -18,10 +25,11 @@ import net.sf.jaer.aemonitor.EventRaw;
 /** 
  * Receives input via multicast datagram packets from a server. This input is a Thread that reads the MulticastSocket in the background and
  * exchanges data with a consumer using a double buffer. It must be started like any thread.
- *Closing the AEMulticastInput interrupts the thread and joins it.
- 
- @author tobi
- 
+ * Closing the AEMulticastInput interrupts the thread and joins it.
+ * <p>
+ * Archival: not wired in AEViewer (File → Remote). Kept for possible later IoT-camera developments.
+ *
+ * @author tobi
  */
 @Description("""
         <html>

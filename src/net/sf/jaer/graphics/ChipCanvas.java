@@ -19,7 +19,9 @@ import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelListener;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
@@ -519,6 +521,7 @@ public class ChipCanvas implements GLEventListener, Observer {
     public void display(final GLAutoDrawable drawable) {
         final GL2 gl = drawable.getGL().getGL2();
         gl.glViewport(0, 0, drawable.getSurfaceWidth(), drawable.getSurfaceHeight());
+        resetFixedFunctionState(gl);
 
         checkGLError(gl, glu, "start of display");
 
@@ -734,10 +737,13 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     public Point getPixelFromMouseEvent(final MouseEvent evt) {
         final Point mp = evt.getPoint();
-        if (mp == null) {
+        if (mp == null || glCanvas == null) {
             return null;
         }
         Point p = getPixelFromMousePoint(mp);
+        if (p == null) {
+            return null;
+        }
         clipPoint(p);
         return p;
     }
@@ -750,11 +756,10 @@ public class ChipCanvas implements GLEventListener, Observer {
      */
     private Point getPixelFromMouseEventUnclipped(final MouseEvent evt) {
         final Point mp = evt.getPoint();
-        if (mp == null) {
+        if (mp == null || glCanvas == null) {
             return null;
         }
-        Point p = getPixelFromMousePoint(mp);
-        return p;
+        return getPixelFromMousePoint(mp);
     }
 
     /**
@@ -767,15 +772,13 @@ public class ChipCanvas implements GLEventListener, Observer {
      * valid.
      */
     private Point getPixelFromMousePoint(final Point mp) {
-        getZoom().computeMouseFrac(mp);
-
-        if (mp == null) {
+        if (mp == null || glCanvas == null) {
             return null;
         }
-//        // May 2021, Tobi changed to use simpler clipArea object along with chip size.
-//        // Former method using all the matrices was just too cryptic to understand
+        getZoom().computeMouseFrac(mp);
+
         int x = (int) ((mp.getX() / getScale()) + getClipArea().getLeft());
-        int y = (int) (((getCanvas().getHeight() - mp.getY()) / getScale()) + getClipArea().getBottom());
+        int y = (int) (((glCanvas.getHeight() - mp.getY()) / getScale()) + getClipArea().getBottom());
 //
         final Point p = new Point(x, y);
         mouseWasInsideChipBounds = !((p.x < 0) || (p.x > (chip.getSizeX() - 1)) || ((p.y < 0) | (p.y > (chip.getSizeY() - 1))));
@@ -873,6 +876,11 @@ public class ChipCanvas implements GLEventListener, Observer {
 
 //        gl.setSwapInterval(0);
         gl.glShadeModel(GLLightingFunc.GL_FLAT);
+        resetFixedFunctionState(gl);
+        if (chip != null && chip.getNumPixels() > 0) {
+            ZCLIP = chip.getMaxSize();
+            unzoom();
+        }
 
         gl.glClearColor(0, 0, 0, 0f);
         gl.glClear(GL.GL_COLOR_BUFFER_BIT);
@@ -882,6 +890,27 @@ public class ChipCanvas implements GLEventListener, Observer {
         gl.glColor3f(1, 1, 1);
         glut.glutBitmapString(GLUT.BITMAP_HELVETICA_18, "Initialized display");
         checkGLError(gl, glu, "after init");
+    }
+
+    /**
+     * Clears shader / texture-unit state left by a previous AEChip on a reused
+     * {@link GLCanvas} (CDAVIS GPU display leaves {@code GL_TEXTURE1} and a
+     * program bound). Event-only chips then draw with the fixed-function path.
+     */
+    public static void resetFixedFunctionState(final GL2 gl) {
+        if (gl == null) {
+            return;
+        }
+        gl.glUseProgram(0);
+        gl.glBindBuffer(GL.GL_ARRAY_BUFFER, 0);
+        gl.glActiveTexture(GL.GL_TEXTURE0);
+        gl.glBindTexture(GL.GL_TEXTURE_2D, 0);
+        gl.glDisable(GL.GL_TEXTURE_2D);
+        gl.glDisable(GL.GL_BLEND);
+        gl.glDisable(GL2.GL_ALPHA_TEST);
+        gl.glDisable(GL.GL_DEPTH_TEST);
+        gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1);
+        gl.glPixelStorei(GL2.GL_UNPACK_ROW_LENGTH, 0);
     }
 
     private ZoomMouseAdaptor zoomMouseAdaptor;
@@ -1848,12 +1877,15 @@ public class ChipCanvas implements GLEventListener, Observer {
             gl.glLoadIdentity();
             gl.glMatrixMode(GLMatrixFunc.GL_PROJECTION);
             gl.glLoadIdentity();
-            // project applied depends on zoomed being set or not
-            gl.glOrtho(getClipArea().getLeft(),
-                    getClipArea().getRight(),
-                    getClipArea().getBottom(),
-                    getClipArea().getTop(),
-                    ZCLIP, -ZCLIP); // clip area
+            // Reused GLCanvas can display before the new AEChip has a size; glOrtho(0,0,0,0)
+            // is undefined and some drivers then draw nothing until restart.
+            if (getClipArea().getWidth() > 0 && getClipArea().getHeight() > 0) {
+                gl.glOrtho(getClipArea().getLeft(),
+                        getClipArea().getRight(),
+                        getClipArea().getBottom(),
+                        getClipArea().getTop(),
+                        ZCLIP, -ZCLIP);
+            }
             gl.glMatrixMode(GLMatrixFunc.GL_MODELVIEW);
 
             checkGLError(gl, glu, "after applyZoomProjection");
@@ -1941,7 +1973,17 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
 
         private void computeMouseFrac(Point p) {
-            mouseFrac.setLocation((float) p.x / glCanvas.getWidth(), 1 - (float) p.y / glCanvas.getHeight());
+            if (glCanvas == null || p == null) {
+                mouseFrac.setLocation(0.5f, 0.5f);
+                return;
+            }
+            final int w = glCanvas.getWidth();
+            final int h = glCanvas.getHeight();
+            if (w <= 0 || h <= 0) {
+                mouseFrac.setLocation(0.5f, 0.5f);
+                return;
+            }
+            mouseFrac.setLocation((float) p.x / w, 1 - (float) p.y / h);
         }
 
         /**
@@ -2212,6 +2254,17 @@ public class ChipCanvas implements GLEventListener, Observer {
                 log.log(Level.WARNING, "remove mouse listeners during detachGlCanvas: " + e, e);
             }
             zoomMouseAdaptor = null;
+        }
+        // Filters (MLPNoiseFilter, EventFilter2DMouseAdaptor, …) add themselves to
+        // this GLCanvas. After glCanvas=null they still receive mouseMoved and NPE.
+        for (MouseListener l : c.getMouseListeners()) {
+            c.removeMouseListener(l);
+        }
+        for (MouseMotionListener l : c.getMouseMotionListeners()) {
+            c.removeMouseMotionListener(l);
+        }
+        for (MouseWheelListener l : c.getMouseWheelListeners()) {
+            c.removeMouseWheelListener(l);
         }
         glCanvas = null;
         return c;

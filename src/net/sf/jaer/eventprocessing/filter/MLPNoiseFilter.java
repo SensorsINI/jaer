@@ -1284,11 +1284,10 @@ public class MLPNoiseFilter extends AbstractNoiseFilter implements MouseListener
             return null;
         }
         Point p = getChip().getCanvas().getPixelFromMouseEvent(e);
-        if (getChip().getCanvas().wasMousePixelInsideChipBounds()) {
-            return p;
-        } else {
+        if (p == null || !getChip().getCanvas().wasMousePixelInsideChipBounds()) {
             return null;
         }
+        return p;
     }
 
     /**

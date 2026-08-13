@@ -1,13 +1,10 @@
 /*
+ * Archival: UDP multicast AE output, kept for possible later IoT-camera work.
+ * Not wired in AEViewer (File → Remote). Last used for a prototype IoT camera.
+ *
  * AESocketOutputStream.java
- *
  * Created on June 30, 2006, 2:23 PM
- *
- * To change this template, choose Tools | Template Manager
- * and open the template in the editor.
- *
- *
- *Copyright June 30, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
+ * Copyright June 30, 2006 Tobi Delbruck, Inst. of Neuroinformatics, UNI-ETH Zurich
  */
 
 package net.sf.jaer.eventio;
@@ -28,10 +25,12 @@ import net.sf.jaer.Description;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 
 /**
- * Streams AE packets to network socket using DatagramPacket's that are multicast. 
- AEViewers can receive these packets to render them.
- <p>
- The implementation using a BlockingQueue to buffer the AEPacketRaw's that are offered.
+ * Streams AE packets to network socket using DatagramPacket's that are multicast.
+ * AEViewers can receive these packets to render them.
+ * <p>
+ * The implementation using a BlockingQueue to buffer the AEPacketRaw's that are offered.
+ * <p>
+ * Archival: not wired in AEViewer (File → Remote). Kept for possible later IoT-camera developments.
  *
  * @author tobi
  */

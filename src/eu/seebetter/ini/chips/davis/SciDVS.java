@@ -28,6 +28,8 @@ public class SciDVS extends DavisBaseCamera {
 		setSizeX(SciDVS.WIDTH_PIXELS);
 		setSizeY(SciDVS.HEIGHT_PIXELS);
 
+		setBiasgen(davisConfig = new SciDVSConfig(this));
+
 		davisRenderer = new DavisRenderer(this);
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
@@ -35,7 +37,6 @@ public class SciDVS extends DavisBaseCamera {
 		setApsFirstPixelReadOut(new Point(0, getSizeY() - 1));
 		setApsLastPixelReadOut(new Point(getSizeX() - 1, 0));
 
-		setBiasgen(davisConfig = new SciDVSConfig(this));
                 setFullScaleForEventAccumulationRendering(256);
 	}
 	

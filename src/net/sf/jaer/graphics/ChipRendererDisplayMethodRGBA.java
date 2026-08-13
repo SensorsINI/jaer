@@ -108,6 +108,7 @@ public class ChipRendererDisplayMethodRGBA extends DisplayMethod implements Disp
 
         gl.glDisable(GL.GL_DEPTH_TEST);
         final int nearestFilter = GL.GL_NEAREST;
+        gl.glActiveTexture(GL.GL_TEXTURE0);
         // Tobi: changed to GL_NEAREST so that pixels are not interpolated but
         // rather are rendered exactly as they come from data no matter
         // what zoom.

@@ -33,7 +33,9 @@ import javax.swing.SwingUtilities;
  * Toolkit.getDefaultToolkit().addAWTEventListener(windowSaver,AWTEvent.WINDOW_EVENT_MASK);
  * </code>. <br>
  * Then (magically) global window opening events will result in callbacks to
- * eventDispatched which loads saved settings, keyed on the frame. A class could
+ * eventDispatched which loads saved settings, keyed on {@link JFrame#getName()}
+ * when that is set (AEViewer uses {@code AEViewer-0}, {@code AEViewer-1}, …),
+ * otherwise on the frame title. A class could
  * add a ShutdownHook to save the last window settings:
  * <pre>
  * Runtime.getRuntime().addShutdownHook(new Thread(){
@@ -108,9 +110,25 @@ public class WindowSaver implements AWTEventListener {
     }
 
     /**
-     * The preferred settings are loaded based on window name. A windows which
-     * would be displayed partly off-screen is moved to originate at 0,0. A
-     * window which would be too tall or wide is resized to screen size.
+     * Preference key for a frame: {@link JFrame#getName()} when set (used by
+     * AEViewer instances as {@code AEViewer-0}, {@code AEViewer-1}, … so two
+     * viewers with the same title restore independently), otherwise the title
+     * with spaces removed.
+     */
+    private String windowKey(JFrame frame) {
+        String n = frame.getName();
+        if (n != null && !n.isEmpty()) {
+            return n.replaceAll(" ", "");
+        }
+        String t = frame.getTitle();
+        return t == null ? "JFrame" : t.replaceAll(" ", "");
+    }
+
+    /**
+     * The preferred settings are loaded based on {@link #windowKey(JFrame)}. A
+     * window which would be displayed partly off-screen is moved to originate
+     * at 0,0. A window which would be too tall or wide is resized to screen
+     * size.
      *
      * @param frame JFrame to load settings for
      */
@@ -120,13 +138,21 @@ public class WindowSaver implements AWTEventListener {
             log.info("Frame implements DontRestore, not loading settings for it");
             return;
         }
-        final String name = frame.getTitle().replaceAll(" ", "");
+        final String name = windowKey(frame);
+        String loadKey = name;
+        if (!isPreference(name + ".x")) {
+            String titleKey = frame.getTitle() == null ? null : frame.getTitle().replaceAll(" ", "");
+            if (titleKey != null && !titleKey.equals(name) && isPreference(titleKey + ".x")) {
+                log.info("no prefs for " + name + ", using legacy title key " + titleKey);
+                loadKey = titleKey;
+            }
+        }
 
         // screen UL corner is 0,0
-        int x = preferences.getInt(name + ".x", 10);
-        int y = preferences.getInt(name + ".y", 10); // UL corner
-        int w = preferences.getInt(name + ".w", DEFAULT_WIDTH);
-        int h = preferences.getInt(name + ".h", DEFAULT_HEIGHT);
+        int x = preferences.getInt(loadKey + ".x", 10);
+        int y = preferences.getInt(loadKey + ".y", 10); // UL corner
+        int w = preferences.getInt(loadKey + ".w", DEFAULT_WIDTH);
+        int h = preferences.getInt(loadKey + ".h", DEFAULT_HEIGHT);
         if (w != DEFAULT_WIDTH | h != DEFAULT_HEIGHT) {
             resize = true;
         }

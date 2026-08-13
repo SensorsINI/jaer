@@ -108,6 +108,11 @@ public final class LiveDeviceChipDetector {
         return ids.isKnown() && declaresVidPid(currentChipClass, ids.vid, ids.pid);
     }
 
+    /** True if this class (or a superclass) declares {@link UsbDevices}. */
+    public static boolean declaresAnyUsbDevices(Class<?> chipClass) {
+        return chipClass != null && chipClass.getAnnotation(UsbDevices.class) != null;
+    }
+
     @SuppressWarnings("unchecked")
     private static Class<? extends AEChip> loadChipClass(String fqcn) {
         if (fqcn == null || fqcn.isEmpty()) {
