@@ -2366,6 +2366,8 @@ public class ChipCanvas implements GLEventListener, Observer {
                 getZoom().dragPx.clear();
                 log.fine(String.format("pan=%s, zoom=%s", getZoom().panPx, zoom));
             }
+            drStPx = null;
+            mdStPt = null;
             log.fine("released pixel " + getPixelFromMouseEventUnclipped(evt));
             repaint();
         }
@@ -2406,6 +2408,13 @@ public class ChipCanvas implements GLEventListener, Observer {
                     Point mPt = e.getPoint();
                     // drag in chip px is flipped vertically from screen drag
                     Vec dr = new Vec(mPt.x / getScale(), -mPt.y / getScale());
+                    // mouseDragged can arrive without mousePressed (GLCanvas rebuilt on
+                    // chip switch / file close, or drag entered from outside the canvas).
+                    if (drStPx == null) {
+                        drStPx = new Vec(dr);
+                        getZoom().dragPx.clear();
+                        dragging = true;
+                    }
                     Vec newDrag = dr.subtract(drStPx);
                     if (isZoomed()) {
                         // While zoomed, clip bounds are incremental; apply only the delta since last drag event.
