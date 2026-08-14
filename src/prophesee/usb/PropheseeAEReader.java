@@ -15,6 +15,8 @@ import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
 import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
@@ -40,8 +42,10 @@ public class PropheseeAEReader {
     private final PropheseeHardwareInterface monitor;
     private final Evt3Parser parser = new Evt3Parser();
     private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
+    private final UsbAsyncBulkReaderLifecycle bufferLifecycle;
     private USBTransferThread usbTransfer;
     private volatile boolean readerActive;
+    private volatile long sessionGeneration;
     private int fifoSize;
     private int numBuffers;
 
@@ -61,6 +65,7 @@ public class PropheseeAEReader {
     public PropheseeAEReader(PropheseeHardwareInterface monitor) {
         this.monitor = monitor;
         syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+        bufferLifecycle = new UsbAsyncBulkReaderLifecycle(new BufferHost());
     }
 
     void syncUsbBufferSettings(int fifoSize, int numBuffers) {
@@ -69,24 +74,30 @@ public class PropheseeAEReader {
     }
 
     /**
-     * {@link USBTransferThread} cannot resize in-flight bulk transfers (LIBUSB_ERROR_IO
-     * on EVK4). Stop capture, then start a new transfer thread with the new sizes.
+     * Queue a FIFO/buffer change. Rapid Control-menu scrolls coalesce; one
+     * transfer-session replace runs after a short idle delay.
      */
     void applyBufferSettingsAndRestart(int fifoSize, int numBuffers) {
-        this.fifoSize = fifoSize;
-        this.numBuffers = numBuffers;
-        if (usbTransfer == null) {
-            return;
-        }
-        log.info("Restarting Prophesee AEReader to apply USB fifo=" + fifoSize
-                + " buffers=" + numBuffers);
-        // Do not ISSD-stop under load: control EP times out while bulk IN is saturated.
-        stopThread();
-        try {
-            startThreadInternal(false);
-        } catch (HardwareInterfaceException e) {
-            log.warning("Failed to restart Prophesee AEReader after USB buffer change: " + e);
-        }
+        syncUsbBufferSettings(fifoSize, numBuffers);
+        bufferLifecycle.schedule(new Config(fifoSize, numBuffers));
+    }
+
+    boolean isBufferReconfigPending() {
+        return bufferLifecycle.isReconfigPending();
+    }
+
+    UsbAsyncBulkReaderLifecycle.Status getBufferConfigStatus() {
+        return bufferLifecycle.statusSnapshot();
+    }
+
+    int getActiveFifoSize() {
+        final Config applied = bufferLifecycle.appliedConfig();
+        return applied != null ? applied.fifoSize : fifoSize;
+    }
+
+    int getActiveNumBuffers() {
+        final Config applied = bufferLifecycle.appliedConfig();
+        return applied != null ? applied.numBuffers : numBuffers;
     }
 
     PropertyChangeSupport getReaderSupport() {
@@ -102,38 +113,56 @@ public class PropheseeAEReader {
     }
 
     public void startThread() throws HardwareInterfaceException {
-        startThreadInternal(true);
-    }
-
-    private void startThreadInternal(boolean resetParser) throws HardwareInterfaceException {
-        if (!monitor.isOpen()) {
-            monitor.open();
+        if (usbTransfer != null && usbTransfer.isAlive()) {
+            return;
         }
-        if (usbTransfer != null && !usbTransfer.isAlive()) {
+        if (usbTransfer != null) {
             log.warning("Prophesee AEReader thread died; starting a new one");
             usbTransfer = null;
         }
-        if (usbTransfer != null) {
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+        final long gen = bufferLifecycle.adoptExternalStart(new Config(fifoSize, numBuffers));
+        try {
+            startThreadInternal(true, gen);
+        } catch (HardwareInterfaceException e) {
+            bufferLifecycle.markFailed();
+            throw e;
+        }
+    }
+
+    private void startThreadInternal(boolean resetParser, long generation) throws HardwareInterfaceException {
+        if (!monitor.isOpen()) {
+            monitor.open();
+        }
+        if (usbTransfer != null && usbTransfer.isAlive()) {
             return;
         }
-        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+        usbTransfer = null;
         if (resetParser) {
             parser.reset();
         }
+        sessionGeneration = generation;
         usbTransferCount = 0;
         usbBytesTotal = 0;
         usbEventsParsed = 0;
         ensureParseBuffers();
         final int cap = displayEventCap();
         if (monitor.getAEBufferSize() > cap) {
-            log.info("Prophesee live display capped at " + cap
-                    + " events/packet (AE buffer " + monitor.getAEBufferSize()
-                    + "). Further events keep EVT3 timebase but are not rendered.");
+            log.info("Prophesee live keep limit " + cap
+                    + " events/frame (AE buffer " + monitor.getAEBufferSize()
+                    + ", keep pref " + monitor.getLiveDisplayEventCap()
+                    + "). Further events keep EVT3 timebase but are not stored.");
         }
 
+        // Draining 0x81 is only safe while the sensor is idle. A streaming EVK4 refills the
+        // endpoint faster than synchronous reads empty it, which blocks this thread for tens of
+        // seconds (frozen live view) and leaves the endpoint stalled for the new transfers.
+        final boolean sensorStreaming = monitor.isSensorStreaming();
         HardwareInterfaceException lastFailure = null;
         for (int attempt = 0; attempt < 4; attempt++) {
-            Evk4BoardCommand.flushEventEndpoint(monitor.getDeviceHandle(), 50L);
+            if (!sensorStreaming) {
+                Evk4BoardCommand.flushEventEndpoint(monitor.getDeviceHandle(), 50L, 250L);
+            }
             Evk4BoardCommand.clearEventEndpointHalt(monitor.getDeviceHandle());
             log.info("Starting Prophesee AEReader on endpoint 0x81 (EVT3, async bulk, fifo="
                     + getFifoSize() + " buffers=" + getNumBuffers()
@@ -145,7 +174,7 @@ public class PropheseeAEReader {
                     monitor.getDeviceHandle(),
                     ENDPOINT_IN,
                     LibUsb.TRANSFER_TYPE_BULK,
-                    new ProcessAEData(),
+                    new ProcessAEData(generation),
                     getNumBuffers(),
                     getFifoSize());
             usbTransfer.setName("PropheseeAEReader");
@@ -169,6 +198,11 @@ public class PropheseeAEReader {
             lastFailure = new HardwareInterfaceException("USBTransferThread failed to start (fifo="
                     + getFifoSize() + " buffers=" + getNumBuffers() + "): "
                     + (err != null ? err.getMessage() : "thread exited"));
+            if (isDeviceIoFailure(err)) {
+                // The endpoint or device is wedged; a smaller FIFO cannot fix that and retrying
+                // would only persist a degraded size. Let the caller recover the device.
+                break;
+            }
             final int smaller = Math.max(UsbReaderBufferSettings.MIN_FIFO_SIZE, getFifoSize() / 2);
             if (smaller >= getFifoSize()) {
                 break;
@@ -182,49 +216,73 @@ public class PropheseeAEReader {
                 : new HardwareInterfaceException("USBTransferThread failed to start");
     }
 
+    private static boolean isDeviceIoFailure(Throwable err) {
+        final String msg = err != null ? err.getMessage() : null;
+        if (msg == null) {
+            return false;
+        }
+        return msg.contains("LIBUSB_ERROR_IO")
+                || msg.contains("LIBUSB_ERROR_NO_DEVICE")
+                || msg.contains("LIBUSB_ERROR_PIPE");
+    }
+
     void prepareForStop() {
+        bufferLifecycle.discardPendingRestart();
+        bufferLifecycle.markQuiescing();
         readerActive = false;
         if (usbTransfer != null) {
             usbTransfer.interrupt();
         }
     }
 
-    void finishStop() {
+    /**
+     * @return true if the transfer thread is fully stopped (or was already null)
+     */
+    boolean finishStop() {
         if (usbTransfer == null) {
-            return;
+            bufferLifecycle.markStopped();
+            return true;
         }
-        try {
-            usbTransfer.join(3000L);
-            if (usbTransfer.isAlive()) {
-                log.warning("Prophesee AEReader thread did not stop within 3s");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                usbTransfer, UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS, log, "Prophesee AEReader");
+        if (!stopped) {
+            bufferLifecycle.markFailed();
+            return false;
         }
         usbTransfer = null;
+        bufferLifecycle.markStopped();
         monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
+        return true;
     }
 
     public void stopThread() {
         if (usbTransfer == null) {
+            bufferLifecycle.discardPendingRestart();
+            bufferLifecycle.markStopped();
             return;
         }
         log.info("Stopping Prophesee AEReader");
         prepareForStop();
-        finishStop();
+        if (!finishStop()) {
+            monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
+                    "Prophesee AEReader did not stop within "
+                            + UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS + " ms"));
+        }
     }
 
     /**
-     * Max polarity events committed per ViewLoop write buffer. A 4M AE buffer
-     * would otherwise materialize millions of events per frame (render hitch).
+     * Max polarity events committed per ViewLoop write buffer. Defaults to
+     * {@link HasLiveDisplayEventCap#DEFAULT_LIVE_DISPLAY_EVENT_CAP}; raised via
+     * USB tuning. Still cannot exceed the AE packet pool size.
      * EVT3 timebase is still advanced for dropped events.
      */
-    static final int MAX_DISPLAY_EVENTS_PER_PACKET = 262144;
-    private static final int[] DISCARD_INTS = new int[1];
-
     int displayEventCap() {
-        return Math.min(Math.max(monitor.getAEBufferSize(), 1000), MAX_DISPLAY_EVENTS_PER_PACKET);
+        final int pool = Math.max(monitor.getAEBufferSize(), 1000);
+        final int keep = Math.max(1000, monitor.getLiveDisplayEventCap());
+        return Math.min(pool, keep);
     }
+
+    private static final int[] DISCARD_INTS = new int[1];
 
     void onAeBufferSizeChanged(int size) {
         final int cap = displayEventCap();
@@ -350,6 +408,8 @@ public class PropheseeAEReader {
         long arrayCopyNs = 0;
         if (demux && requested > 0) {
             final long decodeStart = sample != null ? System.nanoTime() : 0;
+            // Grow on this USB thread so a Live-keep change from the EDT cannot race allocate().
+            polarityBuilder.ensureCapacity(Math.max(requested, displayEventCap()));
             final AEChip chip = monitor.getChip();
             final int sizeX = chip != null ? chip.getSizeX() : Evt3Parser.WIDTH;
             final int sizeY = chip != null ? chip.getSizeY() : Evt3Parser.HEIGHT;
@@ -452,13 +512,19 @@ public class PropheseeAEReader {
             return;
         }
         lastOverrunLogMs = now;
+        // startEvent = fill index before this USB commit (0 after a ViewLoop swap is normal);
+        // committed = events kept from this chunk; remaining polarity events for the frame are dropped.
         log.warning(String.format(
-                "Prophesee display packet full at %d events (cap %d, committed %d). "
-                        + "Further events this frame are dropped (EVT3 timebase kept). "
-                        + "High-rate EVK4: enable ARS; do not raise AE buffer above ~256k for live view.",
-                startEvent, maxEvents, committed));
+                "Prophesee live view saturating: only the first %,d events per display frame are kept "
+                        + "(packet was at %,d, kept %,d from this USB chunk). "
+                        + "Further polarity events are discarded until the next frame; EVT3 timebase still advances. "
+                        + "Effective keep limit is min(AE render packet, Live keep limit) from USB tuning. "
+                        + "Live view and AEDAT logging both use this capped packet - a recording will miss the discarded events. "
+                        + "Raise Live keep limit and Render events together if you need more per frame, "
+                        + "or lower the sensor rate (biases / ROI / less motion). "
+                        + "If the live image already looks fine, you can ignore this warning.",
+                maxEvents, startEvent, committed));
     }
-
     private void maybeLogTraceStats(int parsed, int bytesAvailable) {
         if (!PropheseeTrace.ENABLED) {
             return;
@@ -476,7 +542,12 @@ public class PropheseeAEReader {
 
     private class ProcessAEData implements RestrictedTransferCallback {
 
+        private final long generation;
         private volatile boolean active = true;
+
+        ProcessAEData(long generation) {
+            this.generation = generation;
+        }
 
         @Override
         public void prepareTransfer(RestrictedTransfer transfer) {
@@ -484,13 +555,20 @@ public class PropheseeAEReader {
 
         @Override
         public void processTransfer(RestrictedTransfer transfer) {
-            if (!active || !readerActive || monitor.isUsbTransferFailed()) {
+            if (!active || !readerActive || !bufferLifecycle.isCurrent(generation)
+                    || monitor.isUsbTransferFailed()) {
                 return;
             }
             if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                if (!bufferLifecycle.isCurrent(generation)) {
+                    return;
+                }
                 final UsbPipelineBench.Sample sample = UsbPipelineBench.newSample("EVK4");
                 final long totalStart = sample != null ? System.nanoTime() : 0;
                 final ParsedChunk chunk = parseUsbChunk(transfer.buffer(), sample);
+                if (!bufferLifecycle.isCurrent(generation)) {
+                    return;
+                }
                 commitParsedChunk(chunk, sample);
                 if (sample != null) {
                     sample.totalNs = System.nanoTime() - totalStart;
@@ -500,6 +578,71 @@ public class PropheseeAEReader {
                 active = false;
                 monitor.markUsbDisconnected(transfer.status());
             }
+        }
+    }
+
+    private final class BufferHost implements UsbAsyncBulkReaderLifecycle.Host {
+        @Override
+        public String deviceLabel() {
+            return "Prophesee";
+        }
+
+        @Override
+        public Logger log() {
+            return log;
+        }
+
+        @Override
+        public PropertyChangeSupport readerSupport() {
+            return monitor.getReaderSupportInternal();
+        }
+
+        @Override
+        public boolean hasActiveTransfer() {
+            return usbTransfer != null && usbTransfer.isAlive();
+        }
+
+        @Override
+        public boolean stopSession(long generation, long joinTimeoutMs) {
+            readerActive = false;
+            if (usbTransfer == null) {
+                return true;
+            }
+            // USBTransferThread exits only once its transfer list drains, and it resubmits every
+            // transfer that completes. While the sensor streams, completions keep racing ahead of
+            // the cancellations, so the list never empties and the join always times out. Stop the
+            // sensor first, like the acquisition-disable path does.
+            final long stopStartNs = System.nanoTime();
+            monitor.stopSensorStreaming();
+            final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                    usbTransfer, joinTimeoutMs, log, "Prophesee AEReader");
+            log.info("Prophesee reader stop took " + ((System.nanoTime() - stopStartNs) / 1000000L)
+                    + " ms (stopped=" + stopped + ")");
+            if (!stopped) {
+                return false;
+            }
+            usbTransfer = null;
+            monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
+            return true;
+        }
+
+        @Override
+        public Config startSession(Config requested, long generation) throws Exception {
+            syncUsbBufferSettings(requested.fifoSize, requested.numBuffers);
+            startThreadInternal(false, generation);
+            // URBs are queued now, so the FX3 does not overflow into an unserviced endpoint.
+            monitor.startSensorStreaming();
+            return new Config(getFifoSize(), getNumBuffers());
+        }
+
+        @Override
+        public void applyIdleConfig(Config config) {
+            syncUsbBufferSettings(config.fifoSize, config.numBuffers);
+        }
+
+        @Override
+        public void recoverFailedSession(Config pending, Exception cause) {
+            monitor.recoverFailedBufferReconfig(cause);
         }
     }
 }

@@ -15,10 +15,11 @@ import li.longi.USBTransferThread.RestrictedTransfer;
 import li.longi.USBTransferThread.RestrictedTransferCallback;
 import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.JaerConstants;
-import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.aemonitor.AEPacketRawPool;
-import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 
 import org.usb4java.LibUsb;
 
@@ -40,12 +41,19 @@ public abstract class SilabsAEReader implements ReaderBufferControl {
     protected SiLabsC8051F320_LibUsb driver;
     protected USBTransferThread usbTransfer;
     protected int cycleCounter = 0;
-    private volatile boolean active =true;
-
-
+    private volatile boolean active = true;
+    private volatile boolean readerActive;
+    private final UsbAsyncBulkReaderLifecycle bufferLifecycle;
 
     public SilabsAEReader(SiLabsC8051F320_LibUsb driver) {
         this.driver = driver;
+        bufferLifecycle = new UsbAsyncBulkReaderLifecycle(new BufferHost());
+    }
+
+    protected abstract byte getEventEndpoint();
+
+    protected int transferThreadPriority() {
+        return Thread.NORM_PRIORITY;
     }
 
     @Override
@@ -54,7 +62,70 @@ public abstract class SilabsAEReader implements ReaderBufferControl {
     }
 
     public void setEnable(boolean enable) {
-        active =true;
+        active = enable;
+        if (!enable) {
+            stopTransferThread();
+            return;
+        }
+        if (usbTransfer != null && usbTransfer.isAlive()) {
+            return;
+        }
+        final int buffers = Math.max(1, numBuffers);
+        final long gen = bufferLifecycle.adoptExternalStart(new Config(fifoSize, buffers));
+        startTransferThread(gen);
+    }
+
+    boolean isBufferReconfigPending() {
+        return bufferLifecycle.isReconfigPending();
+    }
+
+    public UsbAsyncBulkReaderLifecycle.Status getBufferConfigStatus() {
+        return bufferLifecycle.statusSnapshot();
+    }
+
+    @Override
+    public int getActiveFifoSize() {
+        final Config applied = bufferLifecycle.appliedConfig();
+        return applied != null ? applied.fifoSize : fifoSize;
+    }
+
+    @Override
+    public int getActiveNumBuffers() {
+        final Config applied = bufferLifecycle.appliedConfig();
+        return applied != null ? applied.numBuffers : numBuffers;
+    }
+
+    void startTransferThread(long generation) {
+        readerActive = true;
+        usbTransfer = new USBTransferThread(driver.retinahandle, getEventEndpoint(), LibUsb.TRANSFER_TYPE_BULK,
+                new ProcessAEData(generation), Math.max(1, getNumBuffers()), getFifoSize());
+        usbTransfer.setPriority(transferThreadPriority());
+        usbTransfer.setName("AEReaderThread");
+        usbTransfer.start();
+        getReaderSupport().firePropertyChange("readerStarted", false, true);
+    }
+
+    boolean stopTransferThread() {
+        bufferLifecycle.discardPendingRestart();
+        bufferLifecycle.markQuiescing();
+        readerActive = false;
+        if (usbTransfer == null) {
+            bufferLifecycle.markStopped();
+            return true;
+        }
+        final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                usbTransfer, UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS, log, "Silabs AEReader");
+        if (!stopped) {
+            bufferLifecycle.markFailed();
+            driver.recoverFailedBufferReconfig(new HardwareInterfaceException(
+                    "Silabs AEReader did not stop within "
+                            + UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS + " ms"));
+            return false;
+        }
+        usbTransfer = null;
+        bufferLifecycle.markStopped();
+        getReaderSupport().firePropertyChange("readerStopped", false, true);
+        return true;
     }
 
 
@@ -74,10 +145,8 @@ public abstract class SilabsAEReader implements ReaderBufferControl {
         }
 
         this.fifoSize = fifoSize;
-
-        usbTransfer.setBufferSize(fifoSize);
-
         this.prefs.putInt("Silabs.AEReader.fifoSize", fifoSize);
+        bufferLifecycle.schedule(new Config(this.fifoSize, Math.max(1, this.numBuffers)));
     }
 
     @Override
@@ -88,10 +157,13 @@ public abstract class SilabsAEReader implements ReaderBufferControl {
     @Override
     public void setNumBuffers(final int numBuffers) {
         this.numBuffers = numBuffers;
-
-        usbTransfer.setBufferNumber(numBuffers);
-
         this.prefs.putInt("Silabs.AEReader.numBuffers", numBuffers);
+        bufferLifecycle.schedule(new Config(this.fifoSize, this.numBuffers));
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        return bufferLifecycle.isReconfigPending();
     }
 
     @Override
@@ -107,49 +179,38 @@ public abstract class SilabsAEReader implements ReaderBufferControl {
      */
     class ProcessAEData implements RestrictedTransferCallback {
 
-        @Override
-        public void prepareTransfer(final RestrictedTransfer transfer) {
-            // Nothing to do here.
+        private final long generation;
+
+        ProcessAEData(long generation) {
+            this.generation = generation;
         }
 
-        /**
-         * Called on completion of read on a data buffer is received from USBIO
-         * driver.
-         *
-         * @param Buf the data buffer with raw data
-         */
+        @Override
+        public void prepareTransfer(final RestrictedTransfer transfer) {
+        }
+
         @Override
         public void processTransfer(final RestrictedTransfer transfer) {
+            if (!readerActive || !bufferLifecycle.isCurrent(generation)) {
+                return;
+            }
             cycleCounter++;
             AEPacketRawPool aePacketRawPool = driver.getaePacketRawPool();
 
             synchronized (aePacketRawPool) {
+                if (!bufferLifecycle.isCurrent(generation)) {
+                    return;
+                }
 
                 if ((transfer.status() == LibUsb.TRANSFER_COMPLETED)
                         || (transfer.status() == LibUsb.TRANSFER_CANCELLED)) {
                     translateEvents(transfer.buffer());
-
-                    if ((driver.getChip() != null) && (driver.getChip().getFilterChain() != null)
-                            && (driver.getChip().getFilterChain().getProcessingMode() == FilterChain.ProcessingMode.ACQUISITION)) {
-			// here we do the realTimeFiltering. We finished capturing this buffer's worth of events,
-                        // now process them apply realtime filters and realtime (packet level) mapping
-
-                        // synchronize here so that rendering thread doesn't swap the buffer out from under us while
-                        // we process these events aePacketRawPool.writeBuffer is also synchronized so we getString
-                        // the same lock twice which is ok
-                        final AEPacketRaw buffer = aePacketRawPool.writeBuffer();
-                        final int[] addresses = buffer.getAddresses();
-                        final int[] timestamps = buffer.getTimestamps();
-                        //realTimeFilter(addresses, timestamps); TODO!!!
-                    }
                 } else if (transfer.status() == LibUsb.TRANSFER_STALL) {
-
                     try {
                         LibUsb.clearHalt(driver.retinahandle, LibUsb.ENDPOINT_IN);
                     } catch (Exception e) {
                         log.warning("could not fix Transfer stall");
                     }
-
                 } else {
                     if (!active) {
                         return;
@@ -157,8 +218,6 @@ public abstract class SilabsAEReader implements ReaderBufferControl {
                     active = false;
                     SilabsAEReader.log.warning("ProcessAEData: Bytes transferred: " + transfer.actualLength()
                             + "  Status: " + LibUsb.errorName(transfer.status()));
-
-                    //LibUsb.resetDevice(driver.retinahandle);
                     Thread closeThread = new Thread() {
                         @Override
                         public void run() {
@@ -168,6 +227,63 @@ public abstract class SilabsAEReader implements ReaderBufferControl {
                     closeThread.start();
                 }
             }
+        }
+    }
+
+    private final class BufferHost implements UsbAsyncBulkReaderLifecycle.Host {
+        @Override
+        public String deviceLabel() {
+            return "Silabs";
+        }
+
+        @Override
+        public Logger log() {
+            return log;
+        }
+
+        @Override
+        public PropertyChangeSupport readerSupport() {
+            return driver.getReaderSupport();
+        }
+
+        @Override
+        public boolean hasActiveTransfer() {
+            return usbTransfer != null && usbTransfer.isAlive();
+        }
+
+        @Override
+        public boolean stopSession(long generation, long joinTimeoutMs) {
+            readerActive = false;
+            if (usbTransfer == null) {
+                return true;
+            }
+            final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                    usbTransfer, joinTimeoutMs, log, "Silabs AEReader");
+            if (!stopped) {
+                return false;
+            }
+            usbTransfer = null;
+            getReaderSupport().firePropertyChange("readerStopped", false, true);
+            return true;
+        }
+
+        @Override
+        public Config startSession(Config requested, long generation) {
+            fifoSize = requested.fifoSize;
+            numBuffers = requested.numBuffers;
+            startTransferThread(generation);
+            return requested;
+        }
+
+        @Override
+        public void applyIdleConfig(Config config) {
+            fifoSize = config.fifoSize;
+            numBuffers = config.numBuffers;
+        }
+
+        @Override
+        public void recoverFailedSession(Config pending, Exception cause) {
+            driver.recoverFailedBufferReconfig(cause);
         }
     }
 }

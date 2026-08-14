@@ -651,9 +651,9 @@ public class EventPacket<E extends BasicEvent> implements /* EventPacketInterfac
             elementData = (E[]) Array.newInstance(eventClass, ncapacity);
             System.arraycopy(oldData, 0, elementData, 0, size);
             oldData = null;
-            // capacity still is old capacity and we have already filled it to there with new events, now fill
-            // in up to new capacity with new events
-            fillWithDefaultEvents(capacity, ncapacity);
+            // Fill every new slot. Use size (not the old capacity) so concurrent / partial
+            // growth never leaves nulls between size and the previous capacity.
+            fillWithDefaultEvents(size, ncapacity);
             capacity = ncapacity;
             return true;
         } catch (final OutOfMemoryError e) {

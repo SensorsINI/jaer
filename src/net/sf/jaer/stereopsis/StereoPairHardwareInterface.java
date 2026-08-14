@@ -22,6 +22,7 @@ import net.sf.jaer.aemonitor.EventRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 /**
  * A hardware interface to two stereo pair sensors.
@@ -407,6 +408,26 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
         }
         ( (ReaderBufferControl)getAemonLeft() ).setNumBuffers(numBuffers);
         ( (ReaderBufferControl)getAemonRight() ).setNumBuffers(numBuffers);
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        if (!hasBufferControl()) {
+            return false;
+        }
+        boolean pending = ((ReaderBufferControl) getAemonLeft()).isUsbBufferReconfigPending();
+        if (getAemonRight() instanceof ReaderBufferControl) {
+            pending |= ((ReaderBufferControl) getAemonRight()).isUsbBufferReconfigPending();
+        }
+        return pending;
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        if (!hasBufferControl()) {
+            return null;
+        }
+        return ((ReaderBufferControl) getAemonLeft()).getUsbBufferConfigStatus();
     }
 
     /** sets both eyes to acquire events */

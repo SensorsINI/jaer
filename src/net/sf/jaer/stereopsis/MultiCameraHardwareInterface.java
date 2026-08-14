@@ -28,6 +28,7 @@ import net.sf.jaer.event.MultiCameraEvent;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.hardwareinterface.usb.cypressfx3libusb.CypressFX3;
 
@@ -421,6 +422,37 @@ public class MultiCameraHardwareInterface implements AEMonitorInterface, ReaderB
             ReaderBufferControl rbc = (ReaderBufferControl) aemon;
             rbc.setNumBuffers(numBuffers);
         }
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        if (!hasBufferControl()) {
+            return false;
+        }
+        for (AEMonitorInterface aemon : aemons) {
+            if (aemon instanceof ReaderBufferControl
+                    && ((ReaderBufferControl) aemon).isUsbBufferReconfigPending()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        if (!hasBufferControl()) {
+            return null;
+        }
+        for (AEMonitorInterface aemon : aemons) {
+            if (aemon instanceof ReaderBufferControl) {
+                final UsbAsyncBulkReaderLifecycle.Status status =
+                        ((ReaderBufferControl) aemon).getUsbBufferConfigStatus();
+                if (status != null) {
+                    return status;
+                }
+            }
+        }
+        return null;
     }
 
     /** sets both eyes to acquire events */

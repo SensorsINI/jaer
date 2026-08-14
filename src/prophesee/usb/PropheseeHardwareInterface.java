@@ -43,8 +43,10 @@ import net.sf.jaer.event.PacketBundlePool;
 import net.sf.jaer.util.VendorPrefsMigration;
 import net.sf.jaer.util.TimestampSpread;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.HasLiveDisplayEventCap;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 import prophesee.usb.evt3.Evt3Parser;
 import prophesee.usb.evk4.Imx636Init;
@@ -55,7 +57,7 @@ import prophesee.usb.evk4.Imx636Init;
  * @see https://www.prophesee.ai/
  */
 public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEMonitorInterface,
-        ReaderBufferControl, USBInterface {
+        ReaderBufferControl, HasLiveDisplayEventCap, USBInterface {
 
     public static final short VID = (short) 0x04B4;
     public static final short PID_EVK4_HD = (short) 0x00F5;
@@ -73,6 +75,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private static final Preferences PREFS = JaerConstants.PREFS_ROOT_HARDWARE.node("Prophesee");
     /** Pref kill-switch for USB→PacketBundle polarity demux. */
     public static final String PREF_USB_TYPED_DEMUX = "usbTypedDemux";
+    public static final String PREF_LIVE_DISPLAY_EVENT_CAP = "liveDisplayEventCap";
 
     /** Shown at most once per JVM; ViewLoop retries open every few hundred ms. */
     private static final AtomicBoolean LINUX_UDEV_DIALOG_SHOWN = new AtomicBoolean();
@@ -113,6 +116,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private volatile boolean closing;
     private PropheseeAEReader aeReader;
     private int buffersize = loadAeBufferSizePref();
+    private volatile int liveDisplayEventCap = loadLiveDisplayEventCapPref();
     private int usbFifoSize = UsbReaderBufferSettings.loadFifoSize(
             PREFS, UsbReaderBufferSettings.PREF_KEY_FIFO_SIZE, DEFAULT_USB_FIFO_SIZE, log, "Prophesee");
     private int usbNumBuffers = UsbReaderBufferSettings.loadNumBuffers(
@@ -132,7 +136,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     private volatile boolean usbTransferFailed = false;
     private boolean eventAcquisitionEnabled = false;
     /** True after {@link Imx636Init#startStreaming}; USB URBs must be queued before this. */
-    private boolean sensorStreaming = false;
+    private volatile boolean sensorStreaming = false;
     private int eventCounter = 0;
     private int estimatedEventRate = 0;
     private long lastPacketTimestampLogMs;
@@ -158,6 +162,36 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             return AE_BUFFER_SIZE;
         }
         return saved;
+    }
+
+    private int loadLiveDisplayEventCapPref() {
+        final int saved = prefs.getInt(PREF_LIVE_DISPLAY_EVENT_CAP,
+                HasLiveDisplayEventCap.DEFAULT_LIVE_DISPLAY_EVENT_CAP);
+        return clampLiveDisplayEventCap(saved);
+    }
+
+    private int clampLiveDisplayEventCap(int events) {
+        return Math.max(getMinLiveDisplayEventCap(), Math.min(getMaxLiveDisplayEventCap(), events));
+    }
+
+    @Override
+    public int getLiveDisplayEventCap() {
+        return liveDisplayEventCap;
+    }
+
+    @Override
+    public void setLiveDisplayEventCap(int events) {
+        final int clamped = clampLiveDisplayEventCap(events);
+        if (clamped == liveDisplayEventCap) {
+            return;
+        }
+        liveDisplayEventCap = clamped;
+        prefs.putInt(PREF_LIVE_DISPLAY_EVENT_CAP, liveDisplayEventCap);
+        log.info("Prophesee live display keep limit set to " + liveDisplayEventCap + " events/frame"
+                + " (USB thread will grow polarity capacity on next transfer)");
+        // Do not allocate hundreds of thousands of PolarityEvents on the EDT — that races with
+        // the USB reader and freezes the UI. The reader calls ensureCapacity before the next fill.
+        support.firePropertyChange("liveDisplayEventCap", null, liveDisplayEventCap);
     }
 
     public DeviceHandle getDeviceHandle() {
@@ -222,6 +256,25 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         }, "Prophesee-USB-disconnect").start();
     }
 
+    void recoverFailedBufferReconfig(Exception cause) {
+        log.warning("Prophesee USB reader session failed (" + cause + "); closing device instead of overlapping transfers");
+        if (closing) {
+            return;
+        }
+        // A reader that would not stop still owns endpoint 0x81, and closing the handle under it
+        // leaves the device unusable until replug. Stopping the sensor lets its transfers drain, so
+        // give the join one more chance before the device is closed.
+        stopSensorStreaming();
+        final PropheseeAEReader reader = aeReader;
+        if (reader != null) {
+            reader.prepareForStop();
+            if (!reader.finishStop()) {
+                log.warning("Prophesee AEReader still alive after stopping the sensor; USB may need a replug");
+            }
+        }
+        markUsbDisconnected(LibUsb.ERROR_IO);
+    }
+
     boolean isUsbTransferFailed() {
         return usbTransferFailed;
     }
@@ -245,7 +298,11 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
             }
         }
         if (reader != null) {
-            reader.finishStop();
+            if (!reader.finishStop()) {
+                recoverFailedBufferReconfig(new HardwareInterfaceException(
+                        "Prophesee AEReader did not stop before streaming reinit"));
+                return;
+            }
         }
         synchronized (this) {
             if (!isOpen() || deviceHandle == null || closing) {
@@ -658,9 +715,17 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         } else if (aeReader != null) {
             stopSensorStreaming();
             aeReader.prepareForStop();
-            aeReader.finishStop();
+            if (!aeReader.finishStop() && !closing) {
+                recoverFailedBufferReconfig(new HardwareInterfaceException(
+                        "Prophesee AEReader did not stop when disabling acquisition"));
+            }
         }
         eventAcquisitionEnabled = enable;
+    }
+
+    /** True after {@link Imx636Init#startStreaming}, i.e. the sensor is pushing data into 0x81. */
+    boolean isSensorStreaming() {
+        return sensorStreaming;
     }
 
     void stopSensorStreaming() {
@@ -821,6 +886,26 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         if (aeReader != null) {
             aeReader.applyBufferSettingsAndRestart(usbFifoSize, usbNumBuffers);
         }
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        return aeReader != null && aeReader.isBufferReconfigPending();
+    }
+
+    @Override
+    public int getActiveFifoSize() {
+        return aeReader != null ? aeReader.getActiveFifoSize() : usbFifoSize;
+    }
+
+    @Override
+    public int getActiveNumBuffers() {
+        return aeReader != null ? aeReader.getActiveNumBuffers() : usbNumBuffers;
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        return aeReader != null ? aeReader.getBufferConfigStatus() : null;
     }
 
     @Override

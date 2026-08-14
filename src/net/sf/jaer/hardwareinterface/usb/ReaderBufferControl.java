@@ -25,5 +25,62 @@ public interface ReaderBufferControl {
     public void setNumBuffers(int numBuffers);
     /** The reader should fire PropertyChangeEvent "readerStarted" when the reader is started and "readerStopped" when it is stopped. */
     public PropertyChangeSupport getReaderSupport();
-    
+
+    /**
+     * FIFO size the user has requested (may still be waiting for a debounced
+     * transfer-session replace). Defaults to {@link #getFifoSize()}.
+     */
+    default int getPendingFifoSize() {
+        return getFifoSize();
+    }
+
+    /** Buffer count the user has requested; defaults to {@link #getNumBuffers()}. */
+    default int getPendingNumBuffers() {
+        return getNumBuffers();
+    }
+
+    /**
+     * FIFO size of the active/applied USB transfer session when known.
+     * Defaults to {@link #getFifoSize()} for drivers without session tracking.
+     */
+    default int getActiveFifoSize() {
+        final UsbAsyncBulkReaderLifecycle.Status status = getUsbBufferConfigStatus();
+        if (status != null && status.active != null) {
+            return status.active.fifoSize;
+        }
+        return getFifoSize();
+    }
+
+    /**
+     * Buffer count of the active/applied USB transfer session when known.
+     * Defaults to {@link #getNumBuffers()} for drivers without session tracking.
+     */
+    default int getActiveNumBuffers() {
+        final UsbAsyncBulkReaderLifecycle.Status status = getUsbBufferConfigStatus();
+        if (status != null && status.active != null) {
+            return status.active.numBuffers;
+        }
+        return getNumBuffers();
+    }
+
+    /**
+     * True while a USB FIFO/buffer change is queued or being applied to a live
+     * transfer session. Menu labels can show that the value is not live yet.
+     */
+    default boolean isUsbBufferReconfigPending() {
+        final UsbAsyncBulkReaderLifecycle.Status status = getUsbBufferConfigStatus();
+        if (status == null) {
+            return false;
+        }
+        return status.phase == UsbAsyncBulkReaderLifecycle.Phase.QUEUED
+                || status.phase == UsbAsyncBulkReaderLifecycle.Phase.RESTARTING;
+    }
+
+    /**
+     * Optional immutable requested/active status snapshot. Returns null when the
+     * hardware interface does not track USB transfer-session generations.
+     */
+    default UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        return null;
+    }
 }

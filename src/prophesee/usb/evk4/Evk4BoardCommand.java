@@ -147,15 +147,34 @@ public final class Evk4BoardCommand {
         return String.format("%02X%02X%02X%02X", resp[11] & 0xff, resp[10] & 0xff, resp[9] & 0xff, resp[8] & 0xff);
     }
 
+    /** Total wall time a drain may spend; a streaming sensor refills the endpoint faster than we read. */
+    public static final long DEFAULT_FLUSH_BUDGET_MS = 500L;
+
     public static int flushEventEndpoint(DeviceHandle handle) {
-        return flushEventEndpoint(handle, TIMEOUT_MS);
+        return flushEventEndpoint(handle, TIMEOUT_MS, DEFAULT_FLUSH_BUDGET_MS);
     }
 
     public static int flushEventEndpoint(DeviceHandle handle, long timeoutMs) {
+        return flushEventEndpoint(handle, timeoutMs, DEFAULT_FLUSH_BUDGET_MS);
+    }
+
+    /**
+     * Reads and discards buffered event data. Never runs longer than
+     * {@code budgetMs}: while the sensor streams, the endpoint keeps refilling
+     * and an unbounded drain both blocks the caller for tens of seconds and
+     * leaves the endpoint stalled.
+     */
+    public static int flushEventEndpoint(DeviceHandle handle, long timeoutMs, long budgetMs) {
         final ByteBuffer buf = BufferUtils.allocateByteBuffer(1 << 17);
+        final long deadline = System.nanoTime() + Math.max(1L, budgetMs) * 1_000_000L;
         int totalBytes = 0;
         int transfers = 0;
+        boolean budgetExhausted = false;
         while (true) {
+            if (System.nanoTime() >= deadline) {
+                budgetExhausted = true;
+                break;
+            }
             int n;
             try {
                 n = bulkTransfer(handle, EP_EVENTS_IN, buf, timeoutMs);
@@ -176,7 +195,12 @@ public final class Evk4BoardCommand {
             transfers++;
             buf.rewind();
         }
-        log.fine(String.format("EVK4 flush 0x81: %d bytes in %d transfers", totalBytes, transfers));
+        if (budgetExhausted) {
+            log.warning(String.format("EVK4 flush 0x81 hit %d ms budget after %d bytes in %d transfers"
+                    + " (sensor still streaming?)", budgetMs, totalBytes, transfers));
+        } else {
+            log.fine(String.format("EVK4 flush 0x81: %d bytes in %d transfers", totalBytes, transfers));
+        }
         return totalBytes;
     }
 

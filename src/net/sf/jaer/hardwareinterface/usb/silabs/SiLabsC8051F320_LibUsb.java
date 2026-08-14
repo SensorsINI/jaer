@@ -33,6 +33,7 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 
 import org.usb4java.BufferUtils;
 import org.usb4java.Device;
@@ -357,6 +358,41 @@ public abstract class SiLabsC8051F320_LibUsb implements
         return this.isOpened;
     }
 
+    void recoverFailedBufferReconfig(Exception cause) {
+        log.warning("Silabs USB reader session failed (" + cause
+                + "); closing device instead of overlapping transfers");
+        if (!isOpened) {
+            return;
+        }
+        new Thread(() -> {
+            try {
+                close();
+            } catch (Exception e) {
+                log.warning("Silabs recover close failed: " + e);
+            }
+        }, "Silabs-USB-recover").start();
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        return aeReader != null && aeReader.isBufferReconfigPending();
+    }
+
+    @Override
+    public int getActiveFifoSize() {
+        return aeReader != null ? aeReader.getActiveFifoSize() : getFifoSize();
+    }
+
+    @Override
+    public int getActiveNumBuffers() {
+        return aeReader != null ? aeReader.getActiveNumBuffers() : getNumBuffers();
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        return aeReader != null ? aeReader.getBufferConfigStatus() : null;
+    }
+
     @Override
     public int getFifoSize() {
         if (this.aeReader != null) {
@@ -367,6 +403,9 @@ public abstract class SiLabsC8051F320_LibUsb implements
 
     @Override
     public void setFifoSize(int fifoSize) {
+        if (this.aeReader == null) {
+            return;
+        }
         this.aeReader.setFifoSize(fifoSize);
     }
 

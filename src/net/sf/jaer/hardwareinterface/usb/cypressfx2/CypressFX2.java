@@ -33,6 +33,8 @@ import net.sf.jaer.hardwareinterface.BlankDeviceException;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.HexFileParser;
 import net.sf.jaer.util.HexString;
@@ -190,6 +192,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
      * events
      */
     public PropertyChangeSupport support = new PropertyChangeSupport(this);    // consts
+    private final UsbAsyncBulkReaderLifecycle usbBufferLifecycle = new UsbAsyncBulkReaderLifecycle(new UsbIoBufferHost());
     final static byte AE_MONITOR_ENDPOINT_ADDRESS = (byte) 0x86;  // this is endpoint of AE fifo on Cypress FX2, 0x86 means IN endpoint EP6.
     final static byte STATUS_ENDPOINT_ADDRESS = (byte) 0x81;  // this is endpoint 1 IN for device to report status changes asynchronously
     final short CPUCS = (short) 0xE600;            // address of the CPUCS register, using for resetting 8051 and downloading firmware
@@ -1707,8 +1710,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
                 fifoSize = CYPRESS_FIFO_SIZE;
             }
             this.fifoSize = fifoSize;
-            freeBuffers();
-            allocateBuffers(fifoSize, numBuffers);
             prefs.putInt("CypressFX2.AEReader.fifoSize", fifoSize);
         }
 
@@ -1720,8 +1721,6 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         @Override
         public void setNumBuffers(int numBuffers) {
             this.numBuffers = numBuffers;
-            freeBuffers();
-            allocateBuffers(fifoSize, numBuffers);
             prefs.putInt("CypressFX2.AEReader.numBuffers", numBuffers);
         }
 
@@ -3122,9 +3121,8 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         if (aeReader == null) {
             return;
         }
-        aeReader.shutdownThread();
         aeReader.setFifoSize(fifoSize);
-        aeReader.startThread(3);
+        usbBufferLifecycle.schedule(new Config(aeReader.getFifoSize(), aeReader.getNumBuffers()));
     }
 
     @Override
@@ -3141,9 +3139,30 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
         if (aeReader == null) {
             return;
         }
-        aeReader.shutdownThread();
         aeReader.setNumBuffers(numBuffers);
-        aeReader.startThread(3);
+        usbBufferLifecycle.schedule(new Config(aeReader.getFifoSize(), aeReader.getNumBuffers()));
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        return usbBufferLifecycle.isReconfigPending();
+    }
+
+    @Override
+    public int getActiveFifoSize() {
+        final UsbAsyncBulkReaderLifecycle.Config applied = usbBufferLifecycle.appliedConfig();
+        return applied != null ? applied.fifoSize : getFifoSize();
+    }
+
+    @Override
+    public int getActiveNumBuffers() {
+        final UsbAsyncBulkReaderLifecycle.Config applied = usbBufferLifecycle.appliedConfig();
+        return applied != null ? applied.numBuffers : getNumBuffers();
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        return usbBufferLifecycle.statusSnapshot();
     }
 
     @Override
@@ -3211,6 +3230,68 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     public boolean isPrintUsbStatistics() {
         return usbPacketStatistics.isPrintUsbStatistics();
+    }
+
+    private final class UsbIoBufferHost implements UsbAsyncBulkReaderLifecycle.Host {
+        @Override
+        public String deviceLabel() {
+            return "CypressFX2-USBIO";
+        }
+
+        @Override
+        public Logger log() {
+            return log;
+        }
+
+        @Override
+        public PropertyChangeSupport readerSupport() {
+            return support;
+        }
+
+        @Override
+        public boolean hasActiveTransfer() {
+            return aeReader != null && aeReaderRunning;
+        }
+
+        @Override
+        public boolean stopSession(long generation, long joinTimeoutMs) {
+            if (aeReader == null) {
+                return true;
+            }
+            aeReader.shutdownThread();
+            aeReaderRunning = false;
+            return true;
+        }
+
+        @Override
+        public Config startSession(Config requested, long generation) {
+            if (aeReader == null) {
+                return requested;
+            }
+            aeReader.setFifoSize(requested.fifoSize);
+            aeReader.setNumBuffers(requested.numBuffers);
+            aeReader.startThread(3);
+            return requested;
+        }
+
+        @Override
+        public void applyIdleConfig(Config config) {
+            if (aeReader != null) {
+                aeReader.setFifoSize(config.fifoSize);
+                aeReader.setNumBuffers(config.numBuffers);
+            }
+        }
+
+        @Override
+        public void recoverFailedSession(Config pending, Exception cause) {
+            log.warning("CypressFX2 USBIO reader session failed (" + cause
+                    + "); closing device instead of overlapping transfers");
+            try {
+                close();
+            } catch (Exception e) {
+                log.warning("CypressFX2 USBIO recover close failed: " + e);
+            }
+        }
     }
 
 }

@@ -31,7 +31,7 @@ public class UsbPolarityBundleBuilder {
      * {@link EventPacket} capacity (that allocates hundreds of thousands of
      * {@link PolarityEvent}s and looks like GC pauses).
      */
-    public void ensureCapacity(int n) {
+    public synchronized void ensureCapacity(int n) {
         if (n <= 0) {
             return;
         }
@@ -50,7 +50,7 @@ public class UsbPolarityBundleBuilder {
         fill.allocate(targetCapacity);
     }
 
-    public void attach(PacketBundle writeBundle) {
+    public synchronized void attach(PacketBundle writeBundle) {
         if (writeBundle == null) {
             return;
         }
@@ -95,7 +95,7 @@ public class UsbPolarityBundleBuilder {
         return polarity0;
     }
 
-    public void addPolarity(final int x, final int y, final boolean on, final int timestamp) {
+    public synchronized void addPolarity(final int x, final int y, final boolean on, final int timestamp) {
         ensureActive();
         PolarityEvent e = polarityOut.nextOutput();
         e.reset();
@@ -111,7 +111,7 @@ public class UsbPolarityBundleBuilder {
      * Sync / external special event (DVS128): polarity packet with
      * {@link PolarityEvent#isSpecial()} set and invalid x/y.
      */
-    public void addSpecial(final int address, final int timestamp) {
+    public synchronized void addSpecial(final int address, final int timestamp) {
         ensureActive();
         PolarityEvent e = polarityOut.nextOutput();
         e.reset();
@@ -128,7 +128,7 @@ public class UsbPolarityBundleBuilder {
      * Decode packed raw AE addresses into cooked polarity using the same layout
      * as {@link net.sf.jaer.chip.TypedEventExtractor}.
      */
-    public void addPacked(final int[] addresses, final int[] timestamps, final int start, final int n,
+    public synchronized void addPacked(final int[] addresses, final int[] timestamps, final int start, final int n,
             final int xMask, final int xShift, final int yMask, final int yShift,
             final int typeMask, final int typeShift,
             final boolean flipX, final boolean flipY, final boolean flipType,
@@ -161,7 +161,7 @@ public class UsbPolarityBundleBuilder {
      * Decode packed addresses into a private packet (not the pool write buffer).
      * Call off the {@code AEPacketRawPool} lock, then {@link #installFill}.
      */
-    public void fillPackedOffline(final int[] addresses, final int[] timestamps, final int start, final int n,
+    public synchronized void fillPackedOffline(final int[] addresses, final int[] timestamps, final int start, final int n,
             final int xMask, final int xShift, final int yMask, final int yShift,
             final int typeMask, final int typeShift,
             final boolean flipX, final boolean flipY, final boolean flipType,
@@ -196,11 +196,11 @@ public class UsbPolarityBundleBuilder {
      * Install the offline fill into the pool write bundle. Empty write slot
      * swaps backing arrays in O(1); a partial packet appends by {@code copyFrom}.
      */
-    public void installFill(PacketBundle writeBundle) {
+    public synchronized void installFill(PacketBundle writeBundle) {
         installFill(writeBundle, fill != null ? fill.getSize() : 0);
     }
 
-    public void installFill(PacketBundle writeBundle, int maxEvents) {
+    public synchronized void installFill(PacketBundle writeBundle, int maxEvents) {
         if (writeBundle == null || fill == null || fill.isEmpty() || maxEvents <= 0) {
             return;
         }
@@ -226,7 +226,7 @@ public class UsbPolarityBundleBuilder {
      * Ensure the working polarity packet is in the write bundle. Safe to call
      * every USB chunk — adds once, then grows in place until pool swap.
      */
-    public void flushAll() {
+    public synchronized void flushAll() {
         if (out == null || polarity == null || polarity.isEmpty() || polarityInBundle) {
             return;
         }

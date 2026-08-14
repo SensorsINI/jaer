@@ -26,6 +26,8 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.hardwareinterface.usb.UsbIoUtilities;
 import net.sf.jaer.hardwareinterface.usb.cypressfx2.CypressFX2;
 import net.sf.jaer.util.HexString;
@@ -565,12 +567,8 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
             fifoSize = FIFO_SIZE;
         }
         this.fifoSize = fifoSize;
-        freeBuffers();
-        boolean wasNotAllocatedAlready = allocateBuffers(getFifoSize(), getNumBuffers());
-        if (!wasNotAllocatedAlready) {
-            log.warning("buffers were already allocated");
-        }
         prefs.putInt("SiLabsC8051F320_USBIO_DVS128.fifoSize", fifoSize);
+        usbBufferLifecycle.schedule(new Config(this.fifoSize, this.numBuffers));
     }
 
     @Override
@@ -581,12 +579,30 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     @Override
 	public void setNumBuffers(int numBuffers) {
         this.numBuffers = numBuffers;
-        freeBuffers();
-        boolean wasNotAllocatedAlready = allocateBuffers(getFifoSize(), getNumBuffers());
-        if (!wasNotAllocatedAlready) {
-            log.warning("buffers were already allocated");
-        }
         prefs.putInt("SiLabsC8051F320_USBIO_DVS128.numBuffers", numBuffers);
+        usbBufferLifecycle.schedule(new Config(this.fifoSize, this.numBuffers));
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        return usbBufferLifecycle.isReconfigPending();
+    }
+
+    @Override
+    public int getActiveFifoSize() {
+        final UsbAsyncBulkReaderLifecycle.Config applied = usbBufferLifecycle.appliedConfig();
+        return applied != null ? applied.fifoSize : getFifoSize();
+    }
+
+    @Override
+    public int getActiveNumBuffers() {
+        final UsbAsyncBulkReaderLifecycle.Config applied = usbBufferLifecycle.appliedConfig();
+        return applied != null ? applied.numBuffers : getNumBuffers();
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        return usbBufferLifecycle.statusSnapshot();
     }
 
     @Override
@@ -793,6 +809,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     }
     /** This support can be used to register this interface for property change events */
     public PropertyChangeSupport support = new PropertyChangeSupport(this);    // consts
+    private final UsbAsyncBulkReaderLifecycle usbBufferLifecycle = new UsbAsyncBulkReaderLifecycle(new UsbIoBufferHost());
 
     /** adds a listener for new events captured from the device.
      * Actually gets called whenever someone looks for new events and there are some using
@@ -884,5 +901,59 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
     @Override
 	public PropertyChangeSupport getReaderSupport() {
         return support;
+    }
+
+    private final class UsbIoBufferHost implements UsbAsyncBulkReaderLifecycle.Host {
+        @Override
+        public String deviceLabel() {
+            return "Silabs-USBIO";
+        }
+
+        @Override
+        public Logger log() {
+            return log;
+        }
+
+        @Override
+        public PropertyChangeSupport readerSupport() {
+            return support;
+        }
+
+        @Override
+        public boolean hasActiveTransfer() {
+            return aeReaderRunning && T != null && T.isAlive();
+        }
+
+        @Override
+        public boolean stopSession(long generation, long joinTimeoutMs) {
+            shutdownThread();
+            aeReaderRunning = false;
+            return T == null || !T.isAlive();
+        }
+
+        @Override
+        public Config startSession(Config requested, long generation) {
+            fifoSize = requested.fifoSize;
+            numBuffers = requested.numBuffers;
+            startThread(3);
+            return requested;
+        }
+
+        @Override
+        public void applyIdleConfig(Config config) {
+            fifoSize = config.fifoSize;
+            numBuffers = config.numBuffers;
+        }
+
+        @Override
+        public void recoverFailedSession(Config pending, Exception cause) {
+            log.warning("Silabs USBIO reader session failed (" + cause
+                    + "); closing device instead of overlapping transfers");
+            try {
+                close();
+            } catch (Exception e) {
+                log.warning("Silabs USBIO recover close failed: " + e);
+            }
+        }
     }
 }

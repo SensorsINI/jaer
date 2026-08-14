@@ -15,6 +15,8 @@ import net.sf.jaer.aemonitor.AEPacketRawPool;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.hardwareinterface.usb.UsbPipelineBench;
 import net.sf.jaer.hardwareinterface.usb.UsbPolarityBundleBuilder;
 
@@ -37,7 +39,9 @@ public class NRVAEReader {
     private final NRVHardwareInterface monitor;
     private final S5KRC1SParser parser = new S5KRC1SParser();
     private final UsbPolarityBundleBuilder polarityBuilder = new UsbPolarityBundleBuilder();
+    private final UsbAsyncBulkReaderLifecycle bufferLifecycle;
     private USBTransferThread usbTransfer;
+    private volatile boolean readerActive;
     private int fifoSize;
     private int numBuffers;
     private byte[] parseScratch;
@@ -50,6 +54,7 @@ public class NRVAEReader {
     public NRVAEReader(NRVHardwareInterface monitor) {
         this.monitor = monitor;
         syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+        bufferLifecycle = new UsbAsyncBulkReaderLifecycle(new BufferHost());
     }
 
     void syncUsbBufferSettings(int fifoSize, int numBuffers) {
@@ -58,22 +63,30 @@ public class NRVAEReader {
     }
 
     /**
-     * {@link USBTransferThread} cannot resize in-flight bulk transfers (LIBUSB_ERROR_IO).
-     * Stop capture, then start a new transfer thread with the new sizes.
+     * Queue a FIFO/buffer change. Rapid Control-menu scrolls coalesce; one
+     * transfer-session replace runs after a short idle delay.
      */
     void applyBufferSettingsAndRestart(int fifoSize, int numBuffers) {
-        this.fifoSize = fifoSize;
-        this.numBuffers = numBuffers;
-        if (usbTransfer == null) {
-            return;
-        }
-        log.info("Restarting NRV AEReader to apply USB fifo=" + fifoSize + " buffers=" + numBuffers);
-        stopThread();
-        try {
-            startThreadInternal(false);
-        } catch (HardwareInterfaceException e) {
-            log.warning("Failed to restart NRV AEReader after USB buffer change: " + e);
-        }
+        syncUsbBufferSettings(fifoSize, numBuffers);
+        bufferLifecycle.schedule(new Config(fifoSize, numBuffers));
+    }
+
+    boolean isBufferReconfigPending() {
+        return bufferLifecycle.isReconfigPending();
+    }
+
+    UsbAsyncBulkReaderLifecycle.Status getBufferConfigStatus() {
+        return bufferLifecycle.statusSnapshot();
+    }
+
+    int getActiveFifoSize() {
+        final Config applied = bufferLifecycle.appliedConfig();
+        return applied != null ? applied.fifoSize : fifoSize;
+    }
+
+    int getActiveNumBuffers() {
+        final Config applied = bufferLifecycle.appliedConfig();
+        return applied != null ? applied.numBuffers : numBuffers;
     }
 
     PropertyChangeSupport getReaderSupport() {
@@ -89,27 +102,38 @@ public class NRVAEReader {
     }
 
     public void startThread() throws HardwareInterfaceException {
-        startThreadInternal(true);
-    }
-
-    private void startThreadInternal(boolean resetParser) throws HardwareInterfaceException {
-        if (!monitor.isOpen()) {
-            monitor.open();
+        if (usbTransfer != null && usbTransfer.isAlive()) {
+            return;
         }
-        if (usbTransfer != null && !usbTransfer.isAlive()) {
+        if (usbTransfer != null) {
             log.warning("NRV AEReader thread died; starting a new one");
             usbTransfer = null;
         }
-        if (usbTransfer != null) {
+        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+        final long gen = bufferLifecycle.adoptExternalStart(new Config(fifoSize, numBuffers));
+        try {
+            startThreadInternal(true, gen);
+        } catch (HardwareInterfaceException e) {
+            bufferLifecycle.markFailed();
+            throw e;
+        }
+    }
+
+    private void startThreadInternal(boolean resetParser, long generation) throws HardwareInterfaceException {
+        if (!monitor.isOpen()) {
+            monitor.open();
+        }
+        if (usbTransfer != null && usbTransfer.isAlive()) {
             return;
         }
-        syncUsbBufferSettings(monitor.getFifoSize(), monitor.getNumBuffers());
+        usbTransfer = null;
         synchronized (monitor.getAePacketRawPool()) {
             monitor.getAePacketRawPool().allocateMemory();
         }
         if (resetParser) {
             parser.reset();
         }
+        readerActive = true;
         clearEndpointHalt(monitor.getDeviceHandle());
         log.info("Starting NRV AEReader on endpoint 0x81 (fifo=" + getFifoSize()
                 + " buffers=" + getNumBuffers()
@@ -124,7 +148,7 @@ public class NRVAEReader {
                 monitor.getDeviceHandle(),
                 ENDPOINT_IN,
                 LibUsb.TRANSFER_TYPE_BULK,
-                new ProcessAEData(),
+                new ProcessAEData(generation),
                 getNumBuffers(),
                 getFifoSize());
         usbTransfer.setName("NRVAEReaderThread");
@@ -142,20 +166,24 @@ public class NRVAEReader {
     }
 
     public void stopThread() {
+        bufferLifecycle.discardPendingRestart();
+        bufferLifecycle.markQuiescing();
+        readerActive = false;
         if (usbTransfer == null) {
+            bufferLifecycle.markStopped();
             return;
         }
         log.info("Stopping NRV AEReader");
-        usbTransfer.interrupt();
-        try {
-            usbTransfer.join(STOP_JOIN_TIMEOUT_MS);
-            if (usbTransfer.isAlive()) {
-                log.warning("NRV AEReader thread did not stop within " + STOP_JOIN_TIMEOUT_MS + " ms");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                usbTransfer, STOP_JOIN_TIMEOUT_MS, log, "NRV AEReader");
+        if (!stopped) {
+            bufferLifecycle.markFailed();
+            monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
+                    "NRV AEReader did not stop within " + STOP_JOIN_TIMEOUT_MS + " ms"));
+            return;
         }
         usbTransfer = null;
+        bufferLifecycle.markStopped();
         monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
     }
 
@@ -370,7 +398,12 @@ public class NRVAEReader {
 
     private class ProcessAEData implements RestrictedTransferCallback {
 
+        private final long generation;
         private volatile boolean active = true;
+
+        ProcessAEData(long generation) {
+            this.generation = generation;
+        }
 
         @Override
         public void prepareTransfer(RestrictedTransfer transfer) {
@@ -378,13 +411,20 @@ public class NRVAEReader {
 
         @Override
         public void processTransfer(RestrictedTransfer transfer) {
-            if (!active || monitor.isUsbTransferFailed()) {
+            if (!active || !readerActive || !bufferLifecycle.isCurrent(generation)
+                    || monitor.isUsbTransferFailed()) {
                 return;
             }
             if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
+                if (!bufferLifecycle.isCurrent(generation)) {
+                    return;
+                }
                 final UsbPipelineBench.Sample sample = UsbPipelineBench.newSample("NRV");
                 final long totalStart = sample != null ? System.nanoTime() : 0;
                 final ParsedChunk chunk = parseUsbChunk(transfer.buffer(), sample);
+                if (!bufferLifecycle.isCurrent(generation)) {
+                    return;
+                }
                 commitParsedChunk(chunk, sample);
                 if (sample != null) {
                     sample.totalNs = System.nanoTime() - totalStart;
@@ -394,6 +434,61 @@ public class NRVAEReader {
                 active = false;
                 monitor.markUsbDisconnected(transfer.status());
             }
+        }
+    }
+
+    private final class BufferHost implements UsbAsyncBulkReaderLifecycle.Host {
+        @Override
+        public String deviceLabel() {
+            return "NRV";
+        }
+
+        @Override
+        public Logger log() {
+            return log;
+        }
+
+        @Override
+        public PropertyChangeSupport readerSupport() {
+            return monitor.getReaderSupportInternal();
+        }
+
+        @Override
+        public boolean hasActiveTransfer() {
+            return usbTransfer != null && usbTransfer.isAlive();
+        }
+
+        @Override
+        public boolean stopSession(long generation, long joinTimeoutMs) {
+            readerActive = false;
+            if (usbTransfer == null) {
+                return true;
+            }
+            final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                    usbTransfer, joinTimeoutMs, log, "NRV AEReader");
+            if (!stopped) {
+                return false;
+            }
+            usbTransfer = null;
+            monitor.getReaderSupportInternal().firePropertyChange("readerStopped", false, true);
+            return true;
+        }
+
+        @Override
+        public Config startSession(Config requested, long generation) throws Exception {
+            syncUsbBufferSettings(requested.fifoSize, requested.numBuffers);
+            startThreadInternal(false, generation);
+            return requested;
+        }
+
+        @Override
+        public void applyIdleConfig(Config config) {
+            syncUsbBufferSettings(config.fifoSize, config.numBuffers);
+        }
+
+        @Override
+        public void recoverFailedSession(Config pending, Exception cause) {
+            monitor.recoverFailedBufferReconfig(cause);
         }
     }
 }

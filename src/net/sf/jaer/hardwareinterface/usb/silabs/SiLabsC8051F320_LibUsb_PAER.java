@@ -8,7 +8,6 @@ package net.sf.jaer.hardwareinterface.usb.silabs;
 import java.nio.ByteBuffer;
 import java.util.prefs.Preferences;
 
-import li.longi.USBTransferThread.USBTransferThread;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
@@ -87,47 +86,35 @@ public class SiLabsC8051F320_LibUsb_PAER extends SiLabsC8051F320_LibUsb {
             super(driver);
         }
 
+        @Override
+        protected byte getEventEndpoint() {
+            return ENDPOINT_IN;
+        }
+
+        @Override
+        protected int transferThreadPriority() {
+            return MONITOR_PRIORITY;
+        }
+
         /**
          * starts/stops the usbTransfer thread and notifies the readers.
          * @param enable
          */
         @Override
         public void setEnable(boolean enable) {
-            super.setEnable(enable);
             if (enable == true) {
                 if (!isOpen()) {
                     try {
                         open();
                     } catch (final HardwareInterfaceException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                 }
-
-                usbTransfer = new USBTransferThread(super.driver.retinahandle, ENDPOINT_IN, LibUsb.TRANSFER_TYPE_BULK,
-                        new PaerAEReader.ProcessAEData(), getNumBuffers(), getFifoSize());
-                usbTransfer.setPriority(this.MONITOR_PRIORITY);
-                usbTransfer.setName("AEReaderThread");
-                usbTransfer.start();
-
-                super.getReaderSupport().firePropertyChange("readerStarted", false, true);
+                super.setEnable(true);
             } else {
-
-                usbTransfer.interrupt();
-                boolean stopped = false;
-                while (!stopped) {
-                    try {
-                        usbTransfer.join();
-                    } catch (InterruptedException ex) {
-                        continue;
-                    }
-                    stopped = true;
-                }
-
-                support.firePropertyChange("readerStopped", false, true);
+                super.setEnable(false);
                 this.driver.aeReader = null;
             }
-
         }
         /**
          * copy paste from USBIO version - seems to work fine

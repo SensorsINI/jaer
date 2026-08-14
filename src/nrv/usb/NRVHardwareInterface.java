@@ -27,6 +27,7 @@ import nrv.chip.NRVConfig;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbReaderBufferSettings;
 
 /**
@@ -223,12 +224,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         int status = LibUsb.open(device, deviceHandle);
         if (status != LibUsb.SUCCESS) {
             deviceHandle = null;
-            String hint = "";
-            if (status == LibUsb.ERROR_ACCESS || status == LibUsb.ERROR_BUSY) {
-                hint = " Close other jAER/SDK instances. On Windows, Zadig must bind WinUSB "
-                        + "(winusb.sys), not libusb-win32 (libusb0.sys), for 04B4:00F0/00F1.";
-            }
-            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + hint);
+            throw new HardwareInterfaceException("open(): " + LibUsb.errorName(status) + libUsbOpenHint(status));
         }
 
         deviceDescriptor = new DeviceDescriptor();
@@ -257,6 +253,25 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     }
 
     /**
+     * Hint after {@link LibUsb#open} failure. WinUSB/Zadig is Windows-only;
+     * ACCESS/BUSY often means another process holds the device.
+     */
+    static String libUsbOpenHint(int status) {
+        if (status != LibUsb.ERROR_ACCESS && status != LibUsb.ERROR_NOT_SUPPORTED
+                && status != LibUsb.ERROR_BUSY) {
+            return "";
+        }
+        final String os = System.getProperty("os.name", "");
+        if (os.startsWith("Windows")) {
+            return " Install WinUSB via Zadig (not libusb-win32) for VID 04B4 PID 00F0/00F1.";
+        }
+        if (os.contains("Linux")) {
+            return " Close other jAER/SDK instances, or check udev permissions for 04b4:00f0/00f1.";
+        }
+        return " Close other processes using the camera.";
+    }
+
+    /**
      * Called from the USB transfer thread when bulk reads fail (e.g. unplug).
      * Must not call {@link #close()} on the transfer thread (would deadlock).
      */
@@ -273,6 +288,14 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
                 }
             }
         }, "NRV-USB-disconnect").start();
+    }
+
+    void recoverFailedBufferReconfig(Exception cause) {
+        log.warning("NRV USB reader session failed (" + cause + "); closing device instead of overlapping transfers");
+        if (!isOpen()) {
+            return;
+        }
+        markUsbDisconnected(LibUsb.ERROR_IO);
     }
 
     boolean isUsbTransferFailed() {
@@ -706,6 +729,26 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
         if (aeReader != null) {
             aeReader.applyBufferSettingsAndRestart(usbFifoSize, usbNumBuffers);
         }
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        return aeReader != null && aeReader.isBufferReconfigPending();
+    }
+
+    @Override
+    public int getActiveFifoSize() {
+        return aeReader != null ? aeReader.getActiveFifoSize() : usbFifoSize;
+    }
+
+    @Override
+    public int getActiveNumBuffers() {
+        return aeReader != null ? aeReader.getActiveNumBuffers() : usbNumBuffers;
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        return aeReader != null ? aeReader.getBufferConfigStatus() : null;
     }
 
     @Override

@@ -14,7 +14,6 @@ import java.nio.CharBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -52,6 +51,8 @@ import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.USBPacketStatistics;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
+import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.MessageWithLink;
 
@@ -1035,26 +1036,33 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         USBTransferThread usbTransfer;
         CypressFX3 monitor;
+        private final UsbAsyncBulkReaderLifecycle bufferLifecycle;
+        private volatile boolean readerActive;
 
         public AEReader(final CypressFX3 m) throws HardwareInterfaceException {
             monitor = m;
             fifoSize = monitor.aeReaderFifoSize;
             numBuffers = monitor.aeReaderNumBuffers;
+            bufferLifecycle = new UsbAsyncBulkReaderLifecycle(new BufferHost());
         }
 
         public void startThread() {
+            if (usbTransfer != null && usbTransfer.isAlive()) {
+                return;
+            }
             if (!isOpen()) {
                 try {
                     open();
                 } catch (final HardwareInterfaceException e) {
-                    // TODO Auto-generated catch block
                     log.warning(e.toString());
                 }
             }
 
             CypressFX3.log.info("Starting AEReader");
+            final long gen = bufferLifecycle.adoptExternalStart(new Config(fifoSize, numBuffers));
+            readerActive = true;
             usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS, LibUsb.TRANSFER_TYPE_BULK,
-                    new ProcessAEData(), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
+                    new ProcessAEData(gen), getNumBuffers(), getFifoSize(), null, null, new Runnable() {
                 @Override
                 public void run() {
                     final SwingWorker<Void, Void> shutdownWorker = new SwingWorker<Void, Void>() {
@@ -1075,20 +1083,47 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
 
         public void stopThread() {
+            bufferLifecycle.discardPendingRestart();
+            bufferLifecycle.markQuiescing();
+            readerActive = false;
             if (usbTransfer == null) {
-                log.warning("USB transfer thread became null before stopThread was called; doing nothing");
+                bufferLifecycle.markStopped();
                 return;
             }
             log.info("Interrupting USBTransferThread " + usbTransfer);
-            usbTransfer.interrupt();
-
-            try {
-                log.info("Waiting for USBTransferThread to join()");
-                usbTransfer.join(Duration.ofSeconds(1));
-                log.info("USBTransferThread join()'ed");
-            } catch (final InterruptedException e) {
-                CypressFX3.log.severe("Failed to join AEReaderThread");
+            final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                    usbTransfer, UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS, CypressFX3.log, "CypressFX3 AEReader");
+            if (!stopped) {
+                bufferLifecycle.markFailed();
+                monitor.recoverFailedBufferReconfig(new HardwareInterfaceException(
+                        "CypressFX3 AEReader did not stop within "
+                                + UsbAsyncBulkReaderLifecycle.DEFAULT_JOIN_TIMEOUT_MS + " ms"));
+                return;
             }
+            usbTransfer = null;
+            bufferLifecycle.markStopped();
+            getSupport().firePropertyChange("readerStopped", false, true);
+            log.info("USBTransferThread join()'ed");
+        }
+
+        boolean isBufferReconfigPending() {
+            return bufferLifecycle.isReconfigPending();
+        }
+
+        public UsbAsyncBulkReaderLifecycle.Status getBufferConfigStatus() {
+            return bufferLifecycle.statusSnapshot();
+        }
+
+        @Override
+        public int getActiveFifoSize() {
+            final Config applied = bufferLifecycle.appliedConfig();
+            return applied != null ? applied.fifoSize : fifoSize;
+        }
+
+        @Override
+        public int getActiveNumBuffers() {
+            final Config applied = bufferLifecycle.appliedConfig();
+            return applied != null ? applied.numBuffers : numBuffers;
         }
 
         @Override
@@ -1108,6 +1143,12 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
 
         class ProcessAEData implements RestrictedTransferCallback {
 
+            private final long generation;
+
+            ProcessAEData(long generation) {
+                this.generation = generation;
+            }
+
             @Override
             public void prepareTransfer(final RestrictedTransfer transfer) {
                 // Nothing to do here.
@@ -1121,7 +1162,13 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
              */
             @Override
             public void processTransfer(final RestrictedTransfer transfer) {
+                if (!readerActive || !bufferLifecycle.isCurrent(generation)) {
+                    return;
+                }
                 synchronized (aePacketRawPool) {
+                    if (!bufferLifecycle.isCurrent(generation)) {
+                        return;
+                    }
                     if (transfer.status() == LibUsb.TRANSFER_COMPLETED) {
                         usbPacketStatistics.addSample(transfer);
                         translateEvents(transfer.buffer());
@@ -1169,10 +1216,9 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
             }
 
             this.fifoSize = fifoSize;
-
-            usbTransfer.setBufferSize(fifoSize);
-
             CypressFX3.prefs.putInt("CypressFX3.AEReader.fifoSize", fifoSize);
+            monitor.aeReaderFifoSize = fifoSize;
+            bufferLifecycle.schedule(new Config(this.fifoSize, this.numBuffers));
         }
 
         @Override
@@ -1183,10 +1229,14 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         @Override
         public void setNumBuffers(final int numBuffers) {
             this.numBuffers = numBuffers;
-
-            usbTransfer.setBufferNumber(numBuffers);
-
             CypressFX3.prefs.putInt("CypressFX3.AEReader.numBuffers", numBuffers);
+            monitor.aeReaderNumBuffers = numBuffers;
+            bufferLifecycle.schedule(new Config(this.fifoSize, this.numBuffers));
+        }
+
+        @Override
+        public boolean isUsbBufferReconfigPending() {
+            return bufferLifecycle.isReconfigPending();
         }
 
         /**
@@ -1303,6 +1353,78 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         @Override
         public PropertyChangeSupport getReaderSupport() {
             return support;
+        }
+
+        private final class BufferHost implements UsbAsyncBulkReaderLifecycle.Host {
+            @Override
+            public String deviceLabel() {
+                return "CypressFX3";
+            }
+
+            @Override
+            public Logger log() {
+                return CypressFX3.log;
+            }
+
+            @Override
+            public PropertyChangeSupport readerSupport() {
+                return support;
+            }
+
+            @Override
+            public boolean hasActiveTransfer() {
+                return usbTransfer != null && usbTransfer.isAlive();
+            }
+
+            @Override
+            public boolean stopSession(long generation, long joinTimeoutMs) {
+                readerActive = false;
+                if (usbTransfer == null) {
+                    return true;
+                }
+                final boolean stopped = UsbAsyncBulkReaderLifecycle.interruptAndJoin(
+                        usbTransfer, joinTimeoutMs, CypressFX3.log, "CypressFX3 AEReader");
+                if (!stopped) {
+                    return false;
+                }
+                usbTransfer = null;
+                getSupport().firePropertyChange("readerStopped", false, true);
+                return true;
+            }
+
+            @Override
+            public Config startSession(Config requested, long generation) {
+                fifoSize = requested.fifoSize;
+                numBuffers = requested.numBuffers;
+                readerActive = true;
+                usbTransfer = new USBTransferThread(monitor.deviceHandle, CypressFX3.AE_MONITOR_ENDPOINT_ADDRESS,
+                        LibUsb.TRANSFER_TYPE_BULK, new ProcessAEData(generation), getNumBuffers(), getFifoSize(),
+                        null, null, () -> {
+                            final SwingWorker<Void, Void> shutdownWorker = new SwingWorker<Void, Void>() {
+                                @Override
+                                public Void doInBackground() {
+                                    monitor.close();
+                                    return null;
+                                }
+                            };
+                            shutdownWorker.execute();
+                        });
+                usbTransfer.setName("AEReaderThread");
+                usbTransfer.start();
+                getSupport().firePropertyChange("readerStarted", false, true);
+                return requested;
+            }
+
+            @Override
+            public void applyIdleConfig(Config config) {
+                fifoSize = config.fifoSize;
+                numBuffers = config.numBuffers;
+            }
+
+            @Override
+            public void recoverFailedSession(Config pending, Exception cause) {
+                monitor.recoverFailedBufferReconfig(cause);
+            }
         }
     }
 
@@ -1935,6 +2057,41 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         dataBuffer.limit(dataLength);
 
         return (dataBuffer);
+    }
+
+    void recoverFailedBufferReconfig(Exception cause) {
+        CypressFX3.log.warning("CypressFX3 USB reader session failed (" + cause
+                + "); closing device instead of overlapping transfers");
+        if (!isOpened) {
+            return;
+        }
+        new Thread(() -> {
+            try {
+                close();
+            } catch (Exception e) {
+                CypressFX3.log.warning("CypressFX3 recover close failed: " + e);
+            }
+        }, "CypressFX3-USB-recover").start();
+    }
+
+    @Override
+    public boolean isUsbBufferReconfigPending() {
+        return aeReader != null && aeReader.isBufferReconfigPending();
+    }
+
+    @Override
+    public int getActiveFifoSize() {
+        return aeReader != null ? aeReader.getActiveFifoSize() : getFifoSize();
+    }
+
+    @Override
+    public int getActiveNumBuffers() {
+        return aeReader != null ? aeReader.getActiveNumBuffers() : getNumBuffers();
+    }
+
+    @Override
+    public UsbAsyncBulkReaderLifecycle.Status getUsbBufferConfigStatus() {
+        return aeReader != null ? aeReader.getBufferConfigStatus() : null;
     }
 
     public AEReader getAeReader() {
