@@ -6,7 +6,7 @@ VERSION.txt at the repo root is the single source of truth for the release versi
 (e.g. 3.0.0). It drives:
 
 - install4j application version (synced into jaer.install4j; also passed as install4jc --release=...)
-- splash overlay text (full VERSION.txt, e.g. 3.1.1)
+- splash overlay text (full VERSION.txt, e.g. 3.2.0)
 - About / BUILDVERSION.txt first line on jar build
 
 See latest releases at https://github.com/SensorsINI/jaer/releases and tags at
