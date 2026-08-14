@@ -157,6 +157,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryChooserDialog;
 import net.sf.jaer.hardwareinterface.udp.NetworkChip;
 import net.sf.jaer.hardwareinterface.udp.UDPInterface;
 import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
+import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.LiveAcquisitionBench;
 import net.sf.jaer.hardwareinterface.usb.LiveDeviceChipDetector;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
@@ -732,6 +733,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         syncAdaptiveRenderSkipMenuFromRenderer();
 
         viewLoop = new ViewLoop();
+        LibUsbHotplug.addListener(usbHotplugListener);
         viewLoop.start();
 
         try {
@@ -790,6 +792,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
      */
     private void cleanup() {
         log.fine("cleanup()");
+        LibUsbHotplug.removeListener(usbHotplugListener);
         stopLogging(true); // in case logging, make sure we give chance to save file
         // Close the playback file without starting USB; aemon.close() follows.
         if (aePlayer != null && !suppressHardwareOpen) {
@@ -842,6 +845,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
     private long lastInterfaceCheckTime = 0;
     private static final long INTERFACE_CHECK_INTERVAL_MS = 3000; // don't scan USB bus too often while paused
+    /** Fallback full scan when libusb hotplug is active (events handle the fast path). */
+    private static final long HOTPLUG_FALLBACK_CHECK_INTERVAL_MS = 15_000;
+    private final LibUsbHotplug.Listener usbHotplugListener = this::onLibUsbHotplug;
 
     /**
      * If we are are the only viewer, automatically set interface to the
@@ -857,13 +863,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         if (nullInterface) {
             return;
         }
+        final boolean dirty = HardwareInterfaceFactory.instance().isUsbEnumerationDirty();
         final long dtCheck = System.currentTimeMillis() - lastInterfaceCheckTime;
+        final long intervalMs = LibUsbHotplug.isSupported()
+                ? HOTPLUG_FALLBACK_CHECK_INTERVAL_MS : INTERFACE_CHECK_INTERVAL_MS;
 
-        if (dtCheck < INTERFACE_CHECK_INTERVAL_MS) {
-            log.finer(String.format("Not checking for new devices because only %,d<%,d ms have elapsed since last check", dtCheck, INTERFACE_CHECK_INTERVAL_MS));
+        if (!dirty && dtCheck < intervalMs) {
+            log.finer(String.format("Not checking for new devices because only %,d<%,d ms have elapsed since last check", dtCheck, intervalMs));
             return;
         }
         lastInterfaceCheckTime = System.currentTimeMillis();
+        if (LibUsbHotplug.isSupported()) {
+            HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
+        }
 
         int ninterfaces = HardwareInterfaceFactory.instance().getNumInterfacesAvailable();
         HardwareInterface rememberedInterface = null;
@@ -2209,6 +2221,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             n = 0;
         } else {
             log.info("finding number of available interfaces");
+            HardwareInterfaceFactory.instance().markUsbEnumerationDirty();
             n = HardwareInterfaceFactory.instance().getNumInterfacesAvailable(); // TODO this rebuilds the entire list of hardware
         }
         //        StringBuilder sb = new StringBuilder("adding menu items for ").append(Integer.toString(n)).append(" interfaces");
@@ -7029,6 +7042,15 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     public void interruptViewloop() {
 //        log.info("interrupting ViewLoop");
         viewLoop.interrupt(); // to break it out of blocking operation such as wait on cyclic barrier or socket
+    }
+
+    private void onLibUsbHotplug(boolean arrived, int vid, int pid) {
+        log.info(String.format("USB hotplug %s %04x:%04x; scanning for cameras",
+                arrived ? "add" : "remove", vid, pid));
+        lastInterfaceCheckTime = 0;
+        if (getPlayMode() == PlayMode.WAITING && viewLoop != null) {
+            interruptViewloop();
+        }
     }
 
     /** Stop USB/live reader before joining ViewLoop so shutdown does not fill AE buffers. */

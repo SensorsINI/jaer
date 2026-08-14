@@ -20,6 +20,7 @@ import net.sf.jaer.chip.Chip;
 import net.sf.jaer.hardwareinterface.serial.SpiNNaker.SpiNNaker_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.udp.UDPInterfaceFactory;
+import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
@@ -48,6 +49,8 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	private static final long serialVersionUID = 6795768174203484869L;
 //	HashSet<Class> factoryHashSet = new HashSet<Class>();
 	private final ArrayList<HardwareInterface> interfaceList = new ArrayList<>();
+	/** True until a bus scan completes; libusb hotplug sets this so WAITING can skip 3 s polls. */
+	private volatile boolean usbEnumerationDirty = true;
 	static final Logger log = Logger.getLogger("net.sf.jaer");
 
 	// these are devices that can be enumerated and opened
@@ -124,15 +127,38 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 	}
 
 	/**
-	 * Says how many total of all types of hardware are available, assuming that {@link #buildInterfaceList() } has been
-	 * called earlier.  This method should only return devices that are not already opened, i.e. bound already.
+	 * Force the next {@link #getNumInterfacesAvailable()} to rescan factories
+	 * (hotplug, Interface menu, or fallback poll).
+	 */
+	public void markUsbEnumerationDirty() {
+		usbEnumerationDirty = true;
+	}
+
+	/** True when a hotplug event (or Interface menu) has invalidated the cached list. */
+	public boolean isUsbEnumerationDirty() {
+		return usbEnumerationDirty;
+	}
+
+	/**
+	 * Number of hardware interfaces currently known. With libusb hotplug this is
+	 * cheap until a plug event (or {@link #markUsbEnumerationDirty()}) forces a rescan.
+	 * Without hotplug this enumerates all factories every call.
 	 *
 	 * @return number of devices
 	 * @see #buildInterfaceList()
 	 */
 	@Override
 	synchronized public int getNumInterfacesAvailable() {
-		buildInterfaceList(); // removed to make this call much cheaper
+		// With libusb hotplug the list stays valid until a plug event (or explicit dirty).
+		if (!usbEnumerationDirty && LibUsbHotplug.isSupported()) {
+			return interfaceList.size();
+		}
+		// Rebuild until a hotplug arriving mid-scan is included (stale getDeviceList).
+		int spins = 0;
+		do {
+			usbEnumerationDirty = false;
+			buildInterfaceList();
+		} while (usbEnumerationDirty && ++spins < 3);
 		return interfaceList.size();
 	}
 

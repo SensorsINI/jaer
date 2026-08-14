@@ -16,10 +16,9 @@ import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
+import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
-import org.usb4java.Context;
-import org.usb4java.HotplugCallback;
 import org.usb4java.LibUsbException;
 
 public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactoryInterface {
@@ -47,10 +46,7 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
             if (result != LibUsb.SUCCESS) {
                 throw new LibUsbException("Unable to initialize libusb", result);
             }
-
-            if (!LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
-                log.warning("LibUsb cannot register HotPlug callbacks on this platform");
-            }
+            LibUsbHotplug.ensureStarted();
         } catch (UnsatisfiedLinkError | LibUsbException ule) {
             UnsatisfiedLinkError u = new UnsatisfiedLinkError("Failed to initialize libusb4java!"
                     + "\nOn OS-X you might need to install with brew install libusb."
@@ -78,28 +74,7 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
     private void addDeviceToMap(final short VID, final short PID, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(VID, PID), cls);
         UsbHardwareRegistry.instance().register(VID, PID, cls);
-        if (LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
-            HotplugCallback callback = (Context cntxt, Device device, int event, Object userData) -> {
-                DeviceDescriptor descriptor = new DeviceDescriptor();
-                int errCode = LibUsb.getDeviceDescriptor(device, descriptor);
-                if (errCode != LibUsb.SUCCESS) {
-                    log.warning(String.format("Unable to read device descriptor: got error code %d", errCode));
-                } else {
-                    log.info(String.format("LibUsb: %s VID:PID=%04x:%04x",
-                            event == LibUsb.HOTPLUG_EVENT_DEVICE_ARRIVED ? "Connected" : "Disconnected",
-                            descriptor.idVendor(), descriptor.idProduct()));
-                }
-                return 0;
-            };
-            int errCode = LibUsb.hotplugRegisterCallback(null,
-                    LibUsb.HOTPLUG_EVENT_DEVICE_ARRIVED | LibUsb.HOTPLUG_EVENT_DEVICE_LEFT,
-                    LibUsb.HOTPLUG_ENUMERATE,
-                    VID, PID, LibUsb.HOTPLUG_MATCH_ANY,
-                    callback, null, null);
-            if (errCode != LibUsb.SUCCESS) {
-                log.warning(String.format("Could not register LibUsb hot plug callback for VID=%d, PID=%d, got error code %d", VID, PID, errCode));
-            }
-        }
+        LibUsbHotplug.register(VID, PID);
     }
 
     private void refreshCompatibleDevicesList() {
@@ -140,23 +115,32 @@ public class LibUsb3HardwareInterfaceFactory implements HardwareInterfaceFactory
             LibUsb.getDeviceDescriptor(dev, devDesc);
 
             final ImmutablePair<Short, Short> vidPid = new ImmutablePair<>(devDesc.idVendor(), devDesc.idProduct());
+            if (!vidPidToClassMap.containsKey(vidPid)) {
+                continue;
+            }
 
-            // Check that the device is not already bound to any other driver.
             final DeviceHandle devHandle = new DeviceHandle();
-            int status = LibUsb.open(dev, devHandle);
-            if (status != LibUsb.SUCCESS) {
-                continue; // Skip device.
+            final int openStatus = LibUsb.open(dev, devHandle);
+            if (openStatus == LibUsb.SUCCESS) {
+                // ERROR_NOT_SUPPORTED on Windows, where we cannot tell if another driver claimed the device
+                final int driverStatus = LibUsb.kernelDriverActive(devHandle, 0);
+                LibUsb.close(devHandle);
+                if (driverStatus != LibUsb.ERROR_NOT_SUPPORTED && driverStatus != LibUsb.SUCCESS) {
+                    log.warning(String.format(
+                            "LibUsb FX3 %04x:%04x found but a kernel driver is bound (status=%d)",
+                            vidPid.left & 0xffff, vidPid.right & 0xffff, driverStatus));
+                }
+            } else if (openStatus == LibUsb.ERROR_ACCESS || openStatus == LibUsb.ERROR_BUSY) {
+                log.info(String.format(
+                        "LibUsb FX3 %04x:%04x present but LibUsb.open=%s; still listing",
+                        vidPid.left & 0xffff, vidPid.right & 0xffff, LibUsb.errorName(openStatus)));
+            } else {
+                log.warning(String.format(
+                        "LibUsb FX3 %04x:%04x detected but LibUsb.open failed: %s; still listing",
+                        vidPid.left & 0xffff, vidPid.right & 0xffff, LibUsb.errorName(openStatus)));
             }
 
-            status = LibUsb.kernelDriverActive(devHandle, 0); // returns ERROR_NOT_SUPPORTED on windows, where we cannot determine if something else has claimed the device
-
-            LibUsb.close(devHandle);
-            if (((status == LibUsb.ERROR_NOT_SUPPORTED) || (status == LibUsb.SUCCESS)) && vidPidToClassMap.containsKey(vidPid)) {
-                // This is a VID/PID combination we support, so let's add the
-                // device to the compatible
-                // devices list and increase its reference count.
-                compatibleDevicesListLocal.add(LibUsb.refDevice(dev));
-            }
+            compatibleDevicesListLocal.add(LibUsb.refDevice(dev));
         }
 
         LibUsb.freeDeviceList(devList, true);
