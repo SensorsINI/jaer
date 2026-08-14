@@ -1,0 +1,37 @@
+# Keep text files as LF in the working tree (shared Dropbox Linux/Windows).
+* text=auto eol=lf
+
+# Explicit binaries
+*.jar binary
+*.class binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.exe binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.bmp binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.7z binary
+*.bz2 binary
+*.xz binary
+*.aedat binary
+*.aedat2 binary
+*.aedat4 binary
+*.hdf5 binary
+*.h5 binary
+*.wav binary
+*.mp3 binary
+*.mp4 binary
+*.avi binary
+*.mov binary
+*.jnlp binary
+*.keystore binary
+*.p12 binary
+*.pfx binary
+*.snk binary
