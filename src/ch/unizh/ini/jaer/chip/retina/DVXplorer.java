@@ -111,6 +111,8 @@ public class DVXplorer extends AETemporalConstastRetina {
         dvxDisplayMethod = new DVXDisplayMethod(this);
         getCanvas().addDisplayMethod(dvxDisplayMethod);
         getCanvas().setDisplayMethod(dvxDisplayMethod);
+
+        setBiasgen(new DVXplorerConfig(this));
     }
     
     // Module address
@@ -308,7 +310,10 @@ public class DVXplorer extends AETemporalConstastRetina {
             spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_PINS_BUFN, 0x7F);
             spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_PINS_DOB, 0x00);
 
-            // DVX_DVS_CHIP_BIAS_SIMPLE_DEFAULT
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_AMP, 0x04);
+            spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_RANGE_SELECT_LOGALOGD_MONITOR, 0x14);
+
+            // DVX_DVS_CHIP_BIAS_SIMPLE_DEFAULT (overwritten by DVXplorerConfig after open)
             spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_RANGE_SELECT_LOGSFONREST, 0x06);
             spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_LEVEL_SFOFF, 0x7D);
             spiConfigSendAndCheck(fx3, DEVICE_DVS, REGISTER_BIAS_CURRENT_ON, 0x00);
