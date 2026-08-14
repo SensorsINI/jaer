@@ -55,6 +55,7 @@ import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle;
 import net.sf.jaer.hardwareinterface.usb.UsbAsyncBulkReaderLifecycle.Config;
 import net.sf.jaer.stereopsis.StereoPairHardwareInterface;
 import net.sf.jaer.util.MessageWithLink;
+import eu.seebetter.ini.chips.davis.Davis346BaseCamera;
 
 /**
  * Devices that use the CypressFX3 and the USBIO driver, e.g. the DVS retinas,
@@ -191,8 +192,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
      * @see AEReader
      * @see #setAEBufferSize
      */
-    public static final int AE_BUFFER_SIZE = 600000; // 100k should handle 5Meps at
-    // 30FPS, but tobi increased to 600k to handle APS frames from Davis346B at 40FPS
+    public static final int AE_BUFFER_SIZE = Davis346BaseCamera.DEFAULT_AE_BUFFER_SIZE;
     /**
      * this is the size of the AEPacketRaw that are part of AEPacketRawPool that
      * double buffer the translated events between rendering and capture threads
@@ -986,7 +986,11 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         }
     }
 
-    private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", 65536);
+    /** Davis346 FX3 live-tuning defaults (shared by all Davis346 subclasses). */
+    private static final int DEFAULT_AE_READER_FIFO_SIZE = Davis346BaseCamera.DEFAULT_USB_FIFO_SIZE;
+    private static final int DEFAULT_AE_READER_NUM_BUFFERS = Davis346BaseCamera.DEFAULT_USB_NUM_BUFFERS;
+
+    private int aeReaderFifoSize = CypressFX3.prefs.getInt("CypressFX3.AEReader.fifoSize", DEFAULT_AE_READER_FIFO_SIZE);
 
     /**
      * sets the buffer size for the aereader thread. optimal size depends on
@@ -999,7 +1003,7 @@ public class CypressFX3 implements AEMonitorInterface, ReaderBufferControl, USBI
         CypressFX3.prefs.putInt("CypressFX3.AEReader.fifoSize", size);
     }
 
-    private int aeReaderNumBuffers = CypressFX3.prefs.getInt("CypressFX3.AEReader.numBuffers", 8);
+    private int aeReaderNumBuffers = CypressFX3.prefs.getInt("CypressFX3.AEReader.numBuffers", DEFAULT_AE_READER_NUM_BUFFERS);
 
     /**
      * sets the number of buffers for the aereader thread.

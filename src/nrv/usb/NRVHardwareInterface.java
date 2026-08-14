@@ -42,9 +42,9 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
     public static final short PID_CX3 = (short) 0x00F1;
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int AE_BUFFER_SIZE = 500_000;
+    private static final int AE_BUFFER_SIZE = 2_097_152;
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
-    private static final int DEFAULT_USB_FIFO_SIZE = 1 << 17;
+    private static final int DEFAULT_USB_FIFO_SIZE = 524288;
     private static final int DEFAULT_USB_NUM_BUFFERS = 16;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
             new PropertyChangeEvent(NRVHardwareInterface.class, "NewEvents", null, null);
@@ -103,7 +103,7 @@ public class NRVHardwareInterface implements BiasgenHardwareInterface, AEMonitor
 
     private int loadAeBufferSizePref() {
         final int saved = prefs.getInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
-        if (saved == 100_000) {
+        if (saved == 100_000 || saved == 500_000) {
             prefs.putInt("NRV.aeBufferSize", AE_BUFFER_SIZE);
             return AE_BUFFER_SIZE;
         }

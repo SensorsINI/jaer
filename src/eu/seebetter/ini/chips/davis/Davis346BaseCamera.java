@@ -8,6 +8,10 @@ abstract public class Davis346BaseCamera extends DavisBaseCamera {
 
 	public static final short WIDTH_PIXELS = 346;
 	public static final short HEIGHT_PIXELS = 260;
+	/** Host USB FIFO / buffer defaults for all Davis346 FX3 cameras. */
+	public static final int DEFAULT_USB_FIFO_SIZE = 131072;
+	public static final int DEFAULT_USB_NUM_BUFFERS = 4;
+	public static final int DEFAULT_AE_BUFFER_SIZE = 1_200_000;
 
 	/**
 	 * Creates a new instance.

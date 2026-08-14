@@ -63,10 +63,11 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     public static final short PID_EVK4_HD = (short) 0x00F5;
 
     private static final Logger log = Logger.getLogger("net.sf.jaer");
-    private static final int AE_BUFFER_SIZE = 500_000;
+    private static final int AE_BUFFER_SIZE = 2_097_152;
     private static final int MAX_AE_BUFFER_SIZE = 10_000_000;
-    private static final int DEFAULT_USB_FIFO_SIZE = 131072;
-    private static final int DEFAULT_USB_NUM_BUFFERS = 16;
+    private static final int DEFAULT_USB_FIFO_SIZE = 2 * 1024 * 1024;
+    private static final int DEFAULT_USB_NUM_BUFFERS = 4;
+    private static final int DEFAULT_LIVE_DISPLAY_EVENT_CAP = 2_097_152;
     /** Bump when default fifo/buffer tuning changes; migrates stored hardware prefs once. */
     private static final int USB_READER_PREFS_VERSION = 1;
     private static final PropertyChangeEvent NEW_EVENTS_PROPERTY_CHANGE =
@@ -165,8 +166,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
     }
 
     private int loadLiveDisplayEventCapPref() {
-        final int saved = prefs.getInt(PREF_LIVE_DISPLAY_EVENT_CAP,
-                HasLiveDisplayEventCap.DEFAULT_LIVE_DISPLAY_EVENT_CAP);
+        final int saved = prefs.getInt(PREF_LIVE_DISPLAY_EVENT_CAP, DEFAULT_LIVE_DISPLAY_EVENT_CAP);
         return clampLiveDisplayEventCap(saved);
     }
 

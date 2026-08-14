@@ -1423,7 +1423,7 @@ public class CypressFX2 implements UsbIoErrorCodes, PnPNotifyInterface, AEMonito
 
     protected boolean relativeTimestampMode = false; // not used anymore //raphael: need this variable to branch in AEReader
     volatile boolean dontwrap = false; // used for resetTimestamps
-    private int aeReaderFifoSize = prefs.getInt("CypressFX2.AEReader.fifoSize", 8192);
+    private int aeReaderFifoSize = prefs.getInt("CypressFX2.AEReader.fifoSize", 32768);
 
     /**
      * sets the buffer size for the aereader thread. optimal size depends on

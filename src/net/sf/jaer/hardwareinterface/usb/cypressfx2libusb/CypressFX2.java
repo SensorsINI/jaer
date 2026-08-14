@@ -947,7 +947,11 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
 
     volatile boolean dontwrap = false; // used for resetTimestamps
 
-    private int aeReaderFifoSize = CypressFX2.prefs.getInt("CypressFX2.AEReader.fifoSize", 8192);
+    /** Davis240C / DVS128 FX2 live-tuning defaults (shared CypressFX2 prefs node). */
+    private static final int DEFAULT_AE_READER_FIFO_SIZE = 32768;
+    private static final int DEFAULT_AE_READER_NUM_BUFFERS = 4;
+
+    private int aeReaderFifoSize = CypressFX2.prefs.getInt("CypressFX2.AEReader.fifoSize", DEFAULT_AE_READER_FIFO_SIZE);
 
     /**
      * sets the buffer size for the aereader thread. optimal size depends on
@@ -960,7 +964,7 @@ public class CypressFX2 implements AEMonitorInterface, ReaderBufferControl, USBI
         CypressFX2.prefs.putInt("CypressFX2.AEReader.fifoSize", size);
     }
 
-    private int aeReaderNumBuffers = CypressFX2.prefs.getInt("CypressFX2.AEReader.numBuffers", 4);
+    private int aeReaderNumBuffers = CypressFX2.prefs.getInt("CypressFX2.AEReader.numBuffers", DEFAULT_AE_READER_NUM_BUFFERS);
 
     /**
      * sets the number of buffers for the aereader thread.
