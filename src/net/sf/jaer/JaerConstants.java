@@ -40,6 +40,10 @@ public class JaerConstants {
     /** Root of jaer preferences */
     public static final String PREFS_ROOT_NAME="jaer";
     public static final Preferences PREFS_ROOT=Preferences.userRoot().node(PREFS_ROOT_NAME);
+    /**
+     * When true, shutdown must not rewrite Preferences (File → Preferences → revert-all).
+     */
+    public static volatile boolean skipPreferenceWriteOnExit = false;
     /** Used for devices, retinas, cochleas */
     public static final Preferences PREFS_ROOT_CHIPS=Preferences.userRoot().node(PREFS_ROOT_NAME).node("chips");
     /** Used for things like USB interfaces that might not (yet) be attached to specific chips */

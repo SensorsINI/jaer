@@ -44,6 +44,7 @@ import javax.swing.SwingUtilities;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AbstractAEPlayer;
+import net.sf.jaer.util.JaerPreferencesStore;
 import net.sf.jaer.util.LoggingThreadGroup;
 import net.sf.jaer.util.WindowSaver;
 
@@ -162,28 +163,32 @@ public class JAERViewer {
                 if ((viewers != null) && !viewers.isEmpty()) {
                     System.out.println("JAERViewer shutdown hook - shutting down AEViewers");
                     System.out.flush();
-                    try {
+                    if (!JaerConstants.skipPreferenceWriteOnExit) {
+                        try {
 
-                        ArrayList<String> viewerChipClassNames = new ArrayList<String>();
-                        for (AEViewer v : viewers) {
-                            viewerChipClassNames.add(v.getChip().getClass().getName());
+                            ArrayList<String> viewerChipClassNames = new ArrayList<String>();
+                            for (AEViewer v : viewers) {
+                                viewerChipClassNames.add(v.getChip().getClass().getName());
+                            }
+                            // Serialize to a byte array
+                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                            ObjectOutput out = new ObjectOutputStream(bos);
+                            out.writeObject(viewerChipClassNames);
+                            out.close();
+
+                            // Get the bytes of the serialized object
+                            byte[] buf = bos.toByteArray();
+                            prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
+                            prefs.flush();
+                        } catch (IOException e) {
+                            System.err.println(String.format("could not store class names: %s", e.toString()));
+                        } catch (IllegalArgumentException e2) {
+                            System.err.println("tried to store too many classes in last chip classes? " + e2.toString());
+                        } catch (BackingStoreException ex) {
+                            System.err.println("could not flush the preferences holding AEChip class names: " + ex.toString());
                         }
-                        // Serialize to a byte array
-                        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                        ObjectOutput out = new ObjectOutputStream(bos);
-                        out.writeObject(viewerChipClassNames);
-                        out.close();
-
-                        // Get the bytes of the serialized object
-                        byte[] buf = bos.toByteArray();
-                        prefs.putByteArray(JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY, buf);
-                        prefs.flush();
-                    } catch (IOException e) {
-                        System.err.println(String.format("could not store class names: %s", e.toString()));
-                    } catch (IllegalArgumentException e2) {
-                        System.err.println("tried to store too many classes in last chip classes? " + e2.toString());
-                    } catch (BackingStoreException ex) {
-                        System.err.println("could not flush the preferences holding AEChip class names: " + ex.toString());
+                    } else {
+                        System.out.println("JAERViewer shutdown hook - skipping last-chip Preferences write (reverted)");
                     }
                     System.out.println("JAERViewer shutdown hook - saving possible open data logging");
                     try {
@@ -198,11 +203,18 @@ public class JAERViewer {
                 }
 
                 System.out.println("JAERViewer shutdown hook - saving window settings");
-                if (windowSaver != null) {
+                if (windowSaver != null && !JaerConstants.skipPreferenceWriteOnExit) {
                     try {
                         windowSaver.saveSettings();
                     } catch (Exception e) {
                         System.err.println(String.format("could not save window settings: %s", e.toString()));
+                    }
+                }
+                if (JaerConstants.skipPreferenceWriteOnExit) {
+                    try {
+                        JaerPreferencesStore.deleteAllJaerPreferences();
+                    } catch (Exception e) {
+                        System.err.println("could not re-wipe Preferences after shutdown writes: " + e);
                     }
                 }
                 System.out.println("JAERViewer shutdown hook - end of shutdown");
