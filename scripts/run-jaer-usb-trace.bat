@@ -57,10 +57,13 @@ set "JAER_CP=build\classes;lib\*;jars\*"
 
 echo USB pipeline trace: camera=%CAMERA% file=%TRACE_FILE%
 
+rem WIP: compact object headers (JEP 519) until JEP 534 makes them the JVM default.
+rem --add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+).
 java ^
   --add-exports java.base/java.lang=ALL-UNNAMED ^
   --add-exports java.desktop/sun.awt=ALL-UNNAMED ^
   --add-exports java.desktop/sun.java2d=ALL-UNNAMED ^
+  --add-opens java.base/jdk.internal.loader=ALL-UNNAMED ^
   -Djava.library.path=jars ^
   -Djava.util.logging.config.file=conf/Logging.properties ^
   -Djogl.disable.openglcore ^
@@ -71,6 +74,7 @@ java ^
   -Djaer.usb.trace.pipeline=true ^
   -Djaer.usb.trace.file=%TRACE_FILE% ^
   -Djaer.usb.trace.intervalMs=2000 ^
+  -XX:+UseCompactObjectHeaders ^
   -Xmx10g ^
   -Xrs ^
   -splash:SplashScreen.png ^

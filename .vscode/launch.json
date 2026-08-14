@@ -38,7 +38,9 @@
                 "${workspaceFolder}/lib/*",
                 "${workspaceFolder}/jars/*"
             ],
-            "vmArgs": "--add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties -Djogl.disable.openglcore -Djogl.disable.opengles=false -Dsun.java2d.dpiaware=true -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -Xmx10g -Xrs -splash:SplashScreen.png",
+            // WIP: -XX:+UseCompactObjectHeaders (JEP 519) until JEP 534 makes it the JVM default.
+            // --add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+).
+            "vmArgs": "--add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties -Djogl.disable.openglcore -Djogl.disable.opengles=false -Dsun.java2d.dpiaware=true -Dsun.java2d.noddraw=true -Dsun.java2d.opengl=false -XX:+UseCompactObjectHeaders -Xmx10g -Xrs -splash:SplashScreen.png",
             "shortenCommandLine": "argfile",
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen"
