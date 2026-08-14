@@ -782,24 +782,14 @@
             </MenuItem>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator26">
             </MenuItem>
-            <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableMenuItem" name="usbFifoSizeMenuItem">
+            <MenuItem class="javax.swing.JMenuItem" name="usbTuningMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="USB FIFO: 131,072 bytes"/>
+                <Property name="text" type="java.lang.String" value="USB tuning..."/>
+                <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;Open a separate window to adjust USB FIFO, buffer count, and AE render packet size&lt;br&gt;with spinner arrows, typed values, and keyboard while the camera is running."/>
               </Properties>
-            </MenuItem>
-            <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableMenuItem" name="usbNumBuffersMenuItem">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="USB buffers: 16"/>
-              </Properties>
-            </MenuItem>
-            <MenuItem class="javax.swing.JSeparator" name="jSeparator9">
-            </MenuItem>
-            <MenuItem class="net.sf.jaer.graphics.ScrollWheelTunableMenuItem" name="aeRenderBufferMenuItem">
-              <Properties>
-                <Property name="mnemonic" type="int" value="98"/>
-                <Property name="text" type="java.lang.String" value="AE render buffer: 500,000 events"/>
-                <Property name="toolTipText" type="java.lang.String" value="AEPacketRaw pool size in events (2 buffers). Scroll wheel to halve/double; click to type a value."/>
-              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="usbTuningMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JSeparator" name="jSeparator5">
             </MenuItem>
@@ -826,6 +816,12 @@
               <Events>
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="zeroTimestampsMenuItemActionPerformed"/>
               </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="resetUsbInterfaceMenuItem">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Reset USB interface"/>
+                <Property name="toolTipText" type="java.lang.String" value="Initiates a hard reset on the USB interface (Ctrl+Shift+R)"/>
+              </Properties>
             </MenuItem>
           </SubComponents>
         </Menu>
