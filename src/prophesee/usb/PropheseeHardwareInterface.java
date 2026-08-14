@@ -746,6 +746,7 @@ public class PropheseeHardwareInterface implements BiasgenHardwareInterface, AEM
         }
         Imx636Init.startStreaming(deviceHandle);
         sensorStreaming = true;
+        log.info("Prophesee ISSD streaming started (events on 0x81)");
     }
 
     void persistUsbFifoSize(int fifoSize) {

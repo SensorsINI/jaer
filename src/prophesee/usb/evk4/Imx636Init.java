@@ -154,7 +154,8 @@ public final class Imx636Init {
     /** Queue USB bulk INs first, then call this so the FX3 is not overflowing into a stalled endpoint. */
     public static void startStreaming(DeviceHandle handle) throws HardwareInterfaceException {
         issdStart(handle);
-        Evk4BoardCommand.clearEventEndpointHalt(handle);
+        // Do not CLEAR_HALT here: async bulk INs are already queued. On SuperSpeed the
+        // kernel logs "EP not empty, refuse reset" and the endpoint stops completing.
     }
 
     public static void stopStreaming(DeviceHandle handle) throws HardwareInterfaceException {
@@ -167,7 +168,6 @@ public final class Imx636Init {
         issdStop(handle);
         sleepMs(10);
         issdStart(handle);
-        Evk4BoardCommand.clearEventEndpointHalt(handle);
     }
 
     public static void shutdown(DeviceHandle handle) {
