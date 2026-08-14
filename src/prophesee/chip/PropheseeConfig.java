@@ -1,5 +1,6 @@
 package prophesee.chip;
 
+import java.awt.BorderLayout;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.logging.Logger;
@@ -7,6 +8,7 @@ import java.util.prefs.InvalidPreferencesFormatException;
 import java.util.prefs.Preferences;
 
 import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
 
 import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.biasgen.BiasgenHardwareInterface;
@@ -24,8 +26,10 @@ import ch.unizh.ini.jaer.chip.retina.DvsDisplayConfigInterface;
  * IMX636 bias control for Prophesee EVK4 HD.
  * Bias values live in the chip Preferences node and can be exported/imported as XML
  * via the Biases frame File menu (same mechanism as DVS128).
+ * User-friendly tweaks are additive offsets around the last loaded/saved snapshot.
  *
  * @see https://www.prophesee.ai/
+ * @see <a href="https://docs.prophesee.ai/stable/hw/manuals/biases.html">Metavision bias manual</a>
  */
 public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDisplayConfigInterface {
 
@@ -39,13 +43,39 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     public static final String PROPERTY_REFR = "propheseeRefr";
     public static final String PROPERTY_HPF = "propheseeHpf";
 
+    /** Fired with new tweak value in −1…1. Same names as DVSTweaks, but this class does not implement that interface. */
+    public static final String PROPERTY_THRESHOLD_TWEAK = "threshold";
+    public static final String PROPERTY_ON_OFF_BALANCE_TWEAK = "onOffBalance";
+    public static final String PROPERTY_BANDWIDTH_TWEAK = "bandwidth";
+    public static final String PROPERTY_HIGHPASS_TWEAK = "highpass";
+
+    /**
+     * IMX636 Metavision offset ranges (positive / negative magnitudes from factory).
+     * @see <a href="https://docs.prophesee.ai/stable/hw/manuals/biases.html">Bias ranges</a>
+     */
+    public static final int DIFF_ON_POS = 140;
+    public static final int DIFF_ON_NEG = 85;
+    public static final int DIFF_OFF_POS = 190;
+    public static final int DIFF_OFF_NEG = 35;
+    public static final int FO_POS = 55;
+    public static final int FO_NEG = 35;
+    public static final int HPF_POS = 120;
+    public static final int HPF_NEG = 0;
+
     private static final String PREFS_BIAS = "PropheseeConfig.bias.";
 
-    private PropheseeControlPanel controlPanel;
+    private JPanel controlPanel;
+    private PropheseeControlPanel rawControlPanel;
+    private PropheseeUserControlPanel userControlPanel;
     private PropheseeBiases biases = new PropheseeBiases();
     private PropheseeBiases chipBiases = new PropheseeBiases();
-    /** Last loaded or saved bias snapshot; Revert restores this without re-reading prefs. */
+    /** Last loaded or saved bias snapshot; Revert restores this without re-reading prefs. Also the tweak baseline. */
     private PropheseeBiases savedBiases;
+
+    private float thresholdTweak;
+    private float onOffBalanceTweak;
+    private float bandwidthTweak;
+    private float highpassTweak;
 
     private boolean displayEvents = true;
     private boolean displayFrames = false;
@@ -66,6 +96,105 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
 
     public PropheseeBiases getChipBiases() {
         return chipBiases.copy();
+    }
+
+    /** Last loaded/saved snapshot (tweak center). Never null after first use. */
+    public PropheseeBiases getSavedBiases() {
+        return tweakBaseline().copy();
+    }
+
+    public float getThresholdTweak() {
+        return thresholdTweak;
+    }
+
+    public float getOnOffBalanceTweak() {
+        return onOffBalanceTweak;
+    }
+
+    public float getBandwidthTweak() {
+        return bandwidthTweak;
+    }
+
+    public float getHighpassTweak() {
+        return highpassTweak;
+    }
+
+    /**
+     * Tweaks ON and OFF contrast thresholds together. Larger is higher threshold (fewer events).
+     * On IMX636 both {@code diffOn} and {@code diffOff} increase to raise threshold.
+     *
+     * @param val −1…1, 0 = last saved/loaded values
+     */
+    public void setThresholdTweak(float val) {
+        val = clampTweak(val);
+        if (thresholdTweak == val) {
+            return;
+        }
+        final float old = thresholdTweak;
+        thresholdTweak = val;
+        if (!applyThresholdBalanceFromTweaks()) {
+            thresholdTweak = old;
+            return;
+        }
+        support.firePropertyChange(PROPERTY_THRESHOLD_TWEAK, old, val);
+    }
+
+    /**
+     * Tweaks ON vs OFF balance. Larger is more ON events (lower ON threshold, higher OFF threshold).
+     *
+     * @param val −1…1, 0 = last saved/loaded values
+     */
+    public void setOnOffBalanceTweak(float val) {
+        val = clampTweak(val);
+        if (onOffBalanceTweak == val) {
+            return;
+        }
+        final float old = onOffBalanceTweak;
+        onOffBalanceTweak = val;
+        if (!applyThresholdBalanceFromTweaks()) {
+            onOffBalanceTweak = old;
+            return;
+        }
+        support.firePropertyChange(PROPERTY_ON_OFF_BALANCE_TWEAK, old, val);
+    }
+
+    /**
+     * Tweaks pixel low-pass ({@code bias_fo}). Larger is higher bandwidth / shorter τ_LP.
+     *
+     * @param val −1…1, 0 = last saved/loaded values
+     */
+    public void setBandwidthTweak(float val) {
+        val = clampTweak(val);
+        if (bandwidthTweak == val) {
+            return;
+        }
+        final float old = bandwidthTweak;
+        bandwidthTweak = val;
+        if (!applyFoFromTweak()) {
+            bandwidthTweak = old;
+            return;
+        }
+        support.firePropertyChange(PROPERTY_BANDWIDTH_TWEAK, old, val);
+    }
+
+    /**
+     * Tweaks pixel high-pass ({@code bias_hpf}). Larger rejects more slow/DC change.
+     * At factory {@code hpf=0} the negative side is a no-op (Metavision range is 0…+120).
+     *
+     * @param val −1…1, 0 = last saved/loaded values
+     */
+    public void setHighpassTweak(float val) {
+        val = clampTweak(val);
+        if (highpassTweak == val) {
+            return;
+        }
+        final float old = highpassTweak;
+        highpassTweak = val;
+        if (!applyHpfFromTweak()) {
+            highpassTweak = old;
+            return;
+        }
+        support.firePropertyChange(PROPERTY_HIGHPASS_TWEAK, old, val);
     }
 
     private Preferences chipPrefs() {
@@ -95,8 +224,23 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
         }
     }
 
+    private PropheseeBiases tweakBaseline() {
+        if (savedBiases == null) {
+            savedBiases = biases.copy();
+        }
+        return savedBiases;
+    }
+
+    private void resetTweaks() {
+        thresholdTweak = 0f;
+        onOffBalanceTweak = 0f;
+        bandwidthTweak = 0f;
+        highpassTweak = 0f;
+    }
+
     private void updateSavedBiases() {
         savedBiases = biases.copy();
+        resetTweaks();
     }
 
     /**
@@ -108,9 +252,8 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
             return;
         }
         biases = savedBiases.copy();
-        if (controlPanel != null) {
-            controlPanel.refreshFromBiases();
-        }
+        resetTweaks();
+        refreshControlPanels();
         try {
             applyToHardware();
         } catch (HardwareInterfaceException e) {
@@ -124,6 +267,124 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
                 && aeChip.getAeViewer().getBiasgenFrame() != null) {
             aeChip.getAeViewer().getBiasgenFrame().setFileModified(true);
         }
+    }
+
+    private boolean applyThresholdBalanceFromTweaks() {
+        final PropheseeBiases base = tweakBaseline();
+        final int thrOn = tweakOffset(thresholdTweak, DIFF_ON_POS, DIFF_ON_NEG);
+        final int balOn = tweakOffset(onOffBalanceTweak, DIFF_ON_POS, DIFF_ON_NEG);
+        final int thrOff = tweakOffset(thresholdTweak, DIFF_OFF_POS, DIFF_OFF_NEG);
+        final int balOff = tweakOffset(onOffBalanceTweak, DIFF_OFF_POS, DIFF_OFF_NEG);
+        final int newOn = clampToFactoryRange(
+                base.diffOn + thrOn - balOn, chipBiases.diffOn, DIFF_ON_POS, DIFF_ON_NEG, base.diffOn);
+        final int newOff = clampToFactoryRange(
+                base.diffOff + thrOff + balOff, chipBiases.diffOff, DIFF_OFF_POS, DIFF_OFF_NEG, base.diffOff);
+        if (biases.diffOn == newOn && biases.diffOff == newOff) {
+            return true;
+        }
+        final int oldOn = biases.diffOn;
+        final int oldOff = biases.diffOff;
+        biases.diffOn = newOn;
+        biases.diffOff = newOff;
+        try {
+            applyToHardware();
+            markFileModified();
+            support.firePropertyChange(PROPERTY_DIFF_ON, oldOn, newOn);
+            support.firePropertyChange(PROPERTY_DIFF_OFF, oldOff, newOff);
+            return true;
+        } catch (HardwareInterfaceException e) {
+            biases.diffOn = oldOn;
+            biases.diffOff = oldOff;
+            log.warning(e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean applyFoFromTweak() {
+        final PropheseeBiases base = tweakBaseline();
+        final int newFo = clampToFactoryRange(
+                base.fo + tweakOffset(bandwidthTweak, FO_POS, FO_NEG),
+                chipBiases.fo, FO_POS, FO_NEG, base.fo);
+        if (biases.fo == newFo) {
+            return true;
+        }
+        final int old = biases.fo;
+        biases.fo = newFo;
+        try {
+            applyToHardware();
+            markFileModified();
+            support.firePropertyChange(PROPERTY_FO, old, newFo);
+            return true;
+        } catch (HardwareInterfaceException e) {
+            biases.fo = old;
+            log.warning(e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean applyHpfFromTweak() {
+        final PropheseeBiases base = tweakBaseline();
+        final int newHpf = clampToFactoryRange(
+                base.hpf + tweakOffset(highpassTweak, HPF_POS, HPF_NEG),
+                chipBiases.hpf, HPF_POS, HPF_NEG, base.hpf);
+        if (biases.hpf == newHpf) {
+            return true;
+        }
+        final int old = biases.hpf;
+        biases.hpf = newHpf;
+        try {
+            applyToHardware();
+            markFileModified();
+            support.firePropertyChange(PROPERTY_HPF, old, newHpf);
+            return true;
+        } catch (HardwareInterfaceException e) {
+            biases.hpf = old;
+            log.warning(e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Additive offset for a −1…1 tweaker. {@code negMax} is the magnitude of the negative range.
+     */
+    static int tweakOffset(float tweak, int posMax, int negMax) {
+        if (tweak >= 0f) {
+            return Math.round(tweak * posMax);
+        }
+        return Math.round(tweak * negMax);
+    }
+
+    /**
+     * Clamp to factory±Metavision range, expanded to include {@code baseline} so tweak 0 is identity.
+     */
+    static int clampToFactoryRange(int value, int factory, int posMax, int negMax, int baseline) {
+        int lo = factory - negMax;
+        int hi = factory + posMax;
+        if (baseline < lo) {
+            lo = baseline;
+        }
+        if (baseline > hi) {
+            hi = baseline;
+        }
+        lo = Math.max(0, lo);
+        hi = Math.min(0xFF, hi);
+        if (value < lo) {
+            return lo;
+        }
+        if (value > hi) {
+            return hi;
+        }
+        return value;
+    }
+
+    private static float clampTweak(float val) {
+        if (val > 1f) {
+            return 1f;
+        }
+        if (val < -1f) {
+            return -1f;
+        }
+        return val;
     }
 
     public void setDiff(int value) {
@@ -294,15 +555,13 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
         brightness = p.getFloat("PropheseeConfig.brightness", 0.0f);
         gamma = p.getFloat("PropheseeConfig.gamma", 1.0f);
 
-        if (controlPanel != null) {
-            controlPanel.refreshFromBiases();
-        }
         try {
             applyToHardware();
         } catch (HardwareInterfaceException e) {
             log.warning("Could not send reverted Prophesee biases to hardware: " + e.getMessage());
         }
         updateSavedBiases();
+        refreshControlPanels();
         support.firePropertyChange(PROPERTY_CHANGE_PREFERENCES_LOADED, null, null);
     }
 
@@ -350,9 +609,7 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
         if (hardwareInterface instanceof PropheseeHardwareInterface hw && hw.isOpen()) {
             chipBiases = hw.getChipFirmwareBiases().copy();
         }
-        if (controlPanel != null) {
-            controlPanel.refreshFromBiases();
-        }
+        refreshControlPanels();
     }
 
     @Override
@@ -361,17 +618,39 @@ public class PropheseeConfig extends Biasgen implements ChipControlPanel, DvsDis
     }
 
     PropheseeControlPanel getPropheseeControlPanel() {
-        if (controlPanel == null) {
+        if (rawControlPanel == null) {
             getControlPanel();
         }
-        return controlPanel;
+        return rawControlPanel;
+    }
+
+    PropheseeUserControlPanel getPropheseeUserControlPanel() {
+        if (userControlPanel == null) {
+            getControlPanel();
+        }
+        return userControlPanel;
+    }
+
+    private void refreshControlPanels() {
+        if (rawControlPanel != null) {
+            rawControlPanel.refreshFromBiases();
+        }
+        if (userControlPanel != null) {
+            userControlPanel.syncFromConfig();
+        }
     }
 
     @Override
     public JPanel getControlPanel() {
         if (controlPanel == null) {
-            controlPanel = new PropheseeControlPanel(this);
-            controlPanel.refreshFromBiases();
+            userControlPanel = new PropheseeUserControlPanel(this);
+            rawControlPanel = new PropheseeControlPanel(this);
+            final JTabbedPane tabs = new JTabbedPane();
+            tabs.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
+            tabs.addTab("<html><strong><font color=\"red\">User-Friendly Controls", userControlPanel);
+            tabs.addTab("Raw biases", rawControlPanel);
+            controlPanel = new JPanel(new BorderLayout());
+            controlPanel.add(tabs, BorderLayout.CENTER);
         }
         return controlPanel;
     }

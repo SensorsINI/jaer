@@ -23,7 +23,7 @@ import net.sf.jaer.biasgen.Biasgen;
 import net.sf.jaer.chip.AEChip;
 
 /**
- * IMX636 bias sliders for Prophesee EVK4 HD.
+ * Expert IMX636 raw {@code idac_ctl} sliders for Prophesee EVK4 HD.
  * Slider moves post undoable edits to the Biases frame toolbar; Revert reloads saved prefs.
  *
  * @see https://www.prophesee.ai/
@@ -106,8 +106,10 @@ public class PropheseeControlPanel extends JPanel implements PropertyChangeListe
         c.weightx = 1.0;
         c.fill = GridBagConstraints.HORIZONTAL;
         c.insets = new Insets(4, 4, 8, 4);
-        add(new JLabel("<html>Use <b>Undo</b> / <b>Redo</b> in the Biases toolbar for slider moves.<br>"
-                + "Use <b>Revert</b> or <b>File → Load settings</b> to restore values from saved preferences/XML."), c);
+        add(new JLabel("<html>Raw 8-bit <b>idac_ctl</b> bytes (0x00–0xFF) written to IMX636 bias registers.<br>"
+                + "Prefer the <b>User-Friendly Controls</b> tab for threshold, ON/OFF balance, and filters.<br>"
+                + "Use <b>Undo</b> / <b>Redo</b> in the Biases toolbar. "
+                + "<b>Revert</b> or <b>File → Load settings</b> restores saved preferences/XML."), c);
         return row + 1;
     }
 
@@ -244,7 +246,15 @@ public class PropheseeControlPanel extends JPanel implements PropertyChangeListe
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (Biasgen.PROPERTY_CHANGE_PREFERENCES_LOADED.equals(evt.getPropertyName())) {
+        final String name = evt.getPropertyName();
+        if (Biasgen.PROPERTY_CHANGE_PREFERENCES_LOADED.equals(name)
+                || PropheseeConfig.PROPERTY_DIFF.equals(name)
+                || PropheseeConfig.PROPERTY_DIFF_ON.equals(name)
+                || PropheseeConfig.PROPERTY_DIFF_OFF.equals(name)
+                || PropheseeConfig.PROPERTY_PR.equals(name)
+                || PropheseeConfig.PROPERTY_FO.equals(name)
+                || PropheseeConfig.PROPERTY_REFR.equals(name)
+                || PropheseeConfig.PROPERTY_HPF.equals(name)) {
             refreshFromBiases();
         }
     }
