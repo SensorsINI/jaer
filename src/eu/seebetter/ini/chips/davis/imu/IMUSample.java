@@ -288,16 +288,16 @@ public class IMUSample {
     }
 
     /**
-     * Creates a new IMUSample collection from the short buffer of 7
-     * measurements
+     * Creates a new IMUSample from the short buffer of 7 IMU measurements
+     * (USB / rosbag decode). Also computes {@link #getDeltaTimeUs()}.
      *
      * @param ts timestamp
      * @param buf short array with 7 measurements from IMU Sensor
-     *
      */
     public IMUSample(final int ts, final short[] buf) {
         this();
         setFromShortArrayBuf(ts, buf);
+        updateStatistics(ts);
     }
 
     private void setFromShortArrayBuf(final int ts, final short[] buf) {
