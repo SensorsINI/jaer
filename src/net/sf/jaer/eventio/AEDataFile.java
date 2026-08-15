@@ -37,6 +37,11 @@ public interface AEDataFile {
      * header line {@code #!AER-DAT4.0\r\n} (iniVation AEDAT 4.0 spec).
      */
     public static final String DATA_FILE_EXTENSION_AEDAT4 = ".aedat4";
+    /**
+     * Pre-2010 jAER / DVS128 extension. Also used by Prophesee Metavision DAT
+     * (disambiguated by a {@code % } ASCII header; see
+     * {@code MetavisionDatFileInputStream}).
+     */
     public static final String OLD_DATA_FILE_EXTENSION=".dat";
     /** file extension for index files that contain information about a set of related data files, ".adidx", including '.'. */
     public static final String INDEX_FILE_EXTENSION = ".aeidx"; // changed from .dat Apr 2010

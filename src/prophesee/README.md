@@ -42,25 +42,47 @@ Optional diagnostics:
 
 ## Biasing (IMX636)
 
-Prophesee biases are **8-bit idac_ctl values** written to sensor registers through the EVK4 board (`Imx636Init.applyBiases`). Defaults match neuromorphic-drivers `prophesee_evk4`.
+Prophesee biases are **8-bit idac_ctl values** written to sensor registers through the EVK4 board (`Imx636Init.applyBiases`). Defaults match neuromorphic-drivers `prophesee_evk4`. Metavision Studio exposes the same registers as **offsets from factory trim**; jAER stores absolute bytes and centers the user-friendly sliders on the **last saved/loaded** snapshot (like DVS/DAVIS/NRV).
+
+Physical mapping from digital value to contrast threshold % or filter Hz is **not** claimed. Friendly sliders are abstract −1…1 additive offsets using [Metavision IMX636 ranges](https://docs.prophesee.ai/stable/hw/manuals/biases.html).
+
+### User-friendly controls
+
+| Slider (center = saved prefs) | Maps to | IMX636 polarity |
+|-------------------------------|---------|-----------------|
+| Brightness change threshold | `diffOn` and `diffOff` together | Both **increase** to raise threshold (unlike DAVIS analog `diffOn`↑/`diffOff`↓) |
+| ON/OFF balance (right = more ON) | same | Decrease `diffOn`, increase `diffOff` |
+| Pixel low-pass (faster = shorter τ_LP) | `fo` (`bias_fo`) | Increase `fo` to widen bandwidth (−35…+55 from factory) |
+| Pixel high-pass (right = reject slow/DC) | `hpf` (`bias_hpf`) | Increase `hpf` to raise the high-pass cutoff (0…+120; factory is typically 0, so left of center is a no-op until a positive `hpf` is saved) |
+
+`bias_pr` and `bias_diff` are **not** on the friendly tab (Prophesee: leave at default). Refractory (`bias_refr`) remains on the raw tab only.
+
+Applied ON/OFF from both tweaks (then clamped to `[0,255]` and factory±range, expanded so slider 0 is identity):
+
+```
+diffOn  = saved.diffOn  + offset(threshold, 140, 85) - offset(balance, 140, 85)
+diffOff = saved.diffOff + offset(threshold, 190, 35) + offset(balance, 190, 35)
+```
+
+### Raw idac sliders
 
 | Field | Register | UI slider | Typical role |
 |-------|----------|-----------|--------------|
-| `diff` | `0x1014` | Diff | Global contrast / threshold |
+| `diff` | `0x1014` | Diff | Global contrast (leave default on IMX636) |
 | `diffOn` | `0x1010` | Diff ON | ON-event threshold |
 | `diffOff` | `0x1018` | Diff OFF | OFF-event threshold |
-| `pr` | `0x1000` | PR | Photoreceptor bias |
-| `fo` | `0x1004` | FO | Follower / front-end |
+| `pr` | `0x1000` | PR | Photoreceptor bias (leave default) |
+| `fo` | `0x1004` | FO | Low-pass / follower |
 | `refr` | `0x1020` | Refr | Refractory period |
-| `hpf` | `0x100C` | HPF | High-pass / bandwidth |
+| `hpf` | `0x100C` | HPF | High-pass |
 
 Additional idac bytes (`inv`, `reqpuy`, `reqpux`, `sendreqpdy`, …) are read/written but not all have UI sliders yet.
 
 Bias workflow:
 
-1. On open, `Imx636Init` runs the ISSD bring-up sequence and reads chip defaults into `PropheseeBiases`.
-2. `PropheseeConfig` loads saved values from the chip Preferences node (`PropheseeConfig.bias.*`).
-3. Slider changes apply immediately over USB; **Revert** restores the last saved snapshot.
+1. On open, `Imx636Init` runs the ISSD bring-up sequence and reads chip defaults into `PropheseeBiases` (used as factory for range clamping).
+2. `PropheseeConfig` loads saved values from the chip Preferences node (`PropheseeConfig.bias.*`); those become the friendly-slider center.
+3. Friendly or raw slider changes apply immediately over USB; **Revert** restores the last saved snapshot and re-centers tweaks.
 4. Export/import bias XML via the Biases frame (same mechanism as DVS128). XML with legacy package paths is rewritten on import.
 
 Default preferences file (when present): `deviceSettings/PropheseeIMX636HD/PropheseeIMX636HD.xml`.

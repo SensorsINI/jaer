@@ -23,11 +23,15 @@ import java.beans.PropertyChangeListener;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
+import javax.swing.JOptionPane;
 import org.usb4java.Device;
 import org.usb4java.LibUsb;
 import ch.unizh.ini.jaer.chip.retina.DVXplorer;
+import ch.unizh.ini.jaer.chip.retina.DVXplorerConfig;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.aemonitor.AEPacketRaw;
+import net.sf.jaer.biasgen.Biasgen;
+import net.sf.jaer.biasgen.BiasgenHardwareInterface;
 import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
 
 /**
@@ -37,7 +41,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterfaceException;
  * 
  * @author Pei Haoxiang
  */
-public class DVXplorerFX3HardwareInterface extends CypressFX3 {
+public class DVXplorerFX3HardwareInterface extends CypressFX3 implements BiasgenHardwareInterface {
     
     /** The USB product ID of this device */
     static public final short PID_FX3 = (short) 0x8419;
@@ -52,12 +56,34 @@ public class DVXplorerFX3HardwareInterface extends CypressFX3 {
 	synchronized public void open() throws HardwareInterfaceException {
 		super.open();
         
-        // Configurate DVXplorer chip
-        if (getChip() != null) {
-            DVXplorer chip = (DVXplorer) getChip();
+        if (getChip() instanceof DVXplorer chip) {
 			chip.dvxConfig();
+            if (chip.getBiasgen() instanceof DVXplorerConfig cfg) {
+                cfg.sendConfiguration(cfg);
+            }
 		}
 	}
+
+    @Override
+    synchronized public void setPowerDown(final boolean powerDown) throws HardwareInterfaceException {
+    }
+
+    @Override
+    synchronized public void sendConfiguration(final Biasgen biasgen) throws HardwareInterfaceException {
+        if (biasgen instanceof DVXplorerConfig cfg) {
+            cfg.applyToHardware();
+        }
+    }
+
+    @Override
+    synchronized public void flashConfiguration(final Biasgen biasgen) throws HardwareInterfaceException {
+        JOptionPane.showMessageDialog(null, "Flashing biases is not supported on DVXplorer");
+    }
+
+    @Override
+    public byte[] formatConfigurationBytes(final Biasgen biasgen) {
+        return new byte[0];
+    }
     
     @Override
     synchronized protected void enableINEndpoint() throws HardwareInterfaceException {

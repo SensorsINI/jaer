@@ -46,10 +46,13 @@ goto argloop
 
 if not "!JVM_EXTRA!"=="" echo run-jaer-fast: JVM extras:!JVM_EXTRA!
 
+rem WIP: compact object headers (JEP 519) until JEP 534 makes them the JVM default.
+rem --add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+).
 java ^
   --add-exports java.base/java.lang=ALL-UNNAMED ^
   --add-exports java.desktop/sun.awt=ALL-UNNAMED ^
   --add-exports java.desktop/sun.java2d=ALL-UNNAMED ^
+  --add-opens java.base/jdk.internal.loader=ALL-UNNAMED ^
   -Djava.library.path=jars ^
   -Djava.util.logging.config.file=conf/Logging.properties ^
   -Djogl.disable.openglcore ^
@@ -57,6 +60,7 @@ java ^
   -Dsun.java2d.dpiaware=true ^
   -Dsun.java2d.noddraw=true ^
   -Dsun.java2d.opengl=false ^
+  -XX:+UseCompactObjectHeaders ^
   -Xmx10g ^
   -Xrs ^
   -splash:SplashScreen.png ^

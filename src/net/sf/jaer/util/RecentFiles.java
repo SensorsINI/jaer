@@ -139,23 +139,28 @@ public class RecentFiles {
 
         boolean hasFiles = !fileItems.isEmpty();
         boolean hasFolders = !folderItems.isEmpty();
-        if (!hasFiles && !hasFolders) {
-            return;
-        }
 
-        // Insert as a block immediately before Preferences/Exit:
+        // Always keep the recent-files block so File does not run Preferences/Exit
+        // into the previous group when the list is empty (fresh prefs, new machine).
         // [sep] files... [sep] folders... [sep] Preferences
         int idx = getRecentFilesInsertIndex();
         fileMenu.add(beforeFilesSep, idx++);
-        for (JMenuItem item : fileItems) {
-            fileMenu.insert(item, idx++);
-            fileMenuList.add(item);
-        }
-        if (hasFolders) {
-            fileMenu.add(beforeFoldersSep, idx++);
-            for (JMenuItem item : folderItems) {
+        if (!hasFiles && !hasFolders) {
+            JMenuItem empty = new JMenuItem("No recent files");
+            empty.setEnabled(false);
+            fileMenu.insert(empty, idx++);
+            fileMenuList.add(empty);
+        } else {
+            for (JMenuItem item : fileItems) {
                 fileMenu.insert(item, idx++);
                 fileMenuList.add(item);
+            }
+            if (hasFolders) {
+                fileMenu.add(beforeFoldersSep, idx++);
+                for (JMenuItem item : folderItems) {
+                    fileMenu.insert(item, idx++);
+                    fileMenuList.add(item);
+                }
             }
         }
         fileMenu.add(beforePreferencesSep, idx);

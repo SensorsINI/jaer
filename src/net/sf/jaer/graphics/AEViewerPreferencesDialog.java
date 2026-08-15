@@ -24,6 +24,9 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
@@ -40,11 +43,13 @@ import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.eventprocessing.FilterFrame;
+import net.sf.jaer.util.JaerPreferencesStore;
 
 /**
  * Preferences dialog for AEViewer. First tab groups preference-backed AEViewer
  * menu settings by menu section. Filters tab covers global FilterFrame /
  * FilterChain preferences (individual AEFilter property sheets come later).
+ * Store tab exports, imports, or deletes the {@code /jaer} Preferences tree.
  */
 public class AEViewerPreferencesDialog extends JDialog {
 
@@ -107,6 +112,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("AEViewer", buildAeViewerTab());
         tabs.addTab("Filters", buildFiltersTab());
+        tabs.addTab("Store", buildStoreTab());
 
         JButton closeButton = new JButton("Close");
         closeButton.addActionListener(new ActionListener() {
@@ -168,6 +174,108 @@ public class AEViewerPreferencesDialog extends JDialog {
         JPanel outer = new JPanel(new BorderLayout());
         outer.add(scroll, BorderLayout.CENTER);
         return outer;
+    }
+
+    private JPanel buildStoreTab() {
+        JPanel p = titledSection("jAER preference tree (" + JaerPreferencesStore.jaerTreePath() + ")");
+        int y = 0;
+
+        JLabel note = new JLabel("<html>Java Preferences under " + JaerPreferencesStore.jaerTreePath()
+                + " hold AEViewer layout, last files, USB tuning, chip/filter settings, and Hardware Configuration values"
+                + " that were saved with File → Save. Export the tree to move it to another computer or keep a backup."
+                + " Revert deletes stored values so code defaults apply after restart.</html>");
+        p.add(note, gbc(y++));
+
+        JButton exportBtn = new JButton("Export all jAER preferences...");
+        exportBtn.setToolTipText("Writes " + JaerPreferencesStore.jaerTreePath()
+                + " to a Java Preferences XML file for import here or on another computer");
+        exportBtn.addActionListener(e -> JaerPreferencesStore.exportDialog(this));
+        p.add(exportBtn, gbc(y++));
+
+        JButton importBtn = new JButton("Import jAER preferences...");
+        importBtn.setToolTipText("Loads a previously exported Java Preferences XML file (absolute node paths)");
+        importBtn.addActionListener(e -> {
+            if (JaerPreferencesStore.importDialog(this) != null) {
+                offerQuitAndRestart("Imported preferences.");
+            }
+        });
+        p.add(importBtn, gbc(y++));
+
+        JButton revertBtn = new JButton("Revert all preferences to defaults...");
+        revertBtn.setToolTipText("Deletes stored jAER Preferences (offers export first). Restart afterwards.");
+        revertBtn.addActionListener(e -> revertAllPreferences());
+        p.add(revertBtn, gbc(y++));
+
+        JPanel wrap = new JPanel(new BorderLayout());
+        wrap.add(p, BorderLayout.NORTH);
+        JPanel outer = new JPanel(new BorderLayout());
+        outer.add(wrap, BorderLayout.CENTER);
+        return outer;
+    }
+
+    private void revertAllPreferences() {
+        int keyCount = JaerPreferencesStore.countJaerPreferenceKeys();
+        String countText = keyCount >= 0 ? (keyCount + " stored keys") : "stored keys";
+        String msg = "<html>Delete all jAER Preference values (" + countText + " under "
+                + JaerPreferencesStore.jaerTreePath() + ", plus leftover package nodes)?"
+                + "<p>Window layout, last files, USB tuning, filter settings, and saved Hardware Configuration"
+                + " values in Preferences will be gone. This cannot be undone unless you export first."
+                + "<p>Quit and restart jAER afterwards so in-memory settings reload from code defaults.";
+        String[] options = {"Export and revert...", "Revert without export", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(this, msg, "Revert all preferences to defaults?",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[2]);
+        if (choice == 0) {
+            if (JaerPreferencesStore.exportDialog(this) == null) {
+                return;
+            }
+            int go = JOptionPane.showConfirmDialog(this,
+                    "Export finished. Delete stored jAER Preferences now?",
+                    "Revert after export?", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (go != JOptionPane.OK_OPTION) {
+                return;
+            }
+        } else if (choice == 1) {
+            int go = JOptionPane.showConfirmDialog(this,
+                    "<html>Really delete all stored jAER Preferences <b>without</b> a backup?",
+                    "Revert without export?", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (go != JOptionPane.OK_OPTION) {
+                return;
+            }
+        } else {
+            return;
+        }
+        try {
+            int deleted = JaerPreferencesStore.deleteAllJaerPreferences();
+            offerQuitAndRestart("Deleted " + deleted + " keys under " + JaerPreferencesStore.jaerTreePath() + ".");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.toString(), "Revert failed", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void offerQuitAndRestart(String whatHappened) {
+        String msg = "<html>" + whatHappened
+                + "<p>Quit and restart jAER so this session reloads from the Preferences store."
+                + "<p>In-memory settings are not updated live.";
+        int quit = JOptionPane.showConfirmDialog(this, msg, "Quit and restart jAER?",
+                JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE);
+        if (quit == JOptionPane.YES_OPTION) {
+            quitJaer();
+        }
+    }
+
+    private void quitJaer() {
+        dispose();
+        JMenu file = viewer.getFileMenu();
+        if (file != null) {
+            for (int i = 0; i < file.getItemCount(); i++) {
+                JMenuItem item = file.getItem(i);
+                if (item != null && "Exit".equals(item.getText())) {
+                    item.doClick();
+                    return;
+                }
+            }
+        }
+        System.exit(0);
     }
 
     private JPanel buildFiltersGlobalSection() {

@@ -9,16 +9,16 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.usb4java.Context;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceHandle;
 import org.usb4java.DeviceList;
-import org.usb4java.HotplugCallback;
 import org.usb4java.LibUsb;
 import org.usb4java.LibUsbException;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
+import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
+import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 
@@ -46,15 +46,14 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
                 throw new LibUsbException("Unable to initialize libusb", result);
             }
         } catch (UnsatisfiedLinkError | LibUsbException ule) {
+            MacosLibusbHelp.maybeShowDialog(ule);
             UnsatisfiedLinkError u = new UnsatisfiedLinkError(
                     "Failed to initialize libusb4java for Prophesee factory: " + ule.getLocalizedMessage());
             u.setStackTrace(ule.getStackTrace());
             throw u;
         }
 
-        if (!LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
-            log.info("Prophesee: LibUsb hotplug not supported on this platform");
-        }
+        LibUsbHotplug.ensureStarted();
         addDeviceToMap(PropheseeHardwareInterface.VID, PropheseeHardwareInterface.PID_EVK4_HD,
                 PropheseeHardwareInterface.class);
         refreshCompatibleDevicesList();
@@ -63,23 +62,7 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
     private void addDeviceToMap(final short vid, final short pid, final Class<?> cls) {
         vidPidToClassMap.put(new ImmutablePair<>(vid, pid), cls);
         UsbHardwareRegistry.instance().register(vid, pid, cls);
-        if (LibUsb.hasCapability(LibUsb.CAP_HAS_HOTPLUG)) {
-            HotplugCallback callback = (Context cntxt, Device device, int event, Object userData) -> {
-                DeviceDescriptor descriptor = new DeviceDescriptor();
-                int errCode = LibUsb.getDeviceDescriptor(device, descriptor);
-                if (errCode == LibUsb.SUCCESS) {
-                    log.info(String.format("Prophesee LibUsb: %s VID:PID=%04x:%04x",
-                            event == LibUsb.HOTPLUG_EVENT_DEVICE_ARRIVED ? "Connected" : "Disconnected",
-                            descriptor.idVendor(), descriptor.idProduct()));
-                }
-                return 0;
-            };
-            LibUsb.hotplugRegisterCallback(null,
-                    LibUsb.HOTPLUG_EVENT_DEVICE_ARRIVED | LibUsb.HOTPLUG_EVENT_DEVICE_LEFT,
-                    LibUsb.HOTPLUG_ENUMERATE,
-                    vid, pid, LibUsb.HOTPLUG_MATCH_ANY,
-                    callback, null, null);
-        }
+        LibUsbHotplug.register(vid, pid);
     }
 
     private void refreshCompatibleDevicesList() {

@@ -36,11 +36,14 @@ done
 # -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=oom.hprof
 # -XX:NativeMemoryTracking=summary
 # -Djaer.memory.trace.intervalMs=60000
+# WIP: compact object headers (JEP 519) until JEP 534 makes them the JVM default.
+# --add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+).
 
 exec java \
   --add-exports java.base/java.lang=ALL-UNNAMED \
   --add-exports java.desktop/sun.awt=ALL-UNNAMED \
   --add-exports java.desktop/sun.java2d=ALL-UNNAMED \
+  --add-opens java.base/jdk.internal.loader=ALL-UNNAMED \
   -Djava.library.path=jars \
   -Djava.util.logging.config.file=conf/Logging.properties \
   -Djogl.disable.openglcore \
@@ -48,6 +51,7 @@ exec java \
   -Dsun.java2d.dpiaware=true \
   -Dsun.java2d.noddraw=true \
   -Dsun.java2d.opengl=false \
+  -XX:+UseCompactObjectHeaders \
   -Xmx10g \
   -Xrs \
   -splash:SplashScreen.png \

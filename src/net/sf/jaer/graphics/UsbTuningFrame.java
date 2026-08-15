@@ -71,9 +71,6 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener {
             setIconImage(viewer.getIconImage());
         }
         buildUi();
-        pack();
-        setMinimumSize(getPreferredSize());
-        setLocationRelativeTo(viewer);
 
         applyTimer = new Timer(UI_DEBOUNCE_MS, this::applyPendingEdits);
         applyTimer.setRepeats(false);
@@ -89,11 +86,23 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener {
     public void showForCurrentDevice() {
         refreshFromHardware();
         resubscribe();
+        packToContent();
         if (!isVisible()) {
+            setLocationRelativeTo(viewer);
             setVisible(true);
+            // Windows: decorations exist only after the peer is created.
+            packToContent();
+            setLocationRelativeTo(viewer);
         }
         toFront();
         requestFocus();
+    }
+
+    /** Size the frame to the layout after all components (and their values) are in place. */
+    private void packToContent() {
+        invalidate();
+        pack();
+        setMinimumSize(getPreferredSize());
     }
 
     private void buildUi() {
@@ -200,7 +209,7 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener {
     private static void configureSpinnerEditor(JSpinner spinner) {
         spinner.setEditor(new JSpinner.NumberEditor(spinner, "#,##0"));
         final JSpinner.DefaultEditor editor = (JSpinner.DefaultEditor) spinner.getEditor();
-        editor.getTextField().setColumns(6);
+        editor.getTextField().setColumns(11);
         installMouseWheel(spinner);
     }
 
@@ -317,7 +326,9 @@ public class UsbTuningFrame extends JFrame implements PropertyChangeListener {
         }
         refreshStatusLabels();
         updateAllocationLabel();
-        pack();
+        if (isDisplayable()) {
+            packToContent();
+        }
     }
 
     private void refreshStatusLabels() {

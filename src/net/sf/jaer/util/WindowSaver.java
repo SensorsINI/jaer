@@ -25,6 +25,8 @@ import java.util.prefs.Preferences;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+import net.sf.jaer.JaerConstants;
+
 /**
  * adapted from O'Reilly book Swing Hacks by Marinacci and Adamson ISBN
  * 0-596-00907-0. Used to save and restore window positions. Static methods
@@ -264,6 +266,10 @@ public class WindowSaver implements AWTEventListener {
      * of window in preferences.
      */
     public void saveSettings() throws IOException, BackingStoreException {
+        if (JaerConstants.skipPreferenceWriteOnExit) {
+            log.info("skipping WindowSaver.saveSettings (preferences were reverted)");
+            return;
+        }
         StringBuilder sb = new StringBuilder();
         sb.append("saved window settings for \n");
         Iterator it = framemap.keySet().iterator();

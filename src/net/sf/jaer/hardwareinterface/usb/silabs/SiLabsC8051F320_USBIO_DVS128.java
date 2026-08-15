@@ -553,7 +553,7 @@ public class SiLabsC8051F320_USBIO_DVS128 extends UsbIoReader implements
      * This does not have to be the same size as the FIFOs in the CypressFX2 (512 bytes). If it is too small, then there
      * are frequent thread context switches that can greatly slow down rendering loops.
      */
-    private int fifoSize = prefs.getInt("SiLabsC8051F320_USBIO_DVS128.fifoSize", FIFO_SIZE); // 64;
+    private int fifoSize = prefs.getInt("SiLabsC8051F320_USBIO_DVS128.fifoSize", 32768);
 
     @Override
 	public int getFifoSize() {

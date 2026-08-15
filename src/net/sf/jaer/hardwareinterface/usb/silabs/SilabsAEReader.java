@@ -34,8 +34,8 @@ import org.usb4java.LibUsb;
 public abstract class SilabsAEReader implements ReaderBufferControl {
 
     private static Preferences prefs = JaerConstants.PREFS_ROOT_HARDWARE;
-    private int fifoSize = this.prefs.getInt("Silabs.AEReader.fifoSize", 8192);
-    private int numBuffers;
+    private int fifoSize = this.prefs.getInt("Silabs.AEReader.fifoSize", 32768);
+    private int numBuffers = this.prefs.getInt("Silabs.AEReader.numBuffers", 4);
     private int Silabs_FIFO_SIZE = 128; // just took this from usbio
     protected static final Logger log = Logger.getLogger("net.sf.jaer");
     protected SiLabsC8051F320_LibUsb driver;

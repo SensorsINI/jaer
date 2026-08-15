@@ -111,7 +111,8 @@
         <versionInfo fileDescription="jAER event sensor application" />
       </executable>
       <splashScreen show="true" bitmapFile="./images/1024w/SplashScreen.png" />
-      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED">
+      <!-- --add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+). Valid on 9+. -->
+      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED">
         <classPath>
           <!-- First on classpath so Loader is 1.5.10 even if leftover javacpp-1.4.jar remains in lib/. -->
           <jarFile location="lib/javacpp-1.5.10.jar" failOnError="false" />
