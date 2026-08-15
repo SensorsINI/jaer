@@ -18,6 +18,7 @@ import org.usb4java.LibUsbException;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
+import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 
@@ -45,6 +46,7 @@ public class PropheseeHardwareInterfaceFactory implements HardwareInterfaceFacto
                 throw new LibUsbException("Unable to initialize libusb", result);
             }
         } catch (UnsatisfiedLinkError | LibUsbException ule) {
+            MacosLibusbHelp.maybeShowDialog(ule);
             UnsatisfiedLinkError u = new UnsatisfiedLinkError(
                     "Failed to initialize libusb4java for Prophesee factory: " + ule.getLocalizedMessage());
             u.setStackTrace(ule.getStackTrace());

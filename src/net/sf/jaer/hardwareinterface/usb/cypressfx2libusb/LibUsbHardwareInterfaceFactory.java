@@ -18,6 +18,7 @@ import org.usb4java.LibUsbException;
 
 import net.sf.jaer.hardwareinterface.HardwareInterfaceFactoryInterface;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
+import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 import net.sf.jaer.hardwareinterface.usb.silabs.SiLabsC8051F320_LibUsb_PAER;
@@ -54,6 +55,7 @@ public class LibUsbHardwareInterfaceFactory implements HardwareInterfaceFactoryI
             }
             LibUsbHotplug.ensureStarted();
         } catch (UnsatisfiedLinkError | LibUsbException ule) {
+            MacosLibusbHelp.maybeShowDialog(ule);
             UnsatisfiedLinkError u = new UnsatisfiedLinkError("Failed to initialize libusb4java native library."
                     + "\nOn OS-X you might need to install with 'brew install libusb'."
                     + "\nOn Linux, do you have noexec on your /tmp folder?\n"

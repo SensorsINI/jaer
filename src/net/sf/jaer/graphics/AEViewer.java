@@ -160,6 +160,7 @@ import net.sf.jaer.hardwareinterface.usb.HasUsbStatistics;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
 import net.sf.jaer.hardwareinterface.usb.LiveAcquisitionBench;
 import net.sf.jaer.hardwareinterface.usb.LiveDeviceChipDetector;
+import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.ReaderBufferControl;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
@@ -2698,6 +2699,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     PropheseeHardwareInterface.maybeShowLinuxUdevAccessDialog(this, e);
                 }
                 WinUsbDriverHelp.maybeShowDialog(this, aemon, e);
+                MacosLibusbHelp.maybeShowDialog(this, e);
                 if (aemon != null) {
                     log.info("closing Monitor" + aemon);
                     aemon.close();
