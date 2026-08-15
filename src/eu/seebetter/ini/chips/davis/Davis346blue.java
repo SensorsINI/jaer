@@ -8,6 +8,12 @@ import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
+/**
+ * Early Sensors Group DAVIS346 prototype in the blue case (typically USB 2.0 FX2).
+ * Production cameras are {@link Davis346red} and {@link Davis346redColor}; they
+ * inherit the same {@link DavisTowerBaseConfig} / {@link DavisUserControlPanel}.
+ * APS readout on this prototype is inverted relative to the red-case cameras.
+ */
 @Description("DAVIS346 346x260 pixel APS-DVS events+frames+IMU hybrid visions sensor (HVS) with DAVIS USB 2.0 interface (blue case); early prototype used by Sensors Group")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Davis346blue extends Davis346BaseCamera {
@@ -19,7 +25,7 @@ public class Davis346blue extends Davis346BaseCamera {
 		davisRenderer.setMaxADC(DavisChip.MAX_ADC);
 		setRenderer(davisRenderer);
 
-		// Inverted with respect to other 346 cameras.
+		// Inverted with respect to production red-case 346 cameras.
 		setApsFirstPixelReadOut(new Point(getSizeX() - 1, 0));
 		setApsLastPixelReadOut(new Point(0, getSizeY() - 1));
 	}
