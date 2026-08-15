@@ -13,6 +13,7 @@ import net.sf.jaer.hardwareinterface.HardwareInterface;
  * Production cameras are {@link Davis346red} and {@link Davis346redColor}; they
  * inherit the same {@link DavisTowerBaseConfig} / {@link DavisUserControlPanel}.
  * APS readout on this prototype is inverted relative to the red-case cameras.
+ * Recordings from the early-development class name {@code Davis346mini} play as this chip.
  */
 @Description("DAVIS346 346x260 pixel APS-DVS events+frames+IMU hybrid visions sensor (HVS) with DAVIS USB 2.0 interface (blue case); early prototype used by Sensors Group")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
