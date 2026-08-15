@@ -1,0 +1,23 @@
+---
+description: Store all jAER Cursor plans under jaer/.cursor/plans for cross-platform work
+alwaysApply: true
+---
+
+# jAER plan location
+
+When creating or updating Cursor plans for this repository, always write them under:
+
+`.cursor/plans/`
+
+(resolved from the jAER repo root, e.g. `jaer/.cursor/plans/…`).
+
+## Do
+
+- Put new `.plan.md` files in `.cursor/plans/`
+- Prefer descriptive names like `python_frame_ipc_shared_memory.plan.md`
+- Keep plans in-repo so they sync across machines (Dropbox/git) for cross-platform jAER work
+
+## Do not
+
+- Write plans only to the user-global Cursor plans folder when the work is about this jAER repo
+- Scatter plans under `docs/`, `/tmp`, or random paths unless the user explicitly asks
