@@ -32,6 +32,7 @@ import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.util.EngineeringFormat;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
+import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
@@ -167,6 +168,17 @@ public class ChipDataFilePreview extends JPanel implements PropertyChangeListene
                                     hi.width, hi.height);
                         } else {
                             fileSizeString = "Metavision RAW (not EVT3 or unreadable header)";
+                        }
+                        ais = null;
+                    } else if (lower.endsWith("." + MetavisionDatFileInputStream.DATA_FILE_EXTENSION)
+                            && MetavisionDatFileInputStream.isMetavisionDatFile(file)) {
+                        MetavisionDatFileInputStream.HeaderInfo hi
+                                = MetavisionDatFileInputStream.peekHeader(file);
+                        if (hi != null) {
+                            fileSizeString = String.format("Metavision DAT %dx%d type=%d (open to play)",
+                                    hi.width, hi.height, hi.eventType);
+                        } else {
+                            fileSizeString = "Metavision DAT (unreadable header)";
                         }
                         ais = null;
                     } else if (DsecHdf5AEInputStream.isHdf5Extension(file)

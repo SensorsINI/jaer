@@ -29,13 +29,15 @@ import ch.unizh.ini.jaer.chip.retina.DVS1280x720SD;
 import ch.unizh.ini.jaer.chip.retina.DVS640;
 import net.sf.jaer.eventio.dsec.DsecHdf5AEInputStream;
 import prophesee.chip.PropheseeIMX636HD;
+import prophesee.eventio.MetavisionDatFileInputStream;
 import prophesee.eventio.MetavisionRawFileInputStream;
 
 /**
  * Resolves which {@link AEChip} a recording likely needs, preferring the
  * jAER filename convention ({@code ChipSimpleName-...}), then AEDAT-4
  * {@code infoNode} source / size / colorFilter, then AEDAT-2 ASCII header hints.
- * Legacy {@code .dat} (pre-2010 / DVS09 dataset) falls back to {@link DVS128}.
+ * Legacy jAER {@code .dat} (pre-2010 / DVS09 dataset) falls back to {@link DVS128}.
+ * Prophesee / Metavision {@code .dat} (ASCII {@code % } header) is detected separately.
  * <p>
  * Only matches against the viewer's loaded (selected) chip class names.
  * AEDAT-4 {@code infoNode} uses DV attribute form
@@ -193,6 +195,7 @@ public final class RecordingChipDetector {
         }
 
         // Pre-2010 jAER / DVS09 downloads use .dat and almost always came from DVS128.
+        // Skip if this .dat is a Prophesee / Metavision DAT (already tried in fromHeader).
         Hint fromLegacyDat = fromLegacyDatExtension(file);
         if (fromLegacyDat != null) {
             Class<? extends AEChip> byDat = resolve(fromLegacyDat, loaded);
@@ -212,7 +215,8 @@ public final class RecordingChipDetector {
     /**
      * Legacy {@link AEDataFile#OLD_DATA_FILE_EXTENSION} ({@code .dat}) recordings
      * (DVS09 dataset and early jAER) are assumed to be {@link DVS128} when no
-     * stronger filename/header hint is available.
+     * stronger filename/header hint is available. Prophesee / Metavision DAT
+     * files that share the extension are excluded.
      */
     static Hint fromLegacyDatExtension(File file) {
         if (file == null) {
@@ -220,6 +224,9 @@ public final class RecordingChipDetector {
         }
         String name = file.getName().toLowerCase(Locale.ROOT);
         if (!name.endsWith(AEDataFile.OLD_DATA_FILE_EXTENSION)) {
+            return null;
+        }
+        if (MetavisionDatFileInputStream.isMetavisionDatFile(file)) {
             return null;
         }
         return new Hint(DVS128.class.getSimpleName(), 128, 128, "legacy-.dat");
@@ -248,7 +255,7 @@ public final class RecordingChipDetector {
         return new Hint(token, null, null, "filename");
     }
 
-    /** Peek AEDAT-4 infoNode, Metavision RAW, or AEDAT-2 ASCII header without full open. */
+    /** Peek AEDAT-4 infoNode, Metavision RAW/DAT, or AEDAT-2 ASCII header without full open. */
     public static Hint fromHeader(File file) {
         String name = file.getName().toLowerCase(Locale.ROOT);
         if (name.endsWith(AEDataFile.DATA_FILE_EXTENSION_AEDAT4)
@@ -257,6 +264,12 @@ public final class RecordingChipDetector {
         }
         if (name.endsWith(".raw")) {
             return fromMetavisionRawHeader(file);
+        }
+        if (name.endsWith(".dat")) {
+            Hint dat = fromMetavisionDatHeader(file);
+            if (dat != null) {
+                return dat;
+            }
         }
         if (name.endsWith(".h5") || name.endsWith(".hdf5")) {
             return fromDsecHdf5(file);
@@ -312,6 +325,28 @@ public final class RecordingChipDetector {
     private static final int DVS640_HEIGHT = 480;
     private static final int DVS1280x720SD_WIDTH = 1280;
     private static final int DVS1280x720SD_HEIGHT = 720;
+
+    /**
+     * Prophesee / Metavision decoded {@code .dat} (ASCII {@code % } header).
+     * HD (1280×720) → {@link PropheseeIMX636HD}; otherwise same size mapping as DSEC.
+     */
+    static Hint fromMetavisionDatHeader(File file) {
+        MetavisionDatFileInputStream.HeaderInfo hi = MetavisionDatFileInputStream.peekHeader(file);
+        if (hi == null || hi.headerLineCount == 0) {
+            return null;
+        }
+        int w = hi.width;
+        int h = hi.height;
+        String chipName;
+        if (w == DVS1280x720SD_WIDTH && h == DVS1280x720SD_HEIGHT) {
+            chipName = PropheseeIMX636HD.class.getSimpleName();
+        } else if (w > 0 && h > 0) {
+            chipName = preferredDsecChipName(w, h);
+        } else {
+            chipName = PropheseeIMX636HD.class.getSimpleName();
+        }
+        return new Hint(chipName, w > 0 ? w : null, h > 0 ? h : null, "metavision-dat");
+    }
 
     /**
      * Metavision / Prophesee {@code .raw} EVT3 (EVK4 IMX636 or Gen4.1 HD) →

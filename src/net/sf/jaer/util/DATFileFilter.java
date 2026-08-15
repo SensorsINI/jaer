@@ -60,7 +60,7 @@ public class DATFileFilter extends javax.swing.filechooser.FileFilter {
     }
 
     public String getDescription() {
-        return "AEDAT (.aedat4, .aedat2, .aedat, .dat), Metavision RAW (.raw), DSEC HDF5 (.h5), ROS bag (.bag), or text (.csv / .txt)";
+        return "AEDAT (.aedat4, .aedat2, .aedat), .dat (legacy jAER or Metavision DAT), Metavision RAW (.raw), DSEC HDF5 (.h5), ROS bag (.bag), or text (.csv / .txt)";
     }
     
     /** Legacy extension without dot: "aedat" */
