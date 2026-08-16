@@ -3,14 +3,8 @@
         "path": "cmd.exe",
         "args": ["/d", "/c"]
     },
-    "java.jdt.ls.java.home": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.3.9-hotspot",
-    "java.configuration.runtimes": [
-        {
-            "name": "JavaSE-25",
-            "path": "C:\\Program Files\\Eclipse Adoptium\\jdk-25.0.3.9-hotspot",
-            "default": true
-        }
-    ],
+    // Do not set java.jdt.ls.java.home here. The Java extension uses JAVA_HOME
+    // (then PATH) on each machine. ${env:JAVA_HOME} is not expanded in this setting.
     "java.project.sourcePaths": [
         "src"
     ],
