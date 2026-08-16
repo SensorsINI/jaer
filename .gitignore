@@ -69,6 +69,9 @@ deviceSettings/olderSystemsAndExperimental/
 /signpath/**
 !/signpath/README.txt
 
+# Cursor/VS Code multi-root workspace (machine paths, JDK home, extra folders)
+*.code-workspace
+
 # Tracked SignPath artifact configs (repo *.xml ignore would otherwise hide these)
 !.signpath/
 !.signpath/**/
