@@ -1,5 +1,5 @@
 # jAER
-Java tools for Address-Event Representation (AER) neuromorphic processing. 
+Cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas. 
 
 **Permanent link:** http://jaerproject.org
 
@@ -10,6 +10,7 @@ Founded in 2007 to support event sensors and robot demonstrators developed by th
 
 #### What jAER feels like to use
 
+jAER is a full-fledged desktop application that captures event camera output, displays it, records, plays back, and allows complex post camera algorithmic processing of the device output stream. 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
 ## Installation
@@ -97,7 +98,7 @@ To develop with jAER, see the [jAER User Guide gdoc](https://docs.google.com/doc
 
 jAER is an Ant + Ivy Java project (not Maven/Gradle). An AI coding client works well for navigation, edits, and agents if you treat **Ant as the source of truth for builds**.
 
-1. **Install a JDK 21+** (for example [Eclipse Temurin](https://adoptium.net/)) and [Apache Ant](https://ant.apache.org/), both on your `PATH`.
+1. **Install a JDK 25+** (for example [Eclipse Temurin](https://adoptium.net/)) and [Apache Ant](https://ant.apache.org/), both on your `PATH`. `javac` still targets 21; `ant run` needs 25+ for `-XX:+UseCompactObjectHeaders`.
 2. **Install the Java extension in Cursor / VS Code.** Prefer Microsoft’s [Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack) (or at least [Language Support for Java](https://marketplace.visualstudio.com/items?itemName=redhat.java)). Without it, Java navigation, launch configs, and agent context are much weaker.
 3. Open the repo root as the workspace. First-time build:
 
