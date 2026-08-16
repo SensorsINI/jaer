@@ -13,15 +13,27 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 ![jAER 3.2.0 splash](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/SplashScreen.png)
 
-**jAER 3.2.0** is a feature release for **live USB cameras** and **file playback**. Live: **USB tuning** with per-camera FIFO/buffer defaults, **libusb hotplug** on Linux (DVS128 / DAVIS / NRV / EVK4 without a 3 s bus poll), **WinUSB install help** when Windows cannot open the camera, a **Davis-style EVK4 bias panel**, **DVXplorer contrast-threshold / ReadoutFPS** control (same mapping as DV), and an EVK4 SuperSpeed stall fix. **File → Preferences → Store** exports, imports, or reverts the `/jaer` Preferences tree (quit and restart afterwards). Playback: **DSEC-layout HDF5**, **faster DV / AEDAT-4 LZ4** (detect slow dependent-block LZ4 and optionally re-record), more **DVS color modes**, **File → Export video** (Show folder / Play video), and an **Intel Arc OpenGL** fix when switching AEChips live.
+**jAER 3.2.0** is a feature release for **live USB cameras**, **filter help**, and **file playback**. Live USB is **verified on Windows, macOS (including Apple Silicon), and Linux**. New: **EventFilter Help** (`?` on the filter panel), a **hello-world path to drive a Python DNN** (`SharedMemoryDVSFrameSender` + [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python)), **USB tuning** with per-camera FIFO/buffer defaults, **libusb hotplug** on Linux, **Homebrew libusb** how-to on Apple Silicon, **WinUSB install help** on Windows, a **Davis-style EVK4 bias panel**, **DVXplorer contrast-threshold / ReadoutFPS** control, and an EVK4 SuperSpeed stall fix. **File → Preferences → Store** exports, imports, or reverts the `/jaer` Preferences tree (quit and restart afterwards). Playback: **DSEC-layout HDF5**, **Metavision DAT** (`.dat` with `% ` header), **faster DV / AEDAT-4 LZ4**, more **DVS color modes**, **File → Export video** (Show folder / Play video), and an **Intel Arc OpenGL** fix when switching AEChips live.
 
 ### Highlights
+
+* **EventFilter Help** — filters with an `@Help` annotation open a nonmodal HTML dialog the first time you expand their controls, and again from the **`?`** button. Links open in the system browser. Default-chain guides: **SpatioTemporalCorrelationFilter** (BA denoiser), **CellStatsProber**, **Info**, **HotPixelFilter**, **RotateFilter**, **XYTypeFilter**, **RefractoryFilter**, and **SharedMemoryDVSFrameSender**. **Steadicam** has a guide when you add it.
+
+![EventFilter Help — SpatioTemporalCorrelationFilter](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/help-example-STCF.png)
+
+![EventFilter Help — CellStatsProber](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/help-example-cell-stats-prober.png)
+
+* **Hello world: jAER driving a Python DNN** — enable **SharedMemoryDVSFrameSender** (on the default filter list) to publish 64×64 DVS event-count frames over a memory-mapped file plus localhost TCP. Run [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `consumer.py --jaer-mmap … --serial_port None --windowed` to classify rock / scissors / paper. Sample throws: [Davis346 Roshambo](https://drive.google.com/file/d/1hEI4HMODwAu6Pm9P4oDecePbfv--Lwbg/view?usp=drive_link) (chip **Davis346blue**). CNN weights stay in Python; jAER does not load TensorFlow.
+
+![jAER SharedMemoryDVSFrameSender + Roshambo CNN](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/roshambo-example.gif)
+
+* **Live USB on Windows, macOS, and Linux** — live USB cameras (DAVIS346 / DAVIS240, DVXplorer, DVS128, EVK4, NRV DELTA01, CDAVIS, cochleas) were verified on all three desktop OSes (macOS includes Apple Silicon). Linux: libusb **hotplug** wakes WAITING discovery immediately. Apple Silicon: Homebrew **libusb** is required (`brew install libusb`; `ant run` installs it when Homebrew is present). If the dylib is missing, jAER shows a how-to and quits so the next launch can load it. Windows: WinUSB via Zadig when libusb reports `LIBUSB_ERROR_NOT_SUPPORTED`. Camera list: [README Device hardware support](https://github.com/SensorsINI/jaer#device-hardware-support).
+
+![jAER supported cameras](https://raw.githubusercontent.com/SensorsINI/jaer/master/images/supported-cameras-annotated.jpg)
 
 * **USB tuning** — USB → **USB tuning...** opens a modeless window (spinners, typed values, mouse wheel) for FIFO bytes, buffer count, AE render-packet size, and Prophesee **Live keep**. Values auto-apply after a short pause; **Requested** vs **Active** status shows when the reader has restarted. Per-camera defaults from live tuning: DVS128 / Davis240 **32 KiB × 4**, Davis346 **128 KiB × 4** (1.2M events), NRV **512 KiB × 16** (2M events), EVK4 **2 MiB × 4** (2M render/keep). **Reset USB interface** remains on the USB menu for recovery.
 
 ![USB tuning (EVK4 live)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/usb-tuning.png)
-
-* **Linux libusb hotplug** — plug/unplug wakes WAITING discovery immediately (FX2/FX3 cameras listed by VID/PID). Windows WinUSB (bundled libusb 1.0.22) still falls back to periodic scans.
 
 * **WinUSB required (Windows)** — if libusb reports `LIBUSB_ERROR_NOT_SUPPORTED`, jAER shows how to bind **WinUSB** with [Zadig](https://zadig.akeo.ie/) (not libusb-win32). Prophesee EVK4 can use Prophesee **wdi-simple** instead.
 
@@ -60,15 +72,32 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * **Live USB**
   * USB tuning window; debounced stop/start of the reader so FIFO/buffer edits do not resize in-flight URBs.
   * Per-camera FIFO / buffer / render-packet (and EVK4 live-keep) defaults from live tuning.
-  * Linux libusb hotplug pump while idle; Interface menu still lists FX2/FX3 / NRV / EVK4 by VID/PID.
+  * Live cameras verified on **Windows, macOS (Apple Silicon and Intel), and Linux**.
+  * Linux libusb hotplug pump while idle; Interface menu still lists FX2/FX3 / NRV / EVK4 by VID/PID. Windows WinUSB (bundled libusb 1.0.22) still falls back to periodic scans.
+  * Apple Silicon: Homebrew libusb at `/opt/homebrew/opt/libusb/lib/libusb-1.0.0.dylib` (`brew install libusb`; `ant install-macos-libusb` / `ant run` when Homebrew is present). Missing dylib shows a how-to and quits.
   * WinUSB how-to dialog on Windows `LIBUSB_ERROR_NOT_SUPPORTED` (Zadig WinUSB; EVK4 may use wdi-simple).
   * EVK4 user-friendly bias tab (threshold, ON/OFF balance, `bias_fo` / `bias_hpf` offsets around last save).
+  * Davis346 **red** / **redColor** use the same user-friendly Hardware Configuration panel as Blue.
   * DVXplorer Hardware Configuration: ON/OFF contrast thresholds 0–17 (default 9, smaller = more sensitive) and ReadoutFPS named modes, mapped like [dv-processing](https://gitlab.com/inivation/dv/dv-processing).
-  * Assume **DVS128** when opening legacy `.dat` recordings.
+  * Assume **DVS128** when opening legacy `.dat` recordings (not Metavision DAT).
+  * Treat **Davis346mini** recordings as **Davis346blue** in the chip detector.
+
+* **EventFilter Help**
+  * `@Help` HTML on `EventFilter` subclasses; nonmodal dialog on first expand and from the FilterPanel **`?`** button.
+  * Clickable `href` links; shown-once remembered in Preferences.
+  * Guides on default filters (plus Steadicam when added): SpatioTemporalCorrelationFilter, CellStatsProber, Info, HotPixelFilter, RotateFilter, XYTypeFilter, RefractoryFilter, SharedMemoryDVSFrameSender.
+
+* **Python DNN hello world**
+  * `SharedMemoryDVSFrameSender` publishes 64×64 uint8 event-count frames (mmap + localhost TCP JSON `HELLO` / `FRAME_READY`).
+  * Consumer: [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `python consumer.py --jaer-mmap <mmapPath> --serial_port None --windowed`.
+  * Default mmap: Linux/macOS `/tmp/jaer_dvs_frames.mmap`; Windows `%TEMP%\jaer_dvs_frames.mmap`.
 
 * **Preferences**
   * File → Preferences → **Store**: export / import the `/jaer` Preferences tree for another computer or a later restore.
   * **Revert all preferences to defaults** (warning; offers export first). Quit and restart; in-memory settings are not updated live.
+
+* **Playback / file formats**
+  * **Metavision DAT** (`.dat` with `% ` header): decoded CD / Event2d; disambiguated from legacy jAER `.dat`. Chip from `% Width` / `% Height` (`PropheseeIMX636HD` or `DVS640`). See [`docs/README-file-formats.md`](../docs/README-file-formats.md).
 
 * **DSEC / EventKitchen HDF5**
   * Playback of DSEC-format cooked event HDF5 (`events.h5`, `.hdf5`) with Blosc/ZSTD (incl. bitshuffle).
@@ -94,11 +123,13 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
   * Export still matches AEViewer target frame rate for smooth playback.
 
 * **Help / samples**
+  * Filter-panel **`?`** / first-activation `@Help` dialogs (see Highlights).
   * Help → **Release notes** (GitHub Releases).
   * Help → Sample data: **DVS09 / DVS128** sample files first ([Google Doc](https://docs.google.com/document/d/16b4H78f4vG_QvYDK2Tq0sNBA-y7UFnRbNnsGbD1jJOg/edit?tab=t.0)), then iniVation AEDAT-4 datasets (`https://release.inivation.com/?prefix=datasets/`) alongside existing DAVIS346 / MISTLab / Prophesee links.
 
 * **Developer / JDK**
   * JDK 25: `-XX:+UseCompactObjectHeaders` and `--add-opens java.base/jdk.internal.loader=ALL-UNNAMED` so MLPNoiseFilter can hot-add the OS TensorFlow native jar.
+  * Apple Silicon `ant run` / `ant compile` installs Homebrew libusb when missing (`-Dskip.macos.libusb=true` to skip).
   * SignPath Windows test-signing CI (`ant release-windows-ci` / tag `3.*`).
 
 ### Bug fixes and minor improvements
@@ -108,6 +139,8 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * Fixed leftover-prefs **startup / AEChip switch** so upgrades and hot-plug cameras work (merge new default chips into leftover menus, unique USB match without clearing Preferences, reset reused GL / mouse listeners).
 * Fixed **Intel Arc** OpenGL crash on live AEChip switch (`ChipCanvas` / `AEViewer`).
 * Fixed **NPE when panning after file close**; fixed **right-drag pan after mouse-wheel zoom**.
+* Fixed Davis **IMU dt overlay of 0 ms** with USB PacketBundle demux.
+* Kept **File** menu structure when the recent-files list is empty.
 * Stopped **localhost UDP drops** for large AE packets; **TCP stream sockets** removed from the Remote menu (archival classes remain).
 * Hardened open / re-record **cancel** so playback does not NPE after abort.
 * Wait for AEViewer chip init before CLI / “Open with” file playback (avoids startup race).

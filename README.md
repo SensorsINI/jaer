@@ -23,7 +23,7 @@ multi-platform installer builder [install4j](https://www.ej-technologies.com/pro
 Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers,
 or use [GitHub Releases](https://github.com/SensorsINI/jaer/releases) (Windows builds may be Authenticode-signed via SignPath; see [Code signing policy](#code-signing-policy)).
 **Windows:** Prefer a SignPath-signed installer from GitHub Releases when available. For unsigned builds: Click *More info*, *Run anyway* and *Install anyway*.
-**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder.
+**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present.
 **Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu.
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
@@ -44,7 +44,9 @@ drop them onto the jAER window to play them with the *Davis346blue* *AEChip*.
 
 ## Device hardware support
 
-Live USB cameras selectable in the AEViewer **AEChip** menu (default list and related variants). File playback for many more sensors is listed in [`docs/README-file-formats.md`](docs/README-file-formats.md).
+Live USB cameras selectable in the AEViewer **AEChip** menu (default list and related variants). Live USB operation is verified on **Windows, macOS (including Apple Silicon), and Linux**. File playback for many more sensors is listed in [`docs/README-file-formats.md`](docs/README-file-formats.md).
+
+![jAER supported cameras](/images/supported-cameras-annotated.jpg)
 
 | Camera / product | Manufacturer | Sensor / resolution | Interface | jAER chip class(es) | Status |
 |------------------|--------------|---------------------|-----------|---------------------|--------|
@@ -79,7 +81,7 @@ but has also been used to build many robots:
 5. [pencil balancer](https://www.youtube.com/watch?v=yCOnDc5r7p8) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/pencilbalancer/PencilBalancer.java))
 6. [bill (money) catcher](https://www.youtube.com/watch?v=XtOS7jZzMaU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/tobi/billcatcher/BillCatcher.java))
 7. [slot car racer](https://www.youtube.com/watch?v=CnGPGiZuFRI) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/virtualslotcar/SlotCarRacer.java))
-8. [Dextra roshambo (rock-scissors-paper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java))
+8. [Dextra roshambo (rock-scissors-paper)](https://www.youtube.com/watch?v=95GsOQbwNLU) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoCNN.java)) — 3.2.0 hello world: enable **SharedMemoryDVSFrameSender** and run [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `consumer.py --jaer-mmap` (see [3.2.0 notes](release-notes/jaer-3.2.0-release-notes.md))
 9. [incremental learning of new roshambo hand symbols](https://www.youtube.com/watch?v=uVruhxYu5gc) ([code](https://github.com/SensorsINI/jaer/blob/master/src/ch/unizh/ini/jaer/projects/npp/RoShamBoIncremental.java))
 
 jAER was also used to develop many event camera algorithms, including:
@@ -137,8 +139,6 @@ Please use our GitHub bug tracker to report issues and bugs, or our Google Group
 See also
 * **DAVIS-USERS user forum:** https://groups.google.com/forum/#!forum/davis-users
 * **inivation support pages:** https://inivation.com/support/
-
-![DVS128 cameras](/images/dvs128cameras.jpg)
 
 ![Hotel bar scene with DAVIS140C](/images/HotelBarDavis.png)
 
