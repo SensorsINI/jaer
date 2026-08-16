@@ -3,6 +3,12 @@ package eu.seebetter.ini.chips.davis;
 import net.sf.jaer.Description;
 import net.sf.jaer.hardwareinterface.HardwareInterface;
 
+/**
+ * Shared 346×260 APS-DVS+IMU base for the DAVIS346 family.
+ * {@link DavisTowerBaseConfig} supplies the same user-friendly Hardware
+ * Configuration panel (threshold, bandwidth, event/frame/IMU) used by
+ * {@link Davis346blue}, {@link Davis346red}, and {@link Davis346redColor}.
+ */
 @Description("DAVIS346 base class for 346x260 pixel APS-DVS DAVIS sensor")
 abstract public class Davis346BaseCamera extends DavisBaseCamera {
 

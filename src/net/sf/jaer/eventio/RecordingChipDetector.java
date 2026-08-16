@@ -521,8 +521,29 @@ public final class RecordingChipDetector {
         return matchByName(hint, loaded);
     }
 
+    /**
+     * Historical AEChip simple names that should resolve to a current class.
+     * {@code Davis346mini} was the early-development name for the blue-case
+     * prototype (now {@code Davis346blue}); those recordings share APS readout
+     * and must not fall through to {@code Davis346red}.
+     */
+    static String aliasHistoricalChipSimpleName(String name) {
+        if (name == null || name.isEmpty()) {
+            return name;
+        }
+        String token = name;
+        int dot = token.lastIndexOf('.');
+        if (dot >= 0) {
+            token = token.substring(dot + 1);
+        }
+        if ("davis346mini".equals(normalize(token))) {
+            return "Davis346blue";
+        }
+        return name;
+    }
+
     private static Class<? extends AEChip> matchByName(Hint hint, List<Class<? extends AEChip>> loaded) {
-        String hintName = hint.name;
+        String hintName = aliasHistoricalChipSimpleName(hint.name);
         String normHint = normalize(hintName);
         if (normHint.isEmpty()) {
             return null;

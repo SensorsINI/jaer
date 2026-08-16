@@ -2,7 +2,7 @@
 <!-- You may freely edit this file. See commented blocks below for -->
 <!-- some examples of how to customize the build. -->
 <!-- (If you delete it and reopen the project it will be recreated.) -->
-<project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3">
+<project name="jaer" default="default" basedir="." xmlns:ivy="antlib:org.apache.ivy.ant" xmlns:j2seproject1="http://www.netbeans.org/ns/j2se-project/1" xmlns:j2seproject3="http://www.netbeans.org/ns/j2se-project/3">
     
 
     <target depends="jar" description="Build jar.jar for all jAER classes." name="default"/>
@@ -109,7 +109,29 @@
 
     </target>
     
-    <target name="-post-init">
+    <!-- Apple Silicon: ant run/compile/debug all go through init. Install Homebrew
+         libusb here so developers do not hit the missing-dylib dialog. Skip with
+         -Dskip.macos.libusb=true to test that dialog. Quiet on other OSes. -->
+    <target name="-post-init" depends="install-macos-libusb">
+    </target>
+
+    <!-- run.jvmargs uses -XX:+UseCompactObjectHeaders (JEP 519). Do not wrap the
+         NetBeans <java> task to parse "Unrecognized VM option"; fail before launch. -->
+    <target name="-check-runtime-jvm">
+        <condition property="jaer.jvm.ok.for.run">
+            <javaversion atleast="25"/>
+        </condition>
+        <fail unless="jaer.jvm.ok.for.run">This JVM (${java.version}) does not support -XX:+UseCompactObjectHeaders (needs JDK 25+).
+Install the latest Eclipse Temurin JDK from https://adoptium.net/
+and put it on PATH (or set JAVA_HOME).</fail>
+    </target>
+
+    <target depends="-check-runtime-jvm,init,compile" description="Run a main class." name="run">
+        <j2seproject1:java>
+            <customize>
+                <arg line="${application.args}"/>
+            </customize>
+        </j2seproject1:java>
     </target>
 
     <target name="-post-compile">
@@ -309,7 +331,76 @@
         <condition property="isWindows" value="true">
             <os family="windows" />
         </condition>
+        <condition property="isMac" value="true">
+            <os family="mac" />
+        </condition>
+        <condition property="macos.aarch64" value="true">
+            <and>
+                <os family="mac" />
+                <or>
+                    <equals arg1="${os.arch}" arg2="aarch64" />
+                    <equals arg1="${os.arch}" arg2="arm64" />
+                </or>
+            </and>
+        </condition>
     </target>
+
+    <!-- Apple Silicon libusb4java JNI wrapper links Homebrew libusb (not bundled).
+         Homebrew must run as the user, not root. Skip if the dylib is already present. -->
+    <property name="macos.libusb.dylib" value="/opt/homebrew/opt/libusb/lib/libusb-1.0.0.dylib"/>
+
+    <target name="-macos-libusb-present" depends="checkos" if="macos.aarch64">
+        <available file="${macos.libusb.dylib}" property="macos.libusb.present"/>
+        <condition property="macos.libusb.needed">
+            <not>
+                <isset property="macos.libusb.present"/>
+            </not>
+        </condition>
+    </target>
+
+    <target name="-find-homebrew" depends="checkos" if="macos.aarch64">
+        <condition property="brew.executable" value="/opt/homebrew/bin/brew">
+            <available file="/opt/homebrew/bin/brew"/>
+        </condition>
+        <condition property="brew.executable" value="/usr/local/bin/brew">
+            <and>
+                <not>
+                    <isset property="brew.executable"/>
+                </not>
+                <available file="/usr/local/bin/brew"/>
+            </and>
+        </condition>
+    </target>
+
+    <target name="-install-macos-libusb-skip" depends="-macos-libusb-present" if="macos.libusb.present">
+        <!-- Quiet: every ant init on Apple Silicon hits this when libusb is already there. -->
+    </target>
+
+    <target name="-install-macos-libusb-do" depends="-macos-libusb-present,-find-homebrew"
+            if="macos.libusb.needed" unless="skip.macos.libusb">
+        <fail unless="brew.executable"
+              message="Apple Silicon jAER needs Homebrew libusb at ${macos.libusb.dylib}.${line.separator}Install Homebrew from https://brew.sh then re-run ant (or: brew install libusb).${line.separator}Do not use sudo; Homebrew refuses to run as root.${line.separator}To skip install and test the missing-libusb dialog: ant -Dskip.macos.libusb=true run"/>
+        <echo message="Installing Homebrew libusb (user install, not sudo): ${brew.executable} install libusb"/>
+        <exec executable="${brew.executable}" failonerror="true">
+            <arg value="install"/>
+            <arg value="libusb"/>
+        </exec>
+        <available file="${macos.libusb.dylib}" property="macos.libusb.installed"/>
+        <fail unless="macos.libusb.installed"
+              message="brew install libusb finished but ${macos.libusb.dylib} is still missing."/>
+        <echo message="Installed ${macos.libusb.dylib}"/>
+    </target>
+
+    <target name="-install-macos-libusb-not-applesilicon" depends="checkos" unless="macos.aarch64">
+    </target>
+
+    <target name="-install-macos-libusb-skipped-by-flag" if="skip.macos.libusb">
+        <echo message="skip.macos.libusb=true: not installing Homebrew libusb (use this to test the missing-libusb dialog)."/>
+    </target>
+
+    <target name="install-macos-libusb"
+            depends="-install-macos-libusb-not-applesilicon,-install-macos-libusb-skip,-install-macos-libusb-do,-install-macos-libusb-skipped-by-flag"
+            description="Install Homebrew libusb on Apple Silicon (ant run/init). Not sudo. Skip: -Dskip.macos.libusb=true"/>
 
 
     <!--    copy splash image to src tree so that it gets into main jar-->

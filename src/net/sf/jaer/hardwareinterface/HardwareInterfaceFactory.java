@@ -21,6 +21,7 @@ import net.sf.jaer.hardwareinterface.serial.SpiNNaker.SpiNNaker_InterfaceFactory
 import net.sf.jaer.hardwareinterface.serial.eDVS128.eDVS128_InterfaceFactory;
 import net.sf.jaer.hardwareinterface.udp.UDPInterfaceFactory;
 import net.sf.jaer.hardwareinterface.usb.LibUsbHotplug;
+import net.sf.jaer.hardwareinterface.usb.MacosLibusbHelp;
 import net.sf.jaer.hardwareinterface.usb.USBInterface;
 import net.sf.jaer.hardwareinterface.usb.UsbHardwareRegistry;
 import net.sf.jaer.hardwareinterface.usb.UsbIds;
@@ -121,7 +122,13 @@ HardwareInterfaceFactoryInterface, PnPNotifyInterface {
 				HardwareInterfaceFactory.log.log(Level.WARNING, "{0} has no instance() method but it needs to be a singleton of this form", factorie);
 			}
 			catch (final IllegalAccessException | InvocationTargetException | HardwareInterfaceException e3) {
+				MacosLibusbHelp.maybeShowDialog(e3);
 				e3.printStackTrace();
+			}
+			catch (final ExceptionInInitializerError e) {
+				MacosLibusbHelp.maybeShowDialog(e);
+				HardwareInterfaceFactory.log.log(Level.WARNING, "{0} failed to initialize: {1}",
+						new Object[] { factorie, e.getCause() != null ? e.getCause() : e });
 			}
 		}
 	}
