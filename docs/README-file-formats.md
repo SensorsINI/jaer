@@ -19,9 +19,9 @@ Official format specs (where available) are linked from the **Format** column an
 | **Legacy raw DAT** | `.dat` | Often AEDAT-1/2 without a `% ` header ([AEDAT overview](https://docs.inivation.com/software/software-advanced-usage/file-formats/index.html)) | SensorsINI / jAER | yes | no³ | **yes** | None | Same as AEDAT-1/2 depending on header; pre-2010 / DVS09 `.dat` assumed `DVS128` when no stronger hint |
 | **[Metavision DAT](https://docs.prophesee.ai/stable/data/file_formats/dat.html)** | `.dat` | Decoded CD / Event2d: ASCII `% ` header, then type/size byte pair, then 8-byte LE events | [Prophesee](https://www.prophesee.ai/) Metavision | yes | no⁴ | no | None (decoded `t` + packed `x`/`y`/`p`; larger than RAW) | Size from `% Width` / `% Height` — chip `PropheseeIMX636HD` (1280×720) or `DVS640` (640×480); other sizes use the DSEC size fit. Disambiguated from legacy jAER `.dat` by the `% ` header |
 | **[Metavision RAW EVT3](https://docs.prophesee.ai/stable/data/file_formats/raw.html)** | `.raw` | Prophesee native RAW, `% evt 3.0` / `% format EVT3…` ([EVT3](https://docs.prophesee.ai/stable/data/encoding_formats/evt3.html)) | [Prophesee](https://www.prophesee.ai/) Metavision | yes | no⁴ | no | None (native EVT3 bitstream after ASCII `%` header) | **EVK4 / IMX636 HD**; Gen4.1 HD sample recordings (e.g. `laser.raw`) — chip `PropheseeIMX636HD` |
-| **[DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/)** | `.h5` / `.hdf5` (`events.h5`) | cooked `/events/{p,t,x,y}`, `/ms_to_idx`, `/t_offset` | [DSEC](https://dsec.ifi.uzh.ch/) (UZH); also some EVK4 exports | yes | no | no | Blosc + ZSTD (via jHDF + `BloscHdf5Filter`) | Size from HDF5 attrs or max x/y — chip `DVS640` (640×480) or `DVS1280x720SD` (1280×720); left/right are separate files |
+| **[DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/)** | `.h5` / `.hdf5` (`events.h5`) | cooked `/events/{p,t,x,y}`, `/ms_to_idx`, `/t_offset` | [DSEC](https://dsec.ifi.uzh.ch/) (UZH); also some EVK4 exports | yes | Save As⁷ | no | Play: Blosc + ZSTD; Save As: uncompressed | Size from HDF5 attrs or max x/y — chip `DVS640` (640×480) or `DVS1280x720SD` (1280×720); left/right are separate files |
 | **[ROS bag](http://wiki.ros.org/Bags)** | `.bag` | ROS1 bag (rpg_dvs_ros / MVSEC / EV-IMO topics) | ROS / UZH RPG / dataset authors | yes | no | no⁵ | Bag-internal (ROS serialization); not jAER-selectable | DAVIS-class topics in RPG/MVSEC/EV-IMO bags |
-| **Text events** | `.csv`, `.txt` | One DVS event per line (`t,x,y,p` variants) | Various exports / tools | yes | no | no | None (ASCII text) | Any polarity chip after address reconstruct (often DAVIS-oriented CSV) |
+| **Text events** | `.csv`, `.txt` | One DVS event per line (`t,x,y,p` variants) | Various exports / tools | yes | Save As⁷ | no | None (ASCII text) | Any polarity chip after address reconstruct (often DAVIS-oriented CSV) |
 | **Index playlist** | `.aeidx` (also `.index`) | List of paths to AE data files | jAER | yes | yes⁶ | `.index` is legacy | N/A (text index) | N/A — points at other recordings |
 
 ¹ Prefer `.aedat2` for new AEDAT-2 writes; `.aedat` remains accepted on open.  
@@ -29,7 +29,8 @@ Official format specs (where available) are linked from the **Format** column an
 ³ Recording no longer uses bare `.dat` as the preferred extension.  
 ⁴ Live EVK4 capture is recorded as AEDAT-4/2 in jAER; Metavision Studio writes `.raw` (and can export DAT).  
 ⁵ Still common for public datasets; not a jAER-native recording path.  
-⁶ Created when using synchronized multi-viewer logging (an `.aeidx` listing the sibling data files).
+⁶ Created when using synchronized multi-viewer logging (an `.aeidx` listing the sibling data files).  
+⁷ **File → Save As…** (`Ctrl+Shift+S`) while playing a recording (not live logging). Optional IN/OUT markers, EventFilters, and HVS sidecars (`XXX-frames/` PNGs, `XXX-imu.csv`).
 
 ---
 
@@ -62,6 +63,18 @@ Logging format is chosen in AEViewer prefs / Control menu (`loggingDataFileVersi
 |--------|--------|--------|
 | [AEDAT-4](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-4.0.html) | [`Aedat4FileOutputStream`](../src/net/sf/jaer/eventio/aedat4/Aedat4FileOutputStream.java) | DV-compatible FlatBuffers packets (events, frames, IMU). Compression via `AEViewer.aedat4Compression`. Sparse index cache under `java.io.tmpdir` (`*.aedat4idx`) speeds reopen. |
 | [AEDAT-2](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html) | [`AEFileOutputStream`](../src/net/sf/jaer/eventio/AEFileOutputStream.java) | Classic `#` ASCII header + binary address/timestamp pairs. Extension `.aedat2`. |
+| [DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/) | [`DsecHdf5AEOutputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEOutputStream.java) | **File → Save As** (playback). Cooked `/events/{p,t,x,y}` with DSEC/image coords (`y=0` top, `p` 0=off/1=on), `/ms_to_idx`, `/t_offset`; uncompressed (jHDF 0.12). Width/height attributes for reopen. |
+| Text CSV/TXT | [`CsvEventSink`](../src/net/sf/jaer/eventio/export/CsvEventSink.java) | **File → Save As** (playback). Options match [`DavisTextEventFormatter`](../src/net/sf/jaer/util/textio/DavisTextEventFormatter.java) (`t,x,y,p` variants; RPG preset). The EventFilter [`DavisTextOutputWriter`](../src/net/sf/jaer/util/textio/DavisTextOutputWriter.java) still streams text during play. |
+
+### File → Save As (playback export)
+
+Enabled only while a recording is open (`PlayMode.PLAYBACK`). Unlike relogging (AEDAT at ViewLoop pace), Save As pauses playback and scans the file as fast as possible, then restores position.
+
+- **Use IN and OUT markers** (default on): unset ends are file start / EOF.
+- **Apply EventFilters** (default on): same chain as filtered relogging.
+- **HVS sidecars** (DAVIS / CDAVIS): optional `<basename>-frames/` compressed PNGs + `timestamps.txt`, and `<basename>-imu.csv`.
+
+Dialog: [`SaveAsExportDialog`](../src/net/sf/jaer/eventio/export/SaveAsExportDialog.java).
 
 ---
 
@@ -73,7 +86,7 @@ Logging format is chosen in AEViewer prefs / Control menu (`loggingDataFileVersi
 | [AEDAT-1](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-1.0.html)/[2](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-2.0.html)/[3](https://docs.inivation.com/software/software-advanced-usage/file-formats/aedat-3.1.html), legacy `.dat` | [`AEFileInputStream`](../src/net/sf/jaer/eventio/AEFileInputStream.java) | Version from `#!AER-DAT…` header line. Used for `.dat` only when the file is **not** Metavision DAT. |
 | [Metavision DAT](https://docs.prophesee.ai/stable/data/file_formats/dat.html) | [`MetavisionDatFileInputStream`](../src/prophesee/eventio/MetavisionDatFileInputStream.java) | Peek: lines starting with `% ` (vs jAER `#` / raw AEDAT-1). CD / Event2d types `0` and `12` only (8-byte LE `t` + packed `x`/`y`/`p`). External-trigger DAT (`type 14`) is not played. Random-access seek; no index cache. |
 | [Metavision RAW EVT3](https://docs.prophesee.ai/stable/data/file_formats/raw.html) | [`MetavisionRawFileInputStream`](../src/prophesee/eventio/MetavisionRawFileInputStream.java) | Same `Evt3Parser` as live USB ([EVT3](https://docs.prophesee.ai/stable/data/encoding_formats/evt3.html)). Seek index cached as `*.metavisionrawidx` in `java.io.tmpdir`. **EVT2 / Prophesee HDF5 not supported yet.** |
-| [DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/) | [`DsecHdf5AEInputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEInputStream.java) | Single-camera cooked `events.h5` (left or right): pack via chip `getAddressFromCell`. Uses [jHDF](https://jhdf.io/) + [`BloscHdf5Filter`](../src/net/sf/jaer/eventio/dsec/BloscHdf5Filter.java) for Blosc/ZSTD. Chip from peeked size: `DVS640` (640×480) or `DVS1280x720SD` (1280×720). Stereo dual-stream later. |
+| [DSEC HDF5](https://dsec.ifi.uzh.ch/data-format/) | [`DsecHdf5AEInputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEInputStream.java) | Single-camera cooked `events.h5` (left or right): pack via chip `getAddressFromCell`. Uses [jHDF](https://jhdf.io/) + [`BloscHdf5Filter`](../src/net/sf/jaer/eventio/dsec/BloscHdf5Filter.java) for Blosc/ZSTD. Chip from peeked size: `DVS640` (640×480) or `DVS1280x720SD` (1280×720). Stereo dual-stream later. **Save As** writes the same layout uncompressed via [`DsecHdf5AEOutputStream`](../src/net/sf/jaer/eventio/dsec/DsecHdf5AEOutputStream.java). |
 | [ROS bag](http://wiki.ros.org/Bags) | [`RosbagFileInputStream`](../src/net/sf/jaer/eventio/ros/RosbagFileInputStream.java) | Topics under `/dvs/`, `/davis/left/`, or `/samsung/camera/` headers. |
 | Text | [`TextFileInputStream`](../src/net/sf/jaer/eventio/TextFileInputStream.java) | CSV/space-separated DVS lines; options for timestamp units and polarity. |
 | Index | AEPlayer index path | Opens the listed AE files in sequence. |
@@ -92,6 +105,7 @@ Chip auto-detect for recordings: [`RecordingChipDetector`](../src/net/sf/jaer/ev
 | Metavision `.raw` | None (sensor EVT3 encoding is the “compression”) | Recorded by Metavision Studio / SDK |
 | ROS bag | ROS bag storage (not exposed in jAER UI) | — |
 | Text CSV/TXT | None (optionally gzip outside jAER) | — |
+| DSEC HDF5 (Save As) | Uncompressed contiguous datasets (jHDF 0.12 cannot write gzip/Blosc) | File → Save As |
 
 ---
 

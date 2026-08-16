@@ -689,20 +689,27 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
         try {
             if (n > 0) {
                 for (int i = 0; i < n; i++) {
-                    ev = readEventForwards();  // TODO since repeat is always true in existing code, then can never get null event right now TODO; fix this
-                    count++;
-                    addr[i] = ev.address; // could get null pointer exception here if repeat was false
+                    ev = readEventForwards();
+                    // repeat=false at OUT/EOF returns null (javadoc also allows EOFException)
+                    if (ev == null) {
+                        break;
+                    }
+                    addr[i] = ev.address;
                     ts[i] = ev.timestamp;
                     currentStartTimestamp = ts[i];
+                    count++;
                 }
             } else { // backwards
                 n = -n;
                 for (int i = 0; i < n; i++) {
-                    ev = readEventBackwards(); // TODO fix for repeat = false
-                    count++;
+                    ev = readEventBackwards();
+                    if (ev == null) {
+                        break;
+                    }
                     addr[i] = ev.address;
                     ts[i] = ev.timestamp;
                     currentStartTimestamp = ts[i];
+                    count++;
                 }
             }
         } catch (WrappedTimeException e) {

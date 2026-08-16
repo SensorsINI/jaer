@@ -49,7 +49,7 @@ import net.sf.jaer.util.JaerPreferencesStore;
  * Preferences dialog for AEViewer. First tab groups preference-backed AEViewer
  * menu settings by menu section. Filters tab covers global FilterFrame /
  * FilterChain preferences (individual AEFilter property sheets come later).
- * Store tab exports, imports, or deletes the {@code /jaer} Preferences tree.
+ * Export/Reset tab exports, imports, or deletes the {@code /jaer} Preferences tree.
  */
 public class AEViewerPreferencesDialog extends JDialog {
 
@@ -112,7 +112,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("AEViewer", buildAeViewerTab());
         tabs.addTab("Filters", buildFiltersTab());
-        tabs.addTab("Store", buildStoreTab());
+        tabs.addTab("Export/Reset", buildStoreTab());
 
         JButton closeButton = new JButton("Close");
         closeButton.addActionListener(new ActionListener() {

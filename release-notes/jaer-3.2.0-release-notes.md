@@ -13,7 +13,7 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 ![jAER 3.2.0 splash](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/SplashScreen.png)
 
-**jAER 3.2.0** is a feature release for **live USB cameras**, **filter help**, and **file playback**. Live USB is **verified on Windows, macOS (including Apple Silicon), and Linux**. New: **EventFilter Help** (`?` on the filter panel), a **hello-world path to drive a Python DNN** (`SharedMemoryDVSFrameSender` + [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python)), **USB tuning** with per-camera FIFO/buffer defaults, **libusb hotplug** on Linux, **Homebrew libusb** how-to on Apple Silicon, **WinUSB install help** on Windows, a **Davis-style EVK4 bias panel**, **DVXplorer contrast-threshold / ReadoutFPS** control, and an EVK4 SuperSpeed stall fix. **File → Preferences → Store** exports, imports, or reverts the `/jaer` Preferences tree (quit and restart afterwards). Playback: **DSEC-layout HDF5**, **Metavision DAT** (`.dat` with `% ` header), **faster DV / AEDAT-4 LZ4**, more **DVS color modes**, **File → Export video** (Show folder / Play video), and an **Intel Arc OpenGL** fix when switching AEChips live.
+**jAER 3.2.0** is a feature release for **live USB cameras**, **filter help**, and **file playback**. Live USB is **verified on Windows, macOS (including Apple Silicon), and Linux**. New: **EventFilter Help** (`?` on the filter panel), a **hello-world path to drive a Python DNN** (`SharedMemoryDVSFrameSender` + [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python)), **USB tuning** with per-camera FIFO/buffer defaults, **libusb hotplug** on Linux, **Homebrew libusb** how-to on Apple Silicon, **WinUSB install help** on Windows, a **Davis-style EVK4 bias panel**, **DVXplorer contrast-threshold / ReadoutFPS** control, and an EVK4 SuperSpeed stall fix. **File → Preferences → Export/Reset** exports, imports, or reverts the `/jaer` Preferences tree (quit and restart afterwards). Playback: **DSEC-layout HDF5** (play and **File → Save As**), **Metavision DAT** (`.dat` with `% ` header), **faster DV / AEDAT-4 LZ4**, more **DVS color modes**, **File → Export video** (Show folder / Play video), and an **Intel Arc OpenGL** fix when switching AEChips live.
 
 ### Highlights
 
@@ -45,17 +45,21 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 * **DVXplorer biases** — Hardware Configuration ON/OFF **contrast thresholds** 0–17 (default 9; smaller = more sensitive) and **ReadoutFPS** named modes, mapped like [dv-processing](https://gitlab.com/inivation/dv/dv-processing). Global hold (default on) and global reset (default off).
 
-* **Preferences Store** — File → Preferences → **Store** exports or imports the entire `/jaer` Java Preferences tree (layout, last files, USB tuning, chip/filter settings). **Revert all preferences to defaults** warns and offers an XML backup first. Quit and restart afterwards; in-memory settings are not reloaded live.
+* **Preferences Export/Reset** — File → Preferences → **Export/Reset** exports or imports the entire `/jaer` Java Preferences tree (layout, last files, USB tuning, chip/filter settings). **Revert all preferences to defaults** warns and offers an XML backup first. Quit and restart afterwards; in-memory settings are not reloaded live.
 
 * **Welcome overlay** — idle WAITING view shows version, File/Open, AEChip, and Help → Sample data. AEChip menu items show `@Description` tooltips. Help → **Release notes** opens GitHub Releases.
 
 ![Welcome overlay (WAITING)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/welcome-overlay.png)
 
-* **DSEC-layout HDF5 playback** — open cooked `events.h5` / `.hdf5` with `/events/{p,t,x,y}`, `/ms_to_idx`, and `/t_offset` (Blosc + ZSTD via jHDF). Sensor size is peeked from HDF5 attributes or max `x`/`y` (not assumed VGA): **640×480 → `DVS640`**, **1280×720 → `DVS1280x720SD`**. Works with [DSEC](https://dsec.ifi.uzh.ch/) driving sequences and HD stereo kitchen recordings from [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html). Drag-and-drop or File → Open; Esc cancels a queued jog and shows a wait cursor while slow seeks drain.
+* **DSEC-layout HDF5 playback** — open cooked `events.h5` / `.hdf5` with `/events/{p,t,x,y}`, `/ms_to_idx`, and `/t_offset` (Blosc + ZSTD via jHDF). Sensor size is peeked from HDF5 attributes or max `x`/`y` (not assumed VGA): **640×480 → `DVS640`**, **1280×720 → `DVS1280x720SD`**. Works with [DSEC](https://dsec.ifi.uzh.ch/) driving sequences and HD stereo kitchen recordings from [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html). Drag-and-drop or File → Open; Esc cancels a queued jog and shows a wait cursor while slow seeks drain. DSEC `y=0` is top (image / UL origin); `p` is 0=off / 1=on. **File → Save As…** (`Ctrl+Shift+S`) writes the same layout from any playback file.
 
 ![DSEC VGA events.h5 playback (DVS640)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/dsec-h5-playback.png)
 
 ![EventKitchen HD LeftEvent.hdf5 playback (DVS1280x720SD)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/eventkitchen-hdf5-playback.png)
+
+* **File → Save As…** (`Ctrl+Shift+S`, playback only) — offline export to CSV/text or DSEC-layout `.h5` (pauses playback; not AEDAT relogging). Optional **Use IN and OUT markers** and **Apply EventFilters** (both on by default). The default output name is `{open-recording}-export.h5` (or `.csv`) next to the source file. When finished: **Show folder** and **Play exported file** (opens the export in this AEViewer). DAVIS/CDAVIS can write sidecar `<basename>-frames/` PNGs and `<basename>-imu.csv`.
+
+![File → Save As (DSEC HDF5)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/save-as-h5.png)
 
 * **Slow LZ4 → optimized `-rerecord.aedat4`** — DV recordings often use dependent-block LZ4, which is much slower in jAER (~30× vs native independent-block LZ4). On open, jAER offers to create an optimized sibling copy next to the original (same folder; size estimate shown). Cancel is safe and leaves the viewer in a clean state.
 
@@ -93,7 +97,7 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
   * Default mmap: Linux/macOS `/tmp/jaer_dvs_frames.mmap`; Windows `%TEMP%\jaer_dvs_frames.mmap`.
 
 * **Preferences**
-  * File → Preferences → **Store**: export / import the `/jaer` Preferences tree for another computer or a later restore.
+  * File → Preferences → **Export/Reset**: export / import the `/jaer` Preferences tree for another computer or a later restore.
   * **Revert all preferences to defaults** (warning; offers export first). Quit and restart; in-memory settings are not updated live.
 
 * **Playback / file formats**
@@ -104,6 +108,7 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
   * Auto AEChip hint from peeked geometry: `DVS640` (VGA) or `DVS1280x720SD` (HD).
   * Forward/reverse seek and jog; **Esc** cancels queued jog; wait cursor while jog is pending.
   * Datasets: [DSEC](https://dsec.ifi.uzh.ch/) (stereo driving, VGA event cameras); [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html) (egocentric cooking, stereo Prophesee Gen4 HD).
+  * **File → Save As…** (`Ctrl+Shift+S`, playback only): see dedicated item below.
 
 * **AEDAT-4 / DV playback**
   * Hybrid framed LZ4 decoder (native lz4-java blocks; BlockLZ4 only where dependent continuations require it).
@@ -121,6 +126,14 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * **Video export**
   * After **File → Export video** finishes (AVI and optional ffmpeg MP4), a confirmation offers **Show folder** and **Play video**.
   * Export still matches AEViewer target frame rate for smooth playback.
+
+* **File → Save As…** (`Ctrl+Shift+S`)
+  * Playback-only offline export to CSV/text or DSEC-layout HDF5 (pauses the view loop; not AEDAT relogging).
+  * **Use IN and OUT markers** and **Apply EventFilters** default on; CSV options include float-seconds timestamps.
+  * Default filename is `{current-recording}-export.{ext}` in the recording’s folder (not the last export).
+  * Finished dialog: **Show folder** and **Play exported file** (`AEPlayer.startPlayback` in this AEViewer).
+  * DSEC write: uncompressed (jHDF 0.12); `y=0` top; `p` 0=off / 1=on; width/height attributes for reopen.
+  * DAVIS / CDAVIS: optional `<basename>-frames/` PNGs and `<basename>-imu.csv`.
 
 * **Help / samples**
   * Filter-panel **`?`** / first-activation `@Help` dialogs (see Highlights).
@@ -148,5 +161,7 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * Exclude first-use UX keys from Hardware Config export; migrate `deviceSettings`.
 * Improved HotCode and RedBlue color rendering.
 * Removed unused **neuromorphic-drivers** crate (EVK4 path is native Java).
+* Fixed DSEC HDF5 **Save As** storing jAER lower-left `y` (playback was upside down) and Davis polarity packing (ON events decoded as OFF).
+* Fixed empty HDF5 close crash (jHDF 0.12 cannot write zero-length arrays) and zero-event export after seek-back (`NonMonotonicTimeException` on the first packet).
 
 **Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.1.0...3.2.0

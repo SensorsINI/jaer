@@ -20,6 +20,7 @@ import io.jhdf.HdfFile;
 import io.jhdf.api.Attribute;
 import io.jhdf.api.Dataset;
 import io.jhdf.api.Node;
+import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.aemonitor.AEPacketRaw;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.chip.EventExtractor2D;
@@ -559,21 +560,38 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
             windowTimestamps = new int[len];
             windowTRel = new int[len];
         }
-        final int sizeY = chip.getSizeY() > 0 ? chip.getSizeY() : sensorHeight;
+        final int sizeY = sensorHeight > 1 ? sensorHeight
+                : (chip.getSizeY() > 0 ? chip.getSizeY() : 1);
         for (int i = 0; i < len; i++) {
             int xi = x[i] & 0xffff;
             int yi = y[i] & 0xffff;
             // DSEC row 0 is top (image coords); jAER y=0 is bottom
             yi = (sizeY - 1) - yi;
-            // DSEC polarity is already cooked (0/1); map to chip cell type
             int pol = p[i] != 0 ? 1 : 0;
-            windowAddresses[i] = typedExtractor.getAddressFromCell(xi, yi, pol);
+            windowAddresses[i] = packCookedAddress(xi, yi, pol);
             int rel = (int) ((t[i] & 0xffffffffL) - (firstRawT & 0xffffffffL));
             windowTRel[i] = rel;
             windowTimestamps[i] = rel;
         }
         windowStart = start;
         windowLen = len;
+    }
+
+    /**
+     * Pack DSEC cooked (jAER-display) x/y/p into a raw address the chip extractor
+     * will decode. Davis extractors ignore {@code typeshift} and read polarity at
+     * bit 11, and they unflip X ({@code e.x = sizeX-1-addrX}), same as AEDAT-4.
+     */
+    private int packCookedAddress(int x, int y, int pol01) {
+        if (chip instanceof DavisChip) {
+            int sx1 = chip.getSizeX() - 1;
+            int px = sx1 - x;
+            return DavisChip.ADDRESS_TYPE_DVS
+                    | ((px & 0x3ff) << DavisChip.XSHIFT)
+                    | ((y & 0x1ff) << DavisChip.YSHIFT)
+                    | ((pol01 & 1) << DavisChip.POLSHIFT);
+        }
+        return typedExtractor.getAddressFromCell(x, y, pol01);
     }
 
     private int[] readIntSlice(Dataset ds, long offset, int len) throws IOException {

@@ -629,7 +629,8 @@ public class ExportVideoDialog extends JDialog implements PropertyChangeListener
                 htmlMsg,
                 () -> ShowFolderSaveConfirmation.openWithDesktop(toOpen),
                 "Play video",
-                "Export video");
+                "Export video",
+                "Open with the system default video player");
         dialog.setVisible(true);
     }
 

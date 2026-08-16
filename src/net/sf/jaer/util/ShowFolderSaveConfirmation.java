@@ -40,15 +40,12 @@ public class ShowFolderSaveConfirmation extends JDialog {
 
     /**
      * Constructs a new dialog that shows a message, optional folder button, and
-     * optional immediate playback button labeled "Playback".
-     *
-     * @param owner the owner of the dialog, or null
-     * @param file the File
-     * @param msg the message
-     * @param playAction if non-null, adds a Playback button that runs this action
+     * optional Playback button. {@code playAction} should open the file in
+     * AEViewer (e.g. {@code AEPlayer.startPlayback}); it is not the OS default app.
      */
     public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction) {
-        this(owner, file, msg, playAction, "Playback", "File saved");
+        this(owner, file, msg, playAction, "Playback", "File saved",
+                "Open this file in AEViewer for playback");
     }
 
     /**
@@ -58,11 +55,22 @@ public class ShowFolderSaveConfirmation extends JDialog {
      * @param file the File (used for Show folder parent path)
      * @param msg the message (HTML allowed)
      * @param playAction if non-null, adds a play button that runs this action
-     * @param playButtonLabel label for the play button (e.g. "Play video"); ignored if playAction is null
+     *        (typically {@code AEViewer.openAedatInputFile} / {@code AEPlayer.startPlayback})
+     * @param playButtonLabel label for the play button (e.g. "Play exported file"); ignored if playAction is null
      * @param title dialog title
      */
     public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction,
             String playButtonLabel, String title) {
+        this(owner, file, msg, playAction, playButtonLabel, title, "Open this file in AEViewer for playback");
+    }
+
+    /**
+     * Full constructor.
+     *
+     * @param playTooltip tooltip for the play button; ignored if playAction is null
+     */
+    public ShowFolderSaveConfirmation(Window owner, File file, String msg, Runnable playAction,
+            String playButtonLabel, String title, String playTooltip) {
         super(owner);
         this.file = file;
         this.msg = msg;
@@ -98,7 +106,7 @@ public class ShowFolderSaveConfirmation extends JDialog {
         }
         if (playAction != null) {
             JButton playB = new JButton(playButtonLabel != null ? playButtonLabel : "Playback");
-            playB.setToolTipText("Open the file with the system default application");
+            playB.setToolTipText(playTooltip != null ? playTooltip : "Open this file in AEViewer for playback");
             playB.addActionListener((ActionEvent e) -> {
                 dispose();
                 playAction.run();
