@@ -19,15 +19,16 @@
 package net.sf.jaer.util.avioutput;
 
 import java.awt.Dimension;
-import java.lang.reflect.InvocationTargetException;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.Arrays;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 
@@ -92,7 +93,7 @@ abstract public class DvsFramer extends EventFilter2D {
     protected LowpassFilter frameIntervalFilter = new LowpassFilter(1000);
     protected int startTimestamp = 0;
 
-    private boolean showFrames = false;
+    private boolean showFrames = getBoolean("showFrames", false);
     private JFrame activationsFrame = null;
     private ImageDisplay imageDisplay;
     protected DvsFrame lastDvsFrame = null;
@@ -100,7 +101,7 @@ abstract public class DvsFramer extends EventFilter2D {
     /**
      * Output image width and height
      */
-    protected int outputImageWidth = getInt("outputImageWidth", 0), outputImageHeight = getInt("outputImageHeight", 0);
+    protected int outputImageWidth = getInt("outputImageWidth", 64), outputImageHeight = getInt("outputImageHeight", 64);
 
     /**
      * frame cut is the pixels we cut from the original image, it follows [[top,
@@ -157,16 +158,31 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     /**
-     * Does nothing, since frame should be filled by the enclosing filter using
-     * addEvent
+     * Accumulates polarity DVS events from the packet into the DVS frame via
+     * {@link #addEvent(PolarityEvent)}. jAER 3.0 {@code processPolarity}
+     * delegates here; Frame/IMU packets are not delivered to this method.
      *
-     * @param in
-     * @return the input packet, untouched and unused
+     * @param in polarity (or mixed DAVIS) packet
+     * @return the input packet, unchanged
      * @see #addEvent(net.sf.jaer.event.PolarityEvent)
      */
     @Override
     synchronized public EventPacket<? extends BasicEvent> filterPacket(EventPacket<? extends BasicEvent> in) {
         checkParameters();
+        if (in == null || in.isEmpty()) {
+            return in;
+        }
+        for (BasicEvent e : in) {
+            if (e == null || e.isSpecial() || e.isFilteredOut()) {
+                continue;
+            }
+            if (e instanceof ApsDvsEvent && !((ApsDvsEvent) e).isDVSEvent()) {
+                continue;
+            }
+            if (e instanceof PolarityEvent) {
+                addEvent((PolarityEvent) e);
+            }
+        }
         return in;
     }
 
@@ -580,22 +596,11 @@ abstract public class DvsFramer extends EventFilter2D {
             if (filled) {
                 normalizeFrame();
                 lastDvsFrame = this;
-                if (showFrames) { // 
-                    final DvsFramer.DvsFrame toRender = this;
-                    Runnable doShowImage = new Runnable() {
-                        public void run() {
-                            if (showFrames && lastDvsFrame != null /*&& lastDvsFrame.isFilled()*/) {
-                                lastDvsFrame.draw();
-                            }
-                        }
-                    };
-                    try {
-                        SwingUtilities.invokeAndWait(doShowImage);
-                    } catch (InterruptedException ex) {
-                        log.info("showing frame interruped");
-                    } catch (InvocationTargetException ex) {
-                        Logger.getLogger(DvsFramer.class.getName()).log(Level.SEVERE, null, ex);
-                    }
+                if (showFrames) {
+                    final float[] pixmapCopy = Arrays.copyOf(pixmap, pixmap.length);
+                    final int w = width;
+                    final int h = height;
+                    SwingUtilities.invokeLater(() -> drawCopied(w, h, pixmapCopy));
                 }
                 getSupport().firePropertyChange(EVENT_NEW_FRAME_AVAILABLE, null, this); // TODO check if duplicated event fired
                 processDvsFrame(this);
@@ -784,31 +789,29 @@ abstract public class DvsFramer extends EventFilter2D {
         }
 
         /**
-         * Draws the DVS frame into the imageDisplay in the JFrame
-         *
+         * Draws the DVS frame into the imageDisplay in the JFrame. Must be
+         * called on the EDT; prefer {@link DvsFramer#drawCopied(int, int, float[])}
+         * with a pixmap snapshot so the AE thread is not blocked.
          */
         public void draw() {
-            checkActivationsFrame();
-            if (imageDisplay == null) {
-                JPanel panel = new JPanel();
-                panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
-                imageDisplay = ImageDisplay.createOpenGLCanvas();
-                imageDisplay.setBorderSpacePixels(10);
-                imageDisplay.setSize(200, 200);
-                panel.add(imageDisplay);
+            drawCopied(width, height, pixmap);
+        }
 
-                activationsFrame.getContentPane().add(panel);
-                activationsFrame.pack();
-                activationsFrame.setVisible(true);
-            }
-            imageDisplay.setImageSize(width, height);
-//            for(int x=0;x<width;x++){
-//                for(int y=0;y<height;y++){
-//                    imageDisplay.setPixmapGray(x, y, lastDvsFrame.getValueAtPixel(x, y));
-//                }
-//            }
-            imageDisplay.setPixmapFromGrayArray(pixmap);
-            imageDisplay.display();
+        /**
+         * Returns the raw signed/rectified event count histogram. Length is
+         * {@link #getNumPixels()}, indexed as {@code x + width * y}.
+         *
+         * @return the eventSum array, or null if not allocated
+         */
+        public int[] getEventSum() {
+            return eventSum;
+        }
+
+        /**
+         * Last event timestamp accumulated into this frame, in microseconds.
+         */
+        public int getLastTimestampUs() {
+            return lastTimestampUs;
         }
 
         /**
@@ -906,13 +909,51 @@ abstract public class DvsFramer extends EventFilter2D {
     }
 
     /**
+     * Draws a snapshot of a DVS frame on the EDT. Does not block the AE thread.
+     *
+     * @param width frame width
+     * @param height frame height
+     * @param pixmapCopy gray values 0-1, length width*height
+     */
+    protected void drawCopied(int width, int height, float[] pixmapCopy) {
+        checkActivationsFrame();
+        if (imageDisplay == null) {
+            JPanel panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+            imageDisplay = ImageDisplay.createOpenGLCanvas();
+            imageDisplay.setBorderSpacePixels(10);
+            imageDisplay.setSize(200, 200);
+            panel.add(imageDisplay);
+
+            activationsFrame.getContentPane().add(panel);
+            activationsFrame.pack();
+            activationsFrame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    setShowFrames(false);
+                }
+            });
+            activationsFrame.setVisible(true);
+        }
+        if (!activationsFrame.isVisible()) {
+            activationsFrame.setVisible(true);
+        }
+        imageDisplay.setImageSize(width, height);
+        imageDisplay.setPixmapFromGrayArray(pixmapCopy);
+        imageDisplay.repaint();
+    }
+
+    /**
      * @param showFrames the showFrames to set
      */
     public void setShowFrames(boolean showFrames) {
+        boolean old = this.showFrames;
+        this.showFrames = showFrames;
+        putBoolean("showFrames", showFrames);
         if (activationsFrame != null) {
             activationsFrame.setVisible(showFrames);
         }
-        this.showFrames = showFrames;
+        getSupport().firePropertyChange("showFrames", old, showFrames);
     }
 
     /**

@@ -49,6 +49,7 @@ import net.sf.jaer.graphics.DisplayMethod;
 import net.sf.jaer.graphics.SpaceTimeEventDisplayMethod;
 import net.sf.jaer.graphics.SpaceTimeRollingEventDisplayMethod;
 import net.sf.jaer.util.avioutput.JaerAviWriter;
+import net.sf.jaer.util.avioutput.SharedMemoryDVSFrameSender;
 import org.apache.commons.io.FilenameUtils;
 
 /**
@@ -192,6 +193,7 @@ public class AEChip extends Chip2D {
         addDefaultEventFilter(Info.class);
         addDefaultEventFilter(CellStatsProber.class);
         addDefaultEventFilter(JaerAviWriter.class);
+        addDefaultEventFilter(SharedMemoryDVSFrameSender.class);
 
         filterChain = new FilterChain(this);
         filterChain.contructPreferredFilters();

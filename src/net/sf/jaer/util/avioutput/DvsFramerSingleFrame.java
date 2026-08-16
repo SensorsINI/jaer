@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2017 Tobi.
  *
  * This library is free software; you can redistribute it and/or
@@ -18,24 +18,13 @@
  */
 package net.sf.jaer.util.avioutput;
 
-import java.awt.Rectangle;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.SocketException;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
 import net.sf.jaer.chip.AEChip;
-import net.sf.jaer.event.BasicEvent;
-import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.PolarityEvent;
-import static net.sf.jaer.eventprocessing.EventFilter.log;
 
 /**
- *
  * Concrete class for subsampling DVS input ON and OFF events to a single
  * "frame"
  *
@@ -45,9 +34,13 @@ import static net.sf.jaer.eventprocessing.EventFilter.log;
  * color scale for each event (with sign for ON and OFF events) and clipped to
  * 0-1 range.
  *
+ * Enable <i>showFrames</i> to view accumulated frames in an ImageDisplay
+ * window. {@link SharedMemoryDVSFrameSender} publishes the same frames to a
+ * memory-mapped file for a Python consumer.
+ *
  * @author Tobi
  */
-@Description("Makes single DVS frames from DVS events, and optionally sends them or possible DAVIS APS frames as serialized Java objects over UDP")
+@Description("Makes single DVS frames from DVS events (enable showFrames to view them)")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DvsFramerSingleFrame extends DvsFramer {
 
@@ -56,12 +49,11 @@ public class DvsFramerSingleFrame extends DvsFramer {
     public DvsFramerSingleFrame(AEChip chip) {
         super(chip);
         dvsFrame = new DvsFrame();
-        dvsFrame.setWidth(getInt("outputImageWidth", 64));
-        dvsFrame.setHeight(getInt("outputImageHeight", 64));
+        dvsFrame.setWidth(getOutputImageWidth());
+        dvsFrame.setHeight(getOutputImageHeight());
         dvsFrame.allocateMemory();
     }
 
-//    public 
     /**
      * Adds event from a source event location to the map by integer division to
      * the correct location in the subsampled DVS frame.
@@ -71,12 +63,12 @@ public class DvsFramerSingleFrame extends DvsFramer {
      *
      *
      * @param e the event to add
-     * @param srcWidth width of originating source sensor, e.g. 240 for DAVIS240
-     * @param srcHeight height of source address space
      */
     public void addEvent(PolarityEvent e) {
-        // find element here that contains this event
         if (e.isSpecial() || e.isFilteredOut()) {
+            return;
+        }
+        if (e instanceof ApsDvsEvent && !((ApsDvsEvent) e).isDVSEvent()) {
             return;
         }
         int srcWidth = chip.getSizeX(), srcHeight = chip.getSizeY();
@@ -114,9 +106,6 @@ public class DvsFramerSingleFrame extends DvsFramer {
         dvsFrame.setHeight(height);
         allocateMemory();
     }
-
-
-
 
     @Override
     synchronized public boolean allocateMemory() {
@@ -183,5 +172,5 @@ public class DvsFramerSingleFrame extends DvsFramer {
         }
     }
 
-  
+
 }

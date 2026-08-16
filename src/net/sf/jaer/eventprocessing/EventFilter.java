@@ -5,6 +5,7 @@ package net.sf.jaer.eventprocessing;
 
 import java.awt.Cursor;
 import java.awt.Desktop;
+import java.awt.Window;
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
 import java.net.URI;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
+import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
@@ -38,6 +40,7 @@ import java.lang.reflect.Modifier;
 import java.util.prefs.BackingStoreException;
 
 import net.sf.jaer.Description;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.eventio.AEFileInputStreamInterface;
 import net.sf.jaer.eventio.AEInputStream;
@@ -67,7 +70,12 @@ import net.sf.jaer.util.PropertyTooltipSupport;
  * fired, if the subclass has not overridden the setFilterEnabled method
  * </ul>
  *
+ * Annotate a subclass with {@link Help} to show a nonmodal HTML user-guide
+ * dialog the first time the filter is selected (controls expanded) and from the
+ * FilterPanel {@code ?} button.
+ * <p>
  * @see FilterPanel FilterPanel - which is where EventFilter's GUIs are built.
+ * @see Help
  * @see net.sf.jaer.graphics.FrameAnnotater FrameAnnotator - to annotate the
  * graphical output.
  * @see net.sf.jaer.eventprocessing.EventFilter2D EventFilter2D - which
@@ -231,6 +239,17 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * Flags this EventFilter as "selected" for purposes of control
      */
     public boolean selected = false;
+
+    /**
+     * Preferences key (appended to {@link #prefsKeyHeader()}) recording that
+     * the {@link Help} dialog has already been shown on first selection.
+     */
+    public static final String HELP_DIALOG_SHOWN_PREFS_KEY = "helpDialogShown";
+
+    /**
+     * Open nonmodal {@link Help} dialog, if any. Accessed from the EDT.
+     */
+    private JDialog helpDialog = null;
     //    /** true means the events are filtered in place, replacing the contents of the input packet and more
     //     *efficiently using memory. false means a new event packet is created and populated for the output of the filter.
     //     *<p>
@@ -312,6 +331,7 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
      * default, to perform some action on shutdown and exit.
      */
     synchronized public void cleanup() {
+        disposeHelpDialog();
         if (getEnclosedFilter() != null) {
             getEnclosedFilter().cleanup();
         }
@@ -1354,6 +1374,124 @@ public abstract class EventFilter extends Observable implements HasPropertyToolt
             return d.value();
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Returns {@link Help} HTML for this filter, or null if the class is not
+     * annotated. Subclasses may override to substitute runtime values into the
+     * annotated HTML.
+     *
+     * @return HTML help string or null
+     */
+    public String getHelp() {
+        try {
+            Help h = getClass().getAnnotation(Help.class);
+            if (h == null) {
+                return null;
+            }
+            String html = h.value();
+            if (html == null || html.trim().isEmpty()) {
+                return null;
+            }
+            return html;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * True if this filter has non-empty {@link Help} HTML.
+     */
+    public boolean hasHelp() {
+        return getHelp() != null;
+    }
+
+    /**
+     * Shows the nonmodal {@link Help} dialog if this filter has help. Safe to
+     * call from any thread. If the dialog is already open, it is brought to the
+     * front. Marks the help as shown so it is not auto-opened again on
+     * selection.
+     *
+     * @see #maybeShowHelpOnFirstActivation()
+     */
+    public void showHelpDialog() {
+        if (!hasHelp()) {
+            return;
+        }
+        Runnable r = () -> {
+            if (helpDialog != null && helpDialog.isDisplayable()) {
+                helpDialog.toFront();
+                helpDialog.setVisible(true);
+                markHelpDialogShown();
+                return;
+            }
+            Window parent = null;
+            if (chip != null) {
+                if (chip.getFilterFrame() != null) {
+                    parent = chip.getFilterFrame();
+                } else if (chip.getAeViewer() != null) {
+                    parent = chip.getAeViewer();
+                }
+            }
+            helpDialog = new EventFilterHelpDialog(parent, EventFilter.this, getHelp());
+            helpDialog.setVisible(true);
+            markHelpDialogShown();
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
+    }
+
+    /**
+     * Opens the {@link Help} dialog the first time this filter's controls are
+     * selected/expanded. Subsequent selections do nothing until
+     * {@link #showHelpDialog()} is used from the FilterPanel {@code ?} button.
+     * Called from {@link FilterPanel#setControlsVisible(boolean)}.
+     */
+    public void maybeShowHelpOnFirstActivation() {
+        if (!hasHelp() || isHelpDialogShown()) {
+            return;
+        }
+        showHelpDialog();
+    }
+
+    /**
+     * Whether the help dialog has already been auto-shown (prefs).
+     */
+    protected boolean isHelpDialogShown() {
+        if (getPrefs() == null) {
+            return false;
+        }
+        return getPrefs().getBoolean(prefsKeyHeader() + HELP_DIALOG_SHOWN_PREFS_KEY, false);
+    }
+
+    /**
+     * Remember that help was shown so first-activation does not repeat it.
+     */
+    protected void markHelpDialogShown() {
+        if (getPrefs() == null) {
+            return;
+        }
+        getPrefs().putBoolean(prefsKeyHeader() + HELP_DIALOG_SHOWN_PREFS_KEY, true);
+    }
+
+    private void disposeHelpDialog() {
+        final JDialog d = helpDialog;
+        helpDialog = null;
+        if (d == null) {
+            return;
+        }
+        Runnable r = () -> {
+            d.setVisible(false);
+            d.dispose();
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
         }
     }
 

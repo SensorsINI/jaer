@@ -30,9 +30,11 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * This annotation is used to construct tooltips for the class in class chooser
- * dialogs and EventFilter panels.
+ * dialogs and EventFilter panels. For a longer, clickable HTML user guide shown
+ * on first selection of an EventFilter, use {@link Help}.
  *
  * @author tobi
+ * @see Help
  * @see Preferred
  * @see https://docs.oracle.com/javase/tutorial/java/annotations/predefined.html
  */

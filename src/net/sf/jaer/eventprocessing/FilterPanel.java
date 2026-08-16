@@ -111,6 +111,9 @@ import net.sf.jaer.util.XMLFileFilter;
  * <li> String properties construct a JTextField control.
  * <li> enum properties construct a JComboBox control, which all the possible
  * enum constant values.
+ * <li> If the filter class is annotated with {@link net.sf.jaer.Help}, a
+ * {@code ?} button is added next to Reset / Show controls. Expanding the
+ * panel the first time opens that HTML help dialog; the button opens it again.
  * </ul>
  * <p>
  * If a filter wants to automatically have the GUI controls reflect what the
@@ -327,6 +330,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
      */
     private boolean hideOthers = true;
 
+    /** Shown only when the filter has {@link net.sf.jaer.Help}. */
+    private JButton helpButton = null;
+
     /**
      * Creates new form FilterPanel
      */
@@ -379,7 +385,21 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
 
         ToolTipManager.sharedInstance().setDismissDelay(10000); // to show tips
         setToolTipText(f.getDescription());
-//        helpBut.setToolTipText("<html>" + f.getDescription() + "<p>Click to show/create wiki page");
+        if (getFilter().hasHelp()) {
+            helpButton = new JButton("?");
+            helpButton.setFont(new java.awt.Font("Tahoma", 0, 9));
+            helpButton.setMargin(new Insets(1, 5, 1, 5));
+            helpButton.setToolTipText("Show help for this filter");
+            helpButton.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    getFilter().showHelpDialog();
+                }
+            });
+            enableResetControlsHelpPanel.add(helpButton);
+            Dimension helpPanelSize = enableResetControlsHelpPanel.getPreferredSize();
+            enableResetControlsHelpPanel.setMaximumSize(new Dimension(Math.max(240, helpPanelSize.width + 8), helpPanelSize.height));
+        }
     }
 
     // checks for group container and adds to that if needed.
@@ -2404,6 +2424,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         showPropertyHighlightsOrVisibility(null, isSimple());
         revalidate();
         repaint();
+        if (visible) {
+            getFilter().maybeShowHelpOnFirstActivation();
+        }
     }
 
     private void setBorderActive(final boolean yes) {
