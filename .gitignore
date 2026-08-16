@@ -74,3 +74,5 @@ deviceSettings/olderSystemsAndExperimental/
 !.signpath/**/
 !.signpath/**/*.xml
 .cursor/plans/jaer3_60s_shot_list_6114896f.plan.md
+release-notes/3.2.0/roshambo-example.mp4
+.cursor/plans/*.plan.md
