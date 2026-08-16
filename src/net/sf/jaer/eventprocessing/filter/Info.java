@@ -18,6 +18,7 @@ import com.jogamp.opengl.glu.GLUquadric;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
@@ -59,6 +60,42 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
  * @author tobi
  */
 @Description("Adds useful information annotation to the display, e.g. date/time/event rate")
+@Help("""
+<html>
+<body>
+<h2>Info</h2>
+<p>Overlays a <b>clock</b>, <b>event rate</b>, accumulated counts, packet timestamp stats,
+and optional sparsity on the AEViewer display. It does not change the event stream except
+through its enclosed ROI filter (used only for rate measurement).</p>
+<hr>
+<h3>Time</h3>
+<ul>
+<li><code>analogClock</code> / <code>digitalClock</code> &mdash; analog face and/or
+<code>HH:mm:ss.SSS</code> time.</li>
+<li><code>localTime</code> &mdash; wall-clock (from the file or live PC time) vs timestamp
+time relative to the recording start.</li>
+<li><code>doResetTime</code> &mdash; zero the stopwatch on the next packet;
+<code>resetTimeOnRewind</code> does the same on each rewind.</li>
+</ul>
+<h3>Rate and counts</h3>
+<ul>
+<li><code>eventRate</code> &mdash; filtered average rate; scale the bar with
+<code>eventRateScaleMax</code>. <code>eventRatePerPixel</code> shows rate per selected pixel.</li>
+<li>Expand the enclosed <code>TypedEventRateEstimator</code> and enable
+<code>measureIndividualTypesEnabled</code> for separate ON/OFF rates.</li>
+<li><code>showRateTrace</code> &mdash; history graph of rate over the file (capped by
+<code>maxSamples</code>).</li>
+<li><code>showAccumulatedEventCount</code> &mdash; DVS / APS / IMU counts since last reset
+or rewind (useful after Mark in a recording).</li>
+<li><code>showPacketTimestampStats</code> &mdash; events, unique timestamps, min &Delta;t, span
+of the displayed packet (after upstream filters).</li>
+</ul>
+<p>The enclosed <code>XYTypeFilter</code> can restrict which pixels contribute to the rate;
+clear its selection if the rate looks too low. Enable <code>logStatistics</code> to write a CSV
+in the user home folder.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Info extends EventFilter2D implements FrameAnnotater, PropertyChangeListener {
 

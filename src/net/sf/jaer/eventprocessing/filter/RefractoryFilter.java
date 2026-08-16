@@ -7,6 +7,7 @@ import java.util.Observable;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -26,6 +27,31 @@ import net.sf.jaer.graphics.AbstractAEPlayer;
  * @author tobi
  */
 @Description("Applies a refractory period to pixels so that they events only pass if there is sufficient time since the last event from that pixel")
+@Help("""
+<html>
+<body>
+<h2>RefractoryFilter</h2>
+<p>Enforces a per-pixel <b>dead time</b>: an event from a pixel is passed only if enough time
+has elapsed since that pixel last spiked. Use it to knock down high firing rates, USB
+duplicate timestamps, or chatter from a few cells.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li>Set <code>correlationTimeS</code> to the refractory period in seconds
+(same property name as other noise filters; here it is the ISI threshold).</li>
+<li>Optionally raise <code>subsampleBy</code> so several neighboring pixels share one
+timestamp (coarser refractory map).</li>
+</ol>
+<h3>Invert: pass only short ISIs</h3>
+<p>Check <code>passShortISIsEnabled</code> to keep events that arrive <i>sooner</i> than
+<code>correlationTimeS</code> and block the rest. If the period is 0, that can block
+events that share an identical timestamp from the same pixel.</p>
+<p>Special events are not delayed. This filter does not use the spatial-correlation
+controls of <code>SpatioTemporalCorrelationFilter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RefractoryFilter extends AbstractNoiseFilter implements PropertyChangeListener {
 

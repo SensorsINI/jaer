@@ -44,6 +44,7 @@ import eu.seebetter.ini.chips.davis.DavisVideoContrastController;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.event.PolarityEvent;
 import static net.sf.jaer.eventprocessing.EventFilter.log;
@@ -64,6 +65,39 @@ import net.sf.jaer.util.TobiLogger;
  * GNU_Lesser_General_Public_License</a>.
  */
 @Description("Collects and displays statistics for a selected range of pixels / cells")
+@Help("""
+<html>
+<body>
+<h2>CellStatsProber</h2>
+<p>Collects <b>event-rate and interspike-interval (ISI)</b> statistics for pixels inside a
+mouse-drawn region of interest (ROI) and overlays histograms and summary text.
+It does not filter the stream; it only measures and annotates.</p>
+<hr>
+<h3>Select pixels</h3>
+<ol>
+<li>Expand this filter so mouse events go to it (do not hold Alt/Ctrl/Shift while dragging).</li>
+<li>Drag on the display to draw an ROI rectangle. Enable <code>multiROI</code> to add more
+boxes. <code>freezeRoi</code> locks the selection; <code>clearROI</code> clears it.</li>
+<li>Check <b>Enabled</b> so statistics are updated while events play.</li>
+</ol>
+<h3>What to display</h3>
+<ul>
+<li><code>rateEnabled</code> &mdash; average rate (Hz) for the ROI; time constant
+<code>rateTauMs</code>.</li>
+<li><code>isiHistEnabled</code> &mdash; ISI histogram (log-spaced bins if
+<code>logISIEnabled</code>). Set <code>isiMinUs</code> / <code>isiMaxUs</code> /
+<code>isiNumBins</code>. <code>freqHistEnabled</code> shows frequency instead of ISI.</li>
+<li><code>showIndividualISIHistograms</code> vs average of all cells in the ROI.
+<code>separateEventTypes</code> splits ON/OFF.</li>
+<li><code>showRateDistribution</code> &mdash; histogram of per-pixel mean rates.</li>
+<li><code>spikeSoundEnabled</code> &mdash; click when the ROI has events.</li>
+<li><code>writeHistogramCSV</code> &mdash; export the current histogram.</li>
+</ul>
+<p>Keep the ROI modest: every selected pixel can allocate its own histogram. If you run out
+of heap, shrink or clear the ROI.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class CellStatsProber extends EventFilter2DMouseROI implements FrameAnnotater, MouseListener, MouseMotionListener, Observer,
         PropertyChangeListener {

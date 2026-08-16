@@ -10,6 +10,7 @@ import java.util.Random;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -30,6 +31,47 @@ import net.sf.jaer.util.RemoteControlCommand;
  */
 @Description("<html>Denoises uncorrelated noise events by multiple events in spatiotemporal neighborhood."
         + "<p>Published in Guo & Delbruck, T-PAMI 2022 <a href=\"http://dx.doi.org/10.1109/TPAMI.2022.3152999\">10.1109/TPAMI.2022.3152999</a>")
+@Help("""
+<html>
+<body>
+<h2>SpatioTemporalCorrelationFilter</h2>
+<p>Default DVS <b>background-activity (BA) denoiser</b>. An event is kept only if enough
+neighbors in its 3&times;3 neighborhood also spiked within the correlation time
+<code>correlationTimeS</code> (default 25&nbsp;ms). Uncorrelated shot / leakage noise is
+filtered out.</p>
+<p>Source paper:
+<a href="https://doi.org/10.1109/TPAMI.2022.3152999">Low Cost and Latency Event Camera
+Background Activity Denoising</a>
+(Guo &amp; Delbruck, <i>IEEE Trans. Pattern Anal. Mach. Intell.</i>, vol.&nbsp;45, no.&nbsp;1,
+pp.&nbsp;785&ndash;795, 2023).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b> (this filter is on the default chip filter list).</li>
+<li>Watch the overlay percentage of events removed
+(<code>showFilteringStatistics</code>).</li>
+<li>Tune <code>correlationTimeS</code>: shorter rejects more noise but can eat slow
+real motion; longer keeps more signal in dim / slow scenes.</li>
+</ol>
+<h3>Main controls</h3>
+<ul>
+<li><code>numMustBeCorrelated</code> &mdash; how many of the 9 pixels (including the event
+itself, unless <code>filterHotPixels</code>) must have a recent event. Default 2.</li>
+<li><code>polaritiesMustMatch</code> &mdash; correlating neighbors must have the same ON/OFF
+polarity (recommended).</li>
+<li><code>filterHotPixels</code> &mdash; do not count a pixel correlating with itself
+(helps stuck / hot pixels).</li>
+<li><code>filterAlternativePolarityShotNoiseEnabled</code> &mdash; after the spatial test,
+drop ON-after-OFF (or vice versa) within <code>shotNoiseCorrelationTimeS</code>
+(thermal shot noise with a short refractory period).</li>
+<li><code>subsampleBy</code> &mdash; right-shift addresses when indexing the timestamp map
+(coarser neighborhood, cheaper, less precise).</li>
+</ul>
+<p>Put this filter <b>before</b> trackers and other algorithms that assume a cleaner event
+stream. For labeled-noise evaluation see <code>NoiseTesterFilter</code>.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SpatioTemporalCorrelationFilter extends AbstractNoiseFilter {
 

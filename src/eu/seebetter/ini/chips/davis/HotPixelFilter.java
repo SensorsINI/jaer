@@ -21,6 +21,7 @@ import java.awt.Font;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
@@ -41,6 +42,31 @@ import net.sf.jaer.util.DrawGL;
  * @author tobi
  */
 @Description("Cheaply suppresses (filters out) hot pixels from DVS; ie pixels that continuously fire events when when the visual input is idle.")
+@Help("""
+<html>
+<body>
+<h2>HotPixelFilter</h2>
+<p>Learns a list of <b>hot pixels</b> (addresses that fire a sustained stream while the
+scene is idle) and then drops those events. Cheap lookup; complementary to
+<code>SpatioTemporalCorrelationFilter</code>, which is a spatiotemporal BA denoiser.</p>
+<hr>
+<h3>How to learn</h3>
+<ol>
+<li>Cover the lens, or hold a static, uninteresting scene, so only leakage / stuck pixels fire.</li>
+<li>Set <code>learnTimeMs</code> (default 500&nbsp;ms) and
+<code>numHotPixelsMax</code> (cap on how many addresses to keep).</li>
+<li>Click <code>doLearnHotPixels</code> and wait for the collection interval to finish
+while events are playing.</li>
+<li>Check <b>Enabled</b> so learned addresses are filtered out. Use
+<code>showHotPixels</code> to mark them on the display.</li>
+</ol>
+<p><code>doClearHotPixels</code> forgets the list. ON and OFF of the same pixel are
+separate addresses, so both can be hot. For a large list, <code>use2DBooleanArray</code>
+is faster than the hash set.</p>
+<p>Learn while the camera is stationary; motion during learning will mark real edges as hot.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class HotPixelFilter extends AbstractNoiseFilter implements FrameAnnotater {
 

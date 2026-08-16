@@ -24,6 +24,7 @@ import eu.seebetter.ini.chips.DavisChip;
 import eu.seebetter.ini.chips.davis.imu.IMUSample;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.Preferred;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
@@ -57,6 +58,49 @@ import net.sf.jaer.util.filter.HighpassFilter;
  * @author tobi
  */
 @Description("Stabilizes the scene using the built-in IMU rate gyros (electronic SteadiCam)")
+@Help("""
+<html>
+<body>
+<h2>Steadicam</h2>
+<p>Electronic image stabilization: integrates the camera IMU <b>rate gyros</b>, high-pass
+filters pan/tilt/roll, and counter-warps DVS events (and optionally APS rendering) so a
+rotating/translating camera looks still. Needs a DAVIS (or other chip) that provides
+<code>IMUSample</code>s.</p>
+<p>Source paper:
+<a href="https://ieeexplore.ieee.org/document/6865714">Integration of dynamic vision sensor
+with inertial measurement unit for electronically stabilized event-based vision</a>
+(Delbruck, Villanueva &amp; Longinotti, <i>IEEE Int. Symp. Circuits and Systems (ISCAS)</i>,
+2014, pp.&nbsp;2636&ndash;2639).</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Use a live camera or recording that includes IMU gyro samples.</li>
+<li>Hold the camera still for 1&ndash;2&nbsp;s and click <code>doZeroGyro</code> (averages
+<code>numCalibrationSamples</code> to subtract gyro bias). <code>doEraseGyroZero</code>
+clears the offset.</li>
+<li>Set <code>lensFocalLengthMm</code> to your lens so rotation maps to the correct number
+of pixels.</li>
+<li>Check <b>Enabled</b> and <code>electronicStabilizationEnabled</code>. Use
+<code>showGrid</code> / <code>showTransformRectangle</code> to judge residual motion.</li>
+</ol>
+<h3>Tuning</h3>
+<ul>
+<li><code>highpassTauMsTranslation</code> / <code>highpassTauMsRotation</code> &mdash;
+relax the transform back to identity (longer keeps more of a slow pan).</li>
+<li><code>disableTranslation</code> / <code>disableRotation</code> &mdash; stabilize only
+one component.</li>
+<li><code>doSelectCenterOfRotation</code> then click the image if the optical center is not
+the array center; <code>doEraseCenterOfRotationSelection</code> restores the default.</li>
+<li><code>transformImageEnabled</code> &mdash; warp APS display only (pixel data in the
+packet are unchanged).</li>
+<li><code>transformResetLimitDegrees</code> &mdash; snap the transform to zero if pan/tilt
+grow too large.</li>
+</ul>
+<p>This is not visual odometry: it only undoes IMU-measured rotation/translation of the
+camera, not scene motion.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class Steadicam extends EventFilter2DMouseAdaptor implements FrameAnnotater, PropertyChangeListener {
 

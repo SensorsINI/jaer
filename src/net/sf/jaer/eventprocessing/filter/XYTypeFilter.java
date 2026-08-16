@@ -31,6 +31,7 @@ import com.jogamp.opengl.util.gl2.GLUT;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
@@ -52,6 +53,34 @@ import net.sf.jaer.util.DrawGL;
  * @author tobi
  */
 @Description("Filters a region of interest (ROI) defined by x, y, and event type ranges")
+@Help("""
+<html>
+<body>
+<h2>XYTypeFilter</h2>
+<p>Passes (or blocks) events in a <b>region of interest</b> defined by column <code>x</code>,
+row <code>y</code>, and event <code>type</code> (usually 0=OFF, 1=ON for DVS/DAVIS).
+Use it to crop borders, isolate a target, or keep only one polarity.</p>
+<hr>
+<h3>Select a rectangle on the display</h3>
+<ol>
+<li>Expand this filter so it is selected (mouse events go to it).</li>
+<li>Drag on the AEViewer image to draw a box. That enables <code>x</code> and <code>y</code>
+filtering and sets <code>startX</code>/<code>endX</code> and <code>startY</code>/<code>endY</code>.</li>
+<li>Check <b>Enabled</b> so the ROI is applied. Events outside the box are filtered out.</li>
+</ol>
+<p>Check <code>invertSelection</code> to pass events <i>outside</i> the box instead.
+<code>lockSelections</code> prevents accidental mouse edits.</p>
+<h3>Type (polarity)</h3>
+<p>Enable <code>typeEnabled</code> and set <code>startType</code>&ndash;<code>endType</code>
+(e.g. both 1 to pass only ON events). Overlay text can be toggled with
+<code>showTypeFilteringText</code>.</p>
+<h3>Circle and multiple boxes</h3>
+<p>Enable <code>circularShapeFilter</code>, set <code>circularRadiusPixels</code>, then
+<code>doSelectCircularShapeCenterPoint</code> and click the display to place the disk.
+<code>multiSelectionEnabled</code> lets you drag several rectangles (saved in preferences).</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class XYTypeFilter extends EventFilter2DMouseAdaptor implements FrameAnnotater, MouseListener, MouseMotionListener {
 

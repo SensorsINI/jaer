@@ -12,6 +12,7 @@ import java.awt.Point;
 
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
@@ -32,6 +33,31 @@ import net.sf.jaer.eventprocessing.EventFilter2D;
  * @author tobi
  */
 @Description("Rotates or otherwise transforms the event addresses")
+@Help("""
+<html>
+<body>
+<h2>RotateFilter</h2>
+<p>Remaps event addresses in place (no copy) so the scene matches how you hold the camera
+or how later filters expect <code>x</code>/<code>y</code>. On DAVIS chips it also remaps
+APS frame pixels with the same geometry.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Check <b>Enabled</b>.</li>
+<li>Turn on the transform you need (they can be combined; order is swap, 90&deg;, invert, then arbitrary angle):</li>
+</ol>
+<ul>
+<li><code>swapXY</code> &mdash; exchange column and row (portrait/landscape).</li>
+<li><code>rotate90deg</code> &mdash; 90&deg; counterclockwise.</li>
+<li><code>invertX</code> / <code>invertY</code> &mdash; flip about that axis.
+Set <b>both</b> for 180&deg;.</li>
+<li><code>angleDeg</code> &mdash; additional CCW rotation about the array center (events that
+fall outside the chip after rotation are filtered out).</li>
+</ul>
+<p>Leave all options off for a no-op. Special events are left unchanged.</p>
+</body>
+</html>
+""")
 @DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class RotateFilter extends EventFilter2D {
 
