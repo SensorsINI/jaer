@@ -100,6 +100,13 @@ on each filled frame it sends <code>FRAME_READY</code>. If TCP is unused, the co
 headers for a new sequence number.</p>
 <p>Each slot is little-endian. Slot size = 64 + width&times;height bytes. Magic <code>JAER</code>,
 <code>channels=1</code>, <code>dtype=U8</code>.</p>
+<p><b>Pixel layout (row-major, x fastest):</b> after the 64-byte header, pixels are packed as
+<code>uint8[height*width]</code>. The byte at <code>(x, y)</code> is at
+<code>offset = 64 + y * width + x</code> (and <code>stride_bytes = width</code>).
+Stepping <b>one byte forward</b> moves to the <b>next column</b> (<code>x+1</code>) in the same row.
+After <code>width</code> bytes you wrap to the next row (<code>y+1</code>, <code>x=0</code>).
+Row <code>y=0</code> is sensor <code>y=0</code> (jAER lower-left) unless <code>flipY</code>,
+which writes row 0 as sensor <code>y=height-1</code> (top-left / OpenCV).</p>
 <p>Source:
 <a href="https://github.com/SensorsINI/jaer/blob/master/src/net/sf/jaer/util/avioutput/SharedMemoryDVSFrameSender.java">SharedMemoryDVSFrameSender.java</a>.</p>
 <p>jAER does not load TensorFlow; CNN weights stay in the Python project.</p>
