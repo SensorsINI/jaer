@@ -1,26 +1,52 @@
 <!--
-  Paste-ready for GitHub Releases once these files are on GitHub (master or tag 3.2.0).
-  Image links below use raw.githubusercontent.com so they render in the Release body.
-  After you push tag 3.2.0, optionally change /master/ → /3.2.0/ in the image URLs for permanence.
+  Paste-ready for GitHub Releases. Image links use raw.githubusercontent.com so they
+  render in the Release body. Relative paths work in the repo, not in a Release description.
 
-  Relative paths (3.2.0/....png) also work when viewing this file in the repo on GitHub,
-  but they do NOT work when pasted into a Release description — use the absolute URLs.
-
-  Keep the Which installer / <a id="assets"></a> block last so it sits just above GitHub’s
-  Assets list (per-OS install steps belong there, next to the download table).
-  Copy it into later jaer-*-release-notes.md and bump 3.2.0 / 3_2_0.
+  Put the download table and short OS notes at the top. GitHub always appends its own
+  Assets list at the bottom of the Release page — do not duplicate a long installer
+  section there. Copy this layout into later jaer-*-release-notes.md and bump 3.2.0 / 3_2_0.
 
   Images: GFM has no size syntax. Use HTML <img src="..." alt="..." width="50%" />
-  (GitHub allows width/height on img; it strips style=). Copy that for later notes.
+  (GitHub allows width/height on img; it strips style=).
 -->
 
-Download jAER installers from [Assets](#assets) at the end of this page (~300 MB each; Java is bundled). **Windows, macOS, and Linux install steps** are in [Which installer to download](#assets), immediately above the file list. On a Mac, pick **Apple Silicon** vs **Intel** using the table there.
+## Download
 
-**Note: starting with this 3.2.0 release, releases are shared via GitHub Assets, and jAER can self-update via Download and Install.** Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0).
+| You have | CPU | Download |
+|---|---|---|
+| Windows 10 / 11 | x64 | [jAER_windows-x64_3_2_0.exe](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_windows-x64_3_2_0.exe) |
+| macOS | Apple Silicon (M1–M4) | [jAER_macos_aarch64_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_aarch64_3_2_0.dmg) |
+| macOS | Intel | [jAER_macos_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_3_2_0.dmg) |
+| Linux | x64 | [jAER_unix_3_2_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_unix_3_2_0.sh) |
 
-Installed jAER: Help → Check for release updates… → **Download and install**.
+Each installer is ~300 MB and includes Eclipse Temurin 21 — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page.
 
-See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
+Video: [installing and updating jAER on YouTube](https://youtu.be/qQVt8_gwYVY) (also covers *git clone* and rebuild from master).
+
+Starting with 3.2.0, installers are GitHub Release assets and jAER can self-update (Help → Check for release updates… → **Download and install**). Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0).
+
+### Windows
+
+Download the `.exe` and run it. This build is not Authenticode-signed yet: SmartScreen may say *Windows protected your PC* — **More info** → **Run anyway** (and **Install anyway** if the installer also warns). USB cameras: if jAER reports `LIBUSB_ERROR_NOT_SUPPORTED`, bind **WinUSB** with [Zadig](https://zadig.akeo.ie/) (not libusb-win32). Prophesee EVK4 can use Prophesee **wdi-simple**. Screenshots are under Highlights below.
+
+### macOS
+
+Apple menu → About This Mac: **Chip** Apple M1–M4 → `aarch64` DMG; **Processor** Intel → `jAER_macos_3_2_0.dmg` (no `aarch64` in the name). Terminal: `uname -m` is `arm64` or `x86_64`.
+
+Open the DMG and run the installer. The build is unsigned; if macOS blocks it, [right-click → Open](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac) (or Privacy & Security → **Open Anyway**). Prefer a user folder (`~/Applications` or `~/jaer`) if you do not want an admin install.
+
+**Apple Silicon USB cameras** need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. If the dylib is missing, jAER shows a how-to and quits so the next launch can load it.
+
+### Linux
+
+```bash
+chmod +x jAER_unix_3_2_0.sh
+sh jAER_unix_3_2_0.sh
+```
+
+Start jAER from the install directory or the desktop / GNOME entry the installer created. No official apt / `.deb` (USB cameras need an unsandboxed install).
+
+---
 
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/SplashScreen.png" alt="jAER 3.2.0 splash" width="50%" />
 
@@ -177,57 +203,3 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * Fixed empty HDF5 close crash (jHDF 0.12 cannot write zero-length arrays) and zero-event export after seek-back (`NonMonotonicTimeException` on the first packet).
 
 **Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.1.0...3.2.0
-
-<a id="assets"></a>
-
-## Which installer to download
-
-GitHub lists the files under **Assets** immediately below this section ([Release Assets](https://github.com/SensorsINI/jaer/releases/tag/3.2.0#assets)). Each installer is ~300 MB and includes Eclipse Temurin 21 — you do not install Java yourself.
-
-Video: [installing and updating jAER on YouTube](https://youtu.be/qQVt8_gwYVY).
-
-| You have | CPU | Download |
-|---|---|---|
-| Windows 10 / 11 | x64 | [jAER_windows-x64_3_2_0.exe](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_windows-x64_3_2_0.exe) |
-| macOS | Apple Silicon (M1, M2, M3, M4) | [jAER_macos_aarch64_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_aarch64_3_2_0.dmg) |
-| macOS | Intel | [jAER_macos_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_3_2_0.dmg) |
-| Linux | x64 | [jAER_unix_3_2_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_unix_3_2_0.sh) |
-
-### Windows
-
-1. Download [jAER_windows-x64_3_2_0.exe](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_windows-x64_3_2_0.exe).
-2. Run the installer. This 3.2.0 Windows build is not Authenticode-signed yet, so SmartScreen may say *Windows protected your PC*: click **More info**, then **Run anyway**. If the installer also warns, click **Install anyway**.
-3. Finish the install4j wizard (Start Menu / desktop shortcut is created).
-4. USB cameras: if jAER reports `LIBUSB_ERROR_NOT_SUPPORTED`, bind **WinUSB** with [Zadig](https://zadig.akeo.ie/) (not libusb-win32). Prophesee EVK4 can use Prophesee **wdi-simple** instead. Screenshots are in Highlights above.
-5. Later updates: Help → Check for release updates… → **Download and install**.
-
-### macOS
-
-Apple menu → About This Mac. If **Chip** is Apple M1/M2/M3/M4, use the `aarch64` DMG. If **Processor** is Intel, use `jAER_macos_3_2_0.dmg` (no `aarch64` in the name). Terminal: `uname -m` is `arm64` (Apple Silicon) or `x86_64` (Intel).
-
-1. Download the matching DMG from the table.
-2. Open the DMG and run the jAER installer. The build is unsigned; if macOS blocks it, see [Open a Mac app from an unidentified developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac): **right-click** the installer → **Open**, or System Settings → Privacy & Security → **Open Anyway**. You can also right-click the DMG → Open With → Archive Utility, then run the installer inside.
-3. Prefer a **user folder** (for example `~/Applications` or `~/jaer`) rather than `/Applications` if you do not want an admin install.
-4. **Apple Silicon only:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb):
-
-   ```bash
-   brew install libusb
-   ```
-
-   If the dylib is missing, jAER shows a how-to and quits so the next launch can load it.
-5. Later updates: Help → Check for release updates… → **Download and install**.
-
-### Linux
-
-1. Download [jAER_unix_3_2_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_unix_3_2_0.sh).
-2. Make it executable and run it:
-
-   ```bash
-   chmod +x jAER_unix_3_2_0.sh
-   sh jAER_unix_3_2_0.sh
-   ```
-
-3. Start jAER from the installation directory or the desktop / GNOME menu entry the installer created.
-4. Later updates: Help → Check for release updates… → **Download and install**.
-
-No official apt / `.deb` is provided (USB cameras need an unsandboxed install).

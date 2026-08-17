@@ -24,9 +24,9 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 
    Dry run: add `-WhatIf`. Re-upload after a rebuild: same command (`--clobber`).
    Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`).
-   End that file with the **Which installer to download** block (see 3.2.0 notes) so it sits
-   just above GitHub’s Assets list. Update the version in filenames (`3_2_0` / tag `3.2.0`)
-   and keep `<a id="assets"></a>` so `[Assets](#assets)` in the same notes jumps there.
+   Put the download table and concise OS notes at the **top** (see 3.2.0 notes). GitHub
+   always appends **Assets** at the bottom of the Release page — do not duplicate a long
+   installer section there. Update version in filenames (`3_2_0` / tag `3.2.0`).
    Notes only:
 
        ant upload-release-notes
