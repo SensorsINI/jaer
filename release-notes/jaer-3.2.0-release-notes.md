@@ -5,15 +5,21 @@
 
   Relative paths (3.2.0/....png) also work when viewing this file in the repo on GitHub,
   but they do NOT work when pasted into a Release description — use the absolute URLs.
+
+  Keep the Which installer / <a id="assets"></a> block last so it sits just above GitHub’s
+  Assets list. Copy it into later jaer-*-release-notes.md and bump 3.2.0 / 3_2_0.
+
+  Images: GFM has no size syntax. Use HTML <img src="..." alt="..." width="50%" />
+  (GitHub allows width/height on img; it strips style=). Copy that for later notes.
 -->
 
-Download jAER installers from the Assets (at the end of these release notes) for your operating system (canonical; ~300 MB each).
+Download jAER installers from [Assets](#assets) (end of this page; ~300 MB each). On a Mac, pick **Apple Silicon** vs **Intel** using the table there.
 
 Windows builds may be SignPath-signed. Older copies may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) as an archive. Installed copies: Help → Check for release updates… → **Download and install**.
 
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
 
-![jAER 3.2.0 splash](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/SplashScreen.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/SplashScreen.png" alt="jAER 3.2.0 splash" width="50%" />
 
 **jAER 3.2.0** is a feature release for **live USB cameras**, **filter help**, and **file playback**. Live USB is **verified on Windows, macOS (including Apple Silicon), and Linux**. New: **EventFilter Help** (`?` on the filter panel), a **hello-world path to drive a Python DNN** (`SharedMemoryDVSFrameSender` + [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python)), **USB tuning** with per-camera FIFO/buffer defaults, **libusb hotplug** on Linux, **Homebrew libusb** how-to on Apple Silicon, **WinUSB install help** on Windows, a **Davis-style EVK4 bias panel**, **DVXplorer contrast-threshold / ReadoutFPS** control, and an EVK4 SuperSpeed stall fix. **File → Preferences → Export/Reset** exports, imports, or reverts the `/jaer` Preferences tree (quit and restart afterwards). Playback: **DSEC-layout HDF5** (play and **File → Save As**), **Metavision DAT** (`.dat` with `% ` header), **faster DV / AEDAT-4 LZ4**, more **DVS color modes**, **File → Export video** (Show folder / Play video), and an **Intel Arc OpenGL** fix when switching AEChips live.
 
@@ -21,27 +27,27 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 * **EventFilter Help** — filters with an `@Help` annotation open a nonmodal HTML dialog the first time you expand their controls, and again from the **`?`** button. Links open in the system browser. Default-chain guides: **SpatioTemporalCorrelationFilter** (BA denoiser), **CellStatsProber**, **Info**, **HotPixelFilter**, **RotateFilter**, **XYTypeFilter**, **RefractoryFilter**, and **SharedMemoryDVSFrameSender**. **Steadicam** has a guide when you add it.
 
-![EventFilter Help — SpatioTemporalCorrelationFilter](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/help-example-STCF.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/help-example-STCF.png" alt="EventFilter Help — SpatioTemporalCorrelationFilter" width="50%" />
 
-![EventFilter Help — CellStatsProber](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/help-example-cell-stats-prober.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/help-example-cell-stats-prober.png" alt="EventFilter Help — CellStatsProber" width="50%" />
 
 * **Hello world: jAER driving a Python DNN** — enable **SharedMemoryDVSFrameSender** (on the default filter list) to publish 64×64 DVS event-count frames over a memory-mapped file plus localhost TCP. Run [dextra-roshambo-python](https://github.com/SensorsINI/dextra-roshambo-python) `consumer.py --jaer-mmap … --serial_port None --windowed` to classify rock / scissors / paper. Sample throws: [Davis346 Roshambo](https://drive.google.com/file/d/1hEI4HMODwAu6Pm9P4oDecePbfv--Lwbg/view?usp=drive_link) (chip **Davis346blue**). CNN weights stay in Python; jAER does not load TensorFlow.
 
-![jAER SharedMemoryDVSFrameSender + Roshambo CNN](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/roshambo-example.gif)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/roshambo-example.gif" alt="jAER SharedMemoryDVSFrameSender + Roshambo CNN" width="50%" />
 
 * **Live USB on Windows, macOS, and Linux** — live USB cameras (DAVIS346 / DAVIS240, DVXplorer, DVS128, EVK4, NRV DELTA01, CDAVIS, cochleas) were verified on all three desktop OSes (macOS includes Apple Silicon). Linux: libusb **hotplug** wakes WAITING discovery immediately. Apple Silicon: Homebrew **libusb** is required (`brew install libusb`; `ant run` installs it when Homebrew is present). If the dylib is missing, jAER shows a how-to and quits so the next launch can load it. Windows: WinUSB via Zadig when libusb reports `LIBUSB_ERROR_NOT_SUPPORTED`. Camera list: [README Device hardware support](https://github.com/SensorsINI/jaer#device-hardware-support).
 
-![jAER supported cameras](https://raw.githubusercontent.com/SensorsINI/jaer/master/images/supported-cameras-annotated.jpg)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/images/supported-cameras-annotated.jpg" alt="jAER supported cameras" width="50%" />
 
 * **USB tuning** — USB → **USB tuning...** opens a modeless window (spinners, typed values, mouse wheel) for FIFO bytes, buffer count, AE render-packet size, and Prophesee **Live keep**. Values auto-apply after a short pause; **Requested** vs **Active** status shows when the reader has restarted. Per-camera defaults from live tuning: DVS128 / Davis240 **32 KiB × 4**, Davis346 **128 KiB × 4** (1.2M events), NRV **512 KiB × 16** (2M events), EVK4 **2 MiB × 4** (2M render/keep). **Reset USB interface** remains on the USB menu for recovery.
 
-![USB tuning (EVK4 live)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/usb-tuning.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/usb-tuning.png" alt="USB tuning (EVK4 live)" width="50%" />
 
 * **WinUSB required (Windows)** — if libusb reports `LIBUSB_ERROR_NOT_SUPPORTED`, jAER shows how to bind **WinUSB** with [Zadig](https://zadig.akeo.ie/) (not libusb-win32). Prophesee EVK4 can use Prophesee **wdi-simple** instead.
 
-![Windows WinUSB driver required](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/missing_winusb_dialog.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/missing_winusb_dialog.png" alt="Windows WinUSB driver required" width="50%" />
 
-![Zadig: install WinUSB for EVK4 (04B4:00F5)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/zadig-winusb-install.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/zadig-winusb-install.png" alt="Zadig: install WinUSB for EVK4 (04B4:00F5)" width="50%" />
 
 * **EVK4 user-friendly biases** — Hardware Configuration **User-Friendly Controls** for brightness-change threshold, ON/OFF balance, and pixel low/high-pass as additive tweaks around saved preferences (no claimed digital-to-physical mapping). SuperSpeed live path no longer stalls after ISSD start (do not `CLEAR_HALT` on 0x81 while async URBs are queued).
 
@@ -51,27 +57,27 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 
 * **Welcome overlay** — idle WAITING view shows version, File/Open, AEChip, and Help → Sample data. AEChip menu items show `@Description` tooltips. Help → **Release notes** opens GitHub Releases.
 
-![Welcome overlay (WAITING)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/welcome-overlay.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/welcome-overlay.png" alt="Welcome overlay (WAITING)" width="50%" />
 
 * **DSEC-layout HDF5 playback** — open cooked `events.h5` / `.hdf5` with `/events/{p,t,x,y}`, `/ms_to_idx`, and `/t_offset` (Blosc + ZSTD via jHDF). Sensor size is peeked from HDF5 attributes or max `x`/`y` (not assumed VGA): **640×480 → `DVS640`**, **1280×720 → `DVS1280x720SD`**. Works with [DSEC](https://dsec.ifi.uzh.ch/) driving sequences and HD stereo kitchen recordings from [EventKitchen](https://chengmingf.github.io/EventKitchen.github.io/index.html). Drag-and-drop or File → Open; Esc cancels a queued jog and shows a wait cursor while slow seeks drain. DSEC `y=0` is top (image / UL origin); `p` is 0=off / 1=on. **File → Save As…** (`Ctrl+Shift+S`) writes the same layout from any playback file.
 
-![DSEC VGA events.h5 playback (DVS640)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/dsec-h5-playback.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/dsec-h5-playback.png" alt="DSEC VGA events.h5 playback (DVS640)" width="50%" />
 
-![EventKitchen HD LeftEvent.hdf5 playback (DVS1280x720SD)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/eventkitchen-hdf5-playback.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/eventkitchen-hdf5-playback.png" alt="EventKitchen HD LeftEvent.hdf5 playback (DVS1280x720SD)" width="50%" />
 
 * **File → Save As…** (`Ctrl+Shift+S`, playback only) — offline export to CSV/text or DSEC-layout `.h5` (pauses playback; not AEDAT relogging). Optional **Use IN and OUT markers** and **Apply EventFilters** (both on by default). The default output name is `{open-recording}-export.h5` (or `.csv`) next to the source file. When finished: **Show folder** and **Play exported file** (opens the export in this AEViewer). DAVIS/CDAVIS can write sidecar `<basename>-frames/` PNGs and `<basename>-imu.csv`.
 
-![File → Save As (DSEC HDF5)](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/save-as-h5.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/save-as-h5.png" alt="File → Save As (DSEC HDF5)" width="50%" />
 
 * **Slow LZ4 → optimized `-rerecord.aedat4`** — DV recordings often use dependent-block LZ4, which is much slower in jAER (~30× vs native independent-block LZ4). On open, jAER offers to create an optimized sibling copy next to the original (same folder; size estimate shown). Cancel is safe and leaves the viewer in a clean state.
 
-![Slow LZ4 — create optimized copy?](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/rerecord-offer-aedat4.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/rerecord-offer-aedat4.png" alt="Slow LZ4 — create optimized copy?" width="50%" />
 
-![Re-recording LZ4 progress](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/rerecord-aedat-4-progress.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/rerecord-aedat-4-progress.png" alt="Re-recording LZ4 progress" width="50%" />
 
 * **More DVS color modes** — **RedBlue** (ON blue / OFF red), **GrayTime** (time within slice on white), **HotCode** (event-count heatmap), and **WhiteBackground** (RedGreen on white), alongside existing ColorTime / RedGreen / gray modes.
 
-![DVS color modes mosaic](https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/colormodes-mosaic.png)
+<img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.2.0/colormodes-mosaic.png" alt="DVS color modes mosaic" width="50%" />
 
 ### Features
 
@@ -168,3 +174,20 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
 * Fixed empty HDF5 close crash (jHDF 0.12 cannot write zero-length arrays) and zero-event export after seek-back (`NonMonotonicTimeException` on the first packet).
 
 **Full Changelog**: https://github.com/SensorsINI/jaer/compare/3.1.0...3.2.0
+
+<a id="assets"></a>
+
+## Which installer to download
+
+GitHub lists the files under **Assets** immediately below this section ([Release Assets](https://github.com/SensorsINI/jaer/releases/tag/3.2.0#assets)).
+
+| You have | CPU | Download |
+|---|---|---|
+| Windows 10 / 11 | x64 | [jAER_windows-x64_3_2_0.exe](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_windows-x64_3_2_0.exe) |
+| macOS | Apple Silicon (M1, M2, M3, M4) | [jAER_macos_aarch64_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_aarch64_3_2_0.dmg) |
+| macOS | Intel | [jAER_macos_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_3_2_0.dmg) |
+| Linux | x64 | [jAER_unix_3_2_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_unix_3_2_0.sh) |
+
+**macOS:** Apple menu → About This Mac. If **Chip** is Apple M1/M2/M3/M4, use the `aarch64` DMG. If **Processor** is Intel, use `jAER_macos_3_2_0.dmg` (no `aarch64` in the name). Terminal: `uname -m` is `arm64` (Apple Silicon) or `x86_64` (Intel).
+
+**Linux:** `chmod +x jAER_unix_3_2_0.sh` then run it.

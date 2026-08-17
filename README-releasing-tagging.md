@@ -23,7 +23,11 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
        powershell -File scripts/upload-github-release-installers.ps1
 
    Dry run: add `-WhatIf`. Re-upload after a rebuild: same command (`--clobber`).
-   Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`). Notes only:
+   Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`).
+   End that file with the **Which installer to download** block (see 3.2.0 notes) so it sits
+   just above GitHub’s Assets list. Update the version in filenames (`3_2_0` / tag `3.2.0`)
+   and keep `<a id="assets"></a>` so `[Assets](#assets)` in the same notes jumps there.
+   Notes only:
 
        ant upload-release-notes
        gh release edit 3.2.0 --notes-file release-notes/jaer-3.2.0-release-notes.md
