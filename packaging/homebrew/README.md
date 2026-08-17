@@ -25,16 +25,21 @@ brew install --cask jaer
 brew upgrade --cask jaer
 ```
 
-Local smoke test without a tap (Mac):
+Local smoke test (Homebrew 6+ requires a tap; do **not** `gh repo create SensorsINI/homebrew-jaer` until the public cask is intended):
 
 ```bash
-# Confirm the installer .app name inside the DMG, then:
 hdiutil attach ~/Downloads/jAER_macos_aarch64_3_2_0.dmg
 ls /Volumes/jAER*
-brew install --cask ./packaging/homebrew/Casks/jaer.rb
+brew tap-new tobidelbruck/jaer
+cp packaging/homebrew/Casks/jaer.rb "$(brew --repo tobidelbruck/jaer)/Casks/"
+HOMEBREW_NO_AUTO_UPDATE=1 brew install --cask --yes tobidelbruck/jaer/jaer
 ```
 
-If `jAER.app/Contents/MacOS/JavaApplicationStub` is wrong, fix the `installer script` executable path in `jaer.rb` and copy it to the tap.
+The installer `.app` on the 3.2.0 DMG is:
+
+`jaer - Java Tools for Address Event Representation Sensors and Processing Installer.app/Contents/MacOS/JavaApplicationStub`
+
+(not `jAER.app`). Silent install uses `-q -dir #{appdir}/jAER`. Unsigned builds: the cask `preflight` runs `xattr -cr` (Homebrew 6 has no `--no-quarantine` install flag). `postflight` writes `.jaer-packaged-install` and a `jAER.app` symlink next to the install folder.
 
 `depends_on formula: "libusb"` matches live USB on Apple Silicon.
 

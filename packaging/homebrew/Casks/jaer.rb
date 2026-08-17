@@ -20,22 +20,37 @@ cask "jaer" do
   end
 
   depends_on formula: "libusb"
-  depends_on macos: ">= :catalina"
+  depends_on macos: :catalina
 
-  # install4j macOS Folder media: GUI installer inside the DMG. Confirm the
-  # .app name after `hdiutil attach` if silent install fails (unsigned; Gatekeeper).
+  installer_app = "jaer - Java Tools for Address Event Representation Sensors and Processing Installer.app"
+
+  # Unsigned install4j stub is SIGKILL'd under quarantine; strip before -q.
+  preflight do
+    system_command "/usr/bin/xattr", args: ["-cr", "#{staged_path}/#{installer_app}"]
+  end
+
+  # Confirmed 2026-08-17 on the 3.2.0 Apple Silicon DMG (`hdiutil attach`).
   installer script: {
-    executable:   "jAER.app/Contents/MacOS/JavaApplicationStub",
-    args:         ["-q"],
-    sudo:         false,
-    must_succeed: false,
+    executable: "#{installer_app}/Contents/MacOS/JavaApplicationStub",
+    args:       ["-q", "-dir", "#{appdir}/jAER"],
+    sudo:       false,
   }
+
+  postflight do
+    File.write("#{appdir}/jAER/.jaer-packaged-install", "homebrew\n")
+    FileUtils.ln_sf("#{appdir}/jAER/jaer.app", "#{appdir}/jAER.app")
+  end
+
+  uninstall delete: [
+    "#{appdir}/jAER",
+    "#{appdir}/jAER.app",
+  ]
 
   caveats <<~EOS
     Live USB cameras on Apple Silicon need Homebrew libusb (already a dependency).
 
-    If the silent installer did not run, open the DMG and run the jAER installer,
-    preferably into a user folder (unsigned builds; Gatekeeper: right-click Open).
+    The unsigned install4j installer is launched with -q after clearing quarantine.
+    Installed tree: #{appdir}/jAER (launcher symlink #{appdir}/jAER.app).
 
     Updates: brew upgrade --cask jaer
     (do not use jAER Help → Download and install for Homebrew installs).
