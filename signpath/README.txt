@@ -36,4 +36,4 @@ GitHub Actions still needs those secrets/vars on the repo (runners cannot
 read your Dropbox). The sync script is the bridge; values never live in git.
 
 Tracked artifact config (not secret): .signpath/artifact-configurations/windows-installer-2.xml
-See also README-releasing-tagging.txt → SignPath Windows CI.
+See also README-releasing-tagging.md → SignPath Windows CI.

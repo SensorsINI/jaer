@@ -96,6 +96,25 @@ To https://github.com/SensorsINI/jaer.git
 
 Name the GitHub release e.g. jaer-3.0.0 and edit release notes on the GitHub web UI.
 
+## GitHub Release installer assets (canonical host)
+
+GitHub allows each release file under 2 GiB; jAER installers are ~300 MB. After `ant release` (or after SignPath CI attaches the signed Windows exe):
+
+    powershell -File scripts/upload-github-release-installers.ps1
+
+That uploads `installers/<VERSION.txt>/jAER_windows-x64_*.exe`, Intel `jAER_macos_*.dmg`, Apple Silicon `jAER_macos_aarch64_*.dmg`, and `jAER_unix_*.sh` to the tag matching VERSION.txt (creates the release if needed). `updates.xml` `baseUrl` is rewritten on `ant copy-updates-xml` to:
+
+    https://github.com/SensorsINI/jaer/releases/latest/download/
+
+Commit and push `updates.xml` so installed copies see the new version. In-app **Download and install** (install4j updater id `updater`) fetches the matching media file from that URL, then quits AEViewer and runs the installer.
+
+Keep installer binaries on GitHub for the latest 2–3 releases only. Prune older `.exe` / `.dmg` / `.sh` assets (notes and tags stay):
+
+    powershell -File scripts/prune-old-release-assets.ps1
+    powershell -File scripts/prune-old-release-assets.ps1 -Keep 3 -WhatIf
+
+Dropbox remains an optional historical archive, not the auto-update URL.
+
 ### Deleting a tag
 
 Local only:
@@ -174,6 +193,20 @@ Non-interactive Windows-only local/CI Ant target (no confirm prompt):
     ant release-windows-ci
 
 Output: installers/<VERSION.txt>/jAER_windows-x64_*.exe
+
+## OS package managers (winget / Homebrew)
+
+After the GitHub Release has installer assets and SHA256 sums:
+
+- Windows: copy/update YAML under packaging/winget/ and PR to microsoft/winget-pkgs (`SensorsINI.jAER`). After SignPath release-signing, set locale Publisher to **SignPath Foundation**. See packaging/winget/README.md.
+- macOS: publish packaging/homebrew/Casks/jaer.rb to a SensorsINI/homebrew-jaer tap, then later homebrew/cask. Media id 39 is Apple Silicon. See packaging/homebrew/README.md.
+- Linux: keep the `.sh` installer; do not start with official apt. Optional later: packaging/deb/README.md.
+
+Package-manager trees should include a `.jaer-packaged-install` marker file so Help → Check for release updates does not offer Download and install.
+
+## macOS notarization (deferred)
+
+Unsigned DMGs and user-folder installs remain the supported Mac path. Developer ID + notarization notes: packaging/macos-notarization.md.
 
 ## Build notes
 

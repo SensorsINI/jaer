@@ -619,8 +619,14 @@ and put it on PATH (or set JAVA_HOME).</fail>
             <copy file="${jaer.updates.xml.source}"
                   tofile="${basedir}/updates.xml"
                   overwrite="true"/>
+            <replaceregexp file="${basedir}/updates.xml"
+                           match='baseUrl="[^"]*"'
+                           replace='baseUrl="https://github.com/SensorsINI/jaer/releases/latest/download/"'
+                           byline="true"/>
             <echo message="Copied ${jaer.updates.xml.source} -&gt; ${basedir}/updates.xml"/>
+            <echo message="Set updates.xml baseUrl to GitHub Releases latest/download/."/>
             <echo message="Commit and push updates.xml so install4j auto-update can see ${jaer.version}."/>
+            <echo message="Upload installers/${jaer.version}/jAER_* to the GitHub Release (see scripts/upload-github-release-installers.ps1)."/>
         </sequential>
     </macrodef>
 
@@ -653,8 +659,9 @@ and put it on PATH (or set JAVA_HOME).</fail>
             depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc,offer-copy-updates-xml"
             description="Confirm VERSION.txt, generate splash PNGs, sync install4j, clean/jar, run install4jc, offer updates.xml copy.">
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
-        <echo message="Next: git tag ${jaer.version}, push updates.xml if copied, and create the GitHub release."/>
-        <echo message="See README-releasing-tagging.txt"/>
+        <echo message="Next: git tag ${jaer.version}, push updates.xml if copied, create the GitHub release,"/>
+        <echo message="and upload installers (scripts/upload-github-release-installers.ps1)."/>
+        <echo message="See README-releasing-tagging.md"/>
     </target>
 
     <target name="release-windows-ci"
@@ -662,7 +669,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
             description="Non-interactive Windows-only install4j media for SignPath CI (no confirm prompt).">
         <echo message="${line.separator}Windows install4j media build finished for ${jaer.version}."/>
         <echo message="Output: installers/${jaer.version}/jAER_windows-x64_*.exe"/>
-        <echo message="See README-releasing-tagging.txt (SignPath Windows CI)."/>
+        <echo message="See README-releasing-tagging.md (SignPath Windows CI)."/>
     </target>
 
     <target name="jaer-sign-jar" depends="jar">

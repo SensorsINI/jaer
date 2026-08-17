@@ -19,13 +19,19 @@
 package net.sf.jaer;
 
 import com.install4j.api.context.UserCanceledException;
+import com.install4j.api.launcher.ApplicationLauncher;
+import com.install4j.api.launcher.Variables;
+import com.install4j.api.update.ApplicationDisplayMode;
+import com.install4j.api.update.UpdateChecker;
+import com.install4j.api.update.UpdateDescriptor;
+import com.install4j.api.update.UpdateDescriptorEntry;
+import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
-import javax.swing.JOptionPane;
-import com.install4j.api.update.*;
-import com.install4j.api.launcher.Variables;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import net.sf.jaer.util.MessageWithLink;
 
@@ -38,10 +44,16 @@ import net.sf.jaer.util.MessageWithLink;
  */
 public class JaerUpdaterInstall4j {
 
-    public static final boolean DEBUG = false; // TODO Set true to always run update check; remember to revert false for production version\    private static final Logger log = Logger.getLogger("net.sf.jaer");
+    /** Set true to always run update check; remember to revert false for production. */
+    public static final boolean DEBUG = false;
     private static final Logger log = Logger.getLogger("net.sf.jaer");
     private static final Preferences prefs = JaerConstants.PREFS_ROOT;
     public static String INSTALL4J_UPDATES_URL = "https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml";
+    /** install4j Screens &amp; Actions id of the standalone update downloader. */
+    public static final String UPDATER_APPLICATION_ID = "updater";
+    /** Marker file in the installation directory written by brew/winget/deb packaging. */
+    public static final String PACKAGE_MANAGER_MARKER = ".jaer-packaged-install";
+    public static final String RELEASES_URL = "https://github.com/SensorsINI/jaer/releases";
 
     public enum CheckFreq {
         Daily("days"), Weekly("weeks"), Monthly("months"), Never("never");
@@ -109,13 +121,13 @@ public class JaerUpdaterInstall4j {
      * checks where dialog only shows if there is one available
      */
     public void checkForInstall4jReleaseUpdate(JFrame parent, boolean interactive) {
-        // check if rujning from installed version of jaer (fails if running from git compiled jaer)
+        // check if running from installed version of jaer (fails if running from git compiled jaer)
         String currentVersion = "unknown";
         try {
             currentVersion = Variables.getCompilerVariable("sys.version");
         } catch (IOException e) {
             if (interactive) {
-                JOptionPane.showMessageDialog(parent, "<html> Could not determine current version. <p>To check for udpates, you need to install jAER with an install4j installer. <p>(Probably are you running from git compiled development environment): <p>" + e.toString(), "Version check error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(parent, "<html> Could not determine current version. <p>To check for updates, you need to install jAER with an install4j installer. <p>(Probably are you running from git compiled development environment): <p>" + e.toString(), "Version check error", JOptionPane.ERROR_MESSAGE);
             } else {
                 log.info(String.format("Could not determine current version of install4j release installation: %s.\nProbably you are a developer who is running from git checkout", e.toString()));
             }
@@ -126,20 +138,8 @@ public class JaerUpdaterInstall4j {
 
         if (interactive) { // interactive check runs in the Swing thread where the user has launched it
             try {
-                UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(INSTALL4J_UPDATES_URL, ApplicationDisplayMode.GUI);
-                if (updateDescriptor.getPossibleUpdateEntry() != null) {
-                    // TODO an update is available, execute update downloader instead of just reporting update is available
-                    UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
-                    String updateVersion = updateDescriptorEntry.getNewVersion();
-                    MessageWithLink msg = new MessageWithLink("<html>Current version: " + currentVersion + "<p> Update " + updateVersion
-                            + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
-                    JaerUpdaterInstall4jDialog d = new JaerUpdaterInstall4jDialog(parent, this, msg);
-                    d.setVisible(true);
-                } else {
-                    MessageWithLink msg = new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion + "<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
-                    JaerUpdaterInstall4jDialog d = new JaerUpdaterInstall4jDialog(parent, this, msg);
-                    d.setVisible(true);
-                }
+                UpdateCheckResult result = fetchUpdateCheckResult(currentVersion);
+                showUpdateResultDialog(parent, result);
                 storeUpdateCheckTime();
             } catch (IOException | UserCanceledException e) {
                 JOptionPane.showMessageDialog(parent, "Could not check for release update: " + e.toString(), "Update check error", JOptionPane.ERROR_MESSAGE);
@@ -149,6 +149,87 @@ public class JaerUpdaterInstall4j {
             BackgroundUpdateChecker updateChecker = new BackgroundUpdateChecker(parent, currentVersion, this);
             Thread t = new Thread(updateChecker);
             t.start();
+        }
+    }
+
+    private UpdateCheckResult fetchUpdateCheckResult(String currentVersion) throws IOException, UserCanceledException {
+        UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(INSTALL4J_UPDATES_URL, ApplicationDisplayMode.GUI);
+        boolean updateAvailable = updateDescriptor.getPossibleUpdateEntry() != null;
+        String updateVersion = null;
+        if (updateAvailable) {
+            UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
+            if (updateDescriptorEntry != null) {
+                updateVersion = updateDescriptorEntry.getNewVersion();
+            }
+        }
+        return new UpdateCheckResult(currentVersion, updateAvailable, updateVersion, isPackageManagedInstall());
+    }
+
+    private void showUpdateResultDialog(JFrame parent, UpdateCheckResult result) {
+        MessageWithLink msg = result.toMessage();
+        JaerUpdaterInstall4jDialog d = new JaerUpdaterInstall4jDialog(parent, this, msg, result.updateAvailable);
+        d.setVisible(true);
+    }
+
+    /**
+     * True when this install should be upgraded via winget/brew/apt rather than
+     * the in-app install4j downloader.
+     */
+    public boolean isPackageManagedInstall() {
+        File[] roots = {
+            new File("."),
+            new File(System.getProperty("user.dir", ".")),
+        };
+        for (File root : roots) {
+            if (new File(root, PACKAGE_MANAGER_MARKER).isFile()) {
+                log.info("Found " + PACKAGE_MANAGER_MARKER + " under " + root.getAbsolutePath());
+                return true;
+            }
+        }
+        String path = new File(".").getAbsolutePath().toLowerCase(Locale.ROOT);
+        if (path.contains("caskroom") || path.contains("/cellar/") || path.contains("\\cellar\\")
+                || path.contains("windowsapps") || path.contains("winget")) {
+            log.info("Installation path looks package-managed: " + path);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Launch the install4j standalone update downloader, then quit jAER when
+     * the downloader is ready to run the new installer.
+     */
+    public void launchUpdateDownloader(JFrame parent) {
+        if (isPackageManagedInstall()) {
+            JOptionPane.showMessageDialog(parent,
+                    "<html>This copy of jAER was installed with a package manager.<p>"
+                    + "Update with <code>winget upgrade SensorsINI.jAER</code> or "
+                    + "<code>brew upgrade --cask jaer</code> instead of the in-app downloader.",
+                    "Update via package manager", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        try {
+            log.info("Launching install4j update downloader id=" + UPDATER_APPLICATION_ID);
+            ApplicationLauncher.launchApplication(UPDATER_APPLICATION_ID, null, false, new ApplicationLauncher.Callback() {
+                @Override
+                public void exited(int exitValue) {
+                    log.info("Update downloader exited with " + exitValue);
+                }
+
+                @Override
+                public void prepareShutdown() {
+                    log.info("Update downloader requested jAER shutdown so the new installer can replace files");
+                    System.exit(0);
+                }
+            });
+        } catch (IOException e) {
+            log.warning("Could not start update downloader: " + e);
+            JOptionPane.showMessageDialog(parent,
+                    "<html>Could not start the update downloader.<p>"
+                    + "Download the installer for your OS from "
+                    + "<a href=\"" + RELEASES_URL + "\">jAER releases</a> instead.<p>"
+                    + e.toString(),
+                    "Update downloader error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -166,32 +247,55 @@ public class JaerUpdaterInstall4j {
 
         @Override
         public void run() {
-            MessageWithLink msg = null;
             try {
-                UpdateDescriptor updateDescriptor = UpdateChecker.getUpdateDescriptor(INSTALL4J_UPDATES_URL, ApplicationDisplayMode.GUI);
-                if (updateDescriptor.getPossibleUpdateEntry() != null) {
-                    UpdateDescriptorEntry updateDescriptorEntry = updateDescriptor.getEntryForCurrentMediaFileId();
-                    String updateVersion = updateDescriptorEntry.getNewVersion();
-                    msg = new MessageWithLink("<html>Current version: " + currentVersion + "<p> Update " + updateVersion
-                            + " is available; see <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
-                } else {
-                    msg = new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion + "<p>See <a href=\"https://github.com/SensorsINI/jaer/releases\">jAER releases</a>");
-                }
+                UpdateCheckResult result = fetchUpdateCheckResult(currentVersion);
                 storeUpdateCheckTime();
+                if (!result.updateAvailable) {
+                    log.info("No install4j release update available (current " + currentVersion + ")");
+                    return;
+                }
+                SwingUtilities.invokeLater(() -> {
+                    showUpdateResultDialog(parent, result);
+                });
             } catch (IOException | UserCanceledException e) {
                 log.warning(String.format("Could not check for update: %s", e.toString()));
-            }
-            if (msg != null) {
-                JaerUpdaterInstall4jDialog d = new JaerUpdaterInstall4jDialog(parent, updater, msg);
-                SwingUtilities.invokeLater(() -> {
-                    d.setVisible(true);
-                });
             }
         }
     }
 
     private void storeUpdateCheckTime() {
         prefs.putLong(LAST_CHECK_TIME_KEY, System.currentTimeMillis());
+    }
+
+    private static final class UpdateCheckResult {
+        final String currentVersion;
+        final boolean updateAvailable;
+        final String updateVersion;
+        final boolean packageManaged;
+
+        UpdateCheckResult(String currentVersion, boolean updateAvailable, String updateVersion, boolean packageManaged) {
+            this.currentVersion = currentVersion;
+            this.updateAvailable = updateAvailable;
+            this.updateVersion = updateVersion;
+            this.packageManaged = packageManaged;
+        }
+
+        MessageWithLink toMessage() {
+            if (!updateAvailable) {
+                return new MessageWithLink("<html>No update available;<br> you are running current release " + currentVersion
+                        + "<p>See <a href=\"" + RELEASES_URL + "\">jAER releases</a>");
+            }
+            String ver = updateVersion != null ? updateVersion : "a newer build";
+            if (packageManaged) {
+                return new MessageWithLink("<html>Current version: " + currentVersion + "<p>Update " + ver
+                        + " is available.<p>This copy was installed with a package manager; "
+                        + "run <code>winget upgrade SensorsINI.jAER</code> or <code>brew upgrade --cask jaer</code>, "
+                        + "or see <a href=\"" + RELEASES_URL + "\">jAER releases</a>.");
+            }
+            return new MessageWithLink("<html>Current version: " + currentVersion + "<p>Update " + ver
+                    + " is available (~300&nbsp;MB download).<p>Choose <b>Download and install</b> to fetch the installer for this OS, quit jAER, and run it. "
+                    + "Or see <a href=\"" + RELEASES_URL + "\">jAER releases</a>.");
+        }
     }
 
 }

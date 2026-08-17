@@ -40,6 +40,8 @@
                           <Component id="checkFreqP" pref="386" max="32767" attributes="0"/>
                           <Group type="102" attributes="0">
                               <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                              <Component id="downloadInstallB" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace type="unrelated" max="-2" attributes="0"/>
                               <Component id="closeB" min="-2" pref="112" max="-2" attributes="0"/>
                           </Group>
                       </Group>
@@ -57,7 +59,10 @@
               <EmptySpace type="unrelated" max="-2" attributes="0"/>
               <Component id="checkFreqP" min="-2" pref="121" max="-2" attributes="0"/>
               <EmptySpace type="separate" max="-2" attributes="0"/>
-              <Component id="closeB" min="-2" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="closeB" min="-2" max="-2" attributes="0"/>
+                  <Component id="downloadInstallB" min="-2" max="-2" attributes="0"/>
+              </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
       </Group>
@@ -74,6 +79,14 @@
       <AuxValues>
         <AuxValue name="JavaCodeGenerator_AddingCodePost" type="java.lang.String" value="getRootPane().setDefaultButton(closeB);"/>
       </AuxValues>
+    </Component>
+    <Component class="javax.swing.JButton" name="downloadInstallB">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Download and install"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="downloadInstallBActionPerformed"/>
+      </Events>
     </Component>
     <Container class="javax.swing.JPanel" name="checkFreqP">
       <Properties>

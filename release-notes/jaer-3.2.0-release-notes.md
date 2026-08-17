@@ -7,7 +7,7 @@
   but they do NOT work when pasted into a Release description — use the absolute URLs.
 -->
 
-Go to [install4j jAER installers on Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers. Choose the release folder corresponding to this release.
+Download installers from [GitHub Releases](https://github.com/SensorsINI/jaer/releases) (canonical; ~300 MB each). Windows builds may be SignPath-signed. Older copies may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) as an archive. Installed copies: Help → Check for release updates… → **Download and install**.
 
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
 
@@ -144,6 +144,7 @@ See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY
   * JDK 25: `-XX:+UseCompactObjectHeaders` and `--add-opens java.base/jdk.internal.loader=ALL-UNNAMED` so MLPNoiseFilter can hot-add the OS TensorFlow native jar.
   * Apple Silicon `ant run` / `ant compile` installs Homebrew libusb when missing (`-Dskip.macos.libusb=true` to skip).
   * SignPath Windows test-signing CI (`ant release-windows-ci` / tag `3.*`).
+  * GitHub Releases as installer host (`updates.xml` baseUrl); install4j standalone **updater**; `scripts/upload-github-release-installers.ps1` and `scripts/prune-old-release-assets.ps1`. Winget/Homebrew templates under `packaging/`.
 
 ### Bug fixes and minor improvements
 

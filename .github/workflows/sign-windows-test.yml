@@ -3,7 +3,7 @@
 #   Secrets: INSTALL4J_LICENSE, SIGNPATH_API_TOKEN
 #   Variables: SIGNPATH_ORGANIZATION_ID
 # SignPath UI: GitHub App on SensorsINI/jaer, artifact config slug windows-installer-2,
-# CI builds user submitter on test-signing. See README-releasing-tagging.txt.
+# CI builds user submitter on test-signing. See README-releasing-tagging.md.
 
 name: Sign Windows (SignPath test-signing)
 
@@ -122,4 +122,5 @@ jobs:
           - Signing request: ${{ steps.signpath.outputs.signing-request-web-url }}
           - Signed download: ${{ steps.signpath.outputs.signed-artifact-download-url }}
           - Note: approve the request in SignPath UI if the job waits on approval.
+          - Mac/Linux installers: local ``ant release`` then ``scripts/upload-github-release-installers.ps1``.
           "@ | Add-Content -Path $env:GITHUB_STEP_SUMMARY

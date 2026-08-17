@@ -15,17 +15,18 @@ jAER is a full-fledged desktop application that captures event camera output, di
 
 ## Installation
 
-You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>. 
+You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>.
 
 Starting with jAER 2.0, binary installers are available thanks to the
 multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html).
 
-Go to [install4j jAER installers on dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) to download installers,
-or use [GitHub Releases](https://github.com/SensorsINI/jaer/releases) (Windows builds may be Authenticode-signed via SignPath; see [Code signing policy](#code-signing-policy)).
-**Windows:** Prefer a SignPath-signed installer from GitHub Releases when available. For unsigned builds: Click *More info*, *Run anyway* and *Install anyway*.
-**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present.
-**Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu.
-See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
+**Canonical downloads are GitHub Release assets** (~300 MB each, bundled Eclipse Temurin 21; well under GitHub’s 2 GiB-per-file limit). Prefer the Windows installer from GitHub Releases when it is Authenticode-signed via SignPath (see [Code signing policy](#code-signing-policy)). Older installers may still exist on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) as an archive.
+
+**Windows:** Prefer a SignPath-signed installer from GitHub Releases when available. For unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
+**MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
+**Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu. Official apt is not provided (USB cameras need an unsandboxed install); optional `.deb` notes are in [`packaging/deb`](packaging/deb).
+
+Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…; jAER quits so the new installer can replace files. Package-manager installs should use `winget upgrade` / `brew upgrade --cask jaer` instead. See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
 * install4j installers install a bundled version of the [latest Java from Eclipse Adoptium](https://adoptium.net/) (see [Guide fo Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features)).
 * Release install4j installers do NOT install git working copy, but using the new self-update feature introduced in jAER-1.8.1, 
@@ -118,7 +119,7 @@ Ask the agent for Ant targets, chip/filter code under `src/`, and device USB not
 
 Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org/).
 
-Windows installers submitted for signing are built from this repository on GitHub Actions (see [`.github/workflows/sign-windows-test.yml`](.github/workflows/sign-windows-test.yml) and [`README-releasing-tagging.txt`](README-releasing-tagging.txt)). Publisher identity on signed builds is **SignPath Foundation**.
+Windows installers submitted for signing are built from this repository on GitHub Actions (see [`.github/workflows/sign-windows-test.yml`](.github/workflows/sign-windows-test.yml) and [`README-releasing-tagging.md`](README-releasing-tagging.md)). Publisher identity on signed builds is **SignPath Foundation**.
 
 **Team roles**
 

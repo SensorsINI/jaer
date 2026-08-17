@@ -38,6 +38,7 @@ import net.sf.jaer.util.WindowSaver.DontRestore;
 public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements DontRestore{
     JaerUpdaterInstall4j updater;
     ButtonGroup checkFreqGroup;
+    private final boolean updateAvailable;
 
     /**
      * A return status code - returned if Cancel button has been pressed
@@ -52,10 +53,20 @@ public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements D
      * Creates new form NewOkCancelDialog
      */
     public JaerUpdaterInstall4jDialog(java.awt.Frame parent, JaerUpdaterInstall4j updater, MessageWithLink msg) {
+        this(parent, updater, msg, false);
+    }
+
+    public JaerUpdaterInstall4jDialog(java.awt.Frame parent, JaerUpdaterInstall4j updater, MessageWithLink msg, boolean updateAvailable) {
         super(parent, false);
+        this.updateAvailable = updateAvailable;
         initComponents();
         setTitle("jAER update check result");
         msgPanel.add(msg,BorderLayout.CENTER);
+        boolean offerDownload = updateAvailable && updater != null && !updater.isPackageManagedInstall();
+        downloadInstallB.setVisible(offerDownload);
+        if (offerDownload) {
+            getRootPane().setDefaultButton(downloadInstallB);
+        }
 
         // Close the dialog when Esc is pressed
         String cancelName = "cancel";
@@ -105,6 +116,7 @@ public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements D
     private void initComponents() {
 
         closeB = new javax.swing.JButton();
+        downloadInstallB = new javax.swing.JButton();
         checkFreqP = new javax.swing.JPanel();
         msgPanel = new javax.swing.JPanel();
 
@@ -119,6 +131,13 @@ public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements D
         closeB.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeBActionPerformed(evt);
+            }
+        });
+
+        downloadInstallB.setText("Download and install");
+        downloadInstallB.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                downloadInstallBActionPerformed(evt);
             }
         });
 
@@ -142,6 +161,8 @@ public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements D
                             .addComponent(checkFreqP, javax.swing.GroupLayout.DEFAULT_SIZE, 386, Short.MAX_VALUE)
                             .addGroup(layout.createSequentialGroup()
                                 .addGap(0, 0, Short.MAX_VALUE)
+                                .addComponent(downloadInstallB)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(closeB, javax.swing.GroupLayout.PREFERRED_SIZE, 112, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addGap(14, 14, 14))))
         );
@@ -153,7 +174,9 @@ public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements D
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(checkFreqP, javax.swing.GroupLayout.PREFERRED_SIZE, 121, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
-                .addComponent(closeB)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(closeB)
+                    .addComponent(downloadInstallB))
                 .addContainerGap())
         );
 
@@ -165,6 +188,14 @@ public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements D
     private void closeBActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeBActionPerformed
         doClose(RET_OK);
     }//GEN-LAST:event_closeBActionPerformed
+
+    private void downloadInstallBActionPerformed(java.awt.event.ActionEvent evt) {
+        java.awt.Frame parent = (java.awt.Frame) getParent();
+        doClose(RET_OK);
+        if (updater != null) {
+            updater.launchUpdateDownloader(parent instanceof javax.swing.JFrame ? (javax.swing.JFrame) parent : null);
+        }
+    }
 
     /**
      * Closes the dialog
@@ -225,6 +256,7 @@ public class JaerUpdaterInstall4jDialog extends javax.swing.JDialog implements D
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel checkFreqP;
     private javax.swing.JButton closeB;
+    private javax.swing.JButton downloadInstallB;
     private javax.swing.JPanel msgPanel;
     // End of variables declaration//GEN-END:variables
 
