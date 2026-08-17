@@ -4,7 +4,7 @@ Cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Even
 **Permanent link:** http://jaerproject.org
 
 **Welcome to the jAER Open Source Project
-Real time sensory-motor processing for event-based sensors and systems**
+Real time sensory-motor processing for event sensors and systems**
 
 Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch). Now supports cameras and recordings from all manufacturers (see *Device Hardware Support* below).
 
