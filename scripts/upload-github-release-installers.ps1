@@ -48,6 +48,28 @@ if ($releaseMissing) {
     Write-Host "Creating GitHub release $Tag"
     gh release create $Tag --title "jaer-$Tag" --notes "jAER $Tag installers. See release-notes/."
 }
-gh release upload $Tag @paths --clobber
-Write-Host "Uploaded $($files.Count) installer(s) to https://github.com/SensorsINI/jaer/releases/tag/$Tag"
+# One file at a time so the console shows which asset is in flight.
+# GH_SPINNER_DISABLED replaces the clock-hand spinner with a text progress line.
+$env:GH_SPINNER_DISABLED = "yes"
+$items = @($files)
+$total = $items.Count
+$n = 0
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+foreach ($f in $items) {
+    $n++
+    $mb = [math]::Round($f.Length / 1MB, 1)
+    Write-Host ("[{0}/{1}] Uploading {2} ({3} MB) ..." -f $n, $total, $f.Name, $mb)
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    gh release upload $Tag $f.FullName --clobber
+    $code = $LASTEXITCODE
+    $sw.Stop()
+    if ($code -ne 0) {
+        $ErrorActionPreference = $prevEap
+        throw "gh release upload failed for $($f.Name) (exit $code)"
+    }
+    Write-Host ("[{0}/{1}] Uploaded {2} in {3:N0}s" -f $n, $total, $f.Name, $sw.Elapsed.TotalSeconds)
+}
+$ErrorActionPreference = $prevEap
+Write-Host "Uploaded $total installer(s) to https://github.com/SensorsINI/jaer/releases/tag/$Tag"
 Write-Host "Then: commit updates.xml (ant copy-updates-xml) and prune older assets (scripts/prune-old-release-assets.ps1)."
