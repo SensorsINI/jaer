@@ -23,6 +23,10 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
        powershell -File scripts/upload-github-release-installers.ps1
 
    Dry run: add `-WhatIf`. Re-upload after a rebuild: same command (`--clobber`).
+   Release body comes from `release-notes/jaer-<VERSION>-release-notes.md` (`--notes-file`). Notes only:
+
+       ant upload-release-notes
+       gh release edit 3.2.0 --notes-file release-notes/jaer-3.2.0-release-notes.md
 4. Commit and push repo-root `updates.xml` if `git status` still shows it dirty. Installed copies only see `master`.
 5. Point git tag `<VERSION.txt>` at the commit you want and push it (`git tag` / `git push origin <tag>`). If the tag already exists on an older commit, delete and recreate it (see Tagging).
 6. Optional later: SignPath signed Windows exe, winget/Homebrew, prune old assets.

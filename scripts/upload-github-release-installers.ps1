@@ -44,9 +44,17 @@ $ErrorActionPreference = "Continue"
 gh release view $Tag --json tagName 2>$null | Out-Null
 $releaseMissing = ($LASTEXITCODE -ne 0)
 $ErrorActionPreference = $prevEap
+$notesFile = Join-Path $root "release-notes\jaer-$Tag-release-notes.md"
 if ($releaseMissing) {
     Write-Host "Creating GitHub release $Tag"
-    gh release create $Tag --title "jaer-$Tag" --notes "jAER $Tag installers. See release-notes/."
+    if (Test-Path $notesFile) {
+        gh release create $Tag --title "jaer-$Tag" --notes-file $notesFile
+    } else {
+        gh release create $Tag --title "jaer-$Tag" --notes "jAER $Tag installers. See release-notes/."
+    }
+} elseif (Test-Path $notesFile) {
+    Write-Host "Updating GitHub release notes from $notesFile"
+    gh release edit $Tag --notes-file $notesFile
 }
 # One file at a time so the console shows which asset is in flight.
 # GH_SPINNER_DISABLED replaces the clock-hand spinner with a text progress line.

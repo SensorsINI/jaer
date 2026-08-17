@@ -655,6 +655,23 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <jaer-copy-updates-xml/>
     </target>
 
+    <target name="upload-release-notes" depends="-load-version"
+            description="Set GitHub Release body from release-notes/jaer-VERSION-release-notes.md (gh).">
+        <property name="jaer.release.notes.file"
+                  value="${basedir}/release-notes/jaer-${jaer.version}-release-notes.md"/>
+        <available file="${jaer.release.notes.file}" property="jaer.release.notes.exists"/>
+        <fail unless="jaer.release.notes.exists"
+              message="Missing ${jaer.release.notes.file}"/>
+        <exec executable="gh" failonerror="true" searchpath="true" dir="${basedir}">
+            <arg value="release"/>
+            <arg value="edit"/>
+            <arg value="${jaer.version}"/>
+            <arg value="--notes-file"/>
+            <arg value="${jaer.release.notes.file}"/>
+        </exec>
+        <echo message="Set GitHub Release ${jaer.version} body from ${jaer.release.notes.file}"/>
+    </target>
+
     <target name="release"
             depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc,offer-copy-updates-xml"
             description="Confirm VERSION.txt, generate splash PNGs, sync install4j, clean/jar, run install4jc, offer updates.xml copy.">
