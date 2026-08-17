@@ -9,7 +9,7 @@ Status: **partial** — SignPath Windows workflow uses current action majors; co
 | `actions/checkout` | `@v5` in `.github/workflows/sign-windows-test.yml` |
 | `actions/setup-java` | `@v5` (Node 24 runtime; clears setup-java@v4 / Node 20 deprecation) |
 | `actions/upload-artifact` | `@v7` for signed installer upload |
-| install4j localization | Track `installers/install4j-custom-resources.utf8` so CI media builds succeed |
+| install4j localization | Track `packaging/install4j/install4j-custom-resources.utf8` so CI media builds succeed |
 
 ## Still open
 
@@ -20,4 +20,4 @@ Status: **partial** — SignPath Windows workflow uses current action majors; co
 ## Notes
 
 - GitHub-hosted `windows-latest` already provides Ant; do not reintroduce removed `stCarolas/setup-ant`.
-- Media under `installers/<version>/` remains gitignored; only the custom localization `.utf8` is tracked.
+- Media under `currentInstallers/<version>/` remains gitignored; only the custom localization `.utf8` under `packaging/install4j/` is tracked. Historical media is `jaer-older-installers/` (also gitignored).

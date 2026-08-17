@@ -60,7 +60,7 @@ jobs:
         shell: pwsh
         run: |
           $v = '${{ steps.version.outputs.version }}'
-          $dir = Join-Path 'installers' $v
+          $dir = Join-Path 'currentInstallers' $v
           $exe = Get-ChildItem -Path $dir -Filter 'jAER_windows-x64_*.exe' -File -ErrorAction Stop |
             Select-Object -First 1
           if (-not $exe) { throw "No jAER_windows-x64_*.exe under $dir" }

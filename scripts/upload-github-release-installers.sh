@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Upload install4j media from installers/<VERSION>/ to the GitHub Release for that tag.
+# Upload install4j media from currentInstallers/<VERSION>/ to the GitHub Release for that tag.
 # Usage: scripts/upload-github-release-installers.sh [TAG]
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 TAG="${1:-$(tr -d '[:space:]' < VERSION.txt)}"
-DIR="$ROOT/installers/$TAG"
+DIR="$ROOT/currentInstallers/$TAG"
 if [ ! -d "$DIR" ]; then
   echo "Missing $DIR — run ant release first" >&2
   exit 1

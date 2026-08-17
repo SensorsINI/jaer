@@ -15,7 +15,7 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 
 1. Set `VERSION.txt` (e.g. `3.2.0`).
 2. `ant release` -- confirm `y`. When asked to copy `updates.xml`, answer `y`.
-   - Media lands in `installers/<VERSION.txt>/`.
+   - Media lands in `currentInstallers/<VERSION.txt>/`. Historical Dropbox copies stay in `jaer-older-installers/` (same share URL as the old `installers/` folder).
    - Repo-root `updates.xml` is overwritten and `baseUrl` is set to GitHub `/latest/download/`.
    - If you already built media: `ant copy-updates-xml` (no rebuild).
 3. Upload binaries (creates the GitHub Release for that tag if it is missing):
@@ -187,7 +187,7 @@ Non-interactive Windows-only local/CI Ant target (no confirm prompt):
 
     ant release-windows-ci
 
-Output: installers/<VERSION.txt>/jAER_windows-x64_*.exe
+Output: currentInstallers/<VERSION.txt>/jAER_windows-x64_*.exe
 
 ## OS package managers (winget / Homebrew)
 

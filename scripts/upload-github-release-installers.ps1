@@ -1,4 +1,4 @@
-# Upload install4j media from installers/<VERSION.txt>/ to the GitHub Release for that tag.
+# Upload install4j media from currentInstallers/<VERSION.txt>/ to the GitHub Release for that tag.
 # Requires: gh auth, VERSION.txt, media built by `ant release`.
 # Usage (repo root):
 #   powershell -File scripts/upload-github-release-installers.ps1
@@ -19,7 +19,7 @@ if (-not $Tag) {
 }
 if (-not $Tag) { throw "VERSION.txt is empty and -Tag was not set" }
 
-$dir = Join-Path $root "installers\$Tag"
+$dir = Join-Path $root "currentInstallers\$Tag"
 if (-not (Test-Path $dir)) { throw "Missing $dir -- run ant release first" }
 
 $files = Get-ChildItem -Path $dir -File | Where-Object {

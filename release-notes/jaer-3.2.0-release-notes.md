@@ -15,7 +15,9 @@
 
 Download jAER installers from [Assets](#assets) (end of this page; ~300 MB each). On a Mac, pick **Apple Silicon** vs **Intel** using the table there.
 
-Windows builds may be SignPath-signed. Older copies may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) as an archive. Installed copies: Help → Check for release updates… → **Download and install**.
+**Note: starting with this 3.2.0 release, releases are shared via GitHub Assets, and jAER can self-update via Download and Install.** Older archival releases may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0). 
+
+Installed jAER: Help → Check for release updates… → **Download and install**.
 
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
 

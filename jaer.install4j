@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
   <directoryPresets config="./images/1024w" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="installers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.2.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.2.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
-      <principalLanguage id="en" customLocalizationFile="./installers/install4j-custom-resources.utf8" />
+      <principalLanguage id="en" customLocalizationFile="./packaging/install4j/install4j-custom-resources.utf8" />
     </languages>
     <!-- Bundle current Temurin 21 LTS (still supported through 2029). 25 is the newest LTS;
          stay on 21 for wider OS/media compatibility unless we deliberately bump language level. -->
@@ -59,6 +59,8 @@
           <!-- Repo art / demos (~29MB); splash for installers is read at build time from images/1024w. -->
           <entry location="images" />
           <entry location="installers" />
+          <entry location="currentInstallers" />
+          <entry location="jaer-older-installers" />
           <entry location="ivy" />
           <entry location="ivy.xml" />
           <entry location="ivysettings.xml" />
@@ -372,6 +374,9 @@ leftoverTrees.add(new File(installRoot, "docs"));
 leftoverTrees.add(new File(installRoot, "test"));
 leftoverTrees.add(new File(installRoot, "nbproject"));
 leftoverTrees.add(new File(installRoot, "packaging"));
+leftoverTrees.add(new File(installRoot, "installers"));
+leftoverTrees.add(new File(installRoot, "currentInstallers"));
+leftoverTrees.add(new File(installRoot, "jaer-older-installers"));
 leftoverTrees.add(new File(installRoot, "ivy"));
 leftoverTrees.add(new File(installRoot, "tmp"));
 leftoverTrees.add(new File(installRoot, "build"));
