@@ -7,7 +7,9 @@
   but they do NOT work when pasted into a Release description — use the absolute URLs.
 -->
 
-Download installers from [GitHub Releases](https://github.com/SensorsINI/jaer/releases) (canonical; ~300 MB each). Windows builds may be SignPath-signed. Older copies may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) as an archive. Installed copies: Help → Check for release updates… → **Download and install**.
+Download jAER installers from the Assets (at the end of these release notes) for your operating system (canonical; ~300 MB each).
+
+Windows builds may be SignPath-signed. Older copies may remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) as an archive. Installed copies: Help → Check for release updates… → **Download and install**.
 
 See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY), which also shows how you can *git clone* and rebuild jAER with latest master-branch fixes from within jAER.
 
