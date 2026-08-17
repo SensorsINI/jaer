@@ -18,32 +18,58 @@
       <mountPoint id="24" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form,*.orig,jaer-clone*">
+      <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
         <exclude>
-          <entry location=".classpath" />
+          <!-- Secrets / gitignored credentials. file="." packs the local tree; a missing
+               exclude here ships Dropbox secrets in every local ant release. CI is safer
+               only because these paths are not in git — still exclude them. -->
+          <entry location="signpath" />
+          <entry location=".signpath" />
+          <entry location="install4j License key  2024-01-02 0834.txt" />
+          <entry location="install4j_windows-x64_13_0_2.exe" />
+          <!-- VCS / IDE / CI / editor — not needed to run jAER. .install4j is created by
+               the installer at install time; do not exclude it. -->
           <entry location=".git" />
+          <entry location=".github" />
           <entry location=".gitignore" />
+          <entry location=".gitattributes" />
+          <entry location=".classpath" />
           <entry location=".project" />
           <entry location=".settings" />
+          <entry location=".idea" />
+          <entry location=".cursor" />
+          <entry location=".vscode" />
           <entry location=".travis.yml" />
+          <entry location="jaer.code-workspace" />
+          <!-- Build system / Ivy / packaging. -->
           <entry location="build" />
           <entry location="build.cmd" />
           <entry location="build.xml" />
           <entry location="docs" />
           <entry location="dist/javadoc" />
+          <entry location="dist/jAER.jar.7z" />
           <entry location="dvs-slice-avi-writer.exe4j" />
+          <entry location="dvs-slice-avi-writer.exe" />
+          <entry location="dvs-slice-avi-writer.sh" />
           <entry location="exe4j-launcher" />
-          <entry location="hs_err_pid33652.log" />
+          <!-- Literal Ant-property folder names on some local trees. $$ so install4j does
+               not treat ${build.dir} as a compiler variable. -->
+          <entry location="$${build.dir}" />
+          <entry location="$${build.generated.sources.dir}" />
           <!-- Repo art / demos (~29MB); splash for installers is read at build time from images/1024w. -->
           <entry location="images" />
-          <entry location="install4j License key  2024-01-02 0834.txt" />
           <entry location="installers" />
           <entry location="ivy" />
           <entry location="ivy.xml" />
           <entry location="ivysettings.xml" />
+          <entry location="_ivy_report.xml" />
+          <entry location="_ivy_try.xml" />
           <entry location="jaer.install4j" />
           <entry location="JAERViewerRunning.txt" />
           <entry location="jAERViewer_linux.xml" />
+          <entry location="jAERViewer_linux.sh" />
+          <entry location="jAERViewer_win64.exe" />
+          <entry location="jAERViewer.exe" />
           <entry location="jaer_win_jre_x64.exe4j" />
           <entry location="javac.20240124_184101.args" />
           <entry location="javac.20240124_184643.args" />
@@ -54,6 +80,7 @@
           <entry location="release-notes" />
           <entry location="sven_goethel" />
           <entry location="test" />
+          <entry location="davis-color-renderer-benchmark.sh" />
           <!-- Local scratch / sources / tooling — not needed at runtime (tmp alone was ~676MB). -->
           <entry location="tmp" />
           <entry location="src" />
@@ -61,9 +88,7 @@
           <entry location="logs" />
           <entry location="bin" />
           <entry location="tools" />
-          <entry location=".cursor" />
           <entry location="packaging" />
-          <entry location=".vscode" />
           <!-- Prefer javacpp 1.5.10 (TensorFlow); drop leftover 1.4 from older Ivy resolves. -->
           <entry location="lib/javacpp-1.4.jar" />
           <!-- Safety net: OS TensorFlow natives (~70–150MB). Ivy no longer retrieves these;
@@ -325,18 +350,90 @@ if (jars.isDirectory()) {
         }
     }
 }
-File nativeDir = new File(context.getInstallationDirectory(), "native");
-if (nativeDir.isDirectory()) {
-    try {
-        java.util.List&lt;java.nio.file.Path&gt; npaths = java.nio.file.Files.walk(nativeDir.toPath())
-            .sorted(java.util.Comparator.reverseOrder())
-            .collect(java.util.stream.Collectors.toList());
-        for (java.nio.file.Path p : npaths) {
-            java.nio.file.Files.deleteIfExists(p);
+File installRoot = context.getInstallationDirectory();
+File nativeDir = new File(installRoot, "native");
+java.util.List&lt;File&gt; leftoverTrees = new java.util.ArrayList&lt;File&gt;();
+leftoverTrees.add(nativeDir);
+// Secrets first. ifNewer never deletes paths dropped from new media.
+leftoverTrees.add(new File(installRoot, "signpath"));
+leftoverTrees.add(new File(installRoot, ".signpath"));
+leftoverTrees.add(new File(installRoot, ".cursor"));
+leftoverTrees.add(new File(installRoot, ".vscode"));
+leftoverTrees.add(new File(installRoot, ".github"));
+leftoverTrees.add(new File(installRoot, ".settings"));
+leftoverTrees.add(new File(installRoot, ".idea"));
+leftoverTrees.add(new File(installRoot, "src"));
+leftoverTrees.add(new File(installRoot, "scripts"));
+leftoverTrees.add(new File(installRoot, "bin"));
+leftoverTrees.add(new File(installRoot, "tools"));
+leftoverTrees.add(new File(installRoot, "images"));
+leftoverTrees.add(new File(installRoot, "release-notes"));
+leftoverTrees.add(new File(installRoot, "docs"));
+leftoverTrees.add(new File(installRoot, "test"));
+leftoverTrees.add(new File(installRoot, "nbproject"));
+leftoverTrees.add(new File(installRoot, "packaging"));
+leftoverTrees.add(new File(installRoot, "ivy"));
+leftoverTrees.add(new File(installRoot, "tmp"));
+leftoverTrees.add(new File(installRoot, "build"));
+leftoverTrees.add(new File(installRoot, "dist/javadoc"));
+leftoverTrees.add(new File(installRoot, "$" + "{build.dir}"));
+leftoverTrees.add(new File(installRoot, "$" + "{build.generated.sources.dir}"));
+for (File dir : leftoverTrees) {
+    if (dir.isDirectory()) {
+        try {
+            java.util.List&lt;java.nio.file.Path&gt; paths = java.nio.file.Files.walk(dir.toPath())
+                .sorted(java.util.Comparator.reverseOrder())
+                .collect(java.util.stream.Collectors.toList());
+            for (java.nio.file.Path p : paths) {
+                java.nio.file.Files.deleteIfExists(p);
+            }
+            com.install4j.api.Util.logInfo(context, "Removed leftover " + dir.getAbsolutePath());
+        } catch (Exception ex) {
+            com.install4j.api.Util.logInfo(context, "Could not remove " + dir.getAbsolutePath() + ": " + ex);
         }
-        com.install4j.api.Util.logInfo(context, "Removed leftover " + nativeDir.getAbsolutePath());
-    } catch (Exception ex) {
-        com.install4j.api.Util.logInfo(context, "Could not remove " + nativeDir.getAbsolutePath() + ": " + ex);
+    }
+}
+String[] leftoverFiles = {
+    "jaer.code-workspace", ".gitattributes", ".gitignore", ".classpath", ".project",
+    "_ivy_report.xml", "_ivy_try.xml", "davis-color-renderer-benchmark.sh",
+    "dvs-slice-avi-writer.exe", "dvs-slice-avi-writer.sh", "dvs-slice-avi-writer.exe4j",
+    "jAERViewer_linux.sh", "jAERViewer_linux.xml", "jAERViewer_win64.exe", "jAERViewer.exe",
+    "build.xml", "build.cmd", "ivy.xml", "ivysettings.xml", "jaer.install4j", "manifest.mf",
+    "README-releasing-tagging.md", "dist/jAER.jar.7z"
+};
+for (String name : leftoverFiles) {
+    File f = new File(installRoot, name);
+    if (f.isFile() &amp;&amp; f.delete()) {
+        com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+    }
+}
+File distDir = new File(installRoot, "dist");
+if (distDir.isDirectory()) {
+    File[] sevenZ = distDir.listFiles((d, n) -&gt; n.toLowerCase().endsWith(".7z"));
+    if (sevenZ != null) {
+        for (File f : sevenZ) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
+}
+File[] hsErr = installRoot.listFiles((d, n) -&gt; n.startsWith("hs_err") &amp;&amp; n.endsWith(".log"));
+if (hsErr != null) {
+    for (File f : hsErr) {
+        if (f.isFile() &amp;&amp; f.delete()) {
+            com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+        }
+    }
+}
+File[] i4jSetup = installRoot.listFiles((d, n) -&gt;
+    (n.startsWith("install4j_windows") &amp;&amp; n.toLowerCase().endsWith(".exe"))
+    || n.startsWith("install4j License key"));
+if (i4jSetup != null) {
+    for (File f : i4jSetup) {
+        if (f.isFile() &amp;&amp; f.delete()) {
+            com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+        }
     }
 }
 return true;
