@@ -1,28 +1,26 @@
 # jAER
+
+[See latest jAER release](https://github.com/SensorsINI/jaer/releases/latest)
+
 Cross-platform (Linux, Windows, MacOS) Desktop Java Application for Address-Event Representation (AER) neuromorphic event cameras and silicon cochleas. 
 
 **Permanent link:** http://jaerproject.org
 
-**Welcome to the jAER Open Source Project
+**Welcome to the jAER Open Source Project for
 Real time sensory-motor processing for event sensors and systems**
 
-Founded in 2007 to support event sensors and robot demonstrators developed by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch). Now supports cameras and recordings from all manufacturers (see *Device Hardware Support* below).
-
-#### What jAER feels like to use
+Developed since 2007 by the [Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich](https://sensors.ini.ch) to support event sensors and robot demonstrators.
 
 jAER is a full-fledged desktop application that captures event camera output, displays it, records, plays back, and allows complex post camera algorithmic processing of the device output stream. 
 ![jAER demo](/images/using_jaer_2021-01-22_08-16-47_1.gif)
 
 ## Installation
 
-You can find the latest releases at <https://github.com/SensorsINI/jaer/releases>.
+You can find the latest releases and binary [install4j](https://www.ej-technologies.com/products/install4j/overview.html) installers at <https://github.com/SensorsINI/jaer/releases>.
 
-Starting with jAER 2.0, binary installers are available thanks to the
-multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html).
+**Installers are GitHub Release assets** (~300 MB each, bundled [Eclipse Temurin](https://adoptium.net/) from Adoptium — 3.2.0 is Temurin 21; well under GitHub’s 2 GiB-per-file limit). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
 
-**Canonical downloads are GitHub Release assets** (~300 MB each, bundled [Eclipse Temurin](https://adoptium.net/) from Adoptium — 3.2.0 is Temurin 21; well under GitHub’s 2 GiB-per-file limit). Prefer the Windows installer from GitHub Releases when it is Authenticode-signed via SignPath (see [Code signing policy](#code-signing-policy)). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
-
-**Windows:** Prefer a SignPath-signed installer from GitHub Releases when available. For unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
+**Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
 **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
 **Linux:** Run the installer with `sh <installer>.sh`. Then you can *jaer* from the installation directory or gnome menu. Official apt is not provided (USB cameras need an unsandboxed install); optional `.deb` notes are in [`packaging/deb`](packaging/deb).
 
