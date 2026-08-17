@@ -190,33 +190,53 @@ public class SimpleHistogram extends AbstractHistogram {
          */
         public int meanBin = 0;
         /**
-         * Lowest bin with any samples in the current histogram. Together with
-         * {@link #maxNonZeroBin} this is the measured DN range used for
-         * under/over exposure fractions, not the full ADC scale.
+         * Learned analog-floor bin (lowest occupied bin seen since {@link #reset()}).
+         * Grows downward. Used with {@link #maxNonZeroBin} as the measured DN
+         * full scale, not the ADC length.
          */
         public int minNonZeroBin = 0;
         /**
-         * The maximum bin with any value in it in the current histogram.
+         * Learned analog-ceiling bin (highest occupied bin seen since
+         * {@link #reset()}). Grows upward.
          */
         public int maxNonZeroBin = 0;
         /**
-         * Fraction of values in the low portion of the measured DN range
-         * (below {@link #lowBoundary} of [minNonZeroBin, maxNonZeroBin])
+         * True after at least one non-empty histogram has set
+         * {@link #minNonZeroBin}/{@link #maxNonZeroBin}.
+         */
+        private boolean analogRangeInitialized = false;
+
+        /**
+         * Install a learned analog DN range from the caller (needed because APS
+         * histograms are double-buffered and each has its own Statistics).
+         */
+        public void setLearnedAnalogRange(int minBin, int maxBin, boolean initialized) {
+            minNonZeroBin = minBin;
+            maxNonZeroBin = maxBin;
+            analogRangeInitialized = initialized;
+        }
+
+        public boolean isAnalogRangeInitialized() {
+            return analogRangeInitialized;
+        }
+        /**
+         * Fraction of current-frame samples in the low band of the learned
+         * analog range
          */
         public float fracLow = 0;
         /**
-         * Fraction of values in the high portion of the measured DN range
-         * (above {@link #highBoundary} of [minNonZeroBin, maxNonZeroBin])
+         * Fraction of current-frame samples in the high band of the learned
+         * analog range
          */
         public float fracHigh = 0;
 
         /**
-         * Upper edge of the low band, as a fraction of the measured
+         * Upper edge of the low band, as a fraction of the learned analog
          * [minNonZeroBin, maxNonZeroBin] range
          */
         private float lowBoundary = 0.1f;
         /**
-         * Lower edge of the high band, as a fraction of the measured
+         * Lower edge of the high band, as a fraction of the learned analog
          * [minNonZeroBin, maxNonZeroBin] range
          */
         private float highBoundary = .9f;
@@ -238,8 +258,6 @@ public class SimpleHistogram extends AbstractHistogram {
             maxBin = 0;
             binSum = 0;
             weightedSum = 0;
-            minNonZeroBin = -1;
-            maxNonZeroBin = 0;
             for (int i = 0; i < nBins; i++) {
                 float v = histogram[i];
                 binSum += v;
@@ -248,48 +266,97 @@ public class SimpleHistogram extends AbstractHistogram {
                     maxBin = i;
                     maxCount = v;
                 }
-                if (v > 0) {
-                    if (minNonZeroBin < 0) {
-                        minNonZeroBin = i;
-                    }
-                    maxNonZeroBin = i;
-                }
-            }
-            if (minNonZeroBin < 0) {
-                minNonZeroBin = 0;
             }
 
             meanBin = 0;
             if (binSum <= 0) {
                 meanBin = nBins / 2;
                 maxBin = (int) meanBin;
-            } else {
-                meanBin = Math.round(weightedSum / binSum);
+                fracLow = 0;
+                fracHigh = 0;
+                return;
+            }
+            meanBin = Math.round(weightedSum / binSum);
+
+            // Ignore isolated hot/dead pixels when finding this frame's occupied DN span.
+            final float occupancy = Math.max(1f, 1e-4f * binSum);
+            int frameMin = -1, frameMax = -1;
+            for (int i = 0; i < nBins; i++) {
+                if (histogram[i] >= occupancy) {
+                    if (frameMin < 0) {
+                        frameMin = i;
+                    }
+                    frameMax = i;
+                }
+            }
+            if (frameMin < 0) {
+                for (int i = 0; i < nBins; i++) {
+                    if (histogram[i] > 0) {
+                        if (frameMin < 0) {
+                            frameMin = i;
+                        }
+                        frameMax = i;
+                    }
+                }
+            }
+
+            // Expand learned analog floor/ceiling. Do not reset each frame: scoring against
+            // the current image's own min/max makes a bright low-contrast background look
+            // well-exposed relative to itself (HDR hold / overexposure).
+            if (frameMin >= 0) {
+                if (!analogRangeInitialized) {
+                    minNonZeroBin = frameMin;
+                    maxNonZeroBin = frameMax;
+                    analogRangeInitialized = true;
+                } else {
+                    if (frameMin < minNonZeroBin) {
+                        minNonZeroBin = frameMin;
+                    }
+                    if (frameMax > maxNonZeroBin) {
+                        maxNonZeroBin = frameMax;
+                    }
+                }
             }
 
             fracLow = 0;
             fracHigh = 0;
-            final int measuredRange = maxNonZeroBin - minNonZeroBin;
-            if (binSum > 0 && measuredRange > 0) {
-                // low/high bands are fractions of the occupied DN range, not of the ADC full scale
-                int binLow = minNonZeroBin + Math.round(getLowBoundary() * measuredRange);
-                int binHigh = minNonZeroBin + Math.round(getHighBoundary() * measuredRange);
-                if (binLow < minNonZeroBin) {
-                    binLow = minNonZeroBin;
+            final int analogRange = maxNonZeroBin - minNonZeroBin;
+            // Until dark and bright DNs have both been seen, the analog span is too
+            // narrow to use as full scale. Fall back to ADC midpoint only for that bootstrap.
+            if (analogRange < Math.max(4, nBins / 20)) {
+                if (meanBin > nBins / 2) {
+                    fracHigh = 1;
+                } else if (meanBin < nBins / 2) {
+                    fracLow = 1;
                 }
-                if (binHigh > maxNonZeroBin) {
-                    binHigh = maxNonZeroBin;
-                }
-                float sumLow = 0, sumHigh = 0;
-                for (int i = minNonZeroBin; i <= binLow; i++) {
-                    sumLow += histogram[i];
-                }
-                for (int i = binHigh; i <= maxNonZeroBin; i++) {
-                    sumHigh += histogram[i];
-                }
-                fracLow = sumLow / binSum;
-                fracHigh = sumHigh / binSum;
+                return;
             }
+
+            int binLow = minNonZeroBin + Math.round(getLowBoundary() * analogRange);
+            int binHigh = minNonZeroBin + Math.round(getHighBoundary() * analogRange);
+            if (binLow < minNonZeroBin) {
+                binLow = minNonZeroBin;
+            }
+            if (binHigh > maxNonZeroBin) {
+                binHigh = maxNonZeroBin;
+            }
+            if (binLow >= binHigh) {
+                if (meanBin >= (minNonZeroBin + maxNonZeroBin) / 2) {
+                    fracHigh = 1;
+                } else {
+                    fracLow = 1;
+                }
+                return;
+            }
+            float sumLow = 0, sumHigh = 0;
+            for (int i = minNonZeroBin; i <= binLow; i++) {
+                sumLow += histogram[i];
+            }
+            for (int i = binHigh; i <= maxNonZeroBin; i++) {
+                sumHigh += histogram[i];
+            }
+            fracLow = sumLow / binSum;
+            fracHigh = sumHigh / binSum;
         }
 
         /**
@@ -331,7 +398,10 @@ public class SimpleHistogram extends AbstractHistogram {
         public void reset() {
             minNonZeroBin = 0;
             maxNonZeroBin = 0;
+            analogRangeInitialized = false;
             maxCount = 0;
+            fracLow = 0;
+            fracHigh = 0;
         }
     }
 

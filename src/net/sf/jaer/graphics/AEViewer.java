@@ -7991,6 +7991,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     }//GEN-LAST:event_showRenderingModeMIActionPerformed
 
     private void renewChipMIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_renewChipMIActionPerformed
+        if ((biasgenFrame != null) && !biasgenFrame.isModificationsSaved()) {
+            return;
+        }
         try {
             Class cl = chip.getClass();
             try {

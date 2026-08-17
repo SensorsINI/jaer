@@ -535,11 +535,14 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
             autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
             final JLabel autoExpDesc = new JLabel(
                     "<html><body style='font-family:sans-serif;width:420px'>"
-                    + "<b>APS auto-exposure</b> sets exposure time from the current frame's APS histogram of digital numbers (DN).<br><br>"
-                    + "The working range is the <b>measured min-max</b> of occupied histogram bins, typically well below the 10-bit ADC full scale (0-1023), because analog offset and saturation leave unused codes at both ends.<br><br>"
-                    + "<b>lowBoundary</b> and <b>highBoundary</b> are fractions of that measured range. Samples below the low edge count as underexposed; samples above the high edge as overexposed.<br><br>"
-                    + "If the underexposed fraction exceeds <b>underOverFractionThreshold</b> (and the overexposed fraction does not), exposure is multiplied by <b>1+expDelta</b>. The opposite decreases exposure. If both bands exceed the threshold, or neither does, exposure is left unchanged.<br><br>"
-                    + "With <b>pidControllerEnabled</b>, the step is <i>expDelta</i> times how far the mean DN is from the midpoint of the measured range. "
+                    + "<b>APS auto-exposure</b> sets exposure time from the APS histogram of digital numbers (DN).<br><br>"
+                    + "Full scale is the <b>learned analog min-max</b> of occupied bins (black level to analog saturation), not the 10-bit ADC (0-1023).<br><br>"
+                    + "The loop is camera/libcamera-style <b>target grey</b>: it scales exposure so the histogram mean sits at the midpoint of <b>lowBoundary</b> and <b>highBoundary</b> (DN is treated as proportional to exposure). "
+                    + "<b>hysteresis</b> is a deadband on that mean error. "
+                    + "Highlights are a one-sided clamp: if <b>underOverFractionThreshold</b> of samples are in the high band, exposure will not increase until that fraction is hysteresis below the threshold. Shadows never force an increase.<br><br>"
+                    + "After each write, three APS frames are skipped so the next decision uses the new integration (the finished frame still used the old register). "
+                    + "|Δexposure| per update is clamped to <b>expDelta</b> (max 50%). "
+                    + "With <b>pidControllerEnabled</b>, new = current × (targetMean / measuredMean); without it, the step is ±expDelta. "
                     + "<b>centerWeighted</b> samples more from the image center. Hover a control for its tooltip."
                     + "</body></html>");
             autoExpDesc.setAlignmentX(JLabel.LEFT_ALIGNMENT);

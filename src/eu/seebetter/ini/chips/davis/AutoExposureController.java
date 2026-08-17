@@ -15,17 +15,28 @@ import net.sf.jaer.util.PropertyTooltipSupport;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
- * Controls APS exposure time from the current frame histogram of measured
- * digital numbers (DN).
+ * Controls APS exposure time from the APS histogram of measured digital numbers
+ * (DN).
  * <p>
- * The working range is the occupied [min, max] of histogram bins, not the 10-bit
- * ADC full scale. If more than {@code underOverFractionThreshold} of samples
- * fall in the low band of that range (and not the high band), exposure is
- * increased; the opposite decreases it. Optional proportional (PID) control
- * scales the step by how far the mean DN is from the midpoint of the measured
- * range.
+ * Full scale is the learned analog [min, max] of occupied histogram bins, not
+ * the 10-bit ADC length. The controller is camera/libcamera-style: a single
+ * target-grey metric (histogram mean vs midpoint of {@code [lowBoundary,
+ * highBoundary]}), with highlights as a one-sided clamp (never increase while
+ * {@code fracHigh} is near {@code underOverFractionThreshold}). After each
+ * exposure write, several APS frames are skipped so the next decision uses the
+ * new integration, not the in-flight frame. There is no I or D term.
  */
 public class AutoExposureController extends Observable implements HasPropertyTooltips {
+
+    private static final float STAT_LP_ALPHA = 0.3f;
+    /** Max |Δexposure|/exposure per accepted update (libcamera-style clamp). */
+    private static final float MAX_STEP = 0.5f;
+    /**
+     * APS frames to ignore after an exposure write. The histogram at
+     * {@code controlExposure} is from the frame that just finished; that frame
+     * (and often the next) still used the previous exposure register.
+     */
+    private static final int SETTLE_FRAMES = 3;
 
     private final DavisBaseCamera davisChip;
 
@@ -34,6 +45,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     private float underOverFractionThreshold; // threshold for fraction of total pixels that are underexposed or overexposed
     private float lowBoundary;
     private float highBoundary;
+    private float hysteresis;
     private boolean pidControllerEnabled;
     protected boolean centerWeighted;
     private boolean debuggingLogEnabled = false;
@@ -41,22 +53,40 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     private final PropertyTooltipSupport tooltipSupport = new PropertyTooltipSupport();
     SimpleHistogram hist = null;
     SimpleHistogram.Statistics stats = null;
+    /** Learned analog floor/ceiling in histogram bins; survives histogram double-buffering. */
+    private int analogMinBin = 0;
+    private int analogMaxBin = 0;
+    private boolean analogRangeInitialized = false;
+    private float lpFracLow;
+    private float lpFracHigh;
+    private float lpMeanBin;
+    private boolean fracLpInitialized = false;
+    /** Remaining APS frames to skip after the last exposure write. */
+    private int settleFramesRemaining = 0;
+    /** True while highlights are at/near the clip limit (Schmitt on fracHigh). */
+    private boolean clipLimited = false;
+    private boolean loadingPreferences = false;
+
+    private static final String PREF = "AutoExposureController.";
 
     public AutoExposureController(final DavisBaseCamera davisChip) {
         super();
         this.davisChip = davisChip;
         loadPreferences();
 
-        tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed (also the PID gain when pidControllerEnabled)");
+        tooltipSupport.setPropertyTooltip("expDelta",
+                "max |Δexposure|/exposure per update (also clamped to 50%). 0.1 is about 10% per settled frame.");
         tooltipSupport.setPropertyTooltip("underOverFractionThreshold",
-                "fraction of samples in the low xor high band of the measured DN range that triggers an exposure change");
+                "highlight clamp: if this fraction of samples is in the high analog band, exposure may decrease and will not increase until fracHigh is hysteresis below this value. Shadows never force an increase.");
+        tooltipSupport.setPropertyTooltip("hysteresis",
+                "deadband on normalized mean error, and the Schmitt gap on the highlight clamp. 0 chatters; 0.05 is typical.");
         tooltipSupport.setPropertyTooltip("lowBoundary",
-                "upper edge of the underexposed band, as a fraction of the measured min-max DN range (not the ADC full scale)");
+                "low edge of the target-grey band, as a fraction of the learned analog min-max DN range. Target mean is the midpoint of low/highBoundary.");
         tooltipSupport.setPropertyTooltip("highBoundary",
-                "lower edge of the overexposed band, as a fraction of the measured min-max DN range (not the ADC full scale)");
+                "high edge of the target-grey band, as a fraction of the learned analog min-max DN range. Also the start of the highlight/clip band.");
         tooltipSupport.setPropertyTooltip("autoExposureEnabled", "Exposure time is automatically controlled when this flag is true");
         tooltipSupport.setPropertyTooltip("pidControllerEnabled",
-                "<html>Enable proportional control rather than a fixed-size step. <i>expDelta</i> is multiplied by how far the mean DN is from the midpoint of the measured min-max range");
+                "<html>If set, new exposure = current * clamp(targetMean / measuredMean) (linear APS gain, libcamera-style). If cleared, step is ±expDelta outside the deadband. Highlights still clamp both modes. No I or D term.");
         tooltipSupport.setPropertyTooltip("centerWeighted",
                 "<html>Weight the histogram toward the image center so peripheral pixels affect exposure less");
         tooltipSupport.setPropertyTooltip("debuggingLogEnabled",
@@ -86,72 +116,152 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         }
         stats.setLowBoundary(lowBoundary);
         stats.setHighBoundary(highBoundary);
+        stats.setLearnedAnalogRange(analogMinBin, analogMaxBin, analogRangeInitialized);
         hist.computeStatistics();
-        final DavisConfig davisConfig = davisChip.getDavisConfig();
-        final float exposureFrameDelayQuantizationMs = davisConfig.getExposureFrameDelayQuantizationMs();
-        final float currentExposure = davisConfig.getExposureDelayMs();
-        float newExposure = 0;
-        float expChange = expDelta;
-        final int measuredRange = stats.maxNonZeroBin - stats.minNonZeroBin;
-        if (pidControllerEnabled && (measuredRange > 0)) {
-            // error is mean DN vs midpoint of the occupied histogram range, not vs ADC full scale / 2
-            final float mid = (stats.minNonZeroBin + stats.maxNonZeroBin) / 2f;
-            final float err = (stats.meanBin - mid) / (float) measuredRange;
-            expChange = expDelta * Math.abs(err);
+        if (stats.isAnalogRangeInitialized()) {
+            analogMinBin = stats.minNonZeroBin;
+            analogMaxBin = stats.maxNonZeroBin;
+            analogRangeInitialized = true;
         }
-        if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {
-            newExposure = currentExposure * (1 + expChange);
-            if (newExposure < currentExposure + exposureFrameDelayQuantizationMs) {
-                newExposure = currentExposure + exposureFrameDelayQuantizationMs; // ensure increase
-            }
-            if (newExposure != currentExposure) {
-                davisConfig.setExposureDelayMs(newExposure);
-            }
-            float actualExposure = davisConfig.getExposureDelayMs();
-            if (debuggingLogEnabled) {
-                davisChip.getLog().log(Level.INFO, "Underexposed: {0} {1}", new Object[]{stats.toString(),
-                    String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
-            }
-        } else if ((stats.fracLow < underOverFractionThreshold) && (stats.fracHigh >= underOverFractionThreshold)) {
-            newExposure = currentExposure * (1 - expChange);
-            if (newExposure > currentExposure - exposureFrameDelayQuantizationMs) {
-                newExposure = currentExposure - exposureFrameDelayQuantizationMs; // ensure decrease even with rounding.
-            }
-            if (newExposure < 0) {
-                newExposure = 0;
-            }
-            if (newExposure != currentExposure) {
-                davisConfig.setExposureDelayMs(newExposure);
-            }
-            float actualExposure = davisConfig.getExposureDelayMs();
-            if (debuggingLogEnabled) {
-                davisChip.getLog().log(Level.INFO, "Overexposed: {0} {1}", new Object[]{stats.toString(),
-                    String.format("expChange=%.2f (oldExposure=%10.6fs newExposure=%10.6fs)", expChange, currentExposure, actualExposure)});
-            }
+
+        if (!fracLpInitialized) {
+            lpFracLow = stats.fracLow;
+            lpFracHigh = stats.fracHigh;
+            lpMeanBin = stats.meanBin;
+            fracLpInitialized = true;
         } else {
-            // log.info(stats.toString());
+            lpFracLow += STAT_LP_ALPHA * (stats.fracLow - lpFracLow);
+            lpFracHigh += STAT_LP_ALPHA * (stats.fracHigh - lpFracHigh);
+            lpMeanBin += STAT_LP_ALPHA * (stats.meanBin - lpMeanBin);
+        }
+
+        if (settleFramesRemaining > 0) {
+            settleFramesRemaining--;
+            return;
+        }
+
+        final int analogRange = analogMaxBin - analogMinBin;
+        if (analogRange < 4) {
+            return;
+        }
+
+        // Camera-style target grey: mean DN at the midpoint of the "good" analog band.
+        final float targetNorm = 0.5f * (lowBoundary + highBoundary);
+        float meanNorm = (lpMeanBin - analogMinBin) / (float) analogRange;
+        if (meanNorm < 0.02f) {
+            meanNorm = 0.02f;
+        } else if (meanNorm > 0.98f) {
+            meanNorm = 0.98f;
+        }
+        final float error = meanNorm - targetNorm; // >0 too bright
+
+        final float thresh = underOverFractionThreshold;
+        final float deadband = Math.max(0f, hysteresis);
+        // Schmitt on highlights: enter clip-limited when over thresh, leave only
+        // after fracHigh is hysteresis below thresh. While limited, never increase.
+        if (lpFracHigh >= thresh) {
+            clipLimited = true;
+        } else if (lpFracHigh < (thresh - deadband)) {
+            clipLimited = false;
+        }
+
+        if (!clipLimited && (Math.abs(error) <= deadband)) {
+            return;
+        }
+        if (clipLimited && (lpFracHigh <= thresh) && (error <= deadband)) {
+            // Highlight-limited hold: mean may still be dark (HDR); do not hunt.
+            return;
+        }
+
+        final float maxStep = Math.min(Math.max(expDelta, 0.01f), MAX_STEP);
+        float ratio;
+        if (pidControllerEnabled) {
+            // Linear APS: DN ~ exposure * irradiance, so scale exposure by target/mean.
+            ratio = targetNorm / meanNorm;
+        } else if ((error > 0) || (lpFracHigh > thresh)) {
+            ratio = 1f - maxStep;
+        } else {
+            ratio = 1f + maxStep;
+        }
+        if (lpFracHigh > thresh) {
+            final float clipErr = (lpFracHigh - thresh) / Math.max(thresh, 0.05f);
+            final float clipStep = pidControllerEnabled ? Math.min(maxStep, expDelta * clipErr) : maxStep;
+            if (ratio > (1f - clipStep)) {
+                ratio = 1f - clipStep;
+            }
+        } else if (clipLimited && (ratio > 1f)) {
+            ratio = 1f;
+        }
+        if (ratio > (1f + maxStep)) {
+            ratio = 1f + maxStep;
+        } else if (ratio < (1f - maxStep)) {
+            ratio = 1f - maxStep;
+        }
+        if (Math.abs(ratio - 1f) < 1e-4f) {
+            return;
+        }
+
+        final DavisConfig davisConfig = davisChip.getDavisConfig();
+        final float quantizationMs = davisConfig.getExposureFrameDelayQuantizationMs();
+        final float currentExposure = davisConfig.getExposureDelayMs();
+        float newExposure = currentExposure * ratio;
+        if (newExposure < 0) {
+            newExposure = 0;
+        }
+        if (Math.abs(newExposure - currentExposure) < (0.5f * quantizationMs)) {
+            return;
+        }
+        davisConfig.setExposureDelayMs(newExposure);
+        settleFramesRemaining = SETTLE_FRAMES;
+        if (debuggingLogEnabled) {
+            final float actualExposure = davisConfig.getExposureDelayMs();
+            davisChip.getLog().log(Level.INFO, "{0}",
+                    String.format("%s err=%.3f meanN=%.2f tgt=%.2f lpHigh=%.2f clip=%s ratio=%.3f (old=%.3f ms new=%.3f ms) %s",
+                            ratio < 1f ? "DECREASE" : "INCREASE",
+                            error, meanNorm, targetNorm, lpFracHigh, clipLimited, ratio,
+                            currentExposure, actualExposure, stats.toString()));
         }
     }
 
     public void storePreferences() {
-        davisChip.getPrefs().putFloat("expDelta", expDelta);
-        davisChip.getPrefs().putBoolean("autoExposureEnabled", autoExposureEnabled);
-        davisChip.getPrefs().putFloat("underOverFractionThreshold", underOverFractionThreshold);
-        davisChip.getPrefs().putFloat("AutoExposureController.lowBoundary", lowBoundary);
-        davisChip.getPrefs().putFloat("AutoExposureController.highBoundary", highBoundary);
-        davisChip.getPrefs().putBoolean("pidControllerEnabled", pidControllerEnabled);
-        davisChip.getPrefs().putBoolean("AutoExposureController.debuggingLogEnabled", debuggingLogEnabled);
+        final java.util.prefs.Preferences p = davisChip.getPrefs();
+        p.putFloat(PREF + "expDelta", expDelta);
+        p.putBoolean(PREF + "autoExposureEnabled", autoExposureEnabled);
+        p.putFloat(PREF + "underOverFractionThreshold", underOverFractionThreshold);
+        p.putFloat(PREF + "lowBoundary", lowBoundary);
+        p.putFloat(PREF + "highBoundary", highBoundary);
+        p.putFloat(PREF + "hysteresis", hysteresis);
+        p.putBoolean(PREF + "pidControllerEnabled", pidControllerEnabled);
+        p.putBoolean(PREF + "centerWeighted", centerWeighted);
+        p.putBoolean(PREF + "debuggingLogEnabled", debuggingLogEnabled);
     }
 
     final public void loadPreferences() {
-        setAutoExposureEnabled(davisChip.getPrefs().getBoolean("autoExposureEnabled", false));
-        setExpDelta(davisChip.getPrefs().getFloat("expDelta", 0.1F)); // exposureControlRegister change if incorrectly exposed
-        setUnderOverFractionThreshold(davisChip.getPrefs().getFloat("underOverFractionThreshold", 0.2F)); // threshold for fraction of total pixels that are underexposed
-        setDebuggingLogEnabled(davisChip.getPrefs().getBoolean("AutoExposureController.debuggingLogEnabled", false));
-        setLowBoundary(davisChip.getPrefs().getFloat("AutoExposureController.lowBoundary", 0.25F));
-        setHighBoundary(davisChip.getPrefs().getFloat("AutoExposureController.highBoundary", 0.75F));
-        setPidControllerEnabled(davisChip.getPrefs().getBoolean("pidControllerEnabled", false));
-        setCenterWeighted(davisChip.getPrefs().getBoolean("centerWeighted", false));
+        loadingPreferences = true;
+        try {
+            final java.util.prefs.Preferences p = davisChip.getPrefs();
+            setAutoExposureEnabled(p.getBoolean(PREF + "autoExposureEnabled", p.getBoolean("autoExposureEnabled", true)));
+            setExpDelta(p.getFloat(PREF + "expDelta", p.getFloat("expDelta", 0.5F)));
+            setUnderOverFractionThreshold(p.getFloat(PREF + "underOverFractionThreshold", p.getFloat("underOverFractionThreshold", 0.2F)));
+            setDebuggingLogEnabled(p.getBoolean(PREF + "debuggingLogEnabled", p.getBoolean("AutoExposureController.debuggingLogEnabled", false)));
+            setLowBoundary(p.getFloat(PREF + "lowBoundary", p.getFloat("AutoExposureController.lowBoundary", 0.25F)));
+            setHighBoundary(p.getFloat(PREF + "highBoundary", p.getFloat("AutoExposureController.highBoundary", 0.75F)));
+            setHysteresis(p.getFloat(PREF + "hysteresis", 0.05F));
+            setPidControllerEnabled(p.getBoolean(PREF + "pidControllerEnabled", p.getBoolean("pidControllerEnabled", true)));
+            setCenterWeighted(p.getBoolean(PREF + "centerWeighted", p.getBoolean("centerWeighted", false)));
+        } finally {
+            loadingPreferences = false;
+        }
+    }
+
+    /** Marks hardware configuration dirty so Renew/Quit offers to save XML (and storePreferences). */
+    private void onUserChange() {
+        if (loadingPreferences) {
+            return;
+        }
+        if ((davisChip.getAeViewer() != null) && (davisChip.getAeViewer().getBiasgenFrame() != null)) {
+            davisChip.getAeViewer().getBiasgenFrame().setFileModified(true);
+        }
     }
 
     public void setAutoExposureEnabled(final boolean yes) {
@@ -161,10 +271,21 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         if (old != yes) {
             setChanged();
             notifyObservers();
+            onUserChange();
         }
-        if (!yes && (stats != null)) {
-            stats.reset(); // ensure toggling enabled resets the maxBin stat
-            hist.reset();
+        if (!yes) {
+            analogRangeInitialized = false;
+            analogMinBin = 0;
+            analogMaxBin = 0;
+            fracLpInitialized = false;
+            settleFramesRemaining = 0;
+            clipLimited = false;
+            if (stats != null) {
+                stats.reset();
+            }
+            if (hist != null) {
+                hist.reset();
+            }
         }
     }
 
@@ -181,6 +302,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         if (old != expDelta) {
             setChanged();
             notifyObservers();
+            onUserChange();
         }
     }
 
@@ -197,6 +319,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         if (old != underOverFractionThreshold) {
             setChanged();
             notifyObservers();
+            onUserChange();
         }
     }
 
@@ -207,6 +330,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         if (old != lowBoundary) {
             setChanged();
             notifyObservers();
+            onUserChange();
         }
     }
 
@@ -217,6 +341,17 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         if (old != highBoundary) {
             setChanged();
             notifyObservers();
+            onUserChange();
+        }
+    }
+
+    public void setHysteresis(final float hysteresis) {
+        final float old = this.hysteresis;
+        this.hysteresis = hysteresis < 0 ? 0 : hysteresis;
+        if (old != this.hysteresis) {
+            setChanged();
+            notifyObservers();
+            onUserChange();
         }
     }
 
@@ -230,6 +365,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         if (old != pidControllerEnabled) {
             setChanged();
             notifyObservers();
+            onUserChange();
         }
     }
 
@@ -243,6 +379,7 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         if (old != centerWeighted) {
             setChanged();
             notifyObservers();
+            onUserChange();
         }
     }
 
@@ -252,6 +389,11 @@ public class AutoExposureController extends Observable implements HasPropertyToo
     public void setDebuggingLogEnabled(boolean debuggingLogEnabled) {
         final boolean old = this.debuggingLogEnabled;
         this.debuggingLogEnabled = debuggingLogEnabled;
+        if (old != debuggingLogEnabled) {
+            setChanged();
+            notifyObservers();
+            onUserChange();
+        }
     }
 
     /**
@@ -277,6 +419,10 @@ public class AutoExposureController extends Observable implements HasPropertyToo
 
     public float getHighBoundary() {
         return highBoundary;
+    }
+
+    public float getHysteresis() {
+        return hysteresis;
     }
 
     public float getLowBoundary() {
