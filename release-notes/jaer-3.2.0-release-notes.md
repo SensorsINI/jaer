@@ -19,7 +19,7 @@
 | macOS | Intel | [jAER_macos_3_2_0.dmg](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_macos_3_2_0.dmg) |
 | Linux | x64 | [jAER_unix_3_2_0.sh](https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_unix_3_2_0.sh) |
 
-Each installer is ~300 MB and includes Eclipse Temurin 21 — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page.
+Each installer is ~300 MB and includes a bundled [Eclipse Temurin](https://adoptium.net/) JDK from Adoptium (this 3.2.0 media is **21.0.12**) — you do not install Java yourself. GitHub lists the same files again under **Assets** at the bottom of this page. To clone and `ant run`, install [Adoptium JDK 25+](https://adoptium.net/) (`javac` still targets 21).
 
 Video: [installing and updating jAER on YouTube](https://youtu.be/qQVt8_gwYVY) (also covers *git clone* and rebuild from master).
 

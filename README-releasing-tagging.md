@@ -33,7 +33,7 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
        gh release edit 3.2.0 --notes-file release-notes/jaer-3.2.0-release-notes.md
 4. Commit and push repo-root `updates.xml` if `git status` still shows it dirty. Installed copies only see `master`.
 5. Point git tag `<VERSION.txt>` at the commit you want and push it (`git tag` / `git push origin <tag>`). If the tag already exists on an older commit, delete and recreate it (see Tagging).
-6. Optional later: SignPath signed Windows exe, winget/Homebrew, prune old assets.
+6. Optional later: **3.2.1** SignPath-signed Windows exe, bump install4j `jreBundles` from Temurin 21 to Adoptium JDK 25, winget/Homebrew, prune old assets.
 
 After a rebuild, hashes in `updates.xml` change. Repeat steps 2--4 (copy, upload, push `updates.xml`) or the updater will checksum-fail.
 

@@ -1,6 +1,6 @@
 # jAER distribution packaging
 
-Installers are **GitHub Release assets** (`jAER_windows-x64_*.exe`, Intel `jAER_macos_*.dmg`, Apple Silicon `jAER_macos_aarch64_*.dmg` from media id 39, `jAER_unix_*.sh`). Each file is ~300 MB (bundled Temurin 21), which is within GitHub’s 2 GiB-per-asset limit. Keep binaries for the latest 2–3 releases; prune older assets with `scripts/prune-old-release-assets.ps1`.
+Installers are **GitHub Release assets** (`jAER_windows-x64_*.exe`, Intel `jAER_macos_*.dmg`, Apple Silicon `jAER_macos_aarch64_*.dmg` from media id 39, `jAER_unix_*.sh`). Each file is ~300 MB (bundled [Adoptium](https://adoptium.net/) Temurin 21), which is within GitHub’s 2 GiB-per-asset limit. Keep binaries for the latest 2–3 releases; prune older assets with `scripts/prune-old-release-assets.ps1`.
 
 | Channel | Status | Details |
 |---------|--------|---------|

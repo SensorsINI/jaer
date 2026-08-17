@@ -5,8 +5,8 @@
     <languages>
       <principalLanguage id="en" customLocalizationFile="./packaging/install4j/install4j-custom-resources.utf8" />
     </languages>
-    <!-- Bundle current Temurin 21 LTS (still supported through 2029). 25 is the newest LTS;
-         stay on 21 for wider OS/media compatibility unless we deliberately bump language level. -->
+    <!-- 3.2.0: Temurin 21 LTS (21.0.12+8). Bump Adoptium bundle to JDK 25 in 3.2.1
+         with the SignPath-signed Windows media — do not change 3.2.0 assets. -->
     <jreBundles jdkProviderId="Adoptium" release="21/jdk-21.0.12+8">
       <modules>
         <defaultModules set="all" />

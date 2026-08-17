@@ -20,7 +20,7 @@ You can find the latest releases at <https://github.com/SensorsINI/jaer/releases
 Starting with jAER 2.0, binary installers are available thanks to the
 multi-platform installer builder [install4j](https://www.ej-technologies.com/products/install4j/overview.html).
 
-**Canonical downloads are GitHub Release assets** (~300 MB each, bundled Eclipse Temurin 21; well under GitHub’s 2 GiB-per-file limit). Prefer the Windows installer from GitHub Releases when it is Authenticode-signed via SignPath (see [Code signing policy](#code-signing-policy)). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
+**Canonical downloads are GitHub Release assets** (~300 MB each, bundled [Eclipse Temurin](https://adoptium.net/) from Adoptium — 3.2.0 is Temurin 21; well under GitHub’s 2 GiB-per-file limit). Prefer the Windows installer from GitHub Releases when it is Authenticode-signed via SignPath (see [Code signing policy](#code-signing-policy)). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
 
 **Windows:** Prefer a SignPath-signed installer from GitHub Releases when available. For unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
 **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
@@ -28,7 +28,7 @@ multi-platform installer builder [install4j](https://www.ej-technologies.com/pro
 
 Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…; jAER quits so the new installer can replace files. Package-manager installs should use `winget upgrade` / `brew upgrade --cask jaer` instead. See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
-* install4j installers install a bundled version of the [latest Java from Eclipse Adoptium](https://adoptium.net/) (see [Guide fo Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features)).
+* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) from Adoptium (3.2.0 is Temurin **21**; `ant run` from a git clone needs [JDK 25+](https://adoptium.net/)). See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
 * Release install4j installers do NOT install git working copy, but using the new self-update feature introduced in jAER-1.8.1, 
 you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 * You will get the best experience running from lastest bug fixes. 
