@@ -191,11 +191,11 @@ Output: currentInstallers/<VERSION.txt>/jAER_windows-x64_*.exe
 
 ## OS package managers (winget / Homebrew)
 
-After the GitHub Release has installer assets and SHA256 sums:
+3.2.0 GitHub assets exist. YAML/cask SHA256s live in `packaging/`. Remaining work:
 
-- Windows: copy/update YAML under packaging/winget/ and PR to microsoft/winget-pkgs (`SensorsINI.jAER`). After SignPath release-signing, set locale Publisher to **SignPath Foundation**. See packaging/winget/README.md.
-- macOS: publish packaging/homebrew/Casks/jaer.rb to a SensorsINI/homebrew-jaer tap, then later homebrew/cask. Media id 39 is Apple Silicon. See packaging/homebrew/README.md.
-- Linux: keep the `.sh` installer; do not start with official apt. Optional later: packaging/deb/README.md.
+- Windows: YAML is `packaging/winget/3.2.0/` (`winget validate` that folder). Hold `wingetcreate submit` until 3.2.0 (or a later signed build) is the public winget package. Publisher stays Sensors Group until SignPath **release-signing**. See packaging/winget/README.md.
+- macOS: confirm DMG installer `.app` path on a Mac, then publish `packaging/homebrew/Casks/jaer.rb` to SensorsINI/homebrew-jaer when ready. See packaging/homebrew/README.md.
+- Linux: keep the `.sh` installer. Optional later: packaging/deb/README.md.
 
 Package-manager trees should include a `.jaer-packaged-install` marker file so Help → Check for release updates does not offer Download and install.
 

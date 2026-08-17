@@ -5,8 +5,8 @@ Installers are **GitHub Release assets** (`jAER_windows-x64_*.exe`, Intel `jAER_
 | Channel | Status | Details |
 |---------|--------|---------|
 | GitHub Releases + in-app updater | Primary | install4j standalone update downloader (`updater`) |
-| [winget](winget/) | Submit after assets exist | `microsoft/winget-pkgs` manifests |
-| [Homebrew cask](homebrew/) | Own tap first | `SensorsINI/homebrew-jaer`; later `homebrew/cask` |
+| [winget](winget/) | YAML ready for 3.2.0; hold winget-pkgs PR | `SensorsINI.jAER` — SHA256 filled; `wingetcreate submit packaging\winget\3.2.0` when the public package is decided |
+| [Homebrew cask](homebrew/) | Cask ready (Intel + Apple Silicon) | Confirm DMG `.app` path on a Mac; publish `SensorsINI/homebrew-jaer` when ready; later `homebrew/cask` |
 | Linux apt / `.deb` | Optional later | [deb/](deb/) — USB cameras need a normal OS process, not snap/flatpak |
 | macOS notarization | Optional later | [macos-notarization.md](macos-notarization.md) |
 

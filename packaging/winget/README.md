@@ -1,34 +1,44 @@
 # winget (Windows)
 
-Submit to [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs) **after** the Windows installer is a GitHub Release asset and you have its SHA256.
-
 Package identifier: `SensorsINI.jAER` (x64 only, install4j media id 26).
 
-## First publish
+3.2.0 YAML in this folder already has the GitHub Release URL and SHA256 from `updates.xml`. Publisher stays **Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich** until SignPath **release-signing** is VALID, then change it to **SignPath Foundation**.
 
-1. Download `jAER_windows-x64_<version_with_underscores>.exe` from the GitHub Release (prefer the SignPath-signed build).
-2. `Get-FileHash -Algorithm SHA256 path\to\jAER_windows-x64_3_2_0.exe`
-3. Copy the YAML files in this folder; set `PackageVersion`, installer URL, and `InstallerSha256`.
-4. Publisher:
-   - Until SignPath **release-signing** is VALID: `Sensors Group, Inst. of Neuroinformatics, UZH-ETH Zurich`
-   - After release-signing: `SignPath Foundation` (must match the Authenticode publisher)
-5. Install with [wingetcreate](https://github.com/microsoft/winget-create):
+## Validate on this machine (no GitHub PR yet)
 
 ```text
-wingetcreate new https://github.com/SensorsINI/jaer/releases/download/3.2.0/jAER_windows-x64_3_2_0.exe
+winget validate packaging\winget\3.2.0
+winget install --manifest packaging\winget\3.2.0
 ```
 
-Or submit a PR under `manifests/s/SensorsINI/jAER/<version>/`.
+`winget validate` only checks YAML schema. `--manifest` install is optional: it downloads the ~300 MB GitHub exe, verifies SHA256, and launches install4j. Cancelled install → winget exit code 1. SmartScreen **Unknown publisher** until SignPath.
 
-install4j silent flags used in the template: `-q` (unattended). Progress: `-splash "Installing jAER"`.
+## First publish to microsoft/winget-pkgs
 
-## Each later release
+Hold this until 3.2.0 (or a later signed build) is the intended public winget package. `wingetcreate submit` opens a PR; it does not merge `microsoft/winget-pkgs`. Do not replace GitHub 3.2.0 assets after submit without a new SHA256.
+
+`gh` and `wingetcreate` are installed on the Windows machine that prepared these YAML files.
+
+When ready:
+
+```text
+winget install Microsoft.WingetCreate
+wingetcreate submit packaging\winget\3.2.0
+```
+
+or a manual PR:
+
+1. Fork https://github.com/microsoft/winget-pkgs
+2. Copy the three YAML files to `manifests/s/sensorsini/jAER/3.2.0/` (publisher folder is lowercase `s` + `SensorsINI` — check current winget-pkgs convention: `manifests/s/SensorsINI/jAER/3.2.0/`)
+3. Open a PR against `microsoft/winget-pkgs` (`master`)
+
+Each later release:
 
 ```text
 wingetcreate update SensorsINI.jAER --urls https://github.com/SensorsINI/jaer/releases/download/<ver>/jAER_windows-x64_<ver_underscores>.exe --version <ver>
 ```
 
-Users:
+Users (after the PR merges):
 
 ```text
 winget install SensorsINI.jAER
