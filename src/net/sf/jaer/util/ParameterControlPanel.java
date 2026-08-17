@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -202,6 +203,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
     private TitledBorder titledBorder;
     private HashMap<String, HasSetGet> setterMap = new HashMap<>(); // map from class to property, to apply property change events to control
     private java.util.ArrayList<JComponent> controls = new ArrayList<>();
+    private final ArrayList<JLabel> propertyLabels = new ArrayList<>();
 //    private HashMap<String, Container> groupContainerMap = new HashMap();
 //    private JPanel inheritedPanel = null;
     PropertyChangeSupport support = null;
@@ -264,6 +266,41 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 //            pan.add(Box.createVerticalGlue());
         add(comp); // to fix horizontal all left alignment
         controls.add(comp);
+    }
+
+    private JLabel createPropertyLabel(String name, PropertyDescriptor p) {
+        JLabel label = new JLabel(name);
+        label.setAlignmentX(ALIGNMENT);
+        label.setFont(label.getFont().deriveFont(fontSize));
+        addTip(p, label);
+        propertyLabels.add(label);
+        return label;
+    }
+
+    /**
+     * Sets the left (property name) column min/preferred width to the longest
+     * key so names such as {@code underOverFractionThreshold} are fully visible
+     * and all value fields line up.
+     */
+    private void clampPropertyLabelColumnWidth() {
+        int maxWidth = 0;
+        for (JLabel label : propertyLabels) {
+            maxWidth = Math.max(maxWidth, label.getPreferredSize().width);
+        }
+        if (maxWidth <= 0) {
+            return;
+        }
+        for (JLabel label : propertyLabels) {
+            Dimension d = new Dimension(maxWidth, label.getPreferredSize().height);
+            label.setPreferredSize(d);
+            label.setMinimumSize(d);
+            label.setMaximumSize(d);
+        }
+        for (JComponent c : controls) {
+            Dimension pref = c.getPreferredSize();
+            int h = pref.height > 0 ? pref.height : 25;
+            c.setMaximumSize(new Dimension(Integer.MAX_VALUE, h));
+        }
     }
 
     // gets getter/setter methods for the class and makes controls for them.
@@ -393,6 +430,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
                     log.warning(e + " caught on property " + p.getName() + " from class " + classObject);
                 }
             }
+            clampPropertyLabelColumnWidth();
 //            groupContainerMap = null;
 //             sortedControls=null;
         } catch (Exception e) {
@@ -468,21 +506,14 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new GridLayout(1, 0));
-//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
-            final JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(p, label);
-            add(label);
+            add(createPropertyLabel(name, p));
 
             control = new JComboBox(c.getEnumConstants());
             control.setFont(control.getFont().deriveFont(fontSize));
-//            control.setHorizontalAlignment(SwingConstants.LEADING);
-
-            add(label);
             add(control);
+            add(Box.createHorizontalGlue());
             refresh();
             control.addActionListener(new ActionListener() {
 
@@ -523,22 +554,17 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new GridLayout(1, 0));
-//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
-            final JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(p, label);
-            add(label);
+            add(createPropertyLabel(name, p));
 
             textField = new JTextField(name);
             textField.setFont(textField.getFont().deriveFont(fontSize));
             textField.setHorizontalAlignment(SwingConstants.LEADING);
             textField.setColumns(10);
 
-            add(label);
             add(textField);
+            add(Box.createHorizontalGlue());
             refresh();
             textField.addActionListener(new ActionListener() {
 
@@ -587,28 +613,21 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new GridLayout(1, 0));
-//         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
-//            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
+            JLabel label = createPropertyLabel(name, p);
             label.setHorizontalTextPosition(SwingConstants.LEFT);
-            label.setFont(label.getFont().deriveFont(fontSize));
             add(label);
-            addTip(p, label);
 
             checkBox = new JCheckBox();
             refresh();
             checkBox.setAlignmentX(ALIGNMENT);
             checkBox.setHorizontalAlignment(SwingConstants.LEFT);
             checkBox.setHorizontalTextPosition(SwingConstants.LEFT);
-//            checkBox.setBorder(new EmptyBorder(0,0,0,0));
-//            Border border=checkBox.getBorder();
-//            Insets insets=border.getBorderInsets(this);
-//            insets.left=0;
             addTip(p, checkBox);
             add(checkBox);
+            checkBox.setMaximumSize(checkBox.getPreferredSize());
+            add(Box.createHorizontalGlue());
 
             checkBox.addActionListener(new ActionListener() {
 
@@ -690,7 +709,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new GridLayout(1, 0));
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 //           setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 
@@ -701,6 +720,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
             refresh();
             add(slider);
+            add(Box.createHorizontalGlue());
 
             slider.addChangeListener(new ChangeListener() {
 
@@ -770,7 +790,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new GridLayout(1, 0));
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 //           setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
 
@@ -785,6 +805,7 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
 
             refresh();
             add(slider);
+            add(Box.createHorizontalGlue());
 
             slider.addChangeListener(new ChangeListener() {
 
@@ -848,21 +869,16 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-            setLayout(new GridLayout(1, 0));
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
-//            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(p, label);
-            add(label);
+            add(createPropertyLabel(name, p));
 
             tf = new JTextField("", 8);
             tf.setMaximumSize(new Dimension(100, 25));
             tf.setToolTipText("Integer control: use arrow keys or mouse wheel to change value by factor. Shift constrains to simple inc/dec");
             refresh();
             add(tf);
+            add(Box.createHorizontalGlue());
             tf.addActionListener(new ActionListener() {
 
                 @Override
@@ -1078,20 +1094,15 @@ public class ParameterControlPanel extends javax.swing.JPanel implements Propert
             clazz = f;
             write = w;
             read = r;
-            setLayout(new GridLayout(1, 0));
-//            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
             setAlignmentX(ALIGNMENT);
-//            setLayout(new FlowLayout(FlowLayout.LEADING));
-            JLabel label = new JLabel(name);
-            label.setAlignmentX(ALIGNMENT);
-            label.setFont(label.getFont().deriveFont(fontSize));
-            addTip(p, label);
-            add(label);
+            add(createPropertyLabel(name, p));
             tf = new JTextField("", 10);
             tf.setMaximumSize(new Dimension(100, 25));
             tf.setToolTipText("Float control: use arrow keys or mouse wheel to change value by factor. Shift reduces factor.");
             refresh();
             add(tf);
+            add(Box.createHorizontalGlue());
             tf.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent e) {

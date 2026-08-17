@@ -15,9 +15,15 @@ import net.sf.jaer.util.PropertyTooltipSupport;
 import net.sf.jaer.util.histogram.SimpleHistogram;
 
 /**
- * Controls exposureControlRegister automatically to try to optimize captured
- * gray levels
- *
+ * Controls APS exposure time from the current frame histogram of measured
+ * digital numbers (DN).
+ * <p>
+ * The working range is the occupied [min, max] of histogram bins, not the 10-bit
+ * ADC full scale. If more than {@code underOverFractionThreshold} of samples
+ * fall in the low band of that range (and not the high band), exposure is
+ * increased; the opposite decreases it. Optional proportional (PID) control
+ * scales the step by how far the mean DN is from the midpoint of the measured
+ * range.
  */
 public class AutoExposureController extends Observable implements HasPropertyTooltips {
 
@@ -41,16 +47,18 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         this.davisChip = davisChip;
         loadPreferences();
 
-        tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed");
+        tooltipSupport.setPropertyTooltip("expDelta", "fractional change of exposure when under or overexposed (also the PID gain when pidControllerEnabled)");
         tooltipSupport.setPropertyTooltip("underOverFractionThreshold",
-                "fraction of pixel values under xor over exposed to trigger exposure change");
-        tooltipSupport.setPropertyTooltip("lowBoundary", "Upper edge of histogram range considered as low values");
-        tooltipSupport.setPropertyTooltip("highBoundary", "Lower edge of histogram range considered as high values");
+                "fraction of samples in the low xor high band of the measured DN range that triggers an exposure change");
+        tooltipSupport.setPropertyTooltip("lowBoundary",
+                "upper edge of the underexposed band, as a fraction of the measured min-max DN range (not the ADC full scale)");
+        tooltipSupport.setPropertyTooltip("highBoundary",
+                "lower edge of the overexposed band, as a fraction of the measured min-max DN range (not the ADC full scale)");
         tooltipSupport.setPropertyTooltip("autoExposureEnabled", "Exposure time is automatically controlled when this flag is true");
         tooltipSupport.setPropertyTooltip("pidControllerEnabled",
-                "<html>Enable proportional integral derivative (actually just proportional) controller rather than fixed-size step control. <p><i>expDelta</i> is multiplied by the fractional error from mid-range exposure when <i>pidControllerEnabled</i> is set");
+                "<html>Enable proportional control rather than a fixed-size step. <i>expDelta</i> is multiplied by how far the mean DN is from the midpoint of the measured min-max range");
         tooltipSupport.setPropertyTooltip("centerWeighted",
-                "<html>Enable center-weighted control so that center of image is weighted more heavily in controlling exposure");
+                "<html>Weight the histogram toward the image center so peripheral pixels affect exposure less");
         tooltipSupport.setPropertyTooltip("debuggingLogEnabled",
                 "Enable logging of autoexposure control. See console for this output.");
     }
@@ -84,10 +92,11 @@ public class AutoExposureController extends Observable implements HasPropertyToo
         final float currentExposure = davisConfig.getExposureDelayMs();
         float newExposure = 0;
         float expChange = expDelta;
-        if (pidControllerEnabled && (stats.maxNonZeroBin > 0)) {
-            // compute error signsl from meanBin relative to actual range of bins
-            final float err = (stats.meanBin - (stats.maxNonZeroBin / 2)) / (float) stats.maxNonZeroBin;
-            // fraction of range exposureControlRegister is above middle bin
+        final int measuredRange = stats.maxNonZeroBin - stats.minNonZeroBin;
+        if (pidControllerEnabled && (measuredRange > 0)) {
+            // error is mean DN vs midpoint of the occupied histogram range, not vs ADC full scale / 2
+            final float mid = (stats.minNonZeroBin + stats.maxNonZeroBin) / 2f;
+            final float err = (stats.meanBin - mid) / (float) measuredRange;
             expChange = expDelta * Math.abs(err);
         }
         if ((stats.fracLow >= underOverFractionThreshold) && (stats.fracHigh < underOverFractionThreshold)) {

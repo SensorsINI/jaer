@@ -190,35 +190,41 @@ public class SimpleHistogram extends AbstractHistogram {
          */
         public int meanBin = 0;
         /**
-         * The maximum bin with any value in it. Persistent. Use reset() to
-         * reset to zero, which is needed when bogus value causes very high
-         * value to be stored for max value.
+         * Lowest bin with any samples in the current histogram. Together with
+         * {@link #maxNonZeroBin} this is the measured DN range used for
+         * under/over exposure fractions, not the full ADC scale.
+         */
+        public int minNonZeroBin = 0;
+        /**
+         * The maximum bin with any value in it in the current histogram.
          */
         public int maxNonZeroBin = 0;
         /**
-         * Fraction of values <10% of maxNonZeroBin
+         * Fraction of values in the low portion of the measured DN range
+         * (below {@link #lowBoundary} of [minNonZeroBin, maxNonZeroBin])
          */
         public float fracLow = 0;
         /**
-         * Fraction of values >10% of maxNonZeroBin
+         * Fraction of values in the high portion of the measured DN range
+         * (above {@link #highBoundary} of [minNonZeroBin, maxNonZeroBin])
          */
         public float fracHigh = 0;
 
         /**
-         * Upper boundary relative to entire range of collected values for
-         * counting values that are considered low
+         * Upper edge of the low band, as a fraction of the measured
+         * [minNonZeroBin, maxNonZeroBin] range
          */
         private float lowBoundary = 0.1f;
         /**
-         * Lower boundary relative to entire range of collected values for
-         * counting values that are considered high
+         * Lower edge of the high band, as a fraction of the measured
+         * [minNonZeroBin, maxNonZeroBin] range
          */
         private float highBoundary = .9f;
 
         // TODO add median stats
         public String toString() {
-            return String.format("Exposure statistics: nBins=%d maxCount=%.0f maxBin=%d meanBin=%d maxNonZeroBin=%d fracLow (<%%%2.0f)=%.2f fracHigh(>%%%2.0f)=%.2f",
-                    nBins, maxCount, maxBin, meanBin, maxNonZeroBin, lowBoundary * 100, fracLow, highBoundary * 100, fracHigh);
+            return String.format("Exposure statistics: nBins=%d maxCount=%.0f maxBin=%d meanBin=%d minNonZeroBin=%d maxNonZeroBin=%d fracLow (<%%%2.0f)=%.2f fracHigh(>%%%2.0f)=%.2f",
+                    nBins, maxCount, maxBin, meanBin, minNonZeroBin, maxNonZeroBin, lowBoundary * 100, fracLow, highBoundary * 100, fracHigh);
         }
 
         /**
@@ -232,7 +238,8 @@ public class SimpleHistogram extends AbstractHistogram {
             maxBin = 0;
             binSum = 0;
             weightedSum = 0;
-//        maxNonZeroBin=0; // DO NOT reset this statistic  because it marks the maximum signal that system can produce with bias values, etc
+            minNonZeroBin = -1;
+            maxNonZeroBin = 0;
             for (int i = 0; i < nBins; i++) {
                 float v = histogram[i];
                 binSum += v;
@@ -242,10 +249,14 @@ public class SimpleHistogram extends AbstractHistogram {
                     maxCount = v;
                 }
                 if (v > 0) {
-                    if (i > maxNonZeroBin) {
-                        maxNonZeroBin = i;
+                    if (minNonZeroBin < 0) {
+                        minNonZeroBin = i;
                     }
+                    maxNonZeroBin = i;
                 }
+            }
+            if (minNonZeroBin < 0) {
+                minNonZeroBin = 0;
             }
 
             meanBin = 0;
@@ -256,29 +267,33 @@ public class SimpleHistogram extends AbstractHistogram {
                 meanBin = Math.round(weightedSum / binSum);
             }
 
-            int bin10 = Math.round(getLowBoundary() * maxNonZeroBin), bin90 = Math.round(getHighBoundary() * maxNonZeroBin);
-            float sum10 = 0, sum90 = 0;
             fracLow = 0;
             fracHigh = 0;
-            if (binSum > 0) {
-                for (int i = 0; i <= bin10; i++) {
-                    sum10 += histogram[i];
-
+            final int measuredRange = maxNonZeroBin - minNonZeroBin;
+            if (binSum > 0 && measuredRange > 0) {
+                // low/high bands are fractions of the occupied DN range, not of the ADC full scale
+                int binLow = minNonZeroBin + Math.round(getLowBoundary() * measuredRange);
+                int binHigh = minNonZeroBin + Math.round(getHighBoundary() * measuredRange);
+                if (binLow < minNonZeroBin) {
+                    binLow = minNonZeroBin;
                 }
-                for (int i = bin90; i < maxNonZeroBin; i++) {
-                    sum90 += histogram[i];
-
+                if (binHigh > maxNonZeroBin) {
+                    binHigh = maxNonZeroBin;
                 }
-
-                fracLow = sum10 / binSum;
-                fracHigh = sum90 / binSum;
+                float sumLow = 0, sumHigh = 0;
+                for (int i = minNonZeroBin; i <= binLow; i++) {
+                    sumLow += histogram[i];
+                }
+                for (int i = binHigh; i <= maxNonZeroBin; i++) {
+                    sumHigh += histogram[i];
+                }
+                fracLow = sumLow / binSum;
+                fracHigh = sumHigh / binSum;
             }
-
         }
 
         /**
-         * Upper boundary relative to entire range of collected values for
-         * counting values that are considered low
+         * Upper edge of the low band, as a fraction of the measured DN range
          *
          * @return the lowBoundary
          */
@@ -287,8 +302,7 @@ public class SimpleHistogram extends AbstractHistogram {
         }
 
         /**
-         * Upper boundary relative to entire range of collected values for
-         * counting values that are considered low
+         * Upper edge of the low band, as a fraction of the measured DN range
          *
          * @param lowBoundary the lowBoundary to set
          */
@@ -297,8 +311,7 @@ public class SimpleHistogram extends AbstractHistogram {
         }
 
         /**
-         * Lower boundary relative to entire range of collected values for
-         * counting values that are considered high
+         * Lower edge of the high band, as a fraction of the measured DN range
          *
          * @return the highBoundary
          */
@@ -307,8 +320,7 @@ public class SimpleHistogram extends AbstractHistogram {
         }
 
         /**
-         * Lower boundary relative to entire range of collected values for
-         * counting values that are considered high
+         * Lower edge of the high band, as a fraction of the measured DN range
          *
          * @param highBoundary the highBoundary to set
          */
@@ -317,6 +329,7 @@ public class SimpleHistogram extends AbstractHistogram {
         }
 
         public void reset() {
+            minNonZeroBin = 0;
             maxNonZeroBin = 0;
             maxCount = 0;
         }

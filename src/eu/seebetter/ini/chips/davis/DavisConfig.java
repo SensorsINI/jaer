@@ -532,10 +532,21 @@ public class DavisConfig extends Biasgen implements DavisDisplayConfigInterface,
         // Autoexposure
         if (getChip() instanceof DavisBaseCamera) {
             final JPanel autoExposurePanel = new JPanel();
-            autoExposurePanel.add(new JLabel(
-                    "<html>Automatic exposure control.<p>The settings here determine when and by how much the exposure value should be changed. <p> The strategy followed attempts to avoid a sitation <b> where too many pixels are under- or over-exposed. Hover over entry fields to see explanations."));
             autoExposurePanel.setLayout(new BoxLayout(autoExposurePanel, BoxLayout.Y_AXIS));
-            autoExposurePanel.add(new ParameterControlPanel(((DavisBaseCamera) getChip()).getAutoExposureController()));
+            final JLabel autoExpDesc = new JLabel(
+                    "<html><body style='font-family:sans-serif;width:420px'>"
+                    + "<b>APS auto-exposure</b> sets exposure time from the current frame's APS histogram of digital numbers (DN).<br><br>"
+                    + "The working range is the <b>measured min-max</b> of occupied histogram bins, typically well below the 10-bit ADC full scale (0-1023), because analog offset and saturation leave unused codes at both ends.<br><br>"
+                    + "<b>lowBoundary</b> and <b>highBoundary</b> are fractions of that measured range. Samples below the low edge count as underexposed; samples above the high edge as overexposed.<br><br>"
+                    + "If the underexposed fraction exceeds <b>underOverFractionThreshold</b> (and the overexposed fraction does not), exposure is multiplied by <b>1+expDelta</b>. The opposite decreases exposure. If both bands exceed the threshold, or neither does, exposure is left unchanged.<br><br>"
+                    + "With <b>pidControllerEnabled</b>, the step is <i>expDelta</i> times how far the mean DN is from the midpoint of the measured range. "
+                    + "<b>centerWeighted</b> samples more from the image center. Hover a control for its tooltip."
+                    + "</body></html>");
+            autoExpDesc.setAlignmentX(JLabel.LEFT_ALIGNMENT);
+            autoExposurePanel.add(autoExpDesc);
+            final ParameterControlPanel autoExpControls = new ParameterControlPanel(((DavisBaseCamera) getChip()).getAutoExposureController());
+            autoExpControls.setAlignmentX(JLabel.LEFT_ALIGNMENT);
+            autoExposurePanel.add(autoExpControls);
             configTabbedPane.addTab("APS Autoexposure Control", scrollWrap(autoExposurePanel, ufPref));
         }
         // Video Control
