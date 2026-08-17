@@ -1,53 +1,58 @@
-To generate a new GitHub release
+# Releasing jAER
+
+Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to the same directory" hint.
+
+| What | Where | Who writes it |
+|------|--------|----------------|
+| Update descriptor | `https://raw.githubusercontent.com/SensorsINI/jaer/master/updates.xml` | git: commit and push repo-root `updates.xml` |
+| Installer binaries | `https://github.com/SensorsINI/jaer/releases/latest/download/<fileName>` | `scripts/upload-github-release-installers.ps1` |
+
+`updates.xml` `baseUrl` must be `https://github.com/SensorsINI/jaer/releases/latest/download/`. `ant copy-updates-xml` sets that; do not edit it by hand. The in-app checker reads the raw GitHub file, then downloads `baseUrl` + `fileName` (for example `jAER_windows-x64_3_2_0.exe`).
+
+`/releases/latest/` is whichever GitHub Release is marked Latest (usually the newest published non-prerelease). The 3.2.0 media must be attached to a published Release named `3.2.0` or `/latest/download/` still serves 3.1.0.
+
+## Checklist (do in this order)
+
+1. Set `VERSION.txt` (e.g. `3.2.0`).
+2. `ant release` -- confirm `y`. When asked to copy `updates.xml`, answer `y`.
+   - Media lands in `installers/<VERSION.txt>/`.
+   - Repo-root `updates.xml` is overwritten and `baseUrl` is set to GitHub `/latest/download/`.
+   - If you already built media: `ant copy-updates-xml` (no rebuild).
+3. Upload binaries (creates the GitHub Release for that tag if it is missing):
+
+       powershell -File scripts/upload-github-release-installers.ps1
+
+   Dry run: add `-WhatIf`. Re-upload after a rebuild: same command (`--clobber`).
+4. Commit and push repo-root `updates.xml` if `git status` still shows it dirty. Installed copies only see `master`.
+5. Point git tag `<VERSION.txt>` at the commit you want and push it (`git tag` / `git push origin <tag>`). If the tag already exists on an older commit, delete and recreate it (see Tagging).
+6. Optional later: SignPath signed Windows exe, winget/Homebrew, prune old assets.
+
+After a rebuild, hashes in `updates.xml` change. Repeat steps 2--4 (copy, upload, push `updates.xml`) or the updater will checksum-fail.
 
 ## Version (VERSION.txt)
 
-VERSION.txt at the repo root is the single source of truth for the release version
-(e.g. 3.0.0). It drives:
+`VERSION.txt` at the repo root is the single source of truth. It drives:
 
-- install4j application version (synced into jaer.install4j; also passed as install4jc --release=...)
-- splash overlay text (full VERSION.txt, e.g. 3.2.0)
-- About / BUILDVERSION.txt first line on jar build
+- install4j application version (synced into `jaer.install4j`; also `install4jc --release=...`)
+- splash overlay text (full `VERSION.txt`, e.g. 3.2.0)
+- About / `BUILDVERSION.txt` first line on jar build
 
-See latest releases at https://github.com/SensorsINI/jaer/releases and tags at
-https://github.com/SensorsINI/jaer/tags . Decide the next version, edit VERSION.txt, then build.
+See https://github.com/SensorsINI/jaer/releases and https://github.com/SensorsINI/jaer/tags .
 
-## Install4j release (preferred: ant release)
+## Install4j build (`ant release`)
 
 Prerequisites:
-1. Install install4j and put install4jc on PATH
-   https://www.ej-technologies.com/resources/install4j/v/13.0/help/doc/cli/compiler.html
-2. Install your license (tobi has his own by donation to jaer project)
-3. Edit VERSION.txt to the release version (e.g. 3.0.0)
-4. Ensure images/SplashScreen.png is the text-free 1024x1024 base art
-   (edit images/SplashScreen.pdf in Illustrator/Photoshop when the background art changes, then export PNG)
 
-Build media:
+1. install4j on PATH (`install4jc`) -- https://www.ej-technologies.com/resources/install4j/v/13.0/help/doc/cli/compiler.html
+2. License (local: `signpath/install4j-license.txt`, gitignored)
+3. `VERSION.txt` set
+4. `images/SplashScreen.png` is the text-free 1024x1024 base art (`images/SplashScreen.pdf` when the art changes)
 
     ant release
 
-You will be prompted to confirm the VERSION.txt value. On "y" / "yes", ant release:
+On `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> jaer.install4j`.
 
-- regenerates splash PNGs (ant generate-splash)
-  - images/1024w/SplashScreen.png (1024x1024, JVM splash and install4j launcher splash)
-  - images/256h/SplashScreen.png (256x256, Windows shell / installer wizard icons)
-- syncs jaer.install4j application version from VERSION.txt
-- runs clean + jar (clean build of classes and dist jar)
-- runs: install4jc --release=<VERSION.txt> jaer.install4j
-
-Then:
-5. Installers land under installers/<version>/ (Dropbox installers folder path as configured in the project)
-6. ant release asks whether to copy installers/<version>/updates.xml to the repo root
-   (for install4j auto-update). Reply y/yes to copy. Standalone (no rebuild):
-
-       ant offer-copy-updates-xml   # prompts
-       ant copy-updates-xml         # copy without prompt
-
-   Then commit/push updates.xml so auto-update can see the new build.
-7. Push a git tag matching VERSION.txt and create/edit the GitHub release (see Tagging below)
-
-Note: install4j launcher splash uses the 1024w PNG; keep 256h for Windows installer/shell
-icon entries (install4j can reject oversized PNGs for the icon step).
+Splash only: `ant generate-splash`. install4j launcher splash uses the 1024w PNG; keep 256h for Windows shell / wizard icons.
 
 TensorFlow for MLPNoiseFilter (two layers):
 - Ivy (lib/ for compile & ant release tree): tensorflow-core-api + unclassified
@@ -82,48 +87,30 @@ Use the install4j IDE when you change installer options other than version
 4. When config looks good, prefer ant release again so VERSION.txt, splash, clean jar,
    and install4jc --release stay consistent
 
-## Tagging for release
+## Tagging
 
-From the repo root, after installers are built and updates.xml is ready:
+The upload script creates a GitHub Release for tag `<VERSION.txt>` if that Release is missing. The git tag itself is separate: if `3.2.0` already points at an old commit, recreate it after the release source is on `master`.
 
-    git tag <VERSION.txt value, e.g. 3.0.0>
-    git push origin <tag>
+    git tag <VERSION.txt>
+    git push origin <VERSION.txt>
 
-Example output:
-Total 0 (delta 0), reused 0 (delta 0)
-To https://github.com/SensorsINI/jaer.git
- * [new tag]             3.0.0 -> 3.0.0
+Tag already exists on the wrong commit:
 
-Name the GitHub release e.g. jaer-3.0.0 and edit release notes on the GitHub web UI.
+    git tag -d 3.2.0
+    git push --delete origin 3.2.0
+    git tag 3.2.0
+    git push origin 3.2.0
 
-## GitHub Release installer assets (canonical host)
+Edit release notes on the GitHub Release page (`jaer-3.2.0`).
 
-GitHub allows each release file under 2 GiB; jAER installers are ~300 MB. After `ant release` (or after SignPath CI attaches the signed Windows exe):
+## Prune old installer assets
 
-    powershell -File scripts/upload-github-release-installers.ps1
-
-That uploads `installers/<VERSION.txt>/jAER_windows-x64_*.exe`, Intel `jAER_macos_*.dmg`, Apple Silicon `jAER_macos_aarch64_*.dmg`, and `jAER_unix_*.sh` to the tag matching VERSION.txt (creates the release if needed). `updates.xml` `baseUrl` is rewritten on `ant copy-updates-xml` to:
-
-    https://github.com/SensorsINI/jaer/releases/latest/download/
-
-Commit and push `updates.xml` so installed copies see the new version. In-app **Download and install** (install4j updater id `updater`) fetches the matching media file from that URL, then quits AEViewer and runs the installer.
-
-Keep installer binaries on GitHub for the latest 2–3 releases only. Prune older `.exe` / `.dmg` / `.sh` assets (notes and tags stay):
+Keep binaries for the latest 2--3 releases. Notes and tags stay.
 
     powershell -File scripts/prune-old-release-assets.ps1
     powershell -File scripts/prune-old-release-assets.ps1 -Keep 3 -WhatIf
 
-Dropbox remains an optional historical archive, not the auto-update URL.
-
-### Deleting a tag
-
-Local only:
-
-    git tag -d tag-name
-
-Already pushed:
-
-    git push --delete origin 3.0.0
+Dropbox is an optional historical archive, not the auto-update URL.
 
 ## SignPath Windows CI (test-signing)
 
