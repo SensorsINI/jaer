@@ -22,6 +22,7 @@ import net.sf.jaer.event.PacketBundle;
 import net.sf.jaer.event.PacketType;
 import net.sf.jaer.event.PolarityEvent;
 import net.sf.jaer.event.TypedDataPacket;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.FileDataDefinition;
 import net.sf.jaer.eventio.aedat4.dv.FileDataTable;
@@ -47,6 +48,7 @@ public class Aedat4FileOutputStream implements Closeable {
     private final FileChannel channel;
     private final AEChip chip;
     private final int compression;
+    private final RecordingConfigurationSnapshot snapshot;
     private final long baseUs;
     private final List<DataDefinition> dataDefinitions = new ArrayList<>();
     private final long headerPosition;
@@ -67,7 +69,7 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public Aedat4FileOutputStream(File file, AEChip chip, int compression) throws IOException {
-        this(new FileOutputStream(file), chip, compression);
+        this(new FileOutputStream(file), chip, compression, null);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip) throws IOException {
@@ -75,7 +77,7 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression) throws IOException {
-        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L);
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, null);
     }
 
     /**
@@ -85,16 +87,40 @@ public class Aedat4FileOutputStream implements Closeable {
      *                   original timeline, or {@code <= 0} for wall-clock now.
      */
     public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs) throws IOException {
-        this(new FileOutputStream(file), chip, compression, baseUnixUs);
+        this(new FileOutputStream(file), chip, compression, baseUnixUs, null);
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression, long baseUnixUs)
             throws IOException {
+        this(outputStream, chip, compression, baseUnixUs, null);
+    }
+
+    /**
+     * Explicit-snapshot constructor. The snapshot is reused verbatim for the open
+     * and close IOHeader rebuild so the serialized header size stays stable even
+     * if live preferences change after recording begins, and so the recorded
+     * configuration reflects the immutable recording-start values.
+     *
+     * @param outputStream the file to write to
+     * @param chip the chip (geometry/source metadata)
+     * @param compression desired compatibility compression
+     * @param snapshot the frozen recording-start configuration; if {@code null}
+     *                 it is captured once here from the chip, never reread later
+     * @throws IOException if the file cannot be written
+     */
+    public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            RecordingConfigurationSnapshot snapshot) throws IOException {
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L, snapshot);
+    }
+
+    private Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression,
+            long baseUnixUs, RecordingConfigurationSnapshot snapshot) throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
         this.compression = Aedat4Compression.clamp(compression);
         this.baseUs = baseUnixUs > 0 ? baseUnixUs : System.currentTimeMillis() * 1000L;
+        this.snapshot = snapshot != null ? snapshot : RecordingConfigurationSnapshot.captureFromChip(chip);
         channel.write(ByteBuffer.wrap(VERSION_LINE));
         headerPosition = channel.position();
         // FlatBuffers omits dataTablePosition when it equals the default (-1). Use a
@@ -298,7 +324,7 @@ public class Aedat4FileOutputStream implements Closeable {
 
     private byte[] buildIOHeader(long dataTablePosition) {
         FlatBufferBuilder builder = new FlatBufferBuilder(1024);
-        int info = builder.createString(Aedat4InfoNode.build(chip, compression));
+        int info = builder.createString(Aedat4InfoNode.build(chip, compression, snapshot));
         int root = IOHeader.createIOHeader(builder, compression, dataTablePosition, info);
         builder.finishSizePrefixed(root, "IOHE");
         return builder.sizedByteArray();
