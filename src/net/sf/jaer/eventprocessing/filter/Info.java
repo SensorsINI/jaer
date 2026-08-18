@@ -22,7 +22,6 @@ import net.sf.jaer.Help;
 import net.sf.jaer.aemonitor.AEConstants;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.EventPacket;
-import net.sf.jaer.eventio.AEFileInputStream;
 import net.sf.jaer.eventio.AEInputStream;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
@@ -472,7 +471,7 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
      */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        if (evt.getSource() instanceof AEFileInputStream) {
+        if (evt.getSource() instanceof AEFileInputStreamInterface) {
             if (evt.getPropertyName().equals(AEInputStream.EVENT_REWOUND)) {
                 log.info("rewind PropertyChangeEvent received by " + this + " from " + evt.getSource());
                 wrappingCorrectionMs = 0;
@@ -484,11 +483,10 @@ public class Info extends EventFilter2D implements FrameAnnotater, PropertyChang
                 }
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_WRAPPED_TIME)) {
                 increaseWrappingCorrectionOnNextPacket = true;
-                //                System.out.println("property change in Info that is wrap time event");
                 log.info("timestamp wrap event received by " + this + " from " + evt.getSource() + " oldValue=" + evt.getOldValue() + " newValue=" + evt.getNewValue() + ", wrappingCorrectionMs will increase on next packet");
             } else if (evt.getPropertyName().equals(AEInputStream.EVENT_INIT)) {
                 log.info("EVENT_INIT recieved, signaling new input stream");
-                aeFileInputStream = (AEFileInputStream) (evt.getSource());
+                aeFileInputStream = (AEFileInputStreamInterface) (evt.getSource());
                 for (RateHistory r : rateHistories.values()) {
                     r.initFromAEFileInputStream(aeFileInputStream);
                 }

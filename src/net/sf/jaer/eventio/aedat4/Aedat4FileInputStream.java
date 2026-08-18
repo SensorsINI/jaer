@@ -66,7 +66,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * v10: packet-level sparse index per selected EVTS stream (multi-camera AEDAT-4).
      * Chip class is not part of the cache — AEChip affects decode/render only.
      */
-    private static final int INDEX_CACHE_VERSION = 10;
+    private static final int INDEX_CACHE_VERSION = 11;
     private static final String INDEX_CACHE_MAGIC = "JAER4IDX";
     private static final int INDEX_CACHE_MAX_PACKETS = 10_000_000;
     private static final int INDEX_CACHE_MAX_TIMELINE = 50_000_000;
@@ -129,13 +129,16 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     private boolean repeat;
     private boolean nonMonotonicTimeExceptionsChecked = true;
     private int currentStartTimestamp;
+    /** Last 32-bit relative timestamp emitted (for EVENT_WRAPPED_TIME). */
+    private int mostRecentEmittedTimestamp;
+    private boolean haveEmittedTimestamp;
     private int timestampResetBitmask;
 
     /** Typed packets for the most recent readPacketBy* time window. */
     private final List<FramePacket> pendingFrames = new ArrayList<>();
     private final List<ImuPacket> pendingImu = new ArrayList<>();
-    private int lastReadT0;
-    private int lastReadT1;
+    private long lastReadT0;
+    private long lastReadT1;
     private int frameCursor;
     private int imuCursor;
 
@@ -207,7 +210,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 eng.format((double) eventCount).trim(),
                 eng.format((double) frameCount).trim(),
                 eng.format((double) imuSampleCount).trim(),
-                eng.format(getDurationUs() * 1e-6).trim(),
+                eng.format(getDurationUsLong() * 1e-6).trim(),
                 eventRefs.length));
         support.firePropertyChange(AEInputStream.EVENT_INIT, null, this);
         log.fine("Aedat4FileInputStream constructor returning");
@@ -717,9 +720,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             baseUnixUs = imus.get(0).unixStart;
         }
 
-        eventRefs = toRelativeRefs(events);
-        frameRefs = toRelativeRefs(frames);
-        imuRefs = toRelativeRefs(imus);
+        eventRefs = unwrapPacketRefs(toRelativeRefs(events));
+        frameRefs = unwrapPacketRefs(toRelativeRefs(frames));
+        imuRefs = unwrapPacketRefs(toRelativeRefs(imus));
         timelineTimestamps = new int[0];
         if (eventRefs.length == 0 && (!frames.isEmpty() || !imus.isEmpty())) {
             synthesizeTimelineFromTypedStreams(frames, imus);
@@ -755,7 +758,47 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         for (int i = 0; i < src.size(); i++) {
             PacketRef s = src.get(i);
             out[i] = new PacketRef(s.payloadOffset, s.payloadSize,
-                    s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements, s.firstEventIndex);
+                    s.unixStart - baseUnixUs, s.unixEnd - baseUnixUs, s.numElements, s.firstEventIndex, 0L);
+        }
+        return out;
+    }
+
+    /**
+     * Packet table Unix times from a buggy writer jump backward by ~2^32 µs
+     * every ~35.8 min (sign-extended camera timestamps). Add 2^32 so seeking
+     * and duration use a monotonic long timeline. wrapOffset is applied again
+     * when decoding individual event Unix times.
+     */
+    private PacketRef[] unwrapPacketRefs(PacketRef[] refs) {
+        if (refs.length == 0) {
+            return refs;
+        }
+        long wrap = 0;
+        long lastEnd = Long.MIN_VALUE;
+        PacketRef[] out = new PacketRef[refs.length];
+        int wraps = 0;
+        for (int i = 0; i < refs.length; i++) {
+            PacketRef s = refs[i];
+            long start = s.unixStart + wrap;
+            long end = s.unixEnd + wrap;
+            if (end < start && start - end > TimestampUnwrapper.WRAP_DETECT_US) {
+                end += TimestampUnwrapper.UINT32_US;
+            }
+            if (lastEnd != Long.MIN_VALUE && start < lastEnd
+                    && lastEnd - start > TimestampUnwrapper.WRAP_DETECT_US) {
+                wrap += TimestampUnwrapper.UINT32_US;
+                start += TimestampUnwrapper.UINT32_US;
+                end += TimestampUnwrapper.UINT32_US;
+                wraps++;
+            }
+            out[i] = new PacketRef(s.payloadOffset, s.payloadSize, start, end,
+                    s.numElements, s.firstEventIndex, wrap);
+            lastEnd = end;
+        }
+        if (wraps > 0) {
+            log.info(String.format(
+                    "AEDAT-4 unwrapped %d 32-bit timestamp wrap(s) in packet table (duration %s s)",
+                    wraps, new EngineeringFormat().format(out[out.length - 1].unixEnd * 1e-6).trim()));
         }
         return out;
     }
@@ -775,8 +818,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * Relative timestamp at an event index using only the sparse packet table
      * (linear interpolation within the packet). <b>No file I/O / decompress</b> —
      * safe for slider seeks and UI while ViewLoop holds the stream lock.
+     * Returns a monotonic long (unwrapped); 32-bit {@link #timestampApprox}
+     * truncates for the AEFileInputStreamInterface.
      */
-    private int timestampApprox(long eventIndex) {
+    private long timestampApproxLong(long eventIndex) {
         if (!hasPolarity()) {
             int i = (int) Math.max(0, Math.min(eventIndex, timelineTimestamps.length - 1));
             return timelineTimestamps.length == 0 ? 0 : timelineTimestamps[i];
@@ -787,7 +832,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long idx = Math.max(0, Math.min(eventIndex, eventCount - 1));
         PacketRef ref = eventRefs[findEventPacket(idx)];
         if (ref.numElements <= 1 || ref.unixEnd <= ref.unixStart) {
-            return (int) ref.unixStart;
+            return ref.unixStart;
         }
         double frac = (idx - ref.firstEventIndex) / (double) (ref.numElements - 1);
         if (frac < 0) {
@@ -795,7 +840,11 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         } else if (frac > 1) {
             frac = 1;
         }
-        return (int) Math.round(ref.unixStart + frac * (ref.unixEnd - ref.unixStart));
+        return Math.round(ref.unixStart + frac * (ref.unixEnd - ref.unixStart));
+    }
+
+    private int timestampApprox(long eventIndex) {
+        return (int) timestampApproxLong(eventIndex);
     }
 
     /** Exact timestamp via FlatBuffer (decompresses the containing EVTS packet). */
@@ -817,7 +866,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     local, packet.elementsLength(), pi));
             return timestampApprox(idx);
         }
-        return (int) (packet.elements(local).timestamp() - baseUnixUs);
+        return (int) (packet.elements(local).timestamp() - baseUnixUs + eventRefs[pi].wrapOffset);
     }
 
     /** Binary search packet containing global event index. */
@@ -891,7 +940,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     continue; // Davis out-of-range
                 }
                 addresses.add(address);
-                timestamps.add((int) (event.timestamp() - baseUnixUs));
+                int ts32 = emitRelativeTimestamp(event.timestamp(), ref);
+                timestamps.add(ts32);
             }
             i = ref.firstEventIndex + Math.max(localEnd, local + 1);
             if (localEnd <= local) {
@@ -906,6 +956,26 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                     startIdx, endIdx, skipped));
         }
         return new AEPacketRaw(addresses.toArray(), timestamps.toArray());
+    }
+
+    /**
+     * File Unix µs → 32-bit relative timestamp, applying packet wrapOffset and
+     * firing {@link AEInputStream#EVENT_WRAPPED_TIME} on signed 32-bit wrap
+     * (same as {@code AEFileInputStream} bigWrap, for Info clock correction).
+     */
+    private int emitRelativeTimestamp(long fileUnixUs, PacketRef ref) {
+        long unwrappedUnix = fileUnixUs + ref.wrapOffset;
+        long rawStart = ref.unixStart + baseUnixUs - ref.wrapOffset;
+        if (fileUnixUs < rawStart && rawStart - fileUnixUs > TimestampUnwrapper.WRAP_DETECT_US) {
+            unwrappedUnix += TimestampUnwrapper.UINT32_US;
+        }
+        int ts32 = (int) (unwrappedUnix - baseUnixUs);
+        if (haveEmittedTimestamp && TimestampUnwrapper.isSignedWrapForward(mostRecentEmittedTimestamp, ts32)) {
+            support.firePropertyChange(AEInputStream.EVENT_WRAPPED_TIME, mostRecentEmittedTimestamp, ts32);
+        }
+        haveEmittedTimestamp = true;
+        mostRecentEmittedTimestamp = ts32;
+        return ts32;
     }
 
     private int packAddress(Event event) {
@@ -938,7 +1008,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return (x & 0xffff) | ((y & 0xffff) << 16) | (type << 31);
     }
 
-    private void collectTypedForWindow(int t0, int t1) throws IOException {
+    private void collectTypedForWindow(long t0, long t1) throws IOException {
         pendingFrames.clear();
         pendingImu.clear();
         // Backward jog/seek can move earlier than the last window — rewind typed cursors.
@@ -1106,7 +1176,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         ImuPacket out = new ImuPacket(Math.max(ImuPacket.DEFAULT_CAPACITY, n));
         for (int i = 0; i < n; i++) {
             IMU imu = packet.elements(i);
-            int ts = (int) (imu.timestamp() - baseUnixUs);
+            int ts = (int) (imu.timestamp() - baseUnixUs + ref.wrapOffset);
             IMUSample sample = out.nextOutput();
             sample.setFromPhysicalUnits(ts,
                     imu.accelerometerX(), imu.accelerometerY(), imu.accelerometerZ(),
@@ -1321,7 +1391,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         PacketRef[] refs = new PacketRef[n];
         for (int i = 0; i < n; i++) {
             refs[i] = new PacketRef(in.readLong(), in.readInt(), in.readLong(), in.readLong(),
-                    in.readInt() & 0xffffffffL, in.readLong());
+                    in.readInt() & 0xffffffffL, in.readLong(), in.readLong());
         }
         return refs;
     }
@@ -1335,6 +1405,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeLong(r.unixEnd);
             out.writeInt((int) Math.min(Integer.MAX_VALUE, r.numElements));
             out.writeLong(r.firstEventIndex);
+            out.writeLong(r.wrapOffset);
         }
     }
 
@@ -1346,7 +1417,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         PacketRef[] refs = new PacketRef[n];
         for (int i = 0; i < n; i++) {
             refs[i] = new PacketRef(in.readLong(), in.readInt(), in.readLong(), in.readLong(),
-                    in.readInt() & 0xffffffffL, 0);
+                    in.readInt() & 0xffffffffL, 0, in.readLong());
         }
         return refs;
     }
@@ -1359,6 +1430,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             out.writeLong(r.unixStart);
             out.writeLong(r.unixEnd);
             out.writeInt((int) Math.min(Integer.MAX_VALUE, r.numElements));
+            out.writeLong(r.wrapOffset);
         }
     }
 
@@ -1381,9 +1453,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 throw new EOFException();
             }
             position = end;
-            currentStartTimestamp = timestampApprox(start);
-            int tEnd = timestampApprox(Math.max(start, end - 1));
-            collectTypedForWindow(currentStartTimestamp, tEnd);
+            long tStart = timestampApproxLong(start);
+            currentStartTimestamp = (int) tStart;
+            long tEnd = timestampApproxLong(Math.max(start, end - 1));
+            collectTypedForWindow(tStart, tEnd);
             firePosition();
             AEPacketRaw pkt = extractPolarity(start, end);
             if (log.isLoggable(Level.FINE)) {
@@ -1400,9 +1473,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw new EOFException("reached start of file");
         }
         position = start;
-        int t0 = timestampApprox(start);
-        int t1 = timestampApprox(Math.max(start, end - 1));
-        currentStartTimestamp = t0;
+        long t0 = timestampApproxLong(start);
+        long t1 = timestampApproxLong(Math.max(start, end - 1));
+        currentStartTimestamp = (int) t0;
         collectTypedForWindow(t0, t1);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
@@ -1427,8 +1500,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         // Approx timestamps from packet table only — do not decompress here (slider/UI race).
         if (forwards) {
             long start = position;
-            int tStart = timestampApprox(start);
-            int target = tStart + dt;
+            long tStart = timestampApproxLong(start);
+            long target = tStart + dt;
             long end;
             if (hasPolarity()) {
                 end = findEndIndexByTime(start, target, limitOut);
@@ -1445,9 +1518,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
                 throw new EOFException();
             }
             position = end;
-            currentStartTimestamp = tStart;
-            int tEnd = timestampApprox(Math.max(start, end - 1));
-            collectTypedForWindow(currentStartTimestamp, tEnd);
+            currentStartTimestamp = (int) tStart;
+            long tEnd = timestampApproxLong(Math.max(start, end - 1));
+            collectTypedForWindow(tStart, tEnd);
             firePosition();
             AEPacketRaw pkt = extractPolarity(start, end);
             if (log.isLoggable(Level.FINE)) {
@@ -1461,8 +1534,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         if (end <= limitIn) {
             throw new EOFException("reached start of file");
         }
-        int tEnd = timestampApprox(Math.max(limitIn, end - 1));
-        int target = tEnd + dt; // dt < 0
+        long tEnd = timestampApproxLong(Math.max(limitIn, end - 1));
+        long target = tEnd + dt; // dt < 0
         long start;
         if (hasPolarity()) {
             start = findStartIndexByTime(end, target, limitIn);
@@ -1479,8 +1552,8 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
             throw new EOFException("reached start of file");
         }
         position = start;
-        int t0 = timestampApprox(start);
-        currentStartTimestamp = t0;
+        long t0 = timestampApproxLong(start);
+        currentStartTimestamp = (int) t0;
         collectTypedForWindow(t0, tEnd);
         firePosition();
         AEPacketRaw pkt = extractPolarity(start, end);
@@ -1498,7 +1571,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * Uses <b>only</b> the sparse packet table (no decompress / FlatBuffer access).
      * Within a packet, end is linearly interpolated from unixStart/unixEnd.
      */
-    private long findEndIndexByTime(long start, int target, long limit) {
+    private long findEndIndexByTime(long start, long target, long limit) {
         if (start >= limit) {
             return start;
         }
@@ -1539,7 +1612,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
      * covering events with approx timestamp &gt;= {@code target}, floored by {@code limitIn}.
      * At least one event when {@code end > limitIn}.
      */
-    private long findStartIndexByTime(long end, int target, long limitIn) {
+    private long findStartIndexByTime(long end, long target, long limitIn) {
         if (end <= limitIn) {
             return limitIn;
         }
@@ -1630,7 +1703,28 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
     public ZoneId getZoneId() { return ZoneId.systemDefault(); }
 
     @Override
-    public int getDurationUs() { return getLastTimestamp() - getFirstTimestamp(); }
+    public int getDurationUs() {
+        long d = getDurationUsLong();
+        if (d > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        if (d < Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        }
+        return (int) d;
+    }
+
+    /** Unwrapped duration in µs (12 h recordings exceed 32-bit). */
+    public long getDurationUsLong() {
+        if (hasPolarity() && eventRefs.length > 0) {
+            return Math.max(0L, eventRefs[eventRefs.length - 1].unixEnd - eventRefs[0].unixStart);
+        }
+        if (timelineTimestamps.length == 0) {
+            return 0;
+        }
+        return (timelineTimestamps[timelineTimestamps.length - 1] & 0xffffffffL)
+                - (timelineTimestamps[0] & 0xffffffffL);
+    }
 
     @Override
     public int getFirstTimestamp() {
@@ -1841,9 +1935,10 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         long old = position;
         position = Math.max(markIn, Math.min(n, effectiveMarkOut()));
         // Packet-table approx only — never decompress on slider seek (that hung ViewLoop).
-        int t = playableSize() == 0 ? 0
-                : timestampApprox(Math.min(Math.max(0, position), playableSize() - 1));
-        currentStartTimestamp = t;
+        long t = playableSize() == 0 ? 0
+                : timestampApproxLong(Math.min(Math.max(0, position), playableSize() - 1));
+        currentStartTimestamp = (int) t;
+        haveEmittedTimestamp = false;
         // log.fine(String.format("AEDAT-4 position %d->%d approxTs=%d", old, position, t));
         frameCursor = 0;
         imuCursor = 0;
@@ -1866,6 +1961,7 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         position = markIn;
         frameCursor = 0;
         imuCursor = 0;
+        haveEmittedTimestamp = false;
         support.firePropertyChange(AEInputStream.EVENT_REWOUND, old, position);
     }
 
@@ -1947,7 +2043,9 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
 
     /**
      * Packet payload location. For polarity packets, {@link #unixStart}/{@link #unixEnd}
-     * are relative µs after indexing; {@link #firstEventIndex} is the global event offset.
+     * are relative µs after indexing (unwrapped / monotonic);
+     * {@link #firstEventIndex} is the global event offset.
+     * {@link #wrapOffset} is added to file Unix timestamps when decoding events.
      */
     private static final class PacketRef {
         final long payloadOffset;
@@ -1956,15 +2054,23 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         final long unixEnd;
         final long numElements;
         final long firstEventIndex;
+        /** Add to {@code event.timestamp() - baseUnixUs} (0 unless the file wrapped). */
+        final long wrapOffset;
 
         PacketRef(long payloadOffset, int payloadSize, long unixStart, long unixEnd,
                 long numElements, long firstEventIndex) {
+            this(payloadOffset, payloadSize, unixStart, unixEnd, numElements, firstEventIndex, 0L);
+        }
+
+        PacketRef(long payloadOffset, int payloadSize, long unixStart, long unixEnd,
+                long numElements, long firstEventIndex, long wrapOffset) {
             this.payloadOffset = payloadOffset;
             this.payloadSize = payloadSize;
             this.unixStart = unixStart;
             this.unixEnd = unixEnd;
             this.numElements = numElements;
             this.firstEventIndex = firstEventIndex;
+            this.wrapOffset = wrapOffset;
         }
     }
 }

@@ -52,6 +52,11 @@ public class Aedat4FileOutputStream implements Closeable {
     private final long headerPosition;
     private byte[] headerBytes;
     private boolean closed;
+    /**
+     * Camera timestamps are 32-bit µs; add 2^32 on wrap so AEDAT-4 Unix times
+     * stay monotonic (12 h recordings). Shared across events/frames/IMU.
+     */
+    private final TimestampUnwrapper timestampUnwrapper = new TimestampUnwrapper();
     /** Uncompressed FlatBuffer packet payload bytes (before LZ4/ZSTD). */
     private long uncompressedPayloadBytes;
     /** Compressed packet payload bytes written to the file (same as uncompressed if NONE). */
@@ -135,9 +140,9 @@ public class Aedat4FileOutputStream implements Closeable {
 
     /**
      * @param skipFilteredOut if true, omit events with {@link BasicEvent#isFilteredOut()}
-     *                        (for "filtering of logged events"). Index walk is required:
-     *                        {@link EventPacket#iterator()} skips those events while
-     *                        {@link EventPacket#getSize()} still counts them.
+     *                        (STCF etc.). Uses {@link EventPacket#iterator()} which
+     *                        skips those events; {@link EventPacket#getSize()} still
+     *                        counts them.
      */
     public synchronized void writeBundle(PacketBundle bundle, boolean skipFilteredOut) throws IOException {
         if (bundle == null || bundle.isEmpty()) {
@@ -168,26 +173,15 @@ public class Aedat4FileOutputStream implements Closeable {
         short[] ys = new short[size];
         boolean[] polarities = new boolean[size];
         int n = 0;
-        for (int k = 0; k < size; k++) {
-            BasicEvent event = packet.getEvent(k);
-            if (event == null) {
-                continue;
+        if (skipFilteredOut) {
+            // Same as display / reconstructRawPacket: iterator skips filteredOut.
+            for (BasicEvent event : packet) {
+                n = appendPolarityEvent(event, timestamps, xs, ys, polarities, n);
             }
-            if (skipFilteredOut && event.isFilteredOut()) {
-                continue;
+        } else {
+            for (int k = 0; k < size; k++) {
+                n = appendPolarityEvent(packet.getEvent(k), timestamps, xs, ys, polarities, n);
             }
-            if (event instanceof ApsDvsEvent) {
-                ApsDvsEvent aps = (ApsDvsEvent) event;
-                if (aps.isApsData() || aps.isImuSample()) {
-                    continue;
-                }
-            }
-            timestamps[n] = toUnixUs(event.timestamp);
-            xs[n] = event.x;
-            ys[n] = event.y;
-            polarities[n] = !(event instanceof PolarityEvent)
-                    || ((PolarityEvent) event).polarity == PolarityEvent.Polarity.On;
-            n++;
         }
         if (n == 0) {
             return;
@@ -204,6 +198,25 @@ public class Aedat4FileOutputStream implements Closeable {
         builder.finishSizePrefixed(root, "EVTS");
         byte[] payload = builder.sizedByteArray();
         writePacket(STREAM_EVENTS, payload, n, timestamps[0], timestamps[n - 1]);
+    }
+
+    private int appendPolarityEvent(BasicEvent event, long[] timestamps, short[] xs, short[] ys,
+            boolean[] polarities, int n) {
+        if (event == null) {
+            return n;
+        }
+        if (event instanceof ApsDvsEvent) {
+            ApsDvsEvent aps = (ApsDvsEvent) event;
+            if (aps.isApsData() || aps.isImuSample()) {
+                return n;
+            }
+        }
+        timestamps[n] = toUnixUs(event.timestamp);
+        xs[n] = event.x;
+        ys[n] = event.y;
+        polarities[n] = !(event instanceof PolarityEvent)
+                || ((PolarityEvent) event).polarity == PolarityEvent.Polarity.On;
+        return n + 1;
     }
 
     private void writeFramePacket(FramePacket packet) throws IOException {
@@ -267,8 +280,20 @@ public class Aedat4FileOutputStream implements Closeable {
         dataDefinitions.add(new DataDefinition(byteOffset, streamId, toWrite.length, numElements, timestampStart, timestampEnd));
     }
 
+    /**
+     * Camera / packet timestamps are 32-bit µs. Sign-extending them to long
+     * made Unix times jump backward every ~35.8 min. Treat as unsigned 32-bit
+     * and add 2^32 on wrap so DV-compatible Unix µs stay monotonic.
+     */
+    private long toUnixUs(int relativeUs) {
+        return baseUs + timestampUnwrapper.unwrapUnsigned32(relativeUs);
+    }
+
     private long toUnixUs(long relativeUs) {
-        return baseUs + relativeUs;
+        if (relativeUs >= Integer.MIN_VALUE && relativeUs <= Integer.MAX_VALUE) {
+            return toUnixUs((int) relativeUs);
+        }
+        return baseUs + timestampUnwrapper.unwrapRaw(relativeUs);
     }
 
     private byte[] buildIOHeader(long dataTablePosition) {

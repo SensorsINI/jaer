@@ -942,7 +942,7 @@ abstract public class DavisBaseCamera extends DavisChip implements RemoteControl
                 raw = new AEPacketRaw();
             }
             if (!(packet instanceof ApsDvsEventPacket)) {
-                return null;
+                return super.reconstructRawPacket(packet);
             }
 
             final ApsDvsEventPacket apsDVSpacket = (ApsDvsEventPacket) packet;

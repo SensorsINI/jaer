@@ -3140,7 +3140,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                                 chip.setLastData(cookedPacket);
                             }
                             if (isLoggingEnabled() & !isLoggingPaused()) {
-                                logPacket(rawPacket, null);
+                                logPacket(rawPacket, null, cookedBundle);
                             }
                             boolean breakout = writeOutputStreams(rawPacket, null);
                             if (breakout) {
@@ -3193,7 +3193,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         if (rawPacket == null && cookedPacket != null && aedat4LoggingOutputStream == null) {
                             rawPacket = extractor.reconstructRawPacket(cookedPacket);
                         }
-                        logPacket(rawPacket, cookedPacket);
+                        logPacket(rawPacket, cookedPacket, cookedBundle);
                     }
 
                     // Write the ouput to whatever streams need it
@@ -3621,11 +3621,21 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
 
         void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket) {
+            logPacket(rawPacket, cookedPacket, chip.getLastBundle());
+        }
+
+        void logPacket(AEPacketRaw rawPacket, EventPacket cookedPacket, PacketBundle cookedBundle) {
             Object streamLock = aedat4LoggingOutputStream != null ? aedat4LoggingOutputStream : loggingOutputStream;
             synchronized (streamLock) {
                 try {
                     if (aedat4LoggingOutputStream != null) {
-                        aedat4LoggingOutputStream.writeBundle(chip.getLastBundle(), isLogFilteredEventsEnabled());
+                        PacketBundle bundle = cookedBundle != null ? cookedBundle : chip.getLastBundle();
+                        // AEDAT-4 logs the cooked PacketBundle. Omit events STCF etc. marked
+                        // filteredOut so the file matches the display (iterator semantics).
+                        // File → "Enable filtering of logged events" still applies to AEDAT-2.
+                        boolean skipFilteredOut = isLogFilteredEventsEnabled()
+                                || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled());
+                        aedat4LoggingOutputStream.writeBundle(bundle, skipFilteredOut);
                     } else if (!isLogFilteredEventsEnabled()) {
                         loggingOutputStream.writePacket(rawPacket); // log all events
                     } else {
@@ -6325,8 +6335,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (aedat4) {
                 loggingOutputStream = null;
                 aedat4LoggingOutputStream = new Aedat4FileOutputStream(new FileOutputStream(loggingFile), chip, getAedat4Compression());
-                log.info(String.format("AEDAT-4 logging compression=%s",
-                        net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression())));
+                log.info(String.format("AEDAT-4 logging compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of logged events)",
+                        net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression()),
+                        isLogFilteredEventsEnabled()
+                        || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled())));
             } else {
                 aedat4LoggingOutputStream = null;
                 loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
