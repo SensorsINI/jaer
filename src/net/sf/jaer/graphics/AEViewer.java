@@ -6362,8 +6362,10 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             if (aedat4) {
                 loggingOutputStream = null;
                 OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
-                aedat4LoggingOutputStream = new Aedat4FileOutputStream(
-                        opened.stream, chip, getAedat4Compression(), opened.snapshot);
+                constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                    aedat4LoggingOutputStream = new Aedat4FileOutputStream(
+                            stream, chip, getAedat4Compression(), snapshot);
+                });
                 log.info(String.format("AEDAT-4 logging compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of logged events)",
                         net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression()),
                         isLogFilteredEventsEnabled()
@@ -6371,7 +6373,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             } else {
                 aedat4LoggingOutputStream = null;
                 OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
-                loggingOutputStream = new AEFileOutputStream(opened.stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+                constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                    loggingOutputStream = new AEFileOutputStream(stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+                });
             }
 
             if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop logging
@@ -6454,6 +6458,51 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             throw e;
         }
         return new OpenedLogStream(stream, snapshot);
+    }
+
+    /** Constructs a recording writer around an already-opened raw stream. */
+    @FunctionalInterface
+    public interface LoggingWriterFactory {
+
+        /**
+         * @param stream raw stream; ownership transfers only on normal return
+         * @param snapshot frozen recording-start snapshot
+         * @throws IOException if writer construction fails
+         */
+        void construct(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) throws IOException;
+    }
+
+    /**
+     * Hand an opened stream to a writer constructor. If construction fails before
+     * ownership transfers, close the raw stream and clear the frozen chip
+     * snapshot. On success the writer owns the stream and it remains open.
+     *
+     * @param chip the chip whose snapshot is active
+     * @param opened opened stream and frozen snapshot
+     * @param factory writer construction step
+     * @throws IOException if writer construction fails
+     */
+    static void constructLoggingWriter(AEChip chip, OpenedLogStream opened,
+            LoggingWriterFactory factory) throws IOException {
+        try {
+            factory.construct(opened.stream, opened.snapshot);
+        } catch (IOException | RuntimeException e) {
+            closeQuietly(opened.stream);
+            chip.setRecordingConfigurationSnapshot(null);
+            throw e;
+        }
+    }
+
+    /** Close a raw log stream while suppressing a secondary close failure. */
+    static void closeQuietly(FileOutputStream stream) {
+        if (stream == null) {
+            return;
+        }
+        try {
+            stream.close();
+        } catch (IOException e) {
+            log.log(Level.FINE, "closing raw log stream after failed writer construction", e);
+        }
     }
 
     /**

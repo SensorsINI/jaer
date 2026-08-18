@@ -1,6 +1,7 @@
 package net.sf.jaer.graphics;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +28,11 @@ public class AEViewerSnapshotProbe {
         testFailedOpenClearsSnapshot();
         testRepeatedFailedOpenStaysClear();
         testSuccessfulStartAfterFailureCapturesFresh();
+        testWriterConstructionFailureClosesStream();
+        testWriterConstructionFailureReleasesFileAndSnapshot();
+        testRepeatedWriterFailureLeaksNoState();
+        testWriterFailureThenSuccessCapturesFresh();
+        testSuccessfulWriterConstructionKeepsStreamOpen();
         System.out.println("ALL PASS");
     }
 
@@ -123,6 +129,149 @@ public class AEViewerSnapshotProbe {
             out.delete();
         }
         System.out.println("PASS testSuccessfulStartAfterFailureCapturesFresh");
+    }
+
+    /** A post-open writer-constructor failure must close the already-opened stream exactly once. */
+    private static void testWriterConstructionFailureClosesStream() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+        File out = File.createTempFile("jaer-aeviewer-wcfail", ".aedat");
+        AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out);
+        try {
+            boolean threw = false;
+            try {
+                AEViewer.constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                    throw new IOException("injected writer-construction failure");
+                });
+            } catch (IOException expected) {
+                threw = true;
+            }
+            assertTrue(threw, "writer-constructor IOException propagates");
+            assertTrue(!opened.stream.getChannel().isOpen(),
+                    "opened stream closed after writer-constructor failure (no leaked handle)");
+        } finally {
+            out.delete();
+        }
+        System.out.println("PASS testWriterConstructionFailureClosesStream");
+    }
+
+    /** Failed writer construction releases the file and clears the chip snapshot. */
+    private static void testWriterConstructionFailureReleasesFileAndSnapshot() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+        File out = File.createTempFile("jaer-aeviewer-wcrelease", ".aedat");
+        AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out);
+        try {
+            assertTrue(chip.getRecordingConfigurationSnapshot() != null,
+                    "precondition: snapshot set before failure");
+            try {
+                AEViewer.constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                    throw new IOException("injected writer-construction failure");
+                });
+                throw new AssertionError("expected IOException");
+            } catch (IOException expected) {
+                // expected
+            }
+            assertTrue(chip.getRecordingConfigurationSnapshot() == null,
+                    "chip snapshot cleared after writer-constructor failure (no stale metadata)");
+            FileOutputStream reopened = new FileOutputStream(out);
+            reopened.close();
+        } finally {
+            out.delete();
+        }
+        System.out.println("PASS testWriterConstructionFailureReleasesFileAndSnapshot");
+    }
+
+    /** Repeated writer-constructor failures leak no stream or snapshot state. */
+    private static void testRepeatedWriterFailureLeaksNoState() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+        for (int i = 0; i < 2; i++) {
+            final int attempt = i;
+            File out = File.createTempFile("jaer-aeviewer-wcrepeat-" + attempt, ".aedat");
+            AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out);
+            try {
+                try {
+                    AEViewer.constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                        throw new IOException("injected failure attempt " + attempt);
+                    });
+                    throw new AssertionError("expected IOException attempt " + attempt);
+                } catch (IOException expected) {
+                    // expected
+                }
+                assertTrue(!opened.stream.getChannel().isOpen(),
+                        "stream closed on repeated failure attempt " + attempt);
+                assertTrue(chip.getRecordingConfigurationSnapshot() == null,
+                        "chip snapshot clear after repeated failure attempt " + attempt);
+            } finally {
+                out.delete();
+            }
+        }
+        System.out.println("PASS testRepeatedWriterFailureLeaksNoState");
+    }
+
+    /** A success after writer-constructor failure captures fresh metadata. */
+    private static void testWriterFailureThenSuccessCapturesFresh() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+
+        File out = File.createTempFile("jaer-aeviewer-wcfresh", ".aedat");
+        AEViewer.OpenedLogStream failed = AEViewer.openWithFrozenSnapshot(chip, out);
+        try {
+            try {
+                AEViewer.constructLoggingWriter(chip, failed, (stream, snapshot) -> {
+                    throw new IOException("injected writer-construction failure");
+                });
+                throw new AssertionError("expected IOException");
+            } catch (IOException expected) {
+                // expected
+            }
+        } finally {
+            out.delete();
+        }
+        assertTrue(chip.getRecordingConfigurationSnapshot() == null,
+                "chip snapshot clear after failed writer construction");
+
+        chip.getPrefs().put("AEChip.level", "99");
+
+        File out2 = File.createTempFile("jaer-aeviewer-wcfresh2", ".aedat");
+        AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out2);
+        try {
+            assertTrue("99".equals(opened.snapshot.get("AEChip.level")),
+                    "successful start after failed writer construction captures fresh 99, got <"
+                            + opened.snapshot.get("AEChip.level") + ">");
+            assertTrue(!"37".equals(chip.getRecordingConfigurationSnapshot().get("AEChip.level")),
+                    "no stale reuse after failed writer construction");
+        } finally {
+            try {
+                opened.stream.close();
+            } catch (IOException ignore) {
+            }
+            out2.delete();
+        }
+        System.out.println("PASS testWriterFailureThenSuccessCapturesFresh");
+    }
+
+    /** Successful writer construction transfers ownership and leaves the stream open. */
+    private static void testSuccessfulWriterConstructionKeepsStreamOpen() throws Exception {
+        AEChip chip = bareChip();
+        chip.getPrefs().put("AEChip.level", "37");
+        File out = File.createTempFile("jaer-aeviewer-wcsuccess", ".aedat");
+        AEViewer.OpenedLogStream opened = AEViewer.openWithFrozenSnapshot(chip, out);
+        try {
+            AEViewer.constructLoggingWriter(chip, opened, (stream, snapshot) -> {
+                // ownership transferred on normal return
+            });
+            assertTrue(opened.stream.getChannel().isOpen(),
+                    "successful writer construction leaves owned stream open");
+        } finally {
+            try {
+                opened.stream.close();
+            } catch (IOException ignore) {
+            }
+            out.delete();
+        }
+        System.out.println("PASS testSuccessfulWriterConstructionKeepsStreamOpen");
     }
 
     private static AEChip bareChip() {
