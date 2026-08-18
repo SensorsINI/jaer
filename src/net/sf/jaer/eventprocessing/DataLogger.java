@@ -4,7 +4,6 @@
  */
 package net.sf.jaer.eventprocessing;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -19,6 +18,7 @@ import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.eventio.AEDataFile;
 import net.sf.jaer.eventio.AEFileOutputStream;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.graphics.LoggingSaveDialogGuard;
 import net.sf.jaer.util.DATFileFilter;
 
@@ -92,6 +92,7 @@ public class DataLogger extends EventFilter2D {
                 } catch (IOException e2) {
                     log.warning("while closing logging file " + loggingFile + " caught " + e2);
                 }
+                chip.setRecordingConfigurationSnapshot(null);
             }
         }
     }
@@ -144,7 +145,14 @@ public class DataLogger extends EventFilter2D {
         try {
             loggingFile = new File(filename);
 
-            loggingOutputStream = new AEFileOutputStream(new BufferedOutputStream(new FileOutputStream(loggingFile), 100000));
+            // Freeze the active chip configuration once at recording start and
+            // install it for the legacy writer's header hook.
+            RecordingConfigurationSnapshot snapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
+            chip.setRecordingConfigurationSnapshot(snapshot);
+            // The one-arg writer supplied neither an active chip nor a file
+            // version. Use the same explicit AEDAT-2 path as AEViewer.
+            loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip,
+                    AEDataFile.DATA_FILE_VERSION_NUMBER_AEDAT2);
             loggingEnabled = true;
             getSupport().firePropertyChange("loggingEnabled", null, true);
             log.info("starting logging to " + loggingFile);
@@ -226,6 +234,7 @@ public class DataLogger extends EventFilter2D {
             log.info("stopped logging at " + AEDataFile.DATE_FORMAT.format(new Date()));
             loggingEnabled = false;
             loggingOutputStream.close();
+            chip.setRecordingConfigurationSnapshot(null);
 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
             if (confirmFilename) {
