@@ -561,6 +561,58 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <fail unless="jaer.install4j.exists" message="jaer.install4j not found"/>
     </target>
 
+    <!-- Keep in sync with ivy.xml org.openpnp:opencv rev. Fat jar stays in lib/ for
+         compile/ant run; install4j filesets pack one slim copy per OS media. -->
+    <property name="opencv.ivy.rev" value="4.8.1-0"/>
+    <property name="opencv.fat.jar" value="${basedir}/lib/opencv-${opencv.ivy.rev}.jar"/>
+    <property name="opencv.unpack.dir" value="${basedir}/build/opencv-unpack"/>
+    <property name="opencv.slim.dir" value="${basedir}/build/opencv-slim"/>
+
+    <macrodef name="opencv-slim-jar">
+        <attribute name="platform"/>
+        <attribute name="native.rel"/>
+        <sequential>
+            <mkdir dir="${opencv.slim.dir}/@{platform}/lib"/>
+            <jar destfile="${opencv.slim.dir}/@{platform}/lib/opencv-${opencv.ivy.rev}.jar">
+                <fileset dir="${opencv.unpack.dir}">
+                    <include name="org/**"/>
+                    <include name="nu/pattern/*.class"/>
+                    <include name="nu/pattern/opencv/@{native.rel}/**"/>
+                    <include name="META-INF/**"/>
+                </fileset>
+            </jar>
+        </sequential>
+    </macrodef>
+
+    <target name="split-opencv-natives" depends="download-deps"
+            description="Repack OpenCV fat jar into per-OS slim jars for install4j media.">
+        <available file="${opencv.fat.jar}" property="opencv.fat.jar.present"/>
+        <fail unless="opencv.fat.jar.present"
+              message="Missing ${opencv.fat.jar}. Run ant download-deps first."/>
+        <delete dir="${opencv.unpack.dir}"/>
+        <delete dir="${opencv.slim.dir}"/>
+        <mkdir dir="${opencv.unpack.dir}"/>
+        <unzip src="${opencv.fat.jar}" dest="${opencv.unpack.dir}"/>
+        <opencv-slim-jar platform="windows-x86_64" native.rel="windows/x86_64"/>
+        <opencv-slim-jar platform="linux-x86_64" native.rel="linux/x86_64"/>
+        <opencv-slim-jar platform="macosx-x86_64" native.rel="osx/x86_64"/>
+        <opencv-slim-jar platform="macosx-arm64" native.rel="osx/ARMv8"/>
+        <available file="${opencv.slim.dir}/windows-x86_64/lib/opencv-${opencv.ivy.rev}.jar"
+                   property="opencv.slim.windows.present"/>
+        <available file="${opencv.slim.dir}/linux-x86_64/lib/opencv-${opencv.ivy.rev}.jar"
+                   property="opencv.slim.linux.present"/>
+        <available file="${opencv.slim.dir}/macosx-x86_64/lib/opencv-${opencv.ivy.rev}.jar"
+                   property="opencv.slim.macosx.present"/>
+        <available file="${opencv.slim.dir}/macosx-arm64/lib/opencv-${opencv.ivy.rev}.jar"
+                   property="opencv.slim.macosx.arm.present"/>
+        <fail unless="opencv.slim.windows.present" message="OpenCV slim jar missing for windows-x86_64"/>
+        <fail unless="opencv.slim.linux.present" message="OpenCV slim jar missing for linux-x86_64"/>
+        <fail unless="opencv.slim.macosx.present" message="OpenCV slim jar missing for macosx-x86_64"/>
+        <fail unless="opencv.slim.macosx.arm.present" message="OpenCV slim jar missing for macosx-arm64"/>
+        <delete dir="${opencv.unpack.dir}" failonerror="false"/>
+        <echo message="OpenCV slim jars in ${opencv.slim.dir} (fat ${opencv.fat.jar} left in lib/ for ant run)."/>
+    </target>
+
     <target name="-run-install4jc-with-license"
             depends="-require-install4j-project,-load-version,-load-install4j-license-local"
             if="jaer.install4j.license">
@@ -581,7 +633,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc"
-            depends="-run-install4jc-with-license,-run-install4jc-without-license"/>
+            depends="split-opencv-natives,-run-install4jc-with-license,-run-install4jc-without-license"/>
 
     <!-- Windows-only media for SignPath CI (media set id 26 / type windows). No interactive confirm. -->
     <target name="-run-install4jc-windows-with-license"
@@ -606,7 +658,7 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-run-install4jc-windows"
-            depends="-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
+            depends="split-opencv-natives,-run-install4jc-windows-with-license,-run-install4jc-windows-without-license"/>
 
     <!-- Copy install4j updates.xml from currentInstallers/<version>/ to repo root (auto-update descriptor). -->
     <macrodef name="jaer-copy-updates-xml">

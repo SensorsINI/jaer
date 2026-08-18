@@ -76,6 +76,11 @@ TensorFlow for MLPNoiseFilter (two layers):
   lib/javacpp-1.4.jar manually (it sorts before 1.5.10 and breaks TensorFlow Loader).
 - Media excludes: tmp/, src/, scripts/, logs/, bin/, tools/ (tmp alone can be hundreds of MB
   of local scratch and must not ship in installers).
+- OpenCV: Ivy keeps the openpnp fat jar (`opencv-4.8.1-0.jar`, ~102MB, all OS natives) in
+  `lib/` for compile and `ant run`. `ant release` runs `split-opencv-natives` and each
+  install4j media fileset packs only that OS's slim jar (same filename under `lib/`).
+  Newer openpnp 4.9.0-0 is still a fat jar; bytedeco classifiers are a different Java API.
+  Standalone: `ant split-opencv-natives`. Slim output is `build/opencv-slim/<platform>/lib/`.
 
 Splash only (no installer build): ant generate-splash
 

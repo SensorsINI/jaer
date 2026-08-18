@@ -630,6 +630,7 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
                 yc++;
             }
         }
+        requestApsDisplayRepaint();
     }
 
     /**
@@ -649,6 +650,19 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
                 yc++;
             }
         }
+        requestApsDisplayRepaint();
+    }
+
+    /**
+     * Typed APS path never runs {@link #filterPacket}, so the GL canvas must be
+     * asked to redraw after {@link #setDisplayGrayFrame} / {@link #setDisplayFrameRGB}.
+     */
+    public void requestApsDisplayRepaint() {
+        if (!showAPSFrameDisplay || apsDisplay == null) {
+            return;
+        }
+        checkDisplay();
+        SwingUtilities.invokeLater(() -> getApsDisplay().repaint(30));
     }
 
     /**
@@ -769,30 +783,43 @@ public class ApsFrameExtractor extends EventFilter2DMouseROI {
      * @param showAPSFrameDisplay the showAPSFrameDisplay to set
      */
     public void setShowAPSFrameDisplay(final boolean showAPSFrameDisplay) {
+        boolean old = this.showAPSFrameDisplay;
         this.showAPSFrameDisplay = showAPSFrameDisplay;
         putBoolean("showAPSFrameDisplay", showAPSFrameDisplay);
-        if (apsFrame != null) {
-            apsFrame.setVisible(showAPSFrameDisplay);
+        updateApsFrameVisibility();
+        if (old == showAPSFrameDisplay) {
+            return;
         }
-        getSupport().firePropertyChange("showAPSFrameDisplay", null, showAPSFrameDisplay);
+        // Must pass the previous value: firePropertyChange(name, null, v) always notifies, and
+        // FilterPanel then re-invokes this setter → StackOverflowError.
+        getSupport().firePropertyChange("showAPSFrameDisplay", old, this.showAPSFrameDisplay);
+    }
+
+    private void updateApsFrameVisibility() {
+        if (apsFrame == null) {
+            return;
+        }
+        boolean show = showAPSFrameDisplay && isFilterEnabled();
+        if (apsFrame.isVisible() != show) {
+            apsFrame.setVisible(show);
+        }
     }
 
     /**
-     * Overrides to add check for DavisChip
+     * Overrides to add check for DavisChip and to show/hide the APS window
+     * together with filter enable (previously hid the window when enabling).
      */
     @Override
     public synchronized void setFilterEnabled(boolean yes) {
         if (yes && !(chip instanceof DavisChip)) {
             log.warning("not a DAVIS camera, not enabling filter");
-
-            return;
-        }
-        if (!isFilterEnabled()) {
             if (apsFrame != null) {
                 apsFrame.setVisible(false);
             }
+            return;
         }
-        super.setFilterEnabled(yes); //To change body of generated methods, choose Tools | Templates.
+        super.setFilterEnabled(yes);
+        updateApsFrameVisibility();
     }
 
     /**

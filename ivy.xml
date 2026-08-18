@@ -129,13 +129,14 @@ MA 02110-1301  USA
         of libusb4java release
         -->
 
-        <!--following is for the official org.opencv.core classes from nu.pattern, forked to org.openpnp now
-
-        It is important to read https://github.com/openpnp/opencv to see how the OpenCV native libraries must be loaded to the JVM!
-
-        This OpenCV is used by SingleCameraCalibration at least.
-
-        -->
+        <!-- Official org.opencv.* Java bindings + all-OS natives in one fat jar (~102MB).
+             openpnp 4.9.0-0 is still a fat jar (no classifiers). bytedeco opencv-* has
+             per-OS classifiers but uses org.bytedeco.opencv.* (not a drop-in).
+             Ivy keeps the fat jar for compile / ant run. install4j ships a per-OS slim
+             jar from ant split-opencv-natives (build/opencv-slim/<platform>/lib/).
+             Keep this rev in sync with opencv.ivy.rev in build.xml.
+             Loader: https://github.com/openpnp/opencv (nu.pattern.OpenCV.loadLocally).
+             Used by SingleCameraCalibration and OpenCVFlow. -->
         <dependency org="org.openpnp" name="opencv" rev="4.8.1-0" />
 
         <!-- TensorFlow for MLPNoiseFilter — roles:

@@ -139,9 +139,8 @@ public class JAERTrayLauncher implements PnPNotifyInterface {
     }
     
     private void startViewer() {
-        File runningFile=new File("jAERViewerRunning.txt");
-        if(runningFile.isFile()){
-            log.warning("Viewer is running, not starting another");
+        if (!JAERViewer.confirmStartIfPossiblyAlreadyRunning()) {
+            log.info("Not starting viewer (existing instance or user cancelled)");
             return;
         }
         

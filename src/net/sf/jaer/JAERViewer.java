@@ -23,6 +23,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
@@ -102,6 +104,11 @@ public class JAERViewer {
     static public long globalTime1, globalTime2, globalTime3;
     private SyncPlayer syncPlayer = null; // add a sync player once we have a viewer to assign it to
     protected static final String JAERVIEWER_VIEWER_CHIP_CLASS_NAMES_KEY = "JAERViewer.viewerChipClassNames";
+    /**
+     * Semaphore file name under {@code java.io.tmpdir} (and leftover name in
+     * the working directory). Also used by {@link JAERTrayLauncher}.
+     */
+    public static final String RUNNING_SEMAPHORE_FILENAME = "JAERViewerRunning.txt";
 
     // Internal switch: go into multiple-display mode right away?
     boolean multistartmode = false;
@@ -141,20 +148,7 @@ public class JAERViewer {
 
         SwingUtilities.invokeLater(new RunningThread());
 
-        try {
-            // Create temp file.
-            File temp = new File("JAERViewerRunning.txt");
-
-            // Delete temp file when program exits.
-            temp.deleteOnExit();
-
-            // Write to temp file
-            BufferedWriter out = new BufferedWriter(new FileWriter(temp));
-            out.write("JAERViewer started " + new Date());
-            out.close();
-        } catch (IOException e) {
-            log.warning(e.getMessage());
-        }
+        markViewerRunning();
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -222,6 +216,84 @@ public class JAERViewer {
 
             }
         });
+    }
+
+    /**
+     * Semaphore file in the system temp folder (writable for installed jAER).
+     */
+    public static File getRunningSemaphoreFile() {
+        return new File(System.getProperty("java.io.tmpdir"), RUNNING_SEMAPHORE_FILENAME);
+    }
+
+    /**
+     * If a semaphore file already exists, warn that another jAER may be running
+     * (or a previous instance crashed) and offer to start anyway.
+     *
+     * @return false if the user cancelled startup
+     */
+    public static boolean confirmStartIfPossiblyAlreadyRunning() {
+        File semaphore = getRunningSemaphoreFile();
+        if (semaphore == null || !semaphore.isFile()) {
+            return true;
+        }
+        String detail = readSemaphoreDetail(semaphore);
+        String msg = "<html>jAER may already be running, or a previous instance did not exit cleanly.<br><br>"
+                + "Semaphore file:<br><code>" + escapeHtml(semaphore.getAbsolutePath()) + "</code>"
+                + (detail.isEmpty() ? "" : "<br><br>" + escapeHtml(detail))
+                + "<br><br>Starting another instance can conflict over cameras and preferences.<br>"
+                + "Start jAER anyway?</html>";
+        Object[] options = {"Start anyhow", "Cancel"};
+        int choice = JOptionPane.showOptionDialog(null, msg, "jAER may already be running",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE, null, options, options[1]);
+        boolean start = choice == 0;
+        Logger logger = log != null ? log : Logger.getLogger("net.sf.jaer");
+        if (start) {
+            logger.warning("Starting despite existing semaphore " + semaphore.getAbsolutePath());
+        } else {
+            logger.info("Startup cancelled; existing semaphore " + semaphore.getAbsolutePath());
+        }
+        return start;
+    }
+
+    private static String readSemaphoreDetail(File semaphore) {
+        try {
+            String s = Files.readString(semaphore.toPath(), StandardCharsets.UTF_8).trim();
+            return s;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null || s.isEmpty()) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    /**
+     * Writes the running-instance semaphore under {@code java.io.tmpdir} and
+     * removes a leftover copy from the working directory (old location).
+     */
+    private void markViewerRunning() {
+        File[] leftovers = {
+            new File(RUNNING_SEMAPHORE_FILENAME),
+            new File("jAERViewerRunning.txt")
+        };
+        for (File leftover : leftovers) {
+            if (leftover.isFile() && !leftover.delete()) {
+                log.warning("Could not delete leftover " + leftover.getAbsolutePath()
+                        + " from working directory");
+            }
+        }
+        File temp = getRunningSemaphoreFile();
+        temp.deleteOnExit();
+        try (BufferedWriter out = new BufferedWriter(new FileWriter(temp, StandardCharsets.UTF_8))) {
+            out.write("JAERViewer started " + new Date());
+            log.info("Wrote running semaphore " + temp.getAbsolutePath());
+        } catch (IOException e) {
+            log.warning("Could not write running semaphore " + temp + ": " + e.getMessage());
+        }
     }
 
     class RunningThread implements Runnable {
@@ -713,6 +785,9 @@ public class JAERViewer {
         }
 
         log.info("jAERViewer starting up");
+        if (!confirmStartIfPossiblyAlreadyRunning()) {
+            System.exit(0);
+        }
         net.sf.jaer.util.TensorFlowNativeSupport.installDownloadedJarsOnClasspath();
         log.info("java.version=" + System.getProperty("java.version") + "  java.vm.version=" + System.getProperty("java.vm.version") + " user.dir=" + System.getProperty("user.dir"));
         net.sf.jaer.util.MemoryDiagnostics.maybeStartPeriodicLogging(log);

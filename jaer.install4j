@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
   <directoryPresets config="./images/1024w" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.2.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.2.1" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./packaging/install4j/install4j-custom-resources.utf8" />
     </languages>
@@ -14,8 +14,26 @@
     </jreBundles>
   </application>
   <files>
+    <!-- Per-OS OpenCV slim jars (ant split-opencv-natives). Fat lib/opencv-4.8.1-0.jar
+         is excluded below; each media keeps one fileset so calibration works offline. -->
+    <filesets>
+      <fileset name="OpenCV Windows x86_64" id="9001" />
+      <fileset name="OpenCV Linux x86_64" id="9002" />
+      <fileset name="OpenCV macOS x86_64" id="9003" />
+      <fileset name="OpenCV macOS aarch64" id="9004" />
+    </filesets>
+    <roots>
+      <root id="9011" fileset="9001" />
+      <root id="9012" fileset="9002" />
+      <root id="9013" fileset="9003" />
+      <root id="9014" fileset="9004" />
+    </roots>
     <mountPoints>
       <mountPoint id="24" />
+      <mountPoint id="9021" root="9011" />
+      <mountPoint id="9022" root="9012" />
+      <mountPoint id="9023" root="9013" />
+      <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
       <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
@@ -93,6 +111,9 @@
           <entry location="packaging" />
           <!-- Prefer javacpp 1.5.10 (TensorFlow); drop leftover 1.4 from older Ivy resolves. -->
           <entry location="lib/javacpp-1.4.jar" />
+          <!-- Fat OpenCV (~102MB, all OS natives). Each media fileset below installs a
+               slim lib/opencv-4.8.1-0.jar with Java classes + that OS native only. -->
+          <entry location="lib/opencv-4.8.1-0.jar" />
           <!-- Safety net: OS TensorFlow natives (~70–150MB). Ivy no longer retrieves these;
                MLPNoiseFilter downloads via TensorFlowNativeSupport. Keep API + stub jars. -->
           <entry location="lib/tensorflow-core-native-1.0.0-rc.2-linux-arm64.jar" />
@@ -130,6 +151,11 @@
           <entry location="lib/test-interface-1.0.jar" />
         </exclude>
       </dirEntry>
+      <!-- overwrite always so upgrades replace a leftover fat OpenCV jar. -->
+      <dirEntry mountPoint="9021" file="./build/opencv-slim/windows-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
+      <dirEntry mountPoint="9022" file="./build/opencv-slim/linux-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
+      <dirEntry mountPoint="9023" file="./build/opencv-slim/macosx-x86_64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
+      <dirEntry mountPoint="9024" file="./build/opencv-slim/macosx-arm64" overwriteMode="always" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" />
     </entries>
   </files>
   <launchers>
@@ -1403,17 +1429,37 @@ return true;</property>
   <mediaSets>
     <macosFolder name="macOS Folder" id="38" architecture="amd64">
       <jreBundle usePack200="false" />
+      <exclude>
+        <entry filesetId="9001" />
+        <entry filesetId="9002" />
+        <entry filesetId="9004" />
+      </exclude>
     </macosFolder>
     <!-- Apple Silicon: distinct mediaFileName so install4j does not collide with id 38's jAER_macos_${version}.dmg.
          Keep id 38 for Intel so existing installs still match updates.xml. -->
     <macosFolder name="macOS Folder Apple Silicon" id="39" architecture="aarch64" mediaFileName="${compiler:sys.shortName}_macos_aarch64_${compiler:sys.version}">
       <jreBundle usePack200="false" />
+      <exclude>
+        <entry filesetId="9001" />
+        <entry filesetId="9002" />
+        <entry filesetId="9003" />
+      </exclude>
     </macosFolder>
     <unixInstaller name="Unix Installer" id="37">
       <jreBundle usePack200="false" />
+      <exclude>
+        <entry filesetId="9001" />
+        <entry filesetId="9003" />
+        <entry filesetId="9004" />
+      </exclude>
     </unixInstaller>
     <windows name="Windows" id="26" architecture="64">
       <jreBundle usePack200="false" />
+      <exclude>
+        <entry filesetId="9002" />
+        <entry filesetId="9003" />
+        <entry filesetId="9004" />
+      </exclude>
     </windows>
   </mediaSets>
   <buildIds>

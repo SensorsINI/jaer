@@ -14,7 +14,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -48,16 +47,21 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import net.sf.jaer.Description;
 import net.sf.jaer.DevelopmentStatus;
+import net.sf.jaer.Help;
 import net.sf.jaer.chip.AEChip;
 import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.ApsDvsEventPacket;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.EventPacket;
+import net.sf.jaer.event.FramePacket;
+import net.sf.jaer.event.PacketType;
 import net.sf.jaer.eventprocessing.EventFilter2D;
 import net.sf.jaer.eventprocessing.FilterChain;
+import net.sf.jaer.graphics.Chip2DRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
+import net.sf.jaer.util.DrawGL;
 import net.sf.jaer.util.TextRendererScale;
 import net.sf.jaer.util.YamlMatFileStorage;
 import net.sf.jaer.util.OpenCVNativeLoader;
@@ -65,12 +69,70 @@ import net.sf.jaer.util.OpenCVNativeLoader;
 import static org.opencv.core.Core.countNonZero;
 
 /**
- * Calibrates a single camera using DAVIS frames and OpenCV calibration methods.
+ * Calibrates a single camera using OpenCV chessboard calibration.
+ * jAER 3.0: {@link #processFrame} consumes typed {@link FramePacket}s (DAVIS APS /
+ * AEDAT-4); {@link #processPolarity} samples the rendered DVS image and can
+ * undistort events. Legacy mixed {@link ApsDvsEventPacket} still goes through
+ * {@link #filterPacket}.
  *
  * @author Marc Osswald, Tobi Delbruck
  */
-@Description("Calibrates a single camera using DAVIS frames and OpenCV calibration methods")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@Description("OpenCV chessboard camera calibration from DAVIS APS frames or accumulated DVS renderings")
+@Help("""
+<html>
+<body>
+<h2>SingleCameraCalibration</h2>
+<p>Estimates pinhole intrinsics (focal length, principal point) and lens distortion
+with OpenCV <code>calibrateCamera</code> from views of a printed <b>chessboard</b>.
+Works with <b>DAVIS APS frames</b> and with <b>DVS-only</b> data by sampling the
+same accumulated event image you see in the viewer.</p>
+<p>OpenCV docs:
+<a href="https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html">Camera calibration</a>.</p>
+<hr>
+<h3>How to use</h3>
+<ol>
+<li>Print a chessboard (or click <code>displayCalibrationImage</code> and photograph that
+window). Measure one square in millimetres.</li>
+<li>Set <code>patternWidth</code> / <code>patternHeight</code> to the number of
+<b>internal corners</b> (one less than the number of squares on each side). Set
+<code>rectangleWidthMm</code> / <code>rectangleHeightMm</code> to the square size.</li>
+<li><code>frameSource</code> <b>Auto</b> uses APS / AEDAT-4 <code>FramePacket</code>s
+when they arrive, otherwise the rendered DVS image. Force <b>ApsFrames</b> or
+<b>RenderedEventFrames</b> if you need one modality only.</li>
+<li>For DVS / event recordings: turn on viewer <b>Accumulate</b> (or fading) and
+<b>slowly move</b> the board or camera so the squares fill in. A perfectly still
+DVS image is blank and will not detect corners.</li>
+<li>Enable the filter. The enclosed APS window shows the grayscale image sent to
+OpenCV (contrast-stretched). With <code>realtimePatternDetectionEnabled</code>, a found
+board is overlaid on the viewer. Click <code>captureSingleFrame</code> (or
+<code>triggerAutocapture</code>) when the overlay looks correct. Capture ~10–20
+poses, different angles and distances, filling the field of view.</li>
+<li>Click <code>calibrate</code>, then <code>saveCalibration</code>. Later sessions
+can <code>loadCalibration</code>.</li>
+</ol>
+<h3>Controls</h3>
+<ul>
+<li><code>fontSize</code> &mdash; overlay and statistics text size in chip pixels
+(default from chip width; same idea as other filters).</li>
+<li><code>renderedFrameIntervalMs</code> &mdash; how often to sample the DVS rendering
+when not using APS (OpenCV chessboard search is not cheap).</li>
+<li><code>cornerSubPixRefinement</code> &mdash; subpixel corner locations (recommended).</li>
+<li><code>showAPSFrameDisplay</code> &mdash; OpenCV search-image window (on by default).</li>
+<li><code>showUndistortedFrames</code> &mdash; preview lens correction on the APS
+frame window after calibration.</li>
+<li><code>undistortDVSevents</code> &mdash; remap DVS event addresses with the
+calibration LUT (events that fall outside the chip are dropped).</li>
+<li><code>clearImages</code> drops collected corners; <code>clearCalibration</code>
+drops the solved camera matrix without clearing corners.</li>
+</ul>
+<p>Sample chessboard recordings (DAVIS346, AEDAT-4) are in
+<a href="https://sites.google.com/view/davis24-davis-sample-data/home#h.elfxct3takto">DAVIS24 lens calibration samples</a>:
+a frames-only 14×9-corner / 25&nbsp;mm board with a 3.5&nbsp;mm Kowa lens, and an events+frames recording.
+Play with AEChip <code>Davis346blue</code>.</p>
+</body>
+</html>
+""")
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 public class SingleCameraCalibration extends EventFilter2D implements FrameAnnotater /* observes this to get informed about our size */ {
 
     static {
@@ -87,11 +149,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * Fires property change with this string when new calibration is available
      */
     public static final String EVENT_NEW_CALIBRATION = "EVENT_NEW_CALIBRATION";
+    /** Default capture/calibration folder under the user home directory. */
+    public static final String DEFAULT_CALIBRATION_FOLDER_NAME = "jAER-SingleCameraCalibration";
 
     //encapsulated fields
     private boolean realtimePatternDetectionEnabled = getBoolean("realtimePatternDetectionEnabled", true);
     private boolean cornerSubPixRefinement = getBoolean("cornerSubPixRefinement", true);
-    private String dirPath = getString("dirPath", System.getProperty("user.dir"));
+    private String dirPath = getString("dirPath", defaultCalibrationDirPath());
     private int patternWidth = getInt("patternWidth", 9);
     private int patternHeight = getInt("patternHeight", 5);
     private int rectangleHeightMm = getInt("rectangleHeightMm", 20); //height in mm
@@ -131,12 +195,31 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private int autocaptureCalibrationFrameDelayMs = getInt("autocaptureCalibrationFrameDelayMs", 1500);
     private long lastAutocaptureTimeMs = 0;
 
+    /** Where grayscale images for OpenCV come from. */
+    public enum FrameSource {
+        Auto,
+        ApsFrames,
+        RenderedEventFrames
+    }
+
+    private FrameSource frameSource = FrameSource.Auto;
+    private int renderedFrameIntervalMs = getInt("renderedFrameIntervalMs", 200);
+    private long lastRenderedSampleMs = 0;
+    private boolean seenApsFrame = false;
+    private boolean lastFrameFromAps = false;
+
     private final ApsFrameExtractor frameExtractor;
     private final FilterChain filterChain;
     private boolean saved = false;
     private boolean textRendererScaleSet = false;
     private int noPatternFoundwarningSkipInterval = 50, noPatternFoundWarningCount = 0;
-    private int fontSize=getInt("fontSize",6);
+    private String lastCornerSearchSummary = "";
+    private boolean loggedFirstChessboardFind = false;
+    private String overlayMessage = null;
+    private Color overlayColor = Color.yellow;
+    private long overlayUntilMs = 0;
+    private static final int OVERLAY_MS = 5000;
+    private int fontSize;
         
 
     public SingleCameraCalibration(AEChip chip) {
@@ -145,18 +228,21 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         filterChain = new FilterChain(chip);
         filterChain.add(frameExtractor);
         frameExtractor.setUseExternalRenderer(false);
+        // Default freezeRoi=true so chip-canvas clicks do not start a tiny ROI by accident.
+        frameExtractor.setFreezeRoi(frameExtractor.getBoolean("freezeRoi", true));
         setEnclosedFilterChain(filterChain);
         setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("patternWidth", "width of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
-        setPropertyTooltip("realtimePatternDetectionEnabled", "width of checkerboard calibration pattern in internal corner intersections");
+        setPropertyTooltip("realtimePatternDetectionEnabled", "continuously run OpenCV chessboard detection on incoming APS or rendered DVS frames");
         setPropertyTooltip("rectangleWidthMm", "width of square rectangles of calibration pattern in mm");
         setPropertyTooltip("rectangleHeightMm", "height of square rectangles of calibration pattern in mm");
+        setPropertyTooltip("showAPSFrameDisplay", "Shows the ApsFrameExtractor window with the grayscale image sent to OpenCV");
         setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the ApsFrameExtractor display, if calibration has been completed");
         setPropertyTooltip("undistortDVSevents", "applies LUT undistortion to DVS event address if calibration has been completed; events outside AEChip address space are filtered out");
         setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
         setPropertyTooltip("displayCalibrationImage", "shows the calibration image that you can aim the camera at");
-        setPropertyTooltip("setPath", "sets the folder and basename of saved images");
+        setPropertyTooltip("setPath", "sets the folder and basename of saved images (default is ~/" + DEFAULT_CALIBRATION_FOLDER_NAME + ")");
         setPropertyTooltip("saveCalibration", "saves calibration files to a selected folder");
         setPropertyTooltip("loadCalibration", "loads saved calibration files from selected folder");
         setPropertyTooltip("clearCalibration", "clears existing calibration, without clearing accumulated corner points (see ClearImages)");
@@ -166,91 +252,348 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("hideStatisticsAndStatus", "hides the status text");
         setPropertyTooltip("numAutoCaptureFrames", "Number of frames to automatically capture with min delay autocaptureCalibrationFrameDelayMs between frames");
         setPropertyTooltip("autocaptureCalibrationFrameDelayMs", "Delay after capturing automatic calibration frame");
-        setPropertyTooltip("fontSize", "Font size for rendering text");
+        setPropertyTooltip("fontSize", "Font size in chip pixels for overlay and statistics (default scales with chip width)");
+        setPropertyTooltip("frameSource", "Auto: APS frames when they arrive, else the rendered DVS image. ApsFrames / RenderedEventFrames force one source.");
+        setPropertyTooltip("renderedFrameIntervalMs", "Minimum interval between OpenCV searches on the rendered DVS image (ignored for APS frames)");
+        try {
+            frameSource = FrameSource.valueOf(getString("frameSource", FrameSource.Auto.name()));
+        } catch (IllegalArgumentException e) {
+            frameSource = FrameSource.Auto;
+        }
+        fontSize = getInt("fontSize", estimatedFontSize());
+        frameExtractor.setShowAPSFrameDisplay(getBoolean("showAPSFrameDisplay", true));
+        frameExtractor.getSupport().addPropertyChangeListener("showAPSFrameDisplay", evt -> {
+            Object nv = evt.getNewValue();
+            if (!(nv instanceof Boolean)) {
+                return;
+            }
+            putBoolean("showAPSFrameDisplay", (Boolean) nv);
+            getSupport().firePropertyChange("showAPSFrameDisplay", evt.getOldValue(), nv);
+        });
+        migrateDirPathOffJaerWorkingDir();
 //        loadCalibration(); // moved from here to update method so that Chip is fully constructed with correct size, etc.
     }
 
+    static String defaultCalibrationDirPath() {
+        return new File(System.getProperty("user.home"), DEFAULT_CALIBRATION_FOLDER_NAME).getPath();
+    }
+
     /**
-     * filters in to out. if filtering is enabled, the number of out may be less
-     * than the number putString in
-     *
-     * @param in input events can be null or empty.
-     * @return the processed events, may be fewer in number. filtering may occur
-     * in place in the in packet.
+     * Old default was {@code user.dir} (the jAER working folder). Move stored
+     * prefs off that path so captured frames do not land in the repo.
+     */
+    private void migrateDirPathOffJaerWorkingDir() {
+        String userDir = System.getProperty("user.dir");
+        if (dirPath == null || dirPath.isEmpty() || dirPath.equals(userDir)) {
+            dirPath = defaultCalibrationDirPath();
+            putString("dirPath", dirPath);
+        }
+    }
+
+    private void ensureCalibrationDir() {
+        File d = new File(dirPath);
+        if (!d.exists() && !d.mkdirs()) {
+            log.warning("Could not create calibration folder " + dirPath);
+        }
+    }
+
+    @Override
+    public boolean accepts(PacketType type) {
+        return type == PacketType.POLARITY || type == PacketType.FRAME;
+    }
+
+    /**
+     * Legacy / mixed {@link ApsDvsEventPacket} path (old USB extractor). Typed
+     * polarity packets must not land here — use {@link #processPolarity}.
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
-        getEnclosedFilterChain().filterPacket(in);
-
-        // for each event only keep it if it is within dt of the last time
-        // an event happened in the direct neighborhood
-        Iterator itr = ((ApsDvsEventPacket) in).fullIterator();
-        while (itr.hasNext()) {
-            Object o = itr.next();
-            if (o == null) {
-                break;  // this can occur if we are supplied packet that has data (eIn.g. APS samples) but no events
+        if (in == null) {
+            return in;
+        }
+        if (in instanceof ApsDvsEventPacket) {
+            getEnclosedFilterChain().filterPacket(in);
+            boolean newAps = frameExtractor != null && frameExtractor.hasNewFrameAvailable();
+            if (newAps) {
+                seenApsFrame = true;
             }
-            BasicEvent e = (BasicEvent) o;
-//            if (e.isSpecial()) {
-//                continue;
-//            }
-
-            //acquire new frame
-            if (frameExtractor.hasNewFrameAvailable()) {
+            if (wantApsFrame() && newAps) {
                 lastFrame = frameExtractor.getNewFrame();
+                lastFrameFromAps = true;
+                processCalibrationFrame();
+                updateApsUndistortPreview();
+            } else if (wantRenderedEventFrame() && copyRenderedFrameToLastFrame()) {
+                lastFrameFromAps = false;
+                processCalibrationFrame();
+            }
+            undistortPolarityPacket(in);
+            if (!in.isEmpty()) {
+                lastTimestamp = in.getLastTimestamp();
+            }
+            return in;
+        }
+        return processPolarity(in);
+    }
 
-                //process frame
-                if (realtimePatternDetectionEnabled || autocaptureCalibrationFramesEnabled) {
-                    patternFound = findCurrentCorners(false); // false just checks if there are corners detected
-                }
+    /**
+     * jAER 3.0 polarity path: optional rendered-DVS chessboard + event undistort.
+     */
+    @Override
+    synchronized public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
+        if (in == null) {
+            return in;
+        }
+        if (wantRenderedEventFrame() && copyRenderedFrameToLastFrame()) {
+            lastFrameFromAps = false;
+            processCalibrationFrame();
+        }
+        undistortPolarityPacket(in);
+        if (!in.isEmpty()) {
+            lastTimestamp = in.getLastTimestamp();
+        }
+        return in;
+    }
 
-                if (patternFound
-                        && (captureTriggered
-                        || (autocaptureCalibrationFramesEnabled
-                        && ((System.currentTimeMillis() - lastAutocaptureTimeMs) > autocaptureCalibrationFrameDelayMs)
-                        && (nAcqFrames < numAutoCaptureFrames)))) {
-                    nAcqFrames++;
-                    findCurrentCorners(true); // true again find the corner points and saves them
-                    captureTriggered = false;
-                    lastAutocaptureTimeMs = System.currentTimeMillis();
-                    if (nAcqFrames >= numAutoCaptureFrames) {
-                        autocaptureCalibrationFramesEnabled = false;
-                        log.info("finished autocapturing " + nAcqFrames + " acquired. Starting calibration in background....");
-                        (new CalibrationWorker()).execute();
-                    } else {
-                        log.info("captured frame " + nAcqFrames);
+    /**
+     * jAER 3.0 completed APS / AEDAT-4 frame (y=0 at bottom, same as chip pixmap).
+     */
+    @Override
+    synchronized public FramePacket processFrame(FramePacket in) {
+        if (in == null || in.isEmpty() || !wantApsFrame()) {
+            return in;
+        }
+        if (copyFramePacketToLastFrame(in)) {
+            seenApsFrame = true;
+            lastFrameFromAps = true;
+            processCalibrationFrame();
+            updateApsUndistortPreview();
+        }
+        return in;
+    }
+
+    private boolean wantApsFrame() {
+        return frameSource != FrameSource.RenderedEventFrames;
+    }
+
+    private boolean wantRenderedEventFrame() {
+        if (frameSource == FrameSource.ApsFrames) {
+            return false;
+        }
+        if (frameSource == FrameSource.RenderedEventFrames) {
+            return shouldSampleRenderedFrame();
+        }
+        return !seenApsFrame && shouldSampleRenderedFrame();
+    }
+
+    /**
+     * True when OpenCV should run on the viewer pixmap (throttled). Capture
+     * requests bypass the interval so a click is not missed.
+     */
+    private boolean shouldSampleRenderedFrame() {
+        if (!realtimePatternDetectionEnabled && !autocaptureCalibrationFramesEnabled && !captureTriggered) {
+            return false;
+        }
+        if (captureTriggered) {
+            return true;
+        }
+        long now = System.currentTimeMillis();
+        if ((now - lastRenderedSampleMs) < renderedFrameIntervalMs) {
+            return false;
+        }
+        lastRenderedSampleMs = now;
+        return true;
+    }
+
+    /**
+     * Copies the chip renderer pixmap into {@link #lastFrame} as grayscale.
+     * Uses {@link Chip2DRenderer#getPixMapIndex} so DAVIS RGBA / padded textures
+     * and 3-channel DVS pixmaps both copy correctly (y=0 at bottom).
+     */
+    private boolean copyRenderedFrameToLastFrame() {
+        Chip2DRenderer renderer = chip.getRenderer();
+        if (renderer == null || sx <= 0 || sy <= 0) {
+            return false;
+        }
+        synchronized (renderer) {
+            float[] pixmap = renderer.getPixmapArray();
+            int n = sx * sy;
+            if (pixmap == null) {
+                return false;
+            }
+            if (lastFrame == null || lastFrame.length != n) {
+                lastFrame = new float[n];
+            }
+            int copied = 0;
+            for (int y = 0; y < sy; y++) {
+                int row = y * sx;
+                for (int x = 0; x < sx; x++) {
+                    int pi = renderer.getPixMapIndex(x, y);
+                    if (pi < 0 || (pi + 2) >= pixmap.length) {
+                        lastFrame[row + x] = 0;
+                        continue;
                     }
-                } else {
-                    if (--noPatternFoundWarningCount < 0) {
-                        log.warning(String.format("no pattern found; check pattern height and width numbers (skipping next %d warnings)", noPatternFoundwarningSkipInterval));
-//                        getChip().getCanvas().getDisplayMethod().showStatusChangeText("No pattern found; check pattern height/width?");
-                        noPatternFoundWarningCount = noPatternFoundwarningSkipInterval;
-                    }
-                }
-
-                // undistort and show results
-                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-                    float[] outFrame = undistortFrame(lastFrame);
-                    frameExtractor.setDisplayFrameRGB(outFrame);
-                }
-
-                if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay()) {
-                    frameExtractor.setUseExternalRenderer(true); // to not alternate
-                    frameExtractor.getApsDisplay().setTitleLabel("lens correction enabled");
-                } else {
-                    frameExtractor.setUseExternalRenderer(false); // to not alternate
-                    frameExtractor.getApsDisplay().setTitleLabel("raw input image");
+                    lastFrame[row + x] = (pixmap[pi] + pixmap[pi + 1] + pixmap[pi + 2]) * (1f / 3f);
+                    copied++;
                 }
             }
-
-            //store last timestamp
-            lastTimestamp = e.timestamp;
-            if (calibrated && undistortDVSevents && ((ApsDvsEvent) e).isDVSEvent()) {
-                // undistortEvent(e);
+            if (copied < (n / 2)) {
+                log.warning(String.format(
+                        "rendered pixmap copy incomplete: copied %d/%d (renderer=%s pixmapLen=%d)",
+                        copied, n, renderer.getClass().getSimpleName(), pixmap.length));
+                return false;
             }
         }
+        return true;
+    }
 
-        return in;
+    /**
+     * Copies a typed {@link FramePacket} into {@link #lastFrame} as 0–1 gray.
+     * Packet layout is {@code y * width + x} with y=0 at the bottom (jAER).
+     */
+    private boolean copyFramePacketToLastFrame(FramePacket frame) {
+        if (frame == null || sx <= 0 || sy <= 0) {
+            return false;
+        }
+        int w = frame.getWidth();
+        int h = frame.getHeight();
+        short[] pix = frame.getPixels();
+        int ch = Math.max(1, frame.channelsPerPixel());
+        if (w != sx || h != sy || pix == null || pix.length < w * h * ch) {
+            log.warning(String.format("FramePacket %dx%d ch=%d does not match chip %dx%d", w, h, ch, sx, sy));
+            return false;
+        }
+        int n = sx * sy;
+        if (lastFrame == null || lastFrame.length != n) {
+            lastFrame = new float[n];
+        }
+        int maxv = 1;
+        for (int i = 0; i < pix.length; i++) {
+            int v = pix[i] & 0xffff;
+            if (v > maxv) {
+                maxv = v;
+            }
+        }
+        float scale = maxv <= 255 ? 255f : (maxv <= 1023 ? 1023f : 65535f);
+        for (int y = 0; y < h; y++) {
+            int row = y * w;
+            for (int x = 0; x < w; x++) {
+                int base = (row + x) * ch;
+                float g;
+                if (ch >= 3) {
+                    g = ((pix[base] & 0xffff) + (pix[base + 1] & 0xffff) + (pix[base + 2] & 0xffff)) / (3f * scale);
+                } else {
+                    g = (pix[base] & 0xffff) / scale;
+                }
+                lastFrame[row + x] = g;
+            }
+        }
+        return true;
+    }
+
+    private void updateApsUndistortPreview() {
+        if (!apsPreviewAvailable()) {
+            return;
+        }
+        if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay() && lastFrame != null) {
+            frameExtractor.setDisplayFrameRGB(undistortFrame(lastFrame));
+            frameExtractor.setUseExternalRenderer(true);
+            frameExtractor.getApsDisplay().setTitleLabel("lens correction enabled");
+        } else {
+            frameExtractor.setUseExternalRenderer(false);
+            frameExtractor.getApsDisplay().setTitleLabel("raw input image");
+            if (lastFrame != null) {
+                frameExtractor.setDisplayGrayFrame(lastFrame);
+            }
+        }
+    }
+
+    private void undistortPolarityPacket(EventPacket in) {
+        if (!calibrated || !undistortDVSevents || in == null) {
+            return;
+        }
+        try {
+            for (Object o : in) {
+                if (!(o instanceof BasicEvent)) {
+                    continue;
+                }
+                BasicEvent e = (BasicEvent) o;
+                if (e.isSpecial()) {
+                    continue;
+                }
+                if (o instanceof ApsDvsEvent && !((ApsDvsEvent) o).isDVSEvent()) {
+                    continue;
+                }
+                undistortEvent(e);
+            }
+        } catch (RuntimeException e) {
+            log.warning("undistortDVSevents failed (will skip this packet): " + e);
+        }
+    }
+
+    private boolean apsPreviewAvailable() {
+        return frameExtractor != null && frameExtractor.getApsDisplay() != null && frameExtractor.width > 0;
+    }
+
+    /**
+     * Chessboard detect / optional capture on {@link #lastFrame}.
+     */
+    private void processCalibrationFrame() {
+        if (lastFrame == null) {
+            return;
+        }
+        showLastFrameOnApsPreview();
+        if (realtimePatternDetectionEnabled || autocaptureCalibrationFramesEnabled || captureTriggered) {
+            patternFound = findCurrentCorners(false);
+        }
+
+        if (patternFound
+                && (captureTriggered
+                || (autocaptureCalibrationFramesEnabled
+                && ((System.currentTimeMillis() - lastAutocaptureTimeMs) > autocaptureCalibrationFrameDelayMs)
+                && (nAcqFrames < numAutoCaptureFrames)))) {
+            boolean fromCaptureButton = captureTriggered;
+            int before = imageCounter;
+            nAcqFrames++;
+            findCurrentCorners(true);
+            captureTriggered = false;
+            lastAutocaptureTimeMs = System.currentTimeMillis();
+            if (fromCaptureButton) {
+                if (imageCounter > before) {
+                    showTransientOverlay(String.format("Captured %d image%s",
+                            imageCounter, imageCounter == 1 ? "" : "s"), Color.green);
+                } else {
+                    showTransientOverlay("Capture failed: corners not saved", Color.orange);
+                }
+            }
+            if (nAcqFrames >= numAutoCaptureFrames) {
+                autocaptureCalibrationFramesEnabled = false;
+                log.info("finished autocapturing " + nAcqFrames + " acquired. Starting calibration in background....");
+                (new CalibrationWorker()).execute();
+            } else {
+                log.info("captured frame " + nAcqFrames);
+            }
+        } else if (!patternFound) {
+            if (--noPatternFoundWarningCount < 0) {
+                log.warning(String.format(
+                        "no chessboard: %s (skipping next %d warnings). patternWidth/Height are internal corners, not squares.",
+                        lastCornerSearchSummary, noPatternFoundwarningSkipInterval));
+                noPatternFoundWarningCount = noPatternFoundwarningSkipInterval;
+            }
+        }
+    }
+
+    /** Push the grayscale OpenCV input to the enclosed APS window so it is visible. */
+    private void showLastFrameOnApsPreview() {
+        if (!apsPreviewAvailable() || lastFrame == null) {
+            return;
+        }
+        if (calibrated && showUndistortedFrames) {
+            updateApsUndistortPreview();
+            return;
+        }
+        frameExtractor.setDisplayGrayFrame(lastFrame);
+        frameExtractor.getApsDisplay().setTitleLabel(
+                lastFrameFromAps ? "calibration input (APS FramePacket)" : "calibration input (rendered DVS)");
     }
 
     private class CalibrationWorker extends SwingWorker<String, Object> {
@@ -308,6 +651,44 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     /**
+     * Contrast-stretched 8-bit gray {@code sy x sx} Mat from {@link #lastFrame}
+     * (OpenCV row 0 = jAER y=0 = bottom). Also fills {@link #lastCornerSearchSummary}.
+     */
+    private Mat lastFrameToGray8() {
+        float min = Float.POSITIVE_INFINITY, max = Float.NEGATIVE_INFINITY, sum = 0;
+        int nz = 0;
+        for (float v : lastFrame) {
+            if (v < min) {
+                min = v;
+            }
+            if (v > max) {
+                max = v;
+            }
+            sum += v;
+            if (v > 1e-4f) {
+                nz++;
+            }
+        }
+        float range = max - min;
+        byte[] gray = new byte[sx * sy];
+        if (range > 1e-6f) {
+            float s = 255f / range;
+            for (int i = 0; i < lastFrame.length; i++) {
+                int g = Math.round((lastFrame[i] - min) * s);
+                gray[i] = (byte) (g < 0 ? 0 : (g > 255 ? 255 : g));
+            }
+        }
+        Mat m = new Mat(sy, sx, CvType.CV_8UC1);
+        m.put(0, 0, gray);
+        lastCornerSearchSummary = String.format(
+                "src=%s %dx%d frame[min=%.3f max=%.3f mean=%.3f nz=%.0f%%] OpenCV %dx%d CV_8U pattern=%dx%d inner-corners",
+                lastFrameFromAps ? "APS/FramePacket" : "renderedDVS",
+                sx, sy, min, max, sum / lastFrame.length, 100.0 * nz / lastFrame.length,
+                m.cols(), m.rows(), patternWidth, patternHeight);
+        return m;
+    }
+
+    /**
      * Finds current corners of calibration image.
      *
      * @param drawAndSave true to draw the corners, false to just check if there
@@ -315,25 +696,55 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * @return true if corners found, false if not
      */
     public boolean findCurrentCorners(boolean drawAndSave) {
+        if (lastFrame == null || sx <= 0 || sy <= 0 || lastFrame.length != (sx * sy)) {
+            lastCornerSearchSummary = String.format("bad lastFrame len=%s sx=%d sy=%d",
+                    lastFrame == null ? "null" : Integer.toString(lastFrame.length), sx, sy);
+            return false;
+        }
         Size patternSize = new Size(patternWidth, patternHeight);
         corners = new MatOfPoint2f();
-        // FloatPointer ip = new FloatPointer(lastFrame);
-        Mat input = new Mat(1, lastFrame.length, CvType.CV_32F);
-        input.put(0, 0, lastFrame);
-        input.convertTo(input, CvType.CV_8U, 255, 0);
-        imgIn = input.reshape(0, sy);
+        imgIn = lastFrameToGray8();
         imgOut = new Mat(sy, sx, CvType.CV_8UC3);
         Imgproc.cvtColor(imgIn, imgOut, Imgproc.COLOR_GRAY2RGB);
-        //opencv_highgui.imshow("test", imgIn);
-        //opencv_highgui.waitKey(1);
-        boolean locPatternFound;
+        final int flags = Calib3d.CALIB_CB_ADAPTIVE_THRESH
+                | Calib3d.CALIB_CB_NORMALIZE_IMAGE
+                | Calib3d.CALIB_CB_FILTER_QUADS;
+        boolean locPatternFound = false;
+        String how = "none";
         try {
-//            log.info("finding corners...");
-            locPatternFound = Calib3d.findChessboardCorners(imgIn, patternSize, corners);
-//            log.info(String.format("Found corners: %s", locPatternFound));
+            locPatternFound = Calib3d.findChessboardCorners(imgIn, patternSize, corners, flags);
+            how = "findChessboardCorners";
+            if (!locPatternFound) {
+                Mat eq = new Mat();
+                Imgproc.equalizeHist(imgIn, eq);
+                locPatternFound = Calib3d.findChessboardCorners(eq, patternSize, corners, flags);
+                how = "equalizeHist+findChessboardCorners";
+                eq.release();
+            }
+            if (!locPatternFound) {
+                locPatternFound = Calib3d.findChessboardCornersSB(imgIn, patternSize, corners,
+                        Calib3d.CALIB_CB_EXHAUSTIVE | Calib3d.CALIB_CB_NORMALIZE_IMAGE);
+                how = "findChessboardCornersSB";
+            }
+            if (!locPatternFound && patternWidth != patternHeight) {
+                Size swapped = new Size(patternHeight, patternWidth);
+                boolean swappedFound = Calib3d.findChessboardCorners(imgIn, swapped, corners, flags);
+                if (swappedFound) {
+                    lastCornerSearchSummary += String.format(
+                            " | HINT: board matches swapped %dx%d — set patternWidth=%d patternHeight=%d",
+                            patternHeight, patternWidth, patternHeight, patternWidth);
+                    // do not treat as success: object-point layout would be wrong
+                }
+            }
         } catch (RuntimeException e) {
-            log.warning(e.toString());
+            log.warning("OpenCV chessboard: " + e);
+            lastCornerSearchSummary += " | exception " + e.getClass().getSimpleName() + ": " + e.getMessage();
             return false;
+        }
+        lastCornerSearchSummary += " | " + how + (locPatternFound ? " FOUND" : " miss");
+        if (locPatternFound && !drawAndSave && !loggedFirstChessboardFind) {
+            log.info("chessboard: " + lastCornerSearchSummary);
+            loggedFirstChessboardFind = true;
         }
         if (drawAndSave) {
             //render frame
@@ -346,12 +757,15 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             imgOut.convertTo(outImgF, CvType.CV_32FC3, 1.0 / 255, 0);
             float[] outFrame = new float[sy * sx * 3];
             outImgF.get(0, 0, outFrame);
-            frameExtractor.setDisplayFrameRGB(outFrame);
+            if (apsPreviewAvailable()) {
+                frameExtractor.setDisplayFrameRGB(outFrame);
+            }
             //save image
             if (locPatternFound) {
                 Mat imgSave = new Mat(sy, sx, CvType.CV_8U);
                 Core.flip(imgIn, imgSave, 0);
                 String filename = chip.getName() + "-" + fileBaseName + "-" + String.format("%03d", imageCounter) + ".jpg";
+                ensureCalibrationDir();
                 String fullFilePath = dirPath + File.separator + filename;
                 Imgcodecs.imwrite(fullFilePath, imgSave);
                 log.info("saved image " + fullFilePath);
@@ -376,7 +790,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 //iterate image counter
                 log.info(String.format("added corner points from image %d", imageCounter));
                 imageCounter++;
-                frameExtractor.getApsDisplay().setxLabel(filename);
+                if (apsPreviewAvailable()) {
+                    frameExtractor.getApsDisplay().setxLabel(filename);
+                }
 
 //                //debug
 //                System.out.println(allImagePoints.toString());
@@ -509,25 +925,76 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
         }
 
-        if (!hideStatisticsAndStatus && (calibrationString != null)) {
-            // render once to set the scale using the same TextRenderer
-            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
-            MultilineAnnotationTextRenderer.setColor(Color.green);
-            MultilineAnnotationTextRenderer.setFontSize(fontSize);
-            MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
-            if (!textRendererScaleSet) {
-                textRendererScaleSet = true;
-                String[] lines = calibrationString.split("\n", 0);
-                int max = 0;
-                String longestString = null;
-                for (String s : lines) {
-                    if (s.length() > max) {
-                        max = s.length();
-                        longestString = s;
-                    }
-                }
+        if (realtimePatternDetectionEnabled && !patternFound) {
+            float cx = chip.getSizeX() / 2f;
+            float y = chip.getSizeY() * 0.92f;
+            y = drawOverlayLine(cx, y, 0.5f, Color.yellow,
+                    String.format("No chessboard: patternWidth x patternHeight = %d x %d", patternWidth, patternHeight));
+            y = drawOverlayLine(cx, y, 0.5f, Color.yellow,
+                    "Set them to the chart's internal corners (number of squares minus one on each side)");
+            if (lastCornerSearchSummary != null && lastCornerSearchSummary.contains("HINT:")) {
+                drawOverlayLine(cx, y, 0.5f, Color.orange, "Try swapping patternWidth and patternHeight");
             }
         }
+
+        if (autocaptureCalibrationFramesEnabled
+                || (!hideStatisticsAndStatus && (calibrationString != null))) {
+            MultilineAnnotationTextRenderer.resetToYPositionPixels(chip.getSizeY() * .15f);
+            MultilineAnnotationTextRenderer.setFontSize(fontSize);
+            if (!hideStatisticsAndStatus && (calibrationString != null)) {
+                MultilineAnnotationTextRenderer.setColor(Color.green);
+                MultilineAnnotationTextRenderer.renderMultilineString(calibrationString);
+            }
+            if (autocaptureCalibrationFramesEnabled) {
+                String hint = patternFound ? "" : " — hold chessboard in view";
+                MultilineAnnotationTextRenderer.setColor(Color.yellow);
+                MultilineAnnotationTextRenderer.renderMultilineString(
+                        String.format("Autocapture %d/%d%s", nAcqFrames, numAutoCaptureFrames, hint));
+            }
+            if (!textRendererScaleSet) {
+                textRendererScaleSet = true;
+            }
+        }
+        renderTransientOverlay();
+    }
+
+    private void showTransientOverlay(String msg, Color color) {
+        overlayMessage = msg;
+        overlayColor = color != null ? color : Color.yellow;
+        overlayUntilMs = System.currentTimeMillis() + OVERLAY_MS;
+    }
+
+    private void renderTransientOverlay() {
+        if (overlayMessage == null || System.currentTimeMillis() > overlayUntilMs) {
+            overlayMessage = null;
+            return;
+        }
+        float cx = chip.getSizeX() / 2f;
+        float cy = chip.getSizeY() * 0.55f;
+        String[] lines = overlayMessage.split("\n");
+        for (String line : lines) {
+            cy = drawOverlayLine(cx, cy, 0.5f, overlayColor, line);
+        }
+    }
+
+    /**
+     * Default {@link #fontSize} from chip width (~6 on DAVIS346).
+     */
+    private int estimatedFontSize() {
+        int w = chip != null ? chip.getSizeX() : 0;
+        if (w <= 0) {
+            return 6;
+        }
+        return Math.max(4, Math.min(14, Math.round(6f * w / 346f)));
+    }
+
+    /**
+     * Draws one overlay line at {@code fontSize} and returns the next y (below).
+     */
+    private float drawOverlayLine(float x, float y, float alignX, Color color, String s) {
+        java.awt.geom.Rectangle2D r = DrawGL.drawStringDropShadow(Math.max(1, fontSize), x, y, alignX, color, s);
+        float h = r != null ? (float) r.getHeight() : fontSize;
+        return y - h * 1.25f;
     }
 
     @Override
@@ -537,17 +1004,21 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         imageCounter = 0;
         autocaptureCalibrationFramesEnabled = false;
         nAcqFrames = 0;
+        seenApsFrame = false;
+        lastRenderedSampleMs = 0;
+        loggedFirstChessboardFind = false;
     }
 
     @Override
     public final void initFilter() {
         sx = chip.getSizeX();
         sy = chip.getSizeY();
-        cameraMatrix = new Mat();
-        distortionCoefs = new Mat();
         if (!calibrated) {
+            cameraMatrix = new Mat();
+            distortionCoefs = new Mat();
             loadCalibration();
         }
+        fontSize = getInt("fontSize", estimatedFontSize());
         resetFilter();
     }
 
@@ -582,6 +1053,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     synchronized public void doSetPath() {
+        ensureCalibrationDir();
         JFileChooser j = new JFileChooser();
         j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select");
@@ -606,43 +1078,50 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      *
      */
     public void doCalibrate() {
-        if ((allImagePoints == null) || (allObjectPoints == null)) {
+        if ((allImagePoints == null) || (allObjectPoints == null) || allObjectPoints.isEmpty()) {
+            String msg = "Calibrate: no images collected.\nUse CaptureSingleFrame or TriggerAutocapture first.";
             log.warning("allImagePoints==null || allObjectPoints==null, cannot calibrate. Collect some images first.");
+            showTransientOverlay(msg, Color.orange);
             return;
         }
         //init
         Size imgSize = new Size(sx, sy);
-        // make local references to hold results while thread is processing
-        Mat cameraMtx;
-        Mat distCoefs;
-        ArrayList<Mat> rotationVecs;
-        ArrayList<Mat> translationVecs;
-        cameraMtx = new Mat();
-        countNonZero(cameraMtx);
-        distCoefs = new Mat();
-        rotationVecs = new ArrayList<Mat>();
-        translationVecs = new ArrayList<Mat>();
+        Mat cameraMtx = Mat.eye(3, 3, CvType.CV_64F);
+        Mat distCoefs = Mat.zeros(5, 1, CvType.CV_64F);
+        ArrayList<Mat> rotationVecs = new ArrayList<Mat>();
+        ArrayList<Mat> translationVecs = new ArrayList<Mat>();
 
         log.info(String.format("calibrating based on %d images sized %d x %d", allObjectPoints.size(), (int) imgSize.width, (int) imgSize.height));
-        //calibrate
         try {
             setCursor(new Cursor(Cursor.WAIT_CURSOR));
             Calib3d.calibrateCamera(allObjectPoints, allImagePoints, imgSize, cameraMtx, distCoefs, rotationVecs, translationVecs);
+            if (cameraMtx.empty() || countNonZero(cameraMtx) == 0) {
+                log.warning("calibrateCamera returned an empty camera matrix");
+                showTransientOverlay("Calibration failed: empty camera matrix", Color.red);
+                return;
+            }
             synchronized (this) {
-                calibrated = true;
                 this.cameraMatrix = cameraMtx;
-                this.distortionCoefs = distCoefs;
+                this.distortionCoefs = distCoefs.empty() ? Mat.zeros(5, 1, CvType.CV_64F) : distCoefs;
                 this.rotationVectors = rotationVecs;
                 this.translationVectors = translationVecs;
+                undistortedAddressLUT = null;
+                isUndistortedAddressLUTgenerated = false;
+                generateCalibrationString();
             }
-            generateCalibrationString();
             log.info("see http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html \n"
                     + "\nCamera matrix: " + cameraMtx.toString() + "\n" + printMatD(cameraMtx)
                     + "\nDistortion coefficients k_1 k_2 p_1 p_2 k_3 ...: " + distCoefs.toString() + "\n" + printMatD(distCoefs)
                     + calibrationString);
+            showTransientOverlay(String.format(
+                    "Calibration OK (%d images)\nf=%.1f px (%.2f mm)\nprincipal point %.1f, %.1f",
+                    allObjectPoints.size(), focalLengthPixels, focalLengthMm,
+                    principlePoint.x, principlePoint.y), Color.green);
             getSupport().firePropertyChange(EVENT_NEW_CALIBRATION, null, this);
+            generateUndistortedAddressLUT();
         } catch (RuntimeException e) {
             log.warning("calibration failed with exception " + e + "See https://adventuresandwhathaveyou.wordpress.com/2014/03/14/opencv-error-messages-suck/");
+            showTransientOverlay("Calibration failed\n" + e.getMessage() + "\nNeed more / better chessboard views", Color.red);
         } finally {
             setCursor(Cursor.getDefaultCursor());
         }
@@ -659,38 +1138,55 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (!calibrated) {
             return;
         }
-
         if ((sx == 0) || (sy == 0)) {
-            return; // not set yet
+            return;
         }
-//        FloatPointer fp = new FloatPointer(2 * sx * sy);
-        Mat fp = new Mat(1, sx * sy, CvType.CV_32FC2);
-        int idx = 0;
+        Mat cam = getCameraMatrix();
+        Mat dist = getDistortionCoefs();
+        if (cam == null || cam.empty() || countNonZero(cam) == 0) {
+            log.warning("cannot build undistort LUT: cameraMatrix is empty");
+            return;
+        }
+        if (dist == null || dist.empty()) {
+            dist = Mat.zeros(5, 1, CvType.CV_64F);
+        }
+        MatOfPoint2f src = new MatOfPoint2f();
+        Point[] pts = new Point[sx * sy];
+        int i = 0;
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
-                fp.put(0, idx++, x, y);
+                pts[i++] = new Point(x, y);
             }
         }
+        src.fromArray(pts);
         MatOfPoint2f dst = new MatOfPoint2f();
-        MatOfPoint2f pixelArray = new MatOfPoint2f(fp); // make wide 2 channel matrix of source event x,y
-        Calib3d.undistortPoints(pixelArray, dst, getCameraMatrix(), getDistortionCoefs());
-        isUndistortedAddressLUTgenerated = true;
-        // get the camera matrix elements (focal lengths and principal point)
-//        DoubleIndexer k = getCameraMatrix().createIndexer();
-        float fx, fy, cx, cy;
-        fx = (float) getCameraMatrix().get(0, 0)[0];
-        fy = (float) getCameraMatrix().get(1, 1)[0];
-        cx = (float) getCameraMatrix().get(0, 2)[0];
-        cy = (float) getCameraMatrix().get(1, 2)[0];
+        try {
+            Calib3d.undistortPoints(src, dst, cam, dist);
+        } catch (RuntimeException e) {
+            log.warning("undistortPoints failed building LUT: " + e);
+            return;
+        }
+        Point[] uv = dst.toArray();
+        if (uv == null || uv.length != (sx * sy)) {
+            log.warning(String.format("undistortPoints returned %s points, expected %d",
+                    uv == null ? "null" : Integer.toString(uv.length), sx * sy));
+            return;
+        }
+        float fx = (float) cam.get(0, 0)[0];
+        float fy = (float) cam.get(1, 1)[0];
+        float cx = (float) cam.get(0, 2)[0];
+        float cy = (float) cam.get(1, 2)[0];
         undistortedAddressLUT = new short[2 * sx * sy];
-
+        i = 0;
         for (int x = 0; x < sx; x++) {
             for (int y = 0; y < sy; y++) {
-                idx = 2 * (y + (sy * x));
-                undistortedAddressLUT[idx] = (short) Math.round((dst.get(0, idx)[0] * fx) + cx);
-                undistortedAddressLUT[idx + 1] = (short) Math.round((dst.get(0, idx + 1)[0] * fy) + cy);
+                int idx = 2 * (y + (sy * x));
+                undistortedAddressLUT[idx] = (short) Math.round((uv[i].x * fx) + cx);
+                undistortedAddressLUT[idx + 1] = (short) Math.round((uv[i].y * fy) + cy);
+                i++;
             }
         }
+        isUndistortedAddressLUTgenerated = true;
     }
 
     public boolean isUndistortedAddressLUTgenerated() {
@@ -747,6 +1243,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             JOptionPane.showMessageDialog(null, "No calibration yet");
             return;
         }
+        ensureCalibrationDir();
         JFileChooser j = new JFileChooser();
         j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select folder");
@@ -787,6 +1284,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     synchronized public void doLoadCalibration() {
+        ensureCalibrationDir();
         final JFileChooser j = new JFileChooser();
         j.setCurrentDirectory(new File(dirPath));
         j.setApproveButtonText("Select folder");
@@ -926,12 +1424,14 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     synchronized public void doCaptureSingleFrame() {
         captureTriggered = true;
         saved = false;
+        showTransientOverlay(String.format("Capture: waiting for chessboard (%d stored)", imageCounter), Color.yellow);
     }
 
     synchronized public void doTriggerAutocapture() {
         nAcqFrames = 0;
         saved = false;
         autocaptureCalibrationFramesEnabled = true;
+        lastAutocaptureTimeMs = 0;
     }
 
     private String printMatD(Mat M) {
@@ -1104,6 +1604,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (undistortedAddressLUT == null) {
             generateUndistortedAddressLUT();
         }
+        if (undistortedAddressLUT == null) {
+            return false;
+        }
         int uidx = 2 * (e.y + (sy * e.x));
         if (uidx > (undistortedAddressLUT.length - 1)) {
             log.warning("bad DVS address, outside of LUT table, filtering out; event =" + e);
@@ -1228,6 +1731,39 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         putInt("numAutoCaptureFrames", numAutoCaptureFrames);
     }
 
+    public FrameSource getFrameSource() {
+        return frameSource;
+    }
+
+    public void setFrameSource(FrameSource frameSource) {
+        FrameSource old = this.frameSource;
+        this.frameSource = frameSource;
+        putString("frameSource", frameSource.name());
+        getSupport().firePropertyChange("frameSource", old, frameSource);
+        if (frameSource == FrameSource.RenderedEventFrames) {
+            seenApsFrame = false;
+        }
+    }
+
+    public int getRenderedFrameIntervalMs() {
+        return renderedFrameIntervalMs;
+    }
+
+    public void setRenderedFrameIntervalMs(int renderedFrameIntervalMs) {
+        int v = renderedFrameIntervalMs < 20 ? 20 : renderedFrameIntervalMs;
+        this.renderedFrameIntervalMs = v;
+        putInt("renderedFrameIntervalMs", v);
+    }
+
+    public boolean isShowAPSFrameDisplay() {
+        return frameExtractor.isShowAPSFrameDisplay();
+    }
+
+    public void setShowAPSFrameDisplay(boolean showAPSFrameDisplay) {
+        putBoolean("showAPSFrameDisplay", showAPSFrameDisplay);
+        frameExtractor.setShowAPSFrameDisplay(showAPSFrameDisplay);
+    }
+
     /**
      * Displays a JFrame with the calibration image.
      */
@@ -1304,8 +1840,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
      * @param fontSize the fontSize to set
      */
     public void setFontSize(int fontSize) {
-        this.fontSize = fontSize;
-        putInt("fontSize",fontSize);
+        int old = this.fontSize;
+        int v = fontSize < 1 ? 1 : fontSize;
+        this.fontSize = v;
+        putInt("fontSize", v);
+        getSupport().firePropertyChange("fontSize", old, v);
     }
 
 }

@@ -9,9 +9,12 @@ import org.opencv.core.Core;
 /**
  * Loads OpenCV native libraries from the openpnp {@code opencv-4.8.1-0.jar} bundle.
  * <p>
+ * Dev trees keep the fat jar (all OS natives). Installers replace it with a per-OS slim
+ * jar from {@code ant split-opencv-natives}; {@code loadLocally()} still extracts
+ * {@code nu/pattern/opencv/...} for the current platform.
+ * <p>
  * On Java 12+, {@code OpenCV.loadShared()} logs a SEVERE message and falls back anyway;
- * {@code OpenCV.loadLocally()} is the supported path and extracts the platform DLL/SO
- * from {@code nu/pattern/opencv/...} inside the jar.
+ * {@code OpenCV.loadLocally()} is the supported path.
  */
 public final class OpenCVNativeLoader {
 
