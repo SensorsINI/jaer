@@ -4596,7 +4596,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 java.awt.event.InputEvent.CTRL_DOWN_MASK | java.awt.event.InputEvent.SHIFT_DOWN_MASK));
         saveAsMenuItem.setMnemonic('A');
         saveAsMenuItem.setText("Save As...");
-        saveAsMenuItem.setToolTipText("Export the open recording to CSV/text or DSEC HDF5 (playback only)");
+        saveAsMenuItem.setToolTipText("Export the open recording to AEDAT-4, CSV/text, or DSEC HDF5 (playback only)");
         saveAsMenuItem.setEnabled(false);
         saveAsMenuItem.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {

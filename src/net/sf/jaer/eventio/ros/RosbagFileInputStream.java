@@ -356,7 +356,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     }
 
     private MessageWithIndex getNextMsg() throws BagReaderException, EOFException {
-        if (nextMessageNumber >= numMessages) {
+        if (nextMessageNumber < 0 || nextMessageNumber >= numMessages) {
             throw new EOFException(String.format("tried to read message %,d past end of file", nextMessageNumber));
         }
         MessageWithIndex rtn = getMsg(nextMessageNumber);
@@ -1306,7 +1306,7 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
 
     @Override
     public long size() {
-        return 0;
+        return numMessages;
     }
 
     @Override
@@ -1419,7 +1419,18 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
     @Override
     synchronized public void setCurrentStartTimestamp(int currentStartTimestamp) {
         this.currentStartTimestamp = currentStartTimestamp;
-        nextMessageNumber = (int) (numMessages * ((float) currentStartTimestamp) / getDurationUs()); // TODO only very approximate
+        int durationUs = getDurationUs();
+        if (durationUs <= 0 || numMessages <= 0) {
+            aePacketRawBuffered.clear();
+            return;
+        }
+        long n = (long) (numMessages * ((double) currentStartTimestamp) / durationUs);
+        if (n < 0) {
+            n = 0;
+        } else if (n >= numMessages) {
+            n = numMessages - 1;
+        }
+        nextMessageNumber = (int) n;
         aePacketRawBuffered.clear();
     }
 

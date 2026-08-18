@@ -9,6 +9,7 @@ import net.sf.jaer.util.textio.DavisTextEventFormatter;
 public final class SaveAsOptions {
 
     public enum Format {
+        AEDAT4("AEDAT-4", "aedat4"),
         CSV("CSV / text", "csv"),
         DSEC_H5("DSEC HDF5", "h5");
 
@@ -27,9 +28,11 @@ public final class SaveAsOptions {
     }
 
     public File outputFile;
-    public Format format = Format.CSV;
+    public Format format = Format.AEDAT4;
     public boolean useInOutMarkers = true;
     public boolean applyEventFilters = true;
+    /** DV {@link net.sf.jaer.eventio.aedat4.dv.CompressionType} for AEDAT-4. */
+    public int aedat4Compression = net.sf.jaer.eventio.aedat4.dv.CompressionType.LZ4;
     public DavisTextEventFormatter csvFormatter = DavisTextEventFormatter.rpg();
     /** HVS sidecar APS frames as compressed PNG. */
     public boolean writeFrames = false;

@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.event.ApsDvsEvent;
 import net.sf.jaer.event.BasicEvent;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.ImuPacket;
@@ -69,11 +70,26 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression) throws IOException {
+        this(outputStream, chip, compression, System.currentTimeMillis() * 1000L);
+    }
+
+    /**
+     * @param baseUnixUs AEDAT-4 packet timestamps are Unix µs; playback stores
+     *                   relative µs. Pass the source file's
+     *                   {@code getAbsoluteStartingTimeMs() * 1000} to keep the
+     *                   original timeline, or {@code <= 0} for wall-clock now.
+     */
+    public Aedat4FileOutputStream(File file, AEChip chip, int compression, long baseUnixUs) throws IOException {
+        this(new FileOutputStream(file), chip, compression, baseUnixUs);
+    }
+
+    public Aedat4FileOutputStream(FileOutputStream outputStream, AEChip chip, int compression, long baseUnixUs)
+            throws IOException {
         this.outputStream = outputStream;
         this.channel = outputStream.getChannel();
         this.chip = chip;
         this.compression = Aedat4Compression.clamp(compression);
-        this.baseUs = System.currentTimeMillis() * 1000L;
+        this.baseUs = baseUnixUs > 0 ? baseUnixUs : System.currentTimeMillis() * 1000L;
         channel.write(ByteBuffer.wrap(VERSION_LINE));
         headerPosition = channel.position();
         // FlatBuffers omits dataTablePosition when it equals the default (-1). Use a
@@ -88,6 +104,28 @@ public class Aedat4FileOutputStream implements Closeable {
 
     public int getCompression() {
         return compression;
+    }
+
+    public long getEventsWritten() {
+        return countStream(STREAM_EVENTS);
+    }
+
+    public long getFramesWritten() {
+        return countStream(STREAM_FRAMES);
+    }
+
+    public long getImuSamplesWritten() {
+        return countStream(STREAM_IMU);
+    }
+
+    private long countStream(int streamId) {
+        long n = 0;
+        for (DataDefinition d : dataDefinitions) {
+            if (d.streamId == streamId) {
+                n += d.numElements;
+            }
+        }
+        return n;
     }
 
     /** Writes all packets; includes polarity events marked filteredOut. */
@@ -137,6 +175,12 @@ public class Aedat4FileOutputStream implements Closeable {
             }
             if (skipFilteredOut && event.isFilteredOut()) {
                 continue;
+            }
+            if (event instanceof ApsDvsEvent) {
+                ApsDvsEvent aps = (ApsDvsEvent) event;
+                if (aps.isApsData() || aps.isImuSample()) {
+                    continue;
+                }
             }
             timestamps[n] = toUnixUs(event.timestamp);
             xs[n] = event.x;

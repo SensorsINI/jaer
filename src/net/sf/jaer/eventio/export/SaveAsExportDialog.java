@@ -31,14 +31,15 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import eu.seebetter.ini.chips.DavisChip;
 import net.sf.jaer.chip.AEChip;
+import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.graphics.AEViewer;
 import net.sf.jaer.graphics.AEViewer.PlayMode;
 import net.sf.jaer.util.ShowFolderSaveConfirmation;
 import net.sf.jaer.util.textio.DavisTextEventFormatter;
 
 /**
- * File → Save As dialog: CSV/text or DSEC HDF5 offline export of the open
- * recording.
+ * File → Save As dialog: AEDAT-4, CSV/text, or DSEC HDF5 offline export of the
+ * open recording (IN/OUT clip; preferred alternative to relogging).
  */
 public final class SaveAsExportDialog extends JDialog implements PropertyChangeListener {
 
@@ -53,6 +54,13 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
     private final JCheckBox applyFiltersCb = new JCheckBox("Apply EventFilters", true);
     private final JCheckBox writeFramesCb = new JCheckBox("Write XXX-frames/ PNGs", true);
     private final JCheckBox writeImuCb = new JCheckBox("Write XXX-imu.csv", true);
+    private final JComboBox<String> aedat4CompressionCombo = new JComboBox<>(new String[]{
+        "None",
+        "LZ4 (recommended)",
+        "LZ4 high",
+        "ZSTD",
+        "ZSTD high"
+    });
 
     private final JCheckBox csvCommaCb = new JCheckBox("Comma separated (CSV)", true);
     private final JCheckBox csvUsCb = new JCheckBox("Timestamps in µs (else float seconds)", false);
@@ -171,7 +179,9 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         c.gridy = row;
         applyFiltersCb.setToolTipText("<html>Checked: run the current EventFilter chain before writing "
                 + "(same as filtered relogging).<br>"
-                + "Unchecked: write extracted events with no filtering.</html>");
+                + "Unchecked: write extracted events with no filtering.<br>"
+                + "AEDAT-4 Save As is the preferred way to clip or filter a recording; "
+                + "the logging button still relogs at playback pace.</html>");
         form.add(applyFiltersCb, c);
 
         JPanel csvPanel = new JPanel(new GridBagLayout());
@@ -228,6 +238,26 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         dsecPanel.add(new JLabel("<html>Cooked <code>/events/{p,t,x,y}</code>, <code>/ms_to_idx</code>, <code>/t_offset</code>.<br>"
                 + "Uncompressed (jHDF 0.12 has no gzip write). Width/height attributes are stored."), dc);
 
+        JPanel aedat4Panel = new JPanel(new GridBagLayout());
+        aedat4Panel.setBorder(BorderFactory.createTitledBorder("AEDAT-4"));
+        GridBagConstraints ac = new GridBagConstraints();
+        ac.anchor = GridBagConstraints.WEST;
+        ac.insets = new Insets(2, 2, 2, 2);
+        ac.gridx = 0;
+        ac.gridy = 0;
+        ac.gridwidth = 2;
+        aedat4Panel.add(new JLabel("<html>Native DV-compatible AEDAT-4 (events, frames, IMU in one file).<br>"
+                + "Pauses playback and scans as fast as possible — preferred over relogging "
+                + "to clip with IN/OUT or apply EventFilters.</html>"), ac);
+        ac.gridy++;
+        ac.gridwidth = 1;
+        aedat4Panel.add(new JLabel("Compression:"), ac);
+        ac.gridx = 1;
+        aedat4CompressionCombo.setToolTipText("<html>DV-compatible per-packet compression.<br>"
+                + "LZ4 is best for large files. HIGH modes shrink more but take longer.</html>");
+        aedat4Panel.add(aedat4CompressionCombo, ac);
+
+        optionCards.add(aedat4Panel, SaveAsOptions.Format.AEDAT4.name());
         optionCards.add(csvPanel, SaveAsOptions.Format.CSV.name());
         optionCards.add(dsecPanel, SaveAsOptions.Format.DSEC_H5.name());
 
@@ -284,12 +314,14 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
 
     private void loadPrefs() {
         try {
-            formatCombo.setSelectedItem(SaveAsOptions.Format.valueOf(prefs.get("format", "CSV")));
+            formatCombo.setSelectedItem(SaveAsOptions.Format.valueOf(prefs.get("format", "AEDAT4")));
         } catch (Exception e) {
-            formatCombo.setSelectedItem(SaveAsOptions.Format.CSV);
+            formatCombo.setSelectedItem(SaveAsOptions.Format.AEDAT4);
         }
         useMarkersCb.setSelected(prefs.getBoolean("useMarkers", true));
         applyFiltersCb.setSelected(prefs.getBoolean("applyFilters", true));
+        int compression = Aedat4Compression.clamp(prefs.getInt("aedat4Compression", viewer.getAedat4Compression()));
+        aedat4CompressionCombo.setSelectedIndex(compression);
         csvCommaCb.setSelected(prefs.getBoolean("csvComma", true));
         csvUsCb.setSelected(prefs.getBoolean("csvUs", false));
         csvSignedCb.setSelected(prefs.getBoolean("csvSigned", false));
@@ -311,7 +343,7 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
 
     private String defaultOutputPath() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
-        String ext = f != null ? f.extension : "csv";
+        String ext = f != null ? f.extension : "aedat4";
         File src = viewer.getInputFile();
         if (src == null) {
             return "jAER-export." + ext;
@@ -324,9 +356,10 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
 
     private void savePrefs() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
-        prefs.put("format", f != null ? f.name() : "CSV");
+        prefs.put("format", f != null ? f.name() : "AEDAT4");
         prefs.putBoolean("useMarkers", useMarkersCb.isSelected());
         prefs.putBoolean("applyFilters", applyFiltersCb.isSelected());
+        prefs.putInt("aedat4Compression", aedat4CompressionCombo.getSelectedIndex());
         prefs.putBoolean("csvComma", csvCommaCb.isSelected());
         prefs.putBoolean("csvUs", csvUsCb.isSelected());
         prefs.putBoolean("csvSigned", csvSignedCb.isSelected());
@@ -360,15 +393,18 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
     private void updateFormatUi() {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
         CardLayout cl = (CardLayout) optionCards.getLayout();
-        cl.show(optionCards, f != null ? f.name() : SaveAsOptions.Format.CSV.name());
+        cl.show(optionCards, f != null ? f.name() : SaveAsOptions.Format.AEDAT4.name());
+        updateHvsUi();
         pack();
     }
 
     private void updateHvsUi() {
         boolean hvs = viewer.getChip() instanceof DavisChip;
-        hvsPanel.setVisible(hvs);
-        writeFramesCb.setEnabled(hvs);
-        writeImuCb.setEnabled(hvs);
+        SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
+        boolean sidecars = hvs && f != SaveAsOptions.Format.AEDAT4;
+        hvsPanel.setVisible(sidecars);
+        writeFramesCb.setEnabled(sidecars);
+        writeImuCb.setEnabled(sidecars);
         if (!hvs) {
             writeFramesCb.setSelected(false);
             writeImuCb.setSelected(false);
@@ -399,7 +435,9 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
     private void browse(ActionEvent e) {
         SaveAsOptions.Format f = (SaveAsOptions.Format) formatCombo.getSelectedItem();
         JFileChooser chooser = new JFileChooser(pathField.getText());
-        if (f == SaveAsOptions.Format.DSEC_H5) {
+        if (f == SaveAsOptions.Format.AEDAT4) {
+            chooser.setFileFilter(new FileNameExtensionFilter("AEDAT-4 (*.aedat4)", "aedat4"));
+        } else if (f == SaveAsOptions.Format.DSEC_H5) {
             chooser.setFileFilter(new FileNameExtensionFilter("DSEC HDF5 (*.h5, *.hdf5)", "h5", "hdf5"));
         } else {
             chooser.setFileFilter(new FileNameExtensionFilter("CSV / text (*.csv, *.txt)", "csv", "txt"));
@@ -440,10 +478,12 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         opt.format = (SaveAsOptions.Format) formatCombo.getSelectedItem();
         opt.useInOutMarkers = useMarkersCb.isSelected();
         opt.applyEventFilters = applyFiltersCb.isSelected();
+        opt.aedat4Compression = Aedat4Compression.clamp(aedat4CompressionCombo.getSelectedIndex());
         opt.csvFormatter = currentFormatter();
         boolean hvs = viewer.getChip() instanceof DavisChip;
-        opt.writeFrames = hvs && writeFramesCb.isSelected();
-        opt.writeImu = hvs && writeImuCb.isSelected();
+        boolean sidecars = hvs && opt.format != SaveAsOptions.Format.AEDAT4;
+        opt.writeFrames = sidecars && writeFramesCb.isSelected();
+        opt.writeImu = sidecars && writeImuCb.isSelected();
         AEChip chip = viewer.getChip();
         opt.sensorWidth = chip != null ? chip.getSizeX() : 0;
         opt.sensorHeight = chip != null ? chip.getSizeY() : 0;
@@ -466,6 +506,7 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         cancelButton.setEnabled(running);
         formatCombo.setEnabled(!running);
         pathField.setEnabled(!running);
+        aedat4CompressionCombo.setEnabled(!running);
     }
 
     @Override
@@ -486,8 +527,13 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
                 if (r.imuSamples > 0) {
                     msg += String.format(", %,d IMU samples", r.imuSamples);
                 }
+                if (r.badEvents > 0) {
+                    msg += String.format("<br>Skipped %,d bad events", r.badEvents);
+                }
                 msg += " to " + r.outputFile.getName();
-                statusLabel.setText("Done.");
+                statusLabel.setText(r.badEvents > 0
+                        ? String.format("Done (skipped %,d bad events).", r.badEvents)
+                        : "Done.");
                 final File exported = r.outputFile;
                 new ShowFolderSaveConfirmation(this, exported, msg, () -> {
                     try {
