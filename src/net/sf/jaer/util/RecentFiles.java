@@ -18,6 +18,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
@@ -298,6 +299,26 @@ public class RecentFiles {
         fileList.removeAll(removeList);
     }
     
+    /**
+     * Existing directories from the recent list, most recent first (at most
+     * {@link #MAX_FOLDERS}). Missing paths are omitted.
+     */
+    public List<File> getRecentFolders() {
+        ArrayList<File> folders = new ArrayList<>();
+        if (fileList == null) {
+            return folders;
+        }
+        for (File f : fileList) {
+            if (f != null && f.isDirectory()) {
+                folders.add(f);
+                if (folders.size() >= MAX_FOLDERS) {
+                    break;
+                }
+            }
+        }
+        return folders;
+    }
+
     /** Returns most recent folder
      * 
      * @return most recent folder, or null if there is none

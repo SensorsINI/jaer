@@ -175,6 +175,7 @@ import net.sf.jaer.util.ExceptionListener;
 import net.sf.jaer.util.HexString;
 import net.sf.jaer.util.MenuScroller;
 import net.sf.jaer.util.RecentFiles;
+import net.sf.jaer.util.RecentFoldersComboAccessory;
 import net.sf.jaer.util.RemoteControl;
 import net.sf.jaer.util.RemoteControlCommand;
 import net.sf.jaer.util.RemoteControlled;
@@ -6686,10 +6687,13 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         }
                     }
                     // we'll append the preferred extension back later
-                    chooser.setSelectedFile(new File(base));
+                    final String filenameBase = base;
+                    chooser.setSelectedFile(new File(filenameBase));
                     //                chooser.setAccessory(new ResetFileButton(base,chooser));
                     chooser.setDialogType(JFileChooser.SAVE_DIALOG);
                     chooser.setMultiSelectionEnabled(false);
+                    chooser.setAccessory(new RecentFoldersComboAccessory(recentFiles, chooser,
+                            () -> LoggingSaveDialogGuard.restoreSelectedFilename(chooser, filenameBase)));
                     //                Component[] comps=chooser.getComponents();
                     //                for(Component c:comps){
                     //                    if(c.getName().equals("buttonPanel")){
@@ -6708,112 +6712,30 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                     do {
                         retValue = LoggingSaveDialogGuard.showSaveDialog(chooser, AEViewer.this, base);
                         if (retValue == JFileChooser.APPROVE_OPTION) {
-                            File newFile = chooser.getSelectedFile();
-                            if (LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(newFile.getName())) {
+                            File selected = chooser.getSelectedFile();
+                            if (selected == null || LoggingSaveDialogGuard.isStrayLoggingShortcutFilename(selected.getName())) {
                                 LoggingSaveDialogGuard.restoreSelectedFilename(chooser, base);
                                 chooser.setDialogTitle("Save logged data (restored default filename)");
                                 continue;
                             }
-                            // ensure preferred extension for this recording format
-                            if (!AEDataFile.hasDataFileExtension(newFile.getName())) {
-                                newFile = new File(newFile.getCanonicalPath() + preferredSaveExt);
+                            File newFile = resolveLoggingSaveDestination(chooser, preferredSaveExt);
+                            if (newFile == null) {
+                                chooser.setDialogTitle("Couldn't save file there, try again");
+                                continue;
                             }
-                            // we'll rename the logged data file to the selection
-                            lastLoggingFolder = chooser.getCurrentDirectory();
+                            // persist the folder the user actually saved into
+                            lastLoggingFolder = newFile.getParentFile() != null
+                                    ? newFile.getParentFile() : chooser.getCurrentDirectory();
                             prefs.put("AEViewer.lastLoggingFolder", lastLoggingFolder.getCanonicalPath());
 
-                            boolean renamed = loggingFile.renameTo(newFile);
-
-                            if (renamed) {
-                                // if successful, cool, save persistence
+                            File saved = relocateLoggingFile(newFile);
+                            if (saved != null) {
                                 doneSavingOrCancelling = true;
-                                recentFiles.addFile(newFile);
-                                loggingFile = newFile; // so that we play it back if it was saved and playback immediately is selected
-                                log.info("renamed logging file to " + newFile.getAbsolutePath());
-                                showLoggingSaveConfirmation(newFile, fileInfo);
+                                recentFiles.addFile(saved);
+                                loggingFile = saved;
+                                showLoggingSaveConfirmation(saved, fileInfo);
                             } else {
-                                // if this fails, it does not only mean that a file already exists,
-                                // the failure reasons are platform dependent, for example on Linux
-                                // this might fail if its a move across different file-systems, such
-                                // as from /tmp to /home depending on configuration.
-                                // so we check if the new file really exists, if it doesn't, we don't
-                                // have to delete it or ask for overwrite confirmation, just use it.
-                                if (newFile.exists()) {
-                                    int overwrite = JOptionPane.showConfirmDialog(this, "Overwrite file \"" + newFile + "\"?", "Overwrite file?", JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
-                                    if (overwrite == JOptionPane.OK_OPTION) {
-                                        // we need to delete the file
-                                        boolean deletedOld = newFile.delete();
-                                        if (deletedOld) {
-                                            loggingFile.renameTo(newFile);
-                                            doneSavingOrCancelling = true;
-                                            log.info("renamed logging file to " + newFile); // TODO something messed up
-                                            // here with confirmed
-                                            // overwrite of logging file
-                                            loggingFile = newFile;
-                                            showLoggingSaveConfirmation(newFile, fileInfo);
-                                        } else {
-                                            log.warning("couldn't delete logging file " + newFile);
-                                        }
-
-                                    } else {
-                                        chooser.setDialogTitle("Couldn't save file there, try again");
-                                    }
-                                } else {
-                                    log.info(String.format("Rename failed, trying FileUtils.moveFile. Please wait, moving temporary file %s to final location %s...", loggingFile.getAbsolutePath(), newFile.getAbsolutePath()));
-                                    class Result {
-
-                                        Exception exception = null;
-                                    };
-                                    final Result result = new Result();
-                                    final File newFinalFile = new File(newFile.getAbsolutePath());
-                                    setCursor(new Cursor(Cursor.WAIT_CURSOR));
-                                    Thread t = new Thread() {
-                                        public void run() {
-                                            try {
-                                                FileUtils.moveFile(loggingFile, newFinalFile);
-                                            } catch (IOException e) {
-                                                log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", loggingFile, newFinalFile, e.toString()));
-                                                result.exception = e;
-                                            } finally {
-                                            }
-                                        }
-                                    };
-                                    final StringBuilder sb = new StringBuilder("Moving recording..");
-                                    final JOptionPane pane = new JOptionPane(sb.toString(), JOptionPane.INFORMATION_MESSAGE);
-                                    // Configure via set methods
-                                    final JDialog dialog = pane.createDialog(this, "Moving recording");
-                                    // the line below is added to the example from the docs
-                                    dialog.setModal(false); // this says not to block background components
-                                    dialog.setResizable(true);
-                                    dialog.setVisible(true);
-                                    t.start();
-                                    while (t.isAlive()) {
-                                        try {
-                                            Thread.sleep(100);
-                                        } catch (InterruptedException e) {
-                                        }
-                                        sb.append(".");
-                                        pane.setMessage(sb.toString());
-                                        log.info(sb.toString());
-                                    }
-                                    if (result.exception == null) {
-                                        String s = "done saving " + newFinalFile.getAbsolutePath();
-                                        log.info(s);
-                                        sb.append("<p>").append(s);
-                                        pane.setMessage(sb.toString());
-
-                                        doneSavingOrCancelling = true;
-                                        loggingFile = newFile;
-                                        showLoggingSaveConfirmation(newFile, fileInfo);
-
-                                    } else {
-                                        String s = String.format("Could not save %s: %s", newFinalFile, result.exception);
-                                        sb.append("<p>").append(s);
-                                        pane.setMessage(sb.toString());
-                                        log.severe(s);
-                                    }
-                                    setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-                                }
+                                chooser.setDialogTitle("Couldn't save file there, try again");
                             }
                         } else {
                             // user hit cancel, delete logged data
@@ -6853,6 +6775,133 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fixLoggingControls();
         return loggingFile;
     }    // doesn't actually reset the test in the dialog'
+
+    /**
+     * Save-dialog destination: folder the user is viewing plus the selected
+     * filename. {@link JFileChooser#getSelectedFile()} can keep the original
+     * parent after the user changes directory, and a relative selection
+     * canonicalizes to {@code user.dir} rather than the chooser folder.
+     */
+    private static File resolveLoggingSaveDestination(JFileChooser chooser, String preferredExt) {
+        File selected = chooser.getSelectedFile();
+        File dir = chooser.getCurrentDirectory();
+        if (selected == null) {
+            return null;
+        }
+        File dest = (dir != null) ? new File(dir, selected.getName()) : selected;
+        if (!AEDataFile.hasDataFileExtension(dest.getName())) {
+            dest = new File(dest.getPath() + preferredExt);
+        }
+        File abs = dest.getAbsoluteFile();
+        if (dir != null && selected.getParentFile() != null && !dir.equals(selected.getParentFile())) {
+            log.info(String.format("Save chooser selected %s but current directory is %s; using %s",
+                    selected.getAbsolutePath(), dir.getAbsolutePath(), abs.getAbsolutePath()));
+        }
+        return abs;
+    }
+
+    /**
+     * Moves {@link #loggingFile} to {@code dest}. Uses rename when possible;
+     * copies across filesystems with a short "Moving recording" dialog that is
+     * disposed when the copy finishes.
+     *
+     * @return dest if successful, null if the user cancelled overwrite or the
+     *         move failed
+     */
+    private File relocateLoggingFile(File dest) {
+        if (dest == null || loggingFile == null) {
+            return null;
+        }
+        dest = dest.getAbsoluteFile();
+        File src = loggingFile.getAbsoluteFile();
+        try {
+            if (src.getCanonicalFile().equals(dest.getCanonicalFile())) {
+                log.info("logging file already at " + dest.getAbsolutePath());
+                return dest;
+            }
+        } catch (IOException e) {
+            if (src.equals(dest)) {
+                return dest;
+            }
+        }
+        if (dest.exists()) {
+            int overwrite = JOptionPane.showConfirmDialog(this,
+                    "Overwrite file \"" + dest + "\"?", "Overwrite file?",
+                    JOptionPane.WARNING_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+            if (overwrite != JOptionPane.OK_OPTION) {
+                return null;
+            }
+            if (!dest.delete()) {
+                log.warning("couldn't delete existing file " + dest);
+                return null;
+            }
+        }
+        if (src.renameTo(dest)) {
+            log.info("renamed logging file to " + dest.getAbsolutePath());
+            return dest;
+        }
+        // renameTo fails across filesystems (e.g. /tmp to /home)
+        return moveLoggingFileWithProgress(src, dest);
+    }
+
+    /**
+     * Copies {@code src} to {@code dest} on a worker thread. The "Moving
+     * recording" dialog is shown only while that copy runs.
+     */
+    private File moveLoggingFileWithProgress(File src, File dest) {
+        log.info(String.format(
+                "Rename failed, trying FileUtils.moveFile. Please wait, moving temporary file %s to final location %s...",
+                src.getAbsolutePath(), dest.getAbsolutePath()));
+        class Result {
+            Exception exception = null;
+        }
+        final Result result = new Result();
+        setCursor(new Cursor(Cursor.WAIT_CURSOR));
+        Thread t = new Thread(() -> {
+            try {
+                FileUtils.moveFile(src, dest);
+            } catch (IOException e) {
+                log.warning(String.format("could not FileUtils.moveFile(%s,%s): %s", src, dest, e));
+                result.exception = e;
+            }
+        }, "move-logging-file");
+        final StringBuilder sb = new StringBuilder("Moving recording..");
+        final JOptionPane pane = new JOptionPane(sb.toString(), JOptionPane.INFORMATION_MESSAGE,
+                JOptionPane.DEFAULT_OPTION, null, new Object[]{}, null);
+        final JDialog dialog = pane.createDialog(this, "Moving recording");
+        dialog.setModal(false);
+        dialog.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        dialog.setResizable(true);
+        dialog.setVisible(true);
+        t.start();
+        Exception failure = null;
+        try {
+            while (t.isAlive()) {
+                try {
+                    t.join(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                sb.append(".");
+                pane.setMessage(sb.toString());
+            }
+            if (result.exception == null && dest.exists()) {
+                log.info("done saving " + dest.getAbsolutePath());
+                return dest;
+            }
+            failure = result.exception != null
+                    ? result.exception
+                    : new IOException("destination missing after move");
+        } finally {
+            dialog.dispose();
+            setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+        }
+        String s = String.format("Could not save %s: %s", dest, failure);
+        log.severe(s);
+        JOptionPane.showMessageDialog(this, s, "Error saving file", JOptionPane.ERROR_MESSAGE);
+        return null;
+    }
 
     /**
      * Shows the post-save confirmation dialog with Show folder / Playback / OK.

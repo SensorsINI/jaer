@@ -88,15 +88,13 @@ public class ShowFolderSaveConfirmation extends JDialog {
         JPanel buts = new JPanel();
         buts.setLayout(new FlowLayout());
 
-        if (Desktop.isDesktopSupported() && file != null && file.getParentFile() != null) {
+        if (Desktop.isDesktopSupported() && file != null) {
             final JButton showFileLocationButton = new JButton("Show folder");
             showFileLocationButton.setToolTipText("Open the folder containing the saved file");
-            final File f2 = new File(file.getAbsolutePath());
+            final File toReveal = file;
             showFileLocationButton.addActionListener((ActionEvent e) -> {
                 try {
-                    Desktop.getDesktop().open(new File(f2.getParent()));
-                } catch (Exception ex) {
-                    log.warning("Could not show file location: " + ex.toString());
+                    showInFileManager(toReveal);
                 } finally {
                     dispose();
                 }
@@ -122,6 +120,43 @@ public class ShowFolderSaveConfirmation extends JDialog {
         add(buts, BorderLayout.SOUTH);
         getRootPane().setDefaultButton(okB);
         pack();
+    }
+
+    /**
+     * Opens the file manager at {@code file}'s folder (and selects the file
+     * when {@link Desktop.Action#BROWSE_FILE_DIR} is supported).
+     */
+    public static void showInFileManager(File file) {
+        if (file == null) {
+            log.warning("Cannot show folder: file is null");
+            return;
+        }
+        if (!Desktop.isDesktopSupported()) {
+            log.warning("Desktop operations not supported, cannot show folder for " + file);
+            return;
+        }
+        File abs = file.getAbsoluteFile();
+        File folder = abs.isDirectory() ? abs : abs.getParentFile();
+        if (folder == null) {
+            log.warning("Cannot show folder for " + abs + ": no parent");
+            return;
+        }
+        try {
+            Desktop desktop = Desktop.getDesktop();
+            if (abs.isFile() && abs.exists() && desktop.isSupported(Desktop.Action.BROWSE_FILE_DIR)) {
+                log.info("Showing file in folder: " + abs);
+                desktop.browseFileDirectory(abs);
+                return;
+            }
+            if (!folder.exists()) {
+                log.warning("Cannot show folder for " + abs + ": " + folder + " does not exist");
+                return;
+            }
+            log.info("Opening folder: " + folder.getAbsolutePath());
+            desktop.open(folder);
+        } catch (Exception ex) {
+            log.warning("Could not show file location: " + ex);
+        }
     }
 
     /**
