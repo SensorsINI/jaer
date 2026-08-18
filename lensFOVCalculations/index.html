@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event-camera FOV calculator</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --card: #fffdf8;
+      --ink: #1c2430;
+      --muted: #5b6573;
+      --line: #d9d2c5;
+      --accent: #0b5f6b;
+      --accent-soft: #e4f3f4;
+      --result: #14323a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    main {
+      max-width: 44rem;
+      margin: 0 auto;
+      padding: 1.5rem 1.2rem 3rem;
+    }
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 650;
+      margin: 0 0 0.35rem;
+    }
+    .lede {
+      color: var(--muted);
+      margin: 0 0 1.25rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem 1.1rem 1.15rem;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      margin: 0 0 0.85rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem 1rem;
+    }
+    .row.full { grid-template-columns: 1fr; }
+    input, select {
+      width: 100%;
+      font: inherit;
+      padding: 0.45rem 0.55rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+    }
+    input:focus, select:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .field { margin-bottom: 0.15rem; }
+    .combo {
+      display: grid;
+      grid-template-columns: minmax(7.5rem, 0.9fr) minmax(5.5rem, 1fr);
+      gap: 0.4rem;
+    }
+    .results {
+      display: grid;
+      gap: 0.55rem;
+    }
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      padding: 0.45rem 0.6rem;
+      background: var(--accent-soft);
+      border-radius: 6px;
+    }
+    .metric span { color: var(--muted); font-size: 0.9rem; }
+    .metric strong {
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+      font-size: 1.05rem;
+      color: var(--result);
+      text-align: right;
+    }
+    .unit { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+    .formula {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin: 0.85rem 0 0;
+    }
+    .formula code {
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+      font-size: 0.82rem;
+      color: var(--ink);
+    }
+    footer {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); }
+    .error { color: #9b1c1c; }
+    @media (max-width: 520px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Event-camera field of view</h1>
+    <p class="lede">
+      Estimate horizontal and vertical FOV from pixel pitch, array size, and lens focal length.
+      Presets match jAER chip classes. Results use jAER <code>EngineeringFormat</code> (SI prefixes).
+    </p>
+
+    <section class="card">
+      <h2>Inputs</h2>
+      <div class="row full">
+        <div class="field">
+          <label for="camera">Camera</label>
+          <select id="camera"></select>
+        </div>
+      </div>
+      <div class="row" style="margin-top:0.85rem">
+        <div class="field">
+          <label for="focalPreset">Lens focal length (mm)</label>
+          <div class="combo">
+            <select id="focalPreset" aria-label="Popular focal lengths"></select>
+            <input id="focalMm" type="number" min="0.1" step="0.1" value="8" aria-label="Focal length in millimetres">
+          </div>
+        </div>
+        <div class="field">
+          <label for="pitchUm">Pixel pitch (µm)</label>
+          <input id="pitchUm" type="number" min="0.01" step="0.1">
+        </div>
+        <div class="field">
+          <label for="sizeX">Array width (pixels)</label>
+          <input id="sizeX" type="number" min="1" step="1">
+        </div>
+        <div class="field">
+          <label for="sizeY">Array height (pixels)</label>
+          <input id="sizeY" type="number" min="1" step="1">
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <p class="formula">
+        Pinhole model, same as jAER <code>Steadicam</code> /
+        <code>AbstractMotionFlowIMU</code>:<br>
+        <code>FOV = 2 atan(sensor_mm / (2 f_mm))</code>
+        &nbsp;·&nbsp;
+        <code>deg/pixel = atan(pitch_mm / f_mm)</code>
+      </p>
+    </section>
+
+    <footer>
+      jAER FOV calculator · open this file locally or via
+      <a href="https://sensorsini.github.io/jaer/">GitHub Pages</a>
+      · source in
+      <a href="https://github.com/SensorsINI/jaer/tree/master/lensFOVCalculations">SensorsINI/jaer</a>
+    </footer>
+  </main>
+
+  <script>
+    /**
+     * Port of net.sf.jaer.util.EngineeringFormat (Java).
+     * Formats as ±mantissa + SI suffix: a f p n u m (space) k M G T
+     */
+    function EngineeringFormat(precision) {
+      this.precision = precision == null ? 1 : precision;
+      this.suffixes = ['a', 'f', 'p', 'n', 'u', 'm', ' ', 'k', 'M', 'G', 'T'];
+      this.smallestDecade = -18;
+      this.largestDecade = 15;
+    }
+    EngineeringFormat.prototype.suffix = function (k) {
+      if (k === 0) return ' ';
+      return this.suffixes[k];
+    };
+    EngineeringFormat.prototype.format = function (x) {
+      var isNeg = x < 0;
+      x = Math.abs(x);
+      var dec = Math.floor(Math.log10(x));
+      if (dec < this.smallestDecade) return '0';
+      if (dec > this.largestDecade) return 'inf';
+      var k = Math.floor(dec / 3);
+      var div = Math.pow(10, k * 3);
+      var mant = x / div;
+      var sign = isNeg ? '-' : '+';
+      return sign + mant.toFixed(this.precision) + this.suffix(k + 6);
+    };
+
+    var FOCAL_PRESETS = [1.8, 2.8, 4.5, 6, 8, 12, 16, 25, 50];
+    var STORAGE_KEY = 'jaerFovCalc';
+    var COOKIE_MAX_AGE = 60 * 60 * 24 * 730; // 2 years
+
+    var CAMERAS = [
+      { id: 'dvs128', name: 'DVS128', sizeX: 128, sizeY: 128, pitchUm: 40 },
+      { id: 'davis240', name: 'DAVIS240', sizeX: 240, sizeY: 180, pitchUm: 18.5 },
+      { id: 'davis346', name: 'DAVIS346', sizeX: 346, sizeY: 260, pitchUm: 18.5 },
+      { id: 'dvxplorer', name: 'iniVation DVXplorer', sizeX: 640, sizeY: 480, pitchUm: 9 },
+      { id: 'delta01', name: 'NRV DELTA01 (S5KRC1S)', sizeX: 960, sizeY: 720, pitchUm: 9 },
+      { id: 'evk4', name: 'Prophesee EVK4 (IMX636)', sizeX: 1280, sizeY: 720, pitchUm: 5 },
+      { id: 'custom', name: 'Custom', sizeX: 640, sizeY: 480, pitchUm: 10 }
+    ];
+
+    var eng = new EngineeringFormat(1);
+    var applyingPreset = false;
+    var restoring = false;
+    var cameraEl = document.getElementById('camera');
+    var focalPresetEl = document.getElementById('focalPreset');
+    var focalEl = document.getElementById('focalMm');
+    var pitchEl = document.getElementById('pitchUm');
+    var sizeXEl = document.getElementById('sizeX');
+    var sizeYEl = document.getElementById('sizeY');
+    var resultsEl = document.getElementById('results');
+
+    CAMERAS.forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      cameraEl.appendChild(opt);
+    });
+
+    FOCAL_PRESETS.forEach(function (mm) {
+      var opt = document.createElement('option');
+      opt.value = String(mm);
+      opt.textContent = mm + ' mm';
+      focalPresetEl.appendChild(opt);
+    });
+    var customFocalOpt = document.createElement('option');
+    customFocalOpt.value = 'custom';
+    customFocalOpt.textContent = 'Custom…';
+    focalPresetEl.appendChild(customFocalOpt);
+
+    function cameraById(id) {
+      for (var i = 0; i < CAMERAS.length; i++) {
+        if (CAMERAS[i].id === id) return CAMERAS[i];
+      }
+      return CAMERAS[CAMERAS.length - 1];
+    }
+
+    function focalMatchesPreset(mm) {
+      for (var i = 0; i < FOCAL_PRESETS.length; i++) {
+        if (Math.abs(mm - FOCAL_PRESETS[i]) < 1e-6) return FOCAL_PRESETS[i];
+      }
+      return null;
+    }
+
+    function syncFocalPresetFromInput() {
+      var mm = parseFloat(focalEl.value);
+      var preset = focalMatchesPreset(mm);
+      focalPresetEl.value = preset != null ? String(preset) : 'custom';
+    }
+
+    function applyCamera(id) {
+      var c = cameraById(id);
+      applyingPreset = true;
+      pitchEl.value = c.pitchUm;
+      sizeXEl.value = c.sizeX;
+      sizeYEl.value = c.sizeY;
+      applyingPreset = false;
+      if (!restoring) compute();
+    }
+
+    function markCustomIfEdited() {
+      if (applyingPreset) return;
+      var c = cameraById(cameraEl.value);
+      if (c.id === 'custom') return;
+      var pitch = parseFloat(pitchEl.value);
+      var sx = parseFloat(sizeXEl.value);
+      var sy = parseFloat(sizeYEl.value);
+      if (pitch !== c.pitchUm || sx !== c.sizeX || sy !== c.sizeY) {
+        cameraEl.value = 'custom';
+      }
+    }
+
+    function saveState() {
+      if (restoring) return;
+      var state = JSON.stringify({
+        camera: cameraEl.value,
+        focalMm: focalEl.value,
+        pitchUm: pitchEl.value,
+        sizeX: sizeXEl.value,
+        sizeY: sizeYEl.value
+      });
+      try {
+        localStorage.setItem(STORAGE_KEY, state);
+      } catch (e) {}
+      try {
+        document.cookie = STORAGE_KEY + '=' + encodeURIComponent(state) +
+          ';max-age=' + COOKIE_MAX_AGE + ';path=/;SameSite=Lax';
+      } catch (e) {}
+    }
+
+    function readCookie(name) {
+      var parts = document.cookie.split(';');
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i].replace(/^\s+/, '');
+        if (p.indexOf(name + '=') === 0) {
+          return decodeURIComponent(p.substring(name.length + 1));
+        }
+      }
+      return null;
+    }
+
+    function loadState() {
+      var raw = null;
+      try {
+        raw = localStorage.getItem(STORAGE_KEY);
+      } catch (e) {}
+      if (!raw) {
+        raw = readCookie(STORAGE_KEY);
+      }
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function metric(label, value, unit, altValue, altUnit) {
+      var alt = '';
+      if (altValue != null) {
+        alt = ' <span class="unit">(' + altValue + ' ' + altUnit + ')</span>';
+      }
+      return '<div class="metric"><span>' + label + '</span><strong>' +
+        value + ' <span class="unit">' + unit + '</span>' + alt + '</strong></div>';
+    }
+
+    function compute() {
+      var fMm = parseFloat(focalEl.value);
+      var pitchUm = parseFloat(pitchEl.value);
+      var sizeX = parseFloat(sizeXEl.value);
+      var sizeY = parseFloat(sizeYEl.value);
+
+      if (!(fMm > 0) || !(pitchUm > 0) || !(sizeX > 0) || !(sizeY > 0)) {
+        resultsEl.innerHTML = '<p class="error">Enter positive focal length, pitch, and array size.</p>';
+        return;
+      }
+
+      var wMm = sizeX * pitchUm / 1000;
+      var hMm = sizeY * pitchUm / 1000;
+      var fovWrad = 2 * Math.atan(wMm / (2 * fMm));
+      var fovHrad = 2 * Math.atan(hMm / (2 * fMm));
+      var ifovRad = Math.atan(pitchUm / (1000 * fMm));
+      var fovWdeg = fovWrad * 180 / Math.PI;
+      var fovHdeg = fovHrad * 180 / Math.PI;
+      var ifovDeg = ifovRad * 180 / Math.PI;
+
+      resultsEl.innerHTML =
+        metric('FOV width', eng.format(fovWdeg), 'deg', eng.format(fovWrad), 'rad') +
+        metric('FOV height', eng.format(fovHdeg), 'deg', eng.format(fovHrad), 'rad') +
+        metric('Angle per pixel', eng.format(ifovDeg), 'deg/pixel', eng.format(ifovRad), 'rad/pixel') +
+        metric('Sensor width', eng.format(wMm), 'mm') +
+        metric('Sensor height', eng.format(hMm), 'mm');
+
+      saveState();
+    }
+
+    cameraEl.addEventListener('change', function () { applyCamera(cameraEl.value); });
+    focalPresetEl.addEventListener('change', function () {
+      if (focalPresetEl.value === 'custom') {
+        focalEl.focus();
+        return;
+      }
+      focalEl.value = focalPresetEl.value;
+      compute();
+    });
+    focalEl.addEventListener('input', function () {
+      syncFocalPresetFromInput();
+      compute();
+    });
+    [pitchEl, sizeXEl, sizeYEl].forEach(function (el) {
+      el.addEventListener('input', function () {
+        markCustomIfEdited();
+        compute();
+      });
+    });
+
+    var saved = loadState();
+    if (saved && saved.camera) {
+      restoring = true;
+      cameraEl.value = cameraById(saved.camera).id;
+      applyCamera(cameraEl.value);
+      if (saved.pitchUm) pitchEl.value = saved.pitchUm;
+      if (saved.sizeX) sizeXEl.value = saved.sizeX;
+      if (saved.sizeY) sizeYEl.value = saved.sizeY;
+      if (saved.focalMm) focalEl.value = saved.focalMm;
+      markCustomIfEdited();
+      syncFocalPresetFromInput();
+      restoring = false;
+      compute();
+    } else {
+      cameraEl.value = 'davis346';
+      focalEl.value = '8';
+      syncFocalPresetFromInput();
+      applyCamera('davis346');
+    }
+  </script>
+</body>
+</html>

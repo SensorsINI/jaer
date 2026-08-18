@@ -63,6 +63,8 @@ Stereo and multi-camera wrappers (e.g. `DVS128StereoPair`, `MultiDAVIS346BCamera
 
 Hardware docs in Help menu: iniVation cameras, Prophesee sensors, NRV cameras.
 
+**FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length — open [`lensFOVCalculations/index.html`](lensFOVCalculations/index.html) locally, or use the [GitHub Pages version](https://sensorsini.github.io/jaer/).
+
 ## Citation
 T. Delbruck, “Frame-free dynamic digital vision,” 
 in International Symposium on Secure-Life Electronics, University of Tokyo, 
