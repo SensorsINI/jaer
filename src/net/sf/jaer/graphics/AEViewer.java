@@ -142,6 +142,7 @@ import net.sf.jaer.eventio.AEUnicastDialog;
 import net.sf.jaer.eventio.AEUnicastInput;
 import net.sf.jaer.eventio.AEUnicastOutput;
 import net.sf.jaer.eventio.RecordingChipDetector;
+import net.sf.jaer.eventio.RecordingConfigurationSnapshot;
 import net.sf.jaer.eventio.TextFileInputStream;
 import net.sf.jaer.eventio.aedat4.Aedat4Compression;
 import net.sf.jaer.eventio.aedat4.Aedat4FileInputStream;
@@ -6354,16 +6355,23 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         try {
             loggingFile = new File(filename);
+            // Freeze the configuration once at recording start; the same immutable
+            // snapshot is handed to the AEDAT-4 writer and placed on the chip so the
+            // legacy writer uses identical recording-start values. The helper clears
+            // the chip snapshot if opening the file fails.
             if (aedat4) {
                 loggingOutputStream = null;
-                aedat4LoggingOutputStream = new Aedat4FileOutputStream(new FileOutputStream(loggingFile), chip, getAedat4Compression());
+                OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
+                aedat4LoggingOutputStream = new Aedat4FileOutputStream(
+                        opened.stream, chip, getAedat4Compression(), opened.snapshot);
                 log.info(String.format("AEDAT-4 logging compression=%s, omitFilteredOut=%s (any filter enabled or File→Enable filtering of logged events)",
                         net.sf.jaer.eventio.aedat4.Aedat4Compression.nameOf(getAedat4Compression()),
                         isLogFilteredEventsEnabled()
                         || (chip.getFilterChain() != null && chip.getFilterChain().isAnyFilterEnabled())));
             } else {
                 aedat4LoggingOutputStream = null;
-                loggingOutputStream = new AEFileOutputStream(new FileOutputStream(loggingFile), chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
+                OpenedLogStream opened = openWithFrozenSnapshot(chip, loggingFile);
+                loggingOutputStream = new AEFileOutputStream(opened.stream, chip, dataFileVersionNum); // tobi changed to 8k buffer (from 400k) because this has measurablly better performance than super large buffer
             }
 
             if (getPlayMode() == PlayMode.PLAYBACK) { // change listener for rewind to stop logging
@@ -6396,15 +6404,56 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
 
             //            aemon.resetTimestamps();
         } catch (FileNotFoundException e) {
+            // A failed start must never leave metadata for a later recording.
+            chip.setRecordingConfigurationSnapshot(null);
             loggingFile = null;
             log.log(Level.WARNING, "In trying open a logging output file, caught: " + e.toString(), e);
 
         } catch (IOException ioe) {
+            chip.setRecordingConfigurationSnapshot(null);
             loggingFile = null;
             log.log(Level.WARNING, "In trying open a logging output file, caught: " + ioe.toString(), ioe);
         }
 
         return loggingFile;
+    }
+
+    /**
+     * The opened raw log stream together with the immutable recording-start
+     * snapshot frozen (and placed on the chip) just before the file was opened.
+     */
+    static final class OpenedLogStream {
+
+        final FileOutputStream stream;
+        final RecordingConfigurationSnapshot snapshot;
+
+        OpenedLogStream(FileOutputStream stream, RecordingConfigurationSnapshot snapshot) {
+            this.stream = stream;
+            this.snapshot = snapshot;
+        }
+    }
+
+    /**
+     * Freeze recording-start configuration, place it on the chip, and open the
+     * raw log file. If open fails, clear the chip snapshot so a later recording
+     * captures fresh metadata.
+     *
+     * @param chip the chip whose live configuration is frozen
+     * @param file the file to open for logging
+     * @return the opened stream together with its frozen snapshot
+     * @throws FileNotFoundException if the file cannot be opened
+     */
+    static OpenedLogStream openWithFrozenSnapshot(AEChip chip, File file) throws FileNotFoundException {
+        RecordingConfigurationSnapshot snapshot = RecordingConfigurationSnapshot.captureFromChip(chip);
+        chip.setRecordingConfigurationSnapshot(snapshot);
+        FileOutputStream stream;
+        try {
+            stream = new FileOutputStream(file);
+        } catch (FileNotFoundException | RuntimeException e) {
+            chip.setRecordingConfigurationSnapshot(null);
+            throw e;
+        }
+        return new OpenedLogStream(stream, snapshot);
     }
 
     /**
@@ -6682,6 +6731,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                         loggingOutputStream.close();
                         fileInfo = loggingOutputStream.toString();
                     }
+                    // Release the recording-start snapshot so the next recording
+                    // captures fresh values.
+                    chip.setRecordingConfigurationSnapshot(null);
                 }
                 // if jaer viewer is logging synchronized data files, then just save the file where it was logged originally
 
