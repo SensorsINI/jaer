@@ -179,6 +179,16 @@ public interface AEFileInputStreamInterface extends InputDataFileInterface {
     public boolean jumpToPrevMarker();
 
     /**
+     * Human-readable summary of this recording (counts, duration, size, etc.).
+     * Empty when the format does not provide one (base default).
+     *
+     * @return description of the file, or {@code ""} if not available
+     */
+    default String getFileInfo() {
+        return "";
+    }
+
+    /**
      * Loads cached IN/OUT/other marks for this file from preferences (if any)
      * and applies them to the stream and player slider. Default: no-op.
      */

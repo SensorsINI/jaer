@@ -170,6 +170,11 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
     }
 
     @Override
+    public String getFileInfo() {
+        return aeInputStream == null ? "" : aeInputStream.getFileInfo();
+    }
+
+    @Override
     public int getLastTimestamp() {
         return aeInputStream.getLastTimestamp();
     }

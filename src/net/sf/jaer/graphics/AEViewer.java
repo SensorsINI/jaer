@@ -8,6 +8,7 @@
 package net.sf.jaer.graphics;
 
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
@@ -80,8 +81,11 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JRadioButtonMenuItem;
+import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
+import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
@@ -379,6 +383,9 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private DynamicFontSizeJLabel statisticsLabel;
     private boolean filterFrameBuilt = false; // flag to signal that the frame should be rebuilt when initially shown or when chip is changed
     private JaerUpdaterFrame jaerUpdaterFrame = null;
+    /** Nonmodal File/Show file info dialog; reused while this viewer is open. */
+    private JDialog fileInfoDialog;
+    private JTextArea fileInfoTextArea;
 
     private boolean rememberLastInterface = prefs.getBoolean("rememberLastInterface", false);
     private String rememberLastInterfaceDeviceID = null;
@@ -2979,6 +2986,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         }
         closeMenuItem.setEnabled(yes);
         saveAsMenuItem.setEnabled(yes);
+        showFileInfoMenuItem.setEnabled(yes && isShowFileInfoAvailable());
         increasePlaybackSpeedMenuItem.setEnabled(yes);
         decreasePlaybackSpeedMenuItem.setEnabled(yes);
         rewindPlaybackMenuItem.setEnabled(yes);
@@ -4324,6 +4332,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         fileMenu = new javax.swing.JMenu();
         newViewerMenuItem = new javax.swing.JMenuItem();
         openMenuItem = new javax.swing.JMenuItem();
+        showFileInfoMenuItem = new javax.swing.JMenuItem();
         closeMenuItem = new javax.swing.JMenuItem();
         saveAsMenuItem = new javax.swing.JMenuItem();
         exportVideoMenuItem = new javax.swing.JMenuItem();
@@ -4592,6 +4601,17 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
         });
         fileMenu.add(openMenuItem);
 
+        showFileInfoMenuItem.setMnemonic('I');
+        showFileInfoMenuItem.setText("Show file info...");
+        showFileInfoMenuItem.setToolTipText("Show summary information about the recording being played (AEDAT-4)");
+        showFileInfoMenuItem.setEnabled(false);
+        showFileInfoMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                showFileInfoMenuItemActionPerformed(evt);
+            }
+        });
+        fileMenu.add(showFileInfoMenuItem);
+
         closeMenuItem.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_W, java.awt.event.InputEvent.CTRL_DOWN_MASK));
         closeMenuItem.setMnemonic('C');
         closeMenuItem.setText("Close");
@@ -4638,6 +4658,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             public void menuSelected(javax.swing.event.MenuEvent evt) {
                 updateStopVideoExportMenuItemEnabled();
                 updateSaveAsMenuItemEnabled();
+                updateShowFileInfoMenuItemEnabled();
             }
             public void menuDeselected(javax.swing.event.MenuEvent evt) {
             }
@@ -7850,6 +7871,75 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
             }
 	}//GEN-LAST:event_openMenuItemActionPerformed
 
+        private void showFileInfoMenuItemActionPerformed(java.awt.event.ActionEvent evt) {
+            showFileInfoDialog();
+        }
+
+        private void updateShowFileInfoMenuItemEnabled() {
+            showFileInfoMenuItem.setEnabled(isShowFileInfoAvailable());
+        }
+
+        /** AEDAT-4 playback only; other formats return an empty {@code getFileInfo()}. */
+        private boolean isShowFileInfoAvailable() {
+            if (getPlayMode() != PlayMode.PLAYBACK || getAePlayer() == null) {
+                return false;
+            }
+            AEFileInputStreamInterface stream = getAePlayer().getAEInputStream();
+            return stream instanceof Aedat4FileInputStream;
+        }
+
+        private void showFileInfoDialog() {
+            AEFileInputStreamInterface stream = getAePlayer() == null ? null : getAePlayer().getAEInputStream();
+            String info = stream == null ? "" : stream.getFileInfo();
+            if (info == null || info.isEmpty()) {
+                info = "File info is not available for this recording format.";
+            }
+            File f = stream == null ? null : stream.getFile();
+            boolean firstShow = fileInfoDialog == null;
+            if (firstShow) {
+                fileInfoTextArea = new JTextArea();
+                fileInfoTextArea.setEditable(false);
+                fileInfoTextArea.setLineWrap(false);
+                fileInfoTextArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
+                JScrollPane scroll = new JScrollPane(fileInfoTextArea);
+                JButton close = new JButton("Close");
+                fileInfoDialog = new JDialog(this, "Recording file info", false);
+                fileInfoDialog.getContentPane().add(scroll, BorderLayout.CENTER);
+                JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+                buttons.add(close);
+                fileInfoDialog.getContentPane().add(buttons, BorderLayout.SOUTH);
+                close.addActionListener(e -> fileInfoDialog.setVisible(false));
+                fileInfoDialog.getRootPane().setDefaultButton(close);
+                fileInfoDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+            }
+            fileInfoDialog.setTitle(f != null ? "File info — " + f.getName() : "Recording file info");
+            fileInfoTextArea.setText(info);
+            fileInfoTextArea.setCaretPosition(0);
+            String[] lines = info.split("\n", -1);
+            int cols = 40;
+            for (String line : lines) {
+                cols = Math.max(cols, line.length());
+            }
+            fileInfoTextArea.setColumns(cols);
+            fileInfoTextArea.setRows(Math.max(8, lines.length + 1));
+            fileInfoDialog.pack();
+            Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+            Dimension size = fileInfoDialog.getSize();
+            int maxW = (int) (screen.width * 0.9);
+            int maxH = (int) (screen.height * 0.8);
+            if (size.width > maxW || size.height > maxH) {
+                fileInfoDialog.setSize(Math.min(size.width, maxW), Math.min(size.height, maxH));
+            }
+            if (firstShow || !fileInfoDialog.isVisible()) {
+                fileInfoDialog.setLocationRelativeTo(this);
+            }
+            if (!fileInfoDialog.isVisible()) {
+                fileInfoDialog.setVisible(true);
+            } else {
+                fileInfoDialog.toFront();
+            }
+        }
+
     /**
      * Centralized call to open an input file. The opened file is added the
      * recentFiles list.
@@ -8695,6 +8785,7 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     private javax.swing.JCheckBoxMenuItem checkNonMonotonicTimeExceptionsEnabledCheckBoxMenuItem;
     private javax.swing.JMenuItem clearMarksMI;
     private javax.swing.JMenuItem closeMenuItem;
+    private javax.swing.JMenuItem showFileInfoMenuItem;
     private javax.swing.JMenuItem saveAsMenuItem;
     private javax.swing.JMenuItem exportVideoMenuItem;
     private javax.swing.JMenuItem stopVideoExportMenuItem;

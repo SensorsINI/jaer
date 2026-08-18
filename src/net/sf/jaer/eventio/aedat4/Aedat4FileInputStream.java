@@ -225,6 +225,70 @@ public class Aedat4FileInputStream implements AEFileInputStreamInterface {
         return selectedSource;
     }
 
+    /**
+     * Summary of this AEDAT-4 recording: event/frame/IMU counts, duration,
+     * on-disk size, and packet-payload compression when it can be computed
+     * without decoding the file. Uncompressed FlatBuffer totals are not stored
+     * in AEDAT-4, so the percentage vs raw is omitted unless the file is
+     * uncompressed ({@code NONE}).
+     */
+    @Override
+    public String getFileInfo() {
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(3);
+        StringBuilder sb = new StringBuilder();
+        if (file != null) {
+            sb.append(file.getAbsolutePath()).append('\n');
+        }
+        long durationUs = getDurationUsLong();
+        String durationStr = eng.format(durationUs * 1e-6).trim() + "s";
+        if (durationUs > 3_600_000_000L) { // more than 1 h
+            long totalMin = durationUs / 60_000_000L;
+            durationStr += String.format(" (%dh%02dm)", totalMin / 60, totalMin % 60);
+        }
+        sb.append(String.format("AEDAT-4 %s: %s events, %s frames, %s IMU samples, duration=%s",
+                Aedat4Compression.nameOf(compression),
+                eng.format((double) eventCount).trim(),
+                eng.format((double) frameCount).trim(),
+                eng.format((double) imuSampleCount).trim(),
+                durationStr));
+        long payloads = sumPayloadBytes(eventRefs) + sumPayloadBytes(frameRefs) + sumPayloadBytes(imuRefs);
+        if (file != null) {
+            sb.append(String.format("\nSize: %sB", eng.format((double) file.length()).trim()));
+        }
+        if (payloads > 0) {
+            if (compression == CompressionType.NONE) {
+                sb.append(String.format("; uncompressed packet payloads %sB",
+                        eng.format((double) payloads).trim()));
+            } else {
+                sb.append(String.format("; packet payloads %sB (%s)",
+                        eng.format((double) payloads).trim(),
+                        Aedat4Compression.nameOf(compression)));
+            }
+        }
+        sb.append(String.format("\nStream %d%s, %d EVTS packets indexed",
+                eventStreamId,
+                selectedSource == null ? "" : " (" + selectedSource + ")",
+                eventRefs.length));
+        if (chip != null) {
+            sb.append("\nChip: ").append(chip.getClass().getSimpleName());
+        }
+        return sb.toString();
+    }
+
+    private static long sumPayloadBytes(PacketRef[] refs) {
+        long n = 0;
+        if (refs == null) {
+            return 0;
+        }
+        for (PacketRef r : refs) {
+            if (r.payloadSize > 0) {
+                n += r.payloadSize;
+            }
+        }
+        return n;
+    }
+
     private static void throwIfCanceled(ProgressMonitor progressMonitor, String what) throws IOException {
         if (Thread.currentThread().isInterrupted()
                 || (progressMonitor != null && progressMonitor.isCanceled())) {

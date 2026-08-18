@@ -377,6 +377,15 @@ public class AEFileInputStream extends DataInputStream implements AEFileInputStr
     }
 
     /**
+     * Base implementation: no file-info summary for AEDAT-2 / generic streams.
+     * AEDAT-4 overrides this in {@link net.sf.jaer.eventio.aedat4.Aedat4FileInputStream}.
+     */
+    @Override
+    public String getFileInfo() {
+        return "";
+    }
+
+    /**
      * Loads markers and sets up AEPlayer slider marks from the marks. Should be
      * called *after* the AEFileInputStream is constructed completely; otherwise
      * the callees will not have neccessary information like size of file.
