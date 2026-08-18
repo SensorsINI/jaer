@@ -855,7 +855,7 @@ public class AEViewerPreferencesDialog extends JDialog {
         } else if (chip != null && chip.getPrefs() != null) {
             restore = chip.getPrefs().getBoolean("FilterFrame.restoreFilterEnabledStateEnabled", true);
             simple = chip.getPrefs().getBoolean("simpleMode", false);
-            hideDisabled = chip.getPrefs().getBoolean("hideDisabled", false);
+            hideDisabled = chip.getPrefs().getBoolean("hideDisabled", true);
         }
         restoreFilterEnabledStateCB.setSelected(restore);
         simpleModeCB.setSelected(simple);

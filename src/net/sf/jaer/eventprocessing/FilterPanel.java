@@ -2379,10 +2379,13 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
     }
 
     /**
-     * Set visibility of individual filter controls; hides other filters.
+     * Set visibility of individual filter controls. When the user shows
+     * controls, {@link FilterFrame#updateHideDisabledVisibility()} hides other
+     * disabled filters if Hide disabled is selected. Collapsing the last
+     * expanded filter (or Overview) shows the full chain again.
      *
      * @param visible true to show filter parameter controls, false to hide this
-     * filter's controls and to show all filters in chain.
+     * filter's controls
      */
     public void setControlsVisible(boolean visible) {
         getFilter().controlsVisible = visible;
@@ -3345,6 +3348,9 @@ public class FilterPanel extends javax.swing.JPanel implements PropertyChangeLis
         public void actionPerformed(ActionEvent e) {
             setControlsVisible(!isControlsVisible());
             setLabel();
+            if (getFilterFrame() != null) {
+                getFilterFrame().updateHideDisabledVisibility();
+            }
         }
 
         final void setLabel() {

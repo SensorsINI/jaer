@@ -179,6 +179,8 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         //        log.info("defaultFolder="+defaultFolder);
         updateIntervalField.setText(engFmt.format(filterChain.getUpdateIntervalMs()));
 
+        // Restore last selected filter's controls, but keep the full chain visible.
+        // Hide disabled is applied only when the user later shows controls (or Overview).
         String lastFilter = chip.getPrefs().get(LAST_FILTER_SELECTED_KEY, null);
         if (lastFilter != null) {
             for (FilterPanel f : filterPanels) {
@@ -252,6 +254,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             for (FilterPanel f : filterPanels) {
                 f.setControlsVisible(false); // hide controls for all filters, exposing chain
             }
+            updateHideDisabledVisibility(); // overview shows the full chain
         }
     }
 
@@ -290,11 +293,11 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
 
     private class HideDisabledAction extends AbstractAction {
 
-        private boolean hideDisabled = prefs.getBoolean("hideDisabled", false);
+        private boolean hideDisabled = prefs.getBoolean("hideDisabled", true);
 
         public HideDisabledAction() {
             putValue(NAME, "Hide disabled");
-            putValue(SHORT_DESCRIPTION, "Hides filters that are not enabled (by checkbox)");
+            putValue(SHORT_DESCRIPTION, "When showing a filter's controls, hide other filters that are not enabled");
 //            putValue(ACCELERATOR_KEY, KeyStroke.getKeyStroke(KeyEvent.VK_Y, java.awt.event.InputEvent.CTRL_DOWN_MASK));
             putValue(SELECTED_KEY, hideDisabled);
         }
@@ -303,11 +306,6 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
         public void actionPerformed(ActionEvent e) {
             setHideDisabled(!isHideDisabled());
             putValue(SELECTED_KEY, isHideDisabled());
-        }
-
-        private void setVisibleIfEnabledOrNotHideDisabled(FilterPanel f) {
-            f.setVisible(!isHideDisabled() || f.getFilter().isFilterEnabled());
-            
         }
 
         /**
@@ -324,9 +322,7 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             boolean oldHideDisabled = this.hideDisabled;
             this.hideDisabled = hideDisabled;
             if (oldHideDisabled != this.hideDisabled) {
-                for (FilterPanel f : filterPanels) {
-                    setVisibleIfEnabledOrNotHideDisabled(f);
-                }
+                updateHideDisabledVisibility();
             }
             putValue(SELECTED_KEY, this.hideDisabled);
             propertyChangeSupport.firePropertyChange(PROP_HIDEDISABLED, oldHideDisabled, hideDisabled);
@@ -1005,6 +1001,32 @@ public class FilterFrame<PanelType extends FilterPanel> extends javax.swing.JFra
             }
         }
         return null;
+    }
+
+    /**
+     * Applies the Hide disabled flag to top-level filter panels.
+     * <p>
+     * Startup and Overview keep every filter visible so the full chain is shown.
+     * Disabled filters are hidden only when Hide disabled is on and at least one
+     * filter has its controls expanded (the expanded filter stays visible).
+     */
+    public void updateHideDisabledVisibility() {
+        if (hideDiabledAction == null || filterPanels == null) {
+            return;
+        }
+        FilterPanel focused = getSelectedFilterPanel();
+        boolean hideOthers = isHideDisabled() && focused != null;
+        for (FilterPanel f : filterPanels) {
+            if (!hideOthers) {
+                f.setVisible(true);
+            } else {
+                f.setVisible(f == focused || f.isControlsVisible() || f.getFilter().isFilterEnabled());
+            }
+        }
+        if (filtersPanel != null) {
+            filtersPanel.revalidate();
+            filtersPanel.repaint();
+        }
     }
 
     private void resetAllButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_resetAllButtonActionPerformed
