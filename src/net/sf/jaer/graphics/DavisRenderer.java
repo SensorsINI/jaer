@@ -951,12 +951,14 @@ public class DavisRenderer extends AEChipRenderer {
     }
 
     /**
-     * Returns pixmap for ON events
+     * Returns pixmap for DVS events (RGBA, same {@link #getPixMapIndex} layout
+     * as the APS pixmap). Used by the chip display overlay and by
+     * {@code SingleCameraCalibration} for {@code RenderedEventFrames}.
      *
      * @return a float buffer. Obtain a pixel from it using getPixMapIndex
      * @see #getPixMapIndex(int, int)
      */
-    protected FloatBuffer getDvsEventsMap() {
+    public FloatBuffer getDvsEventsMap() {
         dvsEventsMap.rewind();
         checkPixmapAllocation();
         return dvsEventsMap;

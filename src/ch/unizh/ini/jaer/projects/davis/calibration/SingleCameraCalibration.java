@@ -5,10 +5,13 @@
  */
 package ch.unizh.ini.jaer.projects.davis.calibration;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.geom.Point2D;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -20,6 +23,7 @@ import java.util.logging.Level;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
 import org.opencv.calib3d.Calib3d;
@@ -37,7 +41,6 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL2;
 import com.jogamp.opengl.GLAutoDrawable;
 
-import ch.unizh.ini.jaer.projects.davis.frames.ApsFrameExtractor;
 import com.esotericsoftware.yamlbeans.YamlException;
 import java.awt.Dimension;
 import java.io.FileNotFoundException;
@@ -56,8 +59,8 @@ import net.sf.jaer.event.EventPacket;
 import net.sf.jaer.event.FramePacket;
 import net.sf.jaer.event.PacketType;
 import net.sf.jaer.eventprocessing.EventFilter2D;
-import net.sf.jaer.eventprocessing.FilterChain;
 import net.sf.jaer.graphics.Chip2DRenderer;
+import net.sf.jaer.graphics.DavisRenderer;
 import net.sf.jaer.graphics.FrameAnnotater;
 import net.sf.jaer.graphics.ImageDisplay;
 import net.sf.jaer.graphics.MultilineAnnotationTextRenderer;
@@ -72,8 +75,8 @@ import static org.opencv.core.Core.countNonZero;
  * Calibrates a single camera using OpenCV chessboard calibration.
  * jAER 3.0: {@link #processFrame} consumes typed {@link FramePacket}s (DAVIS APS /
  * AEDAT-4); {@link #processPolarity} samples the rendered DVS image and can
- * undistort events. Legacy mixed {@link ApsDvsEventPacket} still goes through
- * {@link #filterPacket}.
+ * undistort events. Mixed {@link ApsDvsEventPacket} is not supported: the filter
+ * disables itself and advises File → Save As... to AEDAT-4.
  *
  * @author Marc Osswald, Tobi Delbruck
  */
@@ -84,8 +87,8 @@ import static org.opencv.core.Core.countNonZero;
 <h2>SingleCameraCalibration</h2>
 <p>Estimates pinhole intrinsics (focal length, principal point) and lens distortion
 with OpenCV <code>calibrateCamera</code> from views of a printed <b>chessboard</b>.
-Works with <b>DAVIS APS frames</b> and with <b>DVS-only</b> data by sampling the
-same accumulated event image you see in the viewer.</p>
+Works with <b>DAVIS APS frames</b> (<code>FramePacket</code>) and with accumulated
+<b>DVS renderings</b> (the event overlay, including on frames+events recordings).</p>
 <p>OpenCV docs:
 <a href="https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html">Camera calibration</a>.</p>
 <hr>
@@ -98,15 +101,20 @@ window). Measure one square in millimetres.</li>
 <code>rectangleWidthMm</code> / <code>rectangleHeightMm</code> to the square size.</li>
 <li><code>frameSource</code> <b>Auto</b> uses APS / AEDAT-4 <code>FramePacket</code>s
 when they arrive, otherwise the rendered DVS image. Force <b>ApsFrames</b> or
-<b>RenderedEventFrames</b> if you need one modality only.</li>
+<b>RenderedEventFrames</b> if you need one modality only.
+<b>RenderedEventFrames</b> samples the DVS overlay (not APS frames), even on
+frames+events recordings.</li>
 <li>For DVS / event recordings: turn on viewer <b>Accumulate</b> (or fading) and
 <b>slowly move</b> the board or camera so the squares fill in. A perfectly still
 DVS image is blank and will not detect corners.</li>
-<li>Enable the filter. The enclosed APS window shows the grayscale image sent to
+<li>Enable the filter. The OpenCV window shows the grayscale image sent to
 OpenCV (contrast-stretched). With <code>realtimePatternDetectionEnabled</code>, a found
 board is overlaid on the viewer. Click <code>captureSingleFrame</code> (or
 <code>triggerAutocapture</code>) when the overlay looks correct. Capture ~10–20
 poses, different angles and distances, filling the field of view.</li>
+<li>Old mixed APS+DVS packets (AEDAT-2 / old USB extractor) are not supported.
+Use <b>File → Save As...</b> to convert the recording to AEDAT-4, then play the
+<code>.aedat4</code> file.</li>
 <li>Click <code>calibrate</code>, then <code>saveCalibration</code>. Later sessions
 can <code>loadCalibration</code>.</li>
 </ol>
@@ -118,8 +126,8 @@ can <code>loadCalibration</code>.</li>
 when not using APS (OpenCV chessboard search is not cheap).</li>
 <li><code>cornerSubPixRefinement</code> &mdash; subpixel corner locations (recommended).</li>
 <li><code>showAPSFrameDisplay</code> &mdash; OpenCV search-image window (on by default).</li>
-<li><code>showUndistortedFrames</code> &mdash; preview lens correction on the APS
-frame window after calibration.</li>
+<li><code>showUndistortedFrames</code> &mdash; preview lens correction on the OpenCV
+window after calibration.</li>
 <li><code>undistortDVSevents</code> &mdash; remap DVS event addresses with the
 calibration LUT (events that fall outside the chip are dropped).</li>
 <li><code>clearImages</code> drops collected corners; <code>clearCalibration</code>
@@ -208,8 +216,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private boolean seenApsFrame = false;
     private boolean lastFrameFromAps = false;
 
-    private final ApsFrameExtractor frameExtractor;
-    private final FilterChain filterChain;
+    private final ImageDisplay opencvDisplay;
+    private final JFrame opencvFrame;
+    private boolean showAPSFrameDisplay = getBoolean("showAPSFrameDisplay", true);
     private boolean saved = false;
     private boolean textRendererScaleSet = false;
     private int noPatternFoundwarningSkipInterval = 50, noPatternFoundWarningCount = 0;
@@ -220,24 +229,30 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     private long overlayUntilMs = 0;
     private static final int OVERLAY_MS = 5000;
     private int fontSize;
+    private boolean legacyRejectDialogShown = false;
+    private float[] opencvGray01 = null;
         
 
     public SingleCameraCalibration(AEChip chip) {
         super(chip);
-        frameExtractor = new ApsFrameExtractor(chip);
-        filterChain = new FilterChain(chip);
-        filterChain.add(frameExtractor);
-        frameExtractor.setUseExternalRenderer(false);
-        // Default freezeRoi=true so chip-canvas clicks do not start a tiny ROI by accident.
-        frameExtractor.setFreezeRoi(frameExtractor.getBoolean("freezeRoi", true));
-        setEnclosedFilterChain(filterChain);
+        opencvDisplay = ImageDisplay.createOpenGLCanvas();
+        opencvFrame = new JFrame("OpenCV calibration image");
+        opencvFrame.setPreferredSize(new Dimension(400, 400));
+        opencvFrame.getContentPane().add(opencvDisplay, BorderLayout.CENTER);
+        opencvFrame.pack();
+        opencvFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(final WindowEvent e) {
+                setShowAPSFrameDisplay(false);
+            }
+        });
         setPropertyTooltip("patternHeight", "height of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("patternWidth", "width of chessboard calibration pattern in internal corner intersections, i.e. one less than number of squares");
         setPropertyTooltip("realtimePatternDetectionEnabled", "continuously run OpenCV chessboard detection on incoming APS or rendered DVS frames");
         setPropertyTooltip("rectangleWidthMm", "width of square rectangles of calibration pattern in mm");
         setPropertyTooltip("rectangleHeightMm", "height of square rectangles of calibration pattern in mm");
-        setPropertyTooltip("showAPSFrameDisplay", "Shows the ApsFrameExtractor window with the grayscale image sent to OpenCV");
-        setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the ApsFrameExtractor display, if calibration has been completed");
+        setPropertyTooltip("showAPSFrameDisplay", "Shows the OpenCV search-image window with the grayscale image sent to OpenCV");
+        setPropertyTooltip("showUndistortedFrames", "shows the undistorted frame in the OpenCV search-image window, if calibration has been completed");
         setPropertyTooltip("undistortDVSevents", "applies LUT undistortion to DVS event address if calibration has been completed; events outside AEChip address space are filtered out");
         setPropertyTooltip("cornerSubPixRefinement", "refine corner locations to subpixel resolution");
         setPropertyTooltip("calibrate", "run the camera calibration on collected frame data and print results to console");
@@ -253,7 +268,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         setPropertyTooltip("numAutoCaptureFrames", "Number of frames to automatically capture with min delay autocaptureCalibrationFrameDelayMs between frames");
         setPropertyTooltip("autocaptureCalibrationFrameDelayMs", "Delay after capturing automatic calibration frame");
         setPropertyTooltip("fontSize", "Font size in chip pixels for overlay and statistics (default scales with chip width)");
-        setPropertyTooltip("frameSource", "Auto: APS frames when they arrive, else the rendered DVS image. ApsFrames / RenderedEventFrames force one source.");
+        setPropertyTooltip("frameSource", "Auto: APS frames when they arrive, else the rendered DVS image. ApsFrames / RenderedEventFrames force one source. RenderedEventFrames uses the DVS overlay, not APS frames.");
         setPropertyTooltip("renderedFrameIntervalMs", "Minimum interval between OpenCV searches on the rendered DVS image (ignored for APS frames)");
         try {
             frameSource = FrameSource.valueOf(getString("frameSource", FrameSource.Auto.name()));
@@ -261,15 +276,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             frameSource = FrameSource.Auto;
         }
         fontSize = getInt("fontSize", estimatedFontSize());
-        frameExtractor.setShowAPSFrameDisplay(getBoolean("showAPSFrameDisplay", true));
-        frameExtractor.getSupport().addPropertyChangeListener("showAPSFrameDisplay", evt -> {
-            Object nv = evt.getNewValue();
-            if (!(nv instanceof Boolean)) {
-                return;
-            }
-            putBoolean("showAPSFrameDisplay", (Boolean) nv);
-            getSupport().firePropertyChange("showAPSFrameDisplay", evt.getOldValue(), nv);
-        });
         migrateDirPathOffJaerWorkingDir();
 //        loadCalibration(); // moved from here to update method so that Chip is fully constructed with correct size, etc.
     }
@@ -303,8 +309,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     /**
-     * Legacy / mixed {@link ApsDvsEventPacket} path (old USB extractor). Typed
-     * polarity packets must not land here — use {@link #processPolarity}.
+     * Mixed {@link ApsDvsEventPacket} is not supported. Typed polarity packets
+     * use {@link #processPolarity}.
      */
     @Override
     synchronized public EventPacket filterPacket(EventPacket in) {
@@ -312,24 +318,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return in;
         }
         if (in instanceof ApsDvsEventPacket) {
-            getEnclosedFilterChain().filterPacket(in);
-            boolean newAps = frameExtractor != null && frameExtractor.hasNewFrameAvailable();
-            if (newAps) {
-                seenApsFrame = true;
-            }
-            if (wantApsFrame() && newAps) {
-                lastFrame = frameExtractor.getNewFrame();
-                lastFrameFromAps = true;
-                processCalibrationFrame();
-                updateApsUndistortPreview();
-            } else if (wantRenderedEventFrame() && copyRenderedFrameToLastFrame()) {
-                lastFrameFromAps = false;
-                processCalibrationFrame();
-            }
-            undistortPolarityPacket(in);
-            if (!in.isEmpty()) {
-                lastTimestamp = in.getLastTimestamp();
-            }
+            rejectLegacyMixedPacket();
             return in;
         }
         return processPolarity(in);
@@ -341,6 +330,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     @Override
     synchronized public EventPacket<? extends BasicEvent> processPolarity(EventPacket<? extends BasicEvent> in) {
         if (in == null) {
+            return in;
+        }
+        if (in instanceof ApsDvsEventPacket) {
+            rejectLegacyMixedPacket();
             return in;
         }
         if (wantRenderedEventFrame() && copyRenderedFrameToLastFrame()) {
@@ -356,19 +349,45 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     /**
      * jAER 3.0 completed APS / AEDAT-4 frame (y=0 at bottom, same as chip pixmap).
+     * When {@link FrameSource#RenderedEventFrames} is selected, samples the DVS
+     * overlay instead of the APS frame.
      */
     @Override
     synchronized public FramePacket processFrame(FramePacket in) {
-        if (in == null || in.isEmpty() || !wantApsFrame()) {
+        if (in == null || in.isEmpty()) {
             return in;
         }
-        if (copyFramePacketToLastFrame(in)) {
+        if (wantApsFrame() && copyFramePacketToLastFrame(in)) {
             seenApsFrame = true;
             lastFrameFromAps = true;
             processCalibrationFrame();
-            updateApsUndistortPreview();
+            return in;
+        }
+        if (wantRenderedEventFrame() && copyRenderedFrameToLastFrame()) {
+            lastFrameFromAps = false;
+            processCalibrationFrame();
         }
         return in;
+    }
+
+    /**
+     * Disable the filter and tell the user to convert mixed packets to AEDAT-4.
+     */
+    private void rejectLegacyMixedPacket() {
+        setFilterEnabled(false);
+        log.warning("SingleCameraCalibration does not support mixed ApsDvsEventPacket; convert with File → Save As... to AEDAT-4");
+        if (legacyRejectDialogShown) {
+            return;
+        }
+        legacyRejectDialogShown = true;
+        final Component parent = chip.getAeViewer();
+        SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(parent,
+                "SingleCameraCalibration no longer supports mixed APS+DVS packets\n"
+                + "(AEDAT-2 / old USB extractor).\n\n"
+                + "Use File → Save As... to convert this recording to AEDAT-4,\n"
+                + "then play the .aedat4 file.",
+                "AEDAT-4 required",
+                JOptionPane.WARNING_MESSAGE));
     }
 
     private boolean wantApsFrame() {
@@ -405,8 +424,10 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     /**
-     * Copies the chip renderer pixmap into {@link #lastFrame} as grayscale.
-     * Uses {@link Chip2DRenderer#getPixMapIndex} so DAVIS RGBA / padded textures
+     * Copies the rendered DVS image into {@link #lastFrame} as grayscale.
+     * On {@link DavisRenderer} this is {@link DavisRenderer#getDvsEventsMap()}
+     * (the event overlay), not the APS pixmap. Uses
+     * {@link Chip2DRenderer#getPixMapIndex} so DAVIS RGBA / padded textures
      * and 3-channel DVS pixmaps both copy correctly (y=0 at bottom).
      */
     private boolean copyRenderedFrameToLastFrame() {
@@ -415,7 +436,12 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             return false;
         }
         synchronized (renderer) {
-            float[] pixmap = renderer.getPixmapArray();
+            float[] pixmap;
+            if (renderer instanceof DavisRenderer) {
+                pixmap = ((DavisRenderer) renderer).getDvsEventsMap().array();
+            } else {
+                pixmap = renderer.getPixmapArray();
+            }
             int n = sx * sy;
             if (pixmap == null) {
                 return false;
@@ -490,20 +516,17 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         return true;
     }
 
-    private void updateApsUndistortPreview() {
-        if (!apsPreviewAvailable()) {
+    private void updateOpenCvUndistortPreview() {
+        if (!opencvPreviewAvailable()) {
             return;
         }
-        if (calibrated && showUndistortedFrames && frameExtractor.isShowAPSFrameDisplay() && lastFrame != null) {
-            frameExtractor.setDisplayFrameRGB(undistortFrame(lastFrame));
-            frameExtractor.setUseExternalRenderer(true);
-            frameExtractor.getApsDisplay().setTitleLabel("lens correction enabled");
+        if (calibrated && showUndistortedFrames && lastFrame != null) {
+            showOpenCvRgb(undistortFrame(lastFrame));
+            opencvDisplay.setTitleLabel("lens correction enabled");
         } else {
-            frameExtractor.setUseExternalRenderer(false);
-            frameExtractor.getApsDisplay().setTitleLabel("raw input image");
-            if (lastFrame != null) {
-                frameExtractor.setDisplayGrayFrame(lastFrame);
-            }
+            opencvDisplay.setTitleLabel(
+                    lastFrameFromAps ? "calibration input (APS FramePacket)" : "calibration input (rendered DVS)");
+            blitOpenCvGrayFromLastFrame();
         }
     }
 
@@ -530,8 +553,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
     }
 
-    private boolean apsPreviewAvailable() {
-        return frameExtractor != null && frameExtractor.getApsDisplay() != null && frameExtractor.width > 0;
+    private boolean opencvPreviewAvailable() {
+        return showAPSFrameDisplay && opencvDisplay != null && sx > 0 && sy > 0;
     }
 
     /**
@@ -541,8 +564,13 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         if (lastFrame == null) {
             return;
         }
-        showLastFrameOnApsPreview();
-        if (realtimePatternDetectionEnabled || autocaptureCalibrationFramesEnabled || captureTriggered) {
+        final boolean searching = realtimePatternDetectionEnabled || autocaptureCalibrationFramesEnabled || captureTriggered;
+        if (calibrated && showUndistortedFrames) {
+            updateOpenCvUndistortPreview();
+        } else if (!searching) {
+            showOpenCvSearchImage();
+        }
+        if (searching) {
             patternFound = findCurrentCorners(false);
         }
 
@@ -582,18 +610,91 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
     }
 
-    /** Push the grayscale OpenCV input to the enclosed APS window so it is visible. */
-    private void showLastFrameOnApsPreview() {
-        if (!apsPreviewAvailable() || lastFrame == null) {
+    /** Push the grayscale OpenCV input (contrast-stretched) to the preview window. */
+    private void showOpenCvSearchImage() {
+        if (!opencvPreviewAvailable() || lastFrame == null) {
             return;
         }
         if (calibrated && showUndistortedFrames) {
-            updateApsUndistortPreview();
+            updateOpenCvUndistortPreview();
             return;
         }
-        frameExtractor.setDisplayGrayFrame(lastFrame);
-        frameExtractor.getApsDisplay().setTitleLabel(
+        blitOpenCvGrayFromLastFrame();
+        opencvDisplay.setTitleLabel(
                 lastFrameFromAps ? "calibration input (APS FramePacket)" : "calibration input (rendered DVS)");
+    }
+
+    /** Contrast-stretched 8-bit gray that OpenCV sees, as 0–1 gray on the ImageDisplay. */
+    private void blitOpenCvGrayFromLastFrame() {
+        if (!opencvPreviewAvailable() || lastFrame == null) {
+            return;
+        }
+        Mat gray = lastFrameToGray8();
+        try {
+            showOpenCvGray(gray);
+        } finally {
+            gray.release();
+        }
+    }
+
+    private void showOpenCvGray(Mat gray8) {
+        if (!opencvPreviewAvailable() || gray8 == null || gray8.empty()) {
+            return;
+        }
+        int n = sx * sy;
+        if (opencvGray01 == null || opencvGray01.length != n) {
+            opencvGray01 = new float[n];
+        }
+        byte[] buf = new byte[n];
+        gray8.get(0, 0, buf);
+        for (int i = 0; i < n; i++) {
+            opencvGray01[i] = (buf[i] & 0xff) * (1f / 255f);
+        }
+        opencvDisplay.setImageSize(sx, sy);
+        opencvDisplay.setPixmapFromGrayArray(opencvGray01);
+        requestOpenCvDisplayRepaint();
+    }
+
+    /**
+     * RGB float image, OpenCV BGR packed as R=i+2 (same as former ApsFrameExtractor path).
+     */
+    private void showOpenCvRgb(float[] bgrInterleaved) {
+        if (!opencvPreviewAvailable() || bgrInterleaved == null) {
+            return;
+        }
+        opencvDisplay.setImageSize(sx, sy);
+        opencvDisplay.checkPixmapAllocation();
+        int xc = 0;
+        int yc = 0;
+        for (int i = 0; i + 2 < bgrInterleaved.length; i += 3) {
+            opencvDisplay.setPixmapRGB(xc, yc, bgrInterleaved[i + 2], bgrInterleaved[i + 1], bgrInterleaved[i]);
+            xc++;
+            if (xc == sx) {
+                xc = 0;
+                yc++;
+            }
+        }
+        requestOpenCvDisplayRepaint();
+    }
+
+    private void requestOpenCvDisplayRepaint() {
+        if (!showAPSFrameDisplay || opencvDisplay == null) {
+            return;
+        }
+        updateOpenCvFrameVisibility();
+        SwingUtilities.invokeLater(() -> opencvDisplay.repaint(30));
+    }
+
+    private void updateOpenCvFrameVisibility() {
+        if (opencvFrame == null) {
+            return;
+        }
+        final boolean show = showAPSFrameDisplay && isFilterEnabled();
+        SwingUtilities.invokeLater(() -> {
+            if (opencvFrame.isVisible() != show) {
+                opencvFrame.setVisible(show);
+            }
+        });
     }
 
     private class CalibrationWorker extends SwingWorker<String, Object> {
@@ -704,6 +805,11 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         Size patternSize = new Size(patternWidth, patternHeight);
         corners = new MatOfPoint2f();
         imgIn = lastFrameToGray8();
+        if (!drawAndSave && !(calibrated && showUndistortedFrames) && opencvPreviewAvailable()) {
+            showOpenCvGray(imgIn);
+            opencvDisplay.setTitleLabel(
+                    lastFrameFromAps ? "calibration input (APS FramePacket)" : "calibration input (rendered DVS)");
+        }
         imgOut = new Mat(sy, sx, CvType.CV_8UC3);
         Imgproc.cvtColor(imgIn, imgOut, Imgproc.COLOR_GRAY2RGB);
         final int flags = Calib3d.CALIB_CB_ADAPTIVE_THRESH
@@ -757,9 +863,7 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
             imgOut.convertTo(outImgF, CvType.CV_32FC3, 1.0 / 255, 0);
             float[] outFrame = new float[sy * sx * 3];
             outImgF.get(0, 0, outFrame);
-            if (apsPreviewAvailable()) {
-                frameExtractor.setDisplayFrameRGB(outFrame);
-            }
+            showOpenCvRgb(outFrame);
             //save image
             if (locPatternFound) {
                 Mat imgSave = new Mat(sy, sx, CvType.CV_8U);
@@ -790,8 +894,8 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
                 //iterate image counter
                 log.info(String.format("added corner points from image %d", imageCounter));
                 imageCounter++;
-                if (apsPreviewAvailable()) {
-                    frameExtractor.getApsDisplay().setxLabel(filename);
+                if (opencvPreviewAvailable()) {
+                    opencvDisplay.setxLabel(filename);
                 }
 
 //                //debug
@@ -999,7 +1103,6 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
 
     @Override
     public synchronized final void resetFilter() {
-        filterChain.reset();
         patternFound = false;
         imageCounter = 0;
         autocaptureCalibrationFramesEnabled = false;
@@ -1013,6 +1116,9 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     public final void initFilter() {
         sx = chip.getSizeX();
         sy = chip.getSizeY();
+        if (opencvDisplay != null && sx > 0 && sy > 0) {
+            opencvDisplay.setImageSize(sx, sy);
+        }
         if (!calibrated) {
             cameraMatrix = new Mat();
             distortionCoefs = new Mat();
@@ -1020,6 +1126,24 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
         }
         fontSize = getInt("fontSize", estimatedFontSize());
         resetFilter();
+        updateOpenCvFrameVisibility();
+    }
+
+    @Override
+    public synchronized void setFilterEnabled(boolean yes) {
+        if (yes) {
+            legacyRejectDialogShown = false;
+        }
+        super.setFilterEnabled(yes);
+        updateOpenCvFrameVisibility();
+    }
+
+    @Override
+    synchronized public void cleanup() {
+        super.cleanup();
+        if (opencvFrame != null) {
+            opencvFrame.setVisible(false);
+        }
     }
 
     /**
@@ -1756,12 +1880,17 @@ public class SingleCameraCalibration extends EventFilter2D implements FrameAnnot
     }
 
     public boolean isShowAPSFrameDisplay() {
-        return frameExtractor.isShowAPSFrameDisplay();
+        return showAPSFrameDisplay;
     }
 
     public void setShowAPSFrameDisplay(boolean showAPSFrameDisplay) {
+        boolean old = this.showAPSFrameDisplay;
+        this.showAPSFrameDisplay = showAPSFrameDisplay;
         putBoolean("showAPSFrameDisplay", showAPSFrameDisplay);
-        frameExtractor.setShowAPSFrameDisplay(showAPSFrameDisplay);
+        updateOpenCvFrameVisibility();
+        if (old != showAPSFrameDisplay) {
+            getSupport().firePropertyChange("showAPSFrameDisplay", old, showAPSFrameDisplay);
+        }
     }
 
     /**
