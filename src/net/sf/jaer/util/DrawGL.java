@@ -12,6 +12,8 @@ import com.jogamp.opengl.util.awt.TextRenderer;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Static utility methods for drawing stuff. Surround these calls with
@@ -237,12 +239,22 @@ public final class DrawGL {
         gl.glEnd();
     }
 
+    /** GL-thread TextRenderer cache; a new renderer every string leaked JOGL textures (recording overlay). */
+    private static final Map<Integer, TextRenderer> textRenderers = new HashMap<>();
+
+    private static TextRenderer textRendererFor(int fontSize) {
+        TextRenderer r = textRenderers.get(fontSize);
+        if (r == null) {
+            r = new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+            textRenderers.put(fontSize, r);
+        }
+        return r;
+    }
+
     /**
      * Draws a string using TextRenderer.draw using native GL coordinates,
      * usually setup to represent pixels on AEChip. Embedded newlines are not
      * rendered as additional lines.
-     * <p>
-     * The TextRenderer is created for each string drawn. If the user wants to supply an existing TextRenderer, use the other drawString method
      *
      * @param fontSize typically 5 to 18, font is Font("SansSerif", Font.PLAIN, fontSize)
      * @param x x position (0 at left)
@@ -258,7 +270,7 @@ public final class DrawGL {
             fontSize *= 4;
             scale = .25f;
         }
-        TextRenderer textRenderer=new TextRenderer(new Font("SansSerif", Font.PLAIN, fontSize), true, true);
+        TextRenderer textRenderer = textRendererFor(fontSize);
         textRenderer.begin3DRendering();
         textRenderer.setColor(color);
         Rectangle2D r = textRenderer.getBounds(s);

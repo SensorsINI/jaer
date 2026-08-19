@@ -6,15 +6,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
+import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FrameInputStream;
-import net.jpountz.lz4.LZ4FrameOutputStream;
-import net.jpountz.lz4.LZ4FrameOutputStream.BLOCKSIZE;
+import net.jpountz.xxhash.XXHash32;
+import net.jpountz.xxhash.XXHashFactory;
 import org.apache.commons.compress.compressors.lz4.FramedLZ4CompressorInputStream;
 import net.sf.jaer.eventio.aedat4.dv.CompressionType;
 import net.sf.jaer.eventio.aedat4.dv.IOHeader;
@@ -26,8 +27,8 @@ import net.sf.jaer.eventio.aedat4.dv.IOHeader;
  * <p>
  * LZ4 strategy (speed + DV compatibility):
  * <ul>
- *   <li><b>Write</b> — {@code lz4-java} framed LZ4 with independent blocks
- *       (native/JNI when available) for live high-rate logging.</li>
+ *   <li><b>Write</b> — {@code LZ4Compressor} into reused buffers, independent-block
+ *       LZ4 frames (same layout as {@code LZ4FrameOutputStream}).</li>
  *   <li><b>Read</b> — {@code lz4-java} frame reader for independent blocks;
  *       for DV <em>dependent-block</em> frames use {@link Aedat4Lz4FrameDecoder}
  *       (native lz4-java per block, Commons {@code BlockLZ4}+prefill only for
@@ -48,6 +49,16 @@ public final class Aedat4Compression {
     private static final int LZ4_MAGIC_3 = 0x18;
     /** FLG bit 5: block independence (1 = independent, 0 = dependent). */
     private static final int LZ4_FLG_BLOCK_INDEPENDENCE = 0x20;
+    /** Version 1 + BLOCK_INDEPENDENCE (lz4-java {@code LZ4FrameOutputStream} default). */
+    private static final byte LZ4_FLG_INDEPENDENT_V1 = (byte) 0x60;
+    /** Uncompressed block flag in the 32-bit block-size field. */
+    private static final int LZ4_FRAME_INCOMPRESSIBLE_MASK = 0x80000000;
+    /** BD byte: 64 KiB blocks ({@code indicator==4}). */
+    private static final byte LZ4_BD_64KB = (byte) (4 << 4);
+    /** BD byte: 1 MiB blocks ({@code indicator==6}). */
+    private static final byte LZ4_BD_1MB = (byte) (6 << 4);
+    private static final int LZ4_BLOCK_64KB = 1 << 16;
+    private static final int LZ4_BLOCK_1MB = 1 << 20;
 
     private Aedat4Compression() {
     }
@@ -88,15 +99,38 @@ public final class Aedat4Compression {
         }
         switch (compression) {
             case CompressionType.LZ4:
-                return lz4FrameCompress(uncompressed, false);
             case CompressionType.LZ4_HIGH:
-                return lz4FrameCompress(uncompressed, true);
             case CompressionType.ZSTD:
-                return Zstd.compress(uncompressed, ZSTD_LEVEL);
             case CompressionType.ZSTD_HIGH:
-                return Zstd.compress(uncompressed, ZSTD_HIGH_LEVEL);
+                ByteBuffer wrapped = compressDirect(uncompressed, compression);
+                byte[] copy = new byte[wrapped.remaining()];
+                wrapped.get(copy);
+                return copy;
             default:
                 return uncompressed;
+        }
+    }
+
+    /**
+     * Compresses one packet payload. For LZ4 the returned buffer aliases a
+     * thread-local array and is valid only until the next compress on this thread.
+     */
+    static ByteBuffer compressDirect(byte[] uncompressed, int compression) throws IOException {
+        compression = clamp(compression);
+        if (compression == CompressionType.NONE || uncompressed == null || uncompressed.length == 0) {
+            return ByteBuffer.wrap(uncompressed == null ? new byte[0] : uncompressed);
+        }
+        switch (compression) {
+            case CompressionType.LZ4:
+                return lz4FrameCompressDirect(uncompressed, false);
+            case CompressionType.LZ4_HIGH:
+                return lz4FrameCompressDirect(uncompressed, true);
+            case CompressionType.ZSTD:
+                return ByteBuffer.wrap(Zstd.compress(uncompressed, ZSTD_LEVEL));
+            case CompressionType.ZSTD_HIGH:
+                return ByteBuffer.wrap(Zstd.compress(uncompressed, ZSTD_HIGH_LEVEL));
+            default:
+                return ByteBuffer.wrap(uncompressed);
         }
     }
 
@@ -125,15 +159,84 @@ public final class Aedat4Compression {
         }
     }
 
-    /** Fast native/JNI framed LZ4 with independent blocks (live logging). */
-    private static byte[] lz4FrameCompress(byte[] data, boolean high) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(Math.max(64, data.length / 2));
-        // HIGH uses larger blocks for better ratio; both keep BLOCK_INDEPENDENCE set.
-        BLOCKSIZE blockSize = high ? BLOCKSIZE.SIZE_1MB : BLOCKSIZE.SIZE_64KB;
-        try (OutputStream out = new LZ4FrameOutputStream(baos, blockSize)) {
-            out.write(data);
+    private static final ThreadLocal<Lz4Scratch> LZ4_FAST = ThreadLocal.withInitial(() -> new Lz4Scratch(false));
+    private static final ThreadLocal<Lz4Scratch> LZ4_HIGH = ThreadLocal.withInitial(() -> new Lz4Scratch(true));
+
+    /**
+     * Independent-block LZ4 frame using a reused {@link LZ4Compressor} and dest
+     * buffers (same bytes as {@code new LZ4FrameOutputStream(out, blockSize)}).
+     */
+    private static ByteBuffer lz4FrameCompressDirect(byte[] data, boolean high) {
+        Lz4Scratch s = (high ? LZ4_HIGH : LZ4_FAST).get();
+        s.out.reset();
+        s.header[0] = (byte) LZ4_MAGIC_0;
+        s.header[1] = (byte) LZ4_MAGIC_1;
+        s.header[2] = (byte) LZ4_MAGIC_2;
+        s.header[3] = (byte) LZ4_MAGIC_3;
+        s.header[4] = LZ4_FLG_INDEPENDENT_V1;
+        s.header[5] = high ? LZ4_BD_1MB : LZ4_BD_64KB;
+        int hc = (s.checksum.hash(s.header, 4, 2, 0) >> 8) & 0xFF;
+        s.header[6] = (byte) hc;
+        s.out.write(s.header, 0, 7);
+
+        int off = 0;
+        while (off < data.length) {
+            int chunk = Math.min(s.blockSize, data.length - off);
+            int max = s.compressor.maxCompressedLength(chunk);
+            if (s.compressed.length < max) {
+                s.compressed = new byte[max];
+            }
+            int clen = s.compressor.compress(data, off, chunk, s.compressed, 0, s.compressed.length);
+            if (clen >= chunk) {
+                putIntLE(s.sizeLE, chunk | LZ4_FRAME_INCOMPRESSIBLE_MASK);
+                s.out.write(s.sizeLE, 0, 4);
+                s.out.write(data, off, chunk);
+            } else {
+                putIntLE(s.sizeLE, clen);
+                s.out.write(s.sizeLE, 0, 4);
+                s.out.write(s.compressed, 0, clen);
+            }
+            off += chunk;
         }
-        return baos.toByteArray();
+        putIntLE(s.sizeLE, 0);
+        s.out.write(s.sizeLE, 0, 4);
+        return ByteBuffer.wrap(s.out.raw(), 0, s.out.size());
+    }
+
+    private static void putIntLE(byte[] dest, int value) {
+        dest[0] = (byte) value;
+        dest[1] = (byte) (value >>> 8);
+        dest[2] = (byte) (value >>> 16);
+        dest[3] = (byte) (value >>> 24);
+    }
+
+    private static final class GrowableBytes extends ByteArrayOutputStream {
+        GrowableBytes(int cap) {
+            super(cap);
+        }
+
+        byte[] raw() {
+            return buf;
+        }
+    }
+
+    private static final class Lz4Scratch {
+        final LZ4Compressor compressor;
+        final XXHash32 checksum;
+        final int blockSize;
+        final GrowableBytes out;
+        final byte[] header = new byte[7];
+        final byte[] sizeLE = new byte[4];
+        byte[] compressed;
+
+        Lz4Scratch(boolean high) {
+            LZ4Factory factory = LZ4Factory.fastestInstance();
+            compressor = high ? factory.highCompressor() : factory.fastCompressor();
+            checksum = XXHashFactory.fastestInstance().hash32();
+            blockSize = high ? LZ4_BLOCK_1MB : LZ4_BLOCK_64KB;
+            compressed = new byte[compressor.maxCompressedLength(blockSize)];
+            out = new GrowableBytes(1 << 16);
+        }
     }
 
     /**

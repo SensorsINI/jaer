@@ -10,7 +10,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
 import net.sf.jaer.chip.AEChip;
@@ -61,6 +60,12 @@ public class Aedat4FileOutputStream implements Closeable {
     private long uncompressedPayloadBytes;
     /** Compressed packet payload bytes written to the file (same as uncompressed if NONE). */
     private long compressedPayloadBytes;
+    private long[] evTimestamps;
+    private short[] evXs;
+    private short[] evYs;
+    private boolean[] evPolarities;
+    private FlatBufferBuilder eventBuilder;
+    private final ByteBuffer packetHeader = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
 
     public Aedat4FileOutputStream(File file, AEChip chip) throws IOException {
         this(new FileOutputStream(file), chip, CompressionType.LZ4);
@@ -168,36 +173,36 @@ public class Aedat4FileOutputStream implements Closeable {
         if (size == 0) {
             return;
         }
-        long[] timestamps = new long[size];
-        short[] xs = new short[size];
-        short[] ys = new short[size];
-        boolean[] polarities = new boolean[size];
+        evTimestamps = ensureLongs(evTimestamps, size);
+        evXs = ensureShorts(evXs, size);
+        evYs = ensureShorts(evYs, size);
+        evPolarities = ensureBooleans(evPolarities, size);
         int n = 0;
         if (skipFilteredOut) {
             // Same as display / reconstructRawPacket: iterator skips filteredOut.
             for (BasicEvent event : packet) {
-                n = appendPolarityEvent(event, timestamps, xs, ys, polarities, n);
+                n = appendPolarityEvent(event, evTimestamps, evXs, evYs, evPolarities, n);
             }
         } else {
             for (int k = 0; k < size; k++) {
-                n = appendPolarityEvent(packet.getEvent(k), timestamps, xs, ys, polarities, n);
+                n = appendPolarityEvent(packet.getEvent(k), evTimestamps, evXs, evYs, evPolarities, n);
             }
         }
         if (n == 0) {
             return;
         }
-        if (n < size) {
-            timestamps = Arrays.copyOf(timestamps, n);
-            xs = Arrays.copyOf(xs, n);
-            ys = Arrays.copyOf(ys, n);
-            polarities = Arrays.copyOf(polarities, n);
+        int minCap = Math.max(1024, n * 16 + 64);
+        if (eventBuilder == null) {
+            eventBuilder = new FlatBufferBuilder(minCap);
+        } else {
+            eventBuilder.clear();
         }
-        FlatBufferBuilder builder = new FlatBufferBuilder(Math.max(1024, n * 16 + 64));
-        int vector = net.sf.jaer.eventio.aedat4.dv.EventPacket.createElementsVector(builder, timestamps, xs, ys, polarities);
-        int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(builder, vector);
-        builder.finishSizePrefixed(root, "EVTS");
-        byte[] payload = builder.sizedByteArray();
-        writePacket(STREAM_EVENTS, payload, n, timestamps[0], timestamps[n - 1]);
+        int vector = net.sf.jaer.eventio.aedat4.dv.EventPacket.createElementsVector(
+                eventBuilder, evTimestamps, evXs, evYs, evPolarities, n);
+        int root = net.sf.jaer.eventio.aedat4.dv.EventPacket.createEventPacket(eventBuilder, vector);
+        eventBuilder.finishSizePrefixed(root, "EVTS");
+        byte[] payload = eventBuilder.sizedByteArray();
+        writePacket(STREAM_EVENTS, payload, n, evTimestamps[0], evTimestamps[n - 1]);
     }
 
     private int appendPolarityEvent(BasicEvent event, long[] timestamps, short[] xs, short[] ys,
@@ -267,17 +272,18 @@ public class Aedat4FileOutputStream implements Closeable {
     }
 
     private void writePacket(int streamId, byte[] payload, long numElements, long timestampStart, long timestampEnd) throws IOException {
-        byte[] toWrite = Aedat4Compression.compress(payload, compression);
+        ByteBuffer toWrite = Aedat4Compression.compressDirect(payload, compression);
         uncompressedPayloadBytes += payload.length;
-        compressedPayloadBytes += toWrite.length;
+        int compressedLen = toWrite.remaining();
+        compressedPayloadBytes += compressedLen;
         long byteOffset = channel.position();
-        ByteBuffer header = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN);
-        header.putInt(streamId);
-        header.putInt(toWrite.length);
-        header.flip();
-        channel.write(header);
-        channel.write(ByteBuffer.wrap(toWrite));
-        dataDefinitions.add(new DataDefinition(byteOffset, streamId, toWrite.length, numElements, timestampStart, timestampEnd));
+        packetHeader.clear();
+        packetHeader.putInt(streamId);
+        packetHeader.putInt(compressedLen);
+        packetHeader.flip();
+        channel.write(packetHeader);
+        channel.write(toWrite);
+        dataDefinitions.add(new DataDefinition(byteOffset, streamId, compressedLen, numElements, timestampStart, timestampEnd));
     }
 
     /**
@@ -399,6 +405,18 @@ public class Aedat4FileOutputStream implements Closeable {
                     eng.format((double) compressedPayloadBytes).trim()));
         }
         return sb.toString();
+    }
+
+    private static long[] ensureLongs(long[] a, int n) {
+        return a == null || a.length < n ? new long[n] : a;
+    }
+
+    private static short[] ensureShorts(short[] a, int n) {
+        return a == null || a.length < n ? new short[n] : a;
+    }
+
+    private static boolean[] ensureBooleans(boolean[] a, int n) {
+        return a == null || a.length < n ? new boolean[n] : a;
     }
 
     private static final class DataDefinition {

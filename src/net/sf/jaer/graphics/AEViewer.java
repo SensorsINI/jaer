@@ -2737,7 +2737,6 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
                 wantWaiting = true;
             }
         }
-        fixDeviceControlMenuItems();
         if (wantWaiting) {
             pendingFirstHardwareUseUi = null;
             pendingFirstHardwareUseImport = false;
@@ -6076,12 +6075,19 @@ public class AEViewer extends javax.swing.JFrame implements PropertyChangeListen
     /**
      * Fills in the device control menu (the USB menu) so that menu items are
      * populated with correct values of USB buffer size and number of buffers,
-     * etc. Runs in the Swing worker thread.
+     * etc. Runs in the Swing worker thread. Coalesced: ViewLoop used to call
+     * this every packet via {@link #openAEMonitor()}, flooding the EDT.
      */
+    private final AtomicBoolean deviceControlMenuFixScheduled = new AtomicBoolean(false);
+
     public void fixDeviceControlMenuItems() {
+        if (!deviceControlMenuFixScheduled.compareAndSet(false, true)) {
+            return;
+        }
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                deviceControlMenuFixScheduled.set(false);
                 final boolean deviceOpen = aemon != null && aemon.isOpen();
                 if (!deviceOpen) {
                     for (int i = 0; i < controlMenu.getMenuComponentCount(); i++) {
