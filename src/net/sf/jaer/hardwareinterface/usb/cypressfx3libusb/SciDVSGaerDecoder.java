@@ -72,6 +72,10 @@ final class SciDVSGaerDecoder {
     private boolean rollingShutterFrame;
 
     SciDVSGaerDecoder(final Config config) {
+        this(config, null);
+    }
+
+    SciDVSGaerDecoder(final Config config, final String logIdentity) {
         this.config = config;
         initFrame();
     }
