@@ -9,7 +9,10 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-/** Characterizes GAER grouped words against ordinary DAViS per-address words. */
+/**
+ * Passing characterization vectors that discriminate GAER grouped words from
+ * ordinary DAViS per-address words using the actual production decoder.
+ */
 public final class SciDVSGaerRouteDiscriminationDemo {
 
     private static int assertions;
@@ -19,7 +22,7 @@ public final class SciDVSGaerRouteDiscriminationDemo {
 
     public static void main(final String[] args) {
         testDavisAddressThirtyExpandsAsGaerBits();
-        testOutOfRangeGaerGroupIsLoud();
+        testOutOfRangeGaerGroupIsLoudOnce();
         System.out.println("SCIDVS_GAER_ROUTE_DISCRIMINATION ASSERTIONS=" + assertions);
         System.out.println("SCIDVS_GAER_ROUTE_DISCRIMINATION PASS");
     }
@@ -46,14 +49,14 @@ public final class SciDVSGaerRouteDiscriminationDemo {
         }
     }
 
-    private static void testOutOfRangeGaerGroupIsLoud() {
+    private static void testOutOfRangeGaerGroupIsLoudOnce() {
         final RecordingSink sink = new RecordingSink();
         try (SevereCapture capture = new SevereCapture()) {
             new SciDVSGaerDecoder(defaultConfig()).decode(words(0x100A, 0x3C01), sink);
-            require(sink.events.isEmpty(), "out-of-range GAER group emits no polarity");
-            require(capture.count >= 1, "out-of-range GAER group emits a loud SEVERE");
-            require(capture.message != null && capture.message.contains("28"),
-                    "out-of-range SEVERE identifies the rejected group");
+            require(sink.events.isEmpty(), "out-of-range GAER group 28 emits no polarity");
+            require(capture.count == 1, "out-of-range GAER group 28 emits one loud SEVERE");
+            require(capture.message != null && capture.message.contains("groupAddr: 28"),
+                    "group 28 SEVERE identifies the rejected group");
         }
     }
 

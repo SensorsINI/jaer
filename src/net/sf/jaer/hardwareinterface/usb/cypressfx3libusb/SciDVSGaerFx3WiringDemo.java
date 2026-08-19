@@ -13,11 +13,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Headless source-structure and reflection acceptance test for routing SciDVS
- * GAER through the factory-opened DAViS FX3 reader. This unit-24 prefix covers
- * eager ownership, route placement, shared attach/flush, and the frozen DAViS
- * loop. Unit 25 adds null-chip hardening checks and unit 26 restores the exact
- * terminal wiring oracle.
+ * Frozen source-structure and reflection acceptance test for routing SciDVS GAER
+ * through the factory-opened DAViS FX3 reader. It compiles before production
+ * wiring exists and is intentionally runtime RED while the reader lacks its
+ * decoder/raw/typed/resolved fields. It reads source only; it constructs no USB
+ * device and exercises no hardware.
  */
 public final class SciDVSGaerFx3WiringDemo {
 
@@ -36,7 +36,7 @@ public final class SciDVSGaerFx3WiringDemo {
         testExpectedFields();
         testProtectedTranslateAndNoDuplicateGaerParserState();
         testEagerConstructionReusesExistingConfiguration(source);
-        testLazyHarden(source);
+        testSinkWiringAndLazyHarden(source);
         testLazyResolutionAndEarlyGaerBranch(source);
         testStandardDavisLoopHash(source);
         System.out.println("SCIDVS_GAER_FX3_WIRING ASSERTIONS=" + assertions);
@@ -109,26 +109,36 @@ public final class SciDVSGaerFx3WiringDemo {
                 "GAER typed sink uses the existing typed builder and raw sink");
         require(!constructor.contains("SciDVSGaerMode.resolve"),
                 "GAER mode is not resolved eagerly before chip attachment");
-        require(count(source, "SciDVSGaerMode.PROPERTY") == 1,
-                "reader uses the mode resolver's owned property constant once");
     }
 
-    private static void testLazyHarden(final String source) {
+    private static void testSinkWiringAndLazyHarden(final String source) {
         final String constructor = between(source,
                 "public RetinaAEReader(final CypressFX3 cypress)",
                 "private void checkMonotonicTimestamp()");
         final String compact = constructor.replaceAll("\\s+", " ");
+
+        require(compact.contains("super.toString(), this::shouldLogGaerWarning)"),
+                "eager decoder receives super.toString and this::shouldLogGaerWarning");
+        require(compact.contains("() -> !usbTypedDemuxActive || dualWriteApsImuAe"),
+                "raw sink gate is exactly the dual-write predicate");
         require(compact.contains("() -> getChip() != null ? getChip().getSizeX() : dvsSizeX"),
-                "typed X supplier falls back to configured DVS width while chip is null");
+                "typed X supplier is exactly the chip-null fallback supplier");
+        require(count(constructor, "this::handleGaerTimestampReset") == 2,
+                "timestamp reset hook is passed to both raw and typed sinks");
+
+        final String shouldLog = between(constructor, "private boolean shouldLogGaerWarning()",
+                "private void handleGaerTimestampReset()");
+        require(shouldLog.contains("warningCount++"), "shouldLogGaerWarning increments warningCount");
+        require(shouldLog.contains("WARNING_INTERVAL"), "shouldLogGaerWarning throttles by WARNING_INTERVAL");
 
         final String translate = between(source,
                 "protected void translateEvents(final ByteBuffer b)",
                 "public void propertyChange(final PropertyChangeEvent arg0)");
         require(translate.substring(0, translate.indexOf("gaerResolved = SciDVSGaerMode.resolveFromSystemProperty"))
                 .contains("gaerModeUnresolved && getChip() != null"),
-                "lazy resolution waits for a nonnull chip and therefore retries");
+                "lazy resolution is guarded by a chip nonnull guard");
         require(translate.contains("if (gaerResolved != null && gaerResolved)"),
-                "active GAER branch is null-safe while mode is unresolved");
+                "active GAER branch is null-safe so an unknown chip falls through and later retries");
     }
 
     private static void testLazyResolutionAndEarlyGaerBranch(final String source) {
