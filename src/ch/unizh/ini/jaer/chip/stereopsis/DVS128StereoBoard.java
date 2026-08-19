@@ -57,7 +57,7 @@ public class DVS128StereoBoard extends DVS128 implements StereoChipInterface {
     @Override
     public void setAeViewer(AEViewer aeViewer) {
         super.setAeViewer(aeViewer);
-        aeViewer.setLogFilteredEventsEnabled(false); // not supported for binocular reconstruction yet TODO
+        aeViewer.setRecordFilteredEventsEnabled(false); // not supported for binocular reconstruction yet TODO
     }
 
     @Override

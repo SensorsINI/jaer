@@ -92,7 +92,7 @@ public class Davis240CStereoPair extends DavisBaseCamera implements StereoChipIn
     @Override
     public void setAeViewer (AEViewer aeViewer){
         super.setAeViewer(aeViewer);
-        aeViewer.setLogFilteredEventsEnabled(false); // not supported for binocular reconstruction yet TODO
+        aeViewer.setRecordFilteredEventsEnabled(false); // not supported for binocular reconstruction yet TODO
     }
 
     public AEChip getLeft (){

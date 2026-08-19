@@ -73,7 +73,7 @@ public class MultiDVS128CameraChip extends DVS128 implements MultiCameraInterfac
     @Override
     public void setAeViewer(AEViewer aeViewer) {
         super.setAeViewer(aeViewer);
-        aeViewer.setLogFilteredEventsEnabled(false); // not supported for binocular reconstruction yet TODO
+        aeViewer.setRecordFilteredEventsEnabled(false); // not supported for binocular reconstruction yet TODO
     }
 
     public AEChip getCamera(int i) {
