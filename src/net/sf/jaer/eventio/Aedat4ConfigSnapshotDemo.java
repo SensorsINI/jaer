@@ -2,6 +2,7 @@ package net.sf.jaer.eventio;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
@@ -38,6 +39,8 @@ public class Aedat4ConfigSnapshotDemo {
         testSnapshotRecordedAndStable();
         testEmptyAndNoSidecar();
         testDescriptorsAndClosePatchStable();
+        testCloseHeaderMismatchStillReleasesStream();
+        testCloseHeaderMismatchSuppressesCloseFailure();
         System.out.println("ALL PASS");
     }
 
@@ -115,6 +118,68 @@ public class Aedat4ConfigSnapshotDemo {
                 "infoNode open/close byte length stable, was " + openInfoLength + " now " + info.length());
         Files.deleteIfExists(f.toPath());
         System.out.println("PASS testDescriptorsAndClosePatchStable");
+    }
+
+    /** A real mutable-chip IOHeader size mismatch remains primary but cannot leak the supplied file handle. */
+    private static void testCloseHeaderMismatchStillReleasesStream() throws Exception {
+        AEChip chip = bareChip(withPrefs());
+        setChipSize(chip, 1, 2);
+        RecordingConfigurationSnapshot snap = RecordingConfigurationSnapshot.captureFromChip(chip);
+        File f = File.createTempFile("jaer-aedat4-close-mismatch", ".aedat4");
+        TrackingFileOutputStream stream = new TrackingFileOutputStream(f, false);
+        Aedat4FileOutputStream out = new Aedat4FileOutputStream(stream, chip, CompressionType.LZ4, snap);
+        setChipSize(chip, 12345, 54321);
+
+        IOException mismatch = expectCloseMismatch(out);
+        assertTrue(mismatch.getMessage().contains("IOHeader size changed on close"),
+                "real geometry mutation reports IOHeader size mismatch, got " + mismatch);
+        assertTrue(stream.closeCalls == 1,
+                "mismatch closes supplied FileOutputStream exactly once, got " + stream.closeCalls);
+        assertTrue(!stream.getChannel().isOpen(), "mismatch closes underlying file channel");
+        try {
+            stream.write(1);
+            throw new AssertionError("closed mismatch file handle accepted a write");
+        } catch (IOException expected) {
+            // expected: actual supplied handle is unusable
+        }
+        out.close();
+        assertTrue(stream.closeCalls == 1, "second close after mismatch is an idempotent no-op");
+        Files.deleteIfExists(f.toPath());
+        System.out.println("PASS testCloseHeaderMismatchStillReleasesStream closeCalls=" + stream.closeCalls);
+    }
+
+    /** A close failure is suppressed on the original IOHeader mismatch after the handle is actually released. */
+    private static void testCloseHeaderMismatchSuppressesCloseFailure() throws Exception {
+        AEChip chip = bareChip(withPrefs());
+        setChipSize(chip, 7, 8);
+        RecordingConfigurationSnapshot snap = RecordingConfigurationSnapshot.captureFromChip(chip);
+        File f = File.createTempFile("jaer-aedat4-close-suppressed", ".aedat4");
+        TrackingFileOutputStream stream = new TrackingFileOutputStream(f, true);
+        Aedat4FileOutputStream out = new Aedat4FileOutputStream(stream, chip, CompressionType.LZ4, snap);
+        setChipSize(chip, 1234567, 7654321);
+
+        IOException mismatch = expectCloseMismatch(out);
+        assertTrue(mismatch.getMessage().contains("IOHeader size changed on close"),
+                "header mismatch remains the primary exception");
+        assertTrue(mismatch.getSuppressed().length == 1,
+                "one close failure is suppressed, got " + mismatch.getSuppressed().length);
+        assertTrue(mismatch.getSuppressed()[0] == stream.injectedCloseFailure,
+                "exact injected close failure is suppressed on mismatch");
+        assertTrue(stream.closeCalls == 1 && !stream.getChannel().isOpen(),
+                "failing close still released channel exactly once");
+        out.close();
+        assertTrue(stream.closeCalls == 1, "second close does not mask/retry exceptional finalization");
+        Files.deleteIfExists(f.toPath());
+        System.out.println("PASS testCloseHeaderMismatchSuppressesCloseFailure closeCalls=" + stream.closeCalls);
+    }
+
+    private static IOException expectCloseMismatch(Aedat4FileOutputStream out) throws Exception {
+        try {
+            out.close();
+        } catch (IOException expected) {
+            return expected;
+        }
+        throw new AssertionError("expected close-time IOHeader size mismatch");
     }
 
     // ------------------------------------------------------------------
@@ -211,6 +276,49 @@ public class Aedat4ConfigSnapshotDemo {
 
     private static Preferences withPrefs() {
         return RecordingConfigSnapshotDemo.MemoryPreferences.root();
+    }
+
+    private static void setChipSize(AEChip chip, int sizeX, int sizeY) throws Exception {
+        java.lang.reflect.Field x = net.sf.jaer.chip.Chip2D.class.getDeclaredField("sizeX");
+        java.lang.reflect.Field y = net.sf.jaer.chip.Chip2D.class.getDeclaredField("sizeY");
+        x.setAccessible(true);
+        y.setAccessible(true);
+        x.setInt(chip, sizeX);
+        y.setInt(chip, sizeY);
+    }
+
+    private static final class TrackingFileOutputStream extends FileOutputStream {
+
+        final IOException injectedCloseFailure = new IOException("injected tracking stream close failure");
+        final boolean failAfterClose;
+        int closeCalls;
+        private boolean closing;
+
+        TrackingFileOutputStream(File file, boolean failAfterClose) throws IOException {
+            super(file);
+            this.failAfterClose = failAfterClose;
+        }
+
+        @Override
+        public void close() throws IOException {
+            // FileOutputStream.close() closes its FileChannel, whose parent callback
+            // can re-enter this override on this JDK. Count owner-level invocations,
+            // not that implementation recursion.
+            if (closing) {
+                super.close();
+                return;
+            }
+            closeCalls++;
+            closing = true;
+            try {
+                super.close();
+            } finally {
+                closing = false;
+            }
+            if (failAfterClose) {
+                throw injectedCloseFailure;
+            }
+        }
     }
 
     private static void assertTrue(boolean cond, String msg) {

@@ -349,22 +349,67 @@ public class Aedat4FileOutputStream implements Closeable {
         if (closed) {
             return;
         }
-        long tablePosition = channel.position();
-        channel.write(ByteBuffer.wrap(buildFileDataTable()));
-        byte[] patchedHeader = buildIOHeader(tablePosition);
-        if (patchedHeader.length != headerBytes.length) {
-            throw new IOException(String.format(
-                    "AEDAT-4 IOHeader size changed on close (%d -> %d); cannot patch dataTablePosition=%d",
-                    headerBytes.length, patchedHeader.length, tablePosition));
-        }
-        long end = channel.position();
-        channel.position(headerPosition);
-        channel.write(ByteBuffer.wrap(patchedHeader));
-        channel.position(end);
-        headerBytes = patchedHeader;
         closed = true;
-        outputStream.close();
+        Throwable failure = null;
+        try {
+            long tablePosition = channel.position();
+            channel.write(ByteBuffer.wrap(buildFileDataTable()));
+            byte[] patchedHeader = buildIOHeader(tablePosition);
+            if (patchedHeader.length != headerBytes.length) {
+                throw new IOException(String.format(
+                        "AEDAT-4 IOHeader size changed on close (%d -> %d); cannot patch dataTablePosition=%d",
+                        headerBytes.length, patchedHeader.length, tablePosition));
+            }
+            long end = channel.position();
+            channel.position(headerPosition);
+            channel.write(ByteBuffer.wrap(patchedHeader));
+            channel.position(end);
+            headerBytes = patchedHeader;
+        } catch (IOException | RuntimeException e) {
+            failure = e;
+        } finally {
+            // Finalization failures (including a mutable-chip IOHeader size change)
+            // must never retain the caller-supplied file handle. Close the owning
+            // stream exactly once; if a custom stream throws before closing its
+            // channel, the still-open channel is the fallback cleanup layer.
+            try {
+                outputStream.close();
+            } catch (IOException | RuntimeException closeFailure) {
+                failure = appendFailure(failure, closeFailure);
+            }
+            if (channel.isOpen()) {
+                try {
+                    channel.close();
+                } catch (IOException | RuntimeException closeFailure) {
+                    failure = appendFailure(failure, closeFailure);
+                }
+            }
+        }
+        rethrowCloseFailure(failure);
         log.info(formatCompressionSummary());
+    }
+
+    private static Throwable appendFailure(Throwable primary, Throwable next) {
+        if (primary == null) {
+            return next;
+        }
+        if (next != primary) {
+            primary.addSuppressed(next);
+        }
+        return primary;
+    }
+
+    private static void rethrowCloseFailure(Throwable failure) throws IOException {
+        if (failure == null) {
+            return;
+        }
+        if (failure instanceof IOException) {
+            throw (IOException) failure;
+        }
+        if (failure instanceof RuntimeException) {
+            throw (RuntimeException) failure;
+        }
+        throw new IOException("Unexpected AEDAT-4 close failure", failure);
     }
 
     /**
