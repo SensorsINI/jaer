@@ -241,6 +241,7 @@ public final class DrawGL {
 
     /** GL-thread TextRenderer cache; a new renderer every string leaked JOGL textures (recording overlay). */
     private static final Map<Integer, TextRenderer> textRenderers = new HashMap<>();
+    private static final Rectangle2D UNMEASURED_BOUNDS = new Rectangle2D.Float();
 
     private static TextRenderer textRendererFor(int fontSize) {
         TextRenderer r = textRenderers.get(fontSize);
@@ -273,9 +274,17 @@ public final class DrawGL {
         TextRenderer textRenderer = textRendererFor(fontSize);
         textRenderer.begin3DRendering();
         textRenderer.setColor(color);
-        Rectangle2D r = textRenderer.getBounds(s);
-        r.setRect(r.getX(), r.getY(), r.getWidth() * scale, r.getHeight() * scale); // adjust bounds for actual drawing scale of text
-        textRenderer.draw3D(s, (int) (x - alignmentX * r.getWidth()), (int) (y), 0, scale);
+        Rectangle2D r;
+        if (alignmentX == 0) {
+            // getBounds() builds a GlyphVector for the whole string; noise-filter overlays
+            // change every frame and are left-aligned, so skip the measure.
+            r = UNMEASURED_BOUNDS;
+            textRenderer.draw3D(s, x, y, 0, scale);
+        } else {
+            r = textRenderer.getBounds(s);
+            r.setRect(r.getX(), r.getY(), r.getWidth() * scale, r.getHeight() * scale); // adjust bounds for actual drawing scale of text
+            textRenderer.draw3D(s, (int) (x - alignmentX * r.getWidth()), (int) (y), 0, scale);
+        }
         textRenderer.end3DRendering();
         return r;
     }
