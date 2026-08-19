@@ -344,7 +344,7 @@ public class CypressFX2LibUsbDVS128HardwareInterface extends CypressFX2Biasgen i
                                 final int x = sxm - ((addr & 0xfe) >>> 1);
                                 final int y = (addr & 0x7f00) >>> 8;
                                 final boolean on = ((1 - addr) & 1) != 0;
-                                polarityBuilder.addPolarity(x, y, on, ts);
+                                polarityBuilder.addPolarity(x, y, on, ts, addr);
                             }
                         }
                         eventCounter++;
