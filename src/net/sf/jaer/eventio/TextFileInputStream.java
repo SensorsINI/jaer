@@ -713,6 +713,11 @@ public class TextFileInputStream extends BufferedInputStream implements AEFileIn
         return s;
     }
 
+    @Override
+    public String getFileInfo() {
+        return toString();
+    }
+
     /**
      * @return the eventsProcessed
      */

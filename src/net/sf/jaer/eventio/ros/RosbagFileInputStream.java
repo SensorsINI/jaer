@@ -1466,6 +1466,11 @@ public class RosbagFileInputStream implements AEFileInputStreamInterface, Rosbag
         return super.toString() + Character.LINE_SEPARATOR + rosbagInfoString;
     }
 
+    @Override
+    public String getFileInfo() {
+        return rosbagInfoString != null ? rosbagInfoString : toString();
+    }
+
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         this.support.addPropertyChangeListener(listener);
     }

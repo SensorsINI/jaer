@@ -973,6 +973,18 @@ public class DsecHdf5AEInputStream implements AEFileInputStreamInterface {
     }
 
     @Override
+    public String getFileInfo() {
+        EngineeringFormat eng = new EngineeringFormat();
+        eng.setPrecision(3);
+        return String.format("DSEC HDF5 %s: %,d events, %dx%d, duration=%ss",
+                file.getName(),
+                eventCount,
+                sensorWidth,
+                sensorHeight,
+                eng.format(getDurationUs() * 1e-6).trim());
+    }
+
+    @Override
     public int getFirstTimestamp() {
         return firstTimestamp;
     }
