@@ -586,8 +586,8 @@ public class ChipCanvas implements GLEventListener, Observer {
     private static final Color RECORDING_OVERLAY_COLOR = new Color(1f, 0.12f, 0.12f, 0.55f);
 
     /**
-     * Overlay while logging: transparent red {@code Recording}, elapsed
-     * {@code Recorded XXhYYmZZs}, plus total and remaining when a logging time
+     * Overlay while recording: transparent red {@code Recording}, elapsed
+     * {@code Recorded XXhYYmZZs}, plus total and remaining when a recording time
      * limit is set. Gated by {@link AEViewer#isShowRecordingOverlay()}.
      */
     private void drawRecordingOverlayIfNeeded(final GLAutoDrawable drawable) {
@@ -599,11 +599,11 @@ public class ChipCanvas implements GLEventListener, Observer {
         if (viewer == null) {
             viewer = aeViewer;
         }
-        if (viewer == null || !viewer.isShowRecordingOverlay() || !viewer.isLoggingEnabled()) {
+        if (viewer == null || !viewer.isShowRecordingOverlay() || !viewer.isRecordingEnabled()) {
             return;
         }
-        String recordingLine = viewer.isLoggingPaused() ? "Recording paused" : "Recording";
-        String limitText = viewer.getLoggingTimeLimitOverlayText();
+        String recordingLine = viewer.isRecordingPaused() ? "Recording paused" : "Recording";
+        String limitText = viewer.getRecordingTimeLimitOverlayText();
         String[] limitLines = (limitText == null || limitText.isEmpty()) ? new String[0] : limitText.split("\n");
         try {
             GL2 gl = drawable.getGL().getGL2();
@@ -655,7 +655,7 @@ public class ChipCanvas implements GLEventListener, Observer {
         }
         String[] lines = {
             "Welcome to jAER-" + welcomeReleaseVersion,
-            "Plug in a device or use File/Open logged data file..",
+            "Plug in a device or use File/Open recorded data file..",
             "Choose device from AEChip menu",
             "Get sample data via Help / Sample data",
             "See Help menu for more information"

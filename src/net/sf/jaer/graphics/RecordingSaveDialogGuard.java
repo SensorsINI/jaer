@@ -1,5 +1,5 @@
 /*
- * Guards JFileChooser save dialogs against stray logging-shortcut keystrokes.
+ * Guards JFileChooser save dialogs against stray recording-shortcut keystrokes.
  */
 package net.sf.jaer.graphics;
 
@@ -20,7 +20,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 /**
- * Prevents the logging shortcut key ({@code L} menu accelerator / {@code l}
+ * Prevents the recording shortcut key ({@code L} menu accelerator / {@code l}
  * button mnemonic) from replacing the preselected chip-datestamp filename in
  * a save dialog (JDK-6391688 / JDK-6493715).
  * <p>
@@ -31,19 +31,19 @@ import javax.swing.event.DocumentListener;
  * filename field text directly (pathless {@link JFileChooser#setSelectedFile}
  * often fails to update the Windows L&amp;F text field).
  */
-public final class LoggingSaveDialogGuard {
+public final class RecordingSaveDialogGuard {
 
     /** How long after dialog open to treat lone {@code l}/{@code L} as stray. */
     private static final long STRAY_KEY_GUARD_MS = 1500;
 
-    private LoggingSaveDialogGuard() {
+    private RecordingSaveDialogGuard() {
     }
 
     /**
      * True when the filename is only repeated lowercase {@code l} characters
-     * (the logging shortcut leaking into the field).
+     * (the recording shortcut leaking into the field).
      */
-    public static boolean isStrayLoggingShortcutFilename(String filename) {
+    public static boolean isStrayRecordingShortcutFilename(String filename) {
         return filename != null && filename.matches("(?i)l+");
     }
 
@@ -52,7 +52,7 @@ public final class LoggingSaveDialogGuard {
      * {@link JFileChooser#showSaveDialog(Component)}.
      * <p>
      * When called on the EDT, opening is deferred via a secondary event loop so
-     * the logging shortcut's {@code KEY_TYPED} is flushed before the filename
+     * the recording shortcut's {@code KEY_TYPED} is flushed before the filename
      * field takes focus.
      */
     public static int showSaveDialog(JFileChooser chooser, Component parent, String defaultBase) {
@@ -92,7 +92,7 @@ public final class LoggingSaveDialogGuard {
                                 return;
                             }
                             JTextField field = findFilenameTextField(chooser);
-                            if (field != null && isStrayLoggingShortcutFilename(field.getText().trim())) {
+                            if (field != null && isStrayRecordingShortcutFilename(field.getText().trim())) {
                                 restoreSelectedFilename(chooser, defaultBase);
                             }
                         });
@@ -264,7 +264,7 @@ public final class LoggingSaveDialogGuard {
         if (filenameField == null) {
             return;
         }
-        if (isStrayLoggingShortcutFilename(filenameField.getText().trim())) {
+        if (isStrayRecordingShortcutFilename(filenameField.getText().trim())) {
             restoreSelectedFilename(chooser, defaultBase);
         }
         listenerHolder[0] = new DocumentListener() {
@@ -272,7 +272,7 @@ public final class LoggingSaveDialogGuard {
                 if (System.currentTimeMillis() - dialogOpenTimeMs > STRAY_KEY_GUARD_MS) {
                     return;
                 }
-                if (isStrayLoggingShortcutFilename(filenameField.getText().trim())) {
+                if (isStrayRecordingShortcutFilename(filenameField.getText().trim())) {
                     SwingUtilities.invokeLater(() -> restoreSelectedFilename(chooser, defaultBase));
                 }
             }

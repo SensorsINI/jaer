@@ -177,7 +177,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
     }
 
     synchronized public void doOpenFileAndRecordAedat() {
-        getChip().getAeViewer().startLogging();
+        getChip().getAeViewer().startRecording();
         openFileAndRecordAedat = true;
         doOpenFile();
     }
@@ -381,7 +381,7 @@ public class DavisTextInputReader extends AbstractDavisTextIo implements Propert
                 if (line == null) {
                     log.info(String.format("reached end of file after %,d lines and %,d events; rewinding", lastLineNumber, getEventsProcessed()));
                     if (openFileAndRecordAedat) {
-                        getChip().getAeViewer().stopLogging(true);
+                        getChip().getAeViewer().stopRecording(true);
                         openFileAndRecordAedat = false;
                         doCloseFile();
                         break;

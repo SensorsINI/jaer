@@ -555,8 +555,8 @@ public class AEPlayer extends AbstractAEPlayer implements AEFileInputStreamInter
                     viewer.getPlayerControls().addMeToPropertyChangeListeners(aeInputStream);
                     log.fine("done(): setPlaybackControlsEnabledState");
                     viewer.setPlaybackControlsEnabledState(true);
-                    log.fine("done(): fixLoggingControls");
-                    viewer.fixLoggingControls();
+                    log.fine("done(): fixRecordingControls");
+                    viewer.fixRecordingControls();
                     try {
                         log.fine("done(): renderer.resetFrame");
                         viewer.getChip().getRenderer().resetFrame(0);

@@ -39,7 +39,7 @@ import net.sf.jaer.util.textio.DavisTextEventFormatter;
 
 /**
  * File → Save As dialog: AEDAT-4, CSV/text, or DSEC HDF5 offline export of the
- * open recording (IN/OUT clip; preferred alternative to relogging).
+ * open recording (IN/OUT clip; preferred alternative to re-recording).
  */
 public final class SaveAsExportDialog extends JDialog implements PropertyChangeListener {
 
@@ -178,10 +178,10 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         row++;
         c.gridy = row;
         applyFiltersCb.setToolTipText("<html>Checked: run the current EventFilter chain before writing "
-                + "(same as filtered relogging).<br>"
+                + "(same as filtered re-recording).<br>"
                 + "Unchecked: write extracted events with no filtering.<br>"
                 + "AEDAT-4 Save As is the preferred way to clip or filter a recording; "
-                + "the logging button still relogs at playback pace.</html>");
+                + "the recording button still re-records at playback pace.</html>");
         form.add(applyFiltersCb, c);
 
         JPanel csvPanel = new JPanel(new GridBagLayout());
@@ -247,7 +247,7 @@ public final class SaveAsExportDialog extends JDialog implements PropertyChangeL
         ac.gridy = 0;
         ac.gridwidth = 2;
         aedat4Panel.add(new JLabel("<html>Native DV-compatible AEDAT-4 (events, frames, IMU in one file).<br>"
-                + "Pauses playback and scans as fast as possible — preferred over relogging "
+                + "Pauses playback and scans as fast as possible — preferred over re-recording "
                 + "to clip with IN/OUT or apply EventFilters.</html>"), ac);
         ac.gridy++;
         ac.gridwidth = 1;

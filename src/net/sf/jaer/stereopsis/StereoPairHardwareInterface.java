@@ -566,7 +566,7 @@ public class StereoPairHardwareInterface implements AEMonitorInterface,ReaderBuf
      * <p>
      * Setting this flag true will save substantial computation and decrease the average
      * latency, but
-     * Playback of logged data will likely not work well since there is an
+     * Playback of recorded data will likely not work well since there is an
      * integral (and natural) assumption that time increases monotonically
      * in much of jAER event processing.
      * 

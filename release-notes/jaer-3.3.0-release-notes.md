@@ -56,11 +56,11 @@ Start jAER from the install directory or the desktop / GNOME entry the installer
 <img src="https://raw.githubusercontent.com/SensorsINI/jaer/master/release-notes/3.3.0/SplashScreen.png" alt="jAER 3.3.0 splash" width="50%" />
 -->
 
-**jAER 3.3.0** is a major update after **3.2.0**: bundled Adoptium Temurin **25** (noticeably faster startup than 3.2.0’s Temurin 21), **AEDAT-4 export**, **Davis autoexposure**, and **OpenCV calibration**. **File → Save As** can write a DV-compatible `.aedat4` clip (IN/OUT, optional EventFilters) instead of relogging. **File → Show file info** summarizes an open AEDAT-4 recording. Live **AEDAT-4 logging** applies EventFilters when that checkbox is on, and long files no longer jump backward every ~36 min. Davis **AEC** is a camera-style mean-to-target with a highlight clamp. **SingleCameraCalibration** uses typed Frame/Polarity packets, a DAVIS pixmap layout, and on-screen capture/calibrate feedback. Logging to another folder uses the chooser directory, a recent-folders pulldown, and a **Moving recording** dialog that closes when the copy finishes. The filter panel **hides disabled filters** by default. Installers ship per-OS OpenCV natives (smaller media). A **Recording** overlay (elapsed / remaining) can stay on the chip view while logging.
+**jAER 3.3.0** is a major update after **3.2.0**: bundled Adoptium Temurin **25** (noticeably faster startup than 3.2.0’s Temurin 21), **AEDAT-4 export**, **Davis autoexposure**, and **OpenCV calibration**. **File → Save As** can write a DV-compatible `.aedat4` clip (IN/OUT, optional EventFilters) instead of re-recording. **File → Show file info** summarizes an open AEDAT-4 recording. Live **AEDAT-4 recording** applies EventFilters when that checkbox is on, and long files no longer jump backward every ~36 min. Davis **AEC** is a camera-style mean-to-target with a highlight clamp. **SingleCameraCalibration** uses typed Frame/Polarity packets, a DAVIS pixmap layout, and on-screen capture/calibrate feedback. Recording to another folder uses the chooser directory, a recent-folders pulldown, and a **Moving recording** dialog that closes when the copy finishes. The filter panel **hides disabled filters** by default. Installers ship per-OS OpenCV natives (smaller media). A **Recording** overlay (elapsed / remaining) can stay on the chip view while recording.
 
 ### Highlights
 
-* **File → Save As… AEDAT-4** — playback-only export can write native DV-compatible `.aedat4` (events, frames, IMU) with **Use IN and OUT markers** and **Apply EventFilters** (both on by default). Compression is chosen in the dialog (LZ4 recommended). Corrupt or out-of-bounds events are skipped and counted. This is the preferred way to clip or filter a recording; relogging is unchanged. CSV/text and DSEC HDF5 remain available.
+* **File → Save As… AEDAT-4** — playback-only export can write native DV-compatible `.aedat4` (events, frames, IMU) with **Use IN and OUT markers** and **Apply EventFilters** (both on by default). Compression is chosen in the dialog (LZ4 recommended). Corrupt or out-of-bounds events are skipped and counted. This is the preferred way to clip or filter a recording; re-recording is unchanged. CSV/text and DSEC HDF5 remain available.
 
 <!-- save-as-aedat4.png -->
 
@@ -68,7 +68,7 @@ Start jAER from the install directory or the desktop / GNOME entry the installer
 
 <!-- file-info.png -->
 
-* **Recording overlay** — while logging, the chip view can show a transparent red **Recording** (or **Recording paused**) plus elapsed `XXhYYmZZs`, and total / remaining when a time limit is set. Toggle: File → Preferences → **Show recording overlay** (default on). File → Preferences itself is nonmodal and reused while the viewer is open.
+* **Recording overlay** — while recording, the chip view can show a transparent red **Recording** (or **Recording paused**) plus elapsed `XXhYYmZZs`, and total / remaining when a time limit is set. Toggle: File → Preferences → **Show recording overlay** (default on). File → Preferences itself is nonmodal and reused while the viewer is open.
 
 <!-- recording-overlay.png -->
 
@@ -90,21 +90,24 @@ Start jAER from the install directory or the desktop / GNOME entry the installer
 
 ### Features
 
+* **Recording terminology**
+  * Sensor data capture is labeled **recording** (toolbar **Start recording**, File menu, Preferences) to distinguish it from console `java.util.logging`. The `l` shortcut is unchanged. Remote commands `startrecording` / `stoprecording` / `togglesyncrecording` are primary; `startlogging` / `stoplogging` / `togglesynclogging` remain as aliases.
+
 * **File → Save As…** (`Ctrl+Shift+S`, playback only)
   * Native **AEDAT-4** export (default): DV-compatible `.aedat4`; IN/OUT clip; optional EventFilters; compression None / LZ4 / LZ4 high / ZSTD / ZSTD high.
   * CSV/text and DSEC-layout HDF5 unchanged; DAVIS/CDAVIS HVS sidecars still CSV/HDF5 only.
   * Skip corrupt or out-of-bounds events; report how many were dropped.
-  * Relogging (logging button) is unchanged.
+  * Re-recording (recording button) is unchanged.
 
 * **File → Show file info…**
   * AEDAT-4 playback: nonmodal summary (counts, duration, size). Other formats stay disabled.
 
-* **Live AEDAT-4 logging**
-  * **Enable filtering of logged or network output events** applies the EventFilter chain to `.aedat4` logs (it previously omitted filtered events unless that checkbox was already on).
+* **Live AEDAT-4 recording**
+  * **Enable filtering of recorded or network output events** applies the EventFilter chain to `.aedat4` recordings (it previously omitted filtered events unless that checkbox was already on).
   * 32-bit camera timestamps are unwrapped so long recordings do not jump backward every ~36 min.
 
 * **Display / Preferences**
-  * **Show recording overlay** (default on): elapsed time while logging; total and remaining when a limit is set.
+  * **Show recording overlay** (default on): elapsed time while recording; total and remaining when a limit is set.
   * File → Preferences is nonmodal (Hide on close; reused for the viewer lifetime).
   * Filter panel **Hide disabled filters** defaults **on** (simpler view of enabled filters). File → Preferences → Filters still toggles it.
 
@@ -128,9 +131,9 @@ Start jAER from the install directory or the desktop / GNOME entry the installer
 
 ### Bug fixes and minor improvements
 
-* Fixed **logging save** when the destination is a different folder (`JFileChooser` parent vs current directory); **Show folder** and Recent Files now match the saved file.
+* Fixed **recording save** when the destination is a different folder (`JFileChooser` parent vs current directory); **Show folder** and Recent Files now match the saved file.
 * Dismiss **Moving recording** when the copy finishes; recent-folders pulldown on the save dialog.
-* Live `.aedat4` recording now writes **EventFilter output** when logging-filtered is enabled.
+* Live `.aedat4` recording now writes **EventFilter output** when recording-filtered is enabled.
 * Unwrapped **32-bit AEDAT-4 timestamps** so seeks and duration stay monotonic past ~36 min.
 * **JAERViewerRunning.txt** moved to `java.io.tmpdir`; warn on leftover semaphore; delete leftovers in the install/repo folder.
 * AEC panel layout: clamp ParameterControlPanel labels; score under/over from occupied histogram min/max, not ADC full scale.
