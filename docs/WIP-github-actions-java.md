@@ -13,7 +13,7 @@ Status: **partial** — SignPath Windows workflow uses current action majors; co
 
 ## Still open
 
-1. **JDK 25 installer bundle** — deferred to **3.2.1** with SignPath-signed Windows media. 3.2.0 stays `jaer.install4j` `release="21/jdk-21.0.12+8"`. `ant run` already needs JDK 25+; `javac` still targets 21. When bumping: `jreBundles`, `setup-java`, smoke-test `ant compile` / install4j.
+1. **JDK 25 installer bundle** — done for **3.3.0** (`jaer.install4j` `release="25/jdk-25.0.4+7"`; CI `setup-java` 25). `javac` still targets 21. 3.2.0 media stays Temurin 21.
 2. **Other Actions** — when adding more workflows, prefer Node-24-based majors (`checkout@v5`, `setup-java@v5`, `upload-artifact@v7+`). Third-party actions (install4j setup, SignPath) may lag; pin and revisit.
 3. **install4j on CI** — currently pinned to **13.0.2** to match local; bump when upgrading the desktop install4j license install.
 

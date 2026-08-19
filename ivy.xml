@@ -136,8 +136,12 @@ MA 02110-1301  USA
              jar from ant split-opencv-natives (build/opencv-slim/<platform>/lib/).
              Keep this rev in sync with opencv.ivy.rev in build.xml.
              Loader: https://github.com/openpnp/opencv (nu.pattern.OpenCV.loadLocally).
-             Used by SingleCameraCalibration and OpenCVFlow. -->
-        <dependency org="org.openpnp" name="opencv" rev="4.8.1-0" />
+             Used by SingleCameraCalibration and OpenCVFlow.
+             Maven packaging is OSGi 'bundle' (still a .jar); ivy:retrieve type=jar
+             alone skips it — declare the artifact and retrieve type jar,bundle. -->
+        <dependency org="org.openpnp" name="opencv" rev="4.8.1-0">
+            <artifact name="opencv" type="bundle" ext="jar"/>
+        </dependency>
 
         <!-- TensorFlow for MLPNoiseFilter — roles:
              * Ivy: tensorflow-core-api (+ transitives) and unclassified native stub only.
@@ -169,7 +173,8 @@ MA 02110-1301  USA
         <!-- https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit -->
         <dependency org="org.eclipse.jgit" name="org.eclipse.jgit" rev="5.7.0.202003110725-r" />
 
-        <!-- for rebuild myself task in JaerUpdater -->
+        <!-- for rebuild myself task in JaerUpdater. Runtime jars only; download-deps
+             deletes *-javadoc.jar / *-sources.jar (this POM ships both). -->
         <dependency org="org.apache.ant" name="ant-commons-net" rev="1.10.8" />
 
         <!-- used for numpy data file format npy and npz support in JVM -->

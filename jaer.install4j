@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="13.0.1" transformSequenceNumber="13">
   <directoryPresets config="./images/1024w" />
-  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.2.1" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="8">
+  <application name="jaer - Java Tools for Address Event Representation Sensors and Processing" applicationId="9973-7238-2132-7351" mediaDir="currentInstallers/${compiler:sys.version}" compression="9" lzmaCompression="true" shortName="jAER" publisher="Sensors Group - Inst. of Neuroinformatics, UZH-ETH Zurich https://sensors.ini.ch" publisherWeb="https://jaerproject.org" version="3.3.0" allPathsRelative="true" macVolumeId="171068b6b60f6e6e" javaMinVersion="25">
     <languages>
       <principalLanguage id="en" customLocalizationFile="./packaging/install4j/install4j-custom-resources.utf8" />
     </languages>
-    <!-- 3.2.0: Temurin 21 LTS (21.0.12+8). Bump Adoptium bundle to JDK 25 in 3.2.1
-         with the SignPath-signed Windows media — do not change 3.2.0 assets. -->
-    <jreBundles jdkProviderId="Adoptium" release="21/jdk-21.0.12+8">
+    <!-- 3.3.0: Adoptium Temurin 25 LTS (matches ant run). 3.2.0 media stays 21.0.12. -->
+    <jreBundles jdkProviderId="Adoptium" release="25/jdk-25.0.4+7">
       <modules>
         <defaultModules set="all" />
       </modules>
@@ -36,7 +35,7 @@
       <mountPoint id="9024" root="9014" />
     </mountPoints>
     <entries>
-      <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
+      <dirEntry mountPoint="24" file="." overwriteMode="ifNewer" shared="true" overrideOverwriteMode="true" overrideUninstallMode="true" subDirectory="jaer" excludeSuffixes="*sources.jar,*javadoc.jar,*-src.zip,*sources.zip,*.java,*.tmp,*.form,*.orig,jaer-clone*,*.7z,*.code-workspace,hs_err*.log,*.pem,*.p12,*.pfx,*.keystore,*.jks">
         <exclude>
           <!-- Secrets / gitignored credentials. file="." packs the local tree; a missing
                exclude here ships Dropbox secrets in every local ant release. CI is safer
@@ -114,6 +113,10 @@
           <!-- Fat OpenCV (~102MB, all OS natives). Each media fileset below installs a
                slim lib/opencv-4.8.1-0.jar with Java classes + that OS native only. -->
           <entry location="lib/opencv-4.8.1-0.jar" />
+          <!-- NetBeans source attachments; not needed at runtime. -->
+          <entry location="jars/apache-ant-1.10.14-src.zip" />
+          <entry location="jars/jogamp-fat-java-src.zip" />
+          <entry location="jars/usb4java-usb4java-1.3.0.zip" />
           <!-- Safety net: OS TensorFlow natives (~70–150MB). Ivy no longer retrieves these;
                MLPNoiseFilter downloads via TensorFlowNativeSupport. Keep API + stub jars. -->
           <entry location="lib/tensorflow-core-native-1.0.0-rc.2-linux-arm64.jar" />
@@ -165,7 +168,7 @@
       </executable>
       <splashScreen show="true" bitmapFile="./images/1024w/SplashScreen.png" />
       <!-- add-opens jdk.internal.loader: TensorFlowNativeSupport hot-adds the OS native jar (JDK 25+). Valid on 9+. -->
-      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED">
+      <java mainClass="net.sf.jaer.JAERViewer" vmParameters="-Djogl.disable.openglcore -Djava.library.path=jars -Djava.util.logging.config.file=conf/Logging.properties  -Dsun.java2d.noddraw=true  -Dsun.java2d.opengl=false  -Dsun.java2d.dpiaware=true -Djogl.disable.opengles=false -splash:SplashScreen.png -Xmx10g -XX:+UseCompactObjectHeaders --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED">
         <classPath>
           <!-- First on classpath so Loader is 1.5.10 even if leftover javacpp-1.4.jar remains in lib/. -->
           <jarFile location="lib/javacpp-1.5.10.jar" failOnError="false" />
@@ -318,7 +321,15 @@ if (lib.isDirectory()) {
             com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
         }
     }
-    File[] scalaJunk = lib.listFiles((dir, n) -&gt; n.startsWith("scala") || n.startsWith("scalatest") || n.startsWith("scalactic") || n.startsWith("scalacheck") || n.equals("test-interface-1.0.jar"));
+    File[] docJunk = lib.listFiles((dir, n) -&gt; dir != null &amp;&amp; (n.endsWith("-javadoc.jar") || n.endsWith("-sources.jar")));
+    if (docJunk != null) {
+        for (File f : docJunk) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
+    File[] scalaJunk = lib.listFiles((dir, n) -&gt; dir != null &amp;&amp; (n.startsWith("scala") || n.startsWith("scalatest") || n.startsWith("scalactic") || n.startsWith("scalacheck") || n.equals("test-interface-1.0.jar")));
     if (scalaJunk != null) {
         for (File f : scalaJunk) {
             if (f.isFile() &amp;&amp; f.delete()) {
@@ -328,10 +339,10 @@ if (lib.isDirectory()) {
     }
     // Dropped Ivy deps: jblas, jhdf5, bytedeco hdf5, commons-math4, commons-net, mail, semver, jlfgr, uncommons-maths
     File[] ivyOrphans = lib.listFiles((dir, n) -&gt;
-        n.startsWith("jblas") || n.startsWith("jhdf5") || n.startsWith("hdf5-")
+        dir != null &amp;&amp; (n.startsWith("jblas") || n.startsWith("jhdf5") || n.startsWith("hdf5-")
         || n.startsWith("commons-math4") || n.startsWith("commons-net") || n.startsWith("ftpserver")
         || n.startsWith("javax.mail") || n.startsWith("mail-api") || n.startsWith("semver")
-        || n.startsWith("jlfgr") || n.startsWith("uncommons-maths"));
+        || n.startsWith("jlfgr") || n.startsWith("uncommons-maths")));
     if (ivyOrphans != null) {
         for (File f : ivyOrphans) {
             if (f.isFile() &amp;&amp; f.delete()) {
@@ -342,7 +353,15 @@ if (lib.isDirectory()) {
 }
 File jars = new File(context.getInstallationDirectory(), "jars");
 if (jars.isDirectory()) {
-    File[] djiJunk = jars.listFiles((dir, n) -&gt; n.startsWith("DJI RS4 Gimbal Controller"));
+    File[] srcZips = jars.listFiles((dir, n) -&gt; dir != null &amp;&amp; (n.endsWith("-src.zip") || n.endsWith("-sources.zip") || n.equals("usb4java-usb4java-1.3.0.zip")));
+    if (srcZips != null) {
+        for (File f : srcZips) {
+            if (f.isFile() &amp;&amp; f.delete()) {
+                com.install4j.api.Util.logInfo(context, "Removed leftover " + f.getAbsolutePath());
+            }
+        }
+    }
+    File[] djiJunk = jars.listFiles((dir, n) -&gt; dir != null &amp;&amp; n.startsWith("DJI RS4 Gimbal Controller"));
     if (djiJunk != null) {
         for (File f : djiJunk) {
             if (f.isFile() &amp;&amp; f.delete()) {
@@ -440,7 +459,7 @@ for (String name : leftoverFiles) {
 }
 File distDir = new File(installRoot, "dist");
 if (distDir.isDirectory()) {
-    File[] sevenZ = distDir.listFiles((d, n) -&gt; n.toLowerCase().endsWith(".7z"));
+    File[] sevenZ = distDir.listFiles((d, n) -&gt; d != null &amp;&amp; n.toLowerCase().endsWith(".7z"));
     if (sevenZ != null) {
         for (File f : sevenZ) {
             if (f.isFile() &amp;&amp; f.delete()) {
@@ -449,7 +468,7 @@ if (distDir.isDirectory()) {
         }
     }
 }
-File[] hsErr = installRoot.listFiles((d, n) -&gt; n.startsWith("hs_err") &amp;&amp; n.endsWith(".log"));
+File[] hsErr = installRoot.listFiles((d, n) -&gt; d != null &amp;&amp; n.startsWith("hs_err") &amp;&amp; n.endsWith(".log"));
 if (hsErr != null) {
     for (File f : hsErr) {
         if (f.isFile() &amp;&amp; f.delete()) {
@@ -458,8 +477,8 @@ if (hsErr != null) {
     }
 }
 File[] i4jSetup = installRoot.listFiles((d, n) -&gt;
-    (n.startsWith("install4j_windows") &amp;&amp; n.toLowerCase().endsWith(".exe"))
-    || n.startsWith("install4j License key"));
+    d != null &amp;&amp; ((n.startsWith("install4j_windows") &amp;&amp; n.toLowerCase().endsWith(".exe"))
+    || n.startsWith("install4j License key")));
 if (i4jSetup != null) {
     for (File f : i4jSetup) {
         if (f.isFile() &amp;&amp; f.delete()) {

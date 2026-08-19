@@ -14,10 +14,8 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 ## Checklist (do in this order)
 
 1. Set `VERSION.txt` (e.g. `3.2.0`).
-2. `ant release` -- confirm `y`. When asked to copy `updates.xml`, answer `y`.
+2. `ant release` -- Enter accepts the default `y` (type `n` to cancel). Does **not** copy repo-root `updates.xml`.
    - Media lands in `currentInstallers/<VERSION.txt>/`. Historical Dropbox copies stay in `jaer-older-installers/` (same share URL as the old `installers/` folder).
-   - Repo-root `updates.xml` is overwritten and `baseUrl` is set to GitHub `/latest/download/`.
-   - If you already built media: `ant copy-updates-xml` (no rebuild).
 3. Upload binaries (creates the GitHub Release for that tag if it is missing):
 
        powershell -File scripts/upload-github-release-installers.ps1
@@ -31,11 +29,11 @@ Two URLs, two hosts. Do not follow install4j's "upload updates.xml and media to 
 
        ant upload-release-notes
        gh release edit 3.2.0 --notes-file release-notes/jaer-3.2.0-release-notes.md
-4. Commit and push repo-root `updates.xml` if `git status` still shows it dirty. Installed copies only see `master`.
+4. When the release is ready to publish: `ant copy-updates-xml` (overwrites repo-root `updates.xml` and sets `baseUrl` to GitHub `/latest/download/`). Commit and push `updates.xml`. Installed copies only see `master`.
 5. Point git tag `<VERSION.txt>` at the commit you want and push it (`git tag` / `git push origin <tag>`). If the tag already exists on an older commit, delete and recreate it (see Tagging).
-6. Optional later: **3.2.1** SignPath-signed Windows exe, bump install4j `jreBundles` from Temurin 21 to Adoptium JDK 25, winget/Homebrew, prune old assets.
+6. Optional later: SignPath-signed Windows exe, winget/Homebrew, prune old assets.
 
-After a rebuild, hashes in `updates.xml` change. Repeat steps 2--4 (copy, upload, push `updates.xml`) or the updater will checksum-fail.
+After a rebuild, hashes in `updates.xml` change. Repeat `ant copy-updates-xml`, upload, and push `updates.xml` or the updater will checksum-fail.
 
 ## Version (VERSION.txt)
 
@@ -58,7 +56,7 @@ Prerequisites:
 
     ant release
 
-On `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> jaer.install4j`.
+On Enter / `y` / `yes` it: generates splash PNGs (`images/1024w` and `images/256h`), syncs `jaer.install4j` version, `clean` + `jar`, then `install4jc --release=<VERSION.txt> jaer.install4j`. It does not copy repo-root `updates.xml`; run `ant copy-updates-xml` when the release is ready to publish.
 
 Splash only: `ant generate-splash`. install4j launcher splash uses the 1024w PNG; keep 256h for Windows shell / wizard icons.
 

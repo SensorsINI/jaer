@@ -151,13 +151,21 @@ and put it on PATH (or set JAVA_HOME).</fail>
         <ivy:resolve file="ivy.xml"/>
 
         <!--note following pattern that must be used instead of ${ivy.lib} which does not work for unknown reason-->
-        <ivy:retrieve pattern="lib/[artifact]-[revision](-[classifier]).[ext]" sync="true"/>
-        <!--<echo message="Retrieve pattern=${ivy.retrieve.pattern}"/>-->
-        <!--<ivy:retrieve/>-->
+        <!-- type jar,bundle: Maven javadoc/source stay out; openpnp opencv is packaging
+             'bundle' (OSGi, ext jar) so type=jar alone never copies lib/opencv-*.jar
+             (org.opencv.core.Mat missing at compile). Classifier glob can still pull
+             *-javadoc.jar / *-sources.jar when POMs declare them as type=jar; delete those. -->
+        <ivy:retrieve pattern="lib/[artifact]-[revision](-[classifier]).[ext]" sync="true" type="jar,bundle"/>
+        <delete>
+            <fileset dir="${ivy.lib}" includes="*-javadoc.jar,*-sources.jar"/>
+        </delete>
+        <available file="${opencv.fat.jar}" property="opencv.fat.jar.present"/>
+        <fail unless="opencv.fat.jar.present"
+              message="Ivy did not retrieve ${opencv.fat.jar} (org.openpnp:opencv, Maven packaging bundle). Check ivy.xml artifact type=bundle ext=jar and retrieve type=jar,bundle."/>
          
         <pathconvert property="ivy.classpath.computed" dirsep="/" pathsep=":">
             <path>
-                <fileset dir="${ivy.lib}" includes="*.jar"/>
+                <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
             </path>
             <map from="${basedir}/" to=""/>
             <map from="${basedir}\" to=""/>
@@ -215,7 +223,30 @@ and put it on PATH (or set JAVA_HOME).</fail>
 
     <!-- Same javac/copy as -do-compile but without -pre-compile (no Ivy). lib/ must exist; run download-deps after ivy.xml changes. -->
     <target depends="init,deps-jar,-pre-pre-compile,-copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile-without-ivy">
-        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}"/>
+        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}">
+            <customize>
+                <!-- lib/*.jar after Ivy retrieve (openpnp opencv is type=bundle; ivy.classpath
+                     from init may be stale until the next Ant JVM). -->
+                <classpath>
+                    <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
+                </classpath>
+            </customize>
+        </j2seproject3:javac>
+        <copy todir="${build.classes.dir}">
+            <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
+        </copy>
+    </target>
+
+    <!-- Override NetBeans -do-compile so lib/*.jar (including opencv bundle) is on javac
+         even when ivy.classpath was loaded at init before retrieve updated it. -->
+    <target depends="init,deps-jar,-pre-pre-compile,-pre-compile,-copy-persistence-xml,-compile-depend" if="have.sources" name="-do-compile">
+        <j2seproject3:javac gensrcdir="${build.generated.sources.dir}">
+            <customize>
+                <classpath>
+                    <fileset dir="${ivy.lib}" includes="*.jar" excludes="*-javadoc.jar,*-sources.jar"/>
+                </classpath>
+            </customize>
+        </j2seproject3:javac>
         <copy todir="${build.classes.dir}">
             <fileset dir="${src.dir}" excludes="${build.classes.excludes},${excludes}" includes="${includes}"/>
         </copy>
@@ -521,9 +552,9 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="-confirm-release" depends="-load-version">
-        <input message="Release version is ${jaer.version} (from VERSION.txt). Proceed with splash, clean jar, and install4jc? [y/N]"
+        <input message="Release version is ${jaer.version} (from VERSION.txt). Proceed with splash, clean jar, and install4jc? [Y/n]"
                addproperty="jaer.release.confirm"
-               defaultvalue="n"/>
+               defaultvalue="y"/>
         <condition property="jaer.release.confirmed">
             <matches string="${jaer.release.confirm}" pattern="(?i)\s*y(es)?\s*"/>
         </condition>
@@ -677,33 +708,13 @@ and put it on PATH (or set JAVA_HOME).</fail>
                            byline="true"/>
             <echo message="Copied ${jaer.updates.xml.source} -&gt; ${basedir}/updates.xml"/>
             <echo message="Set updates.xml baseUrl to GitHub Releases latest/download/."/>
-            <echo message="Commit and push updates.xml so install4j auto-update can see ${jaer.version}."/>
+            <echo message="When the GitHub Release is ready, commit and push updates.xml so auto-update can see ${jaer.version}."/>
             <echo message="Upload currentInstallers/${jaer.version}/jAER_* to the GitHub Release (see scripts/upload-github-release-installers.ps1)."/>
         </sequential>
     </macrodef>
 
     <target name="copy-updates-xml" depends="-load-version"
-            description="Copy currentInstallers/VERSION/updates.xml to repo root (non-interactive).">
-        <jaer-copy-updates-xml/>
-    </target>
-
-    <target name="offer-copy-updates-xml" depends="-load-version"
-            description="Ask whether to copy currentInstallers/VERSION/updates.xml to repo root.">
-        <property name="jaer.updates.xml.source"
-                  value="${basedir}/currentInstallers/${jaer.version}/updates.xml"/>
-        <available file="${jaer.updates.xml.source}" property="jaer.updates.xml.source.exists"/>
-        <fail unless="jaer.updates.xml.source.exists"
-              message="Missing ${jaer.updates.xml.source} — run ant release (or install4jc) first."/>
-        <input message="Copy currentInstallers/${jaer.version}/updates.xml to repo root for auto-update? [y/N]"
-               addproperty="jaer.copy.updates.confirm"
-               defaultvalue="n"/>
-        <condition property="jaer.copy.updates.confirmed">
-            <matches string="${jaer.copy.updates.confirm}" pattern="(?i)\s*y(es)?\s*"/>
-        </condition>
-        <antcall target="-do-copy-updates-xml-if-confirmed"/>
-    </target>
-
-    <target name="-do-copy-updates-xml-if-confirmed" if="jaer.copy.updates.confirmed">
+            description="Copy currentInstallers/VERSION/updates.xml to repo root (run when the release is ready to publish).">
         <jaer-copy-updates-xml/>
     </target>
 
@@ -725,10 +736,11 @@ and put it on PATH (or set JAVA_HOME).</fail>
     </target>
 
     <target name="release"
-            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc,offer-copy-updates-xml"
-            description="Confirm VERSION.txt, generate splash PNGs, sync install4j, clean/jar, run install4jc, offer updates.xml copy.">
+            depends="-load-version,-confirm-release,generate-splash,-sync-install4j-version,clean,jar,-run-install4jc"
+            description="Confirm VERSION.txt (default y), generate splash PNGs, sync install4j, clean/jar, run install4jc.">
         <echo message="${line.separator}install4j media build finished for ${jaer.version}."/>
-        <echo message="Next: git tag ${jaer.version}, push updates.xml if copied, create the GitHub release,"/>
+        <echo message="Repo-root updates.xml was not copied (avoids pushing until the release is ready)."/>
+        <echo message="When ready: ant copy-updates-xml, git tag ${jaer.version}, create the GitHub release,"/>
         <echo message="and upload installers (scripts/upload-github-release-installers.ps1)."/>
         <echo message="See README-releasing-tagging.md"/>
     </target>

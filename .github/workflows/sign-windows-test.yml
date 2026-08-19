@@ -25,11 +25,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
 
       # Ant is preinstalled on windows-latest runner images (no third-party setup-ant).
       - name: Check Ant

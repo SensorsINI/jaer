@@ -18,7 +18,7 @@ jAER is a full-fledged desktop application that captures event camera output, di
 
 You can find the latest releases and binary [install4j](https://www.ej-technologies.com/products/install4j/overview.html) installers at <https://github.com/SensorsINI/jaer/releases>.
 
-**Installers are GitHub Release assets** (~300 MB each, bundled [Eclipse Temurin](https://adoptium.net/) from Adoptium — 3.2.0 is Temurin 21; well under GitHub’s 2 GiB-per-file limit). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
+**Installers are GitHub Release assets** (~200 MB each for 3.3.0, bundled [Eclipse Temurin](https://adoptium.net/) from Adoptium — 3.3.0 is Temurin **25**; 3.2.0 was Temurin 21). Older installers remain on [Dropbox](https://www.dropbox.com/scl/fo/ibqmrztay51g7fg5d7mu3/h?rlkey=ulwos9lxmv38rrv5x1flic9z2&dl=0) (`jaer-older-installers`).
 
 **Windows:** For current unsigned builds: Click *More info*, *Run anyway* and *Install anyway*. Later: `winget install SensorsINI.jAER` (manifests in [`packaging/winget`](packaging/winget); submit to winget-pkgs after the exe is on GitHub).
 **MacOS:** See [opening unsigned dmg on MacOS](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac). Right click, open with Archive Manager, and run the installer. Recommend to install to a user folder. **Apple Silicon:** USB cameras (and jAER startup) need Homebrew [libusb](https://formulae.brew.sh/formula/libusb): `brew install libusb`. `ant run` installs it when Homebrew is present. Homebrew cask (own tap first): see [`packaging/homebrew`](packaging/homebrew).
@@ -26,7 +26,7 @@ You can find the latest releases and binary [install4j](https://www.ej-technolog
 
 Installed copies (not git checkouts) can **Download and install** from Help → Check for release updates…; jAER quits so the new installer can replace files. Package-manager installs should use `winget upgrade` / `brew upgrade --cask jaer` instead. See video [installing and updating jaer on YouTube](https://youtu.be/qQVt8_gwYVY).
 
-* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) from Adoptium (3.2.0 is Temurin **21**; `ant run` from a git clone needs [JDK 25+](https://adoptium.net/)). See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
+* install4j installers bundle [Eclipse Temurin](https://adoptium.net/) from Adoptium (3.3.0 is Temurin **25**, noticeably faster startup; 3.2.0 was **21**). `ant run` from a git clone needs [JDK 25+](https://adoptium.net/) (`javac` still targets 21). See [Guide to Java versions and features](https://www.marcobehler.com/guides/a-guide-to-java-versions-and-features).
 * Release install4j installers do NOT install git working copy, but using the new self-update feature introduced in jAER-1.8.1, 
 you can [initialize the release to a git working copy and pull+build within jAER](https://youtu.be/qQVt8_gwYVY). 
 * You will get the best experience running from lastest bug fixes. 
@@ -65,11 +65,13 @@ Hardware docs in Help menu: iniVation cameras, Prophesee sensors, NRV cameras.
 
 **FOV calculator:** estimate field of view from pixel pitch, array size, and lens focal length. Lives in the sibling repo [`SensorsINI/lensFOV`](https://github.com/SensorsINI/lensFOV) (local checkout `../lensFOV` next to this `jaer` folder). Open `../lensFOV/index.html` locally; after Pages is enabled it will be at [sensorsini.github.io/lensFOV](https://sensorsini.github.io/lensFOV/).
 
-## Citation
+## Citation and credits
 T. Delbruck, “Frame-free dynamic digital vision,” 
 in International Symposium on Secure-Life Electronics, University of Tokyo, 
 Mar. 2008, pp. 21–26. 
 doi: 10.5167/uzh-17620. Available: http://dx.doi.org/10.5167/uzh-17620
+
+jAER totally relies on OSS, e.g.  Adoptium, JOGL, libusb, and many others. We thank these awesome community and industry developers.
 
 ### jAER applications
 jAER originally targetted characterization of Sensors Group [event cameras and silicon cochleas](https://sensors.ini.ch/research/event-sensors),

@@ -15,7 +15,7 @@ winget install --manifest packaging\winget\3.2.0
 
 ## First publish to microsoft/winget-pkgs
 
-Hold this until 3.2.0 (or a later signed build) is the intended public winget package. `wingetcreate submit` opens a PR; it does not merge `microsoft/winget-pkgs`. Do not replace GitHub 3.2.0 assets after submit without a new SHA256.
+Hold this until **3.3.0** signed media is the intended public winget package. `wingetcreate submit` opens a PR; it does not merge `microsoft/winget-pkgs`. Do not replace GitHub 3.2.0 assets after submit without a new SHA256.
 
 `gh` and `wingetcreate` are installed on the Windows machine that prepared these YAML files.
 

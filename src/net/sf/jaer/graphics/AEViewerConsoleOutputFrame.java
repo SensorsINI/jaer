@@ -504,6 +504,10 @@ public class AEViewerConsoleOutputFrame extends javax.swing.JFrame {
                 public void actionPerformed(ActionEvent e) {
                     log.info(String.format("Setting logging level of logger %s to %s", log.getName(), level.getName()));
                     log.setLevel(level);
+                    Logger topLogger = Logger.getLogger("");
+                    for (java.util.logging.Handler handler : topLogger.getHandlers()) {
+                        handler.setLevel(level);
+                    }
                 }
             });
         }
