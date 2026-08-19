@@ -57,10 +57,10 @@ import net.sf.jaer.util.TextRendererScale;
 /**
  * Describe DVXplorer and its event extractor and configuration.
  * 
- * @author Pei Haoxiang
+ * @author Pei Haoxiang, Tobi Delbruck
  */
 @Description("DVXplorer, 640x480, 9um pitch, Samsung DVS built into USB camera by inivation")
-@DevelopmentStatus(DevelopmentStatus.Status.InDevelopment)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @UsbDevices({
     @UsbDevice(vid = CypressFX3.VID, pid = DVXplorerFX3HardwareInterface.PID_FX3)
 })

@@ -41,7 +41,7 @@ import net.sf.jaer.stereopsis.Stereopsis;
  * @author tobi
  * @see net.sf.jaer.hardwareinterface.usb.cypressfx2libusb.CypressFX2LibUsbDVS128HardwareInterface
  */
-@Description("A stereo pair of Tmpdiff128 retinas on a board with a single USB interface")
+@Description("A one-off prototype from Patrick Lichtsteiner hanging in Tobi's officestereo pair of Tmpdiff128 retinas on a board with a single USB interface")
 @DevelopmentStatus(DevelopmentStatus.Status.Experimental)
 public class DVS128StereoBoard extends DVS128 implements StereoChipInterface {
 

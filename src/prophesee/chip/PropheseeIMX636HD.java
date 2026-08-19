@@ -27,7 +27,7 @@ import ch.unizh.ini.jaer.chip.retina.AETemporalConstastRetina;
  * @see https://www.prophesee.ai/
  */
 @Description("Prophesee EVK4 HD Sony IMX636 1280x720; 5um pitch with Sony pure DVS chip; EVT3 events")
-@DevelopmentStatus(DevelopmentStatus.Status.Experimental)
+@DevelopmentStatus(DevelopmentStatus.Status.Stable)
 @UsbDevices({
     @UsbDevice(vid = PropheseeHardwareInterface.VID, pid = PropheseeHardwareInterface.PID_EVK4_HD)
 })
